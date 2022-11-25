@@ -13,6 +13,12 @@
 # limitations under the License.
 
 import paddle
+<<<<<<< HEAD
+=======
+
+paddle.set_default_dtype("float64")
+from paddle.fluid.layers import sequence_mask
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.set_default_dtype("float64")
 import unittest
@@ -25,6 +31,7 @@ from paddle.fluid.layers import sequence_mask
 
 
 class TestRNNWrapper(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -108,6 +115,7 @@ class TestRNNWrapper(unittest.TestCase):
 
 
 class TestBiRNNWrapper(unittest.TestCase):
+
     def __init__(self, time_major=True, place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major

@@ -21,6 +21,7 @@ from op_test import OpTest
 
 
 class TestFilterByInstagOp(OpTest):
+
     def setUp(self):
         self.op_type = 'filter_by_instag'
         x1 = np.zeros((36, 4), dtype=np.float64)
@@ -48,9 +49,14 @@ class TestFilterByInstagOp(OpTest):
                     out[ln, k] = cur
                 ln += 1
 
+<<<<<<< HEAD
         mmap = np.array([[0, 1, 2], [2, 6, 4], [6, 15, 6], [12, 28, 8]]).astype(
             'int64'
         )
+=======
+        mmap = np.array([[0, 1, 2], [2, 6, 4], [6, 15, 6], [12, 28,
+                                                            8]]).astype('int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         mmap_lod = [[1, 1, 1, 1]]
 
         loss_weight = np.array([[1], [1], [1], [1]]).astype('double')
@@ -72,15 +78,22 @@ class TestFilterByInstagOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
         )
+=======
+        self.check_grad(['Ins'],
+                        'Out',
+                        no_grad_set=set(['Ins_tag', 'Filter_tag']))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 """This is Test Case 2"""
 
 
 class TestFilterByInstagOp2(OpTest):
+
     def setUp(self):
         self.op_type = 'filter_by_instag'
 
@@ -118,15 +131,22 @@ class TestFilterByInstagOp2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
         )
+=======
+        self.check_grad(['Ins'],
+                        'Out',
+                        no_grad_set=set(['Ins_tag', 'Filter_tag']))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 """This is Test Case 3"""
 
 
 class TestFilterByInstagOp3(OpTest):
+
     def setUp(self):
         self.op_type = 'filter_by_instag'
 
@@ -161,15 +181,22 @@ class TestFilterByInstagOp3(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
         )
+=======
+        self.check_grad(['Ins'],
+                        'Out',
+                        no_grad_set=set(['Ins_tag', 'Filter_tag']))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 """This is Test Case 4"""
 
 
 class TestFilterByInstagOp4(OpTest):
+
     def setUp(self):
         self.op_type = 'filter_by_instag'
 
@@ -203,12 +230,19 @@ class TestFilterByInstagOp4(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag'])
         )
+=======
+        self.check_grad(['Ins'],
+                        'Out',
+                        no_grad_set=set(['Ins_tag', 'Filter_tag']))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestFilterByInstagOp6(OpTest):
+
     def setUp(self):
         self.op_type = 'filter_by_instag'
 
@@ -246,6 +280,7 @@ class TestFilterByInstagOp6(OpTest):
 
 
 class TestFilterByInstagOp7(OpTest):
+
     def setUp(self):
         self.op_type = 'filter_by_instag'
 

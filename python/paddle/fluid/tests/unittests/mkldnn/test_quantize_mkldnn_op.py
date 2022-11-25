@@ -21,6 +21,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestQuantizeOp(OpTest):
+
     def setUp(self):
         self.op_type = 'quantize'
         self.scale = 255.0
@@ -39,6 +40,7 @@ class TestQuantizeOp(OpTest):
     def prepare_input(self):
         if self.is_negative:
             # input data values are from interval [-1.0, 1.0)
+<<<<<<< HEAD
             self.input = (
                 2 * np.random.random_sample(self.input_size) - 1
             ).astype('float32')
@@ -47,6 +49,14 @@ class TestQuantizeOp(OpTest):
             self.input = (np.random.random_sample(self.input_size)).astype(
                 'float32'
             )
+=======
+            self.input = (2 * np.random.random_sample(self.input_size) -
+                          1).astype('float32')
+        else:
+            # input data values are from interval [0.0, 1.0)
+            self.input = (np.random.random_sample(
+                self.input_size)).astype('float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
         self.attrs = {
@@ -58,9 +68,14 @@ class TestQuantizeOp(OpTest):
 
     def prepare_output(self):
         input_data_type = 'int8' if self.is_negative else 'uint8'
+<<<<<<< HEAD
         output = np.rint(self.input * self.scale + self.shift).astype(
             input_data_type
         )
+=======
+        output = np.rint(self.input * self.scale +
+                         self.shift).astype(input_data_type)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.outputs = {'Output': output}
 
     def test_check_output(self):
@@ -93,6 +108,7 @@ class TestQuantizeOp(OpTest):
 
 
 class TestQuantizeOp1(TestQuantizeOp):
+
     def set_scale(self):
         self.scale = 127.0
 
@@ -101,6 +117,7 @@ class TestQuantizeOp1(TestQuantizeOp):
 
 
 class TestQuantizeOp2(TestQuantizeOp):
+
     def set_scale(self):
         self.scale = 255.0
 
@@ -111,6 +128,7 @@ class TestQuantizeOp2(TestQuantizeOp):
 # 2-dim input
 # P - positive input
 class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
+
     def set_output_format(self):
         self.output_format = 'NCHW'
 
@@ -130,6 +148,7 @@ class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
 # 2-dim input
 # N - negative input
 class TestQuantizeOpShift_NCHW_2_N(TestQuantizeOpShift_NCHW_2_P):
+
     def set_is_negative(self):
         self.is_nagative = True
 
@@ -141,53 +160,63 @@ class TestQuantizeOpShift_NCHW_2_N(TestQuantizeOpShift_NCHW_2_P):
 
 
 class TestQuantizeOpShift_NHWC_2_P(TestQuantizeOpShift_NCHW_2_P):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 class TestQuantizeOpShift_NHWC_2_N(TestQuantizeOpShift_NCHW_2_N):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 # 3-dim input
 class TestQuantizeOpShift_NCHW_3_P(TestQuantizeOpShift_NCHW_2_P):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4]
 
 
 class TestQuantizeOpShift_NCHW_3_N(TestQuantizeOpShift_NCHW_2_N):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4]
 
 
 class TestQuantizeOpShift_NHWC_3_P(TestQuantizeOpShift_NCHW_3_P):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 class TestQuantizeOpShift_NHWC_3_N(TestQuantizeOpShift_NCHW_3_N):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 # 4-dim input
 class TestQuantizeOpShift_NCHW_4_P(TestQuantizeOpShift_NCHW_2_P):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4, 5]
 
 
 class TestQuantizeOpShift_NCHW_4_N(TestQuantizeOpShift_NCHW_2_N):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4, 5]
 
 
 class TestQuantizeOpShift_NHWC_4_P(TestQuantizeOpShift_NCHW_4_P):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 class TestQuantizeOpShift_NHWC_4_N(TestQuantizeOpShift_NCHW_4_N):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 

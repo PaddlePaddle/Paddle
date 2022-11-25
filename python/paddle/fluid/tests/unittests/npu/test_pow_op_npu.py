@@ -26,6 +26,7 @@ SEED = 2021
 
 
 class TestPow(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "pow"
@@ -54,6 +55,7 @@ class TestPow(OpTest):
 
 
 class TestPowFp16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "pow"
@@ -80,6 +82,7 @@ class TestPowFp16(OpTest):
 
 
 class TestPowNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -94,9 +97,15 @@ class TestPowNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -120,11 +129,21 @@ class TestPowNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "b": b_np, "label": label_np},
                 fetch_list=[prediction, loss],
             )
+=======
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if epoch % 10 == 0:
                 print(
                     "Epoch {} | Prediction[0]: {}, Loss: {}".format(

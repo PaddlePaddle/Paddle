@@ -50,6 +50,7 @@ class TestUnfoldOp(OpTest):
         )
         dkernel_h = self.dilations[0] * (self.kernel_sizes[0] - 1) + 1
         dkernel_w = self.dilations[1] * (self.kernel_sizes[1] - 1) + 1
+<<<<<<< HEAD
         out_height = (
             int(
                 (
@@ -74,6 +75,13 @@ class TestUnfoldOp(OpTest):
             )
             + 1
         )
+=======
+        out_height = int((self.input_height + self.paddings[0] +
+                          self.paddings[2] - dkernel_h) / self.strides[0]) + 1
+        out_width = int(
+            (self.input_width + self.paddings[1] + self.paddings[3] - dkernel_w)
+            / self.strides[1]) + 1
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         output_shape[2] = out_height * out_width
         output = np.zeros(output_shape).astype(np.float64)
         # ------------ calculate output -------------- #
@@ -83,6 +91,7 @@ class TestUnfoldOp(OpTest):
                     h_out = int(k / out_width)
                     w_out = k % out_width
                     w_offset = j % self.kernel_sizes[1]
+<<<<<<< HEAD
                     h_offset = (
                         int(j / self.kernel_sizes[1]) % self.kernel_sizes[0]
                     )
@@ -102,6 +111,18 @@ class TestUnfoldOp(OpTest):
                     if (h_in >= 0 and h_in < self.input_height) and (
                         w_in >= 0 and w_in < self.input_width
                     ):
+=======
+                    h_offset = int(
+                        j / self.kernel_sizes[1]) % self.kernel_sizes[0]
+                    c_in = int(j /
+                               (self.kernel_sizes[0] * self.kernel_sizes[1]))
+                    h_in = h_offset * self.dilations[0] + h_out * self.strides[
+                        0] - self.paddings[0]
+                    w_in = w_offset * self.dilations[1] + w_out * self.strides[
+                        1] - self.paddings[1]
+                    if (h_in>=0 and h_in<self.input_height) and \
+                         (w_in>=0 and w_in<self.input_width):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         output[i, j, k] = self.x[i, c_in, h_in, w_in]
 
         self.outputs = output

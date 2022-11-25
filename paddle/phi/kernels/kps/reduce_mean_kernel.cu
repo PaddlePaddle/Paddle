@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_mean_kernel.h"
 
 namespace phi {
 

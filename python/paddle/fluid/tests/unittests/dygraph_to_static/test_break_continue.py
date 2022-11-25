@@ -17,9 +17,13 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
     ProgramTranslator,
 )
+=======
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 
 SEED = 2020
@@ -27,6 +31,10 @@ np.random.seed(SEED)
 
 
 class TestDy2staticException(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
@@ -160,7 +168,13 @@ def test_for_in_else(x):
 
 
 def while_loop_class_var(x):
+<<<<<<< HEAD
     class Foo:
+=======
+
+    class Foo(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -204,13 +218,19 @@ def test_optim_break_in_while(x):
 
 
 class TestContinueInFor(unittest.TestCase):
+
     def setUp(self):
         self.input = np.zeros((1)).astype('int64')
+<<<<<<< HEAD
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
@@ -229,6 +249,7 @@ class TestContinueInFor(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -237,49 +258,66 @@ class TestContinueInFor(unittest.TestCase):
                 dygraph_res, static_res
             ),
         )
+=======
+        self.assertTrue(np.allclose(dygraph_res, static_res),
+                        msg='dygraph res is {}\nstatic_res is {}'.format(
+                            dygraph_res, static_res))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestContinueInForAtEnd(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_for_at_end
 
 
 class TestBreakInFor(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_for
 
 
 class TestBreakInForAtEnd(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_for_at_end
 
 
 class TestBreakContinueInFor(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_continue_in_for
 
 
 class TestForInElse(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_for_in_else
 
 
 class TestContinueInWhile(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_while
 
 
 class TestBreakInWhile(TestContinueInWhile):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_while
 
 
 class TestWhileLoopClassVar(TestContinueInWhile):
+
     def init_dygraph_func(self):
         self.dygraph_func = while_loop_class_var
 
 
 class TestOptimBreakInFor(TestDy2staticException):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = test_optim_break_in_for
@@ -287,6 +325,7 @@ class TestOptimBreakInFor(TestDy2staticException):
 
 
 class TestOptimBreakInWhile(TestContinueInWhile):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_while
 

@@ -79,6 +79,7 @@ def get_compat_kernels_info():
                     if name in kernels_info:
                         cur_reg = kernels_info[name]
                         kernels_info[name]["inputs"] = list(
+<<<<<<< HEAD
                             set(
                                 registry_info["inputs"]
                                 + kernels_info[name]["inputs"]
@@ -96,6 +97,16 @@ def get_compat_kernels_info():
                                 + kernels_info[name]["outputs"]
                             )
                         )
+=======
+                            set(registry_info["inputs"] +
+                                kernels_info[name]["inputs"]))
+                        kernels_info[name]["attrs"] = list(
+                            set(registry_info["attrs"] +
+                                kernels_info[name]["attrs"]))
+                        kernels_info[name]["outputs"] = list(
+                            set(registry_info["outputs"] +
+                                kernels_info[name]["outputs"]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     else:
                         kernels_info[name] = registry_info
 

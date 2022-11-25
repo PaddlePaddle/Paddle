@@ -29,6 +29,7 @@ bidirectional_list = ["bidirectional", "bidirect"]
 
 
 class TestSimpleRNN(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -40,14 +41,23 @@ class TestSimpleRNN(unittest.TestCase):
         # Since `set_device` is global, set `set_device` in `setUp` rather than
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
+<<<<<<< HEAD
         rnn1 = SimpleRNN(
             16, 32, 2, time_major=self.time_major, direction=self.direction
         )
+=======
+        rnn1 = SimpleRNN(16,
+                         32,
+                         2,
+                         time_major=self.time_major,
+                         direction=self.direction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
+<<<<<<< HEAD
                 rnn2 = paddle.nn.SimpleRNN(
                     16,
                     32,
@@ -55,6 +65,13 @@ class TestSimpleRNN(unittest.TestCase):
                     time_major=self.time_major,
                     direction=self.direction,
                 )
+=======
+                rnn2 = paddle.nn.SimpleRNN(16,
+                                           32,
+                                           2,
+                                           time_major=self.time_major,
+                                           direction=self.direction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         exe = paddle.static.Executor(place)
         scope = paddle.fluid.Scope()
@@ -183,6 +200,7 @@ class TestSimpleRNN(unittest.TestCase):
 
 
 class TestGRU(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -337,6 +355,7 @@ class TestGRU(unittest.TestCase):
 
 
 class TestLSTM(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -348,14 +367,23 @@ class TestLSTM(unittest.TestCase):
         # Since `set_device` is global, set `set_device` in `setUp` rather than
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
+<<<<<<< HEAD
         rnn1 = LSTM(
             16, 32, 2, time_major=self.time_major, direction=self.direction
         )
+=======
+        rnn1 = LSTM(16,
+                    32,
+                    2,
+                    time_major=self.time_major,
+                    direction=self.direction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
+<<<<<<< HEAD
                 rnn2 = paddle.nn.LSTM(
                     16,
                     32,
@@ -363,6 +391,13 @@ class TestLSTM(unittest.TestCase):
                     time_major=self.time_major,
                     direction=self.direction,
                 )
+=======
+                rnn2 = paddle.nn.LSTM(16,
+                                      32,
+                                      2,
+                                      time_major=self.time_major,
+                                      direction=self.direction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         exe = paddle.static.Executor(place)
         scope = paddle.fluid.Scope()

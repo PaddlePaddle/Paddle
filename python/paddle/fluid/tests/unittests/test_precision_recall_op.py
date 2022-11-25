@@ -85,6 +85,7 @@ def compute_metrics(states, cls_num):
 
 
 class TestPrecisionRecallOp_0(OpTest):
+
     def setUp(self):
         self.op_type = "precision_recall"
         ins_num = 64
@@ -118,6 +119,7 @@ class TestPrecisionRecallOp_0(OpTest):
 
 
 class TestPrecisionRecallOp_1(OpTest):
+
     def setUp(self):
         self.op_type = "precision_recall"
         ins_num = 64
@@ -158,6 +160,7 @@ class TestPrecisionRecallOp_1(OpTest):
 
 
 class TestPrecisionRecallOp_2(OpTest):
+
     def setUp(self):
         self.op_type = "precision_recall"
         ins_num = 64

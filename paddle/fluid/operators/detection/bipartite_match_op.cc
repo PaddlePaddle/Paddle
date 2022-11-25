@@ -72,7 +72,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
   // The match_dist must be initialized to 0 at first.
+<<<<<<< HEAD
   void BipartiteMatch(const phi::DenseTensor& dist,
+=======
+  void BipartiteMatch(const Tensor& dist,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       int* match_indices,
                       T* match_dist) const {
     PADDLE_ENFORCE_EQ(
@@ -157,7 +161,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     }
   }
 
+<<<<<<< HEAD
   void ArgMaxMatch(const phi::DenseTensor& dist,
+=======
+  void ArgMaxMatch(const Tensor& dist,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                    int* match_indices,
                    T* match_dist,
                    T overlap_threshold) const {

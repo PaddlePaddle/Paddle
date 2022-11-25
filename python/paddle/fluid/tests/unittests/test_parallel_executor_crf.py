@@ -46,6 +46,7 @@ def db_lstm(
     **ignored
 ):
     # 8 features
+<<<<<<< HEAD
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
         is_sparse=is_sparse,
@@ -69,6 +70,26 @@ def db_lstm(
             input=x,
             param_attr=fluid.ParamAttr(name=embedding_name, trainable=False),
         )
+=======
+    predicate_embedding = fluid.layers.embedding(input=predicate,
+                                                 is_sparse=is_sparse,
+                                                 size=[pred_dict_len, word_dim],
+                                                 dtype='float32',
+                                                 param_attr='vemb')
+
+    mark_embedding = fluid.layers.embedding(input=mark,
+                                            is_sparse=is_sparse,
+                                            size=[mark_dict_len, mark_dim],
+                                            dtype='float32')
+
+    word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
+    emb_layers = [
+        fluid.layers.embedding(size=[word_dict_len, word_dim],
+                               is_sparse=is_sparse,
+                               input=x,
+                               param_attr=fluid.ParamAttr(name=embedding_name,
+                                                          trainable=False))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for x in word_input
     ]
     # TODO(zcd): if the parameter is not trainable, the
@@ -86,6 +107,7 @@ def db_lstm(
 
     hidden_0 = fluid.layers.sums(input=hidden_0_layers)
 
+<<<<<<< HEAD
     lstm_0 = fluid.layers.dynamic_lstm(
         input=hidden_0,
         size=hidden_dim,
@@ -93,6 +115,13 @@ def db_lstm(
         gate_activation='sigmoid',
         cell_activation='sigmoid',
     )
+=======
+    lstm_0 = fluid.layers.dynamic_lstm(input=hidden_0,
+                                       size=hidden_dim,
+                                       candidate_activation='relu',
+                                       gate_activation='sigmoid',
+                                       cell_activation='sigmoid')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # stack L-LSTM and R-LSTM with direct edges
     input_tmp = [hidden_0, lstm_0]
@@ -109,6 +138,7 @@ def db_lstm(
             ]
         )
 
+<<<<<<< HEAD
         lstm = fluid.layers.dynamic_lstm(
             input=mix_hidden,
             size=hidden_dim,
@@ -117,6 +147,14 @@ def db_lstm(
             cell_activation='sigmoid',
             is_reverse=((i % 2) == 1),
         )
+=======
+        lstm = fluid.layers.dynamic_lstm(input=mix_hidden,
+                                         size=hidden_dim,
+                                         candidate_activation='relu',
+                                         gate_activation='sigmoid',
+                                         cell_activation='sigmoid',
+                                         is_reverse=((i % 2) == 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         input_tmp = [mix_hidden, lstm]
 
@@ -135,15 +173,24 @@ def db_lstm(
 
 
 class TestCRFModel(unittest.TestCase):
+<<<<<<< HEAD
     def check_network_convergence(
         self, is_sparse, build_strategy=None, use_cuda=True
     ):
+=======
+
+    def check_network_convergence(self,
+                                  is_sparse,
+                                  build_strategy=None,
+                                  use_cuda=True):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         os.environ['CPU_NUM'] = str(4)
         main = fluid.Program()
         startup = fluid.Program()
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(main, startup):
+<<<<<<< HEAD
                 word = fluid.layers.data(
                     name='word_data', shape=[1], dtype='int64', lod_level=1
                 )
@@ -178,6 +225,50 @@ class TestCRFModel(unittest.TestCase):
                     label=target,
                     param_attr=fluid.ParamAttr(name='crfw', learning_rate=1e-1),
                 )
+=======
+                word = fluid.layers.data(name='word_data',
+                                         shape=[1],
+                                         dtype='int64',
+                                         lod_level=1)
+                predicate = fluid.layers.data(name='verb_data',
+                                              shape=[1],
+                                              dtype='int64',
+                                              lod_level=1)
+                ctx_n2 = fluid.layers.data(name='ctx_n2_data',
+                                           shape=[1],
+                                           dtype='int64',
+                                           lod_level=1)
+                ctx_n1 = fluid.layers.data(name='ctx_n1_data',
+                                           shape=[1],
+                                           dtype='int64',
+                                           lod_level=1)
+                ctx_0 = fluid.layers.data(name='ctx_0_data',
+                                          shape=[1],
+                                          dtype='int64',
+                                          lod_level=1)
+                ctx_p1 = fluid.layers.data(name='ctx_p1_data',
+                                           shape=[1],
+                                           dtype='int64',
+                                           lod_level=1)
+                ctx_p2 = fluid.layers.data(name='ctx_p2_data',
+                                           shape=[1],
+                                           dtype='int64',
+                                           lod_level=1)
+                mark = fluid.layers.data(name='mark_data',
+                                         shape=[1],
+                                         dtype='int64',
+                                         lod_level=1)
+
+                feature_out = db_lstm(**locals())
+                target = fluid.layers.data(name='target',
+                                           shape=[1],
+                                           dtype='int64',
+                                           lod_level=1)
+                crf_cost = fluid.layers.linear_chain_crf(
+                    input=feature_out,
+                    label=target,
+                    param_attr=fluid.ParamAttr(name='crfw', learning_rate=1e-1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 avg_cost = paddle.mean(crf_cost)
 
                 sgd_optimizer = fluid.optimizer.SGD(
@@ -190,12 +281,18 @@ class TestCRFModel(unittest.TestCase):
                 )
                 sgd_optimizer.minimize(avg_cost)
 
+<<<<<<< HEAD
                 train_data = paddle.batch(
                     paddle.reader.shuffle(
                         paddle.dataset.conll05.test(), buf_size=8192
                     ),
                     batch_size=8,
                 )
+=======
+                train_data = paddle.batch(paddle.reader.shuffle(
+                    paddle.dataset.conll05.test(), buf_size=8192),
+                                          batch_size=8)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
@@ -205,6 +302,7 @@ class TestCRFModel(unittest.TestCase):
                     loss_name=avg_cost.name, build_strategy=build_strategy
                 )
 
+<<<<<<< HEAD
                 feeder = fluid.DataFeeder(
                     feed_list=[
                         word,
@@ -219,17 +317,30 @@ class TestCRFModel(unittest.TestCase):
                     ],
                     place=fluid.CPUPlace(),
                 )
+=======
+                feeder = fluid.DataFeeder(feed_list=[
+                    word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate,
+                    mark, target
+                ],
+                                          place=fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             data = train_data()
             for i in range(4):
                 cur_batch = next(data)
                 print(
+<<<<<<< HEAD
                     exe.run(
                         train_cp,
                         feed=feeder.feed(cur_batch),
                         fetch_list=[avg_cost.name],
                     )[0]
                 )
+=======
+                    exe.run(train_cp,
+                            feed=feeder.feed(cur_batch),
+                            fetch_list=[avg_cost.name])[0])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _new_build_strategy(self, use_reduce=False):
         build_strategy = fluid.BuildStrategy()

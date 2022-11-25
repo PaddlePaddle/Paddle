@@ -19,6 +19,7 @@ import unittest
 
 
 class TestFetchVar(unittest.TestCase):
+
     def set_input(self):
         self.val = np.array([1, 3, 5]).astype(np.int32)
 
@@ -29,11 +30,17 @@ class TestFetchVar(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")
+<<<<<<< HEAD
         np.testing.assert_array_equal(fetched_x, self.val)
+=======
+        self.assertTrue(numpy.array_equal(fetched_x, self.val),
+                        "fetch_x=%s val=%s" % (fetched_x, self.val))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertEqual(fetched_x.dtype, self.val.dtype)
 
 
 class TestFetchNullVar(TestFetchVar):
+
     def set_input(self):
         self.val = np.array([]).astype(np.int32)
 

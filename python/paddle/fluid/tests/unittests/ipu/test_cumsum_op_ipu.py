@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -49,10 +50,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
         out = paddle.cumsum(x, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        out = paddle.fluid.layers.cumsum(x, **self.attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -67,45 +75,70 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {"exclusive": True, "reverse": False}
 
 
 class TestCase2(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {"exclusive": False, "reverse": True}
 
 
 class TestCase3(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {"exclusive": True, "reverse": True}
 
 
 class TestCase4(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_data_feed(self):
         x = np.random.uniform(size=[1, 128])
         self.feed_fp32 = {"x": x.astype(np.int32)}
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="int32"
         )
         out = paddle.cumsum(x, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="int32")
+        out = paddle.fluid.layers.cumsum(x, **self.attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out.name]
 
 
 class TestCase5(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_data_feed(self):
         x = np.random.uniform(size=[1, 128])
         self.feed_fp32 = {"x": x.astype(np.int64)}
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="int64"
         )
         out = paddle.cumsum(x, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="int64")
+        out = paddle.fluid.layers.cumsum(x, **self.attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out.name]
 
 

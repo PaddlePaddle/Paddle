@@ -47,6 +47,7 @@ namespace paddle_infer {
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 using DistConfig = paddle::DistConfig;
+using BackendType = paddle::AnalysisConfig::Backend;
 
 ///
 /// \class Predictor
@@ -158,6 +159,7 @@ class PD_INFER_DECL Predictor {
   uint64_t TryShrinkMemory();
 
   ///
+<<<<<<< HEAD
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
@@ -168,6 +170,8 @@ class PD_INFER_DECL Predictor {
   void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
 
   ///
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   /// \brief Get the execution stream on devices with a concept of stream,
   /// otherwise returns nullptr.
   ///
@@ -207,7 +211,11 @@ PD_INFER_DECL void ConvertToMixedPrecision(
     const std::string& mixed_model_file,
     const std::string& mixed_params_file,
     PrecisionType mixed_precision,
+<<<<<<< HEAD
     PlaceType backend,
+=======
+    BackendType backend,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     bool keep_io_types = true,
     std::unordered_set<std::string> black_list = {});
 

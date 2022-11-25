@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
 import paddle
 import paddle.static
@@ -22,6 +23,16 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+=======
+import paddle
+import paddle.static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+import paddle.nn.functional as F
+
+
+class TestBase(IPUOpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -34,11 +45,19 @@ class TestBase(IPUOpTest):
         target = np.random.uniform(size=[3, 4, 2, 2])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "target": target.astype(np.float32),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "target": target.astype(np.float16),
+=======
+            "target": target.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "target": target.astype(np.float16)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def set_feed_attr(self):
@@ -52,6 +71,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
@@ -59,6 +79,15 @@ class TestBase(IPUOpTest):
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
         out = paddle.nn.functional.kl_div(x, target, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        target = paddle.static.data(name=self.feed_list[1],
+                                    shape=self.feed_shape[1],
+                                    dtype='float32')
+        out = paddle.fluid.layers.kldiv_loss(x, target, **self.attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -73,6 +102,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_op_attrs(self):
         self.attrs = {
             'reduction': 'sum',
@@ -80,6 +113,10 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_op_attrs(self):
         self.attrs = {
             'reduction': 'none',

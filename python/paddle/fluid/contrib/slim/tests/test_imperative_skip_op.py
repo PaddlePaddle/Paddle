@@ -40,12 +40,19 @@ os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestImperativeOutSclae(unittest.TestCase):
+
     def func_out_scale_acc(self):
         paddle.disable_static()
         seed = 1000
@@ -54,17 +61,28 @@ class TestImperativeOutSclae(unittest.TestCase):
         qat = ImperativeQuantAware()
 
         np.random.seed(seed)
+<<<<<<< HEAD
         reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=512, drop_last=True
         )
+=======
+        reader = paddle.batch(paddle.dataset.mnist.test(),
+                              batch_size=512,
+                              drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         lenet = ImperativeLenetWithSkipQuant()
         lenet = fix_model_dict(lenet)
         qat.quantize(lenet)
 
+<<<<<<< HEAD
         adam = AdamOptimizer(
             learning_rate=lr, parameter_list=lenet.parameters()
         )
+=======
+        adam = AdamOptimizer(learning_rate=lr,
+                             parameter_list=lenet.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         dynamic_loss_rec = []
         lenet.train()
         loss_list = train_lenet(lenet, reader, adam)
@@ -74,6 +92,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         path = "./save_dynamic_quant_infer_model/lenet"
         save_dir = "./save_dynamic_quant_infer_model"
 
+<<<<<<< HEAD
         qat.save_quantized_model(
             layer=lenet,
             path=path,
@@ -83,6 +102,15 @@ class TestImperativeOutSclae(unittest.TestCase):
                 )
             ],
         )
+=======
+        qat.save_quantized_model(layer=lenet,
+                                 path=path,
+                                 input_spec=[
+                                     paddle.static.InputSpec(
+                                         shape=[None, 1, 28, 28],
+                                         dtype='float32')
+                                 ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         paddle.enable_static()
 
@@ -92,6 +120,7 @@ class TestImperativeOutSclae(unittest.TestCase):
             place = core.CPUPlace()
         exe = fluid.Executor(place)
 
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
@@ -102,6 +131,14 @@ class TestImperativeOutSclae(unittest.TestCase):
             model_filename="lenet" + INFER_MODEL_SUFFIX,
             params_filename="lenet" + INFER_PARAMS_SUFFIX,
         )
+=======
+        [inference_program, feed_target_names,
+         fetch_targets] = (fluid.io.load_inference_model(
+             dirname=save_dir,
+             executor=exe,
+             model_filename="lenet" + INFER_MODEL_SUFFIX,
+             params_filename="lenet" + INFER_PARAMS_SUFFIX))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         model_ops = inference_program.global_block().ops
 
         conv2d_count, matmul_count = 0, 0

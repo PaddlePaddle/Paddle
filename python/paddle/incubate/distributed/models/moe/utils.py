@@ -34,17 +34,23 @@ def _alltoall(in_tensor_list, group=None, use_calc_stream=True):
         return
 
     if in_dygraph_mode():
+<<<<<<< HEAD
         group = (
             paddle.distributed.collective._get_default_group()
             if group is None
             else group
         )
+=======
+        group = paddle.distributed.collective._get_default_group(
+        ) if group is None else group
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = paddle.empty(in_tensor_list.shape, in_tensor_list.dtype)
         task = group.process_group.alltoall(in_tensor_list, out)
         task.wait()
         return out
     else:
         ring_id = 0 if group is None else group.id
+<<<<<<< HEAD
         return paddle._legacy_C_ops.alltoall(
             in_tensor_list,
             'use_calc_stream',
@@ -52,6 +58,10 @@ def _alltoall(in_tensor_list, group=None, use_calc_stream=True):
             'ring_id',
             ring_id,
         )
+=======
+        return paddle._C_ops.alltoall(in_tensor_list, 'use_calc_stream',
+                                      use_calc_stream, 'ring_id', ring_id)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def count_by_gate(gate, num_expert, world_size, require_pos=True, group=None):
@@ -73,12 +83,22 @@ def count_by_gate(gate, num_expert, world_size, require_pos=True, group=None):
 
 def limit_by_capacity(topk_idx, num_expert, world_size, capacity, group=None):
     with paddle.no_grad():
+<<<<<<< HEAD
         capacity = (
             paddle.ones(shape=[num_expert], dtype=paddle.int64) * capacity
         )
         pos, lec, gec = count_by_gate(
             topk_idx, num_expert, world_size, require_pos=False, group=group
         )
+=======
+        capacity = paddle.ones(shape=[num_expert],
+                               dtype=paddle.int64) * capacity
+        pos, lec, gec = count_by_gate(topk_idx,
+                                      num_expert,
+                                      world_size,
+                                      require_pos=False,
+                                      group=group)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         new_gec = _limit_by_capacity(gec, capacity, world_size)
         if world_size > 1:
             assert group.nranks == world_size

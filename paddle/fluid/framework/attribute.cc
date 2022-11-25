@@ -42,10 +42,13 @@ paddle::any GetAttrValue(const Attribute& attr) {
       return PADDLE_GET_CONST(std::vector<int64_t>, attr);
     case proto::AttrType::FLOAT64S:
       return PADDLE_GET_CONST(std::vector<double>, attr);
+<<<<<<< HEAD
     case proto::AttrType::VAR:
       return PADDLE_GET_CONST(VarDesc*, attr);
     case proto::AttrType::VARS:
       return PADDLE_GET_CONST(std::vector<VarDesc*>, attr);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     case proto::AttrType::BLOCK:
       return PADDLE_GET_CONST(BlockDesc*, attr);
     case proto::AttrType::BLOCKS:
@@ -123,6 +126,7 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
           "Unsupported attribute type %d.", attr_desc.type()));
   }
   return paddle::blank();
+<<<<<<< HEAD
 }
 
 Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
@@ -145,6 +149,8 @@ Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
           "Unsupported attribute type %d.", attr_desc.type()));
   }
   return paddle::blank();
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 }  // namespace framework

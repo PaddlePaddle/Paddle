@@ -157,6 +157,7 @@ void TrilIndicesInferMeta(
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }
+<<<<<<< HEAD
 
 void TriuIndicesInferMeta(
     int row, int col, int offset, DataType dtype, MetaTensor* out) {
@@ -186,4 +187,6 @@ void TriuIndicesInferMeta(
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }  // namespace phi

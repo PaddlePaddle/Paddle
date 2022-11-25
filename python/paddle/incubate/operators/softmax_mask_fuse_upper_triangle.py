@@ -63,9 +63,15 @@ def softmax_mask_fuse_upper_triangle(x):
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type='fused_softmax_mask_upper_triangle',
         inputs={'X': [x]},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='fused_softmax_mask_upper_triangle',
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out

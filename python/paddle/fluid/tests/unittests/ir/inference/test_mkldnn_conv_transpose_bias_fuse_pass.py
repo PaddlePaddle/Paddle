@@ -22,6 +22,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -46,6 +47,7 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
+<<<<<<< HEAD
                 return np.random.random([batch_size, 16, 64, 64]).astype(
                     np.float32
                 )
@@ -53,6 +55,13 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
                 return np.random.random([batch_size, 64, 64, 16]).astype(
                     np.float32
                 )
+=======
+                return np.random.random([batch_size, 16, 64,
+                                         64]).astype(np.float32)
+            else:
+                return np.random.random([batch_size, 64, 64,
+                                         16]).astype(np.float32)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def generate_weight1():
             return np.random.random([16, 16, 3, 3]).astype(np.float32)
@@ -60,6 +69,7 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         def generate_weight2():
             return np.random.random([16 * groups]).astype(np.float32)
 
+<<<<<<< HEAD
         conv2d_op = OpConfig(
             type="conv2d_transpose",
             inputs={"Input": ["input_data"], "Filter": ["conv2d_weight"]},
@@ -83,6 +93,33 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
             outputs={"Out": ["elementwise_output"]},
             attrs={'axis': axis},
         )
+=======
+        conv2d_op = OpConfig(type="conv2d_transpose",
+                             inputs={
+                                 "Input": ["input_data"],
+                                 "Filter": ["conv2d_weight"]
+                             },
+                             outputs={"Output": ["conv_output"]},
+                             attrs={
+                                 "data_format": data_format,
+                                 "dilations": dilations,
+                                 "padding_algorithm": padding_algorithm,
+                                 "groups": groups,
+                                 "paddings": paddings,
+                                 "strides": strides,
+                                 "output_size": [],
+                                 "output_padding": [],
+                                 "is_test": True
+                             })
+
+        elt_op = OpConfig(type="elementwise_add",
+                          inputs={
+                              "X": ["conv_output"],
+                              "Y": ["elementwise_weight"]
+                          },
+                          outputs={"Out": ["elementwise_output"]},
+                          attrs={'axis': axis})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         model_net = [conv2d_op, elt_op]
 
@@ -109,11 +146,17 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         yield config, ['conv2d_transpose'], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_duration=300,
             passes=["conv_transpose_bias_mkldnn_fuse_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_duration=300,
+                            passes=["conv_transpose_bias_mkldnn_fuse_pass"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

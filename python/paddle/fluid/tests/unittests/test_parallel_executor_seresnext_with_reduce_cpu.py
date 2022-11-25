@@ -19,23 +19,32 @@ import paddle.fluid.core as core
 
 
 class TestResnetWithReduceBase(TestParallelExecutorBase):
+
     def _compare_reduce_and_allreduce(self, use_device, delta2=1e-5):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
+<<<<<<< HEAD
         (
             all_reduce_first_loss,
             all_reduce_last_loss,
             _,
         ) = self.check_network_convergence(
+=======
+        all_reduce_first_loss, all_reduce_last_loss, _ = self.check_network_convergence(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_device),
             iter=seresnext_net.iter(use_device),
             batch_size=seresnext_net.batch_size(use_device),
             use_device=use_device,
             use_reduce=False,
+<<<<<<< HEAD
             optimizer=seresnext_net.optimizer,
         )
+=======
+            optimizer=seresnext_net.optimizer)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         reduce_first_loss, reduce_last_loss, _ = self.check_network_convergence(
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_device),
@@ -54,11 +63,15 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
         if not use_device:
             return
 
+<<<<<<< HEAD
         (
             all_reduce_first_loss_seq,
             all_reduce_last_loss_seq,
             _,
         ) = self.check_network_convergence(
+=======
+        all_reduce_first_loss_seq, all_reduce_last_loss_seq, _ = self.check_network_convergence(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_device),
             iter=seresnext_net.iter(use_device),
@@ -69,11 +82,15 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
             enable_sequential_execution=True,
         )
 
+<<<<<<< HEAD
         (
             reduce_first_loss_seq,
             reduce_last_loss_seq,
             _,
         ) = self.check_network_convergence(
+=======
+        reduce_first_loss_seq, reduce_last_loss_seq, _ = self.check_network_convergence(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_device),
             iter=seresnext_net.iter(use_device),
@@ -101,10 +118,16 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
 
 
 class TestResnetWithReduceCPU(TestResnetWithReduceBase):
+
     def test_seresnext_with_reduce(self):
+<<<<<<< HEAD
         self._compare_reduce_and_allreduce(
             use_device=DeviceType.CPU, delta2=1e-3
         )
+=======
+        self._compare_reduce_and_allreduce(use_device=DeviceType.CPU,
+                                           delta2=1e-3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

@@ -71,6 +71,7 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
 }
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
+<<<<<<< HEAD
                           const VariableMap &params_dict,
                           framework::Scope *scope) {
   for (size_t i = 0; i < param_names.size(); ++i) {
@@ -84,6 +85,16 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
 
     auto &param = params_dict.find(name)->second;
     auto &dense_tensor = param->Get<DenseTensor>();
+=======
+                          const Name2VariableMap &params_dict,
+                          framework::Scope *scope) {
+  VLOG(3) << "param_names size: " << param_names.size();
+  for (size_t i = 0; i < param_names.size(); ++i) {
+    std::string name = param_names[i];
+    auto &param = params_dict.find(name)->second;
+    auto &dense_tensor = param->Get<DenseTensor>();
+    VLOG(3) << "share into scope: " << name;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto *var = scope->Var(name);
     auto *dst_tensor = var->GetMutable<DenseTensor>();
     *dst_tensor = dense_tensor;

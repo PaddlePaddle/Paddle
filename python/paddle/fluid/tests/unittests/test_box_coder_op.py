@@ -32,11 +32,17 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_y = pb_y.reshape(shape)
 
     if pb_v.ndim == 2:
+<<<<<<< HEAD
         var_shape = (
             (1, pb_v.shape[0], pb_v.shape[1])
             if axis == 0
             else (pb_v.shape[0], 1, pb_v.shape[1])
         )
+=======
+        var_shape = (1, pb_v.shape[0],
+                     pb_v.shape[1]) if axis == 0 else (pb_v.shape[0], 1,
+                                                       pb_v.shape[1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         pb_v = pb_v.reshape(var_shape)
     if pb_v.ndim == 1:
         tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
@@ -107,6 +113,7 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 
 class TestBoxCoderOp(OpTest):
+
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -140,6 +147,7 @@ class TestBoxCoderOp(OpTest):
 
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
+
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -174,6 +182,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 
 class TestBoxCoderOpWithLoD(OpTest):
+
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -205,6 +214,7 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 
 class TestBoxCoderOpWithAxis(OpTest):
+
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -242,6 +252,7 @@ class TestBoxCoderOpWithAxis(OpTest):
 
 
 class TestBoxCoderOpWithVariance(OpTest):
+
     def test_check_output(self):
         self.check_output()
 
@@ -272,12 +283,20 @@ class TestBoxCoderOpWithVariance(OpTest):
             'code_type': 'decode_center_size',
             'box_normalized': False,
             'variance': prior_box_var.astype(np.float64).flatten(),
+<<<<<<< HEAD
             'axis': axis,
+=======
+            'axis': axis
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.lod = [[1, 1, 1, 1, 1]]
         self.prior_box = np.random.random((30, 4)).astype('float32')
@@ -286,6 +305,7 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
         self.code_type = "DecodeCenterSize"
         self.box_normalized = False
         self.axis = 1
+<<<<<<< HEAD
         self.output_ref = batch_box_coder(
             self.prior_box,
             self.prior_box_var,
@@ -295,11 +315,21 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
             self.box_normalized,
             self.axis,
         )
+=======
+        self.output_ref = batch_box_coder(self.prior_box, self.prior_box_var,
+                                          self.target_box, self.lod[0],
+                                          self.code_type, self.box_normalized,
+                                          self.axis)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def run(place):
             paddle.disable_static(place)
             output_box = paddle.fluid.layers.box_coder(
@@ -308,17 +338,25 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
                 paddle.to_tensor(self.target_box),
                 "decode_center_size",
                 self.box_normalized,
+<<<<<<< HEAD
                 axis=self.axis,
             )
             np.testing.assert_allclose(
                 np.sum(self.output_ref), np.sum(output_box.numpy()), rtol=1e-05
             )
+=======
+                axis=self.axis)
+            self.assertEqual(
+                np.allclose(np.sum(self.output_ref),
+                            np.sum(output_box.numpy())), True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.enable_static()
 
         for place in self.place:
             run(place)
 
 
+<<<<<<< HEAD
 class TestBoxCoderAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(678)
@@ -375,6 +413,8 @@ class TestBoxCoderAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

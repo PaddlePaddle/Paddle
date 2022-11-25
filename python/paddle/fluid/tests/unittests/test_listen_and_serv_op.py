@@ -50,12 +50,19 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     config = fluid.DistributeTranspilerConfig()
     config.sync_mode = sync_mode
     t = fluid.DistributeTranspiler(config=config)
+<<<<<<< HEAD
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
         trainers=trainers,
         sync_mode=sync_mode,
     )
+=======
+    t.transpile(trainer_id,
+                pservers=pserver_endpoints,
+                trainers=trainers,
+                sync_mode=sync_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     pserver_prog = t.get_pserver_program(current_endpoint)
     pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
     exe.run(pserver_startup)
@@ -90,12 +97,19 @@ def run_pserver_with_empty_block(
     config.slice_var_up = False
 
     t = fluid.DistributeTranspiler(config=config)
+<<<<<<< HEAD
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
         trainers=trainers,
         sync_mode=sync_mode,
     )
+=======
+    t.transpile(trainer_id,
+                pservers=pserver_endpoints,
+                trainers=trainers,
+                sync_mode=sync_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     pserver_prog = t.get_pserver_program(ps2)
 
     # pserver2 have no parameter
@@ -113,6 +127,7 @@ def gen_complete_file_flag(flag_file):
 
 
 class TestListenAndServOp(unittest.TestCase):
+
     def setUp(self):
         self.ps_timeout = 200
         self.ip = "127.0.0.1"
@@ -121,6 +136,7 @@ class TestListenAndServOp(unittest.TestCase):
         self.trainer_id = 0
 
     def _start_pserver(self, use_cuda, sync_mode, pserver_func):
+<<<<<<< HEAD
         p = Process(
             target=pserver_func,
             args=(
@@ -132,6 +148,11 @@ class TestListenAndServOp(unittest.TestCase):
                 self.trainer_id,
             ),
         )
+=======
+        p = Process(target=pserver_func,
+                    args=(use_cuda, sync_mode, self.ip, self.port,
+                          self.trainers, self.trainer_id))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         p.daemon = True
         p.start()
         return p

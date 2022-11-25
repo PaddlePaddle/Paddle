@@ -589,7 +589,11 @@ class BoxWrapper {
           var,
           platform::errors::NotFound("Error: var %s is not found in scope.",
                                      varname.c_str()));
+<<<<<<< HEAD
       auto& gpu_tensor = var->Get<phi::DenseTensor>();
+=======
+      auto& gpu_tensor = var->Get<LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       auto* gpu_data = gpu_tensor.data<T>();
       auto len = gpu_tensor.numel();
       data->resize(len);

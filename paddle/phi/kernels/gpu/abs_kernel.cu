@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"

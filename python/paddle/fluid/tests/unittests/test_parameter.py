@@ -33,16 +33,24 @@ main_program = default_main_program()
 
 
 class ParameterChecks(unittest.TestCase):
+
     def test_parameter(self):
         shape = [784, 100]
         val = 1.0625
         b = main_program.global_block()
+<<<<<<< HEAD
         param = b.create_parameter(
             name='fc.w',
             shape=shape,
             dtype='float32',
             initializer=ConstantInitializer(val),
         )
+=======
+        param = b.create_parameter(name='fc.w',
+                                   shape=shape,
+                                   dtype='float32',
+                                   initializer=ConstantInitializer(val))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)
         self.assertEqual((784, 100), param.shape)
@@ -91,6 +99,7 @@ class ParameterChecks(unittest.TestCase):
     def func_exception(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):
+<<<<<<< HEAD
             b.create_parameter(
                 name='test', shape=None, dtype='float32', initializer=None
             )
@@ -106,6 +115,27 @@ class ParameterChecks(unittest.TestCase):
             b.create_parameter(
                 name='test', shape=[-1], dtype='float32', initializer=None
             )
+=======
+            b.create_parameter(name='test',
+                               shape=None,
+                               dtype='float32',
+                               initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(name='test',
+                               shape=[1],
+                               dtype=None,
+                               initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(name='test',
+                               shape=[],
+                               dtype='float32',
+                               initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(name='test',
+                               shape=[-1],
+                               dtype='float32',
+                               initializer=None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def func_parambase_to_vector(self):
         with guard():

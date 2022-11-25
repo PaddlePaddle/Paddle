@@ -25,3 +25,14 @@ REGISTER_OP_KERNEL(
                              dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_sub>)
+<<<<<<< HEAD
+=======
+
+REGISTER_OP_KERNEL(
+    elementwise_sub_grad,
+    MKLDNN,
+    ::paddle::platform::CPUPlace,
+    ops::EltwiseMKLDNNGradKernel<paddle::platform::bfloat16,
+                                 dnnl::algorithm::binary_sub>,
+    ops::EltwiseMKLDNNGradKernel<float, dnnl::algorithm::binary_sub>)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

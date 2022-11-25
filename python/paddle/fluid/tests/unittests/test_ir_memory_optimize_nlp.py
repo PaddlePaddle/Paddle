@@ -14,6 +14,10 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.fluid as fluid
 import unittest
@@ -37,9 +41,15 @@ def lstm_net(
     )
     fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
 
+<<<<<<< HEAD
     lstm_h, c = fluid.layers.dynamic_lstm(
         input=fc0, size=hid_dim * 4, is_reverse=False
     )
+=======
+    lstm_h, c = fluid.layers.dynamic_lstm(input=fc0,
+                                          size=hid_dim * 4,
+                                          is_reverse=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = paddle.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
@@ -50,6 +60,7 @@ def lstm_net(
 
 
 class TestIrMemOptRNN(TestIrMemOptBase):
+
     def setUp(self):
         self.network = lstm_net
 

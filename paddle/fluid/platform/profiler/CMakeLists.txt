@@ -1,13 +1,20 @@
 cc_library(
   host_tracer
   SRCS host_tracer.cc
+<<<<<<< HEAD
   DEPS framework_proto enforce ddim var_type_traits)
+=======
+  DEPS enforce ddim var_type_traits)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
   DEPS workqueue_utils enforce glog)
 add_subdirectory(mlu)
+<<<<<<< HEAD
 add_subdirectory(custom_device)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_library(
   event_node
   SRCS event_node.cc
@@ -33,6 +40,7 @@ cc_library(
 cc_library(
   new_profiler
   SRCS profiler.cc
+<<<<<<< HEAD
   DEPS host_tracer
        cuda_tracer
        profiler_utils
@@ -40,6 +48,10 @@ cc_library(
        event_bind
        mlu_tracer
        custom_tracer)
+=======
+  DEPS host_tracer cuda_tracer profiler_utils cpu_utilization event_bind
+       mlu_tracer)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_test(
   test_event_node
   SRCS test_event_node.cc

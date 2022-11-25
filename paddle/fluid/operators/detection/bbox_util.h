@@ -56,11 +56,19 @@ inline HOSTDEVICE T RoIArea(const T* box, bool pixel_offset = true) {
  */
 template <typename T>
 inline void BoxToDelta(const int box_num,
+<<<<<<< HEAD
                        const phi::DenseTensor& ex_boxes,
                        const phi::DenseTensor& gt_boxes,
                        const float* weights,
                        const bool normalized,
                        phi::DenseTensor* box_delta) {
+=======
+                       const framework::Tensor& ex_boxes,
+                       const framework::Tensor& gt_boxes,
+                       const float* weights,
+                       const bool normalized,
+                       framework::Tensor* box_delta) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
   auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
   auto trg = framework::EigenTensor<T, 2>::From(*box_delta);
@@ -148,9 +156,15 @@ void MaxIoU(const phi::DenseTensor& iou, phi::DenseTensor* max_iou) {
   }
 }
 
+<<<<<<< HEAD
 static void AppendProposals(phi::DenseTensor* dst,
                             int64_t offset,
                             const phi::DenseTensor& src) {
+=======
+static void AppendProposals(framework::Tensor* dst,
+                            int64_t offset,
+                            const framework::Tensor& src) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto* out_data = dst->data();
   auto* to_add_data = src.data();
   size_t size_of_t = phi::SizeOf(src.dtype());
@@ -163,9 +177,15 @@ static void AppendProposals(phi::DenseTensor* dst,
 
 template <class T>
 void ClipTiledBoxes(const platform::DeviceContext& ctx,
+<<<<<<< HEAD
                     const phi::DenseTensor& im_info,
                     const phi::DenseTensor& input_boxes,
                     phi::DenseTensor* out,
+=======
+                    const framework::Tensor& im_info,
+                    const framework::Tensor& input_boxes,
+                    framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     bool is_scale = true,
                     bool pixel_offset = true) {
   T* out_data = out->mutable_data<T>(ctx.GetPlace());
@@ -197,11 +217,19 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
 // Filter the box with small area
 template <class T>
 void FilterBoxes(const platform::DeviceContext& ctx,
+<<<<<<< HEAD
                  const phi::DenseTensor* boxes,
                  float min_size,
                  const phi::DenseTensor& im_info,
                  bool is_scale,
                  phi::DenseTensor* keep,
+=======
+                 const framework::Tensor* boxes,
+                 float min_size,
+                 const framework::Tensor& im_info,
+                 bool is_scale,
+                 framework::Tensor* keep,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                  bool pixel_offset = true) {
   const T* im_info_data = im_info.data<T>();
   const T* boxes_data = boxes->data<T>();
@@ -238,10 +266,17 @@ void FilterBoxes(const platform::DeviceContext& ctx,
 
 template <class T>
 static void BoxCoder(const platform::DeviceContext& ctx,
+<<<<<<< HEAD
                      phi::DenseTensor* all_anchors,
                      phi::DenseTensor* bbox_deltas,
                      phi::DenseTensor* variances,
                      phi::DenseTensor* proposals,
+=======
+                     framework::Tensor* all_anchors,
+                     framework::Tensor* bbox_deltas,
+                     framework::Tensor* variances,
+                     framework::Tensor* proposals,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                      const bool pixel_offset = true) {
   T* proposals_data = proposals->mutable_data<T>(ctx.GetPlace());
 

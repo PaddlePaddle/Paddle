@@ -16,6 +16,10 @@ import sys
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("../")
 from op_test import OpTest
@@ -24,6 +28,7 @@ import paddle.fluid as fluid
 
 
 class TestSequenceUnpadOp(OpTest):
+
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 40)
@@ -60,6 +65,7 @@ class TestSequenceUnpadOp(OpTest):
 
 
 class TestSequenceUnpadOp2(TestSequenceUnpadOp):
+
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 5, 4, 3)
@@ -67,6 +73,7 @@ class TestSequenceUnpadOp2(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp3(TestSequenceUnpadOp):
+
     def init(self):
         self.length = [5, 2, 3, 4]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -74,6 +81,7 @@ class TestSequenceUnpadOp3(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp4(TestSequenceUnpadOp):
+
     def init(self):
         self.length = [5, 0, 0, 4]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -81,6 +89,7 @@ class TestSequenceUnpadOp4(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp5(TestSequenceUnpadOp):
+
     def init(self):
         self.length = [0, 4, 3, 0]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -88,7 +97,9 @@ class TestSequenceUnpadOp5(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOpError(unittest.TestCase):
+
     def test_error(self):
+
         def test_x_variable():
             x = np.random.random((10, 5)).astype("float64")
             len = fluid.data(name='length2', shape=[10], dtype='int64')

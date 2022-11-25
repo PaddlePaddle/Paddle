@@ -57,32 +57,42 @@ class TestRandpermOp(OpTest):
 
     def verify_output(self, outs):
         out_np = np.array(outs[0])
+<<<<<<< HEAD
         self.assertTrue(
             check_randperm_out(self.n, out_np), msg=error_msg(out_np)
         )
+=======
+        self.assertTrue(check_randperm_out(self.n, out_np),
+                        msg=error_msg(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestRandpermOpN(TestRandpermOp):
+
     def init_attrs(self):
         self.n = 10000
 
 
 class TestRandpermOpInt32(TestRandpermOp):
+
     def init_attrs(self):
         self.dtype = "int32"
 
 
 class TestRandpermOpFloat32(TestRandpermOp):
+
     def init_attrs(self):
         self.dtype = "float32"
 
 
 class TestRandpermOpFloat64(TestRandpermOp):
+
     def init_attrs(self):
         self.dtype = "float64"
 
 
 class TestRandpermOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(ValueError, paddle.randperm, -3)
@@ -90,6 +100,7 @@ class TestRandpermOpError(unittest.TestCase):
 
 
 class TestRandpermAPI(unittest.TestCase):
+
     def test_out(self):
         n = 10
         place = paddle.NPUPlace(0)
@@ -107,15 +118,21 @@ class TestRandpermAPI(unittest.TestCase):
 
 
 class TestRandpermImperative(unittest.TestCase):
+
     def test_out(self):
         paddle.disable_static(paddle.NPUPlace(0))
         n = 10
         for dtype in ['int32', np.int64, 'float32', 'float64']:
             data_p = paddle.randperm(n, dtype)
             data_np = data_p.numpy()
+<<<<<<< HEAD
             self.assertTrue(
                 check_randperm_out(n, data_np), msg=error_msg(data_np)
             )
+=======
+            self.assertTrue(check_randperm_out(n, data_np),
+                            msg=error_msg(data_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.enable_static()
 
 

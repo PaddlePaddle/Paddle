@@ -26,9 +26,14 @@ from seq2seq_dygraph_model import BaseModel, AttentionModel
 from seq2seq_utils import Seq2SeqModelHyperParams
 from seq2seq_utils import get_data_iter
 
+<<<<<<< HEAD
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
+=======
+place = fluid.CUDAPlace(
+    0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 program_translator = ProgramTranslator()
 STEP_NUM = 10
 PRINT_STEP = 2
@@ -52,6 +57,7 @@ def train(args, attn_model=False):
         fluid.default_main_program().random_seed = 2020
 
         if attn_model:
+<<<<<<< HEAD
             model = AttentionModel(
                 args.hidden_size,
                 args.src_vocab_size,
@@ -71,6 +77,23 @@ def train(args, attn_model=False):
                 init_scale=args.init_scale,
                 dropout=args.dropout,
             )
+=======
+            model = AttentionModel(args.hidden_size,
+                                   args.src_vocab_size,
+                                   args.tar_vocab_size,
+                                   args.batch_size,
+                                   num_layers=args.num_layers,
+                                   init_scale=args.init_scale,
+                                   dropout=args.dropout)
+        else:
+            model = BaseModel(args.hidden_size,
+                              args.src_vocab_size,
+                              args.tar_vocab_size,
+                              args.batch_size,
+                              num_layers=args.num_layers,
+                              init_scale=args.init_scale,
+                              dropout=args.dropout)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         gloabl_norm_clip = GradientClipByGlobalNorm(args.max_grad_norm)
         optimizer = fluid.optimizer.SGD(
@@ -137,6 +160,7 @@ def infer(args, attn_model=False):
     with fluid.dygraph.guard(place):
 
         if attn_model:
+<<<<<<< HEAD
             model = AttentionModel(
                 args.hidden_size,
                 args.src_vocab_size,
@@ -160,6 +184,27 @@ def infer(args, attn_model=False):
                 dropout=0.0,
                 mode='beam_search',
             )
+=======
+            model = AttentionModel(args.hidden_size,
+                                   args.src_vocab_size,
+                                   args.tar_vocab_size,
+                                   args.batch_size,
+                                   beam_size=args.beam_size,
+                                   num_layers=args.num_layers,
+                                   init_scale=args.init_scale,
+                                   dropout=0.0,
+                                   mode='beam_search')
+        else:
+            model = BaseModel(args.hidden_size,
+                              args.src_vocab_size,
+                              args.tar_vocab_size,
+                              args.batch_size,
+                              beam_size=args.beam_size,
+                              num_layers=args.num_layers,
+                              init_scale=args.init_scale,
+                              dropout=0.0,
+                              mode='beam_search')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         model_path = (
             args.attn_model_path if attn_model else args.base_model_path
@@ -180,6 +225,7 @@ def infer(args, attn_model=False):
 
 
 class TestSeq2seq(unittest.TestCase):
+
     def setUp(self):
         self.args = Seq2SeqModelHyperParams
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -214,23 +260,35 @@ class TestSeq2seq(unittest.TestCase):
         dygraph_loss = self.run_dygraph(mode="train", attn_model=attn_model)
         static_loss = self.run_static(mode="train", attn_model=attn_model)
         result = np.allclose(dygraph_loss, static_loss)
+<<<<<<< HEAD
         self.assertTrue(
             result,
             msg="\ndygraph_loss = {} \nstatic_loss = {}".format(
                 dygraph_loss, static_loss
             ),
         )
+=======
+        self.assertTrue(result,
+                        msg="\ndygraph_loss = {} \nstatic_loss = {}".format(
+                            dygraph_loss, static_loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _test_predict(self, attn_model=False):
         pred_dygraph = self.run_dygraph(mode="test", attn_model=attn_model)
         pred_static = self.run_static(mode="test", attn_model=attn_model)
         result = np.allclose(pred_static, pred_dygraph)
+<<<<<<< HEAD
         self.assertTrue(
             result,
             msg="\npred_dygraph = {} \npred_static = {}".format(
                 pred_dygraph, pred_static
             ),
         )
+=======
+        self.assertTrue(result,
+                        msg="\npred_dygraph = {} \npred_static = {}".format(
+                            pred_dygraph, pred_static))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_base_model(self):
         self._test_train(attn_model=False)

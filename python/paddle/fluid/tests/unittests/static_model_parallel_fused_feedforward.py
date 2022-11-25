@@ -17,7 +17,10 @@ from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 import paddle.fluid as fluid
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from paddle.incubate.nn import FusedFeedForward
 
 paddle.enable_static()
@@ -58,6 +61,7 @@ def create_model(data, rank):
         w0_attr, b0_attr = get_param_attr(col_w0, col_b0)
         w1_attr, b1_attr = get_param_attr(row_w1, b1)
 
+<<<<<<< HEAD
         ffn = FusedFeedForward(
             IN_SIZE,
             OUT_SIZE,
@@ -74,12 +78,29 @@ def create_model(data, rank):
             ring_id=0,
         )
         # ffn.eval()
+=======
+        ffn = FusedFeedForward(IN_SIZE,
+                               OUT_SIZE,
+                               dropout_rate=0.0,
+                               activation='gelu',
+                               normalize_before=True,
+                               linear1_weight_attr=w0_attr,
+                               linear1_bias_attr=b0_attr,
+                               linear2_weight_attr=w1_attr,
+                               linear2_bias_attr=b1_attr,
+                               ln1_scale_attr=ln_w_attr,
+                               ln1_bias_attr=ln_b_attr,
+                               nranks=MODEL_PARALLEL_SIZE,
+                               ring_id=0)
+        #ffn.eval()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         result = ffn(data)
     else:
         ln_w_attr, ln_b_attr = get_param_attr(ln_w, ln_b)
         w0_attr, b0_attr = get_param_attr(w0, b0)
         w1_attr, b1_attr = get_param_attr(w1, b1)
 
+<<<<<<< HEAD
         ffn = FusedFeedForward(
             IN_SIZE,
             OUT_SIZE,
@@ -94,6 +115,20 @@ def create_model(data, rank):
             ln1_bias_attr=ln_b_attr,
         )
         # ffn.eval()
+=======
+        ffn = FusedFeedForward(IN_SIZE,
+                               OUT_SIZE,
+                               dropout_rate=0.0,
+                               activation='gelu',
+                               normalize_before=True,
+                               linear1_weight_attr=w0_attr,
+                               linear1_bias_attr=b0_attr,
+                               linear2_weight_attr=w1_attr,
+                               linear2_bias_attr=b1_attr,
+                               ln1_scale_attr=ln_w_attr,
+                               ln1_bias_attr=ln_b_attr)
+        #ffn.eval()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         result = ffn(data)
 
     predict = paddle.sum(result)
@@ -101,12 +136,19 @@ def create_model(data, rank):
 
 
 class TestModelParallel(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
+<<<<<<< HEAD
         data_in = fluid.data(
             name='data_in', shape=[batch_size, seq_len, IN_SIZE], dtype=DTYPE
         )
+=======
+        data_in = fluid.data(name='data_in',
+                             shape=[batch_size, seq_len, IN_SIZE],
+                             dtype=DTYPE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
@@ -127,9 +169,14 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
+<<<<<<< HEAD
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=strategy
             )
+=======
+            dist_opt = fleet.distributed_optimizer(optimizer=opt,
+                                                   strategy=strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

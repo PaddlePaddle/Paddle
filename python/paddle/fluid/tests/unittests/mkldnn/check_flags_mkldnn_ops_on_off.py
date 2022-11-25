@@ -19,6 +19,11 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.framework import _enable_legacy_dygraph, _global_flags
 from paddle.fluid.layer_helper import LayerHelper
+<<<<<<< HEAD
+=======
+from paddle.fluid.framework import _global_flags
+from paddle.fluid.framework import _enable_legacy_dygraph
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 _enable_legacy_dygraph()
 

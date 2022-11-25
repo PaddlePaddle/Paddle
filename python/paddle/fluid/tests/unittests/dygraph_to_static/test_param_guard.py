@@ -20,6 +20,7 @@ from paddle.jit import to_static, ProgramTranslator
 
 
 class NetWithParameterList(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         weight = self.create_parameter([in_size, out_size])
@@ -35,6 +36,7 @@ class NetWithParameterList(paddle.nn.Layer):
 
 
 class NetWithParameterListIter(NetWithParameterList):
+
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
 
@@ -49,6 +51,7 @@ class NetWithParameterListIter(NetWithParameterList):
 
 
 class TestParameterList(unittest.TestCase):
+
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
@@ -77,23 +80,40 @@ class TestParameterList(unittest.TestCase):
     def test_parameter_list(self):
         static_loss = self.train(False, to_static=True)
         dygraph_loss = self.train(False, to_static=False)
+<<<<<<< HEAD
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(dygraph_loss, static_loss),
+                        msg='dygraph result is {}\nstatic result is {}'.format(
+                            dygraph_loss, static_loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_parameter_list_iter(self):
         static_loss = self.train(True, to_static=True)
         dygraph_loss = self.train(True, to_static=False)
+<<<<<<< HEAD
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(dygraph_loss, static_loss),
+                        msg='dygraph result is {}\nstatic result is {}'.format(
+                            dygraph_loss, static_loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NetWithRawParamList(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         weight = self.add_parameter(
             'w', self.create_parameter([in_size, out_size])
         )
         bias = self.add_parameter(
+<<<<<<< HEAD
             'b', self.create_parameter([out_size], is_bias=True)
         )
+=======
+            'b', self.create_parameter([out_size], is_bias=True))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.params = [weight]
         self.bias_dict = {'b': bias}
 
@@ -106,6 +126,7 @@ class NetWithRawParamList(paddle.nn.Layer):
 
 
 class TestRawParameterList(unittest.TestCase):
+
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
@@ -135,10 +156,17 @@ class TestRawParameterList(unittest.TestCase):
     def test_parameter_list(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
+<<<<<<< HEAD
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(dygraph_loss, static_loss),
+                        msg='dygraph result is {}\nstatic result is {}'.format(
+                            dygraph_loss, static_loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NetWithSubLayerParamList(paddle.nn.Layer):
+
     def __init__(self, sub_layer):
         super().__init__()
         self.sub_layer = sub_layer
@@ -154,6 +182,7 @@ class NetWithSubLayerParamList(paddle.nn.Layer):
 
 
 class TestSubLayerParameterList(TestRawParameterList):
+
     def init_net(self):
         fc = paddle.nn.Linear(10, 3)
         self.net = NetWithSubLayerParamList(fc)

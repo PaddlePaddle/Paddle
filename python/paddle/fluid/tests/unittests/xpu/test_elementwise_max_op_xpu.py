@@ -19,21 +19,27 @@ import numpy as np
 from op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 import paddle
+<<<<<<< HEAD
 from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
     XPUOpTestWrapper,
 )
+=======
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'elementwise_max'
         self.use_dynamic_create_class = False
 
     class TestElementwiseOp(XPUOpTest):
+
         def setUp(self):
             self.use_xpu = True
             self.op_type = "elementwise_max"
@@ -65,6 +71,7 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
         def test_check_grad_ingore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place,
                     ['Y'],
@@ -72,10 +79,17 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
                     max_relative_error=0.006,
                     no_grad_set=set("X"),
                 )
+=======
+                self.check_grad_with_place(place, ['Y'],
+                                           'Out',
+                                           max_relative_error=0.006,
+                                           no_grad_set=set("X"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def test_check_grad_ingore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place,
                     ['X'],
@@ -83,11 +97,18 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
                     max_relative_error=0.006,
                     no_grad_set=set('Y'),
                 )
+=======
+                self.check_grad_with_place(place, ['X'],
+                                           'Out',
+                                           max_relative_error=0.006,
+                                           no_grad_set=set('Y'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwiseMaxOp_scalar(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.random_integers(-5, 5, [2, 3, 20]).astype(self.dtype)
             y = np.array([0.5]).astype(self.dtype)
@@ -97,6 +118,7 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMaxOp_Vector(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.random((100,)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -107,6 +129,7 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -117,12 +140,19 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
 
             self.attrs = {'axis': 0}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.maximum(
                     self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
                 )
+=======
+                'Out':
+                np.maximum(self.inputs['X'],
+                           self.inputs['Y'].reshape(100, 1, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -133,12 +163,19 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
 
             self.attrs = {'axis': 1}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.maximum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
                 )
+=======
+                'Out':
+                np.maximum(self.inputs['X'],
+                           self.inputs['Y'].reshape(1, 100, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -148,12 +185,19 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             self.inputs = {'X': x, 'Y': y}
 
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.maximum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
                 )
+=======
+                'Out':
+                np.maximum(self.inputs['X'],
+                           self.inputs['Y'].reshape(1, 1, 100))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (50, 2)).astype(self.dtype)
@@ -164,12 +208,19 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
 
             self.attrs = {'axis': 1}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.maximum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 50, 2, 1)
                 )
+=======
+                'Out':
+                np.maximum(self.inputs['X'],
+                           self.inputs['Y'].reshape(1, 50, 2, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(self.dtype)

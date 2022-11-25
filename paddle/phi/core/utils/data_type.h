@@ -96,6 +96,7 @@ inline DataType ToComplexType(const DataType& type) {
           type));
   }
 }
+<<<<<<< HEAD
 
 inline DataType ToRealType(const DataType& type) {
   switch (type) {
@@ -206,4 +207,6 @@ inline int TransToProtoVarType(const DataType& dtype) {
   }
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }  // namespace phi

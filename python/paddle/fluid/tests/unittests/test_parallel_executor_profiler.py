@@ -27,6 +27,7 @@ os.environ['NCCL_SHM_DISABLE'] = str(1)
 
 
 class TestPEProfiler(TestProfiler):
+
     def test_cpu_profiler(self):
         exe = fluid.Executor(fluid.CPUPlace())
         self.net_profiler(exe, 'CPU', "Default", use_parallel_executor=True)

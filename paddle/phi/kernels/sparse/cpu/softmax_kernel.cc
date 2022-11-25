@@ -60,7 +60,11 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
   T* out_data = out_values->data<T>();
 
   // out = exp(x-x_max) / sum( exp(x-x_max ))
+<<<<<<< HEAD
   PD_VISIT_BASE_INTEGRAL_TYPES(
+=======
+  PD_VISIT_INTEGRAL_TYPES(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
         const data_t* x_crows_data = x_crows.data<data_t>();
         for (int i = 0; i < batch_size; ++i) {

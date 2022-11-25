@@ -16,6 +16,7 @@ import contextlib
 import math
 import os
 import struct
+<<<<<<< HEAD
 import sys
 import tempfile
 import unittest
@@ -25,6 +26,9 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp as amp
+=======
+import tempfile
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
@@ -76,6 +80,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
             sgd_optimizer,
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
             use_bf16_guard=False,
+<<<<<<< HEAD
             use_pure_bf16=pure_bf16,
         )
     sgd_optimizer.minimize(
@@ -88,6 +93,17 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         paddle.reader.shuffle(paddle.dataset.uci_housing.train(), buf_size=500),
         batch_size=BATCH_SIZE,
     )
+=======
+            use_pure_bf16=pure_bf16)
+    sgd_optimizer.minimize(avg_cost,
+                           startup_program=fluid.default_startup_program())
+
+    BATCH_SIZE = 20
+
+    train_reader = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.uci_housing.train(), buf_size=500),
+                                batch_size=BATCH_SIZE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
@@ -97,9 +113,15 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         exe.run(fluid.default_startup_program())
         test_prog = main_program.clone(for_test=True)
         if pure_bf16:
+<<<<<<< HEAD
             sgd_optimizer.amp_init(
                 exe.place, test_program=test_prog, use_bf16_test=True
             )
+=======
+            sgd_optimizer.amp_init(exe.place,
+                                   test_program=test_prog,
+                                   use_bf16_test=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -111,6 +133,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                     avg_loss_value = convert_uint16_to_float(avg_loss_value)
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
+<<<<<<< HEAD
                         paddle.static.save_inference_model(
                             save_dirname,
                             [x],
@@ -118,6 +141,12 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                             exe,
                             clip_extra=False,
                         )
+=======
+                        paddle.static.save_inference_model(save_dirname, [x],
+                                                           [y_predict],
+                                                           exe,
+                                                           clip_extra=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     return
                 if math.isnan(float(avg_loss_value)):
                     sys.exit("got NaN loss, training failed.")
@@ -174,6 +203,7 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         # The input data should be >= 0
         batch_size = 10
 
+<<<<<<< HEAD
         test_reader = paddle.batch(
             paddle.dataset.uci_housing.test(), batch_size=batch_size
         )
@@ -182,13 +212,26 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         test_feat = numpy.array([data[0] for data in test_data]).astype(
             "float32"
         )
+=======
+        test_reader = paddle.batch(paddle.dataset.uci_housing.test(),
+                                   batch_size=batch_size)
+
+        test_data = next(test_reader())
+        test_feat = numpy.array([data[0]
+                                 for data in test_data]).astype("float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if use_bf16:
             test_feat = convert_float_to_uint16(test_feat)
 
+<<<<<<< HEAD
         test_label = numpy.array([data[1] for data in test_data]).astype(
             "float32"
         )
+=======
+        test_label = numpy.array([data[1]
+                                  for data in test_data]).astype("float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         assert feed_target_names[0] == 'x'
         results = exe.run(
@@ -220,6 +263,7 @@ def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
 
 
 class TestFitALineBase(unittest.TestCase):
+
     @contextlib.contextmanager
     def program_scope_guard(self):
         prog = fluid.Program()
@@ -231,6 +275,7 @@ class TestFitALineBase(unittest.TestCase):
 
 
 class TestFitALine(TestFitALineBase):
+
     def test_cpu(self):
         with self.program_scope_guard():
             main(use_cuda=False)
@@ -244,6 +289,7 @@ class TestFitALine(TestFitALineBase):
     not fluid.core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestFitALineBF16(TestFitALineBase):
+
     def test_bf16(self):
         with self.program_scope_guard():
             main(use_cuda=False, use_bf16=True)

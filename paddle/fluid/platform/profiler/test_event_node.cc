@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/type_defs.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 
@@ -35,7 +38,10 @@ using paddle::platform::OperatorSupplementEventNode;
 using paddle::platform::RuntimeTraceEvent;
 using paddle::platform::TracerEventType;
 using paddle::platform::TracerMemEventType;
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 TEST(NodeTreesTest, LogMe_case0) {
   std::list<HostTraceEvent> host_events;
   std::list<RuntimeTraceEvent> runtime_events;
@@ -82,9 +88,14 @@ TEST(NodeTreesTest, LogMe_case0) {
   input_shapes[std::string("X")].push_back(std::vector<int64_t>{4, 5, 6, 7});
   dtypes[std::string("X")].push_back(std::string("int8"));
   dtypes[std::string("X")].push_back(std::string("float32"));
+<<<<<<< HEAD
   AttributeMap attrs;
   op_supplement_events.push_back(OperatorSupplementEvent(
       11600, "op1", input_shapes, dtypes, "op1()", attrs, 0, 10, 10));
+=======
+  op_supplement_events.push_back(OperatorSupplementEvent(
+      11600, "op1", input_shapes, dtypes, "op1()", 10, 10));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   runtime_events.push_back(RuntimeTraceEvent(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(
@@ -141,7 +152,10 @@ TEST(NodeTreesTest, LogMe_case0) {
                                            5,
                                            MemsetEventInfo()));
   ChromeTracingLogger logger("test_nodetrees_logme_case0.json");
+<<<<<<< HEAD
   logger.LogMetaInfo(std::string("1.0.2"), 0);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   NodeTrees tree(host_events,
                  runtime_events,
                  device_events,
@@ -171,7 +185,11 @@ TEST(NodeTreesTest, LogMe_case0) {
     }
   }
   tree.LogMe(&logger);
+<<<<<<< HEAD
   logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
+=======
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 TEST(NodeTreesTest, LogMe_case1) {
@@ -236,7 +254,10 @@ TEST(NodeTreesTest, LogMe_case1) {
                                            5,
                                            MemsetEventInfo()));
   ChromeTracingLogger logger("test_nodetrees_logme_case1.json");
+<<<<<<< HEAD
   logger.LogMetaInfo(std::string("1.0.2"), 0);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   NodeTrees tree(host_events,
                  runtime_events,
                  device_events,
@@ -260,7 +281,11 @@ TEST(NodeTreesTest, LogMe_case1) {
     }
   }
   tree.LogMe(&logger);
+<<<<<<< HEAD
   logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
+=======
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 TEST(NodeTreesTest, HandleTrees_case0) {
@@ -297,15 +322,21 @@ TEST(NodeTreesTest, HandleTrees_case0) {
                                      50,
                                      100,
                                      100));
+<<<<<<< HEAD
   AttributeMap attrs;
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   op_supplement_events.push_back(OperatorSupplementEvent(
       11600,
       "op1",
       std::map<std::string, std::vector<std::vector<int64_t>>>(),
       std::map<std::string, std::vector<std::string>>(),
       "op1()",
+<<<<<<< HEAD
       attrs,
       0,
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       10,
       10));
   runtime_events.push_back(RuntimeTraceEvent(
@@ -342,7 +373,10 @@ TEST(NodeTreesTest, HandleTrees_case0) {
                                            3,
                                            KernelEventInfo()));
   ChromeTracingLogger logger("test_nodetrees_handletrees_case0.json");
+<<<<<<< HEAD
   logger.LogMetaInfo(std::string("1.0.2"), 0);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   NodeTrees tree(host_events,
                  runtime_events,
                  device_events,
@@ -386,5 +420,9 @@ TEST(NodeTreesTest, HandleTrees_case0) {
                    device_event_node_handle,
                    mem_event_node_handle,
                    op_supplement_event_node_handle);
+<<<<<<< HEAD
   logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
+=======
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }

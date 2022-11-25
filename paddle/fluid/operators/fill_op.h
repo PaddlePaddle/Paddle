@@ -47,7 +47,11 @@ class FillKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto &out = GET_DATA_SAFELY(
+<<<<<<< HEAD
         ctx.Output<phi::DenseTensor>("Out"), "Output", "Out", "Fill");
+=======
+        ctx.Output<framework::LoDTensor>("Out"), "Output", "Out", "Fill");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out.Resize(phi::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));

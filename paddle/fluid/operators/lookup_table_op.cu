@@ -15,6 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 

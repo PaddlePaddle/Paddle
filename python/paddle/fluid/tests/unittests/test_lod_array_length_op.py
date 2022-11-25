@@ -24,6 +24,7 @@ import numpy
 
 
 class TestLoDArrayLength(unittest.TestCase):
+
     def test_array_length(self):
         tmp = layers.zeros(shape=[10], dtype='int32')
         i = layers.fill_constant(shape=[1], dtype='int64', value=10)
@@ -36,6 +37,7 @@ class TestLoDArrayLength(unittest.TestCase):
 
 
 class TestLoDArrayLengthOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # for ci coverage
@@ -45,6 +47,7 @@ class TestLoDArrayLengthOpError(unittest.TestCase):
 
 
 class TestArrayLengthApi(unittest.TestCase):
+
     def test_api(self):
         paddle.disable_static()
 

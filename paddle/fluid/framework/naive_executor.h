@@ -69,9 +69,13 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
+<<<<<<< HEAD
   void RegisterOutputHook(const HookFunc& hookfunc);
 
  private:
+=======
+ protected:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   void CreateOps(const ProgramDesc& desc,
                  int block_id,
                  bool with_feed_fetch_ops);

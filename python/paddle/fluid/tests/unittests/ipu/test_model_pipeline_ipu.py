@@ -15,13 +15,22 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
+<<<<<<< HEAD
 
 class TestBase(IPUOpTest):
+=======
+
+class TestBase(IPUOpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.set_training()
         self.set_data_feed()
@@ -37,6 +46,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         image = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
@@ -48,17 +58,40 @@ class TestBase(IPUOpTest):
             conv2 = paddle.static.nn.conv2d(
                 conv1, num_filters=3, filter_size=3, bias_attr=False
             )
+=======
+        image = paddle.static.data(name=self.feed_list[0],
+                                   shape=self.feed_shape[0],
+                                   dtype='float32')
+        with paddle.static.ipu_shard_guard(index=0):
+            conv1 = paddle.static.nn.conv2d(image,
+                                            num_filters=3,
+                                            filter_size=3,
+                                            bias_attr=False)
+        with paddle.static.ipu_shard_guard(index=1):
+            conv2 = paddle.static.nn.conv2d(conv1,
+                                            num_filters=3,
+                                            filter_size=3,
+                                            bias_attr=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             loss = paddle.mean(conv2)
         self.fetch_list = [loss.name]
 
     def run_model(self, exec_mode):
         ipu_strategy = paddle.static.IpuStrategy()
+<<<<<<< HEAD
         ipu_strategy.set_graph_config(
             num_ipus=2, is_training=False, enable_manual_shard=True
         )
         ipu_strategy.set_pipelining_config(
             enable_pipelining=True, batches_per_step=2
         )
+=======
+        ipu_strategy.set_graph_config(num_ipus=2,
+                                      is_training=False,
+                                      enable_manual_shard=True)
+        ipu_strategy.set_pipelining_config(enable_pipelining=True,
+                                           batches_per_step=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
 
     def test(self):

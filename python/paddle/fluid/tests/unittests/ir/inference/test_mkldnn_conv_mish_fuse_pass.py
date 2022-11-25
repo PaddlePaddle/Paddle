@@ -22,6 +22,7 @@ from program_config import ProgramConfig, TensorConfig
 
 
 class TestConvMishMkldnnFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [op.attrs for op in program_config.ops]
         # If the problem has been fixed, the judgment
@@ -42,6 +43,7 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
+<<<<<<< HEAD
                 return np.random.random([batch_size, 48, 64, 64]).astype(
                     np.float32
                 )
@@ -71,6 +73,39 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
                     "paddings": paddings,
                     "strides": strides,
                 },
+=======
+                return np.random.random([batch_size, 48, 64,
+                                         64]).astype(np.float32)
+            else:
+                return np.random.random([batch_size, 64, 64,
+                                         48]).astype(np.float32)
+
+        def generate_weight():
+            return np.random.random([16, int(48 / groups), 3,
+                                     3]).astype(np.float32)
+
+        ops_config = [{
+            "op_type": "conv2d",
+            "op_inputs": {
+                "Input": ["input_data"],
+                "Filter": ["input_weight"]
+            },
+            "op_outputs": {
+                "Output": ["conv_output"]
+            },
+            "op_attrs": {
+                "data_format": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides
+            }
+        }, {
+            "op_type": "mish",
+            "op_inputs": {
+                "X": ["conv_output"]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             },
             {
                 "op_type": "mish",
@@ -100,9 +135,14 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
         yield config, ["conv2d"], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False, passes=["conv_activation_mkldnn_fuse_pass"]
         )
+=======
+        self.run_and_statis(quant=False,
+                            passes=["conv_activation_mkldnn_fuse_pass"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

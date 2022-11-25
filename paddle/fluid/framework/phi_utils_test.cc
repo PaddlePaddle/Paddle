@@ -59,7 +59,11 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),
+<<<<<<< HEAD
       phi::DataLayout::kNCHW);
+=======
+      paddle::framework::DataLayout::kNCHW);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto kernel_key =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type);
   ASSERT_EQ(kernel_key.dtype(), phi::DataType::FLOAT32);
@@ -70,12 +74,20 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type_mkldnn(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),
+<<<<<<< HEAD
       phi::DataLayout::ONEDNN,
+=======
+      paddle::framework::DataLayout::kMKLDNN,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       paddle::framework::LibraryType::kMKLDNN);
   auto kernel_key_mkldnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_mkldnn);
   ASSERT_EQ(kernel_key_mkldnn.dtype(), phi::DataType::FLOAT32);
+<<<<<<< HEAD
   ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::ONEDNN);
+=======
+  ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::MKLDNN);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   ASSERT_EQ(kernel_key_mkldnn.backend(), phi::Backend::ONEDNN);
 #endif
 
@@ -83,7 +95,11 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type_cudnn(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),
+<<<<<<< HEAD
       phi::DataLayout::kNCHW,
+=======
+      paddle::framework::DataLayout::kNCHW,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       paddle::framework::LibraryType::kCUDNN);
   auto kernel_key_cudnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_cudnn);

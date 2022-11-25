@@ -73,11 +73,17 @@ class GroupShardedStage2(nn.Layer):
 
         # training options
         self._layer = layer
+<<<<<<< HEAD
         self._sharding_optimizers = (
             [sharding_optimizer]
             if not isinstance(sharding_optimizer, list)
             else sharding_optimizer
         )
+=======
+        self._sharding_optimizers = [
+            sharding_optimizer
+        ] if not isinstance(sharding_optimizer, list) else sharding_optimizer
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         assert all(
             list(
                 map(
@@ -90,11 +96,16 @@ class GroupShardedStage2(nn.Layer):
         self._auto_refresh_trainable = auto_refresh_trainable
 
         # Communication related attributes
+<<<<<<< HEAD
         self._group = (
             collective.new_group(collective._get_global_group().ranks)
             if group is None
             else group
         )
+=======
+        self._group = collective.new_group(
+            collective._get_global_group().ranks) if group is None else group
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._world_size_scaling = 1.0 / self._group.nranks
         assert (
             self._group.nranks > 1
@@ -186,6 +197,7 @@ class GroupShardedStage2(nn.Layer):
         return fw
 
     def set_state_dict(self, state_dict, use_structured_name=True):
+<<<<<<< HEAD
         self._layer.set_state_dict(
             state_dict, use_structured_name=use_structured_name
         )
@@ -196,6 +208,15 @@ class GroupShardedStage2(nn.Layer):
         include_sublayers=True,
         structured_name_prefix="",
     ):
+=======
+        self._layer.set_state_dict(state_dict,
+                                   use_structured_name=use_structured_name)
+
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return self._layer.state_dict(
             destination=destination,
             include_sublayers=include_sublayers,
@@ -247,7 +268,11 @@ class GroupShardedStage2(nn.Layer):
         with paddle.no_grad():
             for param in self._trainable_params:
                 if param.name in self._param_grads and param.grad is not None:
+<<<<<<< HEAD
                     param.grad.scale_(scale=scale_factor)
+=======
+                    param.grad.scale_(scale=self._world_size_scaling)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 # param._reset_grad_inplace_version(True)
 
             # Scale grads of master params with offload strategy
@@ -325,6 +350,7 @@ class GroupShardedStage2(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
+<<<<<<< HEAD
             dist.broadcast(
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
@@ -336,6 +362,12 @@ class GroupShardedStage2(nn.Layer):
                     self._dp_group,
                     sync_op=True,
                 )
+=======
+            collective.broadcast(buffer,
+                                 self._global_root_rank,
+                                 self._group,
+                                 use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -408,6 +440,7 @@ class GroupShardedStage2(nn.Layer):
                             del tmp_grad
                             param.clear_gradient(False)
 
+<<<<<<< HEAD
                     # Synchronize the reduce parameter gradient asynchronize
                     self._sharding_optimizers[0]._update_task(
                         dist.reduce(
@@ -417,6 +450,13 @@ class GroupShardedStage2(nn.Layer):
                             sync_op=not self._reduce_overlap,
                         )
                     )
+=======
+                    # Synchronize the reduce parameter gradient
+                    collective.reduce(tensor=param.grad,
+                                      dst=self._group.ranks[dst_rank],
+                                      group=self._group)
+                    #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
@@ -540,6 +580,7 @@ class GroupShardedStage2(nn.Layer):
             else:
                 self._param_grads.append(param.name)
                 print(
+<<<<<<< HEAD
                     "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, ".format(
                         param.name,
                         param.shape,
@@ -547,6 +588,12 @@ class GroupShardedStage2(nn.Layer):
                         self._grad_storages[param.dtype][dst_rank]._fill,
                     )
                 )
+=======
+                    "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, "
+                    .format(param.name, param.shape,
+                            self._trainable_param2align[param.name],
+                            self._grad_storages[param.dtype][dst_rank]._fill))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         for dtype in self._grad_storages.keys():
             self._grad_storage_list.extend(
@@ -603,6 +650,7 @@ class GroupShardedStage2(nn.Layer):
         if Type.fp16.value in rank_buffer_size.keys():
             # FP16 GradStorage and model size
             logger_.info(
+<<<<<<< HEAD
                 "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".format(
                     rank_buffer_size[Type.fp16.value] / 2**19,
                     model_size / 2**19,
@@ -624,6 +672,17 @@ class GroupShardedStage2(nn.Layer):
                     model_size / 2**18,
                 )
             )
+=======
+                "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
+                .format(rank_buffer_size[Type.fp16.value] / 2**19,
+                        model_size / 2**19))
+        if Type.fp32.value in rank_buffer_size.keys():
+            # FP32 GradStorage and model size
+            logger_.info(
+                "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
+                .format(rank_buffer_size[Type.fp32.value] / 2**18,
+                        model_size / 2**18))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return rank_buffer_size
 
     def _dp_allreduce(self):

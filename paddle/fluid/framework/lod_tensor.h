@@ -112,10 +112,17 @@ bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
  *  - [a0 a0 a0 a1 a1]
  */
 template <typename T>
+<<<<<<< HEAD
 phi::DenseTensor LodExpand(const phi::DenseTensor& source,
                            const LoD& lod,
                            size_t level,
                            const platform::Place& place) {
+=======
+LoDTensor LodExpand(const LoDTensor& source,
+                    const LoD& lod,
+                    size_t level,
+                    const platform::Place& place) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   LoD abs_lod = ToAbsOffset(lod);
   const auto& lod_level = lod[level];
   size_t num_instances = source.dims()[0];
@@ -171,6 +178,7 @@ std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 void SerializeToStream(std::ostream& os,
+<<<<<<< HEAD
                        const phi::DenseTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
@@ -178,6 +186,15 @@ void DeserializeFromStream(std::istream& is,
                            const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::DenseTensor* tensor,
+=======
+                       const LoDTensor& tensor,
+                       const platform::DeviceContext& dev_ctx);
+void DeserializeFromStream(std::istream& is,
+                           LoDTensor* tensor,
+                           const platform::DeviceContext& dev_ctx);
+void DeserializeFromStream(std::istream& is,
+                           LoDTensor* tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                            const platform::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);

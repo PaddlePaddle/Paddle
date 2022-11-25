@@ -21,6 +21,7 @@ from op_test import OpTest
 
 
 class TestInverseOp(OpTest):
+
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -45,6 +46,7 @@ class TestInverseOp(OpTest):
 
 
 class TestInverseOpBatched(TestInverseOp):
+
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float64"
@@ -52,30 +54,47 @@ class TestInverseOpBatched(TestInverseOp):
 
 
 class TestInverseOpLarge(TestInverseOp):
+
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float64"
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Input'], 'Output', max_relative_error=1e-6, check_eager=True
         )
+=======
+        self.check_grad(['Input'],
+                        'Output',
+                        max_relative_error=1e-6,
+                        check_eager=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestInverseOpFP32(TestInverseOp):
+
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Input'], 'Output', max_relative_error=1e-2, check_eager=True
         )
+=======
+        self.check_grad(['Input'],
+                        'Output',
+                        max_relative_error=1e-2,
+                        check_eager=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestInverseOpBatchedFP32(TestInverseOpFP32):
+
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float32"
@@ -83,6 +102,7 @@ class TestInverseOpBatchedFP32(TestInverseOpFP32):
 
 
 class TestInverseOpLargeFP32(TestInverseOpFP32):
+
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
@@ -90,6 +110,7 @@ class TestInverseOpLargeFP32(TestInverseOpFP32):
 
 
 class TestInverseAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -129,6 +150,7 @@ class TestInverseAPI(unittest.TestCase):
 
 
 class TestInverseAPIError(unittest.TestCase):
+
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -151,6 +173,7 @@ class TestInverseAPIError(unittest.TestCase):
 
 
 class TestInverseSingularAPI(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

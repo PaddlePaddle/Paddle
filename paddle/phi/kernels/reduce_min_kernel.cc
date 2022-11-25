@@ -39,6 +39,7 @@ PD_REGISTER_KERNEL(
     min, GPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
 #endif
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
 #endif
@@ -51,3 +52,8 @@ PD_REGISTER_KERNEL(
 #if defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(min, XPU, ALL_LAYOUT, phi::MinKernel, float) {}
 #endif
+=======
+#if defined(PADDLE_WITH_XPU_KP)
+PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

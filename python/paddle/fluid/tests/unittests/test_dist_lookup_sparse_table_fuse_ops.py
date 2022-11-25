@@ -25,6 +25,7 @@ paddle.enable_static()
 
 @unittest.skip("do not need currently")
 class TestLookupTableFuseOp(unittest.TestCase):
+
     def test_fuse(self):
         places = [core.CPUPlace()]
         # currently only support CPU
@@ -76,6 +77,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
             attrs={"large_scale_metas": metas},
         )
 
+<<<<<<< HEAD
         init_program.global_block().append_op(
             type="lookup_sparse_table_read",
             inputs={"Ids": ids},
@@ -97,6 +99,27 @@ class TestLookupTableFuseOp(unittest.TestCase):
                 "value_names": ["Param"],
             },
         )
+=======
+        init_program.global_block().append_op(type="lookup_sparse_table_read",
+                                              inputs={"Ids": ids},
+                                              outputs={"Out": output},
+                                              attrs={
+                                                  "tablename":
+                                                  "embedding_1.block0",
+                                                  "init": True,
+                                                  "value_names": ["Param"],
+                                              })
+
+        init_program.global_block().append_op(type="lookup_sparse_table_read",
+                                              inputs={"Ids": ids},
+                                              outputs={"Out": output},
+                                              attrs={
+                                                  "tablename":
+                                                  "embedding_2.block0",
+                                                  "init": True,
+                                                  "value_names": ["Param"],
+                                              })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         executor = fluid.Executor(place)
         executor.run(init_program)
@@ -161,7 +184,14 @@ class TestLookupTableFuseOp(unittest.TestCase):
                 "Beta1Pow": beta1,
                 "Beta2Pow": beta2,
             },
+<<<<<<< HEAD
             outputs={"Beta1PowOut": beta1, "Beta2PowOut": beta2},
+=======
+            outputs={
+                "Beta1PowOut": beta1,
+                "Beta2PowOut": beta2
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             attrs={
                 "is_entry": False,
                 "tablename": "embedding_1.block0",
@@ -171,7 +201,14 @@ class TestLookupTableFuseOp(unittest.TestCase):
 
         training_program.global_block().append_op(
             type="lookup_sparse_table_fuse_sgd",
+<<<<<<< HEAD
             inputs={"Grad": grads, "LearningRate": lr},
+=======
+            inputs={
+                "Grad": grads,
+                "LearningRate": lr
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             attrs={
                 "is_entry": False,
                 "tablename": "embedding_2.block0",

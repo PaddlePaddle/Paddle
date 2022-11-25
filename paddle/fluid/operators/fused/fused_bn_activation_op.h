@@ -36,6 +36,14 @@ class FusedBatchNormActOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+<<<<<<< HEAD
+=======
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 class FusedBatchNormActGradOp : public framework::OperatorWithKernel {

@@ -44,12 +44,22 @@ def test_static_graph_H0(func, x0, H0, dtype='float32'):
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
         X = paddle.static.data(name='x', shape=[x0.shape[0]], dtype=dtype)
+<<<<<<< HEAD
         H = paddle.static.data(
             name='h', shape=[H0.shape[0], H0.shape[1]], dtype=dtype
         )
         Y = minimize_lbfgs(
             func, X, initial_inverse_hessian_estimate=H, dtype=dtype
         )
+=======
+        H = paddle.static.data(name='h',
+                               shape=[H0.shape[0], H0.shape[1]],
+                               dtype=dtype)
+        Y = minimize_lbfgs(func,
+                           X,
+                           initial_inverse_hessian_estimate=H,
+                           dtype=dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     exe = paddle.static.Executor()
     exe.run(startup)
@@ -63,6 +73,7 @@ def test_dynamic_graph(
     x0 = paddle.to_tensor(x0)
     if H0 is not None:
         H0 = paddle.to_tensor(H0)
+<<<<<<< HEAD
     return minimize_lbfgs(
         func,
         x0,
@@ -70,9 +81,17 @@ def test_dynamic_graph(
         line_search_fn=line_search_fn,
         dtype=dtype,
     )
+=======
+    return minimize_lbfgs(func,
+                          x0,
+                          initial_inverse_hessian_estimate=H0,
+                          line_search_fn=line_search_fn,
+                          dtype=dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestLbfgs(unittest.TestCase):
+
     def test_quadratic_nd(self):
         for dimension in [1, 10]:
             minimum = np.random.random(size=[dimension]).astype('float32')
@@ -109,6 +128,7 @@ class TestLbfgs(unittest.TestCase):
         self.assertFalse(results[0][0])
 
     def test_multi_minima(self):
+
         def func(x):
             # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
             # f = 3*x^4+0.4*x^3-5.46*x^2+2.112*x
@@ -141,6 +161,7 @@ class TestLbfgs(unittest.TestCase):
         np.testing.assert_allclose(minimum, results[2], rtol=1e-05)
 
     def test_exception(self):
+
         def func(x):
             return paddle.dot(x, x)
 
@@ -149,9 +170,17 @@ class TestLbfgs(unittest.TestCase):
 
         # test dtype is not float32 or float64
         x1 = np.random.random(size=[2]).astype('int32')
+<<<<<<< HEAD
         self.assertRaises(
             ValueError, test_static_graph, func, x1, dtype='int32'
         )
+=======
+        self.assertRaises(ValueError,
+                          test_static_graph,
+                          func,
+                          x1,
+                          dtype='int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # test initial_inverse_hessian_estimate is good
         results = test_static_graph_H0(func, x0, H0, dtype='float32')
@@ -161,9 +190,18 @@ class TestLbfgs(unittest.TestCase):
         # test initial_inverse_hessian_estimate is bad and float64
         x2 = np.random.random(size=[2]).astype('float64')
         H1 = np.array([[1.0, 2.0], [3.0, 1.0]]).astype('float64')
+<<<<<<< HEAD
         self.assertRaises(
             ValueError, test_static_graph_H0, func, x2, H0=H1, dtype='float64'
         )
+=======
+        self.assertRaises(ValueError,
+                          test_static_graph_H0,
+                          func,
+                          x2,
+                          H0=H1,
+                          dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

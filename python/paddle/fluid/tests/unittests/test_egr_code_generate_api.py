@@ -19,6 +19,7 @@ import unittest
 
 
 class EagerOpAPIGenerateTestCase(unittest.TestCase):
+
     def test_elementwise_add(self):
         with _test_eager_guard():
             paddle.set_device("cpu")
@@ -34,9 +35,14 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
 
     def test_sum(self):
         with _test_eager_guard():
+<<<<<<< HEAD
             x_data = np.array(
                 [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]]
             ).astype('float32')
+=======
+            x_data = np.array([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6,
+                                                      0.7]]).astype('float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             x = paddle.to_tensor(x_data, 'float32')
             out = paddle.sum(x, axis=0)
             out_arr = out.numpy()
@@ -61,9 +67,15 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             out = paddle.nn.functional.sigmoid(x)
             out_arr = out.numpy()
             out_arr_expected = np.array(
+<<<<<<< HEAD
                 [0.40131234, 0.450166, 0.52497919, 0.57444252]
             ).astype('float32')
             np.testing.assert_allclose(out_arr, out_arr_expected, rtol=1e-05)
+=======
+                [0.40131234, 0.450166, 0.52497919,
+                 0.57444252]).astype('float32')
+            self.assertTrue(np.allclose(out_arr, out_arr_expected))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

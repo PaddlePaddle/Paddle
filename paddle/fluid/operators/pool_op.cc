@@ -55,7 +55,11 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
     const std::string& var_name,
+<<<<<<< HEAD
     const phi::DenseTensor& tensor,
+=======
+    const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
@@ -66,7 +70,11 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
     auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
+<<<<<<< HEAD
     if (dl != phi::DataLayout::kAnyLayout) {
+=======
+    if (dl != framework::DataLayout::kAnyLayout) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -84,12 +92,21 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
+<<<<<<< HEAD
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
+=======
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout_, library_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
     const std::string& var_name,
+<<<<<<< HEAD
     const phi::DenseTensor& tensor,
+=======
+    const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
@@ -497,10 +514,17 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d,
                             Pool2dInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::Pool2DInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad,
                             Pool2dGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
+=======
+                            PD_INFER_META(phi::PoolInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad,
+                            Pool2dGradInferShapeFunctor,
+                            PD_INFER_META(phi::PoolGradInferMeta));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_double_grad,
                             Pool2dDoubleGradInferShapeFunctor,
                             PD_INFER_META(phi::Pool2DInferMeta));
@@ -527,7 +551,11 @@ DECLARE_INFER_SHAPE_FUNCTOR(pool3d,
                             PD_INFER_META(phi::PoolInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool3d_grad,
                             Pool3dGradInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::UnchangedInferMeta));
+=======
+                            PD_INFER_META(phi::PoolGradInferMeta));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 REGISTER_OPERATOR(
     pool3d,

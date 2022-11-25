@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestLogicalAnd(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -39,6 +40,7 @@ class TestLogicalAnd(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0],
             shape=self.feed_shape[0],
@@ -49,6 +51,14 @@ class TestLogicalAnd(IPUOpTest):
             shape=self.feed_shape[1],
             dtype=self.feed_dtype[1],
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype=self.feed_dtype[0])
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype=self.feed_dtype[1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -83,6 +93,7 @@ class TestLogicalAnd(IPUOpTest):
 
 
 class TestLogicalOr(TestLogicalAnd):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.logical_or
 

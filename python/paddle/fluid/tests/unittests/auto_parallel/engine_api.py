@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import unittest
+import time
+import tempfile
+import copy
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import os
 import tempfile
 
@@ -46,6 +53,7 @@ my_feed_vars = []
 
 
 class MyDataset(Dataset):
+
     def __init__(self, num_samples):
         super().__init__()
         self.num_samples = num_samples
@@ -77,6 +85,7 @@ def batch_generator_creator():
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -98,11 +107,35 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+        bias_attr = None
+
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
+<<<<<<< HEAD
         out = auto.shard_op(self.norm, PP_MESH_0)(input)
         out = self.linear0(out)
         if is_feed:
@@ -505,3 +538,77 @@ if __name__ == "__main__":
     get_cost()
     get_cost_by_default_program()
     get_cost_by_spec()
+=======
+        out = auto.shard_op(self.norm, dist_attr={"process_mesh":
+                                                  PP_MESH_0})(input)
+        out = self.linear0(out)
+        out = F.gelu(out, approximate=True)
+        out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
+                                                     PP_MESH_1})(out)
+        out = self.dropout(out)
+        out = self.linear2(out)
+        self.out = out
+        return out
+
+
+def train(fetch):
+    mlp = MLPLayer(hidden_size=hidden_size,
+                   intermediate_size=4 * hidden_size,
+                   dropout_ratio=0.1,
+                   initializer_range=0.02)
+    loss = paddle.nn.CrossEntropyLoss()
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
+
+    inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
+    labels_spec = InputSpec([batch_size], 'int64', 'label')
+
+    dist_strategy = fleet.DistributedStrategy()
+    dist_strategy.amp = False
+    dist_strategy.pipeline = False
+    dist_strategy.recompute = False
+    dist_strategy.semi_auto = True
+    fleet.init(is_collective=True, strategy=dist_strategy)
+
+    # init engine
+    engine = Engine(mlp,
+                    inputs_spec=inputs_spec,
+                    labels_spec=labels_spec,
+                    strategy=dist_strategy)
+    engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
+
+    # fetch
+    if fetch:
+        fetches = {'out': mlp.out}
+    else:
+        fetches = None
+
+    # train
+    train_dataset = MyDataset(batch_num * batch_size)
+    engine.fit(train_dataset,
+               batch_size=batch_size,
+               steps_per_epoch=batch_num * batch_size,
+               fetches=fetches)
+
+    # eval
+    eval_dataset = MyDataset(batch_size)
+    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
+
+    # predict
+    test_dataset = MyDataset(batch_size)
+    engine.predict(test_dataset, batch_size, fetches=fetches)
+
+    # save
+    temp_dir = tempfile.TemporaryDirectory()
+    model_filename = os.path.join(temp_dir.name, 'mlp_inf')
+    engine.save(model_filename, training=False, mode='predict')
+    temp_dir.cleanup()
+
+
+if __name__ == "__main__":
+    train(fetch=True)
+    train(fetch=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

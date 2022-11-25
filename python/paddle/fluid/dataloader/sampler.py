@@ -229,6 +229,7 @@ class RandomSampler(Sampler):
                 yield index
         else:
             if self.replacement:
+<<<<<<< HEAD
                 for index in np.random.choice(
                     np.arange(n), self.num_samples, replace=True
                 ).tolist():
@@ -237,6 +238,15 @@ class RandomSampler(Sampler):
                 for index in np.random.choice(
                     np.arange(n), n, replace=False
                 ).tolist():
+=======
+                for index in np.random.choice(np.arange(n),
+                                              self.num_samples,
+                                              replace=True).tolist():
+                    yield index
+            else:
+                for index in np.random.choice(np.arange(n), n,
+                                              replace=False).tolist():
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     yield index
 
     def __len__(self):

@@ -177,10 +177,16 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   auto &val = PADDLE_GET(FetchList, fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
     if (data_is_lod_tensor(val.at(fetch_idx))) {
+<<<<<<< HEAD
       std::vector<const phi::DenseTensor *> lodtensor_ptrs;
       lodtensor_ptrs.push_back(
           &(PADDLE_GET(phi::DenseTensor, val.at(fetch_idx))));
       phi::DenseTensor var;
+=======
+      std::vector<const LoDTensor *> lodtensor_ptrs;
+      lodtensor_ptrs.push_back(&(PADDLE_GET(LoDTensor, val.at(fetch_idx))));
+      LoDTensor var;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
       ret.emplace_back(var);
     } else {

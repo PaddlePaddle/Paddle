@@ -47,7 +47,11 @@ class SkipLayerNormOpConverter : public OpConverter {
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
+<<<<<<< HEAD
         auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+=======
+        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
         return weight;
       };
@@ -150,6 +154,7 @@ class SkipLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
       }
     } else {
+<<<<<<< HEAD
       auto GetFp16Weight =
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
@@ -159,15 +164,22 @@ class SkipLayerNormOpConverter : public OpConverter {
         return weight;
       };
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       auto GetFp32Weight =
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
+<<<<<<< HEAD
         auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+=======
+        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         auto weight = engine_->GetFp32TrtWeight(var_name, *temp_tensor);
         return weight;
       };
 
+<<<<<<< HEAD
       // bool with_fp16 = engine_->WithFp16() &&
       //                  !engine_->disable_trt_plugin_fp16() &&
       //                  (input1->getType() == nvinfer1::DataType::kHALF);
@@ -191,6 +203,20 @@ class SkipLayerNormOpConverter : public OpConverter {
                   static_cast<const void*>(scale_weight.get().values)),
               bias_weight.get().count,
               scale_weight.get().count,
+=======
+      auto bias_weight = GetFp32Weight("Bias").get();
+      auto scale_weight = GetFp32Weight("Scale").get();
+
+      float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::SkipLayerNormPluginDynamic* plugin =
+          new plugin::SkipLayerNormPluginDynamic(
+              static_cast<const float*>(bias_weight.values),
+              static_cast<const float*>(scale_weight.values),
+              bias_weight.count,
+              scale_weight.count,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               eps,
               with_fp16);
       layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);

@@ -12,12 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/slice_op.h"
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/op_registry.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -162,12 +170,23 @@ class SliceOp : public framework::OperatorWithKernel {
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
+<<<<<<< HEAD
         if (ctx.Input<phi::DenseTensor>("Input")
                 ->mem_desc()
                 .data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type,
                                          ctx.GetPlace(),
                                          phi::DataLayout::ONEDNN,
+=======
+        auto tmp_md = dnnl::memory::desc(
+            phi::vectorize(ctx.Input<Tensor>("Input")->dims()),
+            dnnl::memory::data_type::f32,
+            ctx.Input<Tensor>("Input")->format());
+        if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+          return framework::OpKernelType(input_data_type,
+                                         ctx.GetPlace(),
+                                         framework::DataLayout::kMKLDNN,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                          framework::LibraryType::kMKLDNN);
       }
 #endif
@@ -335,12 +354,24 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
+<<<<<<< HEAD
       if (ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))
               ->mem_desc()
               .data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
                                        phi::DataLayout::ONEDNN,
+=======
+      auto tmp_md = dnnl::memory::desc(
+          phi::vectorize(
+              ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
+          dnnl::memory::data_type::f32,
+          ctx.Input<Tensor>(framework::GradVarName("Out"))->format());
+      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+        return framework::OpKernelType(input_data_type,
+                                       ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                        framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -449,3 +480,52 @@ REGISTER_OPERATOR(slice_grad,
                   ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpGradNoNeedBufferVarsInferer,
                   ops::SliceOpGradVarTypeInference);
+<<<<<<< HEAD
+=======
+
+REGISTER_OP_CPU_KERNEL(
+    slice,
+    ops::SliceKernel<phi::CPUContext, bool>,
+    ops::SliceKernel<phi::CPUContext, int>,
+    ops::SliceKernel<phi::CPUContext, int64_t>,
+    ops::SliceKernel<phi::CPUContext, float>,
+    ops::SliceKernel<phi::CPUContext, double>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::bfloat16>);
+
+REGISTER_OP_CPU_KERNEL(
+    slice_grad,
+    ops::SliceGradKernel<phi::CPUContext, bool>,
+    ops::SliceGradKernel<phi::CPUContext, int>,
+    ops::SliceGradKernel<phi::CPUContext, int64_t>,
+    ops::SliceGradKernel<phi::CPUContext, float>,
+    ops::SliceGradKernel<phi::CPUContext, double>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::bfloat16>);
+
+REGISTER_OP_CUDA_KERNEL(
+    slice,
+    ops::SliceKernel<phi::GPUContext, bool>,
+    ops::SliceKernel<phi::GPUContext, float>,
+    ops::SliceKernel<phi::GPUContext, double>,
+    ops::SliceKernel<phi::GPUContext, int>,
+    ops::SliceKernel<phi::GPUContext, int64_t>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::bfloat16>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::complex<float>>,
+    ops::SliceKernel<phi::GPUContext, paddle::platform::complex<double>>);
+
+REGISTER_OP_CUDA_KERNEL(
+    slice_grad,
+    ops::SliceGradKernel<phi::GPUContext, bool>,
+    ops::SliceGradKernel<phi::GPUContext, float>,
+    ops::SliceGradKernel<phi::GPUContext, double>,
+    ops::SliceGradKernel<phi::GPUContext, int>,
+    ops::SliceGradKernel<phi::GPUContext, int64_t>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::bfloat16>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<float>>,
+    ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<double>>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

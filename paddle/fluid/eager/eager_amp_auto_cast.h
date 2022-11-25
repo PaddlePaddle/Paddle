@@ -46,7 +46,11 @@ inline paddle::experimental::Tensor Cast(
     const bool trace_backward = true) {
   if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
     if (trace_backward) {
+<<<<<<< HEAD
       return sparse::cast_ad_func(
+=======
+      return sparse::cast_final_state_dygraph_function(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
     } else {
       return paddle::experimental::sparse::cast(
@@ -54,7 +58,11 @@ inline paddle::experimental::Tensor Cast(
     }
   } else {
     if (trace_backward) {
+<<<<<<< HEAD
       return cast_ad_func(input, dst_dtype);
+=======
+      return cast_final_state_dygraph_function(input, dst_dtype);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     } else {
       return paddle::experimental::cast(input, dst_dtype);
     }
@@ -108,7 +116,10 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     }
   }
   if (NeedCast(input, dst_dtype)) {
+<<<<<<< HEAD
     VLOG(6) << "Input : " << input.impl() << "NeedCast";
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return Cast(input, dst_dtype, trace_backward);
   }
   return input;
@@ -127,6 +138,7 @@ inline paddle::optional<paddle::experimental::Tensor> EagerAmpAutoCast(
   return paddle::none;
 }
 
+<<<<<<< HEAD
 inline paddle::optional<std::vector<paddle::experimental::Tensor>>
 EagerAmpAutoCasts(
     const std::string& inputs_name,
@@ -141,4 +153,6 @@ EagerAmpAutoCasts(
   return paddle::optional<std::vector<paddle::experimental::Tensor>>();
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }  // namespace egr

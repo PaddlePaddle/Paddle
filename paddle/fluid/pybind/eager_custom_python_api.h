@@ -15,10 +15,15 @@
 
 #include <iostream>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/eager/to_static/run_program_op_func.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace pybind {
+<<<<<<< HEAD
 
 static PyObject *eager_api_linear(PyObject *self,
                                   PyObject *args,
@@ -41,13 +46,41 @@ static PyObject *eager_api_linear(PyObject *self,
       tstate = nullptr;
       return ToPyObject(mm_out);
     }
+=======
+
+static PyObject *eager_api_run_program(PyObject *self,
+                                       PyObject *args,
+                                       PyObject *kwargs) {
+  PyThreadState *tstate = nullptr;
+  try {
+    auto X = GetTensorListFromArgs("run_program", "X", args, 0, false);
+    auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
+    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, false);
+    auto OutScope =
+        GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
+    auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
+    framework::AttributeMap attrs;
+    // TODO(zengjinle): support CUDA Graph on eager mode
+    ConstructAttrMapFromPyArgs(
+        "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
+
+    tstate = PyEval_SaveThread();
+    run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    Py_RETURN_NONE;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
     }
     std::ostringstream sout;
     sout << exception.what();
+<<<<<<< HEAD
     sout << "  [operator < linear > error]";
+=======
+    sout << "  [operator < run_program > error]";
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     exception.set_error_str(sout.str());
     ThrowExceptionToPython(std::current_exception());
     return nullptr;
@@ -60,9 +93,15 @@ static PyObject *eager_api_linear(PyObject *self,
   }
 }
 
+<<<<<<< HEAD
 static PyMethodDef CustomEagerFinalStateMethods[] = {
     {"linear",
      (PyCFunction)(void (*)(void))eager_api_linear,
+=======
+static PyMethodDef CustomEagerMethods[] = {
+    {"run_program",
+     (PyCFunction)(void (*)(void))eager_api_run_program,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {nullptr, nullptr, 0, nullptr}};

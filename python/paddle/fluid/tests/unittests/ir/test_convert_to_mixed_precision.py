@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 
 import paddle
 from paddle.inference import (
@@ -45,10 +46,39 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             PlaceType.GPU,
             True,
         )
+=======
+import numpy as np
+import paddle
+
+from paddle.vision.models import resnet50
+from paddle.jit import to_static
+from paddle.static import InputSpec
+
+from paddle.inference import PrecisionType, BackendType
+from paddle.inference import convert_to_mixed_precision
+
+
+@unittest.skipIf(not paddle.is_compiled_with_cuda()
+                 or paddle.get_cudnn_version() < 8000,
+                 'should compile with cuda.')
+class TestConvertToMixedPrecision(unittest.TestCase):
+
+    def test_convert_to_fp16(self):
+        model = resnet50(True)
+        net = to_static(
+            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')])
+        paddle.jit.save(net, 'resnet50/inference')
+        convert_to_mixed_precision('resnet50/inference.pdmodel',
+                                   'resnet50/inference.pdiparams',
+                                   'mixed/inference.pdmodel',
+                                   'mixed/inference.pdiparams',
+                                   PrecisionType.Half, BackendType.GPU, True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_convert_to_fp16_with_fp16_input(self):
         model = resnet50(True)
         net = to_static(
+<<<<<<< HEAD
             model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
         )
         paddle.jit.save(net, 'resnet50/inference')
@@ -61,10 +91,20 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             PlaceType.GPU,
             False,
         )
+=======
+            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')])
+        paddle.jit.save(net, 'resnet50/inference')
+        convert_to_mixed_precision('resnet50/inference.pdmodel',
+                                   'resnet50/inference.pdiparams',
+                                   'mixed1/inference.pdmodel',
+                                   'mixed1/inference.pdiparams',
+                                   PrecisionType.Half, BackendType.GPU, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_convert_to_fp16_with_blacklist(self):
         model = resnet50(True)
         net = to_static(
+<<<<<<< HEAD
             model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
         )
         paddle.jit.save(net, 'resnet50/inference')
@@ -78,10 +118,21 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             False,
             set('conv2d'),
         )
+=======
+            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')])
+        paddle.jit.save(net, 'resnet50/inference')
+        convert_to_mixed_precision('resnet50/inference.pdmodel',
+                                   'resnet50/inference.pdiparams',
+                                   'mixed2/inference.pdmodel',
+                                   'mixed2/inference.pdiparams',
+                                   PrecisionType.Half, BackendType.GPU, False,
+                                   set('conv2d'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_convert_to_bf16(self):
         model = resnet50(True)
         net = to_static(
+<<<<<<< HEAD
             model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
         )
         paddle.jit.save(net, 'resnet50/inference')
@@ -94,6 +145,16 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             PlaceType.GPU,
             True,
         )
+=======
+            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')])
+        paddle.jit.save(net, 'resnet50/inference')
+        convert_to_mixed_precision('resnet50/inference.pdmodel',
+                                   'resnet50/inference.pdiparams',
+                                   'mixed3/inference.pdmodel',
+                                   'mixed3/inference.pdiparams',
+                                   PrecisionType.Bfloat16, BackendType.GPU,
+                                   True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

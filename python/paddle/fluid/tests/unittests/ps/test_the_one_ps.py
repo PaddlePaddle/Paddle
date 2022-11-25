@@ -25,6 +25,7 @@ from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import (
 
 
 class TestTheOnePs(PsPassTestBase):
+
     def setUp(self):
         pass
 

@@ -17,7 +17,14 @@ import warnings
 from multiprocessing import Process  # noqa: F401
 from multiprocessing import Manager  # noqa: F401
 import time
+<<<<<<< HEAD
 import paddle
+=======
+import sys
+import paddle
+
+from paddle import compat as cpt
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 # deprecated module import
 from paddle.fluid import core
@@ -39,7 +46,10 @@ from paddle.distributed.collective import _set_default_store
 from paddle.distributed.collective import _new_process_group_impl
 from paddle.distributed.collective import Group
 from paddle.distributed.collective import _set_group_map_backend
+<<<<<<< HEAD
 from paddle.distributed.communication.group import _add_new_group
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 __all__ = []
 
@@ -70,6 +80,7 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
+<<<<<<< HEAD
     if (
         backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl']
         and (
@@ -79,6 +90,12 @@ def _is_cpuonly(backend):
             or core.is_compiled_with_mlu()
         )
     ) or backend == 'xccl':
+=======
+    if backend in [
+            'auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'
+    ] and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
+           or core.is_compiled_with_npu() or core.is_compiled_with_mlu()):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -173,6 +190,7 @@ def init_parallel_env():
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
+<<<<<<< HEAD
     if not (
         is_cpu_only
         or core.is_compiled_with_cuda()
@@ -181,6 +199,11 @@ def init_parallel_env():
         or core.is_compiled_with_mlu()
         or backend == "xccl"
     ):
+=======
+    if not (is_cpu_only or core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu() or core.is_compiled_with_npu()
+            or core.is_compiled_with_mlu()):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend"
         )
@@ -246,11 +269,16 @@ def init_parallel_env():
         )
         master_addr = os.getenv("MASTER_ADDR", None)
         master_port = os.getenv("MASTER_PORT", None)
+<<<<<<< HEAD
         endpoints = (
             ":".join([master_addr, master_port])
             if master_addr and master_port
             else None
         )
+=======
+        endpoints = ":".join([master_addr, master_port
+                              ]) if master_addr and master_port else None
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
@@ -265,6 +293,7 @@ def init_parallel_env():
         master_port = int(master_port)
         is_master = rank == 0
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
+<<<<<<< HEAD
         default_store = core.TCPStore(
             master_addr,
             master_port,
@@ -287,6 +316,30 @@ def init_parallel_env():
         _set_group_map(0, group)
         _set_group_map_backend(group, backend)
         _add_new_group(group)
+=======
+        default_store = core.TCPStore(master_addr,
+                                      master_port,
+                                      is_master,
+                                      world_size,
+                                      timeout=stop_check_timeout)
+        _set_default_store(default_store)
+        pg = _new_process_group_impl(backend,
+                                     default_store,
+                                     rank,
+                                     world_size,
+                                     _default_group_name,
+                                     pg_options=None)
+        ranks = list(range(world_size))
+        group = Group(rank,
+                      world_size,
+                      id=0,
+                      ranks=ranks,
+                      pg=pg,
+                      name=_default_group_name)
+        _set_group_map_by_name(_default_group_name, group)
+        _set_group_map(0, group)
+        _set_group_map_backend(group, backend)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         parallel_helper._set_parallel_ctx(True)
 
         paddle.distributed.barrier(group=group)
@@ -306,10 +359,15 @@ def init_parallel_env():
             size = {'_worker': parallel_env.world_size}
             if backend == "heter":
                 size = {'_worker': len(node_num)}
+<<<<<<< HEAD
             http_server = Process(
                 target=_start_kv_server,
                 args=(int(ep_rank_0[1]), http_server_d, size),
             )
+=======
+            http_server = Process(target=_start_kv_server,
+                                  args=(int(ep_rank_0[1]), http_server_d, size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             http_server.daemon = True
             http_server_d["running"] = True
             http_server.start()

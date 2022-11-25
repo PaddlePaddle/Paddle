@@ -22,21 +22,30 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphTransformer_GLOO(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True
         self._dygraph = True
 
     def test_transformer(self):
+<<<<<<< HEAD
         self.check_with_place(
             "parallel_dygraph_transformer.py",
             delta=1e-5,
             check_error_log=True,
             log_name=flag_name,
         )
+=======
+        self.check_with_place("parallel_dygraph_transformer.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestParallelDygraphTransformerAccGrad_GLOO(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True
@@ -46,12 +55,19 @@ class TestParallelDygraphTransformerAccGrad_GLOO(TestDistBase):
 
     def test_transformer(self):
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place(
                 "parallel_dygraph_transformer.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name,
             )
+=======
+            self.check_with_place("parallel_dygraph_transformer.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

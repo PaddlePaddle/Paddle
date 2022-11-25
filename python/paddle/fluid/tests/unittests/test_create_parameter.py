@@ -20,6 +20,7 @@ import paddle
 
 
 class TestCreateParameterError(unittest.TestCase):
+
     def func_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -35,18 +36,32 @@ class TestCreateParameterError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_item)
 
             def test_attr():
+<<<<<<< HEAD
                 fluid.layers.create_parameter(
                     [1, 2, 3], np.float32, attr=np.array([i for i in range(6)])
                 )
+=======
+                fluid.layers.create_parameter([1, 2, 3],
+                                              np.float32,
+                                              attr=np.array(
+                                                  [i for i in range(6)]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_attr)
 
             def test_default_initializer():
+<<<<<<< HEAD
                 fluid.layers.create_parameter(
                     [1, 2, 3],
                     np.float32,
                     default_initializer=np.array([i for i in range(6)]),
                 )
+=======
+                fluid.layers.create_parameter([1, 2, 3],
+                                              np.float32,
+                                              default_initializer=np.array(
+                                                  [i for i in range(6)]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_default_initializer)
 

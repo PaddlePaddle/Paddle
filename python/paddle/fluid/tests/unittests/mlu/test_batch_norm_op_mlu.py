@@ -158,6 +158,7 @@ def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
         x = np.transpose(x, (0, 2, 3, 1))
         y_grad = np.transpose(y_grad, (0, 2, 3, 1))
 
+<<<<<<< HEAD
     x_grad = (
         scale
         * (
@@ -172,6 +173,14 @@ def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
     grad_scale = np.sum(
         y_grad * (x - mean) / np.sqrt(var + epsilon), axis=(0, 1, 2)
     )
+=======
+    x_grad = scale * (y_grad - np.mean(y_grad, axis=(0, 1, 2)) -
+                      (x - mean) * np.mean(y_grad *
+                                           (x - mean), axis=(0, 1, 2)) /
+                      (var + epsilon)) / np.sqrt(var + epsilon)
+    grad_scale = np.sum(y_grad * (x - mean) / np.sqrt(var + epsilon),
+                        axis=(0, 1, 2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     grad_offset = np.sum(y_grad, axis=(0, 1, 2))
 
     # transfer back to N, C, H, W
@@ -196,6 +205,7 @@ def create_or_get_tensor(scope, var_name, var, place):
 
 
 def set_output_grad(scope, outputs, place, feed_dict=None):
+
     def __set_tensor__(name, data=None):
         out_tensor = scope.find_var(name).get_tensor()
         grad_tensor = scope.var(grad_var_name(name)).get_tensor()
@@ -217,6 +227,7 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 
 
 class TestBatchNormOpInference(unittest.TestCase):
+
     def setUp(self):
         self.dtype = np.float32
         self.fuse_with_relu = False
@@ -264,8 +275,13 @@ class TestBatchNormOpInference(unittest.TestCase):
             scope, "x_val", OpTest.np_dtype_to_fluid_dtype(x_val), place
         )
         scale_tensor = create_or_get_tensor(
+<<<<<<< HEAD
             scope, "scale_val", OpTest.np_dtype_to_fluid_dtype(scale_val), place
         )
+=======
+            scope, "scale_val", OpTest.np_dtype_to_fluid_dtype(scale_val),
+            place)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         bias_tensor = create_or_get_tensor(
             scope, "bias_val", OpTest.np_dtype_to_fluid_dtype(bias_val), place
         )
@@ -312,6 +328,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         batch_norm_op.run(scope, place)
 
         # check inference result
+<<<<<<< HEAD
         self.__assert_close(
             y_tensor,
             y_out,
@@ -325,6 +342,14 @@ class TestBatchNormOpInference(unittest.TestCase):
             + str(y_out),
             atol=1e-3,
         )
+=======
+        self.__assert_close(y_tensor,
+                            y_out,
+                            "inference output are different at " + str(place) +
+                            ", " + data_layout + ", " + str(np.dtype(dtype)) +
+                            str(np.array(y_tensor)) + str(y_out),
+                            atol=1e-3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_check_output(self):
         places = [core.CPUPlace()]
@@ -343,6 +368,7 @@ class TestBatchNormOpInference(unittest.TestCase):
 
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
+
     def setUp(self):
         self.dtype = np.float16
         self.fuse_with_relu = False
@@ -362,6 +388,7 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
 
 class TestBatchNormOpTraining(unittest.TestCase):
+
     def setUp(self):
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
@@ -409,6 +436,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         variance_out = var_ref * (1.0 - momentum) + momentum * variance
         saved_variance = 1.0 / np.sqrt(var_ref + epsilon)
         # run backward
+<<<<<<< HEAD
         x_grad, scale_grad, bias_grad = _reference_grad(
             x, y_grad, scale, saved_mean, var_ref, epsilon, data_layout
         )
@@ -423,6 +451,13 @@ class TestBatchNormOpTraining(unittest.TestCase):
             scale_grad,
             bias_grad,
         )
+=======
+        x_grad, scale_grad, bias_grad = _reference_grad(x, y_grad, scale,
+                                                        saved_mean, var_ref,
+                                                        epsilon, data_layout)
+
+        return y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def set_mean_variance(self, scale_shape, x, data_layout):
         mean, variance = _cal_mean_variance(x, self.epsilon, data_layout)
@@ -436,6 +471,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         return mean, variance
 
     def test_forward_backward(self):
+
         def test_with_place(place, data_layout, shape):
             # attr
             epsilon = self.epsilon
@@ -499,11 +535,17 @@ class TestBatchNormOpTraining(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
+<<<<<<< HEAD
                     block.create_var(
                         name=name,
                         dtype='float32',
                         shape=ground_truth[name].shape,
                     )
+=======
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 inputs = {
                     "X": block.var('x'),
                     "Scale": block.var('scale'),
@@ -533,12 +575,19 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 }
                 block.create_var(name="reserve_space", dtype='float32')
                 outputs["ReserveSpace"] = block.var('reserve_space')
+<<<<<<< HEAD
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
                     outputs=outputs,
                     attrs=attrs,
                 )
+=======
+                bn_op = block.append_op(type="batch_norm",
+                                        inputs=inputs,
+                                        outputs=outputs,
+                                        attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
                 # generate backward op_desc
@@ -578,9 +627,16 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
             for id, name in enumerate(self.fetch_list):
                 if name == 'variance':
+<<<<<<< HEAD
                     self.__assert_close(
                         var_dict[name], out[id], name, atol=1e-3
                     )
+=======
+                    self.__assert_close(var_dict[name],
+                                        out[id],
+                                        name,
+                                        atol=1e-3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     continue
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passed: ", str(place), data_layout)
@@ -599,6 +655,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
 
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_global_stats = False
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
@@ -606,6 +663,7 @@ class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
 
 
 class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_global_stats = False
         self.no_grad_set = set()
@@ -623,6 +681,7 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
 
 
 class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_global_stats = False
         self.no_grad_set = set(['x@GRAD'])
@@ -630,6 +689,7 @@ class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
 
 
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_momentum_variable = True
         self.use_global_stats = False
@@ -647,6 +707,7 @@ class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
 
 
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
+
     def init_test_case(self):
         self.use_global_stats = True
         self.no_grad_set = set()
@@ -727,8 +788,13 @@ class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
 
 
 class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
+<<<<<<< HEAD
     TestBatchNormOpFreezeStatsTraining
 ):
+=======
+        TestBatchNormOpFreezeStatsTraining):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.use_global_stats = True
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
@@ -736,12 +802,18 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 
 
 class TestBatchNormOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertRaises(TypeError, fluid.layers.batch_norm, x1)
 
             # the input dtype of batch_norm must be float16 or float32 or float64
@@ -751,13 +823,19 @@ class TestBatchNormOpError(unittest.TestCase):
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             batch_norm = fluid.dygraph.BatchNorm(10)
             # the input of BatchNorm must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertRaises(TypeError, batch_norm, x1)
 
             # the input dtype of BatchNorm must be float16 or float32 or float64
@@ -767,6 +845,7 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
 
 class TestDygraphBatchNormTrainableStats(unittest.TestCase):
+
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_mlu():
@@ -817,6 +896,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
 
 class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
+
     def test_reservespace(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()

@@ -32,6 +32,7 @@ def sigmoid_array(x):
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestLogLossOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = 'log_loss'
@@ -80,6 +81,7 @@ class TestLogLossOp(OpTest):
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestLogLossOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 

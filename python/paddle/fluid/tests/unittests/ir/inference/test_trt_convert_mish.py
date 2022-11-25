@@ -23,10 +23,12 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertMishTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(batch, dim1, dim2, dim3):
             shape = [batch]
             if dim1 != 0:
@@ -65,6 +67,7 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights={},
                                 inputs={
+<<<<<<< HEAD
                                     "input_data": TensorConfig(
                                         data_gen=partial(
                                             generate_input,
@@ -74,6 +77,12 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
                                             dim3,
                                         )
                                     )
+=======
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input, batch, dim1, dim2,
+                                        dim3))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                 },
                                 outputs=["mish_output_data"],
                             )
@@ -81,6 +90,7 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
                             yield program_config
 
     def sample_predictor_configs(self, program_config):
+
         def generate_dynamic_shape(attrs):
             if self.dim1 == 0:
                 self.dynamic_shape.min_input_shape = {
@@ -151,14 +161,22 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
                 return True

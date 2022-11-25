@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 import sys
 
@@ -25,7 +29,13 @@ paddle.enable_static()
 
 
 def test_class1(op_type, typename):
+<<<<<<< HEAD
     class TestExpandAsBasic(OpTest):
+=======
+
+    class TestExpandAsBasic(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -52,7 +62,13 @@ def test_class1(op_type, typename):
 
 
 def test_class2(op_type, typename):
+<<<<<<< HEAD
     class TestExpandAsOpRank2(OpTest):
+=======
+
+    class TestExpandAsOpRank2(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -79,7 +95,13 @@ def test_class2(op_type, typename):
 
 
 def test_class3(op_type, typename):
+<<<<<<< HEAD
     class TestExpandAsOpRank3(OpTest):
+=======
+
+    class TestExpandAsOpRank3(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -106,7 +128,13 @@ def test_class3(op_type, typename):
 
 
 def test_class4(op_type, typename):
+<<<<<<< HEAD
     class TestExpandAsOpRank4(OpTest):
+=======
+
+    class TestExpandAsOpRank4(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -134,6 +162,7 @@ def test_class4(op_type, typename):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
+<<<<<<< HEAD
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
@@ -147,19 +176,44 @@ class TestExpandAsV2API(unittest.TestCase):
             append_batch_size=False,
             dtype="float32",
         )
+=======
+
+    def test_api(self):
+        input1 = np.random.random([12, 14]).astype("float32")
+        input2 = np.random.random([2, 12, 14]).astype("float32")
+        x = fluid.layers.data(name='x',
+                              shape=[12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+
+        y = fluid.layers.data(name='target_tensor',
+                              shape=[2, 12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.MLUPlace(0))
+<<<<<<< HEAD
         res_1 = exe.run(
             fluid.default_main_program(),
             feed={"x": input1, "target_tensor": input2},
             fetch_list=[out_1],
         )
+=======
+        res_1 = exe.run(fluid.default_main_program(),
+                        feed={
+                            "x": input1,
+                            "target_tensor": input2
+                        },
+                        fetch_list=[out_1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
 for _typename in {
+<<<<<<< HEAD
     'float16',
     'float32',
     'int64',
@@ -167,6 +221,9 @@ for _typename in {
     'int8',
     'uint8',
     'bool',
+=======
+        'float16', 'float32', 'int64', 'int32', 'int8', 'uint8', 'bool'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }:
     test_class1('expand_as_v2', _typename)
     test_class2('expand_as_v2', _typename)

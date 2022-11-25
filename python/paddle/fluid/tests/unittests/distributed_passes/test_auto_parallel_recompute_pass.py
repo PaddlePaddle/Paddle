@@ -23,6 +23,7 @@ import paddle.distributed.fleet as fleet
 
 
 class TestRecomputePass(AutoPallelPassTestBase):
+
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
@@ -42,9 +43,16 @@ class TestRecomputePass(AutoPallelPassTestBase):
         fleet.init(is_collective=True, strategy=dist_strategy)
 
     def test_bs_8(self):
+<<<<<<< HEAD
         self.check_main(
             gpus=[0, 1], batch_size=8, sequence_len=512, vocab_size=1000
         )
+=======
+        self.check_main(gpus=[0, 1],
+                        batch_size=8,
+                        sequence_len=512,
+                        vocab_size=1000)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
         return self.get_gpt_model(
@@ -53,6 +61,7 @@ class TestRecomputePass(AutoPallelPassTestBase):
 
 
 class TestRecomputePassDP(TestRecomputePass):
+
     def get_model(self, place, batch_size, sequence_len, vocab_size):
         return self.get_gpt_model(
             "dp", place, batch_size, sequence_len, vocab_size

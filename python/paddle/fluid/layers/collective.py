@@ -42,6 +42,7 @@ def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
             dtype=x.dtype,
             type=x.type,
             persistable=x.persistable,
+<<<<<<< HEAD
             stop_gradient=True,
         )
     helper.append_op(
@@ -50,17 +51,37 @@ def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
         outputs={'Out': [out]},
         attrs={"reduce_type": red_typ_int, "sync_mode": sync_mode},
     )
+=======
+            stop_gradient=True)
+    helper.append_op(type='allreduce',
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]},
+                     attrs={
+                         "reduce_type": red_typ_int,
+                         "sync_mode": sync_mode
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
 def _broadcast(x, root, sync_mode=False):
     helper = LayerHelper("broadcast", **locals())
+<<<<<<< HEAD
     helper.append_op(
         type='broadcast',
         inputs={'X': [x]},
         outputs={'Out': [x]},
         attrs={"sync_mode": sync_mode, "root": root},
     )
+=======
+    helper.append_op(type='broadcast',
+                     inputs={'X': [x]},
+                     outputs={'Out': [x]},
+                     attrs={
+                         "sync_mode": sync_mode,
+                         "root": root
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return x
 
 
@@ -84,18 +105,29 @@ def _c_allreduce(
             persistable=x.persistable,
         )
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={'X': [x]},
         outputs={'Out': [out]},
         attrs={'ring_id': ring_id, 'use_calc_stream': use_calc_stream},
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]},
+                     attrs={
+                         'ring_id': ring_id,
+                         'use_calc_stream': use_calc_stream
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
 def _c_broadcast(x, root=0, ring_id=0, use_calc_stream=False):
     op_type = 'c_broadcast'
     helper = LayerHelper(op_type, **locals())
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={'X': [x]},
@@ -106,6 +138,16 @@ def _c_broadcast(x, root=0, ring_id=0, use_calc_stream=False):
             'use_calc_stream': use_calc_stream,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={'X': [x]},
+                     outputs={'Out': [x]},
+                     attrs={
+                         'root': root,
+                         'ring_id': ring_id,
+                         'use_calc_stream': use_calc_stream
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return x
 
 
@@ -136,6 +178,7 @@ def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
     out_shape = list(x.shape[:])
     if out_shape[0] > 0:
         out_shape[0] *= nranks
+<<<<<<< HEAD
     out = helper.create_variable(
         name=unique_name.generate_with_ignorable_key(
             '.'.join([x.name, op_type])
@@ -155,6 +198,22 @@ def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
             'use_calc_stream': use_calc_stream,
         },
     )
+=======
+    out = helper.create_variable(name=unique_name.generate_with_ignorable_key(
+        '.'.join([x.name, op_type])),
+                                 shape=out_shape,
+                                 dtype=x.dtype,
+                                 type=x.type,
+                                 persistable=x.persistable)
+    helper.append_op(type=op_type,
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]},
+                     attrs={
+                         'nranks': nranks,
+                         'ring_id': ring_id,
+                         'use_calc_stream': use_calc_stream
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -164,15 +223,21 @@ def _c_reducescatter(x, nranks, ring_id=0, use_calc_stream=False):
 
     if x.shape[0] > 0 and x.shape[0] % nranks != 0:
         raise ValueError(
+<<<<<<< HEAD
             'x.shape[0](%d) cannot be evenly divided by nranks(%d)'
             % (x.shape[0], nranks)
         )
+=======
+            'x.shape[0](%d) cannot be evenly divided by nranks(%d)' %
+            (x.shape[0], nranks))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     op_type = 'c_reducescatter'
     helper = LayerHelper(op_type, **locals())
     out_shape = list(x.shape[:])
     if out_shape[0] > 0:
         out_shape[0] //= nranks
+<<<<<<< HEAD
     out = helper.create_variable(
         name=unique_name.generate_with_ignorable_key(
             '.'.join([x.name, op_type])
@@ -192,6 +257,22 @@ def _c_reducescatter(x, nranks, ring_id=0, use_calc_stream=False):
             'use_calc_stream': use_calc_stream,
         },
     )
+=======
+    out = helper.create_variable(name=unique_name.generate_with_ignorable_key(
+        '.'.join([x.name, op_type])),
+                                 shape=out_shape,
+                                 dtype=x.dtype,
+                                 type=x.type,
+                                 persistable=x.persistable)
+    helper.append_op(type=op_type,
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]},
+                     attrs={
+                         'nranks': nranks,
+                         'ring_id': ring_id,
+                         'use_calc_stream': use_calc_stream
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -205,10 +286,17 @@ def _c_sync_calc_stream(x):
 def _c_sync_comm_stream(x, ring_id):
     op_type = 'c_sync_comm_stream'
     helper = LayerHelper(op_type, **locals())
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={'X': [x]},
         outputs={'Out': [x]},
         attrs={'ring_id': ring_id},
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={'X': [x]},
+                     outputs={'Out': [x]},
+                     attrs={'ring_id': ring_id})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return x

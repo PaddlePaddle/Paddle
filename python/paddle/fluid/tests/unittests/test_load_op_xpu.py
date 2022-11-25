@@ -16,6 +16,10 @@ import unittest
 import numpy as np
 import os
 import tempfile
+<<<<<<< HEAD
+=======
+from op_test import OpTest, randomize_probability
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
@@ -47,9 +51,15 @@ class TestLoadOpXpu(unittest.TestCase):
             )
         exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
+<<<<<<< HEAD
         paddle.distributed.io.save_persistables(
             exe, dirname=self.model_path, main_program=main_prog
         )
+=======
+        fluid.io.save_persistables(exe,
+                                   dirname=self.model_path,
+                                   main_program=main_prog)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def tearDown(self):
         self.temp_dir.cleanup()

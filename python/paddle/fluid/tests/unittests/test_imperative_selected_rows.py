@@ -23,7 +23,9 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(paddle.nn.Layer):
+
     def __init__(self, vocab_size, hidden_size, dtype):
+<<<<<<< HEAD
         super().__init__()
         self.emb = fluid.dygraph.Embedding(
             size=[vocab_size, hidden_size],
@@ -31,6 +33,13 @@ class SimpleNet(paddle.nn.Layer):
             param_attr='emb.w',
             is_sparse=True,
         )
+=======
+        super(SimpleNet, self).__init__()
+        self.emb = fluid.dygraph.Embedding(size=[vocab_size, hidden_size],
+                                           dtype=dtype,
+                                           param_attr='emb.w',
+                                           is_sparse=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, input):
         input_emb = self.emb(input)
@@ -38,6 +47,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestSimpleNet(unittest.TestCase):
+
     def func_selectedrows_gradient1(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -48,18 +58,28 @@ class TestSimpleNet(unittest.TestCase):
                 for sort_sum_gradient in [True, False]:
                     paddle.disable_static(place)
                     fluid.set_flags(
+<<<<<<< HEAD
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
+=======
+                        {'FLAGS_sort_sum_gradient': sort_sum_gradient})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = paddle.to_tensor(input_word)
 
                     simplenet = SimpleNet(20, 32, dtype)
+<<<<<<< HEAD
                     adam = SGDOptimizer(
                         learning_rate=0.001,
                         parameter_list=simplenet.parameters(),
                     )  # grad_clip=grad_clip
+=======
+                    adam = SGDOptimizer(learning_rate=0.001,
+                                        parameter_list=simplenet.parameters()
+                                        )  # grad_clip=grad_clip
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     input_emb, emb = simplenet(input)
 
                     self.assertIsNone(emb.weight.gradient())
@@ -92,19 +112,29 @@ class TestSimpleNet(unittest.TestCase):
             for sort_sum_gradient in [True, False]:
                 with fluid.dygraph.guard(place):
                     fluid.set_flags(
+<<<<<<< HEAD
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
+=======
+                        {'FLAGS_sort_sum_gradient': sort_sum_gradient})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = to_variable(input_word)
 
                     simplenet = SimpleNet(20, 32, "float32")
+<<<<<<< HEAD
                     adam = SGDOptimizer(
                         learning_rate=0.001,
                         parameter_list=simplenet.parameters(),
                         grad_clip=grad_clip,
                     )
+=======
+                    adam = SGDOptimizer(learning_rate=0.001,
+                                        parameter_list=simplenet.parameters(),
+                                        grad_clip=grad_clip)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     input_emb, emb = simplenet(input)
 
                     self.assertIsNone(emb.weight.gradient())

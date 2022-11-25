@@ -22,6 +22,7 @@ import os
 
 
 class TestGradientScale(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
@@ -29,19 +30,31 @@ class TestGradientScale(unittest.TestCase):
     def mlp(self, input_x, input_y, hid_dim=128, label_dim=2):
         fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
         fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
+<<<<<<< HEAD
         prediction = paddle.static.nn.fc(
             x=[fc_2], size=label_dim, activation='softmax'
         )
         cost = paddle.nn.functional.cross_entropy(
             input=prediction, label=input_y
         )
+=======
+        prediction = paddle.static.nn.fc(x=[fc_2],
+                                         size=label_dim,
+                                         activation='softmax')
+        cost = paddle.nn.functional.cross_entropy(input=prediction,
+                                                  label=input_y)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         avg_cost = paddle.mean(x=cost)
         return avg_cost
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
             "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+            "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def test_single_gpu(self):
@@ -53,12 +66,21 @@ class TestGradientScale(unittest.TestCase):
         strategy.gradient_scale_configs = {'scale_strategy': 'sum'}
         with fluid.program_guard(main_program, startup_program):
             with fluid.unique_name.guard():
+<<<<<<< HEAD
                 input_x = paddle.static.data(
                     name="x", shape=[None, 32], dtype='float32'
                 )
                 input_y = paddle.static.data(
                     name="y", shape=[None, 1], dtype='int64'
                 )
+=======
+                input_x = paddle.static.data(name="x",
+                                             shape=[None, 32],
+                                             dtype='float32')
+                input_y = paddle.static.data(name="y",
+                                             shape=[None, 1],
+                                             dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 cost = self.mlp(input_x=input_x, input_y=input_y)
                 output_name = cost.name
                 optimizer = fleet.distributed_optimizer(

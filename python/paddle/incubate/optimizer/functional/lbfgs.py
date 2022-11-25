@@ -97,10 +97,15 @@ def minimize_lbfgs(
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
+<<<<<<< HEAD
             "The dtype must be 'float32' or 'float64', but the specified is {}.".format(
                 dtype
             )
         )
+=======
+            "The dtype must be 'float32' or 'float64', but the specified is {}."
+            .format(dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     op_name = 'minimize_lbfgs'
     check_input_type(initial_position, 'initial_position', op_name)
@@ -125,9 +130,15 @@ def minimize_lbfgs(
     is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
+<<<<<<< HEAD
     history_size = paddle.full(
         shape=[1], fill_value=history_size, dtype='int64'
     )
+=======
+    history_size = paddle.full(shape=[1],
+                               fill_value=history_size,
+                               dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     head = paddle.full(shape=[1], fill_value=1, dtype='int64')
     tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
@@ -176,9 +187,15 @@ def minimize_lbfgs(
         # --------------   compute p_k by two-loop recursion    -------------- #
         q = paddle.assign(g1)
         # In a array circle, the index may out of range, so must use mod.
+<<<<<<< HEAD
         i = paddle.full(
             shape=[1], fill_value=(head - 1).mod(history_size), dtype='int64'
         )
+=======
+        i = paddle.full(shape=[1],
+                        fill_value=(head - 1).mod(history_size),
+                        dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def cond(i, q):
             return i != tail
@@ -219,10 +236,15 @@ def minimize_lbfgs(
             )
         else:
             raise NotImplementedError(
+<<<<<<< HEAD
                 "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".format(
                     line_search_fn
                 )
             )
+=======
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'"
+                .format(line_search_fn))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
 
         # --------------   update sk_vec, yk_vec, rhok_vec    -------------- #
@@ -231,10 +253,16 @@ def minimize_lbfgs(
 
         rhok_inv = paddle.dot(yk, sk)
         rhok = paddle.static.nn.cond(
+<<<<<<< HEAD
             rhok_inv == 0.0,
             lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
             lambda: 1.0 / rhok_inv,
         )
+=======
+            rhok_inv == 0.,
+            lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
+            lambda: 1. / rhok_inv)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         sk_vec[head] = sk
         yk_vec[head] = yk
@@ -255,8 +283,13 @@ def minimize_lbfgs(
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(
+<<<<<<< HEAD
             done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change), done
         )
+=======
+            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change),
+            done)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
         paddle.assign(done | (alpha == 0.0), done)
@@ -276,6 +309,7 @@ def minimize_lbfgs(
             tail,
         ]
 
+<<<<<<< HEAD
     paddle.static.nn.while_loop(
         cond=cond,
         body=body,
@@ -294,4 +328,12 @@ def minimize_lbfgs(
             tail,
         ],
     )
+=======
+    paddle.static.nn.while_loop(cond=cond,
+                                body=body,
+                                loop_vars=[
+                                    k, done, is_converge, num_func_calls, value,
+                                    xk, g1, sk_vec, yk_vec, rhok_vec, head, tail
+                                ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return is_converge, num_func_calls, xk, value, g1

@@ -22,7 +22,12 @@ import random
 import time
 
 
+<<<<<<< HEAD
 class PodSepc:
+=======
+class PodSepc(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         self._name = ''.join(
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
@@ -43,13 +48,20 @@ class PodSepc:
 
 
 class Pod(PodSepc):
+
     def __init__(self):
         super().__init__()
 
     def __str__(self):
+<<<<<<< HEAD
         return "Pod: {}, replicas {}, status {}".format(
             self.name, self.replicas, self.status
         )
+=======
+        return "Pod: {}, replicas {}, status {}".format(self.name,
+                                                        self.replicas,
+                                                        self.status)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def failed_container(self):
         cs = []

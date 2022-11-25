@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertStackTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -39,6 +40,7 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 return np.random.random([batch, 3, 24, 24]).astype(np.float32)
@@ -93,6 +95,7 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "stack_input1": TensorConfig(
                                 data_gen=partial(generate_input1, dics, batch)
                             ),
@@ -102,6 +105,17 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                             "stack_input3": TensorConfig(
                                 data_gen=partial(generate_input3, dics, batch)
                             ),
+=======
+                            "stack_input1":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)),
+                            "stack_input2":
+                            TensorConfig(
+                                data_gen=partial(generate_input2, dics, batch)),
+                            "stack_input3":
+                            TensorConfig(
+                                data_gen=partial(generate_input3, dics, batch))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         },
                         outputs=["stack_output"],
                     )
@@ -109,8 +123,13 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -206,12 +225,19 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def add_skip_trt_case(self):
         pass

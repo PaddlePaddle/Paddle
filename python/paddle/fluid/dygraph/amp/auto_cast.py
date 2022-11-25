@@ -222,6 +222,7 @@ def pure_fp16_initialize(models):
             ):
                 layer._amp_decorate(dtype='float16')
                 continue
+<<<<<<< HEAD
             layer._to_impl(
                 dtype='float16', include_sublayers=False, floating_only=True
             )
@@ -235,6 +236,15 @@ def pure_bf16_initialize(models):
             layer._to_impl(
                 dtype='bfloat16', include_sublayers=False, floating_only=True
             )
+=======
+            if isinstance(layer, (paddle.incubate.nn.FusedFeedForward,
+                                  paddle.incubate.nn.FusedMultiHeadAttention)):
+                layer._amp_decorate(dtype='float16')
+                continue
+            layer._to_impl(dtype='float16',
+                           include_sublayers=False,
+                           floating_only=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return models
 
 
@@ -242,10 +252,15 @@ def check_models(models):
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
+<<<<<<< HEAD
                 "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".format(
                     type(model)
                 )
             )
+=======
+                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}."
+                .format(type(model)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
                 "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
@@ -255,6 +270,7 @@ def check_models(models):
 def check_optimizers(optimizers):
     for optimizer in optimizers:
         if not isinstance(
+<<<<<<< HEAD
             optimizer,
             (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
         ):
@@ -263,6 +279,13 @@ def check_optimizers(optimizers):
                     type(optimizer)
                 )
             )
+=======
+                optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
+            raise RuntimeError(
+                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}."
+                .format(type(optimizer)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @signature_safe_contextmanager
@@ -343,6 +366,7 @@ def amp_guard(
     # check device_type:
     # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
+<<<<<<< HEAD
     if enable and not (
         tracer._expected_place.is_gpu_place()
         or tracer._expected_place.is_xpu_place()
@@ -350,6 +374,13 @@ def amp_guard(
         or tracer._expected_place.is_npu_place()
         or tracer._expected_place.is_custom_place()
     ):
+=======
+    if enable and not (tracer._expected_place.is_gpu_place()
+                       or tracer._expected_place.is_xpu_place()
+                       or tracer._expected_place.is_mlu_place()
+                       or tracer._expected_place.is_npu_place()
+                       or tracer._expected_place.is_custom_place()):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         warnings.warn(
             'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place
@@ -463,7 +494,12 @@ def amp_guard(
             tracer._amp_dtype = original_amp_dtype
 
 
+<<<<<<< HEAD
 class StateDictHook:
+=======
+class StateDictHook(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, save_dtype):
         self._save_dtype = save_dtype
 
@@ -583,9 +619,14 @@ def amp_decorate(
         # check optimizers
         optimizers_is_list = False
         if isinstance(
+<<<<<<< HEAD
             optimizers,
             (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
         ):
+=======
+                optimizers,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             optimizers_is_list = False
             optimizers = [optimizers]
             check_optimizers(optimizers)

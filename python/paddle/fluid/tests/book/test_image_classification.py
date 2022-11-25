@@ -18,16 +18,23 @@ import os
 import sys
 import tempfile
 import unittest
+<<<<<<< HEAD
 
 import numpy
 
 import paddle
 import paddle.fluid as fluid
+=======
+import os
+import tempfile
+import numpy as np
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 def resnet_cifar10(input, depth=32):
+<<<<<<< HEAD
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
@@ -40,6 +47,23 @@ def resnet_cifar10(input, depth=32):
             act=None,
             bias_attr=bias_attr,
         )
+=======
+
+    def conv_bn_layer(input,
+                      ch_out,
+                      filter_size,
+                      stride,
+                      padding,
+                      act='relu',
+                      bias_attr=False):
+        tmp = fluid.layers.conv2d(input=input,
+                                  filter_size=filter_size,
+                                  num_filters=ch_out,
+                                  stride=stride,
+                                  padding=padding,
+                                  act=None,
+                                  bias_attr=bias_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return fluid.layers.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
@@ -62,6 +86,7 @@ def resnet_cifar10(input, depth=32):
 
     assert (depth - 2) % 6 == 0
     n = (depth - 2) // 6
+<<<<<<< HEAD
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1
     )
@@ -71,11 +96,27 @@ def resnet_cifar10(input, depth=32):
     pool = fluid.layers.pool2d(
         input=res3, pool_size=8, pool_type='avg', pool_stride=1
     )
+=======
+    conv1 = conv_bn_layer(input=input,
+                          ch_out=16,
+                          filter_size=3,
+                          stride=1,
+                          padding=1)
+    res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
+    res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+    res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    pool = fluid.layers.pool2d(input=res3,
+                               pool_size=8,
+                               pool_type='avg',
+                               pool_stride=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return pool
 
 
 def vgg16_bn_drop(input):
+
     def conv_block(input, num_filter, groups, dropouts):
+<<<<<<< HEAD
         return fluid.nets.img_conv_group(
             input=input,
             pool_size=2,
@@ -87,6 +128,17 @@ def vgg16_bn_drop(input):
             conv_batchnorm_drop_rate=dropouts,
             pool_type='max',
         )
+=======
+        return fluid.nets.img_conv_group(input=input,
+                                         pool_size=2,
+                                         pool_stride=2,
+                                         conv_num_filter=[num_filter] * groups,
+                                         conv_filter_size=3,
+                                         conv_act='relu',
+                                         conv_with_batchnorm=True,
+                                         conv_batchnorm_drop_rate=dropouts,
+                                         pool_type='max')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     conv1 = conv_block(input, 64, 2, [0.3, 0])
     conv2 = conv_block(conv1, 128, 2, [0.4, 0])
@@ -132,6 +184,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     BATCH_SIZE = 128
     PASS_NUM = 1
 
+<<<<<<< HEAD
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.cifar.train10(), buf_size=128 * 10
@@ -142,6 +195,14 @@ def train(net_type, use_cuda, save_dirname, is_local):
     test_reader = paddle.batch(
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE
     )
+=======
+    train_reader = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.cifar.train10(), buf_size=128 * 10),
+                                batch_size=BATCH_SIZE)
+
+    test_reader = paddle.batch(paddle.dataset.cifar.test10(),
+                               batch_size=BATCH_SIZE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
@@ -173,6 +234,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
+<<<<<<< HEAD
                         'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.format(
                             pass_id,
                             batch_id + 1,
@@ -180,6 +242,11 @@ def train(net_type, use_cuda, save_dirname, is_local):
                             float(acc_value),
                         )
                     )
+=======
+                        'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'
+                        .format(pass_id, batch_id + 1, float(avg_loss_value),
+                                float(acc_value)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     if acc_value > 0.01:  # Low threshold for speeding up CI
                         fluid.io.save_inference_model(
@@ -263,8 +330,12 @@ def main(net_type, use_cuda, is_local=True):
     # Directory for saving the trained model
     temp_dir = tempfile.TemporaryDirectory()
     save_dirname = os.path.join(
+<<<<<<< HEAD
         temp_dir.name, "image_classification_" + net_type + ".inference.model"
     )
+=======
+        temp_dir.name, "image_classification_" + net_type + ".inference.model")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     train(net_type, use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
@@ -272,6 +343,7 @@ def main(net_type, use_cuda, is_local=True):
 
 
 class TestImageClassification(unittest.TestCase):
+
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
             main('vgg', use_cuda=True)

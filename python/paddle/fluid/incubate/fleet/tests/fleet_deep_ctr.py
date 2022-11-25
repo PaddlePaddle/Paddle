@@ -30,9 +30,15 @@ from paddle.fluid.log_helper import get_logger
 
 import ctr_dataset_reader
 
+<<<<<<< HEAD
 logger = get_logger(
     "fluid", logging.INFO, fmt='%(asctime)s - %(levelname)s - %(message)s'
 )
+=======
+logger = get_logger("fluid",
+                    logging.INFO,
+                    fmt='%(asctime)s - %(levelname)s - %(message)s')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def parse_args():
@@ -55,6 +61,7 @@ def parse_args():
         '--current_endpoint',
         type=str,
         default='127.0.0.1:6000',
+<<<<<<< HEAD
         help='The path for model to store (default: 127.0.0.1:6000)',
     )
     parser.add_argument(
@@ -69,6 +76,17 @@ def parse_args():
         default=1,
         help='The num of trainers, (default: 1)',
     )
+=======
+        help='The path for model to store (default: 127.0.0.1:6000)')
+    parser.add_argument('--trainer_id',
+                        type=int,
+                        default=0,
+                        help='The path for model to store (default: models)')
+    parser.add_argument('--trainers',
+                        type=int,
+                        default=1,
+                        help='The num of trainers, (default: 1)')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return parser.parse_args()
 
@@ -80,6 +98,7 @@ def model():
         train_file_path,
     ) = ctr_dataset_reader.prepare_data()
     """ network definition """
+<<<<<<< HEAD
     dnn_data = fluid.layers.data(
         name="dnn_data",
         shape=[-1, 1],
@@ -101,6 +120,23 @@ def model():
         lod_level=0,
         append_batch_size=False,
     )
+=======
+    dnn_data = fluid.layers.data(name="dnn_data",
+                                 shape=[-1, 1],
+                                 dtype="int64",
+                                 lod_level=1,
+                                 append_batch_size=False)
+    lr_data = fluid.layers.data(name="lr_data",
+                                shape=[-1, 1],
+                                dtype="int64",
+                                lod_level=1,
+                                append_batch_size=False)
+    label = fluid.layers.data(name="click",
+                              shape=[-1, 1],
+                              dtype="int64",
+                              lod_level=0,
+                              append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     datas = [dnn_data, lr_data, label]
 
@@ -123,11 +159,17 @@ def model():
             input=dnn_out,
             size=dim,
             act="relu",
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)
             ),
             name='dnn-fc-%d' % i,
         )
+=======
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.01)),
+            name='dnn-fc-%d' % i)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         dnn_out = fc
 
     # build lr model
@@ -212,6 +254,7 @@ def train(args):
             logger.info("epoch {} start".format(epoch_id))
             pass_start = time.time()
             dataset.set_filelist(filelist)
+<<<<<<< HEAD
             exe.train_from_dataset(
                 program=fleet.main_program,
                 dataset=dataset,
@@ -224,6 +267,17 @@ def train(args):
             logger.info(
                 "epoch {} finished, pass_time {}".format(epoch_id, pass_time)
             )
+=======
+            exe.train_from_dataset(program=fleet.main_program,
+                                   dataset=dataset,
+                                   fetch_list=[avg_cost],
+                                   fetch_info=["cost"],
+                                   print_period=100,
+                                   debug=False)
+            pass_time = time.time() - pass_start
+            logger.info("epoch {} finished, pass_time {}".format(
+                epoch_id, pass_time))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         fleet.stop_worker()
 
 

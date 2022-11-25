@@ -18,6 +18,7 @@ from ps_pass_test_base import PsPassTestBase
 
 
 class TestPsServerPass(PsPassTestBase):
+
     def init(self):
         pass
 

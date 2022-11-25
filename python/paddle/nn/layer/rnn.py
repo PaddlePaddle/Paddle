@@ -175,6 +175,16 @@ class RNNCellBase(Layer):
         batch_ref = flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
+<<<<<<< HEAD
+=======
+            if sys.version_info < (3, ):
+                integer_types = (
+                    int,
+                    long,
+                )
+            else:
+                integer_types = (int, )
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             """For shape, list/tuple of integer is the finest-grained objection"""
             if isinstance(seq, list) or isinstance(seq, tuple):
                 if reduce(
@@ -184,9 +194,17 @@ class RNNCellBase(Layer):
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
+<<<<<<< HEAD
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
         class Shape:
+=======
+            return (isinstance(seq, Sequence)
+                    and not isinstance(seq, six.string_types))
+
+        class Shape(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
@@ -207,6 +225,7 @@ class RNNCellBase(Layer):
             states_dtypes = map_structure(lambda shape: dtype, states_shapes)
 
         init_states = map_structure(
+<<<<<<< HEAD
             lambda shape, dtype: paddle.fluid.layers.fill_constant_batch_size_like(
                 input=batch_ref,
                 shape=shape.shape,
@@ -217,6 +236,15 @@ class RNNCellBase(Layer):
             states_shapes,
             states_dtypes,
         )
+=======
+            lambda shape, dtype: paddle.fluid.layers.
+            fill_constant_batch_size_like(input=batch_ref,
+                                          shape=shape.shape,
+                                          dtype=dtype,
+                                          value=init_value,
+                                          input_dim_idx=batch_dim_idx),
+            states_shapes, states_dtypes)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return init_states
 
     @property
@@ -333,10 +361,15 @@ class SimpleRNNCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
+<<<<<<< HEAD
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
                     self.__class__.__name__, hidden_size
                 )
             )
+=======
+                "hidden_size of {} must be greater than 0, but now equals to {}"
+                .format(self.__class__.__name__, hidden_size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (hidden_size, input_size),
@@ -492,10 +525,15 @@ class LSTMCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
+<<<<<<< HEAD
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
                     self.__class__.__name__, hidden_size
                 )
             )
+=======
+                "hidden_size of {} must be greater than 0, but now equals to {}"
+                .format(self.__class__.__name__, hidden_size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (4 * hidden_size, input_size),
@@ -651,10 +689,15 @@ class GRUCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
+<<<<<<< HEAD
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
                     self.__class__.__name__, hidden_size
                 )
             )
+=======
+                "hidden_size of {} must be greater than 0, but now equals to {}"
+                .format(self.__class__.__name__, hidden_size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (3 * hidden_size, input_size),
@@ -998,11 +1041,17 @@ class RNNBase(LayerList):
             # add both to main_program and startup_program for static-graph.
             # Use Constant initializer to avoid make effect on random generator.
             self._flat_weight = [
+<<<<<<< HEAD
                 self.create_parameter(
                     shape=[np.sum(shape)],
                     dtype=params[0].dtype,
                     default_initializer=I.Constant(0.0),
                 )
+=======
+                self.create_parameter(shape=[np.sum(shape)],
+                                      dtype=params[0].dtype,
+                                      default_initializer=I.Constant(0.0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             ]
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
@@ -1028,6 +1077,7 @@ class RNNBase(LayerList):
                 default_startup_program(), default_startup_program()
             ):
                 with paddle.no_grad():
+<<<<<<< HEAD
                     self._helper.append_op(
                         type="coalesce_tensor",
                         inputs={"Input": self._all_weights},
@@ -1041,6 +1091,19 @@ class RNNBase(LayerList):
                             "dtype": params[0].dtype,
                         },
                     )
+=======
+                    self._helper.append_op(type="coalesce_tensor",
+                                           inputs={"Input": self._all_weights},
+                                           outputs={
+                                               "Output": self._all_weights,
+                                               "FusedOutput": self._flat_weight
+                                           },
+                                           attrs={
+                                               "copy_data": True,
+                                               "use_align": False,
+                                               "dtype": params[0].dtype
+                                           })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
@@ -1118,6 +1181,7 @@ class RNNBase(LayerList):
                 'DropoutState': self._dropout_state,
             }
 
+<<<<<<< HEAD
             self._helper.append_op(
                 type="rnn", inputs=inputs, outputs=outputs, attrs=attrs
             )
@@ -1127,6 +1191,15 @@ class RNNBase(LayerList):
             if not self.time_major
             else out
         )
+=======
+            self._helper.append_op(type="rnn",
+                                   inputs=inputs,
+                                   outputs=outputs,
+                                   attrs=attrs)
+
+        out = paddle.tensor.transpose(out,
+                                      [1, 0, 2]) if not self.time_major else out
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return out, tuple(state) if len(state) > 1 else state[0]
 
     def forward(self, inputs, initial_states=None, sequence_length=None):
@@ -1153,9 +1226,14 @@ class RNNBase(LayerList):
                 else initial_states
             )
 
+<<<<<<< HEAD
         if self.could_use_cudnn and (
             not paddle.device.is_compiled_with_rocm() or sequence_length is None
         ):
+=======
+        if self.could_use_cudnn and (not paddle.device.is_compiled_with_rocm()
+                                     or sequence_length is None):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             # Add CPU kernel and dispatch in backend later
             return self._cudnn_impl(inputs, initial_states, sequence_length)
 
@@ -1166,12 +1244,19 @@ class RNNBase(LayerList):
 
         for i, rnn_layer in enumerate(self):
             if i > 0:
+<<<<<<< HEAD
                 inputs = F.dropout(
                     inputs,
                     self.dropout,
                     training=self.training,
                     mode="upscale_in_train",
                 )
+=======
+                inputs = F.dropout(inputs,
+                                   self.dropout,
+                                   training=self.training,
+                                   mode="upscale_in_train")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             outputs, final_state = rnn_layer(inputs, states[i], sequence_length)
             final_states.append(final_state)
             inputs = outputs
@@ -1299,6 +1384,7 @@ class SimpleRNN(RNNBase):
         else:
             raise ValueError("Unknown activation '{}'".format(activation))
         self.activation = activation
+<<<<<<< HEAD
         super().__init__(
             mode,
             input_size,
@@ -1312,6 +1398,12 @@ class SimpleRNN(RNNBase):
             bias_ih_attr,
             bias_hh_attr,
         )
+=======
+        super(SimpleRNN,
+              self).__init__(mode, input_size, hidden_size, num_layers,
+                             direction, time_major, dropout, weight_ih_attr,
+                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class LSTM(RNNBase):
@@ -1411,6 +1503,7 @@ class LSTM(RNNBase):
 
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         input_size,
@@ -1438,6 +1531,24 @@ class LSTM(RNNBase):
             bias_ih_attr,
             bias_hh_attr,
         )
+=======
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 direction="forward",
+                 time_major=False,
+                 dropout=0.,
+                 weight_ih_attr=None,
+                 weight_hh_attr=None,
+                 bias_ih_attr=None,
+                 bias_hh_attr=None,
+                 name=None):
+        super(LSTM,
+              self).__init__("LSTM", input_size, hidden_size, num_layers,
+                             direction, time_major, dropout, weight_ih_attr,
+                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class GRU(RNNBase):
@@ -1530,6 +1641,7 @@ class GRU(RNNBase):
 
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         input_size,
@@ -1557,3 +1669,21 @@ class GRU(RNNBase):
             bias_ih_attr,
             bias_hh_attr,
         )
+=======
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 direction="forward",
+                 time_major=False,
+                 dropout=0.,
+                 weight_ih_attr=None,
+                 weight_hh_attr=None,
+                 bias_ih_attr=None,
+                 bias_hh_attr=None,
+                 name=None):
+        super(GRU,
+              self).__init__("GRU", input_size, hidden_size, num_layers,
+                             direction, time_major, dropout, weight_ih_attr,
+                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

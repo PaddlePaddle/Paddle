@@ -17,14 +17,29 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import compute_compatible_and_update_dim_mapping
+<<<<<<< HEAD
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from .dist_default import DistributedDefaultImpl0
 from ..cost import FillConstantBatchSizeLikeOpCost
 from ..cost import build_comp_desc_from_dist_op
 from ..cost import build_comp_costs_from_descs
+=======
+from ..utils import set_dist_op_desc_original_id
+from paddle.fluid import core, unique_name
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import Program, Parameter, Variable, program_guard
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from .dist_default import DistributedDefaultImpl0
+from ..cost import FillConstantBatchSizeLikeOpCost
+from ..cost import build_comp_desc_from_dist_op, build_dp_costs
+from ..cost import build_comp_costs_from_descs
+from ..cost import AllreduceSumOpCost
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class DistributedFillConstantBatchSizeLike(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -35,6 +50,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True
@@ -44,8 +60,12 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         cost = None
         if int(op_role) == int(OpRole.Backward):
             raise ValueError(
+<<<<<<< HEAD
                 "The fill_constant_batch_size_like has no grad op."
             )
+=======
+                "The fill_constant_batch_size_like has no grad op.")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             cost = self.calc_fwd_cost(dist_op, ctx, cluster)
         assert cost is not None
@@ -53,6 +73,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
 
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
@@ -65,6 +86,15 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
             desc_mapping,
             cluster,
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_descs(
+            FillConstantBatchSizeLikeOpCost, ctx, processes, desc_mapping,
+            cluster)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         res_cost = [cost_mapping]
         return res_cost

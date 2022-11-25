@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 import unittest
 import numpy as np
@@ -19,21 +23,35 @@ import sys
 sys.path.append("..")
 
 import paddle
+<<<<<<< HEAD
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
     XPUOpTestWrapper,
 )
+=======
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 class XPUTestReduceAmaxOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         self.op_name = 'reduce_amin'
 
     class XPUTestReduceAmaxBase(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.set_case()
@@ -41,7 +59,11 @@ class XPUTestReduceAmaxOp(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'reduce_amin'
             self.shape = (20, 10)
+<<<<<<< HEAD
             self.attrs = {'use_xpu': True, 'keep_dim': False, 'dim': (1,)}
+=======
+            self.attrs = {'use_xpu': True, 'keep_dim': False, 'dim': (1, )}
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.inputs = {
                 'X': np.random.randint(0, 100, self.shape).astype("float32")
@@ -49,11 +71,18 @@ class XPUTestReduceAmaxOp(XPUOpTestWrapper):
 
             expect_intput = self.inputs['X']
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.amin(
                     expect_intput,
                     axis=self.attrs['dim'],
                     keepdims=self.attrs['keep_dim'],
                 )
+=======
+                'Out':
+                np.amin(expect_intput,
+                        axis=self.attrs['dim'],
+                        keepdims=self.attrs['keep_dim'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
         def test_check_output(self):

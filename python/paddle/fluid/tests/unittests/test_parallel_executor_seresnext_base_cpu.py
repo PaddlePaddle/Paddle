@@ -19,11 +19,13 @@ from functools import partial
 
 
 class TestResnetCPU(TestResnetBase):
+
     def test_seresnext_with_learning_rate_decay(self):
         # NOTE(zcd): This test is compare the result of use parallel_executor
         # and executor, and the result of drop_out op and batch_norm op in
         # this two executor have diff, so the two ops should be removed
         # from the model.
+<<<<<<< HEAD
         check_func = partial(
             self.check_network_convergence,
             optimizer=seresnext_net.optimizer,
@@ -35,6 +37,15 @@ class TestResnetCPU(TestResnetBase):
             compare_separately=False,
             delta2=1e-3,
         )
+=======
+        check_func = partial(self.check_network_convergence,
+                             optimizer=seresnext_net.optimizer,
+                             use_parallel_executor=False)
+        self._compare_result_with_origin_model(check_func,
+                                               use_device=DeviceType.CPU,
+                                               compare_separately=False,
+                                               delta2=1e-3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

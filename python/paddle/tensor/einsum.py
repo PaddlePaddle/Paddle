@@ -163,8 +163,13 @@ def build_view(in_labels, out_labels):
         # fill the broadcast dimension indices from right to left.
         if s:
             for ax, dim in zip(
+<<<<<<< HEAD
                 range(start, end)[::-1], range(s.start(), s.end())[::-1]
             ):
+=======
+                    range(start, end)[::-1],
+                    range(s.start(), s.end())[::-1]):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 inv_map[ax] = dim
 
     # Now work on non-broadcast dimensions
@@ -428,6 +433,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
             plan.add_step(step)
             step = squeeze, [var2], var2, [-1, -2]
             plan.add_step(step)
+<<<<<<< HEAD
         elif j1 + j2 == 0 and -1 not in np.concatenate(
             (op1_vshape[K], op2_vshape[K])
         ):
@@ -445,6 +451,18 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
                 var2,
                 list(op2_vshape[I]) + [1] + [np.prod(op2_vshape[K])],
             )
+=======
+        elif j1 + j2 == 0 and not -1 in np.concatenate(
+            (op1_vshape[K], op2_vshape[K])):
+            assert all(op1_vshape[K] == op2_vshape[K])
+            step = reshape, [
+                var1
+            ], var1, list(op1_vshape[I]) + [1] + [np.prod(op1_vshape[K])]
+            plan.add_step(step)
+            step = reshape, [
+                var2
+            ], var2, list(op2_vshape[I]) + [1] + [np.prod(op2_vshape[K])]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             plan.add_step(step)
             step = matmul, [var1, var2], var2, False, True
             plan.add_step(step)
@@ -489,9 +507,14 @@ def plan_summation(
 
     I, K, J1, J2 = list(range(n_bcast)), [], [], []
 
+<<<<<<< HEAD
     for ax, dim1, dim2 in zip(
         range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]
     ):
+=======
+    for ax, dim1, dim2 in zip(range(n_bcast, ndim), op1_view[n_bcast:],
+                              op2_view[n_bcast:]):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
@@ -557,6 +580,7 @@ def plan_broadcast(plan, operands, nop_axes):
 
 
 class Plan:
+
     def __init__(self):
         self.env = {}
         self.steps = []
@@ -723,9 +747,17 @@ def preprocess(equation, *operands):
         f"but found {len(lhs.split(','))} segments in the label equation."
     )
 
+<<<<<<< HEAD
     assert not (
         '...' in lhs and '...' not in rhs
     ), 'Invalid equation: missing ellipsis in output labels.'
+=======
+    assert not (len(list(filter(has_duplicated_labels, lhs.split(',')))) >
+                0), f'Duplicate labels are not supported.'
+
+    assert not has_duplicated_labels(
+        rhs), f'Invalid equation: duplicate output labels are found.'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return lhs, rhs, labels
 
@@ -760,6 +792,7 @@ def parse_fake_shape(equation, operands, labels):
 
 
 def rhs_inference(lhs):
+
     def is_free(key):
         return cnt.get(key) == 1 and key not in ['.', ',']
 
@@ -830,6 +863,7 @@ def gen_einsum_op(equation, *operands):
     """
     assert len(operands) <= 2, "Only support two operands in EinsumOp."
     if in_dygraph_mode():
+<<<<<<< HEAD
         return _C_ops.einsum(operands, equation)[0]
 
     if _in_legacy_dygraph():
@@ -837,6 +871,14 @@ def gen_einsum_op(equation, *operands):
         return _legacy_C_ops.einsum(
             operands, len(operands), len(operands), 'equation', equation
         )[0]
+=======
+        return _C_ops.final_state_einsum(operands, equation)[0]
+
+    if _in_legacy_dygraph():
+        # dygraph
+        return _C_ops.einsum(operands, len(operands), len(operands), 'equation',
+                             equation)[0]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     for inp in operands:
         check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
@@ -853,12 +895,23 @@ def gen_einsum_op(equation, *operands):
         helper.create_variable_for_type_inference(dtype=operands[0].dtype)
         for i in range(len(operands))
     ]
+<<<<<<< HEAD
     helper.append_op(
         type='einsum',
         inputs={'Operands': operands},
         outputs={'Out': out, "InnerCache": caches, "XShape": xshape},
         attrs=attrs,
     )
+=======
+    helper.append_op(type='einsum',
+                     inputs={'Operands': operands},
+                     outputs={
+                         'Out': out,
+                         "InnerCache": caches,
+                         "XShape": xshape
+                     },
+                     attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -1022,7 +1075,10 @@ def einsum(equation, *operands):
 
     """
     import os
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if int(os.environ.get('FLAGS_new_einsum', "1")):
         return einsum_v2(equation, *operands)
 
@@ -1068,11 +1124,17 @@ def einsum(equation, *operands):
     #   Counting how many non-trivial dimensions remain for each ax
 
     g_labels, g_view, g_nout, g_count = build_global_view(
+<<<<<<< HEAD
         nop_labels, rhs, n_bcast_dims
     )
     g_shape, g_supports = build_global_shape(
         g_view, g_labels, [op.shape for op in operands]
     )
+=======
+        nop_labels, rhs, n_bcast_dims)
+    g_shape, g_supports = build_global_shape(g_view, g_labels,
+                                             [op.shape for op in operands])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # Now we're ready to build up an execution plan
     args = operands, g_view, g_shape, g_supports, g_count, n_bcast_dims

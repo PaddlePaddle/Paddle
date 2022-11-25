@@ -43,6 +43,7 @@ def common_setup(self, index_num, nshards, shard_id, ignore_value):
 
 
 class TestShardIndexShardId0Op(OpTest):
+
     def setUp(self):
         common_setup(self, 20, 2, 0, -1)
 
@@ -51,6 +52,7 @@ class TestShardIndexShardId0Op(OpTest):
 
 
 class TestShardIndexShardId1Op(OpTest):
+
     def setUp(self):
         common_setup(self, 20, 2, 1, -1)
 
@@ -59,6 +61,7 @@ class TestShardIndexShardId1Op(OpTest):
 
 
 class TestShardIndexIgnoreValueOp(OpTest):
+
     def setUp(self):
         common_setup(self, 20, 2, 0, -2)
 
@@ -67,6 +70,7 @@ class TestShardIndexIgnoreValueOp(OpTest):
 
 
 class TestShardIndexNotEvenlyDividedOp(OpTest):
+
     def setUp(self):
         common_setup(self, 15, 2, 1, -1)
 

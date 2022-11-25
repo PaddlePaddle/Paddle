@@ -21,6 +21,7 @@ paddle.enable_static()
 
 
 class TestNpuPlace(unittest.TestCase):
+
     def test(self):
         p = core.Place()
         p.set_place(paddle.NPUPlace(0))
@@ -30,6 +31,7 @@ class TestNpuPlace(unittest.TestCase):
 
 
 class TestNpuPlaceError(unittest.TestCase):
+
     def test_static(self):
         # NPU is not supported in ParallelExecutor
         prog = paddle.static.Program()

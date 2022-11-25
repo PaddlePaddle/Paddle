@@ -62,25 +62,39 @@ def download_files():
 
 
 class TestDistTransformer2x2Sync(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
 
     def test_dist_train(self):
         download_files()
+<<<<<<< HEAD
         self.check_with_place(
             "dist_transformer.py", delta=1e-5, check_error_log=False
         )
+=======
+        self.check_with_place("dist_transformer.py",
+                              delta=1e-5,
+                              check_error_log=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestDistTransformer2x2Async(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
 
     def test_dist_train(self):
         download_files()
+<<<<<<< HEAD
         self.check_with_place(
             "dist_transformer.py", delta=1.0, check_error_log=False
         )
+=======
+        self.check_with_place("dist_transformer.py",
+                              delta=1.0,
+                              check_error_log=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

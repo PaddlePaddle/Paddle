@@ -17,7 +17,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+=======
+#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 DECLARE_int32(min_loss_scaling);
@@ -30,16 +34,28 @@ using Tensor = phi::DenseTensor;
 template <typename T>
 void Update(const platform::NPUDeviceContext& ctx,
             const std::vector<bool> found_inf_vec,
+<<<<<<< HEAD
             const phi::DenseTensor* pre_loss_scaling_tensor,
             const phi::DenseTensor* good_in_tensor,
             const phi::DenseTensor* bad_in_tensor,
+=======
+            const Tensor* pre_loss_scaling_tensor,
+            const Tensor* good_in_tensor,
+            const Tensor* bad_in_tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             const int incr_every_n_steps,
             const int decr_every_n_nan_or_inf,
             const float incr_ratio,
             const float decr_ratio,
+<<<<<<< HEAD
             phi::DenseTensor* updated_loss_scaling_tensor,
             phi::DenseTensor* good_out_tensor,
             phi::DenseTensor* bad_out_tensor) {
+=======
+            Tensor* updated_loss_scaling_tensor,
+            Tensor* good_out_tensor,
+            Tensor* bad_out_tensor) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto place = ctx.GetPlace();
   auto stream = ctx.stream();
   if (found_inf_vec[0]) {
@@ -150,6 +166,7 @@ void Update(const platform::NPUDeviceContext& ctx,
 }
 
 template <typename T>
+<<<<<<< HEAD
 class UpdateLossScalingFunctor {
  public:
   void operator()(const platform::NPUDeviceContext& dev_ctx,
@@ -157,13 +174,30 @@ class UpdateLossScalingFunctor {
                   const phi::DenseTensor* pre_loss_scaling_tensor,
                   const phi::DenseTensor* good_in_tensor,
                   const phi::DenseTensor* bad_in_tensor,
+=======
+class UpdateLossScalingFunctor<platform::NPUDeviceContext,
+                               T,
+                               /*IsFoundInfOnCPU=*/true> {
+ public:
+  void operator()(const platform::NPUDeviceContext& dev_ctx,
+                  const std::vector<bool> found_inf_vec,
+                  const Tensor* pre_loss_scaling_tensor,
+                  const Tensor* good_in_tensor,
+                  const Tensor* bad_in_tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   const int incr_every_n_steps,
                   const int decr_every_n_nan_or_inf,
                   const float incr_ratio,
                   const float decr_ratio,
+<<<<<<< HEAD
                   phi::DenseTensor* updated_loss_scaling_tensor,
                   phi::DenseTensor* good_out_tensor,
                   phi::DenseTensor* bad_out_tensor) const {
+=======
+                  Tensor* updated_loss_scaling_tensor,
+                  Tensor* good_out_tensor,
+                  Tensor* bad_out_tensor) const {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Update<T>(dev_ctx,
               found_inf_vec,
               pre_loss_scaling_tensor,
@@ -191,7 +225,11 @@ class LazyZerosNPU {
     }
     auto place = dev_ctx.GetPlace();
     auto stream = dev_ctx.stream();
+<<<<<<< HEAD
     phi::DenseTensor* zero_tensor = nullptr;
+=======
+    Tensor* zero_tensor = nullptr;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     void* zero_ptr = nullptr;
     if (found_inf_vec[0]) {
       int max_num = -1;
@@ -234,9 +272,15 @@ class UpdateLossScalingNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
+<<<<<<< HEAD
     const auto xs = ctx.MultiInput<phi::DenseTensor>("X");
     auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
     const auto* found_inf = ctx.Input<phi::DenseTensor>("FoundInfinite");
+=======
+    const auto xs = ctx.MultiInput<framework::Tensor>("X");
+    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    const auto* found_inf = ctx.Input<Tensor>("FoundInfinite");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_ENFORCE_EQ(found_inf->numel(),
                       1,
                       platform::errors::InvalidArgument(
@@ -269,6 +313,7 @@ class UpdateLossScalingNPUKernel : public framework::OpKernel<T> {
         ctx.Attr<int>("decr_every_n_nan_or_inf");
     const float incr_ratio = ctx.Attr<float>("incr_ratio");
     const float decr_ratio = ctx.Attr<float>("decr_ratio");
+<<<<<<< HEAD
     UpdateLossScalingFunctor<MPDType>{}(dev_ctx,
                                         found_inf_vec,
                                         pre_loss_scaling,
@@ -281,6 +326,21 @@ class UpdateLossScalingNPUKernel : public framework::OpKernel<T> {
                                         updated_loss_scaling,
                                         good_out,
                                         bad_out);
+=======
+    UpdateLossScalingFunctor<DeviceContext, MPDType, true>{}(
+        dev_ctx,
+        found_inf_vec,
+        pre_loss_scaling,
+        good_in,
+        bad_in,
+        incr_every_n_steps,
+        decr_every_n_nan_or_inf,
+        incr_ratio,
+        decr_ratio,
+        updated_loss_scaling,
+        good_out,
+        bad_out);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 };
 

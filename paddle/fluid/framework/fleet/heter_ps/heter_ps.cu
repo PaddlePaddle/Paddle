@@ -122,8 +122,49 @@ template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 void HeterPs<GPUAccessor, GPUOptimizer>::set_nccl_comm_and_size(
     const std::vector<ncclComm_t>& inner_comms,
     const std::vector<ncclComm_t>& inter_comms,
+<<<<<<< HEAD
     int comm_size) {
   comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
+=======
+    int comm_size,
+    int rank_id) {
+  comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size, rank_id);
+}
+
+template <typename GPUAccessor, template <typename T> class GPUOptimizer>
+void HeterPs<GPUAccessor, GPUOptimizer>::set_multi_mf_dim(int multi_mf_dim,
+                                                          int max_mf_dim) {
+  comm_->set_multi_mf_dim(multi_mf_dim, max_mf_dim);
+}
+
+template <typename GPUAccessor, template <typename T> class GPUOptimizer>
+void HeterPs<GPUAccessor, GPUOptimizer>::show_table_collisions() {
+  comm_->show_table_collisions();
+}
+
+template <typename GPUAccessor, template <typename T> class GPUOptimizer>
+int HeterPs<GPUAccessor, GPUOptimizer>::dedup_keys_and_fillidx(
+    const int gpu_id,
+    const int total_fea_num,
+    const FeatureKey* d_keys,   // input
+    FeatureKey* d_merged_keys,  // output
+    FeatureKey* d_sorted_keys,
+    uint32_t* d_restore_idx,
+    uint32_t* d_sorted_idx,
+    uint32_t* d_offset,
+    uint32_t* d_merged_cnts,
+    bool filter_zero) {
+  return comm_->dedup_keys_and_fillidx(gpu_id,
+                                       total_fea_num,
+                                       d_keys,         // input
+                                       d_merged_keys,  // output
+                                       d_sorted_keys,
+                                       d_restore_idx,
+                                       d_sorted_idx,
+                                       d_offset,
+                                       d_merged_cnts,
+                                       filter_zero);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>

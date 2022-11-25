@@ -120,37 +120,85 @@ cc_library(
 cc_library(
   data_type
   SRCS data_type.cc
+<<<<<<< HEAD
   DEPS framework_proto)
 
+=======
+  DEPS framework_proto ddim device_context)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_test(
   data_type_test
   SRCS data_type_test.cc
   DEPS data_type place tensor)
+<<<<<<< HEAD
 
 cc_library(
   tensor
   SRCS tensor_util.cc
   DEPS place memory data_type device_context dense_tensor)
+=======
+if(WITH_GPU)
+  if(WIN32)
+    windows_symbolic(tensor_util SRCS tensor_util.cu)
+    nv_library(
+      tensor
+      SRCS tensor.cc .tensor_util.cu
+      DEPS place memory data_type device_context dense_tensor)
+    add_dependencies(tensor tensor_util)
+  else()
+    nv_library(
+      tensor
+      SRCS tensor.cc tensor_util.cu
+      DEPS place memory data_type device_context profiler dense_tensor)
+  endif()
+elseif(WITH_ROCM)
+  hip_library(
+    tensor
+    SRCS tensor.cc tensor_util.cu
+    DEPS place memory data_type device_context profiler dense_tensor)
+else()
+  cc_library(
+    tensor
+    SRCS tensor.cc tensor_util.cc
+    DEPS place memory data_type device_context profiler dense_tensor)
+endif()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 cc_test(
   tensor_test
   SRCS tensor_test.cc
+<<<<<<< HEAD
   DEPS tensor isfinite_op)
+=======
+  DEPS tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if(WITH_GPU)
   nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
+<<<<<<< HEAD
     DEPS tensor dlpack_tensor isfinite_op)
+=======
+    DEPS tensor dlpack_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 elseif(WITH_ROCM)
   hip_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
+<<<<<<< HEAD
     DEPS tensor dlpack_tensor isfinite_op)
+=======
+    DEPS tensor dlpack_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 else()
   cc_test(
     tensor_util_test
     SRCS tensor_util_test.cc
+<<<<<<< HEAD
     DEPS tensor dlpack_tensor isfinite_op)
+=======
+    DEPS tensor dlpack_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endif()
 
 cc_test(
@@ -186,6 +234,7 @@ endif()
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
+<<<<<<< HEAD
   DEPS ddim
        mixed_vector
        place
@@ -193,6 +242,9 @@ cc_library(
        framework_proto
        version
        serialization)
+=======
+  DEPS ddim mixed_vector place tensor framework_proto version)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 cc_test(
   lod_tensor_test
@@ -225,6 +277,13 @@ cc_test(
   SRCS reader_test.cc
   DEPS reader)
 
+<<<<<<< HEAD
+=======
+cc_library(
+  threadpool
+  SRCS threadpool.cc
+  DEPS enforce)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
@@ -233,6 +292,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
+<<<<<<< HEAD
   DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
@@ -244,6 +304,12 @@ if(WITH_MKLDNN)
   add_dependencies(var_type_traits mkldnn)
 endif()
 
+=======
+  DEPS lod_tensor selected_rows_utils framework_proto scope)
+if(WITH_GPU)
+  target_link_libraries(var_type_traits dynload_cuda)
+endif()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_test(
   var_type_traits_test
   SRCS var_type_traits_test.cc
@@ -405,7 +471,11 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
+<<<<<<< HEAD
   DEPS framework_proto attribute ops_extra_info glog)
+=======
+  DEPS framework_proto attribute glog)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -421,6 +491,7 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
+<<<<<<< HEAD
   DEPS ddim attribute selected_rows_utils)
 
 # every source file that includes "dnnl.h" must depends on mkldnn
@@ -428,6 +499,9 @@ cc_library(
 if(WITH_MKLDNN)
   add_dependencies(shape_inference mkldnn)
 endif()
+=======
+  DEPS ddim attribute device_context)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 cc_test(
   no_need_buffer_vars_inference_test
@@ -480,7 +554,10 @@ if(WITH_XPU)
     SRCS operator.cc
     DEPS xpu_op_list
          op_info
+<<<<<<< HEAD
          proto_desc
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
          device_context
          tensor
          scope
@@ -499,14 +576,21 @@ if(WITH_XPU)
          phi_utils
          kernel_factory
          infershape_utils
+<<<<<<< HEAD
          op_utils
          op_compat_infos)
+=======
+         op_utils)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 else()
   cc_library(
     operator
     SRCS operator.cc
     DEPS op_info
+<<<<<<< HEAD
          proto_desc
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
          device_context
          tensor
          scope
@@ -525,8 +609,12 @@ else()
          phi_utils
          kernel_factory
          infershape_utils
+<<<<<<< HEAD
          op_utils
          op_compat_infos)
+=======
+         op_utils)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endif()
 
 cc_test(
@@ -546,6 +634,7 @@ cc_test(
 
 cc_library(
   proto_desc
+<<<<<<< HEAD
   SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
   DEPS attribute
        ops_extra_info
@@ -556,11 +645,19 @@ cc_library(
        version
        xxhash
        dist_attr)
+=======
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc
+  DEPS attribute shape_inference op_info operator glog version)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 cc_library(
   op_registry
   SRCS op_registry.cc
+<<<<<<< HEAD
   DEPS op_proto_maker op_info operator ops_extra_info glog proto_desc)
+=======
+  DEPS op_proto_maker op_info operator glog proto_desc)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 cc_library(
   op_call_stack
@@ -627,8 +724,40 @@ if(WITH_PYTHON)
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMAND cp distributed_strategy_*.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+<<<<<<< HEAD
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    add_custom_target(
+      fleet_executor_proto_init ALL
+      DEPENDS fleet_proto_init fleet_executor_desc_py_proto
+      COMMAND
+        cp
+        ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
+        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMENT
+        "Copy generated python proto into directory paddle/distributed/fleet/proto."
+    )
+  else()
+    string(REPLACE "/" "\\" proto_dstpath
+                   "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+    string(
+      REPLACE "/" "\\" fleet_proto_dstpath
+              "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
+    add_custom_command(
+      TARGET framework_py_proto
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory
+              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+      COMMAND copy /Y *.py ${proto_dstpath}
+      COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+      COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+      COMMENT
+        "Copy generated python proto into directory paddle/distributed/fleet/proto."
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+<<<<<<< HEAD
+=======
     add_custom_target(
       fleet_executor_proto_init ALL
       DEPENDS fleet_proto_init fleet_executor_desc_py_proto
@@ -656,6 +785,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/distributed/fleet/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   endif()
 endif()
 
@@ -862,7 +992,12 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
+<<<<<<< HEAD
            fleet_executor)
+=======
+           fleet_executor
+           flags)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )
@@ -1066,7 +1201,11 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
+<<<<<<< HEAD
   DEPS parallel_executor standalone_executor)
+=======
+  DEPS parallel_executor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)
@@ -1125,7 +1264,11 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
+<<<<<<< HEAD
   DEPS selected_rows serialization device_context)
+=======
+  DEPS selected_rows)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1154,6 +1297,7 @@ cc_library(
   op_compatible_info
   SRCS op_compatible_info.cc
   DEPS string_helper proto_desc)
+<<<<<<< HEAD
 cc_test_old(
   op_compatible_info_test
   SRCS
@@ -1165,6 +1309,22 @@ cc_test_old(
   glog)
 
 cc_library(
+=======
+cc_test(
+  op_compatible_info_test
+  SRCS op_compatible_info_test.cc
+  DEPS op_compatible_info proto_desc string_helper glog)
+
+cc_library(
+  save_load_util
+  SRCS save_load_util.cc
+  DEPS tensor scope layer)
+cc_test(
+  save_load_util_test
+  SRCS save_load_util_test.cc
+  DEPS save_load_util tensor scope layer)
+cc_library(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   generator
   SRCS generator.cc
   DEPS enforce place)
@@ -1180,8 +1340,12 @@ cc_library(
        phi
        phi_api_utils
        op_info
+<<<<<<< HEAD
        shape_inference
        sparse_coo_tensor)
+=======
+       shape_inference)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc
@@ -1220,6 +1384,12 @@ cc_library(
        op_meta_info
        phi_api)
 
+<<<<<<< HEAD
+=======
+#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
+#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
     memory
@@ -1242,4 +1412,22 @@ cc_test(
   SRCS phi_utils_test.cc
   DEPS phi_utils)
 
+<<<<<<< HEAD
 cc_test(convert_utils_test SRCS convert_utils_test.cc)
+=======
+if(WITH_GPU OR WITH_ROCM)
+  cc_library(
+    fluid_convert_utils
+    SRCS convert_utils.cc
+    DEPS data_type place gpu_info)
+else()
+  cc_library(
+    fluid_convert_utils
+    SRCS convert_utils.cc
+    DEPS data_type place)
+endif()
+cc_test(
+  convert_utils_test
+  SRCS convert_utils_test.cc
+  DEPS fluid_convert_utils)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

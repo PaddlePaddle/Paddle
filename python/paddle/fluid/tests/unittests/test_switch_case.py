@@ -23,7 +23,9 @@ from functools import partial
 
 
 class TestAPISwitchCase(unittest.TestCase):
+
     def test_return_single_var(self):
+
         def fn_1():
             return layers.fill_constant(shape=[4, 2], dtype='int32', value=1)
 
@@ -41,6 +43,7 @@ class TestAPISwitchCase(unittest.TestCase):
             index_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
 
             # call fn_1
+<<<<<<< HEAD
             out_0 = layers.switch_case(
                 branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
@@ -109,9 +112,55 @@ class TestAPISwitchCase(unittest.TestCase):
                 rtol=1e-05,
                 err_msg='result is {} but answer is {}'.format(res[0], 2),
             )
+=======
+            out_0 = layers.switch_case(branch_index=index_1,
+                                       branch_fns={
+                                           1: fn_1,
+                                           2: fn_2,
+                                           3: fn_3
+                                       })
+
+            # call fn_2 : branch_fns={0: fn_1, 1:fn_2, 2:fn_3}
+            out_1 = layers.switch_case(branch_index=index_1,
+                                       branch_fns=(fn_1, fn_2, fn_3))
+
+            # call default fn_3
+            out_2 = layers.switch_case(branch_index=index_5,
+                                       branch_fns=((1, fn_1), (2, fn_2)),
+                                       default=fn_3)
+
+            # no default, call fn_2
+            out_3 = layers.switch_case(branch_index=index_2,
+                                       branch_fns=[(1, fn_1), (2, fn_2)])
+
+            # no default, call fn_2 but branch_index is 5
+            out_4 = layers.switch_case(branch_index=index_5,
+                                       branch_fns=[(1, fn_1), (3, fn_2),
+                                                   (2, fn_3)])
+
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            res = exe.run(main_program,
+                          fetch_list=[out_0, out_1, out_2, out_3, out_4])
+
+            self.assertTrue(np.allclose(res[0], 1),
+                            "result is {} but answer is {}".format(res[0], 1))
+            self.assertTrue(np.allclose(res[1], 2),
+                            "result is {} but answer is {}".format(res[0], 2))
+            self.assertTrue(np.allclose(res[2], 3),
+                            "result is {} but answer is {}".format(res[0], 3))
+            self.assertTrue(np.allclose(res[3], 2),
+                            "result is {} but answer is {}".format(res[0], 2))
+            self.assertTrue(np.allclose(res[4], 2),
+                            "result is {} but answer is {}".format(res[0], 2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_return_var_tuple(self):
+
         def fn_1():
+<<<<<<< HEAD
             return layers.fill_constant(
                 shape=[1, 2], dtype='int32', value=1
             ), layers.fill_constant(shape=[2, 3], dtype='float32', value=2)
@@ -125,6 +174,27 @@ class TestAPISwitchCase(unittest.TestCase):
             return layers.fill_constant(
                 shape=[5], dtype='int32', value=5
             ), layers.fill_constant(shape=[5, 6], dtype='float32', value=6)
+=======
+            return layers.fill_constant(shape=[1, 2], dtype='int32',
+                                        value=1), layers.fill_constant(
+                                            shape=[2, 3],
+                                            dtype='float32',
+                                            value=2)
+
+        def fn_2():
+            return layers.fill_constant(shape=[3, 4], dtype='int32',
+                                        value=3), layers.fill_constant(
+                                            shape=[4, 5],
+                                            dtype='float32',
+                                            value=4)
+
+        def fn_3():
+            return layers.fill_constant(shape=[5], dtype='int32',
+                                        value=5), layers.fill_constant(
+                                            shape=[5, 6],
+                                            dtype='float32',
+                                            value=6)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         main_program = Program()
         startup_program = Program()
@@ -133,6 +203,7 @@ class TestAPISwitchCase(unittest.TestCase):
 
             out = layers.switch_case(index_1, ((1, fn_1), (2, fn_2)), fn_3)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -147,11 +218,25 @@ class TestAPISwitchCase(unittest.TestCase):
             np.testing.assert_allclose(
                 np.asarray(ret[1]), np.full((2, 3), 2, np.float32), rtol=1e-05
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            ret = exe.run(main_program, fetch_list=out)
+
+            self.assertTrue(
+                np.allclose(np.asarray(ret[0]), np.full((1, 2), 1, np.int32)))
+            self.assertTrue(
+                np.allclose(np.asarray(ret[1]), np.full((2, 3), 2, np.float32)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestAPISwitchCase_Nested(unittest.TestCase):
+
     def test_nested_switch_case(self):
+
         def fn_1(x=1):
+<<<<<<< HEAD
             out = layers.switch_case(
                 branch_index=layers.fill_constant(
                     shape=[1], dtype='int32', value=x
@@ -199,6 +284,50 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                     3: partial(fn_2, x=3),
                 },
             )
+=======
+            out = layers.switch_case(branch_index=layers.fill_constant(
+                shape=[1], dtype='int32', value=x),
+                                     branch_fns={
+                                         1:
+                                         partial(layers.fill_constant,
+                                                 shape=[1],
+                                                 dtype='int32',
+                                                 value=1),
+                                         x:
+                                         partial(layers.fill_constant,
+                                                 shape=[2],
+                                                 dtype='int32',
+                                                 value=x)
+                                     })
+            return out
+
+        def fn_2(x=2):
+            out = layers.switch_case(branch_index=layers.fill_constant(
+                shape=[1], dtype='int32', value=2),
+                                     branch_fns={
+                                         1:
+                                         partial(layers.fill_constant,
+                                                 shape=[4, 3],
+                                                 dtype='int32',
+                                                 value=1),
+                                         2:
+                                         partial(fn_1, x=x)
+                                     })
+            return out
+
+        def fn_3():
+            out = layers.switch_case(branch_index=layers.fill_constant(
+                shape=[1], dtype='int32', value=3),
+                                     branch_fns={
+                                         1:
+                                         partial(layers.fill_constant,
+                                                 shape=[4, 3],
+                                                 dtype='int32',
+                                                 value=1),
+                                         3:
+                                         partial(fn_2, x=3)
+                                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return out
 
         main_program = Program()
@@ -208,6 +337,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
             index_3 = layers.fill_constant(shape=[1], dtype='int64', value=3)
 
+<<<<<<< HEAD
             out_1 = layers.switch_case(
                 branch_index=index_1, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
@@ -250,11 +380,49 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 rtol=1e-05,
                 err_msg='result is {} but answer is {}'.format(res[2], 3),
             )
+=======
+            out_1 = layers.switch_case(branch_index=index_1,
+                                       branch_fns={
+                                           1: fn_1,
+                                           2: fn_2,
+                                           3: fn_3
+                                       })
+            out_2 = layers.switch_case(branch_index=index_2,
+                                       branch_fns={
+                                           1: fn_1,
+                                           2: fn_2,
+                                           3: fn_3
+                                       })
+
+            out_3 = layers.switch_case(branch_index=index_3,
+                                       branch_fns={
+                                           1: fn_1,
+                                           2: fn_2,
+                                           3: fn_3
+                                       })
+
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            res = exe.run(main_program,
+                          feed={"index_1": np.array([1], dtype="uint8")},
+                          fetch_list=[out_1, out_2, out_3])
+
+            self.assertTrue(np.allclose(res[0], 1),
+                            "result is {} but answer is {}".format(res[0], 1))
+            self.assertTrue(np.allclose(res[1], 2),
+                            "result is {} but answer is {}".format(res[1], 2))
+            self.assertTrue(np.allclose(res[2], 3),
+                            "result is {} but answer is {}".format(res[2], 3))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 # test TypeError and ValueError of api switch_case
 class TestAPISwitchCase_Error(unittest.TestCase):
+
     def test_error(self):
+
         def fn_1():
             return layers.fill_constant(shape=[4, 2], dtype='int32', value=1)
 
@@ -267,6 +435,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
+<<<<<<< HEAD
             key_float32 = layers.fill_constant(
                 shape=[1], dtype='float32', value=0.23
             )
@@ -279,78 +448,140 @@ class TestAPISwitchCase_Error(unittest.TestCase):
                 layers.switch_case(
                     branch_index=1, branch_fns=[(1, fn_1)], default=fn_3
                 )
+=======
+            key_float32 = layers.fill_constant(shape=[1],
+                                               dtype='float32',
+                                               value=0.23)
+            key_int32 = layers.fill_constant(shape=[1],
+                                             dtype='int32',
+                                             value=0.23)
+
+            # The type of 'branch_index' in Op(switch_case) must be Variable
+            def type_error_branch_index():
+                layers.switch_case(branch_index=1,
+                                   branch_fns=[(1, fn_1)],
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, type_error_branch_index)
 
             # The data type of 'branch_index' in Op(switch_case) must be int32, int64 or uint8
             def dtype_error_branch_index():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_float32,
                     branch_fns=[(1, fn_1)],
                     default=fn_3,
                 )
+=======
+                layers.switch_case(branch_index=key_float32,
+                                   branch_fns=[(1, fn_1)],
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, dtype_error_branch_index)
 
             # The type of 'branch_fns' in Op(switch_case) must be list, tuple or dict
             def type_error_branch_fns():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_int32, branch_fns=1, default=fn_3
                 )
+=======
+                layers.switch_case(branch_index=key_int32,
+                                   branch_fns=1,
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, type_error_branch_fns)
 
             # The elements' type of 'branch_fns' in Op(switch_case) must be tuple
             def type_error_index_fn_pair_1():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_int32, branch_fns=[1], default=fn_3
                 )
+=======
+                layers.switch_case(branch_index=key_int32,
+                                   branch_fns=[1],
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, type_error_index_fn_pair_1)
 
             # The tuple's size of 'branch_fns' in Op(switch_case) must be 2
             def type_error_index_fn_pair_2():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_int32, branch_fns=[(1, 2, 3)], default=fn_3
                 )
+=======
+                layers.switch_case(branch_index=key_int32,
+                                   branch_fns=[(1, 2, 3)],
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, type_error_index_fn_pair_2)
 
             # The key's type of 'branch_fns' in Op(switch_case) must be int
             def type_error_key():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_int32, branch_fns=[(2.3, 2)], default=fn_3
                 )
+=======
+                layers.switch_case(branch_index=key_int32,
+                                   branch_fns=[(2.3, 2)],
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, type_error_key)
 
             # The key in 'branch_fns' must be unique
             def value_error_key():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_int32,
                     branch_fns=[(2, fn_1), (2, fn_2)],
                     default=fn_3,
                 )
+=======
+                layers.switch_case(branch_index=key_int32,
+                                   branch_fns=[(2, fn_1), (2, fn_2)],
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(ValueError, value_error_key)
 
             # The type of function in 'branch_fns' must be callable
             def type_error_fn():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_int32,
                     branch_fns=[(1, 1), (2, fn_2)],
                     default=fn_3,
                 )
+=======
+                layers.switch_case(branch_index=key_int32,
+                                   branch_fns=[(1, 1), (2, fn_2)],
+                                   default=fn_3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, type_error_fn)
 
             # The default in Op(case) must be callable
             def type_error_default():
+<<<<<<< HEAD
                 layers.switch_case(
                     branch_index=key_int32,
                     branch_fns=[(1, fn_1), (2, fn_2)],
                     default=1,
                 )
+=======
+                layers.switch_case(branch_index=key_int32,
+                                   branch_fns=[(1, fn_1), (2, fn_2)],
+                                   default=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, type_error_default)
 

@@ -35,12 +35,20 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("Input(X) Tensor of SequenceEraseOp "
                                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(lod[lod.size() - 1].back(),
+<<<<<<< HEAD
                       static_cast<size_t>(in->numel()),
+=======
+                      (size_t)in->numel(),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       platform::errors::InvalidArgument(
                           "The actual input size %d mismatches with the LoD "
                           "information size %d.",
                           lod[lod.size() - 1].back(),
+<<<<<<< HEAD
                           in->numel()));
+=======
+                          (size_t)in->numel()));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto tokens = ctx.Attr<std::vector<int>>("tokens");
     auto in_len = in->numel();
     auto in_dat = in->data<T>();

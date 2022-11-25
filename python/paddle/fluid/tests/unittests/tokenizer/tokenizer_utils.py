@@ -89,12 +89,17 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
+<<<<<<< HEAD
     if (
         (cp >= 33 and cp <= 47)
         or (cp >= 58 and cp <= 64)
         or (cp >= 91 and cp <= 96)
         or (cp >= 123 and cp <= 126)
     ):
+=======
+    if ((cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64)
+            or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126)):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):
@@ -186,6 +191,7 @@ class PretrainedTokenizer:
     padding_side = 'right'
     pad_token_type_id = 0
 
+<<<<<<< HEAD
     def __call__(
         self,
         text,
@@ -202,6 +208,22 @@ class PretrainedTokenizer:
         return_overflowing_tokens=False,
         return_special_tokens_mask=False,
     ):
+=======
+    def __call__(self,
+                 text,
+                 text_pair=None,
+                 max_seq_len: Optional[int] = None,
+                 stride=0,
+                 is_split_into_words=False,
+                 pad_to_max_seq_len=False,
+                 truncation_strategy="longest_first",
+                 return_position_ids=False,
+                 return_token_type_ids=True,
+                 return_attention_mask=False,
+                 return_length=False,
+                 return_overflowing_tokens=False,
+                 return_special_tokens_mask=False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         """
         Performs tokenization and uses the tokenized tokens to prepare model
         inputs. It supports sequence or sequence pair as input, and batch input
@@ -296,6 +318,7 @@ class PretrainedTokenizer:
         """
         # Input type checking for clearer error
         assert isinstance(text, str) or (
+<<<<<<< HEAD
             isinstance(text, (list, tuple))
             and (
                 len(text) == 0
@@ -345,6 +368,30 @@ class PretrainedTokenizer:
                 and isinstance(text[0], (list, tuple))
             )
         )
+=======
+            isinstance(text, (list, tuple)) and
+            (len(text) == 0 or
+             (isinstance(text[0], str) or
+              (isinstance(text[0], (list, tuple)) and
+               (len(text[0]) == 0 or isinstance(text[0][0], str)))))
+        ), ("text input must of type `str` (single example), `List[str]` (batch or single pretokenized example) "
+            "or `List[List[str]]` (batch of pretokenized examples).")
+
+        assert (
+            text_pair is None or isinstance(text_pair, str) or
+            (isinstance(text_pair, (list, tuple)) and
+             (len(text_pair) == 0 or
+              (isinstance(text_pair[0], str) or
+               (isinstance(text_pair[0], (list, tuple)) and
+                (len(text_pair[0]) == 0 or isinstance(text_pair[0][0], str))))))
+        ), ("text_pair input must of type `str` (single example), `List[str]` (batch or single pretokenized example) "
+            "or `List[List[str]]` (batch of pretokenized examples).")
+
+        is_batched = bool(
+            (not is_split_into_words and isinstance(text, (list, tuple)))
+            or (is_split_into_words and isinstance(text, (list, tuple)) and text
+                and isinstance(text[0], (list, tuple))))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if is_batched:
             batch_text_or_text_pairs = (
@@ -388,11 +435,16 @@ class PretrainedTokenizer:
         all_toks = []
         set_attr = self.special_tokens_map
         for attr_value in set_attr.values():
+<<<<<<< HEAD
             all_toks = all_toks + (
                 list(attr_value)
                 if isinstance(attr_value, (list, tuple))
                 else [attr_value]
             )
+=======
+            all_toks = all_toks + (list(attr_value) if isinstance(
+                attr_value, (list, tuple)) else [attr_value])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         all_toks = list(set(all_toks))
         return all_toks
 
@@ -536,9 +588,14 @@ class PretrainedTokenizer:
             # does include a vocab file path in it. However, if the vocab file
             # path included in json does not exist, such as was deleted, to make
             # it still work, use the vocab file under this dir.
+<<<<<<< HEAD
             elif not os.path.isfile(init_kwargs[args_name]) and os.path.isfile(
                 file_path
             ):
+=======
+            elif not os.path.isfile(
+                    init_kwargs[args_name]) and os.path.isfile(file_path):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 init_kwargs[args_name] = file_path
         # TODO(guosheng): avoid reduplication of position args and key word args
         tokenizer = cls(*init_args, **init_kwargs)
@@ -754,8 +811,12 @@ class PretrainedTokenizer:
                 1 for a special token, 0 for a sequence token.
         """
         return [0] * (
+<<<<<<< HEAD
             (len(token_ids_1) if token_ids_1 else 0) + len(token_ids_0)
         )
+=======
+            (len(token_ids_1) if token_ids_1 else 0) + len(token_ids_0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def create_token_type_ids_from_sequences(
         self, token_ids_0, token_ids_1=None
@@ -790,6 +851,7 @@ class PretrainedTokenizer:
         token_ids_1 = []
         return len(
             self.build_inputs_with_special_tokens(
+<<<<<<< HEAD
                 token_ids_0, token_ids_1 if pair else None
             )
         )
@@ -808,6 +870,22 @@ class PretrainedTokenizer:
         return_overflowing_tokens=False,
         return_special_tokens_mask=False,
     ):
+=======
+                token_ids_0, token_ids_1 if pair else None))
+
+    def encode(self,
+               text,
+               text_pair=None,
+               max_seq_len=512,
+               pad_to_max_seq_len=False,
+               truncation_strategy="longest_first",
+               return_position_ids=False,
+               return_token_type_ids=True,
+               return_attention_mask=False,
+               return_length=False,
+               return_overflowing_tokens=False,
+               return_special_tokens_mask=False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         """
         Performs tokenization and uses the tokenized tokens to prepare model
         inputs. It supports sequence or sequence pair as input, and batch input
@@ -941,8 +1019,12 @@ class PretrainedTokenizer:
 
         sequence = self.build_inputs_with_special_tokens(ids, pair_ids)
         token_type_ids = self.create_token_type_ids_from_sequences(
+<<<<<<< HEAD
             ids, pair_ids
         )
+=======
+            ids, pair_ids)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Build output dictionnary
         encoded_inputs["input_ids"] = sequence
@@ -950,16 +1032,26 @@ class PretrainedTokenizer:
             encoded_inputs["token_type_ids"] = token_type_ids
         if return_special_tokens_mask:
             encoded_inputs[
+<<<<<<< HEAD
                 "special_tokens_mask"
             ] = self.get_special_tokens_mask(ids, pair_ids)
+=======
+                "special_tokens_mask"] = self.get_special_tokens_mask(
+                    ids, pair_ids)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if return_length:
             encoded_inputs["seq_len"] = len(encoded_inputs["input_ids"])
 
         # Check lengths
+<<<<<<< HEAD
         assert (
             max_seq_len is None
             or len(encoded_inputs["input_ids"]) <= max_seq_len
         )
+=======
+        assert max_seq_len is None or len(
+            encoded_inputs["input_ids"]) <= max_seq_len
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Padding
         needs_to_be_padded = (
@@ -973,14 +1065,19 @@ class PretrainedTokenizer:
             if self.padding_side == 'right':
                 if return_attention_mask:
                     encoded_inputs["attention_mask"] = [1] * len(
+<<<<<<< HEAD
                         encoded_inputs["input_ids"]
                     ) + [0] * difference
+=======
+                        encoded_inputs["input_ids"]) + [0] * difference
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 if return_token_type_ids:
                     encoded_inputs["token_type_ids"] = (
                         encoded_inputs["token_type_ids"]
                         + [self.pad_token_type_id] * difference
                     )
                 if return_special_tokens_mask:
+<<<<<<< HEAD
                     encoded_inputs["special_tokens_mask"] = (
                         encoded_inputs["special_tokens_mask"] + [1] * difference
                     )
@@ -988,6 +1085,13 @@ class PretrainedTokenizer:
                     encoded_inputs["input_ids"]
                     + [self.pad_token_id] * difference
                 )
+=======
+                    encoded_inputs["special_tokens_mask"] = encoded_inputs[
+                        "special_tokens_mask"] + [1] * difference
+                encoded_inputs["input_ids"] = encoded_inputs["input_ids"] + [
+                    self.pad_token_id
+                ] * difference
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             elif self.padding_side == 'left':
                 if return_attention_mask:
                     encoded_inputs["attention_mask"] = [0] * difference + [
@@ -1007,8 +1111,12 @@ class PretrainedTokenizer:
         else:
             if return_attention_mask:
                 encoded_inputs["attention_mask"] = [1] * len(
+<<<<<<< HEAD
                     encoded_inputs["input_ids"]
                 )
+=======
+                    encoded_inputs["input_ids"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if return_position_ids:
             encoded_inputs["position_ids"] = list(
@@ -1180,6 +1288,7 @@ class PretrainedTokenizer:
                     pair_ids = second_ids[offset : offset + length]
 
                     mapping = token_offset_mapping
+<<<<<<< HEAD
                     pair_mapping = token_pair_offset_mapping[
                         offset : offset + length
                     ]
@@ -1192,6 +1301,15 @@ class PretrainedTokenizer:
                     sequence = self.build_inputs_with_special_tokens(
                         ids, pair_ids
                     )
+=======
+                    pair_mapping = token_pair_offset_mapping[offset:offset +
+                                                             length]
+
+                    offset_mapping = self.build_offset_mapping_with_special_tokens(
+                        mapping, pair_mapping)
+                    sequence = self.build_inputs_with_special_tokens(
+                        ids, pair_ids)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     token_type_ids = self.create_token_type_ids_from_sequences(
                         ids, pair_ids
                     )
@@ -1206,6 +1324,7 @@ class PretrainedTokenizer:
                         ] = self.get_special_tokens_mask(ids, pair_ids)
                     if return_length:
                         encoded_inputs["seq_len"] = len(
+<<<<<<< HEAD
                             encoded_inputs["input_ids"]
                         )
 
@@ -1214,6 +1333,13 @@ class PretrainedTokenizer:
                         max_seq_len is None
                         or len(encoded_inputs["input_ids"]) <= max_seq_len
                     )
+=======
+                            encoded_inputs["input_ids"])
+
+                    # Check lengths
+                    assert max_seq_len is None or len(
+                        encoded_inputs["input_ids"]) <= max_seq_len
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     # Padding
                     needs_to_be_padded = (
@@ -1226,8 +1352,12 @@ class PretrainedTokenizer:
 
                     if needs_to_be_padded:
                         difference = max_seq_len - len(
+<<<<<<< HEAD
                             encoded_inputs["input_ids"]
                         )
+=======
+                            encoded_inputs["input_ids"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         if self.padding_side == 'right':
                             if return_attention_mask:
                                 encoded_inputs["attention_mask"] = [1] * len(
@@ -1257,8 +1387,12 @@ class PretrainedTokenizer:
                                 encoded_inputs["attention_mask"] = [
                                     0
                                 ] * difference + [1] * len(
+<<<<<<< HEAD
                                     encoded_inputs["input_ids"]
                                 )
+=======
+                                    encoded_inputs["input_ids"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             if return_token_type_ids:
                                 # 0 for padding token mask
                                 encoded_inputs["token_type_ids"] = [
@@ -1329,8 +1463,12 @@ class PretrainedTokenizer:
         for token in self.basic_tokenizer.tokenize(text):
             for sub_token in self.wordpiece_tokenizer.tokenize(token):
                 split_tokens.append(
+<<<<<<< HEAD
                     sub_token if sub_token != self.unk_token else token
                 )
+=======
+                    sub_token if sub_token != self.unk_token else token)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         normalized_text, char_mapping = '', []
 

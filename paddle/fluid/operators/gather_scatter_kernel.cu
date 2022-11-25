@@ -109,7 +109,11 @@ struct gpu_gather_scatter_functor {
   template <typename func_t>
   void operator()(Tensor self,
                   int dim,
+<<<<<<< HEAD
                   const phi::DenseTensor& index,
+=======
+                  const Tensor& index,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   Tensor src,
                   const std::string& method_name,
                   const func_t& reduce_op,
@@ -162,7 +166,11 @@ struct gpu_gather_scatter_functor {
 template <typename tensor_t, typename index_t>
 void gpu_gather_kernel(Tensor self,
                        int dim,
+<<<<<<< HEAD
                        const phi::DenseTensor& index,
+=======
+                       const Tensor& index,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                        Tensor result,
                        const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -175,7 +183,11 @@ void gpu_gather_kernel(Tensor self,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_assign_kernel(Tensor self,
                                int dim,
+<<<<<<< HEAD
                                const phi::DenseTensor& index,
+=======
+                               const Tensor& index,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                Tensor src,
                                const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -187,7 +199,11 @@ void gpu_scatter_assign_kernel(Tensor self,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_add_kernel(Tensor self,
                             int dim,
+<<<<<<< HEAD
                             const phi::DenseTensor& index,
+=======
+                            const Tensor& index,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             Tensor src,
                             const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -199,7 +215,11 @@ void gpu_scatter_add_kernel(Tensor self,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_mul_kernel(Tensor self,
                             int dim,
+<<<<<<< HEAD
                             const phi::DenseTensor& index,
+=======
+                            const Tensor& index,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             Tensor src,
                             const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
@@ -232,7 +252,11 @@ __global__ void ScatterInputGradGPUKernel(tensor_t* grad_data,
 template <typename tensor_t, typename index_t>
 void gpu_scatter_input_grad_kernel(Tensor self,
                                    int dim,
+<<<<<<< HEAD
                                    const phi::DenseTensor& index,
+=======
+                                   const Tensor& index,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                    Tensor grad,
                                    const platform::DeviceContext& ctx) {
   auto* index_data = index.data<index_t>();

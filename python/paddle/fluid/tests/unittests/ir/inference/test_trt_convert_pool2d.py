@@ -26,6 +26,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
+
     def is_paddings_valid(self, program_config: ProgramConfig) -> bool:
         exclusive = program_config.ops[0].attrs['exclusive']
         paddings = program_config.ops[0].attrs['paddings']
@@ -55,6 +56,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
+<<<<<<< HEAD
         strides_options = [[1, 2]]
         paddings_options = [[0, 2]]
         pooling_type_options = ['max', 'avg']
@@ -134,6 +136,68 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+        for strides in [[1, 1], [1, 2], [2, 2]]:
+            for paddings in [[0, 2], [0, 3]]:
+                for pooling_type in ['max', 'avg']:
+                    for padding_algotithm in ['EXPLICIT', 'SAME', 'VAILD']:
+                        for ksize in [[2, 3], [3, 3]]:
+                            for data_format in ['NCHW']:
+                                for global_pooling in [True, False]:
+                                    for exclusive in [False, True]:
+                                        for adaptive in [True, False]:
+                                            for ceil_mode in [False, True]:
+
+                                                dics = [{
+                                                    "pooling_type":
+                                                    pooling_type,
+                                                    "ksize": ksize,
+                                                    "data_fromat": data_format,
+                                                    "padding_algorithm":
+                                                    padding_algotithm,
+                                                    "paddings": paddings,
+                                                    "strides": strides,
+                                                    "data_format": data_format,
+                                                    "global_pooling":
+                                                    global_pooling,
+                                                    "exclusive": exclusive,
+                                                    "adaptive": adaptive,
+                                                    "ceil_mode": ceil_mode
+                                                }]
+
+                                                ops_config = [{
+                                                    "op_type":
+                                                    "pool2d",
+                                                    "op_inputs": {
+                                                        "X": ["input_data"],
+                                                    },
+                                                    "op_outputs": {
+                                                        "Out": ["output_data"]
+                                                    },
+                                                    "op_attrs":
+                                                    dics[0]
+                                                }]
+                                                ops = self.generate_op_config(
+                                                    ops_config)
+
+                                                program_config = ProgramConfig(
+                                                    ops=ops,
+                                                    weights={},
+                                                    inputs={
+                                                        "input_data":
+                                                        TensorConfig(
+                                                            data_gen=partial(
+                                                                generate_input1,
+                                                                dics))
+                                                    },
+                                                    outputs=["output_data"])
+
+                                                yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
@@ -166,14 +230,22 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def add_skip_trt_case(self):
+
         def teller(program_config, predictor_config):
             if (
                 program_config.ops[0].attrs['pooling_type'] == 'avg'

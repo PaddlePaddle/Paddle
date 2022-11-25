@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -24,6 +25,19 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+
+class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -34,10 +48,15 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
+<<<<<<< HEAD
             return np.random.uniform(low=0.5, high=6.0, size=(2)).astype(
                 "float32"
             )
@@ -75,11 +94,44 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
                                     "op_attrs": dics[0],
                                 }
                             ]
+=======
+            return np.random.uniform(low=0.5, high=6.0,
+                                     size=(2)).astype("float32")
+
+        for data_layout in ["NCHW", "NHWC"]:
+            for scale_y in [2.0, -1.0, 0.0]:
+                for scale_x in [2.0, -1.0, 0.0]:
+                    scale = [scale_y, scale_x]
+                    for out_h in [32, 64, 128, 192]:
+                        for out_w in [32, 64]:
+                            dics = [{
+                                "data_layout": data_layout,
+                                "interp_method": "bilinear",
+                                "align_corners": False,
+                                "align_mode": 0,
+                                "scale": scale,
+                                "out_h": out_h,
+                                "out_w": out_w
+                            }]
+
+                            ops_config = [{
+                                "op_type": "bilinear_interp_v2",
+                                "op_inputs": {
+                                    "X": ["input_data"],
+                                    "Scale": ["input_scale"]
+                                },
+                                "op_outputs": {
+                                    "Out": ["bilinear_interp_v2_output_data"]
+                                },
+                                "op_attrs": dics[0]
+                            }]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             ops = self.generate_op_config(ops_config)
 
                             program_config = ProgramConfig(
                                 ops=ops,
                                 weights={
+<<<<<<< HEAD
                                     "input_scale": TensorConfig(
                                         data_gen=partial(generate_input2, dics)
                                     )
@@ -91,12 +143,29 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
                                 },
                                 outputs=["bilinear_interp_v2_output_data"],
                             )
+=======
+                                    "input_scale":
+                                    TensorConfig(
+                                        data_gen=partial(generate_input2, dics))
+                                },
+                                inputs={
+                                    "input_data":
+                                    TensorConfig(
+                                        data_gen=partial(generate_input1, dics))
+                                },
+                                outputs=["bilinear_interp_v2_output_data"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -118,23 +187,37 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-2
+=======
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-2
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-2
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-2
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test(self):
         self.run_test()

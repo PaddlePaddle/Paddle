@@ -21,33 +21,49 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphSparseEmdedding_GLOO(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True
         self._dygraph = True
 
     def test_sparse_embedding(self):
+<<<<<<< HEAD
         self.check_with_place(
             "parallel_dygraph_sparse_embedding.py",
             delta=1e-5,
             check_error_log=True,
             log_name=flag_name,
         )
+=======
+        self.check_with_place("parallel_dygraph_sparse_embedding.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestParallelDygraphSparseEmdeddingFP64_GLOO(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True
         self._dygraph = True
 
     def test_sparse_embedding_fp64(self):
+<<<<<<< HEAD
         self.check_with_place(
             "parallel_dygraph_sparse_embedding_fp64.py",
             delta=1e-5,
             check_error_log=True,
             log_name=flag_name,
         )
+=======
+        self.check_with_place("parallel_dygraph_sparse_embedding_fp64.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

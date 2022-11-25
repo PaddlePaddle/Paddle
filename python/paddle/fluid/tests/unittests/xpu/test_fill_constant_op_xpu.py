@@ -28,12 +28,14 @@ from xpu.get_test_cover_info import (
 
 
 class XPUTestFillConstantOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'fill_constant'
         self.use_dynamic_create_class = False
 
     # Situation 1: Attr(shape) is a list(without tensor)
     class TestFillConstantOp(XPUOpTest):
+
         def setUp(self):
             '''Test fill_constant op with specified value'''
             self.init_dtype()
@@ -157,12 +159,20 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.full(self.shape, self.value)}
             if self.index == 22:
                 self.outputs = {
+<<<<<<< HEAD
                     'Out': np.full(
                         self.shape,
                         convert_float_to_uint16(
                             np.array([self.value]).astype("float32")
                         ),
                     )
+=======
+                    'Out':
+                    np.full(
+                        self.shape,
+                        convert_float_to_uint16(
+                            np.array([self.value]).astype("float32")))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 }
 
         def set_shape(self):
@@ -188,15 +198,25 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
             self.infer_shape = [1, 1, 1]
 
     class TestFillConstantOp3_ShapeTensorList(
+<<<<<<< HEAD
         TestFillConstantOp1_ShapeTensorList
     ):
+=======
+            TestFillConstantOp1_ShapeTensorList):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def set_shape(self):
             self.shape = [123, 3, 2, 1]
             self.infer_shape = [123, 111, 11, 1]
 
     class TestFillConstantOp4_ShapeTensorList(
+<<<<<<< HEAD
         TestFillConstantOp1_ShapeTensorList
     ):
+=======
+            TestFillConstantOp1_ShapeTensorList):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def set_shape(self):
             self.shape = [123]
             self.infer_shape = [1]
@@ -211,12 +231,20 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.full(self.shape, self.value)}
             if self.index == 22:
                 self.outputs = {
+<<<<<<< HEAD
                     'Out': np.full(
                         self.shape,
                         convert_float_to_uint16(
                             np.array([self.value]).astype("float32")
                         ),
                     )
+=======
+                    'Out':
+                    np.full(
+                        self.shape,
+                        convert_float_to_uint16(
+                            np.array([self.value]).astype("float32")))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 }
 
         def set_shape(self):
@@ -233,9 +261,15 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
             }
             if self.index == 22:
                 self.inputs = {
+<<<<<<< HEAD
                     'ValueTensor': convert_float_to_uint16(
                         np.array([self.value]).astype("float32")
                     )
+=======
+                    'ValueTensor':
+                    convert_float_to_uint16(
+                        np.array([self.value]).astype("float32"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 }
             self.attrs = {'value': self.value, 'dtype': self.index}
             self.outputs = {'Out': np.full(self.shape, self.value)}

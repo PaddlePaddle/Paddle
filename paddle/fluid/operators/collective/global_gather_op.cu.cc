@@ -149,9 +149,15 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2703
+<<<<<<< HEAD
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto local_count = ctx.Input<phi::DenseTensor>("local_count");
     auto global_count = ctx.Input<phi::DenseTensor>("global_count");
+=======
+    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto local_count = ctx.Input<framework::LoDTensor>("local_count");
+    auto global_count = ctx.Input<framework::LoDTensor>("global_count");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto local_count_type =
         framework::TransToProtoVarType(local_count->dtype());
     auto global_count_type =
@@ -164,12 +170,20 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
+<<<<<<< HEAD
     auto out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     auto local_count_len = 0;
 
+<<<<<<< HEAD
     phi::DenseTensor cpu_local_count;
+=======
+    framework::Tensor cpu_local_count;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
@@ -180,7 +194,11 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
       local_count_len = cpu_local_count.numel();
     }
 
+<<<<<<< HEAD
     phi::DenseTensor cpu_global_count;
+=======
+    framework::Tensor cpu_global_count;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
@@ -226,6 +244,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
         int idx = i + j * n_expert;
         if (cpu_global_count_data[idx]) {
           phi::DenseTensor tmp = *x;
+<<<<<<< HEAD
           pg->Send(tmp,
                    j,
                    send_ptr * in_feat,
@@ -239,6 +258,17 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
                    expert_ptr[idx] * in_feat,
                    cpu_local_count_data[idx] * in_feat,
                    /*sync_op*/ true);
+=======
+          pg->Send_Partial(
+              tmp, j, send_ptr * in_feat, cpu_global_count_data[idx] * in_feat);
+          send_ptr += cpu_global_count_data[idx];
+        }
+        if (cpu_local_count_data[idx]) {
+          pg->Recv_Partial(*out,
+                           j,
+                           expert_ptr[idx] * in_feat,
+                           cpu_local_count_data[idx] * in_feat);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
       }
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());

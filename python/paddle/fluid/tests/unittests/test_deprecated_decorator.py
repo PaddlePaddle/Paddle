@@ -20,7 +20,11 @@ import unittest
 import sys
 import warnings
 import paddle.utils.deprecated as deprecated
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
+=======
+from paddle import _C_ops
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
@@ -176,9 +180,14 @@ class TestDeprecatedDocorator(unittest.TestCase):
         x = linear(data)
 
         with warnings.catch_warnings(record=True) as w:
+<<<<<<< HEAD
             out = paddle.nn.functional.softmax_with_cross_entropy(
                 logits=x, label=label
             )
+=======
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x,
+                                                                  label=label)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             assert (
                 'API "paddle.nn.functional.loss.softmax_with_cross_entropy" is '
                 'deprecated since 2.0.0'

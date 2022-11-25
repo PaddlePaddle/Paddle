@@ -41,6 +41,7 @@ def net(batch_size=4, lr=0.01):
     dnn_input_dim, lr_input_dim = int(2), int(2)
 
     with fluid.device_guard("cpu"):
+<<<<<<< HEAD
         dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
@@ -62,6 +63,23 @@ def net(batch_size=4, lr=0.01):
             lod_level=0,
             append_batch_size=False,
         )
+=======
+        dnn_data = fluid.layers.data(name="dnn_data",
+                                     shape=[-1, 1],
+                                     dtype="int64",
+                                     lod_level=1,
+                                     append_batch_size=False)
+        lr_data = fluid.layers.data(name="lr_data",
+                                    shape=[-1, 1],
+                                    dtype="int64",
+                                    lod_level=1,
+                                    append_batch_size=False)
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="float32",
+                                  lod_level=0,
+                                  append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         datas = [dnn_data, lr_data, label]
 
@@ -73,6 +91,7 @@ def net(batch_size=4, lr=0.01):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
+<<<<<<< HEAD
                 initializer=fluid.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
@@ -80,6 +99,12 @@ def net(batch_size=4, lr=0.01):
         dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
+=======
+                initializer=fluid.initializer.Constant(value=0.01)),
+            is_sparse=True)
+        dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding,
+                                              pool_type="sum")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         dnn_out = dnn_pool
 
         # build lr model

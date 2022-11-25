@@ -83,7 +83,10 @@ from .loss import HingeEmbeddingLoss  # noqa: F401
 from .loss import TripletMarginWithDistanceLoss
 from .loss import TripletMarginLoss
 from .loss import SoftMarginLoss
+<<<<<<< HEAD
 from .loss import MultiMarginLoss
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from .norm import BatchNorm1D  # noqa: F401
 from .norm import BatchNorm2D  # noqa: F401
 from .norm import BatchNorm3D  # noqa: F401

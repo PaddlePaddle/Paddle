@@ -23,6 +23,7 @@ from paddle.vision.ops import read_file, decode_jpeg
 
 
 class TestReadFile(unittest.TestCase):
+
     def setUp(self):
         fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
         self.temp_dir = tempfile.TemporaryDirectory()

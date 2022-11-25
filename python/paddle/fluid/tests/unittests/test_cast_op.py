@@ -27,6 +27,7 @@ import paddle.fluid.layers as layers
 
 
 class TestCastOpFp32ToFp64(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
@@ -45,6 +46,7 @@ class TestCastOpFp32ToFp64(OpTest):
 
 
 class TestCastOpFp16ToFp32(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float16')}
@@ -61,6 +63,7 @@ class TestCastOpFp16ToFp32(OpTest):
 
 
 class TestCastOpFp32ToFp16(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
@@ -77,6 +80,7 @@ class TestCastOpFp32ToFp16(OpTest):
 
 
 class TestCastOpBf16ToFp32(OpTest):
+
     def setUp(self):
         ipt = np.array(np.random.randint(10, size=[10, 10])).astype('uint16')
         self.inputs = {'X': ipt}
@@ -93,6 +97,7 @@ class TestCastOpBf16ToFp32(OpTest):
 
 
 class TestCastOpFp32ToBf16(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10]).astype('float32')
         self.inputs = {'X': ipt}
@@ -109,25 +114,38 @@ class TestCastOpFp32ToBf16(OpTest):
 
 
 class TestCastOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
 
 
 class TestCastOpEager(unittest.TestCase):
+
     def test_eager(self):
         with paddle.fluid.dygraph.base.guard():
             with _test_eager_guard():
                 x = paddle.ones([2, 2], dtype="float16")
                 x.stop_gradient = False
                 out = paddle.cast(x, "float32")
+<<<<<<< HEAD
                 np.testing.assert_array_equal(
                     out, np.ones([2, 2]).astype('float32')
                 )
+=======
+                self.assertTrue(
+                    np.array_equal(out,
+                                   np.ones([2, 2]).astype("float32")))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 out.backward()
                 np.testing.assert_array_equal(x.gradient(), x.numpy())
                 self.assertTrue(x.gradient().dtype == np.float16)

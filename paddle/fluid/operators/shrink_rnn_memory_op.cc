@@ -66,7 +66,11 @@ class ShrinkRNNMemoryOp : public ArrayOp {
         out_var,
         platform::errors::NotFound(
             "Output(Out) of ShrinkRNNMemoryOp is not found."));
+<<<<<<< HEAD
     auto &out_tensor = *out_var->GetMutable<phi::DenseTensor>();
+=======
+    auto &out_tensor = *out_var->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     size_t height = dst_num_rows;
 
@@ -152,8 +156,13 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
         x_var,
         platform::errors::NotFound(
             "Input(x) of ShrinkRNNMemoryGradOp is not found."));
+<<<<<<< HEAD
     auto &x_tensor = x_var->Get<phi::DenseTensor>();
     auto &dx_tensor = *dx_var->GetMutable<phi::DenseTensor>();
+=======
+    auto &x_tensor = x_var->Get<framework::LoDTensor>();
+    auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     dx_tensor.Resize(x_tensor.dims());
     dx_tensor.mutable_data(x_tensor.place(), x_tensor.dtype());
 

@@ -48,9 +48,12 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["shape"]["Input"] = ScaleAlgo::KL;
   rules_["shape"]["Out"] = ScaleAlgo::NONE;
 
+<<<<<<< HEAD
   rules_["split"]["X"] = ScaleAlgo::KL;
   rules_["split"]["Out"] = ScaleAlgo::NONE;
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   rules_["fc"]["Input"] = ScaleAlgo::KL;
   rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
   rules_["fc"]["Bias"] = ScaleAlgo::NONE;

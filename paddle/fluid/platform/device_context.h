@@ -282,6 +282,61 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
+=======
+class CudnnWorkspaceHandle;
+class EigenCudaStreamDevice;
+
+class CudnnWorkspaceHandle {
+ public:
+  inline CudnnWorkspaceHandle(const phi::GPUContext& dev_ctx, std::mutex* mtx)
+      : device_context_(dev_ctx), mtx_(mtx) {}
+
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes) {
+    if (required_workspace_bytes > WorkspaceSize()) {
+      ReallocWorkspace(required_workspace_bytes);
+    }
+    VLOG(2) << "Cudnn workspace size at RunFunc: "
+            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
+    {
+      std::lock_guard<std::mutex> guard(*mtx_);
+      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
+    }
+  }
+
+  /*! \brief Thread which call RunFuncSync() would release gpu memory after
+   *  running the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  template <typename Callback>
+  inline void RunFuncSync(Callback&& cudnn_func,
+                          size_t required_workspace_bytes) {
+    RunFunc(cudnn_func, required_workspace_bytes);
+    ResetWorkspace();
+  }
+
+  void ReallocWorkspace(size_t required_workspace_bytes);
+
+  inline void ResetWorkspace() { allocation_ = nullptr; }
+
+  inline size_t WorkspaceSize() {
+    if (allocation_ == nullptr) {
+      return 0;
+    }
+    return allocation_->size();
+  }
+
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+ private:
+  memory::allocation::AllocationPtr allocation_;
+  const phi::GPUContext& device_context_;
+  std::mutex* mtx_;
+};
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 template <>
 struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = phi::GPUContext;
@@ -355,14 +410,29 @@ void EmplaceDeviceContexts(
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
+<<<<<<< HEAD
   static DeviceContextPool& Instance();
+=======
+  static DeviceContextPool& Instance() {
+    PADDLE_ENFORCE_NOT_NULL(pool,
+                            platform::errors::PreconditionNotMet(
+                                "Need to Create DeviceContextPool firstly!"));
+    return *pool;
+  }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   /*! \brief  Create should only called by Init function */
   static DeviceContextPool& Init(const std::vector<platform::Place>& places);
 
+<<<<<<< HEAD
   static bool IsInitialized();
 
   static void SetPool(DeviceContextPool* dev_pool);
+=======
+  static bool IsInitialized() { return pool != nullptr; }
+
+  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
@@ -386,6 +456,10 @@ class DeviceContextPool {
  private:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
+<<<<<<< HEAD
+=======
+  static DeviceContextPool* pool;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
   static thread_local const std::

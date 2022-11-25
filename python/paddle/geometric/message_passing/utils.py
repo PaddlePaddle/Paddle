@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import numpy as np
+<<<<<<< HEAD
 import paddle
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_dtype, convert_dtype
 from paddle.fluid.layers.tensor import cast
@@ -44,6 +47,7 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
         attrs['out_size'] = [out_size]
     elif isinstance(out_size, Variable):
         out_size.stop_gradient = True
+<<<<<<< HEAD
         check_dtype(
             out_size.dtype,
             'out_size',
@@ -52,10 +56,16 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
             '(When type of out_size in' + op_type + ' is Variable.)',
         )
         if convert_dtype(out_size.dtype) == 'int64':
+=======
+        check_dtype(out_size.dtype, 'out_size', ['int32', 'int64'], 'op_type',
+                    '(When type of out_size in' + op_type + ' is Variable.)')
+        if (convert_dtype(out_size.dtype) == 'int64'):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out_size = cast(out_size, 'int32')
         inputs["Out_size"] = out_size
     else:
         raise TypeError("Out_size only supports Variable or int.")
+<<<<<<< HEAD
 
 
 def reshape_lhs_rhs(x, y):
@@ -98,3 +108,5 @@ def reshape_lhs_rhs(x, y):
         y = paddle.reshape(y, new_y_shape)
 
     return x, y
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

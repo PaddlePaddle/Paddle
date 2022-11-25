@@ -254,12 +254,19 @@ class InputSpec:
                     )
                 )
             batch_size = batch_size[1]
+<<<<<<< HEAD
         elif not isinstance(batch_size, int):
             raise TypeError(
                 "type(batch_size) shall be `int`, but received {}.".format(
                     type(batch_size).__name__
                 )
             )
+=======
+        elif not isinstance(batch_size, six.integer_types):
+            raise TypeError(
+                "type(batch_size) shall be `int`, but received {}.".format(
+                    type(batch_size).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         new_shape = [batch_size] + list(self.shape)
         self.shape = tuple(new_shape)
@@ -297,6 +304,7 @@ class InputSpec:
         """
         if not isinstance(shape, (list, tuple)):
             raise TypeError(
+<<<<<<< HEAD
                 "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".format(
                     type(shape).__name__
                 )
@@ -307,15 +315,29 @@ class InputSpec:
                     shape
                 )
             )
+=======
+                "Type of `shape` in InputSpec should be one of (tuple, list), but received {}."
+                .format(type(shape).__name__))
+        if len(shape) == 0:
+            raise ValueError(
+                "`shape` in InputSpec should contain at least 1 element, but received {}."
+                .format(shape))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         for i, ele in enumerate(shape):
             if ele is not None:
                 if not isinstance(ele, int):
                     raise ValueError(
+<<<<<<< HEAD
                         "shape[{}] should be an `int`, but received `{}`:{}.".format(
                             i, type(ele).__name__, ele
                         )
                     )
+=======
+                        "shape[{}] should be an `int`, but received `{}`:{}.".
+                        format(i,
+                               type(ele).__name__, ele))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if ele is None or ele < -1:
                 shape[i] = -1
 

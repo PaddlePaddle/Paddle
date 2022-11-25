@@ -54,7 +54,11 @@ class OpTester {
   void CreateVariables(framework::Scope *scope);
 
   template <typename T>
+<<<<<<< HEAD
   void SetupTensor(phi::DenseTensor *input,
+=======
+  void SetupTensor(framework::LoDTensor *input,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                    const std::vector<int64_t> &shape,
                    T lower,
                    T upper,

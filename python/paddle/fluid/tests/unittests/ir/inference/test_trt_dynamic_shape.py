@@ -23,8 +23,10 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTDynamicShapeTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[-1, 3, 16, 16], dtype="float32"
             )
@@ -37,10 +39,23 @@ class TRTDynamicShapeTest(InferencePassTest):
                 bias_attr=False,
                 act=None,
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 16, 16],
+                              dtype="float32")
+            out = fluid.layers.conv2d(input=data,
+                                      num_filters=3,
+                                      filter_size=3,
+                                      groups=1,
+                                      padding=[1, 1],
+                                      bias_attr=False,
+                                      act=None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.feeds = self.set_feeds()
         self.enable_trt = True
         self.trt_parameters = TRTDynamicShapeTest.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = TRTDynamicShapeTest.DynamicShapeParam(
@@ -49,6 +64,12 @@ class TRTDynamicShapeTest(InferencePassTest):
             {'data': [1, 3, 16, 16]},
             False,
         )
+=======
+            1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = TRTDynamicShapeTest.DynamicShapeParam(
+            {'data': [1, 3, 8, 8]}, {'data': [1, 3, 32, 32]},
+            {'data': [1, 3, 16, 16]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def set_feeds(self):
@@ -63,6 +84,7 @@ class TRTDynamicShapeTest(InferencePassTest):
 
 
 class TRTDynamicShapeOutOfBound1Test(TRTDynamicShapeTest):
+
     def set_feeds(self):
         return {
             "data": np.random.random([1, 3, 64, 16]).astype("float32"),
@@ -90,6 +112,7 @@ class TRTDynamicShapeOutOfBound1Test(TRTDynamicShapeTest):
 
 
 class TRTDynamicShapeOutOfBound3Test(TRTDynamicShapeTest):
+
     def set_feeds(self):
         return {
             "data": np.random.random([1, 3, 4, 16]).astype("float32"),

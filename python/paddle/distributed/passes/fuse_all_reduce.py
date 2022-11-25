@@ -44,6 +44,7 @@ def find_adjacent_match_sequences(
     return match_sequences
 
 
+<<<<<<< HEAD
 def insert_fuse_all_reduce_ops(
     block, reversed_op_indices, input_var_names, output_var_names, dtype, attrs
 ):
@@ -51,6 +52,13 @@ def insert_fuse_all_reduce_ops(
         name=unique_name.generate("FusedOutput_{}".format(input_var_names[0])),
         dtype=dtype,
     )
+=======
+def insert_fuse_all_reduce_ops(block, reversed_op_indices, input_var_names,
+                               output_var_names, dtype, attrs):
+    fused_var = block.create_var(name=unique_name.generate(
+        "FusedOutput_{}".format(input_var_names[0])),
+                                 dtype=dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # FIXME(zengjinle): here we assume that we use
     # c_sync_calc_stream/c_sync_comm_stream to do sync.
@@ -111,6 +119,7 @@ def insert_fuse_all_reduce_ops(
     }
 
     if not attrs["use_calc_stream"]:
+<<<<<<< HEAD
         block._insert_op_without_sync(
             insert_idx,
             type="c_sync_calc_stream",
@@ -127,6 +136,23 @@ def insert_fuse_all_reduce_ops(
         outputs={"Out": fused_var},
         attrs=attrs,
     )
+=======
+        block._insert_op_without_sync(insert_idx,
+                                      type="c_sync_calc_stream",
+                                      inputs={"X": fused_var},
+                                      outputs={
+                                          "Out": fused_var,
+                                          op_role_key: attrs[op_role_key]
+                                      })
+        insert_idx += 1
+
+    # c_allreduce_sum should insert
+    block._insert_op_without_sync(insert_idx,
+                                  type="c_allreduce_sum",
+                                  inputs={"X": fused_var},
+                                  outputs={"Out": fused_var},
+                                  attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     for op_idx in reversed_op_indices:
         block._remove_op(op_idx)
@@ -195,9 +221,15 @@ def find_all_fuse_all_reduce_groups(block):
             return False
         return True
 
+<<<<<<< HEAD
     match_seqs = find_adjacent_match_sequences(
         collective_ops, is_valid_allreduce_op, is_same_adjacent_op
     )
+=======
+    match_seqs = find_adjacent_match_sequences(collective_ops,
+                                               is_valid_allreduce_op,
+                                               is_same_adjacent_op)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     new_match_seqs = []
     for i, j in match_seqs:
         new_match_seqs.append([collective_op_indices[k] for k in range(i, j)])
@@ -350,6 +382,7 @@ def insert_fuse_all_reduce_by_memory_size(block, groups, max_memory_size):
 
 @register_pass("fuse_all_reduce")
 class FuseAllReducePass(PassBase):
+
     def __init__(self):
         super().__init__()
         self.set_attr("max_memory_size", -1)
@@ -377,9 +410,15 @@ class FuseAllReducePass(PassBase):
             block = main_program.block(i)
             groups = find_all_fuse_all_reduce_groups(block)
             groups = split_fuse_all_reduce_groups_by_deps(
+<<<<<<< HEAD
                 block, groups, op_deps[i]
             )
             insert_fuse_all_reduce_by_memory_size(
                 block, groups, max_memory_size
             )
+=======
+                block, groups, op_deps[i])
+            insert_fuse_all_reduce_by_memory_size(block, groups,
+                                                  max_memory_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         main_program._sync_with_cpp()

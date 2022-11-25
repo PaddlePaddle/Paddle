@@ -31,6 +31,7 @@ paddle.enable_static()
 
 
 class XPUTestScatterOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'scatter'
         self.use_dynamic_create_class = True
@@ -106,6 +107,7 @@ class XPUTestScatterOp(XPUOpTestWrapper):
         return base_class, classes
 
     class TestScatterOp(XPUOpTest):
+
         def setUp(self):
             self.init_config()
             self.index_type = (

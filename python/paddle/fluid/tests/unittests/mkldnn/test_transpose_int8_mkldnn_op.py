@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestTransposeOp(OpTest):
+
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -49,30 +50,47 @@ class TestTransposeOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+<<<<<<< HEAD
         self.check_output_with_place(
             core.CPUPlace(), 1e-5, no_check_set=['XShape'], check_dygraph=False
         )
+=======
+        self.check_output_with_place(core.CPUPlace(),
+                                     1e-5,
+                                     no_check_set=['XShape'],
+                                     check_dygraph=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
 
     def initInputData(self):
         self.input_data = (np.random.randint(0, 100, self.shape) - 50).astype(
+<<<<<<< HEAD
             np.int8
         )
+=======
+            np.int8)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestINT8Case(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 4, 6, 8)
 
     def initInputData(self):
         self.input_data = (np.random.randint(0, 100, self.shape) - 50).astype(
+<<<<<<< HEAD
             np.int8
         )
+=======
+            np.int8)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestUINT8Case(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (1, 3, 5, 7)
 

@@ -21,6 +21,7 @@ from paddle.nn import CrossEntropyLoss
 
 
 class TestFixOpRunOrder(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         paddle.seed(1)
@@ -29,11 +30,16 @@ class TestFixOpRunOrder(unittest.TestCase):
             fluid.set_flags({'FLAGS_cudnn_deterministic': 1})
 
     def get_place(self):
+<<<<<<< HEAD
         return (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        return paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def get_feed(self):
         batch_size = 4
@@ -46,12 +52,21 @@ class TestFixOpRunOrder(unittest.TestCase):
         startup_prog = paddle.static.Program()
         scope = paddle.static.Scope()
         with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
             image = paddle.static.data(
                 name="image", shape=[None, 3, 224, 224], dtype="float32"
             )
             label = paddle.static.data(
                 name="label", shape=[None, 1], dtype="int64"
             )
+=======
+            image = paddle.static.data(name="image",
+                                       shape=[None, 3, 224, 224],
+                                       dtype="float32")
+            label = paddle.static.data(name="label",
+                                       shape=[None, 1],
+                                       dtype="int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             model = resnet18()
             pred = model(image)
             loss_fn = CrossEntropyLoss()

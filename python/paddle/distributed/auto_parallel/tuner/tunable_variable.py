@@ -50,9 +50,13 @@ class Fixed(TunableVariable):
         if not isinstance(default, (str, int, float, bool)):
             raise ValueError(
                 "Fixed must be an str, int, float or bool, but found {}".format(
+<<<<<<< HEAD
                     default
                 )
             )
+=======
+                    default))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._default = default
 
     def random(self, seed=None):
@@ -80,11 +84,16 @@ class Boolean(TunableVariable):
 
     def __repr__(self):
         return 'Boolean(name: "{}", default: {})'.format(
+<<<<<<< HEAD
             self.name, self.default
         )
+=======
+            self.name, self.default)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class Choice(TunableVariable):
+
     def __init__(self, name, values, default=None):
         super().__init__(name=name, default=default)
 
@@ -120,10 +129,15 @@ class Choice(TunableVariable):
 
         if default is not None and default not in values:
             raise ValueError(
+<<<<<<< HEAD
                 "The default value should be one of the choices {}, but found {}".format(
                     values, default
                 )
             )
+=======
+                "The default value should be one of the choices {}, but found {}"
+                .format(values, default))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._default = default
 
     @property

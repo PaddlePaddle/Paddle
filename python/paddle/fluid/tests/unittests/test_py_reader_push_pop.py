@@ -24,6 +24,7 @@ def feed_data(feed_queue, inputs):
 
 
 class TestPyReader(unittest.TestCase):
+
     def setUp(self):
         self.capacity = 10
         self.batch_size_min = 10
@@ -41,6 +42,7 @@ class TestPyReader(unittest.TestCase):
 
     def main(self, use_thread=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if fluid.core.is_compiled_with_cuda()
@@ -54,6 +56,16 @@ class TestPyReader(unittest.TestCase):
                 lod_levels=self.lod_levels,
                 shapes=self.shapes,
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            executor = fluid.Executor(place)
+
+            data_file = fluid.layers.py_reader(capacity=self.capacity,
+                                               dtypes=self.dtypes,
+                                               lod_levels=self.lod_levels,
+                                               shapes=self.shapes)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             feed_queue = data_file.queue
             read_out_data = fluid.layers.read_file(data_file)
             self.inputs = []
@@ -64,9 +76,16 @@ class TestPyReader(unittest.TestCase):
                     self.batch_size_min, self.batch_size_max
                 )
                 for shape, dtype in zip(self.shapes, self.dtypes):
+<<<<<<< HEAD
                     next_data = np.random.uniform(
                         low=0, high=1000, size=(batch_size,) + shape[1:]
                     ).astype(dtype)
+=======
+                    next_data = np.random.uniform(low=0,
+                                                  high=1000,
+                                                  size=(batch_size, ) +
+                                                  shape[1:]).astype(dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     in_data.append(
                         fluid.executor._as_lodtensor(next_data, place)
                     )
@@ -76,9 +95,14 @@ class TestPyReader(unittest.TestCase):
             executor.run(fluid.default_startup_program())
             self.outputs = []
             if use_thread:
+<<<<<<< HEAD
                 thread = Thread(
                     target=feed_data, args=(feed_queue, self.inputs)
                 )
+=======
+                thread = Thread(target=feed_data,
+                                args=(feed_queue, self.inputs))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 thread.start()
                 for in_data in self.inputs:
                     self.outputs.append(

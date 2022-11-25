@@ -22,6 +22,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(nn.Layer):
+
     def __init__(self, in_dim, out_dim):
         super().__init__()
         self.fc = nn.Linear(in_dim, out_dim)
@@ -31,6 +32,7 @@ class SimpleNet(nn.Layer):
 
 
 class TestCases(unittest.TestCase):
+
     @paddle.no_grad()
     def thread_1_main(self):
         time.sleep(8)

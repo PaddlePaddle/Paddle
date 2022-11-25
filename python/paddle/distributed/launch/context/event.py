@@ -13,7 +13,12 @@
 # limitations under the License.
 
 
+<<<<<<< HEAD
 class Event:
+=======
+class Event(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, kind="status", message="", fatal=False):
         self.kind = kind
         self.message = message

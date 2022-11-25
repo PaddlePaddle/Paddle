@@ -10,7 +10,25 @@ exclude: |
         python/paddle/fluid/tests/unittests/mlu/.+
     )$
 repos:
+<<<<<<< HEAD
 # Common hooks
+=======
+-   repo: https://github.com/Lucas-C/pre-commit-hooks.git
+    rev: v1.1.14
+    hooks:
+    -   id: remove-crlf
+        files: (?!.*third_party)^.*$ | (?!.*book)^.*$
+-   repo: https://github.com/google/yapf
+    rev: v0.32.0
+    hooks:
+    -   id: yapf
+        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
+        exclude: |
+            (?x)^(
+                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
+                python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
+            )$
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0
     hooks:
@@ -20,6 +38,7 @@ repos:
     -   id: detect-private-key
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
+<<<<<<< HEAD
         files: (ops|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
         files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
@@ -87,6 +106,9 @@ repos:
         language: system
         files: \.(py)$
 # For C++ files
+=======
+        files: (api|backward|api_[a-z_]+)\.yaml$
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 -   repo: local
     hooks:
     -   id: clang-format
@@ -95,6 +117,13 @@ repos:
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+<<<<<<< HEAD
+=======
+        exclude: |
+            (?x)^(
+                paddle/fluid/distributed/ps/thirdparty/round_robin.h
+            )$
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 -   repo: local
     hooks:
     -   id: cpplint-cpp-source
@@ -125,6 +154,20 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
+<<<<<<< HEAD
+=======
+-   repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+    -   id: cmake-format
+        # exclude paddle/fluid/operators/CMakeLists.txt, see the comment
+        # https://github.com/PaddlePaddle/Paddle/pull/43057#pullrequestreview-993471860
+        exclude: |
+            (?x)^(
+                paddle/fluid/operators/CMakeLists.txt
+            )$
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 -   repo: https://github.com/cmake-lint/cmake-lint
     rev: 1.4.2
     hooks:

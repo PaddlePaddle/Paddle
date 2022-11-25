@@ -59,7 +59,11 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByStructure cache_key5(
+<<<<<<< HEAD
       empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
+=======
+      empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   CinnCacheKeyByStructure cache_key6(
       empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
@@ -132,7 +136,11 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByAddress cache_key5(
+<<<<<<< HEAD
       empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
+=======
+      empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   CinnCacheKeyByAddress cache_key6(
       empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);

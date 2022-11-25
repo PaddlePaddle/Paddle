@@ -35,7 +35,9 @@ paddle.enable_static()
 
 
 def create_test_padding_SAME_class(parent):
+
     class TestPaddingSMAECase(parent):
+
         def init_paddings(self):
             self.paddings = [0, 0]
             self.padding_algorithm = "SAME"
@@ -46,7 +48,9 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_use_ceil_class(parent):
+
     class TestPool2DUseCeilCase(parent):
+
         def init_ceil_mode(self):
             self.ceil_mode = True
 
@@ -56,7 +60,9 @@ def create_test_use_ceil_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
+
     class TestPaddingVALIDCase(parent):
+
         def init_paddings(self):
             self.paddings = [1, 1]
             self.padding_algorithm = "VALID"
@@ -67,7 +73,9 @@ def create_test_padding_VALID_class(parent):
 
 
 def create_test_fp16_class(parent):
+
     class TestFp16Case(parent):
+
         def init_kernel_type(self):
             self.use_cudnn = False
             self.dtype = np.float16
@@ -98,8 +106,12 @@ def pool2d_backward_navie(
         ):
             out_size = int((input_size + stride_size - 1) / stride_size)
             pad_sum = np.max(
+<<<<<<< HEAD
                 ((out_size - 1) * stride_size + filter_size - input_size, 0)
             )
+=======
+                ((out_size - 1) * stride_size + filter_size - input_size, 0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -191,6 +203,7 @@ def pool2d_backward_navie(
                 in_w_end = np.min((in_w_end, W))
 
             if pool_type == 'avg':
+<<<<<<< HEAD
                 if exclusive or adaptive:
                     field_size = (in_h_end - in_h_start) * (
                         in_w_end - in_w_start
@@ -211,6 +224,22 @@ def pool2d_backward_navie(
                         x_grad[
                             n, c, in_h_start + idx_h, in_w_start + idx_w
                         ] += 1
+=======
+                if (exclusive or adaptive):
+                    field_size = (in_h_end - in_h_start) * (in_w_end -
+                                                            in_w_start)
+                x_grad[:, :, in_h_start:in_h_end,
+                       in_w_start:in_w_end] += 1 / field_size
+            elif pool_type == 'max':
+                for n in range(N):
+                    for c in range(C):
+                        idx = np.argmax(x[n, c, in_h_start:in_h_end,
+                                          in_w_start:in_w_end].flatten())
+                        idx_h = idx // (in_w_end - in_w_start)
+                        idx_w = idx % (in_w_end - in_w_start)
+                        x_grad[n, c, in_h_start + idx_h,
+                               in_w_start + idx_w] += 1
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if data_format == "NHWC":
         x_grad = x_grad.transpose([0, 2, 3, 1])
@@ -218,6 +247,7 @@ def pool2d_backward_navie(
 
 
 class TestPool2D_Op(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "pool2d"
@@ -237,6 +267,7 @@ class TestPool2D_Op(OpTest):
 
         input = np.random.random(self.shape).astype(self.dtype)
         if self.pool_type == "max":
+<<<<<<< HEAD
             input = (
                 np.array([x for x in range(np.prod(self.shape))])
                 .reshape(self.shape)
@@ -255,6 +286,16 @@ class TestPool2D_Op(OpTest):
             self.pool_type,
             self.padding_algorithm,
         ).astype(self.dtype)
+=======
+            input = np.array([x for x in range(np.prod(self.shape))
+                              ]).reshape(self.shape).astype(self.dtype)
+        output = pool2D_forward_naive(input, self.ksize, self.strides,
+                                      self.paddings, self.global_pool,
+                                      self.ceil_mode, self.exclusive,
+                                      self.adaptive, self.data_format,
+                                      self.pool_type,
+                                      self.padding_algorithm).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -317,6 +358,7 @@ class TestPool2D_Op(OpTest):
         self.check_output_with_place(fluid.NPUPlace(0), atol=1e-3)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         x_grad = pool2d_backward_navie(
             self.inputs["X"],
             ksize=self.ksize,
@@ -338,9 +380,29 @@ class TestPool2D_Op(OpTest):
             max_relative_error=0.06,
             user_defined_grads=[x_grad],
         )
+=======
+        x_grad = pool2d_backward_navie(self.inputs["X"],
+                                       ksize=self.ksize,
+                                       strides=self.strides,
+                                       paddings=self.paddings,
+                                       global_pool=self.global_pool,
+                                       ceil_mode=False,
+                                       exclusive=self.exclusive,
+                                       adaptive=self.adaptive,
+                                       data_format=self.data_format,
+                                       pool_type=self.pool_type,
+                                       padding_algorithm=self.padding_algorithm)
+        x_grad = x_grad / np.prod(self.outputs['Out'].shape)
+        self.check_grad_with_place(fluid.NPUPlace(0),
+                                   set(['X']),
+                                   'Out',
+                                   max_relative_error=0.06,
+                                   user_defined_grads=[x_grad])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCase1(TestPool2D_Op):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -360,6 +422,7 @@ class TestCase1(TestPool2D_Op):
 
 
 class TestCase2(TestPool2D_Op):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -379,29 +442,34 @@ class TestCase2(TestPool2D_Op):
 
 
 class TestCase3(TestPool2D_Op):
+
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase4(TestCase1):
+
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase5(TestCase2):
+
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestAvgInclude(TestCase2):
+
     def init_exclusive(self):
         self.exclusive = False
 
 
 class TestAvgPoolAdaptive(TestCase1):
+
     def init_adaptive(self):
         self.adaptive = True
 
@@ -415,6 +483,7 @@ class TestAvgPoolAdaptive(TestCase1):
 
 
 class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
+
     def init_adaptive(self):
         self.adaptive = True
 
@@ -431,6 +500,7 @@ class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
 
 # -------test pool2d with asymmetric padding-----
 class TestPool2D_AsyPadding(TestPool2D_Op):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -441,6 +511,7 @@ class TestPool2D_AsyPadding(TestPool2D_Op):
 
 
 class TestCase1_AsyPadding(TestCase1):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -451,6 +522,7 @@ class TestCase1_AsyPadding(TestCase1):
 
 
 class TestCase2_AsyPadding(TestCase2):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -461,6 +533,7 @@ class TestCase2_AsyPadding(TestCase2):
 
 
 class TestCase3_AsyPadding(TestCase3):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -471,6 +544,7 @@ class TestCase3_AsyPadding(TestCase3):
 
 
 class TestCase4_AsyPadding(TestCase4):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -481,6 +555,7 @@ class TestCase4_AsyPadding(TestCase4):
 
 
 class TestCase5_AsyPadding((TestCase5)):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -491,6 +566,7 @@ class TestCase5_AsyPadding((TestCase5)):
 
 
 class TestAvgInclude_AsyPadding(TestCase2):
+
     def init_exclusive(self):
         self.exclusive = False
 
@@ -504,6 +580,7 @@ class TestAvgInclude_AsyPadding(TestCase2):
 
 
 class TestAvgPoolAdaptive_AsyPadding(TestCase1):
+
     def init_adaptive(self):
         self.adaptive = True
 
@@ -518,6 +595,7 @@ class TestAvgPoolAdaptive_AsyPadding(TestCase1):
 
 # ----------- test channel_last --------------
 class TestPool2D_channel_last(TestPool2D_Op):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -526,6 +604,7 @@ class TestPool2D_channel_last(TestPool2D_Op):
 
 
 class TestCase1_channel_last(TestCase1):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -534,6 +613,7 @@ class TestCase1_channel_last(TestCase1):
 
 
 class TestCase2_channel_last(TestCase2):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -542,6 +622,7 @@ class TestCase2_channel_last(TestCase2):
 
 
 class TestCase3_channel_last(TestCase3):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -550,6 +631,7 @@ class TestCase3_channel_last(TestCase3):
 
 
 class TestCase4_channel_last(TestCase4):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -558,6 +640,7 @@ class TestCase4_channel_last(TestCase4):
 
 
 class TestCase5_channel_last(TestCase5):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -566,11 +649,13 @@ class TestCase5_channel_last(TestCase5):
 
 
 class TestCase5_Max(TestCase2):
+
     def init_pool_type(self):
         self.pool_type = "max"
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -579,11 +664,13 @@ class TestCase5_channel_last_Max(TestCase5_Max):
 
 
 class TestAvgInclude_channel_last(TestCase2_channel_last):
+
     def init_exclusive(self):
         self.exclusive = False
 
 
 class TestAvgPoolAdaptive_channel_last(TestCase1_channel_last):
+
     def init_adaptive(self):
         self.adaptive = True
 
@@ -596,6 +683,7 @@ class TestAvgPoolAdaptive_channel_last(TestCase1_channel_last):
 
 
 class TestPool2D_AsyPadding_channel_last(TestPool2D_AsyPadding):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -604,6 +692,7 @@ class TestPool2D_AsyPadding_channel_last(TestPool2D_AsyPadding):
 
 
 class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -612,6 +701,7 @@ class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
 
 
 class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -620,6 +710,7 @@ class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
 
 
 class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -628,6 +719,7 @@ class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
 
 
 class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -636,6 +728,7 @@ class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
 
 
 class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -644,6 +737,7 @@ class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
 
 
 class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -651,9 +745,15 @@ class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
         self.shape = [2, 7, 7, 3]
 
 
+<<<<<<< HEAD
 class TestAvgPoolAdaptive_AsyPadding_channel_last(
     TestAvgPoolAdaptive_AsyPadding
 ):
+=======
+class TestAvgPoolAdaptive_AsyPadding_channel_last(TestAvgPoolAdaptive_AsyPadding
+                                                  ):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -662,6 +762,7 @@ class TestAvgPoolAdaptive_AsyPadding_channel_last(
 
 
 class TestCase1_strides(TestCase1):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         # fixme: CANN AvgPoolGradV3 dose not support asymmetric strides

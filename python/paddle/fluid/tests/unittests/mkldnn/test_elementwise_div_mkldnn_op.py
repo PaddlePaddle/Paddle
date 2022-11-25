@@ -31,6 +31,7 @@ from paddle.fluid.tests.unittests.op_test import (
     "GPU is not supported",
 )
 class TestMKLDNNElementwiseDivOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.init_dtype()
@@ -72,6 +73,7 @@ class TestMKLDNNElementwiseDivOp(OpTest):
 
 
 class TestMKLDNNElementwiseDivOp2(TestMKLDNNElementwiseDivOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
@@ -79,6 +81,7 @@ class TestMKLDNNElementwiseDivOp2(TestMKLDNNElementwiseDivOp):
 
 
 class TestMKLDNNElementwiseDivOp3(TestMKLDNNElementwiseDivOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
@@ -86,6 +89,7 @@ class TestMKLDNNElementwiseDivOp3(TestMKLDNNElementwiseDivOp):
 
 
 class TestMKLDNNElementwiseDivOp4(TestMKLDNNElementwiseDivOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -100,6 +104,7 @@ class TestMKLDNNElementwiseDivOp4(TestMKLDNNElementwiseDivOp):
 
 
 class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -115,6 +120,7 @@ class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestBf16(TestMKLDNNElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.init_dtype()
@@ -141,6 +147,7 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             core.CPUPlace(),
             ["X", "Y"],
@@ -166,6 +173,25 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
             ],
             user_defined_grad_outputs=[self.y_bf16],
         )
+=======
+        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
+                                   "Out",
+                                   user_defined_grads=[
+                                       np.divide(self.x, self.y),
+                                       np.divide((np.multiply(-self.x, self.x)),
+                                                 np.multiply(self.y, self.y))
+                                   ],
+                                   user_defined_grad_outputs=[self.x_bf16])
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(core.CPUPlace(), ["Y"],
+                                   "Out",
+                                   user_defined_grads=[
+                                       np.divide((np.multiply(-self.x, self.y)),
+                                                 np.multiply(self.y, self.y))
+                                   ],
+                                   user_defined_grad_outputs=[self.y_bf16])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
@@ -178,6 +204,7 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
 
 
 class TestBf16Broadcasting(TestBf16):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)

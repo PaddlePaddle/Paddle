@@ -25,9 +25,15 @@ import numpy as np
 
 __all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 _valid_types = [
     core.VarDesc.VarType.LOD_TENSOR,
@@ -157,8 +163,12 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
 
     for in_name in op.input_names:
         if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
+<<<<<<< HEAD
             op, in_name
         ):
+=======
+                op, in_name):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
@@ -203,6 +213,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         stop_gradient=in_var.stop_gradient,
                     )
 
+<<<<<<< HEAD
                     block._insert_op_without_sync(
                         idx,
                         type="cast",
@@ -215,6 +226,20 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                             "op_role": op.attr("op_role"),
                         },
                     )
+=======
+                    block._insert_op_without_sync(idx,
+                                                  type="cast",
+                                                  inputs={"X": in_var},
+                                                  outputs={"Out": out_var},
+                                                  attrs={
+                                                      "in_dtype": in_var.dtype,
+                                                      "out_dtype":
+                                                      out_var.dtype,
+                                                      "op_device": op_device,
+                                                      "op_role":
+                                                      op.attr("op_role"),
+                                                  })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
@@ -256,6 +281,7 @@ def _insert_cast_post_op(
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)
     if cast_var is None or cast_var.dtype != dest_dtype:
+<<<<<<< HEAD
         cast_var = block.create_var(
             name=cast_name,
             dtype=dest_dtype,
@@ -274,6 +300,22 @@ def _insert_cast_post_op(
                 "op_role": op.attr("op_role"),
             },
         )
+=======
+        cast_var = block.create_var(name=cast_name,
+                                    dtype=dest_dtype,
+                                    persistable=False,
+                                    stop_gradient=target_var.stop_gradient)
+        block._insert_op(idx,
+                         type="cast",
+                         inputs={"X": target_var},
+                         outputs={"Out": cast_var},
+                         attrs={
+                             "in_dtype": target_var.dtype,
+                             "out_dtype": cast_var.dtype,
+                             "op_device": op.attr("op_device"),
+                             "op_role": op.attr("op_role"),
+                         })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
 
@@ -515,6 +557,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
 
                     _logger.debug(
+<<<<<<< HEAD
                         "-- op type: {}, out var name: {}, out var dtype: {} --".format(
                             op.type, out_var_name, out_var.dtype
                         )
@@ -523,6 +566,12 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 op.has_attr('in_dtype')
                 and op.attr('in_dtype') == core.VarDesc.VarType.FP32
             ):
+=======
+                        "-- op type: {}, out var name: {}, out var dtype: {} --"
+                        .format(op.type, out_var_name, out_var.dtype))
+            if op.has_attr('in_dtype') and op.attr(
+                    'in_dtype') == core.VarDesc.VarType.FP32:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
             if (
                 op.has_attr('out_dtype')
@@ -771,6 +820,7 @@ def update_role_var_grad(main_prog, params_grads):
             # add new op in the python and cpp at the same time
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op.desc)
+<<<<<<< HEAD
             new_op = framework.Operator(
                 block=block,
                 desc=new_op_desc,
@@ -779,6 +829,14 @@ def update_role_var_grad(main_prog, params_grads):
                 outputs=None,
                 attrs=None,
             )
+=======
+            new_op = framework.Operator(block=block,
+                                        desc=new_op_desc,
+                                        type=None,
+                                        inputs=None,
+                                        outputs=None,
+                                        attrs=None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             block.ops.append(new_op)
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:

@@ -20,7 +20,12 @@ import os
 from paddle.fluid import core
 
 
+<<<<<<< HEAD
 class CostModel:
+=======
+class CostModel():
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         pass
 
@@ -29,12 +34,20 @@ class CostModel:
 
         main_program = static.Program()
         startup_program = static.Program()
+<<<<<<< HEAD
         with static.program_guard(
             main_program=main_program, startup_program=startup_program
         ):
             data = paddle.static.data(
                 name='X', shape=[None, 1], dtype='float32'
             )
+=======
+        with static.program_guard(main_program=main_program,
+                                  startup_program=startup_program):
+            data = paddle.static.data(name='X',
+                                      shape=[None, 1],
+                                      dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             hidden = paddle.static.nn.fc(data, 10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -63,9 +76,14 @@ class CostModel:
         cost_data = cost_model.ProfileMeasure(device)
 
     def static_cost_data(self):
+<<<<<<< HEAD
         static_cost_data_path = os.path.join(
             os.path.dirname(__file__), "static_op_benchmark.json"
         )
+=======
+        static_cost_data_path = os.path.join(os.path.dirname(__file__),
+                                             "static_op_benchmark.json")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with open(static_cost_data_path, 'r') as load_f:
             load_dict = json.load(load_f)
         self._static_cost_data = load_dict

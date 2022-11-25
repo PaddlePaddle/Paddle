@@ -17,12 +17,18 @@ import math
 import numpy as np
 
 
+<<<<<<< HEAD
 class LayerMixin:
+=======
+class LayerMixin(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
 
 class LayerListMixin(LayerMixin):
+
     def __init__(self, layers=None):
         self._layers = list(layers) if layers else []
 
@@ -34,6 +40,7 @@ class LayerListMixin(LayerMixin):
 
 
 class SimpleRNNCell(LayerMixin):
+<<<<<<< HEAD
     def __init__(
         self,
         input_size,
@@ -42,6 +49,15 @@ class SimpleRNNCell(LayerMixin):
         nonlinearity="RNN_TANH",
         dtype="float64",
     ):
+=======
+
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 bias=True,
+                 nonlinearity="RNN_TANH",
+                 dtype="float64"):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -53,11 +69,17 @@ class SimpleRNNCell(LayerMixin):
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(
+<<<<<<< HEAD
             -std, std, (hidden_size, input_size)
         ).astype(dtype)
         self.weight_hh = np.random.uniform(
             -std, std, (hidden_size, hidden_size)
         ).astype(dtype)
+=======
+            -std, std, (hidden_size, input_size)).astype(dtype)
+        self.weight_hh = np.random.uniform(
+            -std, std, (hidden_size, hidden_size)).astype(dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
@@ -92,6 +114,7 @@ class SimpleRNNCell(LayerMixin):
 
 
 class GRUCell(LayerMixin):
+
     def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -99,11 +122,17 @@ class GRUCell(LayerMixin):
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(
+<<<<<<< HEAD
             -std, std, (3 * hidden_size, input_size)
         ).astype(dtype)
         self.weight_hh = np.random.uniform(
             -std, std, (3 * hidden_size, hidden_size)
         ).astype(dtype)
+=======
+            -std, std, (3 * hidden_size, input_size)).astype(dtype)
+        self.weight_hh = np.random.uniform(
+            -std, std, (3 * hidden_size, hidden_size)).astype(dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
@@ -144,6 +173,7 @@ class GRUCell(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
+
     def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -151,11 +181,17 @@ class LSTMCell(LayerMixin):
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(
+<<<<<<< HEAD
             -std, std, (4 * hidden_size, input_size)
         ).astype(dtype)
         self.weight_hh = np.random.uniform(
             -std, std, (4 * hidden_size, hidden_size)
         ).astype(dtype)
+=======
+            -std, std, (4 * hidden_size, input_size)).astype(dtype)
+        self.weight_hh = np.random.uniform(
+            -std, std, (4 * hidden_size, hidden_size)).astype(dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
@@ -346,6 +382,7 @@ def concat_states(states, bidirectional=False, state_components=1):
 
 
 class RNN(LayerMixin):
+
     def __init__(self, cell, is_reverse=False, time_major=False):
         super().__init__()
         self.cell = cell
@@ -368,6 +405,7 @@ class RNN(LayerMixin):
 
 
 class BiRNN(LayerMixin):
+
     def __init__(self, cell_fw, cell_bw, time_major=False):
         super().__init__()
         self.cell_fw = cell_fw
@@ -396,6 +434,7 @@ class BiRNN(LayerMixin):
 
 
 class RNNMixin(LayerListMixin):
+
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
         batch_size = inputs.shape[batch_index]
@@ -437,6 +476,7 @@ class RNNMixin(LayerListMixin):
 
 
 class SimpleRNN(RNNMixin):
+<<<<<<< HEAD
     def __init__(
         self,
         input_size,
@@ -479,6 +519,52 @@ class SimpleRNN(RNNMixin):
                 cell_bw = SimpleRNNCell(
                     2 * hidden_size, hidden_size, nonlinearity, dtype=dtype
                 )
+=======
+
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 nonlinearity="RNN_TANH",
+                 direction="forward",
+                 dropout=0.,
+                 time_major=False,
+                 dtype="float64"):
+        super(SimpleRNN, self).__init__()
+        bidirectional_list = ["bidirectional", "bidirect"]
+        if direction in ["forward"]:
+            is_reverse = False
+            cell = SimpleRNNCell(input_size,
+                                 hidden_size,
+                                 nonlinearity=nonlinearity,
+                                 dtype=dtype)
+            self.append(RNN(cell, is_reverse, time_major))
+            for i in range(1, num_layers):
+                cell = SimpleRNNCell(hidden_size,
+                                     hidden_size,
+                                     nonlinearity=nonlinearity,
+                                     dtype=dtype)
+                self.append(RNN(cell, is_reverse, time_major))
+        elif direction in bidirectional_list:
+            cell_fw = SimpleRNNCell(input_size,
+                                    hidden_size,
+                                    nonlinearity=nonlinearity,
+                                    dtype=dtype)
+            cell_bw = SimpleRNNCell(input_size,
+                                    hidden_size,
+                                    nonlinearity=nonlinearity,
+                                    dtype=dtype)
+            self.append(BiRNN(cell_fw, cell_bw, time_major))
+            for i in range(1, num_layers):
+                cell_fw = SimpleRNNCell(2 * hidden_size,
+                                        hidden_size,
+                                        nonlinearity,
+                                        dtype=dtype)
+                cell_bw = SimpleRNNCell(2 * hidden_size,
+                                        hidden_size,
+                                        nonlinearity,
+                                        dtype=dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(
@@ -496,6 +582,7 @@ class SimpleRNN(RNNMixin):
 
 
 class LSTM(RNNMixin):
+<<<<<<< HEAD
     def __init__(
         self,
         input_size,
@@ -507,6 +594,18 @@ class LSTM(RNNMixin):
         dtype="float64",
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 direction="forward",
+                 dropout=0.,
+                 time_major=False,
+                 dtype="float64"):
+        super(LSTM, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         bidirectional_list = ["bidirectional", "bidirect"]
         if direction in ["forward"]:
@@ -540,6 +639,7 @@ class LSTM(RNNMixin):
 
 
 class GRU(RNNMixin):
+<<<<<<< HEAD
     def __init__(
         self,
         input_size,
@@ -551,6 +651,18 @@ class GRU(RNNMixin):
         dtype="float64",
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 direction="forward",
+                 dropout=0.,
+                 time_major=False,
+                 dtype="float64"):
+        super(GRU, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         bidirectional_list = ["bidirectional", "bidirect"]
         if direction in ["forward"]:

@@ -72,6 +72,7 @@ paddlecloud environment.".format(
             try:
                 paddle_port = int(os.getenv("PADDLE_PORT", ""))
 
+<<<<<<< HEAD
                 if (
                     paddle_ports_num >= len(selected_devices)
                     and paddle_port != args_port
@@ -79,6 +80,12 @@ paddlecloud environment.".format(
                     logger.warning(
                         "Use Cloud specified port:{}.".format(paddle_port)
                     )
+=======
+                if paddle_ports_num >= len(
+                        selected_devices) and paddle_port != args_port:
+                    logger.warning(
+                        "Use Cloud specified port:{}.".format(paddle_port))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     started_port = paddle_port
 
             except Exception as e:
@@ -98,6 +105,7 @@ paddlecloud environment.".format(
         assert num_nodes * paddle_ports_num == len(trainer_endpoints_ori)
         for i in range(num_nodes):
             trainer_endpoints.append(
+<<<<<<< HEAD
                 trainer_endpoints_ori[
                     i * paddle_ports_num : (i + 1) * paddle_ports_num
                 ]
@@ -113,6 +121,17 @@ paddlecloud environment.".format(
     cluster, pod = get_cluster(
         node_ips, node_ip, trainer_endpoints, selected_devices
     )
+=======
+                trainer_endpoints_ori[i * paddle_ports_num:(i + 1) *
+                                      paddle_ports_num])
+
+    logger.debug("parsed from args: node_ips:{} \
+        node_ip:{} node_rank:{} trainer_endpoints:{}".format(
+        node_ips, node_ip, node_rank, trainer_endpoints))
+
+    cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
+                               selected_devices)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return cluster, cluster.pods[node_rank]
 
 

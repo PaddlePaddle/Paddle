@@ -27,7 +27,12 @@ try:
     from tqdm import tqdm
 except:
 
+<<<<<<< HEAD
     class tqdm:
+=======
+    class tqdm(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def __init__(self, total=None):
             self.total = total
             self.n = 0
@@ -37,9 +42,14 @@ except:
             if self.total is None:
                 sys.stderr.write("\r{0:.1f} bytes".format(self.n))
             else:
+<<<<<<< HEAD
                 sys.stderr.write(
                     "\r{0:.1f}%".format(100 * self.n / float(self.total))
                 )
+=======
+                sys.stderr.write("\r{0:.1f}%".format(100 * self.n /
+                                                     float(self.total)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             sys.stderr.flush()
 
         def __enter__(self):
@@ -154,9 +164,14 @@ def get_path_from_url(
                 time.sleep(1)
 
     if ParallelEnv().current_endpoint in unique_endpoints:
+<<<<<<< HEAD
         if decompress and (
             tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath)
         ):
+=======
+        if decompress and (tarfile.is_tarfile(fullpath)
+                           or zipfile.is_zipfile(fullpath)):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fullpath = _decompress(fullpath)
 
     return fullpath
@@ -205,12 +220,21 @@ def _wget_download(url, fullname):
     # using wget to download url
     tmp_fullname = fullname + "_tmp"
     # –user-agent
+<<<<<<< HEAD
     command = 'wget -O {} -t {} {}'.format(
         tmp_fullname, DOWNLOAD_RETRY_LIMIT, url
     )
     subprc = subprocess.Popen(
         command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
+=======
+    command = 'wget -O {} -t {} {}'.format(tmp_fullname, DOWNLOAD_RETRY_LIMIT,
+                                           url)
+    subprc = subprocess.Popen(command,
+                              shell=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     _ = subprc.communicate()
 
     if subprc.returncode != 0:

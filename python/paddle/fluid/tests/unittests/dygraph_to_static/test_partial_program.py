@@ -54,6 +54,7 @@ def fake_data(shape):
 
 
 class TestWithNestedInput(unittest.TestCase):
+
     def setUp(self):
         self.x = None
         self.y = None
@@ -61,11 +62,17 @@ class TestWithNestedInput(unittest.TestCase):
     def fake_input(self):
         self.x = fake_data([10, 16])
         self.y = [
+<<<<<<< HEAD
             fake_data([10, 16]),
             "preprocess_cmd",
             64,
             {
                 'z': [fake_data([10, 12]), fake_data([10, 12])],
+=======
+            fake_data([10, 16]), "preprocess_cmd", 64, {
+                'z': [fake_data([10, 12]),
+                      fake_data([10, 12])],
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 'c': fake_data([10, 10]),
                 'd': {'da': 12, 'dc': fake_data([10, 10])},
             },
@@ -90,6 +97,7 @@ class TestWithNestedInput(unittest.TestCase):
 
 
 class TestWithNestedOutput(unittest.TestCase):
+
     def setUp(self):
         self.x = None
         self.y = None
@@ -128,6 +136,7 @@ class TestWithNestedOutput(unittest.TestCase):
 
 
 class TestWithTrainAndEval(unittest.TestCase):
+
     def test_switch_eval_and_train(self):
         program_translator = ProgramTranslator()
 
@@ -139,27 +148,43 @@ class TestWithTrainAndEval(unittest.TestCase):
 
             _, train_partial_layer = linear_net.forward.program_cache.last()[-1]
             # check default mode is for training
+<<<<<<< HEAD
             self.assertEqual(
                 train_partial_layer.program, train_partial_layer._train_program
             )
+=======
+            self.assertEqual(train_partial_layer.program,
+                             train_partial_layer._train_program)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             # switch to run test program after `eval()`
             linear_net.eval()
             linear_net(x)
             _, eval_partial_layer = linear_net.forward.program_cache.last()[-1]
+<<<<<<< HEAD
             self.assertEqual(
                 eval_partial_layer.program, eval_partial_layer._infer_program
             )
+=======
+            self.assertEqual(eval_partial_layer.program,
+                             eval_partial_layer._infer_program)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             # switch back into training
             linear_net.train()
             linear_net(x)
+<<<<<<< HEAD
             self.assertEqual(
                 train_partial_layer.program, train_partial_layer._train_program
             )
+=======
+            self.assertEqual(train_partial_layer.program,
+                             train_partial_layer._train_program)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestWithNoGrad(unittest.TestCase):
+
     def test_with_no_grad(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
@@ -176,6 +201,7 @@ class TestWithNoGrad(unittest.TestCase):
 
 
 class GPT2LMHeadModel(fluid.dygraph.Layer):
+
     def __init__(self):
         super().__init__()
         self.embedding0 = paddle.nn.Embedding(20, 16)
@@ -192,6 +218,7 @@ class GPT2LMHeadModel(fluid.dygraph.Layer):
 
 
 class TestPruneUnusedParamInProgram(unittest.TestCase):
+
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 

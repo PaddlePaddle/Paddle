@@ -18,15 +18,25 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T>
 class BCELossMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* labels = ctx.Input<phi::DenseTensor>("Label");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* labels = ctx.Input<Tensor>("Label");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -50,10 +60,17 @@ template <typename T>
 class BCELossGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* labels = ctx.Input<phi::DenseTensor>("Label");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* labels = ctx.Input<Tensor>("Label");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     dx->mutable_data<T>(ctx.GetPlace());
 

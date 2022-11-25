@@ -483,11 +483,17 @@ class Layer:
             temp_attr, shape, dtype, is_bias, default_initializer
         )
 
+<<<<<<< HEAD
     @deprecated(
         since="2.0.0",
         update_to="paddle.nn.Layer.create_tensor",
         reason="New api in create_tensor, easier to use.",
     )
+=======
+    @deprecated(since="2.0.0",
+                update_to="paddle.nn.Layer.create_tensor",
+                reason="New api in create_tensor, easier to use.")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def create_variable(self, name=None, persistable=None, dtype=None):
         """
 
@@ -608,10 +614,15 @@ class Layer:
 
         """
         ret = [
+<<<<<<< HEAD
             param
             for _, param in self.named_parameters(
                 include_sublayers=include_sublayers
             )
+=======
+            param for _, param in self.named_parameters(
+                include_sublayers=include_sublayers)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         return ret
 
@@ -729,11 +740,17 @@ class Layer:
 
         """
         params_set = set()
+<<<<<<< HEAD
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
             else zip([prefix], [self])
         )
+=======
+        named_sublayers = self.named_sublayers(
+            prefix=prefix, include_self=True) if include_sublayers else zip(
+                [prefix], [self])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for layer_prefix, sublayer in named_sublayers:
             params = sublayer._parameters.items()
             for key, param in params:
@@ -777,9 +794,15 @@ class Layer:
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
+<<<<<<< HEAD
             for p, l in layer.named_sublayers(
                 prefix=layer_prefix, include_self=True, layers_set=layers_set
             ):
+=======
+            for p, l in layer.named_sublayers(prefix=layer_prefix,
+                                              include_self=True,
+                                              layers_set=layers_set):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 yield p, l
 
     def register_buffer(self, name, tensor, persistable=True):
@@ -838,6 +861,7 @@ class Layer:
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
+<<<<<<< HEAD
         elif tensor is not None and not (
             type(tensor) == core.VarBase or type(tensor) == core.eager.Tensor
         ):
@@ -846,6 +870,13 @@ class Layer:
                     type(tensor).__name__
                 )
             )
+=======
+        elif tensor is not None and not (type(tensor) == core.VarBase
+                                         or type(tensor) == core.eager.Tensor):
+            raise TypeError(
+                "The registered buffer should be a Paddle.Tensor, but received {}."
+                .format(type(tensor).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             self._buffers[name] = tensor
             if persistable:
@@ -879,10 +910,15 @@ class Layer:
 
         """
         ret = [
+<<<<<<< HEAD
             buffer
             for _, buffer in self.named_buffers(
                 include_sublayers=include_sublayers
             )
+=======
+            buffer for _, buffer in self.named_buffers(
+                include_sublayers=include_sublayers)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         return ret
 
@@ -923,11 +959,17 @@ class Layer:
 
         """
         buffers_set = set()
+<<<<<<< HEAD
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
             else zip([prefix], [self])
         )
+=======
+        named_sublayers = self.named_sublayers(
+            prefix=prefix, include_self=True) if include_sublayers else zip(
+                [prefix], [self])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for layer_prefix, sublayer in named_sublayers:
             buffers = sublayer._buffers.items()
             for key, buffer in buffers:
@@ -1133,10 +1175,15 @@ class Layer:
             parameter, framework.Parameter
         ):
             raise TypeError(
+<<<<<<< HEAD
                 "The parameter to be added should be a Parameter, but received {}.".format(
                     type(parameter).__name__
                 )
             )
+=======
+                "The parameter to be added should be a Parameter, but received {}."
+                .format(type(parameter).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             if parameter is None:
                 self._parameters[name] = None
@@ -1186,9 +1233,13 @@ class Layer:
         if not isinstance(attrs, dict):
             raise TypeError(
                 "attrs should be type(dict), but received {}".format(
+<<<<<<< HEAD
                     type(attrs).__name__
                 )
             )
+=======
+                    type(attrs).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # NOTE: Overwrite behavior for same key.
         self._customized_attrs.update(attrs)
@@ -1206,9 +1257,14 @@ class Layer:
                 set_op_customized_attrs_post_hook
             )
             if len(self._forward_post_hooks) > 1:
+<<<<<<< HEAD
                 self._forward_post_hooks.move_to_end(
                     post_hook_helper._hook_id, last=False
                 )
+=======
+                self._forward_post_hooks.move_to_end(post_hook_helper._hook_id,
+                                                     last=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             assert len(self._op_recorder.hooks) == 1
 
@@ -1241,6 +1297,7 @@ class Layer:
         return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
+
         def _remove_if_exist(*dicts):
             for d in dicts:
                 if name in d:
@@ -1266,10 +1323,16 @@ class Layer:
         elif params is not None and name in params:
             if value is not None:
                 raise TypeError(
+<<<<<<< HEAD
                     "assignment to parameter '{}' should be of type Parameter or None, but got '{}'".format(
                         name, type(value).__name__
                     )
                 )
+=======
+                    "assignment to parameter '{}' should be of type Parameter or None, but got '{}'"
+                    .format(name,
+                            type(value).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             params[name] = None
         else:
             layers = self.__dict__.get('_sub_layers', None)
@@ -1284,10 +1347,16 @@ class Layer:
             elif layers is not None and name in layers:
                 if value is not None:
                     raise TypeError(
+<<<<<<< HEAD
                         "assignment to sublayer '{}' should be of type Layer or None, but got '{}'".format(
                             name, type(value).__name__
                         )
                     )
+=======
+                        "assignment to sublayer '{}' should be of type Layer or None, but got '{}'"
+                        .format(name,
+                                type(value).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
@@ -1320,6 +1389,7 @@ class Layer:
                         if in_declarative_mode() and _buffers[name] is None:
                             raise RuntimeError(
                                 'In Dy2stat, self.{0} is a buffer and self.{0} is '
+<<<<<<< HEAD
                                 'not allowed to be set to Variable when self.{0} is None.'.format(
                                     name
                                 )
@@ -1328,15 +1398,27 @@ class Layer:
                             _buffers[name] is None
                             or type(getattr(self, name)) == core.VarBase
                         ):
+=======
+                                'not allowed to be set to Variable when self.{0} is None.'
+                                .format(name))
+                        elif _buffers[name] is None or type(getattr(
+                                self, name)) == core.VarBase:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             _buffers[name] = assign(value)
                         else:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
+<<<<<<< HEAD
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'".format(
                                 name, type(value).__name__
                             )
                         )
+=======
+                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
+                            .format(name,
+                                    type(value).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     else:
                         # Assigning None will remove the buffer, but if re-assign a new varBase to it,
                         # it will be remarked as a buffer with same `persistable` attribute.
@@ -1459,6 +1541,7 @@ class Layer:
                     destination = destination_temp
         return destination
 
+<<<<<<< HEAD
     def _state_dict_impl(
         self,
         destination=None,
@@ -1467,6 +1550,14 @@ class Layer:
         include_non_persistable_buffer=False,
         use_hook=True,
     ):
+=======
+    def _state_dict_impl(self,
+                         destination=None,
+                         include_sublayers=True,
+                         structured_name_prefix="",
+                         include_non_persistable_buffer=False,
+                         use_hook=True):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         """
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -1502,10 +1593,14 @@ class Layer:
                             destination_temp,
                             include_sublayers,
                             structured_name_prefix + layer_name + ".",
+<<<<<<< HEAD
                             include_non_persistable_buffer,
                             use_hook,
                         )
                     )
+=======
+                            include_non_persistable_buffer, use_hook))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     destination = destination_temp
         if use_hook:
             for state_dict_hook in self._state_dict_hooks.values():
@@ -1515,6 +1610,7 @@ class Layer:
 
         return destination
 
+<<<<<<< HEAD
     def to_static_state_dict(
         self,
         destination=None,
@@ -1522,6 +1618,13 @@ class Layer:
         structured_name_prefix="",
         use_hook=True,
     ):
+=======
+    def to_static_state_dict(self,
+                             destination=None,
+                             include_sublayers=True,
+                             structured_name_prefix="",
+                             use_hook=True):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         '''
 
         Get all parameters and buffers of current layer and its sub-layers. And set them into a dict
@@ -1550,6 +1653,7 @@ class Layer:
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
             include_non_persistable_buffer=True,
+<<<<<<< HEAD
             use_hook=use_hook,
         )
 
@@ -1560,6 +1664,15 @@ class Layer:
         structured_name_prefix="",
         use_hook=True,
     ):
+=======
+            use_hook=use_hook)
+
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix="",
+                   use_hook=True):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -1587,8 +1700,12 @@ class Layer:
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
             include_non_persistable_buffer=False,
+<<<<<<< HEAD
             use_hook=use_hook,
         )
+=======
+            use_hook=use_hook)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     @framework.deprecate_stat_dict
     def set_state_dict(self, state_dict, use_structured_name=True):
@@ -1620,6 +1737,7 @@ class Layer:
             state = state_dict.get(key, None)
             if state is None:
                 raise ValueError(
+<<<<<<< HEAD
                     "{} is not found in the provided dict.".format(key)
                 )
             if isinstance(state, dict) or isinstance(state, list):
@@ -1630,6 +1748,14 @@ class Layer:
                             key, len(state), len(param)
                         )
                     )
+=======
+                    "{} is not found in the provided dict.".format(key))
+            if (isinstance(state, dict) or isinstance(state, list)):
+                if (len(state) != len(param)):
+                    raise ValueError("{} receieves the length of {}, "
+                                     "but the expected shape is {}".format(
+                                         key, len(state), len(param)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 else:
                     return param, state
             else:
@@ -1648,7 +1774,11 @@ class Layer:
                 return param, state
 
         matched_param_state = []
+<<<<<<< HEAD
         for key, param in self._state_dict_impl(use_hook=False).items():
+=======
+        for key, param in self.state_dict(use_hook=False).items():
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
@@ -1678,6 +1808,7 @@ class Layer:
                     place = core.CUDAPlace(p.gpu_device_id())
                 t.set(ndarray, place)
 
+<<<<<<< HEAD
             try:
                 executor = Executor(_get_device())._default_executor
                 # restore parameter states
@@ -1692,6 +1823,15 @@ class Layer:
                 raise ValueError(
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
+=======
+            executor = Executor(_get_device())._default_executor
+            # restore parameter states
+            core._create_loaded_parameter(
+                [param for param, state in matched_param_state], global_scope(),
+                executor)
+            for param, state in matched_param_state:
+                _set_var(param, state)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
@@ -1741,6 +1881,7 @@ class Layer:
                 #        [ 0.33960250,  0.96878713]])
 
         '''
+<<<<<<< HEAD
         return self._to_impl(
             device=device,
             dtype=dtype,
@@ -1748,6 +1889,13 @@ class Layer:
             include_sublayers=True,
             floating_only=False,
         )
+=======
+        return self._to_impl(device=device,
+                             dtype=dtype,
+                             blocking=blocking,
+                             include_sublayers=True,
+                             floating_only=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _apply(self, func, device, dtype, blocking, include_sublayers=True):
         if include_sublayers:
@@ -1787,6 +1935,7 @@ class Layer:
             # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
+<<<<<<< HEAD
                 ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
             )
             gpu_memory_available = core.gpu_memory_available()
@@ -1795,6 +1944,14 @@ class Layer:
                 t_used = t._copy_to(
                     paddle.CPUPlace(), blocking
                 )  # k-v type will error
+=======
+                (np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
+            gpu_memory_available = core.gpu_memory_available()
+            if gpu_memory_available < waiting_alloc_memory:
+                # Copy param / Tensor to cpu
+                t_used = t._copy_to(paddle.CPUPlace(),
+                                    blocking)  # k-v type will error
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 # Release mem of t
                 t.value().get_tensor()._clear()
             else:
@@ -1805,8 +1962,12 @@ class Layer:
         # 2. cast param / Tensor to dtype
         if dtype is not None and dtype != t_used.dtype:
             with paddle.fluid.framework._dygraph_place_guard(
+<<<<<<< HEAD
                 place=t_used.place
             ):
+=======
+                    place=t_used.place):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 t_casted = t_used.cast(dtype=dtype)
         else:
             t_casted = t_used
@@ -1824,6 +1985,7 @@ class Layer:
 
         return t
 
+<<<<<<< HEAD
     def _to_impl(
         self,
         device=None,
@@ -1832,6 +1994,14 @@ class Layer:
         include_sublayers=True,
         floating_only=False,
     ):
+=======
+    def _to_impl(self,
+                 device=None,
+                 dtype=None,
+                 blocking=None,
+                 include_sublayers=True,
+                 floating_only=False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         '''
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
 

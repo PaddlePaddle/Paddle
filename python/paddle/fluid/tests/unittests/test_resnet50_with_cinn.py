@@ -19,9 +19,14 @@ import unittest
 
 paddle.enable_static()
 
+<<<<<<< HEAD
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
 )
+=======
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 logger = logging.getLogger(__name__)
 
 
@@ -37,6 +42,7 @@ def set_cinn_flag(val):
 
 @unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")
 class TestResnet50Accuracy(unittest.TestCase):
+
     def reader(self, limit):
         for _ in range(limit):
             yield {
@@ -55,9 +61,15 @@ class TestResnet50Accuracy(unittest.TestCase):
 
     def build_program(self, main_program, startup_program):
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             image = paddle.static.data(
                 name='image', shape=[32, 3, 224, 224], dtype='float32'
             )
+=======
+            image = paddle.static.data(name='image',
+                                       shape=[32, 3, 224, 224],
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             label = paddle.static.data(name='label', shape=[32], dtype='int64')
 
             # TODO: stop_gradient slower training speed, need fix
@@ -66,9 +78,14 @@ class TestResnet50Accuracy(unittest.TestCase):
             model = paddle.vision.models.resnet50()
             prediction = model(image)
 
+<<<<<<< HEAD
             loss = paddle.nn.functional.cross_entropy(
                 input=prediction, label=label
             )
+=======
+            loss = paddle.nn.functional.cross_entropy(input=prediction,
+                                                      label=label)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             loss = paddle.mean(loss)
             adam = paddle.optimizer.Adam(learning_rate=0.001)
             adam.minimize(loss)
@@ -106,11 +123,16 @@ class TestResnet50Accuracy(unittest.TestCase):
         return loss_vals
 
     def test_check_resnet50_accuracy(self):
+<<<<<<< HEAD
         place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         loop_num = 10
         feed = self.generate_random_data(loop_num)
@@ -121,7 +143,11 @@ class TestResnet50Accuracy(unittest.TestCase):
         print(loss_c)
         print("Losses of Paddle")
         print(loss_p)
+<<<<<<< HEAD
         np.testing.assert_allclose(loss_c, loss_p, rtol=1e-05, atol=1e-05)
+=======
+        self.assertTrue(np.allclose(loss_c, loss_p, atol=1e-5))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

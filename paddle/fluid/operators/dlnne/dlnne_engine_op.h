@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <assert.h>
 #include <cuda.h>          // NOTLINT
 #include <cuda_runtime.h>  // NOTLINT
 #include <dlnne.h>         // NOTLINT
 
-#include <assert.h>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -229,6 +229,7 @@ class DlnneEngineOp : public framework::OperatorBase {
           valid_output_name_str.substr(valid_output_name_str.find(",") + 1);
     }
 
+<<<<<<< HEAD
     // TODO(pei.jiang): add dlnne_engine manager to manage dlnne_engine
     if (!calibration_mode_) {
       std::map<std::string, dl::nne::WeightShareMode> weight_share_map;
@@ -270,6 +271,18 @@ class DlnneEngineOp : public framework::OperatorBase {
         LOG(INFO) << "weight_share_mode: " << mode
                   << " cluster_config: " << cluster_config;
       }
+=======
+    builder = dl::nne::CreateInferBuilder();
+    PADDLE_ENFORCE_NE(
+        builder,
+        nullptr,
+        platform::errors::Unavailable("nne create builder failed"));
+    parser = dl::nne::CreateParser();
+    PADDLE_ENFORCE_NE(
+        parser,
+        nullptr,
+        platform::errors::Unavailable("nne create parser failed"));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
       std::string onnx_file_name =
           subgraph_root_path_ + "/" + engine_key_ + ".onnx";

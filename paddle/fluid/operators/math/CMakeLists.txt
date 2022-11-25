@@ -29,6 +29,23 @@ math_library(sampler DEPS generator)
 # math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
 
+<<<<<<< HEAD
+=======
+if(WITH_MKLDNN)
+  math_library(
+    selected_rows_functor
+    DEPS
+    selected_rows_utils
+    math_function
+    blas
+    mkldnn_axpy_handler
+    mixed_vector)
+else()
+  math_library(selected_rows_functor DEPS selected_rows_utils math_function
+               blas mixed_vector)
+endif()
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)

@@ -63,19 +63,32 @@ def celu(x, alpha=1.0, name=None):
         raise ZeroDivisionError("alpha cannot be 0 for celu")
 
     if _in_legacy_dygraph():
+<<<<<<< HEAD
         return _legacy_C_ops.celu(x, 'alpha', alpha)
     if in_dygraph_mode():
         return _C_ops.celu(x, alpha)
+=======
+        return _C_ops.celu(x, 'alpha', alpha)
+    if in_dygraph_mode():
+        return _C_ops.final_state_celu(x, alpha)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'celu')
     helper = LayerHelper("celu", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='celu',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'alpha': alpha},
     )
+=======
+    helper.append_op(type='celu',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'alpha': alpha})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -122,12 +135,19 @@ def elu(x, alpha=1.0, name=None):
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
     helper = LayerHelper("elu", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='elu',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'alpha': alpha},
     )
+=======
+    helper.append_op(type='elu',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'alpha': alpha})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -193,12 +213,19 @@ def gelu(x, approximate=False, name=None):
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'gelu')
     helper = LayerHelper("gelu", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='gelu',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'approximate': approximate},
     )
+=======
+    helper.append_op(type='gelu',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'approximate': approximate})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -246,12 +273,19 @@ def hardshrink(x, threshold=0.5, name=None):
     )
     helper = LayerHelper('hardshrink', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='hard_shrink',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'threshold': threshold},
     )
+=======
+    helper.append_op(type='hard_shrink',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'threshold': threshold})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -301,12 +335,22 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
     helper = LayerHelper('hardtanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='brelu',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'t_min': min, 't_max': max},
     )
+=======
+    helper.append_op(type='brelu',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={
+                         't_min': min,
+                         't_max': max
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -358,12 +402,22 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
 
     helper = LayerHelper('hardsigmoid', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='hard_sigmoid',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'slope': slope, 'offset': offset},
     )
+=======
+    helper.append_op(type='hard_sigmoid',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={
+                         'slope': slope,
+                         'offset': offset
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -461,12 +515,19 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     )
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='leaky_relu',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'alpha': negative_slope},
     )
+=======
+    helper.append_op(type='leaky_relu',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'alpha': negative_slope})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -565,6 +626,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
 
     helper = LayerHelper('prelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="prelu",
         inputs={"X": x, "Alpha": weight},
@@ -575,6 +637,22 @@ def prelu(x, weight, data_format="NCHW", name=None):
 
 
 def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
+=======
+    helper.append_op(type="prelu",
+                     inputs={
+                         "X": x,
+                         "Alpha": weight
+                     },
+                     outputs={"Out": out},
+                     attrs={
+                         "mode": mode,
+                         "data_format": data_format
+                     })
+    return out
+
+
+def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     r"""
     rrelu activation.
 
@@ -617,13 +695,22 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
         lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
         upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
         training (bool, optional): Current mode is in training or others.  Default is True.
+<<<<<<< HEAD
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+=======
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
+=======
+            :name: rrelu-example
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             import paddle
             import paddle.nn.functional as F
@@ -636,7 +723,10 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
                                             [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
 
             out = F.rrelu(input_tensor, 0.1, 0.3)
+<<<<<<< HEAD
             print(out)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             #[[[[-0.20000899  3.         -0.8810822   5.        ]
             #   [ 3.         -0.55175185  5.         -1.0776101 ]
             #   [-1.0680687  -1.9896201   8.          9.        ]]
@@ -646,6 +736,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
     """
 
     if not in_dynamic_mode():
+<<<<<<< HEAD
         check_variable_and_dtype(
             x, 'X', ['float16', 'float32', 'float64'], 'rrelu'
         )
@@ -670,32 +761,70 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
                 lower, upper
             )
         )
+=======
+        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'],
+                                 'rrelu')
+
+    if not isinstance(lower, float) or not isinstance(upper, float):
+        raise TypeError(
+            "The lower and upper values must be float type. Received: lower {}, upper {}."
+            .format(lower, upper))
+
+    if lower < 0 or lower > 1:
+        raise ValueError(
+            "The lower value must be no less than zero or greater than one. Received: {}."
+            .format(lower))
+
+    if upper < lower:
+        raise ValueError(
+            "The upper value must be greater than lower value. Received: lower {}, upper {}."
+            .format(lower, upper))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if upper > 1:
         raise ValueError(
             "The upper value must be no greater than one. Received: {}.".format(
+<<<<<<< HEAD
                 upper
             )
         )
+=======
+                upper))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     is_test = not training
 
     if _in_legacy_dygraph():
+<<<<<<< HEAD
         out, noise = _legacy_C_ops.rrelu(
             x, 'lower', lower, 'upper', upper, 'is_test', is_test
         )
+=======
+        out, noise = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
+                                  is_test)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return out
 
     helper = LayerHelper('rrelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     noise = helper.create_variable_for_type_inference(dtype=x.dtype)
     attrs = {'lower': lower, 'upper': upper, 'is_test': is_test}
+<<<<<<< HEAD
     helper.append_op(
         type='rrelu',
         inputs={"X": x},
         outputs={"Out": out, "Noise": noise},
         attrs=attrs,
     )
+=======
+    helper.append_op(type='rrelu',
+                     inputs={"X": x},
+                     outputs={
+                         "Out": out,
+                         "Noise": noise
+                     },
+                     attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -858,12 +987,22 @@ def maxout(x, groups, axis=1, name=None):
 
     helper = LayerHelper('maxout', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='maxout',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'groups': groups, 'axis': axis},
     )
+=======
+    helper.append_op(type='maxout',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={
+                         'groups': groups,
+                         'axis': axis
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -895,19 +1034,30 @@ def relu6(x, name=None):
     """
     threshold = 6.0
     if in_dygraph_mode():
+<<<<<<< HEAD
         return _C_ops.relu6(x)
+=======
+        return _C_ops.final_state_relu6(x, threshold)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if in_dynamic_mode():
         return _legacy_C_ops.relu6(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='relu6',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'threshold': threshold},
     )
+=======
+    helper.append_op(type='relu6',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'threshold': threshold})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -968,12 +1118,22 @@ def selu(
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'selu')
     helper = LayerHelper('selu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='selu',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'scale': scale, 'alpha': alpha},
     )
+=======
+    helper.append_op(type='selu',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={
+                         'scale': scale,
+                         'alpha': alpha
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -1153,17 +1313,23 @@ def softmax(x, axis=-1, dtype=None, name=None):
         )
     else:
         check_dtype(
+<<<<<<< HEAD
             dtype,
             'dtype',
             ['float32', 'float64'],
             'softmax',
             'If dtype is not None, it only support float32 or float64.',
         )
+=======
+            dtype, 'dtype', ['float32', 'float64'], 'softmax',
+            'If dtype is not None, it only support float32 or float64.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     helper = LayerHelper("softmax", **locals())
     outs_cast = x
     if dtype is not None:
         outs_cast = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
         helper.append_op(
             type='cast',
             inputs={'X': x},
@@ -1178,6 +1344,24 @@ def softmax(x, axis=-1, dtype=None, name=None):
         outputs={'Out': outs_softmax},
         attrs={'axis': axis, 'use_cudnn': use_cudnn},
     )
+=======
+        helper.append_op(type='cast',
+                         inputs={'X': x},
+                         outputs={'Out': outs_cast},
+                         attrs={
+                             'in_dtype': x.dtype,
+                             'out_dtype': dtype
+                         })
+
+    outs_softmax = helper.create_variable_for_type_inference(outs_cast.dtype)
+    helper.append_op(type='softmax',
+                     inputs={'X': outs_cast},
+                     outputs={'Out': outs_softmax},
+                     attrs={
+                         'axis': axis,
+                         'use_cudnn': use_cudnn
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return outs_softmax
 
@@ -1239,6 +1423,15 @@ def softplus(x, beta=1, threshold=20, name=None):
             x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
+<<<<<<< HEAD
+=======
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_softplus(x, beta, threshold)
+
+    if _in_legacy_dygraph():
+        return _C_ops.softplus(x, 'beta', beta, 'threshold', threshold)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if in_dygraph_mode():
         return _C_ops.softplus(x, beta, threshold)
@@ -1251,12 +1444,22 @@ def softplus(x, beta=1, threshold=20, name=None):
     )
     helper = LayerHelper('softplus', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='softplus',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'beta': beta, 'threshold': threshold},
     )
+=======
+    helper.append_op(type='softplus',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={
+                         'beta': beta,
+                         'threshold': threshold
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -1312,12 +1515,19 @@ def softshrink(x, threshold=0.5, name=None):
     )
     helper = LayerHelper('softshrink', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='softshrink',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'lambda': threshold},
     )
+=======
+    helper.append_op(type='softshrink',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'lambda': threshold})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -1349,6 +1559,11 @@ def softsign(x, name=None):
             #        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
+=======
+        return _C_ops.final_state_softsign(x)
+    if in_dynamic_mode():
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return _C_ops.softsign(x)
     if in_dynamic_mode():
         return _legacy_C_ops.softsign(x)
@@ -1397,9 +1612,16 @@ def swish(x, name=None):
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='swish', inputs={'X': x}, outputs={'Out': out}, attrs={'beta': 1.0}
     )
+=======
+    helper.append_op(type='swish',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'beta': 1.0})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -1533,12 +1755,19 @@ def thresholded_relu(x, threshold=1.0, name=None):
     )
     helper = LayerHelper('thresholded_relu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='thresholded_relu',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'threshold': threshold},
     )
+=======
+    helper.append_op(type='thresholded_relu',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={'threshold': threshold})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -1616,17 +1845,23 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         )
     else:
         check_dtype(
+<<<<<<< HEAD
             dtype,
             'dtype',
             ['float32', 'float64'],
             'log_softmax',
             'If dtype is not None, it only support float32 or float64.',
         )
+=======
+            dtype, 'dtype', ['float32', 'float64'], 'log_softmax',
+            'If dtype is not None, it only support float32 or float64.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     helper = LayerHelper("log_softmax", **locals())
     out_cast = x
     if dtype is not None:
         out_cast = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
         helper.append_op(
             type='cast',
             inputs={'X': x},
@@ -1641,6 +1876,21 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis},
     )
+=======
+        helper.append_op(type='cast',
+                         inputs={'X': x},
+                         outputs={'Out': out_cast},
+                         attrs={
+                             'in_dtype': x.dtype,
+                             'out_dtype': dtype
+                         })
+
+    out = helper.create_variable_for_type_inference(out_cast.dtype)
+    helper.append_op(type='log_softmax',
+                     inputs={'X': out_cast},
+                     outputs={'Out': out},
+                     attrs={'axis': axis})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return out
 
@@ -1760,10 +2010,21 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     helper = LayerHelper("gumbel_softmax", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gumbel_softmax')
     out = helper.create_variable_for_type_inference(x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='gumbel_softmax',
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'temperature': temperature, 'hard': hard, 'axis': axis},
     )
+=======
+    helper.append_op(type='gumbel_softmax',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={
+                         'temperature': temperature,
+                         'hard': hard,
+                         'axis': axis
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out

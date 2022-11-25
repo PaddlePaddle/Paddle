@@ -22,6 +22,7 @@ from paddle.fluid.dygraph.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size,
@@ -32,6 +33,17 @@ class SimpleNet(fluid.Layer):
         dtype="float32",
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 hidden_size,
+                 vocab_size,
+                 num_steps=20,
+                 init_scale=0.1,
+                 is_sparse=False,
+                 dtype="float32"):
+        super(SimpleNet, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -67,11 +79,19 @@ class SimpleNet(fluid.Layer):
         x_emb = self.embedding(input)
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+<<<<<<< HEAD
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
+=======
+        projection = fluid.layers.reshape(fc, shape=[-1, self.vocab_size])
+        loss = fluid.layers.softmax_with_cross_entropy(logits=projection,
+                                                       label=label,
+                                                       soft_label=False)
+        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         loss = fluid.layers.reduce_mean(loss, dim=[0])
         loss = fluid.layers.reduce_sum(loss)
 
@@ -88,6 +108,7 @@ init_scale = 0.1
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.arange(num_steps).astype('int64')
@@ -98,7 +119,9 @@ def fake_sample_reader():
 
 
 class TestSparseEmbedding(TestParallelDyGraphRunnerBase):
+
     def get_model(self):
+<<<<<<< HEAD
         model = SimpleNet(
             hidden_size=hidden_size,
             vocab_size=vocab_size,
@@ -110,6 +133,17 @@ class TestSparseEmbedding(TestParallelDyGraphRunnerBase):
         train_reader = paddle.batch(
             fake_sample_reader(), batch_size=batch_size, drop_last=True
         )
+=======
+        model = SimpleNet(hidden_size=hidden_size,
+                          vocab_size=vocab_size,
+                          num_steps=num_steps,
+                          init_scale=init_scale,
+                          is_sparse=True)
+
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=model.parameters()

@@ -130,11 +130,16 @@ def group_sharded_parallel(
     assert isinstance(
         optimizer, Optimizer
     ), "The optimizer must be the instance of paddle.optimizer.Optimizer."
+<<<<<<< HEAD
     assert level in [
         'os',
         'os_g',
         'p_g_os',
     ], "The level must be os, os_g or p_g_os."
+=======
+    assert level in ['os', 'os_g',
+                     'p_g_os'], "The level must be os, os_g or p_g_os."
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def check_dtype(param):
         return param.dtype == paddle.float16
@@ -152,6 +157,7 @@ def group_sharded_parallel(
                 params=optimizer._parameter_list,
                 optim=optimizer,
                 group=group,
+<<<<<<< HEAD
                 offload=offload,
                 dp_group=dp_group,
                 device=device,
@@ -204,6 +210,41 @@ def group_sharded_parallel(
                 sync_comm=sync_comm,
                 device=device,
             )
+=======
+                offload=offload)
+            model = GroupShardedStage2(model,
+                                       optimizer,
+                                       group=group,
+                                       sync_buffers=sync_buffers,
+                                       buffer_max_size=buffer_max_size)
+        else:
+            optimizer = ShardingOptimizerStage2(params=model.parameters(),
+                                                optim=optimizer,
+                                                group=group,
+                                                offload=offload)
+            model = ShardingStage2(model,
+                                   optimizer,
+                                   group=group,
+                                   sync_buffers=sync_buffers,
+                                   buffer_max_size=buffer_max_size)
+    elif level == 'p_g_os':
+        if in_dygraph_mode():
+            model = GroupShardedStage3(model,
+                                       optimizer=optimizer,
+                                       group=group,
+                                       sync_buffers=sync_buffers,
+                                       segment_size=segment_size,
+                                       offload=offload,
+                                       sync_comm=sync_comm)
+        else:
+            model = ShardingStage3(model,
+                                   optimizer=optimizer,
+                                   group=group,
+                                   sync_buffers=sync_buffers,
+                                   segment_size=segment_size,
+                                   offload=offload,
+                                   sync_comm=sync_comm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         raise ValueError("Please enter the correct level.")
     if isinstance(scaler, paddle.amp.GradScaler):

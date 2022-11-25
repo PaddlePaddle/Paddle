@@ -85,6 +85,7 @@ void RunOperator(const platform::Place &place,
   std::string output_name = "output";
 
   std::vector<InputVars> input_names = {
+<<<<<<< HEAD
       {first_input, scope.Var(first_input)->GetMutable<phi::DenseTensor>()},
       {"x1",
        num_inputs[op_type] > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
@@ -99,6 +100,26 @@ void RunOperator(const platform::Place &place,
        num_inputs[op_type] > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
                                : nullptr}};
   auto *y = scope.Var(output_name)->GetMutable<phi::DenseTensor>();
+=======
+      {first_input, scope.Var(first_input)->GetMutable<framework::LoDTensor>()},
+      {"x1",
+       num_inputs[op_type] > 1
+           ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x2",
+       num_inputs[op_type] > 2
+           ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x3",
+       num_inputs[op_type] > 3
+           ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x4",
+       num_inputs[op_type] > 4
+           ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
+           : nullptr}};
+  auto *y = scope.Var(output_name)->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),

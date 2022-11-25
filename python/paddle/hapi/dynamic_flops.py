@@ -108,9 +108,16 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         _, net.forward = unwrap_decorators(net.forward)
 
         inputs = paddle.randn(input_size)
+<<<<<<< HEAD
         return dynamic_flops(
             net, inputs=inputs, custom_ops=custom_ops, print_detail=print_detail
         )
+=======
+        return dynamic_flops(net,
+                             inputs=inputs,
+                             custom_ops=custom_ops,
+                             print_detail=print_detail)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     elif isinstance(net, paddle.static.Program):
         return static_flops(net, print_detail=print_detail)
     else:
@@ -124,9 +131,14 @@ def count_convNd(m, x, y):
     x = x[0]
     kernel_ops = np.product(m.weight.shape[2:])
     bias_ops = 1 if m.bias is not None else 0
+<<<<<<< HEAD
     total_ops = int(y.numel()) * (
         x.shape[1] / m._groups * kernel_ops + bias_ops
     )
+=======
+    total_ops = int(
+        y.numel()) * (x.shape[1] / m._groups * kernel_ops + bias_ops)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     m.total_ops += abs(int(total_ops))
 
 
@@ -229,8 +241,12 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             flops_fn = custom_ops[m_type]
             if m_type not in types_collection:
                 print(
+<<<<<<< HEAD
                     "Customize Function has been applied to {}".format(m_type)
                 )
+=======
+                    "Customize Function has been applied to {}".format(m_type))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         elif m_type in register_hooks:
             flops_fn = register_hooks[m_type]
             if m_type not in types_collection:
@@ -238,10 +254,15 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
+<<<<<<< HEAD
                     "Cannot find suitable count function for {}. Treat it as zero FLOPs.".format(
                         m_type
                     )
                 )
+=======
+                    "Cannot find suitable count function for {}. Treat it as zero FLOPs."
+                    .format(m_type))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if flops_fn is not None:
             flops_handler = m.register_forward_post_hook(flops_fn)
@@ -286,6 +307,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for n, m in model.named_sublayers():
         if len(list(m.children())) > 0:
             continue
+<<<<<<< HEAD
         if {
             'total_ops',
             'total_params',
@@ -301,15 +323,31 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
                     int(m.total_ops),
                 ]
             )
+=======
+        if {'total_ops', 'total_params', 'input_shape',
+                'output_shape'}.issubset(set(list(m._buffers.keys()))):
+            table.add_row([
+                m.full_name(),
+                list(m.input_shape.numpy()),
+                list(m.output_shape.numpy()),
+                int(m.total_params),
+                int(m.total_ops)
+            ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             m._buffers.pop("total_ops")
             m._buffers.pop("total_params")
             m._buffers.pop('input_shape')
             m._buffers.pop('output_shape')
     if print_detail:
         table.print_table()
+<<<<<<< HEAD
     print(
         'Total Flops: {}     Total Params: {}'.format(
             int(total_ops), int(total_params)
         )
     )
+=======
+    print('Total Flops: {}     Total Params: {}'.format(int(total_ops),
+                                                        int(total_params)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return int(total_ops)

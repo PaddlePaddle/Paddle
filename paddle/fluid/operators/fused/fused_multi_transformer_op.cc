@@ -143,6 +143,15 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
                             c_dim[2]));  // num_head
+<<<<<<< HEAD
+=======
+      PADDLE_ENFORCE_GT(
+          c_dim[3],
+          0,
+          paddle::platform::errors::InvalidArgument(
+              "The forth dim of CacheKV must be greater than 0, but got %d",
+              c_dim[3]));  // cache_seq_len
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_EQ(c_dim[4],
                         trans_qkvw ? y_dim[2] : y_dim[3],
                         paddle::platform::errors::InvalidArgument(

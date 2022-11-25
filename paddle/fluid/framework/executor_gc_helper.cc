@@ -217,6 +217,7 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
                     1,
                     platform::errors::PermissionDenied(
                         "Program should have at least one block"));
+<<<<<<< HEAD
   // Note(zhangbo): For dygraph2static inplace policy, origin_program is a
   // partial program(only include forward or backward), and control flow op's
   // attr skip_eager_deletion_vars has been updated at graph->program before
@@ -231,6 +232,17 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         program, 0, global_block_ops);
   }
+=======
+
+  // prepare safe GCs on sub block ops
+  auto global_block_ops = CreateOpsFromBlock(program.Block(0));
+  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+      program, 0, global_block_ops);
+  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+      program, 0, global_block_ops);
+  operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+      program, 0, global_block_ops);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   // find the skip vars on each block
   std::vector<std::vector<std::string>> skip_vars_on_each_block(block_num);

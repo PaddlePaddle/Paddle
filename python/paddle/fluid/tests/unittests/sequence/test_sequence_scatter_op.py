@@ -16,12 +16,17 @@ import sys
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("../")
 from op_test import OpTest
 
 
 class TestSequenceScatterOp(OpTest):
+
     def init_lod(self):
         return [[30, 50, 40]]
 
@@ -57,31 +62,37 @@ class TestSequenceScatterOp(OpTest):
 
 
 class TestSequenceScatterOpSeqLen0(TestSequenceScatterOp):
+
     def init_lod(self):
         return [[60, 60, 00]]
 
 
 class TestSequenceScatterOpSeqLen0Case1(TestSequenceScatterOp):
+
     def init_lod(self):
         return [[0, 60, 60]]
 
 
 class TestSequenceScatterOpSeqLen0Case2(TestSequenceScatterOp):
+
     def init_lod(self):
         return [[60, 0, 60]]
 
 
 class TestSequenceScatterOpSeqLen0Case3(TestSequenceScatterOp):
+
     def init_lod(self):
         return [[120, 0, 0]]
 
 
 class TestSequenceScatterOpSeqLen0Case4(TestSequenceScatterOp):
+
     def init_lod(self):
         return [[0, 120, 0]]
 
 
 class TestSequenceScatterOpSeqLen0Case5(TestSequenceScatterOp):
+
     def init_lod(self):
         return [[0, 0, 120]]
 

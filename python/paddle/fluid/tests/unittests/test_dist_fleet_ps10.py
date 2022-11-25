@@ -35,7 +35,9 @@ batch_size = 4
 
 
 class TestExponentialDecay(unittest.TestCase):
+
     def net(self):
+<<<<<<< HEAD
         input_data = paddle.static.data(
             name="sparse_input", shape=[None, 1], dtype="int64"
         )
@@ -46,6 +48,18 @@ class TestExponentialDecay(unittest.TestCase):
         embedding = paddle.static.nn.embedding(
             input_data, is_sparse=True, size=[1000, 128]
         )
+=======
+        input_data = paddle.static.data(name="sparse_input",
+                                        shape=[None, 1],
+                                        dtype="int64")
+        input_label = paddle.static.data(name="label",
+                                         shape=[None, 1],
+                                         dtype="int64")
+        label = paddle.cast(input_label, dtype="float32")
+        embedding = paddle.static.nn.embedding(input_data,
+                                               is_sparse=True,
+                                               size=[1000, 128])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         fc1 = paddle.static.nn.fc(embedding, size=1024, activation="relu")
         fc2 = paddle.static.nn.fc(fc1, size=512, activation="relu")
@@ -64,6 +78,7 @@ class TestExponentialDecay(unittest.TestCase):
             "127.0.0.1:36007",
         ]
 
+<<<<<<< HEAD
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
             role=role_maker.Role.SERVER,
@@ -76,6 +91,18 @@ class TestExponentialDecay(unittest.TestCase):
         scheduler = paddle.optimizer.lr.InverseTimeDecay(
             learning_rate=base_lr, gamma=0.999, verbose=True
         )
+=======
+        role = role_maker.UserDefinedRoleMaker(current_id=0,
+                                               role=role_maker.Role.SERVER,
+                                               worker_num=2,
+                                               server_endpoints=endpoints)
+
+        fleet.init(role)
+        loss = self.net()
+        scheduler = paddle.optimizer.lr.InverseTimeDecay(learning_rate=base_lr,
+                                                         gamma=0.999,
+                                                         verbose=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         optimizer = fluid.optimizer.Adam(scheduler)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()

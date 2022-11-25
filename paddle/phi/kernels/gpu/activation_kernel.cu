@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/activation_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -112,13 +113,21 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold)
+<<<<<<< HEAD
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6Raw, CudaRelu6Functor, threshold)
+=======
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, CudaRelu6Functor, threshold)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
+<<<<<<< HEAD
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, CudaSwishFunctor, beta)
+=======
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Swish, CudaSwishFunctor, beta)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CudaCELUFunctor, alpha)
 
@@ -198,7 +207,11 @@ PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_tanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
+<<<<<<< HEAD
 PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
+=======
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(stanh, StanhKernel)

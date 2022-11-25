@@ -27,6 +27,7 @@ SEED = 2021
 
 
 class TestCast1_FP32(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -50,6 +51,7 @@ class TestCast1_FP32(OpTest):
 
 
 class TestCast_INT32(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -73,6 +75,7 @@ class TestCast_INT32(OpTest):
 
 
 class TestCast2_FP32(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -96,6 +99,7 @@ class TestCast2_FP32(OpTest):
 
 
 class TestCast3_FP32(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
@@ -120,6 +124,7 @@ class TestCast3_FP32(OpTest):
 
 
 class TestCast_INT64(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"

@@ -27,6 +27,7 @@ np.random.seed(2022)
     (param.TEST_CASE_NAME, 'value'), [('NotImplement', np.random.rand(2, 3))]
 )
 class TestConstraint(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Constraint()
 
@@ -39,6 +40,7 @@ class TestConstraint(unittest.TestCase):
     (param.TEST_CASE_NAME, 'value', 'expect'), [('real', 1.0, True)]
 )
 class TestReal(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Real()
 
@@ -51,6 +53,7 @@ class TestReal(unittest.TestCase):
     [('in_range', 0, 1, 0.5, True), ('out_range', 0, 1, 2, False)],
 )
 class TestRange(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Range(self.lower, self.upper)
 
@@ -63,6 +66,7 @@ class TestRange(unittest.TestCase):
     [('positive', 1, True), ('negative', -1, False)],
 )
 class TestPositive(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Positive()
 
@@ -78,6 +82,7 @@ class TestPositive(unittest.TestCase):
     ],
 )
 class TestSimplex(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Simplex()
 

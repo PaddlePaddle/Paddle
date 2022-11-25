@@ -14,7 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/miopen.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace phi {
 namespace dynload {

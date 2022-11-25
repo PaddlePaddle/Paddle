@@ -24,6 +24,7 @@ from .momentum import Momentum  # noqa: F401
 from .lamb import Lamb  # noqa: F401
 from . import lr  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     'Optimizer',
     'Adagrad',
@@ -35,4 +36,9 @@ __all__ = [  # noqa
     'SGD',
     'Momentum',
     'Lamb',
+=======
+__all__ = [  #noqa
+    'Optimizer', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
+    'SGD', 'Momentum', 'Lamb'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 ]

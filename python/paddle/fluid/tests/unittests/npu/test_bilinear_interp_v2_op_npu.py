@@ -29,6 +29,7 @@ paddle.enable_static()
 
 
 class TestBilinearInterpOp(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -140,6 +141,7 @@ class TestBilinearInterpOp(OpTest):
 
 
 class TestBilinearInterpCaseFP16(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.dtype = 'float16'
@@ -147,6 +149,7 @@ class TestBilinearInterpCaseFP16(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [4, 1, 7, 8]
@@ -156,6 +159,7 @@ class TestBilinearInterpCase1(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase2(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [3, 3, 9, 6]
@@ -165,6 +169,7 @@ class TestBilinearInterpCase2(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase3(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [1, 1, 32, 64]
@@ -174,6 +179,7 @@ class TestBilinearInterpCase3(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase4(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [4, 1, 7, 8]
@@ -184,6 +190,7 @@ class TestBilinearInterpCase4(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase5(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [3, 3, 9, 6]
@@ -194,6 +201,7 @@ class TestBilinearInterpCase5(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase6(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [1, 1, 32, 64]
@@ -204,6 +212,7 @@ class TestBilinearInterpCase6(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase7(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [1, 1, 32, 64]
@@ -213,6 +222,7 @@ class TestBilinearInterpCase7(TestBilinearInterpOp):
 
 
 class TestBilinearInterpSame(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 3, 32, 64]
@@ -222,6 +232,7 @@ class TestBilinearInterpSame(TestBilinearInterpOp):
 
 
 class TestBilinearInterpActualShape(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [3, 2, 32, 16]
@@ -232,6 +243,7 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
 
 
 class TestBilinearInterpDataLayout(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 5, 5, 3]
@@ -243,24 +255,28 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
 
 
 class TestBilinearInterpOtherMethod1(TestBilinearInterpOp):
+
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 1
 
 
 class TestBilinearInterpWithMethod2(TestBilinearInterpOp):
+
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 0
 
 
 class TestBilinearInterpWithMethod3(TestBilinearInterpOp):
+
     def set_align_mode(self):
         self.align_corners = True
         self.align_mode = 0
 
 
 class TestBilinearInterpScale1(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 3, 5, 7]
@@ -270,6 +286,7 @@ class TestBilinearInterpScale1(TestBilinearInterpOp):
 
 
 class TestBilinearInterpScale2(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 3, 5, 7]
@@ -279,6 +296,7 @@ class TestBilinearInterpScale2(TestBilinearInterpOp):
 
 
 class TestBilinearInterpZero(TestBilinearInterpOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.input_shape = [2, 3, 5, 7]

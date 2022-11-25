@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import sys
 
 sys.path.append("..")
 import paddle
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
+<<<<<<< HEAD
+=======
+import paddle.compat as cpt
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -26,6 +35,7 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 def fill_constant_batch_size_like(
     input,
     shape,
@@ -41,6 +51,22 @@ def fill_constant_batch_size_like(
 
 
 class TestFillConstantBatchSizeLike(OpTest):
+=======
+def fill_constant_batch_size_like(input,
+                                  shape,
+                                  value,
+                                  data_type,
+                                  input_dim_idx=0,
+                                  output_dim_idx=0,
+                                  force_cpu=False):
+    return paddle.fluid.layers.fill_constant_batch_size_like(
+        input, shape, data_type, value, input_dim_idx, output_dim_idx,
+        force_cpu)
+
+
+class TestFillConstantBatchSizeLike(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -61,12 +87,20 @@ class TestFillConstantBatchSizeLike(OpTest):
             'dtype': self.dtype,
             'force_cpu': self.force_cpu,
             'input_dim_idx': self.input_dim_idx,
+<<<<<<< HEAD
             'output_dim_idx': self.output_dim_idx,
         }
         self.outputs = {
             'Out': np.full(
                 self.output_shape, self.output_value, self.output_dtype
             )
+=======
+            'output_dim_idx': self.output_dim_idx
+        }
+        self.outputs = {
+            'Out': np.full(self.output_shape, self.output_value,
+                           self.output_dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def init_shape(self):
@@ -95,6 +129,10 @@ class TestFillConstantBatchSizeLike(OpTest):
 
 
 class TestFillConstantBatchSizeLike2(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_shape(self):
         # test shape
         self.input_shape = [4, 5, 6, 7]
@@ -103,6 +141,10 @@ class TestFillConstantBatchSizeLike2(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike3(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_value(self):
         # use 'str_value' rather than 'value'
         self.value = 3.8
@@ -111,6 +153,10 @@ class TestFillConstantBatchSizeLike3(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike4(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_value(self):
         # str_value = 'inf'
         self.value = 3.8
@@ -119,6 +165,10 @@ class TestFillConstantBatchSizeLike4(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike5(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_value(self):
         # str_value = '-inf'
         self.value = 3.8
@@ -127,6 +177,10 @@ class TestFillConstantBatchSizeLike5(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike6(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_dtype(self):
         self.dtype = core.VarDesc.VarType.FP16
         self.output_dtype = np.float16
@@ -136,17 +190,29 @@ class TestFillConstantBatchSizeLike6(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLike7(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_dtype(self):
         self.dtype = core.VarDesc.VarType.INT32
         self.output_dtype = np.int32
 
 
 class TestFillConstantBatchSizeLike8(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_force_cpu(self):
         self.force_cpu = True
 
 
 class TestFillConstantBatchSizeLike9(TestFillConstantBatchSizeLike):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_shape(self):
         self.input_shape = [4, 5]
         self.shape = [123, 92]
@@ -180,12 +246,20 @@ class TestFillConstantBatchSizeLikeLodTensor(TestFillConstantBatchSizeLike):
             'dtype': self.dtype,
             'force_cpu': self.force_cpu,
             'input_dim_idx': self.input_dim_idx,
+<<<<<<< HEAD
             'output_dim_idx': self.output_dim_idx,
         }
         self.outputs = {
             'Out': np.full(
                 self.output_shape, self.output_value, self.output_dtype
             )
+=======
+            'output_dim_idx': self.output_dim_idx
+        }
+        self.outputs = {
+            'Out': np.full(self.output_shape, self.output_value,
+                           self.output_dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def init_shape(self):
@@ -195,8 +269,12 @@ class TestFillConstantBatchSizeLikeLodTensor(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLikeLodTensor2(
+<<<<<<< HEAD
     TestFillConstantBatchSizeLikeLodTensor
 ):
+=======
+        TestFillConstantBatchSizeLikeLodTensor):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     # test LodTensor with 'input_dim_idx' != 0
     def init_shape(self):
         self.input_shape = [10, 20]

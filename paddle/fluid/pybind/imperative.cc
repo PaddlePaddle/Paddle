@@ -557,7 +557,11 @@ void BindImperative(py::module *m_ptr) {
                   "function passed to 'set_(sample/sample_list/batch)"
                   "_generator' to locate the data causes this issue."));
           // 2. construcct LoDTensor
+<<<<<<< HEAD
           phi::DenseTensor t;
+=======
+          framework::LoDTensor t;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           SetTensorFromPyArray<platform::CPUPlace>(
               &t, array, platform::CPUPlace(), true);
           // 3. allocate shared memory
@@ -597,12 +601,20 @@ void BindImperative(py::module *m_ptr) {
                 "function passed to 'set_(sample/sample_list/batch)"
                 "_generator' to locate the data causes this issue."));
         // 2. construcct LoDTensor
+<<<<<<< HEAD
         phi::DenseTensor t;
+=======
+        framework::LoDTensor t;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         SetTensorFromPyArray<platform::CPUPlace>(
             &t, array, platform::CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
+<<<<<<< HEAD
         size_t data_size = t.numel() * phi::SizeOf(t.dtype());
+=======
+        size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         auto shared_writer_holder =
             memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
         // 4. maintain mmap fd set & backup ipc_name
@@ -670,7 +682,11 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__",
            [](imperative::VarBase &self,
               framework::proto::VarType::Type dtype,
+<<<<<<< HEAD
               const std::vector<int64_t> &dims,
+=======
+              const std::vector<int> &dims,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               const py::handle &name,
               framework::proto::VarType::Type type,
               bool persistable) {
@@ -932,11 +948,19 @@ void BindImperative(py::module *m_ptr) {
                       "please check the type of tensor."));
                 }
 
+<<<<<<< HEAD
                 SetTensorFromPyArray(
                     value_tensor->MutableVar()->GetMutable<phi::DenseTensor>(),
                     value,
                     self->Place(),
                     false);
+=======
+                SetTensorFromPyArray(value_tensor->MutableVar()
+                                         ->GetMutable<framework::LoDTensor>(),
+                                     value,
+                                     self->Place(),
+                                     false);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 ins.insert({"ValueTensor", {value_tensor}});
 
               } else {
@@ -1021,7 +1045,12 @@ void BindImperative(py::module *m_ptr) {
                  list_select_idxs;
              // if index is a list, list_select_flag will be true
              bool list_select_flag = false;
+<<<<<<< HEAD
              auto tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
              ParseIndexingSlice(tensor,
                                 _index.ptr(),
                                 &slice_axes,
@@ -1222,7 +1251,11 @@ void BindImperative(py::module *m_ptr) {
           "numpy",
 
           [](imperative::VarBase &self) -> py::array {
+<<<<<<< HEAD
             const auto &tensor = self.MutableVar()->Get<phi::DenseTensor>();
+=======
+            const auto &tensor = self.MutableVar()->Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             PADDLE_ENFORCE_EQ(
                 tensor.IsInitialized(),
                 true,
@@ -1262,7 +1295,11 @@ void BindImperative(py::module *m_ptr) {
                     "Tensor %s has not been initialized!", self.Name()));
 
             PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
                 self.Var().IsType<phi::DenseTensor>() ||
+=======
+                self.Var().IsType<framework::LoDTensor>() ||
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     self.Var().IsType<phi::SelectedRows>(),
                 true,
                 platform::errors::InvalidArgument(
@@ -1276,8 +1313,14 @@ void BindImperative(py::module *m_ptr) {
             detach_var->SetType(self.Type());
             detach_var->SetDataType(self.DataType());
 
+<<<<<<< HEAD
             if (self.Var().IsType<phi::DenseTensor>()) {
               const auto &origin_tensor = self.Var().Get<phi::DenseTensor>();
+=======
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              const auto &origin_tensor =
+                  self.Var().Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               PADDLE_ENFORCE_EQ(
                   origin_tensor.IsInitialized(),
                   true,
@@ -1285,7 +1328,11 @@ void BindImperative(py::module *m_ptr) {
                       "Tensor %s has not been initialized!", self.Name()));
 
               auto *detach_tensor =
+<<<<<<< HEAD
                   detach_var->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+                  detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               detach_tensor->ShareDataWith(origin_tensor);
               // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
               // same TensorInplaceVersion, which is used to check whether
@@ -1384,7 +1431,11 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "clone",
           [](std::shared_ptr<imperative::VarBase> &self) {
+<<<<<<< HEAD
             const auto &tensor = self->Var().Get<phi::DenseTensor>();
+=======
+            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             PADDLE_ENFORCE_EQ(tensor.IsInitialized(),
                               true,
                               platform::errors::InvalidArgument(
@@ -1435,7 +1486,11 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_grad_value",
           [](imperative::VarBase &self) {
+<<<<<<< HEAD
             return self.MutableGradVar()->Get<phi::DenseTensor>();
+=======
+            return self.MutableGradVar()->Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           },
           py::return_value_policy::reference)
       .def("_set_grad_type",
@@ -1472,8 +1527,14 @@ void BindImperative(py::module *m_ptr) {
 
             if (grad_var && grad_var->Var().IsInitialized()) {
               auto *tensor =
+<<<<<<< HEAD
                   grad_var->MutableVar()->IsType<phi::DenseTensor>()
                       ? grad_var->MutableVar()->GetMutable<phi::DenseTensor>()
+=======
+                  grad_var->MutableVar()->IsType<framework::LoDTensor>()
+                      ? grad_var->MutableVar()
+                            ->GetMutable<framework::LoDTensor>()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       : grad_var->MutableVar()
                             ->GetMutable<phi::SelectedRows>()
                             ->mutable_value();
@@ -1726,7 +1787,11 @@ void BindImperative(py::module *m_ptr) {
 
               y = x.cuda()
               print(y.place)        # Place(gpu:0)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               y = x.cuda(None)
               print(y.place)        # Place(gpu:0)
 
@@ -1744,7 +1809,11 @@ void BindImperative(py::module *m_ptr) {
                 platform::errors::InvalidArgument(
                     "Sharing memory only support CPU Tensor currently"));
             // 1. get LoDTensor
+<<<<<<< HEAD
             auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+            auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             // 2. allocate shared memory
             void *data_ptr = t->data();
             size_t data_size =
@@ -1780,7 +1849,11 @@ void BindImperative(py::module *m_ptr) {
                                   "Unified virtual addressing only support "
                                   "CPU Tensor currently."));
             auto *self_tensor =
+<<<<<<< HEAD
                 self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+                self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             tensor_uva(self_tensor, device_id);
           },
           py::arg("device_id") = 0,
@@ -1993,7 +2066,11 @@ void BindImperative(py::module *m_ptr) {
            [](const std::shared_ptr<imperative::VarBase> &self,
               int64_t begin_idx,
               int64_t end_idx) {
+<<<<<<< HEAD
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
              PADDLE_ENFORCE_EQ(
                  t->IsInitialized(),
                  true,
@@ -2043,6 +2120,7 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly(
           "shape",
           [](imperative::VarBase &self) {
+<<<<<<< HEAD
             if (self.Var().IsType<phi::DenseTensor>()) {
               auto value = phi::vectorize<int>(
                   self.Var().Get<phi::DenseTensor>().dims());
@@ -2087,6 +2165,11 @@ void BindImperative(py::module *m_ptr) {
                 value[3] = tmp_value[2];
               }
               return value;
+=======
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return phi::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             } else if (self.Var().IsType<phi::SelectedRows>()) {
               return phi::vectorize<int>(
                   self.Var().Get<phi::SelectedRows>().value().dims());
@@ -2103,6 +2186,7 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
+<<<<<<< HEAD
       .def_property_readonly(
           "layout",
           [](imperative::VarBase &self) {
@@ -2112,6 +2196,8 @@ void BindImperative(py::module *m_ptr) {
             }
             return std::string("");
           })
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       .def_property_readonly("is_leaf",
                              &imperative::VarBase::IsLeaf,
                              R"DOC(
@@ -2304,6 +2390,8 @@ void BindImperative(py::module *m_ptr) {
                auto kernelsig_outs = output_to_vector(ret.output_names);
                return std::make_tuple(
                    kernelsig_ins, kernelsig_attrs, kernelsig_outs);
+<<<<<<< HEAD
+=======
              }
            })
       .def("trace",
@@ -2326,6 +2414,7 @@ void BindImperative(py::module *m_ptr) {
                                                  place,
                                                  trace_backward,
                                                  inplace_map);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
              }
            })
       .def("trace",
@@ -2334,7 +2423,11 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
+<<<<<<< HEAD
+              const platform::CustomPlace &place,
+=======
               const platform::XPUPlace &place,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
@@ -2356,7 +2449,11 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
+<<<<<<< HEAD
+              const platform::XPUPlace &place,
+=======
               const platform::CUDAPlace &place,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
@@ -2378,7 +2475,11 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
+<<<<<<< HEAD
+              const platform::CUDAPlace &place,
+=======
               const platform::NPUPlace &place,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
@@ -2400,7 +2501,11 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
+<<<<<<< HEAD
+              const platform::NPUPlace &place,
+=======
               const platform::IPUPlace &place,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
@@ -2422,7 +2527,11 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
+<<<<<<< HEAD
+              const platform::IPUPlace &place,
+=======
               const platform::MLUPlace &place,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
@@ -2436,6 +2545,33 @@ void BindImperative(py::module *m_ptr) {
                                                  place,
                                                  trace_backward,
                                                  inplace_map);
+             }
+           })
+      .def("trace",
+           [](imperative::Tracer &self,
+              const std::string &type,
+              const PyNameVarBaseMap &ins,
+              const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs,
+<<<<<<< HEAD
+              const platform::MLUPlace &place,
+=======
+              const platform::CPUPlace &place,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+              bool trace_backward,
+              const std::map<std::string, std::string> &inplace_map = {}) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp<imperative::VarBase>(type,
+                                                 std::move(ins_map),
+                                                 std::move(outs_map),
+                                                 std::move(attrs),
+                                                 place,
+                                                 trace_backward,
+                                                 inplace_map);
+<<<<<<< HEAD
              }
            })
       .def("trace",
@@ -2458,6 +2594,8 @@ void BindImperative(py::module *m_ptr) {
                                                  place,
                                                  trace_backward,
                                                  inplace_map);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
              }
            });
 

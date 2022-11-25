@@ -23,7 +23,10 @@ register_operators(
   fused_transformer_op
   fused_feedforward_op
   fused_multi_transformer_op
+<<<<<<< HEAD
   fused_multi_transformer_int8_op
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   fused_bias_dropout_residual_layer_norm_op
   resnet_unit_op
   fused_gemm_epilogue_op
@@ -37,9 +40,12 @@ op_library(fusion_lstm_op)
 if(WITH_XPU)
   op_library(resnet_basic_block_op)
   op_library(resnet_unit_op)
+<<<<<<< HEAD
   op_library(fused_gemm_epilogue_op)
   op_library(fused_attention_op)
   op_library(fused_feedforward_op)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -122,7 +128,10 @@ if(WITH_GPU OR WITH_ROCM)
     # fused_attention_op
     op_library(fused_attention_op)
     op_library(fused_multi_transformer_op)
+<<<<<<< HEAD
     op_library(fused_multi_transformer_int8_op)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     op_library(fused_bias_dropout_residual_layer_norm_op)
   endif()
   # resnet_unit needs cudnn 8.0 above

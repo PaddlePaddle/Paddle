@@ -19,6 +19,7 @@ import paddle.nn.functional as functional
 
 
 class EmbeddingStatic(unittest.TestCase):
+
     def test_1(self):
         prog = fluid.Program()
         with fluid.program_guard(prog):
@@ -28,6 +29,7 @@ class EmbeddingStatic(unittest.TestCase):
                     np.random.random(size=(128, 100))
                 )
 
+<<<<<<< HEAD
                 param_attr = fluid.ParamAttr(
                     name="emb_weight",
                     learning_rate=0.5,
@@ -49,6 +51,26 @@ class EmbeddingStatic(unittest.TestCase):
                 emb = functional.embedding(
                     x=label, weight=weight, sparse=True, name="embedding"
                 )
+=======
+                param_attr = fluid.ParamAttr(name="emb_weight",
+                                             learning_rate=0.5,
+                                             initializer=initializer,
+                                             trainable=True)
+
+                weight = prog.global_block().create_parameter((128, 100),
+                                                              attr=param_attr,
+                                                              dtype="float32")
+
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="int64")
+
+                emb = functional.embedding(x=label,
+                                           weight=weight,
+                                           sparse=True,
+                                           name="embedding")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             test_bad_x()
 
@@ -61,6 +83,7 @@ class EmbeddingStatic(unittest.TestCase):
                     np.random.random(size=(128, 100))
                 )
 
+<<<<<<< HEAD
                 param_attr = fluid.ParamAttr(
                     name="emb_weight",
                     learning_rate=0.5,
@@ -86,6 +109,27 @@ class EmbeddingStatic(unittest.TestCase):
                     sparse=True,
                     name="embedding",
                 )
+=======
+                param_attr = fluid.ParamAttr(name="emb_weight",
+                                             learning_rate=0.5,
+                                             initializer=initializer,
+                                             trainable=True)
+
+                weight = prog.global_block().create_parameter((128, 100),
+                                                              attr=param_attr,
+                                                              dtype="float32")
+
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="int32")
+
+                emb = functional.embedding(x=label,
+                                           weight=weight,
+                                           padding_idx=129,
+                                           sparse=True,
+                                           name="embedding")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         with self.assertRaises(ValueError):
             test_bad_x()

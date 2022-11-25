@@ -20,6 +20,7 @@ import unittest
 
 
 class TestFlagsUseMkldnn(unittest.TestCase):
+
     def setUp(self):
         self._python_interp = sys.executable
         self._python_interp += " check_flags_mkldnn_ops_on_off.py"
@@ -39,12 +40,19 @@ class TestFlagsUseMkldnn(unittest.TestCase):
     def flags_use_mkl_dnn_common(self, e):
         cmd = self._python_interp
         env = dict(self.env, **e)
+<<<<<<< HEAD
         proc = subprocess.Popen(
             cmd.split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env,
         )
+=======
+        proc = subprocess.Popen(cmd.split(" "),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                env=env)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out, err = proc.communicate()
         returncode = proc.returncode

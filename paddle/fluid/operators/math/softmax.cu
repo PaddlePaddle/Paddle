@@ -32,8 +32,13 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T, typename DeviceContext>
 void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
     const DeviceContext& context,
+<<<<<<< HEAD
     const phi::DenseTensor* X,
     phi::DenseTensor* Y) {
+=======
+    const framework::Tensor* X,
+    framework::Tensor* Y) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
@@ -83,9 +88,15 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
 template <typename T, typename DeviceContext>
 void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
     const DeviceContext& context,
+<<<<<<< HEAD
     const phi::DenseTensor* Y,
     const phi::DenseTensor* YGrad,
     phi::DenseTensor* XGrad) {
+=======
+    const framework::Tensor* Y,
+    const framework::Tensor* YGrad,
+    framework::Tensor* XGrad) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
@@ -156,10 +167,21 @@ template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
 
+<<<<<<< HEAD
 template class SoftmaxFunctor<phi::GPUContext, platform::float16>;
 template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16>;
 template class SoftmaxFunctor<phi::GPUContext, float>;
 template class SoftmaxFunctor<phi::GPUContext, double>;
+=======
+template class SoftmaxFunctor<phi::GPUContext, platform::float16, false>;
+template class SoftmaxFunctor<phi::GPUContext, platform::float16, true>;
+template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, false>;
+template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, true>;
+template class SoftmaxFunctor<phi::GPUContext, float, false>;
+template class SoftmaxFunctor<phi::GPUContext, double, false>;
+template class SoftmaxFunctor<phi::GPUContext, float, true>;
+template class SoftmaxFunctor<phi::GPUContext, double, true>;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 template class SoftmaxGradFunctor<phi::GPUContext, float>;
 template class SoftmaxGradFunctor<phi::GPUContext, double>;
 template class SoftmaxGradFunctor<phi::GPUContext, platform::float16>;

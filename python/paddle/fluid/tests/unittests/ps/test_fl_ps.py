@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import shlex  # noqa: F401
 import unittest
@@ -25,6 +26,18 @@ from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import 
 
 class FlPsTest(unittest.TestCase):
     def test_launch_fl_ps(self):
+=======
+import unittest
+import shlex
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
+import os
+
+
+class FlPsTest(unittest.TestCase):
+
+    def test_launch_fl_ps(self):
+        pass
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         '''
         cmd = [
             'python', '-m', 'paddle.distributed.fleet.launch', '--log_dir',

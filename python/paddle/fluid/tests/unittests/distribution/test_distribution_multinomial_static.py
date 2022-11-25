@@ -35,6 +35,7 @@ paddle.enable_static()
     ],
 )
 class TestMultinomial(unittest.TestCase):
+
     def setUp(self):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -63,6 +64,7 @@ class TestMultinomial(unittest.TestCase):
 
     def test_mean(self):
         self.assertEqual(str(self.mean.dtype).split('.')[-1], self.probs.dtype)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self.mean,
             self._np_mean(),
@@ -89,6 +91,27 @@ class TestMultinomial(unittest.TestCase):
             rtol=config.RTOL.get(str(self.probs.dtype)),
             atol=config.ATOL.get(str(self.probs.dtype)),
         )
+=======
+        np.testing.assert_allclose(self.mean,
+                                   self._np_mean(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+
+    def test_variance(self):
+        self.assertEqual(str(self.var.dtype).split('.')[-1], self.probs.dtype)
+        np.testing.assert_allclose(self.var,
+                                   self._np_variance(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+
+    def test_entropy(self):
+        self.assertEqual(
+            str(self.entropy.dtype).split('.')[-1], self.probs.dtype)
+        np.testing.assert_allclose(self.entropy,
+                                   self._np_entropy(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_sample(self):
         self.assertEqual(
@@ -123,16 +146,22 @@ class TestMultinomial(unittest.TestCase):
             np.array([1.0, 1.0, 3.0]),
         ),
         ('value-int', 5, np.array([0.2, 0.3, 0.5]), np.array([2, 2, 1])),
+<<<<<<< HEAD
         (
             'value-multi-dim',
             5,
             np.array([[0.3, 0.7], [0.5, 0.5]]),
             np.array([[1.0, 4.0], [2.0, 3.0]]),
         ),
+=======
+        ('value-multi-dim', 5, np.array([[0.3, 0.7], [0.5, 0.5]
+                                         ]), np.array([[1., 4.], [2., 3.]])),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # ('value-sum-non-n', 10, np.array([0.5, 0.2, 0.3]), np.array([4,5,2])),
     ],
 )
 class TestMultinomialPmf(unittest.TestCase):
+
     def setUp(self):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -156,6 +185,7 @@ class TestMultinomialPmf(unittest.TestCase):
         )
 
     def test_prob(self):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self.pmf,
             scipy.stats.multinomial.pmf(
@@ -164,6 +194,14 @@ class TestMultinomialPmf(unittest.TestCase):
             rtol=config.RTOL.get(str(self.probs.dtype)),
             atol=config.ATOL.get(str(self.probs.dtype)),
         )
+=======
+        np.testing.assert_allclose(self.pmf,
+                                   scipy.stats.multinomial.pmf(
+                                       self.value, self.total_count,
+                                       self.probs),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @parameterize.place(config.DEVICES)
@@ -176,6 +214,7 @@ class TestMultinomialPmf(unittest.TestCase):
     ],
 )
 class TestMultinomialException(unittest.TestCase):
+
     def setUp(self):
         startup_program = paddle.static.Program()
         self.main_program = paddle.static.Program()

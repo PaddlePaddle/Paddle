@@ -37,6 +37,7 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(10) << "Transfer var to fp16...";
     auto* scope = ipu_backend->GetScope();
 
+<<<<<<< HEAD
     // Record specific vars to skip
     std::set<std::string> skip_var_lists;
     for (auto* node : graph->Nodes()) {
@@ -51,16 +52,21 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     std::unordered_set<std::string> used_var_names;
     for (auto* node : graph->Nodes()) {
       if (node->IsVar()) {
         auto var_desc = node->Var();
         if (var_desc->GetDataType() == proto::VarType::FP32) {
+<<<<<<< HEAD
           // Skip specific vars
           if (skip_var_lists.find(var_desc->Name()) != skip_var_lists.end()) {
             continue;
           }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           // Transfer the dtypes of var_desc
           var_desc->SetDataType(proto::VarType::FP16);
           VLOG(10) << "Transfer the VarDesc of " << var_desc->Name() << " to "
@@ -72,7 +78,11 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
             // Transfer the dtypes of weight tensors
             std::vector<float16> fp16_data;
             auto* tensor = scope->FindVar(var_desc->Name())
+<<<<<<< HEAD
                                ->GetMutable<phi::DenseTensor>();
+=======
+                               ->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             auto* data_ptr = tensor->data<float>();
             auto num_elem = tensor->numel();
 
@@ -100,12 +110,15 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
           }
         }
         if (op_desc->Type() == "popart_constant") {
+<<<<<<< HEAD
           // Skip specific constant
           auto output_var_name = node->outputs[0]->Var()->Name();
           if (skip_var_lists.find(output_var_name) != skip_var_lists.end()) {
             continue;
           }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           // Transfer the dtype of fill_constant Op
           if (op_desc->GetAttrIfExists<int>("dtype") == 1) {
             op_desc->SetAttr("dtype", 10);

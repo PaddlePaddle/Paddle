@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -53,9 +54,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         x = paddle.fluid.layers.conv2d(x, **self.attrs)
         self.fetch_list = [x.name]
 
@@ -71,30 +78,35 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['num_filters'] = 1
 
 
 class TestCase2(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['filter_size'] = [3, 3]
 
 
 class TestCase2_1(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['filter_size'] = [3, 2]
 
 
 class TestCase3(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['stride'] = [2, 3]
 
 
 class TestCase4(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['dilation'] = [2, 2]
@@ -108,18 +120,21 @@ class TestCase5(TestBase):
 
 
 class TestCase6(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = 2
 
 
 class TestCase7(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = [2, 3]
 
 
 class TestCase8(TestBase):
+
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = [1, 2, 2, 3]

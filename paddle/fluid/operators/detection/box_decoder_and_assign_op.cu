@@ -11,7 +11,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/box_decoder_and_assign_op.h"
 #include "paddle/fluid/memory/memcpy.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace paddle {
 namespace operators {

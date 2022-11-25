@@ -24,6 +24,7 @@ from paddle.fluid.layers.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
+
     def test_forward(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -55,6 +56,7 @@ class ConditionalBlockTest(unittest.TestCase):
 
 
 class TestConditionalBlockOpInferShape(unittest.TestCase):
+
     def test_infer_shape(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -63,6 +65,7 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
             sub_block = main_program._create_block()
             main_program._rollback()
             step_scope = global_block.create_var(
+<<<<<<< HEAD
                 type=core.VarDesc.VarType.STEP_SCOPES
             )
             cond_var = layers.fill_constant(
@@ -78,6 +81,26 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
                 outputs={'Out': [], 'Scope': [step_scope]},
                 attrs={'sub_block': sub_block, 'is_scalar_condition': True},
             )
+=======
+                type=core.VarDesc.VarType.STEP_SCOPES)
+            cond_var = layers.fill_constant(shape=[1],
+                                            dtype='bool',
+                                            value=False)
+
+            op = global_block.append_op(type='conditional_block',
+                                        inputs={
+                                            'Cond': [cond_var],
+                                            'Input': [],
+                                        },
+                                        outputs={
+                                            'Out': [],
+                                            'Scope': [step_scope]
+                                        },
+                                        attrs={
+                                            'sub_block': sub_block,
+                                            'is_scalar_condition': True
+                                        })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             op.desc.infer_shape(global_block.desc)
 
 

@@ -62,6 +62,7 @@ class CppVoidHook : public VoidHook {
   std::function<void()> fn_;
 };
 
+<<<<<<< HEAD
 class PackHookBase {
  public:
   virtual ~PackHookBase() = default;
@@ -76,4 +77,6 @@ class UnPackHookBase {
   virtual void* operator()(void* packed_value, void* other) = 0;
 };
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }  // namespace egr

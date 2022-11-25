@@ -37,9 +37,13 @@ class SparseLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="embedding",
                     initializer=fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                         emb_array
                     ),
                 ),
+=======
+                        emb_array)),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             )
 
             fc1 = fluid.layers.fc(
@@ -76,6 +80,7 @@ class SparseLoadOp(unittest.TestCase):
 
 @unittest.skip(reason="Skip unstable ut, need rewrite with new implement")
 class TestSparseLoadOpCase1(SparseLoadOp):
+
     def test_2ps_0_load(self):
         # init No.0 server env
         env = {}
@@ -115,8 +120,12 @@ class TestSparseLoadOpCase1(SparseLoadOp):
         fc_w = np.array(fluid.global_scope().find_var("fc").get_tensor())
 
         emb = np.array(
+<<<<<<< HEAD
             fluid.global_scope().find_var("embedding.block0").get_tensor()
         )
+=======
+            fluid.global_scope().find_var("embedding.block0").get_tensor())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         assert fc_w.all() == fc_array.all()
         assert emb.all() == emb_array[::2].all()

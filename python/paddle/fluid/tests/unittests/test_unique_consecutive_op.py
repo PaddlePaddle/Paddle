@@ -193,6 +193,7 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
 
 
 class TestUniqueConsecutiveAPI(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -201,6 +202,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
+<<<<<<< HEAD
             input_x = fluid.data(
                 name="input_x",
                 shape=[
@@ -208,6 +210,11 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
                 ],
                 dtype="float32",
             )
+=======
+            input_x = fluid.data(name="input_x", shape=[
+                100,
+            ], dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             result = paddle.unique_consecutive(input_x)
             x_np = np.random.randint(20, size=100).astype("float32")
             exe = fluid.Executor(place)
@@ -230,6 +237,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
 
 
 class TestUniqueConsecutiveCase2API(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -238,6 +246,7 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
+<<<<<<< HEAD
             input_x = fluid.data(
                 name="input_x",
                 shape=[
@@ -245,6 +254,11 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 ],
                 dtype="float32",
             )
+=======
+            input_x = fluid.data(name="input_x", shape=[
+                100,
+            ], dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             result, inverse, counts = paddle.unique_consecutive(
                 input_x, return_inverse=True, return_counts=True
             )

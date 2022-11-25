@@ -83,6 +83,7 @@ def _is_equal_program(prog1, prog2):
 
 
 def load_dygraph_vars_to_scope(model_path, scope, place):
+
     def load_dict_to_scope(scope, dictionary):
         if scope is None:
             scope = fluid.global_scope()
@@ -101,7 +102,12 @@ def load_dygraph_vars_to_scope(model_path, scope, place):
         load_dict_to_scope(scope, opti_dict)
 
 
+<<<<<<< HEAD
 class DyGraphProgramDescTracerTestHelper:
+=======
+class DyGraphProgramDescTracerTestHelper(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, unittest_obj):
         self.unittest_obj = unittest_obj
 

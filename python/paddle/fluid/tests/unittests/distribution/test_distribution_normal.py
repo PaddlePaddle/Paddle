@@ -30,6 +30,7 @@ np.random.seed(2022)
 
 
 class NormalNumpy(DistributionNumpy):
+
     def __init__(self, loc, scale):
         self.loc = np.array(loc)
         self.scale = np.array(scale)
@@ -44,11 +45,17 @@ class NormalNumpy(DistributionNumpy):
     def log_prob(self, value):
         var = self.scale * self.scale
         log_scale = np.log(self.scale)
+<<<<<<< HEAD
         return (
             -((value - self.loc) * (value - self.loc)) / (2.0 * var)
             - log_scale
             - math.log(math.sqrt(2.0 * math.pi))
         )
+=======
+        return -((value - self.loc) *
+                 (value - self.loc)) / (2. * var) - log_scale - math.log(
+                     math.sqrt(2. * math.pi))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def probs(self, value):
         var = self.scale * self.scale
@@ -72,6 +79,7 @@ class NormalNumpy(DistributionNumpy):
 
 
 class NormalTest(unittest.TestCase):
+
     def setUp(self, use_gpu=False, batch_size=2, dims=3):
         self.use_gpu = use_gpu
         if not use_gpu:
@@ -117,9 +125,15 @@ class NormalTest(unittest.TestCase):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
         sample, entropy, log_prob, probs, kl = fetch_list
@@ -139,6 +153,7 @@ class NormalTest(unittest.TestCase):
         # So set the tolerance from 1e-6 to 1e-4.
         log_tolerance = 1e-4
         np.testing.assert_equal(sample.shape, np_sample.shape)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             entropy, np_entropy, rtol=tolerance, atol=tolerance
         )
@@ -151,6 +166,24 @@ class NormalTest(unittest.TestCase):
         np.testing.assert_allclose(
             kl, np_kl, rtol=log_tolerance, atol=log_tolerance
         )
+=======
+        np.testing.assert_allclose(entropy,
+                                   np_entropy,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(log_prob,
+                                   np_lp,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
+        np.testing.assert_allclose(probs,
+                                   np_p,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
+        np.testing.assert_allclose(kl,
+                                   np_kl,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
         paddle.disable_static(self.place)
@@ -199,6 +232,7 @@ class NormalTest(unittest.TestCase):
 
 
 class NormalTest2(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc ans scale are 'int'
         self.loc_np = int((np.random.ranf() - 0.5) * 8)
@@ -214,6 +248,7 @@ class NormalTest2(NormalTest):
 
 
 class NormalTest3(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # test broadcast: loc is float, scale is numpy.ndarray with dtype 'float32'.
         self.loc_np = (np.random.ranf() - 0.5) * 4
@@ -237,12 +272,19 @@ class NormalTest3(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NormalTest4(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are numpy.ndarray with dtype 'float32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float32')
@@ -266,12 +308,19 @@ class NormalTest4(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NormalTest5(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are numpy.ndarray with dtype 'float64'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
@@ -302,12 +351,19 @@ class NormalTest5(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float64'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NormalTest6(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are Tensor with dtype 'VarType.FP32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float32')
@@ -334,6 +390,7 @@ class NormalTest6(NormalTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_loc = layers.data(
                 name='loc', shape=[dims], dtype='float32'
             )
@@ -349,9 +406,27 @@ class NormalTest6(NormalTest):
             self.static_other_scale = layers.data(
                 name='other_scale', shape=[dims], dtype='float32'
             )
+=======
+            self.static_loc = layers.data(name='loc',
+                                          shape=[dims],
+                                          dtype='float32')
+            self.static_scale = layers.data(name='scale',
+                                            shape=[dims],
+                                            dtype='float32')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+            self.static_other_loc = layers.data(name='other_loc',
+                                                shape=[dims],
+                                                dtype='float32')
+            self.static_other_scale = layers.data(name='other_scale',
+                                                  shape=[dims],
+                                                  dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NormalTest7(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are Tensor with dtype 'VarType.FP64'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
@@ -373,6 +448,7 @@ class NormalTest7(NormalTest):
         self.dynamic_loc = paddle.to_tensor(self.loc_np, dtype='float64')
         self.dynamic_scale = paddle.to_tensor(self.scale_np, dtype='float64')
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
+<<<<<<< HEAD
         self.dynamic_other_loc = paddle.to_tensor(
             self.other_loc_np, dtype='float64'
         )
@@ -397,9 +473,34 @@ class NormalTest7(NormalTest):
             self.static_other_scale = layers.data(
                 name='other_scale', shape=[dims], dtype='float64'
             )
+=======
+        self.dynamic_other_loc = paddle.to_tensor(self.other_loc_np,
+                                                  dtype='float64')
+        self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np,
+                                                    dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.static_loc = layers.data(name='loc',
+                                          shape=[dims],
+                                          dtype='float64')
+            self.static_scale = layers.data(name='scale',
+                                            shape=[dims],
+                                            dtype='float64')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float64')
+            self.static_other_loc = layers.data(name='other_loc',
+                                                shape=[dims],
+                                                dtype='float64')
+            self.static_other_scale = layers.data(name='other_scale',
+                                                  shape=[dims],
+                                                  dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NormalTest8(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are Tensor with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
@@ -421,6 +522,7 @@ class NormalTest8(NormalTest):
         self.dynamic_loc = paddle.to_tensor(self.loc_np, dtype='float64')
         self.dynamic_scale = paddle.to_tensor(self.scale_np, dtype='float64')
         self.dynamic_values = paddle.to_tensor(self.values_np)
+<<<<<<< HEAD
         self.dynamic_other_loc = paddle.to_tensor(
             self.other_loc_np, dtype='float64'
         )
@@ -445,9 +547,34 @@ class NormalTest8(NormalTest):
             self.static_other_scale = layers.data(
                 name='other_scale', shape=[dims], dtype='float64'
             )
+=======
+        self.dynamic_other_loc = paddle.to_tensor(self.other_loc_np,
+                                                  dtype='float64')
+        self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np,
+                                                    dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.static_loc = layers.data(name='loc',
+                                          shape=[dims],
+                                          dtype='float64')
+            self.static_scale = layers.data(name='scale',
+                                            shape=[dims],
+                                            dtype='float64')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+            self.static_other_loc = layers.data(name='other_loc',
+                                                shape=[dims],
+                                                dtype='float64')
+            self.static_other_scale = layers.data(name='other_scale',
+                                                  shape=[dims],
+                                                  dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NormalTest9(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are list.
         self.loc_np = (
@@ -477,12 +604,19 @@ class NormalTest9(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class NormalTest10(NormalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # loc and scale are tuple.
         self.loc_np = tuple(
@@ -512,6 +646,7 @@ class NormalTest10(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
@@ -689,6 +824,11 @@ class TestNormalRSampleStaic(unittest.TestCase):
             self.assertTrue(
                 kstest(self.loc[i], self.scale[i], self.rsamples[:, i])
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

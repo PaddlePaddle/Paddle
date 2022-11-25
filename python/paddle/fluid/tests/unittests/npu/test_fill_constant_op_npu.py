@@ -27,6 +27,7 @@ SEED = 2021
 
 
 class TestFillConstant(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -48,6 +49,7 @@ class TestFillConstant(OpTest):
 
 
 class TestFillConstantInt(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -72,6 +74,7 @@ class TestFillConstantInt(OpTest):
 
 
 class TestFillConstantInt64(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -96,6 +99,7 @@ class TestFillConstantInt64(OpTest):
 
 
 class TestFillConstantFP16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -120,6 +124,7 @@ class TestFillConstantFP16(OpTest):
 
 
 class TestFillConstantBool(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -144,6 +149,7 @@ class TestFillConstantBool(OpTest):
 
 
 class TestFillConstantWithPlaceType(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)

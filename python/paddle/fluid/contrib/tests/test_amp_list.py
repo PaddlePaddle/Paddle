@@ -20,6 +20,7 @@ from paddle.fluid.contrib.mixed_precision.fp16_lists import (
 
 
 class TestAMPList(unittest.TestCase):
+
     def test_main(self):
         custom_white_list = [
             'lookup_table',

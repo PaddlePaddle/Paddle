@@ -67,8 +67,11 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       })) {
     after_tile = t;
   } else {
+<<<<<<< HEAD
     VLOG(4) << "do TileKernel with repeat_times="
             << paddle::string::join_strings(repeat_times, ",");
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     TileKernel<T, Context>(dev_ctx, t, repeat_times, &after_tile);
   }
   size_t n_ellipsis_idx = op_label.find(".", 0);
@@ -221,7 +224,10 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[0],
                                                          ops[0],
                                                          dA);
+<<<<<<< HEAD
       *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     if (x_grad[1]) {
       *(x_grad[1]) = PerformTileAndReduction<T, Context>(dev_ctx,
@@ -231,7 +237,10 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[1],
                                                          ops[1],
                                                          dB);
+<<<<<<< HEAD
       *(x_grad[1]) = Conj<T, Context>(dev_ctx, *x_grad[1]);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 }

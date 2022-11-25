@@ -24,6 +24,7 @@ if paddle.fluid.is_compiled_with_cuda():
 
 
 class TestAMP(TestMNIST):
+
     def train_static(self):
         return self.train(to_static=True)
 
@@ -36,6 +37,7 @@ class TestAMP(TestMNIST):
         # NOTE(Aurelius84): In static AMP training, there is a grep_list but
         # dygraph AMP don't. It will bring the numbers of cast_op is different
         # and leads to loss has a bit diff.
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dygraph_loss,
             static_loss,
@@ -45,6 +47,11 @@ class TestAMP(TestMNIST):
                 dygraph_loss, static_loss
             ),
         )
+=======
+        self.assertTrue(np.allclose(dygraph_loss, static_loss, atol=1e-3),
+                        msg='dygraph is {}\n static_res is \n{}'.format(
+                            dygraph_loss, static_loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def train(self, to_static=False):
         paddle.seed(SEED)
@@ -54,9 +61,14 @@ class TestAMP(TestMNIST):
             print("Successfully to apply @to_static.")
             mnist = paddle.jit.to_static(mnist)
 
+<<<<<<< HEAD
         adam = AdamOptimizer(
             learning_rate=0.001, parameter_list=mnist.parameters()
         )
+=======
+        adam = AdamOptimizer(learning_rate=0.001,
+                             parameter_list=mnist.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
@@ -64,6 +76,7 @@ class TestAMP(TestMNIST):
         for epoch in range(self.epoch_num):
             start = time()
             for batch_id, data in enumerate(self.train_reader()):
+<<<<<<< HEAD
                 dy_x_data = np.array(
                     [x[0].reshape(1, 28, 28) for x in data]
                 ).astype('float32')
@@ -72,6 +85,12 @@ class TestAMP(TestMNIST):
                     .astype('int64')
                     .reshape(-1, 1)
                 )
+=======
+                dy_x_data = np.array([x[0].reshape(1, 28, 28)
+                                      for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(-1, 1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 img = paddle.to_tensor(dy_x_data)
                 label = paddle.to_tensor(y_data)
@@ -89,6 +108,7 @@ class TestAMP(TestMNIST):
                 mnist.clear_gradients()
                 if batch_id % 10 == 0:
                     print(
+<<<<<<< HEAD
                         "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
                             epoch,
                             batch_id,
@@ -97,6 +117,11 @@ class TestAMP(TestMNIST):
                             time() - start,
                         )
                     )
+=======
+                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}"
+                        .format(epoch, batch_id, avg_loss.numpy(), acc.numpy(),
+                                time() - start))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     start = time()
                 if batch_id == 50:
                     break

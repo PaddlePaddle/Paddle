@@ -103,6 +103,7 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
     dy2 = y3 - y2
     dy3 = y0 - y1 + y2 - y3
     matrix = np.zeros([9])
+<<<<<<< HEAD
     matrix[6] = (
         (dx3 * dy2 - dx2 * dy3)
         / (dx1 * dy2 - dx2 * dy1 + 1e-5)
@@ -113,6 +114,12 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
         / (dx1 * dy2 - dx2 * dy1 + 1e-5)
         / (normalized_height - 1)
     )
+=======
+    matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1 +
+                                           1e-5) / (normalized_width - 1)
+    matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1 +
+                                           1e-5) / (normalized_height - 1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     matrix[8] = 1
 
     matrix[3] = (y1 - y0 + matrix[6] * (normalized_width - 1) * y1) / (
@@ -222,9 +229,14 @@ def roi_transform(
             roi2image[j] = i
 
     out = np.zeros([rois_num, channels, transformed_height, transformed_width])
+<<<<<<< HEAD
     mask = np.zeros(
         [rois_num, 1, transformed_height, transformed_width]
     ).astype('int')
+=======
+    mask = np.zeros([rois_num, 1, transformed_height,
+                     transformed_width]).astype('int')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     matrix = np.zeros([rois_num, 9], dtype=in_data.dtype)
     for n in range(rois_num):
         roi_x = []
@@ -233,9 +245,15 @@ def roi_transform(
             roi_x.append(rois[n][2 * k] * spatial_scale)
             roi_y.append(rois[n][2 * k + 1] * spatial_scale)
         image_id = roi2image[n]
+<<<<<<< HEAD
         transform_matrix = get_transform_matrix(
             transformed_width, transformed_height, roi_x, roi_y
         )
+=======
+        transform_matrix = get_transform_matrix(transformed_width,
+                                                transformed_height, roi_x,
+                                                roi_y)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         matrix[n] = transform_matrix
         for c in range(channels):
             for out_h in range(transformed_height):
@@ -261,6 +279,7 @@ def roi_transform(
 
 
 class TestROIPoolOp(OpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -272,6 +291,7 @@ class TestROIPoolOp(OpTest):
             'transformed_height': self.transformed_height,
             'transformed_width': self.transformed_width,
         }
+<<<<<<< HEAD
         out, mask, transform_matrix = roi_transform(
             self.x,
             self.rois,
@@ -280,6 +300,13 @@ class TestROIPoolOp(OpTest):
             self.transformed_width,
             self.spatial_scale,
         )
+=======
+        out, mask, transform_matrix = roi_transform(self.x, self.rois,
+                                                    self.rois_lod,
+                                                    self.transformed_height,
+                                                    self.transformed_width,
+                                                    self.spatial_scale)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.outputs = {
             'Out': out,
             'Mask': mask,
@@ -364,6 +391,7 @@ class TestROIPoolOp(OpTest):
 
     def test_errors(self):
         x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
+<<<<<<< HEAD
         rois = fluid.data(
             name='rois', shape=[None, 8], lod_level=1, dtype='float32'
         )
@@ -374,6 +402,20 @@ class TestROIPoolOp(OpTest):
         rois_int = fluid.data(
             name='rois_int', shape=[None, 8], lod_level=1, dtype='int32'
         )
+=======
+        rois = fluid.data(name='rois',
+                          shape=[None, 8],
+                          lod_level=1,
+                          dtype='float32')
+
+        x_int = fluid.data(name='x_int',
+                           shape=[100, 256, 28, 28],
+                           dtype='int32')
+        rois_int = fluid.data(name='rois_int',
+                              shape=[None, 8],
+                              lod_level=1,
+                              dtype='int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         x_tmp = [1, 2]
         rois_tmp = [1, 2]
 

@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestOneHotOp(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -57,6 +58,7 @@ class TestOneHotOp(OpTest):
 
 
 class TestOneHotOp_attr(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -85,6 +87,7 @@ class TestOneHotOp_attr(OpTest):
 
 
 class TestOneHotOp_default_dtype(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -114,6 +117,7 @@ class TestOneHotOp_default_dtype(OpTest):
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -142,6 +146,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOp_out_of_range(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -166,6 +171,7 @@ class TestOneHotOp_out_of_range(OpTest):
 
 
 class TestOneHotOp_dtype_int64(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 

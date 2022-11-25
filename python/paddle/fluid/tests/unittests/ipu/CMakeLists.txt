@@ -11,6 +11,7 @@ if(WITH_IPU)
   endforeach()
 
   set_tests_properties(test_conv_op_ipu PROPERTIES TIMEOUT 300)
+<<<<<<< HEAD
   set_tests_properties(test_elemetwise_x_op_ipu PROPERTIES TIMEOUT 600)
   set_tests_properties(test_reduce_x_op_ipu PROPERTIES TIMEOUT 800)
   set_tests_properties(test_save_load_ipu PROPERTIES TIMEOUT 600)
@@ -19,6 +20,11 @@ if(WITH_IPU)
   set_tests_properties(test_greater_op_ipu PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv2d_transpose_op_ipu PROPERTIES TIMEOUT 300)
   set_tests_properties(test_model_parallel_ipu PROPERTIES TIMEOUT 300)
+=======
+  set_tests_properties(test_elemetwise_x_op_ipu PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_reduce_x_op_ipu PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_save_load_ipu PROPERTIES TIMEOUT 600)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   add_subdirectory(custom_ops)
 

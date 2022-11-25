@@ -189,6 +189,7 @@ def REGISTER_ORIG2PRIM(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
+
         def _lower(op, *args, **kwargs):
             assert (
                 op.type == op_type
@@ -222,6 +223,7 @@ def REGISTER_PRIM2ORIG(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
+
         def _lower(op, *args, **kwargs):
             assert (
                 op.type == op_type
@@ -254,6 +256,7 @@ def REGISTER_JVP(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
+
         def _jvp(op, *args, **kwargs):
             assert (
                 op.type == op_type
@@ -288,6 +291,7 @@ def REGISTER_TRANSPOSE(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
+
         def _transpose(op, dot_checker, *args, **kwargs):
             assert (
                 op.type == op_type

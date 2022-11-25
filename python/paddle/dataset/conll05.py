@@ -145,9 +145,17 @@ def corpus_reader(data_path, words_name, props_name):
     return reader
 
 
+<<<<<<< HEAD
 def reader_creator(
     corpus_reader, word_dict=None, predicate_dict=None, label_dict=None
 ):
+=======
+def reader_creator(corpus_reader,
+                   word_dict=None,
+                   predicate_dict=None,
+                   label_dict=None):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def reader():
         for sentence, predicate, labels in corpus_reader():
 

@@ -22,6 +22,7 @@ import numpy as np
 
 
 class TestFleetBase(unittest.TestCase):
+
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36000"
@@ -59,9 +60,14 @@ class TestFleetBase(unittest.TestCase):
     def test_worker_endpoints(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
+<<<<<<< HEAD
         self.assertEqual(
             "127.0.0.1:36000", fleet.worker_endpoints(to_string=True)
         )
+=======
+        self.assertEqual("127.0.0.1:36000",
+                         fleet.worker_endpoints(to_string=True))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertEqual(["127.0.0.1:36000"], fleet.worker_endpoints())
 
     def test_server_num(self):
@@ -91,6 +97,7 @@ class TestFleetBase(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
         if fleet.is_server():
+<<<<<<< HEAD
             self.assertEqual(
                 "127.0.0.1:36001,127.0.0.2:36002",
                 fleet.server_endpoints(to_string=True),
@@ -98,6 +105,12 @@ class TestFleetBase(unittest.TestCase):
             self.assertEqual(
                 ["127.0.0.1:36001", "127.0.0.2:36002"], fleet.server_endpoints()
             )
+=======
+            self.assertEqual("127.0.0.1:36001,127.0.0.2:36002",
+                             fleet.server_endpoints(to_string=True))
+            self.assertEqual(["127.0.0.1:36001", "127.0.0.2:36002"],
+                             fleet.server_endpoints())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_is_server(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
@@ -148,6 +161,7 @@ class TestFleetBase(unittest.TestCase):
 
 
 class TestFleetDygraph(unittest.TestCase):
+
     def setUp(self):
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"
@@ -161,9 +175,14 @@ class TestFleetDygraph(unittest.TestCase):
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
         layer = paddle.nn.Linear(13, 5)
+<<<<<<< HEAD
         adam = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=layer.parameters()
         )
+=======
+        adam = paddle.optimizer.Adam(learning_rate=0.01,
+                                     parameters=layer.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # remove init cause this UT cannot launch distributed task
         adam = fleet.distributed_optimizer(adam)
         try:
@@ -183,20 +202,32 @@ class TestFleetDygraph(unittest.TestCase):
 
 
 class TestFleetBaseSingleError(unittest.TestCase):
+
     def setUp(self):
         os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
             "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+            "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def test_single_run_collective_minimize(self):
+
         def test_single_error():
+<<<<<<< HEAD
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
+=======
+            input_x = paddle.static.data(name="x",
+                                         shape=[-1, 32],
+                                         dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')

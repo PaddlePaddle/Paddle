@@ -19,6 +19,7 @@ from paddle.text.datasets import UCIHousing, WMT14
 
 
 class TestUCIHousingTrain(unittest.TestCase):
+
     def test_main(self):
         uci_housing = UCIHousing(mode='train')
         self.assertTrue(len(uci_housing) == 404)
@@ -35,6 +36,7 @@ class TestUCIHousingTrain(unittest.TestCase):
 
 
 class TestUCIHousingTest(unittest.TestCase):
+
     def test_main(self):
         uci_housing = UCIHousing(mode='test')
         self.assertTrue(len(uci_housing) == 102)
@@ -51,6 +53,7 @@ class TestUCIHousingTest(unittest.TestCase):
 
 
 class TestWMT14Train(unittest.TestCase):
+
     def test_main(self):
         wmt14 = WMT14(mode='train', dict_size=50)
         self.assertTrue(len(wmt14) == 191155)
@@ -66,6 +69,7 @@ class TestWMT14Train(unittest.TestCase):
 
 
 class TestWMT14Test(unittest.TestCase):
+
     def test_main(self):
         wmt14 = WMT14(mode='test', dict_size=50)
         self.assertTrue(len(wmt14) == 5957)
@@ -81,6 +85,7 @@ class TestWMT14Test(unittest.TestCase):
 
 
 class TestWMT14Gen(unittest.TestCase):
+
     def test_main(self):
         wmt14 = WMT14(mode='gen', dict_size=50)
         self.assertTrue(len(wmt14) == 3001)

@@ -53,7 +53,10 @@ class StackOpConverter : public OpConverter {
     }
 
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+<<<<<<< HEAD
     int output_rank = inputs[0]->getDimensions().nbDims + 1;
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (axis < 0) {
       axis = axis + output_rank;
     }
@@ -82,6 +85,24 @@ class StackOpConverter : public OpConverter {
         engine_, Concatenation, inputs.data(), inputs.size());
     layer->setAxis(axis);
 
+<<<<<<< HEAD
+=======
+    nvinfer1::ILayer* layer = nullptr;
+#if IS_TRT_VERSION_GE(6000)
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    plugin::StackPluginDynamic* plugin =
+        new plugin::StackPluginDynamic(axis, input_num, with_fp16);
+    layer = engine_->AddDynamicPlugin(inputs, input_num, plugin);
+    PADDLE_ENFORCE_NOT_NULL(
+        layer,
+        platform::errors::InvalidArgument(
+            "trt stack layer in converter could not be created."));
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+        "You are running the TRT Dynamic Shape mode, need to confirm that "
+        "your TRT version is no less than 6.0"));
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto output_name = op_desc.Output("Y").front();
     RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
   }

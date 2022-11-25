@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 import sys
 
@@ -27,6 +32,10 @@ paddle.enable_static()
 
 
 class TestClipOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -72,6 +81,10 @@ class TestClipOp(OpTest):
 
 
 class TestCase1(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (8, 16, 8)
@@ -80,6 +93,10 @@ class TestCase1(TestClipOp):
 
 
 class TestCase2(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (8, 16)
@@ -88,6 +105,10 @@ class TestCase2(TestClipOp):
 
 
 class TestCase3(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 16)
@@ -96,6 +117,10 @@ class TestCase3(TestClipOp):
 
 
 class TestCase4(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 8)
@@ -106,6 +131,10 @@ class TestCase4(TestClipOp):
 
 
 class TestCase5(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 16)
@@ -114,6 +143,10 @@ class TestCase5(TestClipOp):
 
 
 class TestCase6(TestClipOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def initTestCase(self):
         self.dtype = np.float16
         self.shape = (4, 8, 8)

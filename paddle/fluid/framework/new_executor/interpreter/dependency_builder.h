@@ -35,12 +35,19 @@ class DependencyBuilder {
 
   // build op dependencies and return the mapping from op to its downstream-op
   // set
+<<<<<<< HEAD
   const std::map<size_t, std::set<size_t>>& Build(
       const std::vector<Instruction>& instructions, bool is_sequential_run);
 
   const std::map<size_t, std::set<size_t>>& OpDownstreamMap() const;
 
   bool OpHappensBefore(size_t prior_op_idx, size_t posterior_op_idx) const;
+=======
+  const std::map<int, std::set<int>>& Build(
+      const std::vector<Instruction>& instructions);
+
+  bool OpHappensBefore(int prior_op_idx, int posterior_op_idx);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
  private:
   void AddDependencyForCoalesceTensorOp();
@@ -49,7 +56,11 @@ class DependencyBuilder {
   void AddDependencyForReadOp();
   void AddDependencyForSequentialRun();
 
+<<<<<<< HEAD
   void AddDownstreamOp(size_t prior_op_idx, size_t posterior_op_idx);
+=======
+  void AddDownstreamOp(int prior_op_idx, int posterior_op_idx);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   void BuildDownstreamMap();
 
@@ -67,7 +78,11 @@ class DependencyBuilder {
   // op_downstream_map_ is the mapping from op to its downstream-op set, that is
   // to say, op_downstream_map_[i] == {a, b, c} means op[a], op[b] and op[c]
   // should be dispatched after op[i]
+<<<<<<< HEAD
   std::map<size_t, std::set<size_t>> op_downstream_map_;
+=======
+  std::map<int, std::set<int>> op_downstream_map_;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 }  // namespace interpreter

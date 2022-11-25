@@ -105,6 +105,38 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
   AddStatis(found_count);
 }
 
+<<<<<<< HEAD
+=======
+bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
+    const Node* dequant_in) const {
+  PADDLE_ENFORCE_EQ(
+      dequant_in->inputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "Dequantize (id: %f) should have only one input.", dequant_in->id()));
+  if (dequant_in->inputs[0]->IsOp()) {
+    auto prev_op = dequant_in->inputs[0]->Op();
+    std::string act_name;
+    if (prev_op->Type() == "relu") {
+      return true;
+    } else {
+      if (prev_op->Type() == "conv2d") {
+        act_name = "fuse_activation";
+      } else if (prev_op->Type() == "fc") {
+        act_name = "activation_type";
+      }
+      if (!act_name.empty()) {
+        auto act = prev_op->GetAttrIfExists<std::string>(act_name);
+        if (act == "relu" || act == "relu6") {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
     Node* quant_op, Node* dequant_op, Node* next_op) const {
   bool is_next_op_signed =

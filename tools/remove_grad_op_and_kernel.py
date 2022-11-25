@@ -54,11 +54,16 @@ def update_operator_cmake(cmake_file):
 
         match = re.findall(pat2, content, flags=re.DOTALL)
         content = content.replace(
+<<<<<<< HEAD
             match[0],
             code2
             + '\n'
             + match[0].replace('py_func_op', 'py_func_op ${LOSS_OPS}'),
         )
+=======
+            match[0], code2 + '\n' +
+            match[0].replace('py_func_op', 'py_func_op ${LOSS_OPS}'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     with open(cmake_file, 'w') as f:
         f.write(content)
@@ -68,6 +73,7 @@ if __name__ == '__main__':
 
     tool_dir = os.path.dirname(os.path.abspath(__file__))
 
+<<<<<<< HEAD
     all_op = glob.glob(
         os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
         recursive=True,
@@ -76,6 +82,20 @@ if __name__ == '__main__':
         os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
         recursive=True,
     )
+=======
+    if sys.version_info[0] == 3:
+        all_op = glob.glob(os.path.join(tool_dir,
+                                        '../paddle/fluid/operators/**/*.cc'),
+                           recursive=True)
+        all_op += glob.glob(os.path.join(tool_dir,
+                                         '../paddle/fluid/operators/**/*.cu'),
+                            recursive=True)
+    elif sys.version_info[0] == 2:
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cu', all_op)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     spec_ops = ['activation_op.cc']
 

@@ -26,9 +26,15 @@ template <typename T>
 class ConcatFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
+=======
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
+                  framework::Tensor* output) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
     functor(context, input, axis, output);
   }
@@ -42,10 +48,17 @@ template <typename T>
 class SplitFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
+=======
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  int axis,
+                  std::vector<framework::Tensor*>* outputs) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     phi::funcs::SplitFunctor<phi::GPUContext, T> functor;
     functor(context, input, ref_inputs, axis, outputs);
   }

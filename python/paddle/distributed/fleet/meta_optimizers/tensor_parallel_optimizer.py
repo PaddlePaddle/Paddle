@@ -27,6 +27,7 @@ __all__ = []
 
 
 class TensorParallelOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super().__init__(optimizer)
         self.inner_opt = optimizer
@@ -43,12 +44,20 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         self.global_ring_id = 1
         self.dp_ring_id = 2
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
         super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(TensorParallelOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.mp_degree = user_defined_strategy.tensor_parallel_configs[
             'tensor_parallel_degree'
         ]
@@ -78,6 +87,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
             if param.is_distributed and mp_mode:
                 continue
 
+<<<<<<< HEAD
             block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -97,6 +107,25 @@ class TensorParallelOptimizer(MetaOptimizerBase):
             outputs={'Out': param},
             attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
         )
+=======
+            block.append_op(type='c_broadcast',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                'root': 0,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+
+        if not param: return  # no parameter on this device
+        block.append_op(type='c_sync_comm_stream',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={
+                            'ring_id': ring_id,
+                            OP_ROLE_KEY: OpRole.Forward
+                        })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _get_process_group_info(self):
         # global ring info
@@ -129,6 +158,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         collective_helper = CollectiveHelper(self.role_maker, wait_port=False)
 
         # Create global ring for all gpus
+<<<<<<< HEAD
         collective_helper._init_communicator(
             self.startup_program,
             self.current_endpoint,
@@ -151,6 +181,21 @@ class TensorParallelOptimizer(MetaOptimizerBase):
             self.global_ring_id,
             True,
         )
+=======
+        collective_helper._init_communicator(self.startup_program,
+                                             self.current_endpoint,
+                                             self.global_endpoints,
+                                             self.global_rank,
+                                             self.global_ring_id, True,
+                                             self.global_ring_id, True)
+
+        # Create model parallel ring for all gpus
+        collective_helper._init_communicator(self.startup_program,
+                                             self.current_endpoint,
+                                             self.mp_endpoints, self.mp_rank,
+                                             self.mp_ring_id, True,
+                                             self.global_ring_id, True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._broadcast_params(self.mp_ring_id, mp_mode=True)
 
         # Create dp rings
@@ -207,6 +252,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
+<<<<<<< HEAD
                 block._insert_op(
                     idx + 1,
                     type='scale',
@@ -217,6 +263,16 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                         OP_ROLE_KEY: OpRole.Backward,
                     },
                 )
+=======
+                block._insert_op(idx + 1,
+                                 type='scale',
+                                 inputs={'X': loss_grad_var},
+                                 outputs={'Out': loss_grad_var},
+                                 attrs={
+                                     'scale': 1.0 / dp_degree,
+                                     OP_ROLE_KEY: OpRole.Backward
+                                 })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 break
 
     def _insert_allreduce_ops(self, loss, ring_id):
@@ -234,6 +290,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                     grad = block.vars[op_role_var[i + 1]]
                     if offset == idx:
                         offset += 1
+<<<<<<< HEAD
                         block._insert_op(
                             offset,
                             type='c_sync_calc_stream',
@@ -253,12 +310,30 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                             OP_ROLE_KEY: OpRole.Backward,
                         },
                     )
+=======
+                        block._insert_op(offset,
+                                         type='c_sync_calc_stream',
+                                         inputs={'X': grad},
+                                         outputs={'Out': grad},
+                                         attrs={OP_ROLE_KEY: OpRole.Backward})
+                        offset += 1
+
+                    block._insert_op(offset,
+                                     type='c_allreduce_sum',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         OP_ROLE_KEY: OpRole.Backward
+                                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if grad is None:
             return
 
         for idx, op in list(enumerate(block.ops)):
             if is_optimizer_op(op):
+<<<<<<< HEAD
                 block._insert_op(
                     idx,
                     type='c_sync_comm_stream',
@@ -266,4 +341,14 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                     outputs={'Out': grad},
                     attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},
                 )
+=======
+                block._insert_op(idx,
+                                 type='c_sync_comm_stream',
+                                 inputs={'X': grad},
+                                 outputs={'Out': grad},
+                                 attrs={
+                                     'ring_id': ring_id,
+                                     OP_ROLE_KEY: OpRole.Backward
+                                 })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 break

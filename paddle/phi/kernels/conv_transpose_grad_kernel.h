@@ -17,7 +17,10 @@
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/common/int_array.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {

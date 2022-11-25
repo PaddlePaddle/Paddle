@@ -466,7 +466,12 @@ void BufferedReader::ReadAsync(size_t i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
         auto custom_device_ptr = custom_device_ptrs[i];
+<<<<<<< HEAD
         auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
+=======
+        auto size =
+            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if ((platform::is_custom_place(cpu_place))) {
           memory::Copy(place_, custom_device_ptr, cpu_place, cpu_ptr, size);
           custom_device_stream_->Synchronize();

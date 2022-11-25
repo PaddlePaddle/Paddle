@@ -20,5 +20,8 @@ set_tests_properties(test_autograd_functional_static PROPERTIES TIMEOUT 160)
 set_tests_properties(test_minimize PROPERTIES TIMEOUT 60)
 if(NOT WIN32)
   set_tests_properties(test_autograd_functional_prim PROPERTIES TIMEOUT 60)
+<<<<<<< HEAD
   set_tests_properties(test_primapi PROPERTIES TIMEOUT 60)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endif()

@@ -30,6 +30,7 @@ world_process_group = get_world_process_group()
 
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -40,6 +41,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._name = name
@@ -132,16 +134,24 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         # sync result
         group = new_process_group(world_process_group.ranks)
 
+<<<<<<< HEAD
         inf_var = main_block._var_recursive(kwargs['FoundInfinite'][0])
         inf_var_int32 = main_block.create_var(
             name=inf_var.name + "@cast_int32",
             shape=inf_var.shape,
             dtype=core.VarDesc.VarType.INT32,
         )
+=======
+        inf_var = main_block.var(kwargs['FoundInfinite'][0])
+        inf_var_int32 = main_block.create_var(name=inf_var.name + "@cast_int32",
+                                              shape=inf_var.shape,
+                                              dtype=core.VarDesc.VarType.INT32)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         set_var_dist_attr(
             ctx,
             inf_var_int32,
             ctx.get_tensor_dist_attr_for_program(inf_var).dims_mapping,
+<<<<<<< HEAD
             ctx.get_tensor_dist_attr_for_program(inf_var).process_mesh,
         )
         cast_op1 = main_block.append_op(
@@ -174,6 +184,33 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 OP_ROLE_KEY: OpRole.Optimize,
             },
         )
+=======
+            ctx.get_tensor_dist_attr_for_program(inf_var).process_mesh)
+        cast_op1 = main_block.append_op(type='cast',
+                                        inputs={'X': inf_var},
+                                        outputs={'Out': inf_var_int32},
+                                        attrs={
+                                            "in_dtype": inf_var.dtype,
+                                            "out_dtype": inf_var_int32.dtype,
+                                            OP_ROLE_KEY: OpRole.Optimize
+                                        })
+        allreduce_op = main_block.append_op(type='c_allreduce_max',
+                                            inputs={'X': inf_var_int32},
+                                            outputs={'Out': inf_var_int32},
+                                            attrs={
+                                                'ring_id': group.id,
+                                                'use_calc_stream': True,
+                                                OP_ROLE_KEY: OpRole.Optimize
+                                            })
+        cast_op2 = main_block.append_op(type='cast',
+                                        inputs={'X': inf_var_int32},
+                                        outputs={'Out': inf_var},
+                                        attrs={
+                                            "in_dtype": inf_var_int32.dtype,
+                                            "out_dtype": inf_var.dtype,
+                                            OP_ROLE_KEY: OpRole.Optimize
+                                        })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         for op in [cast_op1, allreduce_op, cast_op2]:
             new_op_dist_attr = OperatorDistributedAttribute()

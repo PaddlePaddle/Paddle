@@ -23,6 +23,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         if len(program_config.inputs["input_data2"].shape) == 4:
             if (
@@ -35,6 +36,7 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
                 ):
                     return False
 
+<<<<<<< HEAD
         if (
             program_config.inputs["input_data1"].shape[-3] != 1
             and program_config.inputs["input_data2"].shape[-3] != 1
@@ -43,10 +45,17 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
                 program_config.inputs["input_data1"].shape[-3]
                 != program_config.inputs["input_data2"].shape[-3]
             ):
+=======
+        if program_config.inputs["input_data1"].shape[
+                -3] != 1 and program_config.inputs["input_data2"].shape[-3] != 1:
+            if program_config.inputs["input_data1"].shape[
+                    -3] != program_config.inputs["input_data2"].shape[-3]:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 return False
         return True
 
     def sample_program_configs(self, *args, **kwargs):
+
         def generate_input(type, *args, **kwargs):
             transpose_X = kwargs["transpose_X"]
             transpose_Y = kwargs["transpose_Y"]
@@ -86,6 +95,7 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
+<<<<<<< HEAD
         matmul_op = OpConfig(
             type="matmul_v2",
             inputs={"X": ["input_data1"], "Y": ["input_data2"]},
@@ -101,17 +111,44 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
                 "fused_transpose_Out": [],
             },
         )
+=======
+        matmul_op = OpConfig(type="matmul_v2",
+                             inputs={
+                                 "X": ["input_data1"],
+                                 "Y": ["input_data2"]
+                             },
+                             outputs={"Out": ["matmul_output"]},
+                             attrs={
+                                 "trans_x": kwargs["transpose_X"],
+                                 "trans_y": kwargs["transpose_Y"],
+                                 "fused_reshape_X": [],
+                                 "fused_reshape_Y": [],
+                                 "fused_transpose_X": [],
+                                 "fused_transpose_Y": [],
+                                 "fused_reshape_Out": [],
+                                 "fused_transpose_Out": []
+                             })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         program_config = ProgramConfig(
             ops=[matmul_op],
             weights={},
             inputs={
+<<<<<<< HEAD
                 "input_data1": TensorConfig(
                     data_gen=partial(generate_input, "x", *args, **kwargs)
                 ),
                 "input_data2": TensorConfig(
                     data_gen=partial(generate_input, "y", *args, **kwargs)
                 ),
+=======
+                "input_data1":
+                TensorConfig(
+                    data_gen=partial(generate_input, "x", *args, **kwargs)),
+                "input_data2":
+                TensorConfig(
+                    data_gen=partial(generate_input, "y", *args, **kwargs))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             },
             outputs=["matmul_output"],
         )
@@ -122,6 +159,7 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
+<<<<<<< HEAD
     @given(
         transpose_X=st.booleans(),
         transpose_Y=st.booleans(),
@@ -132,6 +170,16 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
         channel2=st.sampled_from([1, 16, 32, 64]),
         input_dim=st.sampled_from([16, 32, 64]),
     )
+=======
+    @given(transpose_X=st.booleans(),
+           transpose_Y=st.booleans(),
+           y_dim_len=st.sampled_from([3, 4]),
+           batch_size1=st.integers(min_value=1, max_value=4),
+           batch_size2=st.integers(min_value=1, max_value=4),
+           channel1=st.sampled_from([1, 16, 32, 64]),
+           channel2=st.sampled_from([1, 16, 32, 64]),
+           input_dim=st.sampled_from([16, 32, 64]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def test(self, *args, **kwargs):
         self.run_test(*args, **kwargs)
 

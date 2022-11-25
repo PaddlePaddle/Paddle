@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestAny8DOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "reduce_any"
@@ -48,6 +49,7 @@ class TestAny8DOp(OpTest):
 
 
 class TestAnyOpWithDim(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "reduce_any"
@@ -64,6 +66,7 @@ class TestAnyOpWithDim(OpTest):
 
 
 class TestAny8DOpWithDim(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "reduce_any"
@@ -84,6 +87,7 @@ class TestAny8DOpWithDim(OpTest):
 
 
 class TestAnyOpWithKeepDim(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "reduce_any"
@@ -91,9 +95,14 @@ class TestAnyOpWithKeepDim(OpTest):
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': (1), 'keep_dim': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.expand_dims(
                 self.inputs['X'].any(axis=self.attrs['dim']), axis=1
             )
+=======
+            'Out':
+            np.expand_dims(self.inputs['X'].any(axis=self.attrs['dim']), axis=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def set_npu(self):
@@ -104,6 +113,7 @@ class TestAnyOpWithKeepDim(OpTest):
 
 
 class TestAny8DOpWithKeepDim(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "reduce_any"
@@ -115,9 +125,14 @@ class TestAny8DOpWithKeepDim(OpTest):
         }
         self.attrs = {'dim': (1), 'keep_dim': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.expand_dims(
                 self.inputs['X'].any(axis=self.attrs['dim']), axis=1
             )
+=======
+            'Out':
+            np.expand_dims(self.inputs['X'].any(axis=self.attrs['dim']), axis=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def set_npu(self):

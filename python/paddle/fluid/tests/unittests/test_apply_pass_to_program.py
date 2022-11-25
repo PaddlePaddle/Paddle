@@ -26,9 +26,15 @@ def get_resnet50_model():
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
+<<<<<<< HEAD
         image = paddle.static.data(
             name="image", shape=[None, 3, 224, 224], dtype="float32"
         )
+=======
+        image = paddle.static.data(name="image",
+                                   shape=[None, 3, 224, 224],
+                                   dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         label = paddle.static.data(name="label", shape=[None, 1], dtype="int64")
         model = resnet50()
         loss_fn = CrossEntropyLoss()
@@ -48,6 +54,7 @@ def global_block_contains_op(program, op_type):
 
 
 class TestApplyPassToProgram(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
 
@@ -74,6 +81,7 @@ class TestApplyPassToProgram(unittest.TestCase):
 
 
 class TestIRPassBase(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
@@ -190,6 +198,7 @@ class TestIRPassBase(unittest.TestCase):
 
         for idx in range(batch_num):
             feed = {
+<<<<<<< HEAD
                 image.name: np.random.rand(*image_shape).astype('float32'),
                 label.name: np.random.randint(
                     low=0,
@@ -197,6 +206,15 @@ class TestIRPassBase(unittest.TestCase):
                     size=label_shape,
                     dtype='int64',
                 ),
+=======
+                image.name:
+                np.random.rand(*image_shape).astype('float32'),
+                label.name:
+                np.random.randint(low=0,
+                                  high=self.num_classes,
+                                  size=label_shape,
+                                  dtype='int64'),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
             with paddle.static.scope_guard(scope1):
                 loss_value1 = self.executor.run(

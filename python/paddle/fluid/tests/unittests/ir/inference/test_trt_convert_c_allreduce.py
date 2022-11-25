@@ -12,21 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import os
 import subprocess
 import unittest
 
+=======
+import subprocess
+import sys
+import pickle
+import os
+import unittest
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 
 
 class TestDistTRT(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.init_case()
         self.script = "test_trt_c_allreduce_infer_script.py"
 
     def init_case(self):
         self.op_type = "c_allreduce_sum"
+<<<<<<< HEAD
         self.target_value = 4.0
+=======
+        self.target_value = 4.
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.precision = "fp16"
 
     def test_run(self):
@@ -45,6 +61,7 @@ class TestDistTRT(unittest.TestCase):
 
 
 class TestMin(TestDistTRT):
+<<<<<<< HEAD
     def init_case(self):
         self.op_type = "c_allreduce_min"
         self.target_value = 2.0
@@ -52,6 +69,16 @@ class TestMin(TestDistTRT):
 
 
 # class TestMax(TestDistTRT):
+=======
+
+    def init_case(self):
+        self.op_type = "c_allreduce_min"
+        self.target_value = 2.
+        self.precision = "int8"
+
+
+#class TestMax(TestDistTRT):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #
 #    def init_case(self):
 #        self.op_type = "c_allreduce_max"
@@ -59,7 +86,11 @@ class TestMin(TestDistTRT):
 #        self.precision = "fp16"
 #
 #
+<<<<<<< HEAD
 # class TestProd(TestDistTRT):
+=======
+#class TestProd(TestDistTRT):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #
 #    def init_case(self):
 #        self.op_type = "c_allreduce_prod"

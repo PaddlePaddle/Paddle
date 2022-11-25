@@ -194,7 +194,11 @@ void CustomReader::ReadNextImpl(paddle::framework::LoDTensorArray* out) {
         var,
         platform::errors::NotFound("The variable %s is not in current scope.",
                                    sink_var_names_[i]));
+<<<<<<< HEAD
     const auto& tensor = var->Get<phi::DenseTensor>();
+=======
+    const auto& tensor = var->Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
   scope_.DeleteScope(exe_scope);

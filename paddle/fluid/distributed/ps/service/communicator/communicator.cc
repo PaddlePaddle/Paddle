@@ -646,10 +646,17 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     int fea_dim,
     uint64_t padding_id,
     platform::Place place,
+<<<<<<< HEAD
     std::vector<const phi::DenseTensor *> *inputs,
     const phi::DenseTensor *shows,
     const phi::DenseTensor *clks,
     std::vector<phi::DenseTensor *> *outputs) {
+=======
+    std::vector<const framework::LoDTensor *> *inputs,
+    const framework::LoDTensor *shows,
+    const framework::LoDTensor *clks,
+    std::vector<framework::LoDTensor *> *outputs) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto *input : *inputs) {
@@ -1074,15 +1081,26 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       recv_varname_to_ctx);  // dense_map - key: table_id, value: params
   recv_scope_ = std::move(recv_scope);
 
+<<<<<<< HEAD
   for (auto it = send_varname_to_ctx_.begin();
        it != send_varname_to_ctx_.end();) {
     auto &ctx = it->second;
+=======
+  PADDLE_ENFORCE_GT(
+      send_varname_to_ctx.size(),
+      0,
+      platform::errors::InvalidArgument("send var contexts can not be zero"));
+
+  for (auto &iter : send_varname_to_ctx_) {
+    auto &ctx = iter.second;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (!ctx.is_sparse) {
       parallel_task_nums_ += 1;
       it++;
       continue;
     }
     auto &varnames = ctx.origin_varnames;
+<<<<<<< HEAD
     if (varnames.empty()) {
       VLOG(0) << "ERROR! sparse variables num can not be zero";
     }
@@ -1094,6 +1112,14 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       it++;
     }
     for (auto &splited_var : ctx.splited_varnames) {  // embedding_0.w_0.block0
+=======
+    PADDLE_ENFORCE_EQ(
+        varnames.size(),
+        1,
+        platform::errors::InvalidArgument(
+            "sparse variables can only be merged by one variables"));
+    for (auto &splited_var : ctx.splited_varnames) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       parallel_task_nums_ += 1;
       sparse_id_queues_.insert(
           std::pair<std::string,
@@ -1165,7 +1191,11 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
     auto *global_var = recv_scope_->FindVar(t);
     global_var->GetMutable<phi::DenseTensor>();
     auto *old_var = old_scope_->Var(t);
+<<<<<<< HEAD
     old_var->GetMutable<phi::DenseTensor>();
+=======
+    old_var->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     framework::CopyVariable(*global_var, old_var);  // src, dst
     // init pserver_scope_
     auto *pserver_var = pserver_scope_->Var(t);
@@ -1231,8 +1261,12 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   // 1. recv from pserver
   RpcRecvDense(varnames, table_id, pserver_scope_.get());
 
+<<<<<<< HEAD
   // 2.1 pserver - old => delta; 2.2 latest + delta => latest 2.3 old =>
   // pserver
+=======
+  // 2.1 pserver - old => delta; 2.2 latest + delta => latest 2.3 old => pserver
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   phi::CPUContext cpu_ctx;
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
@@ -1514,8 +1548,13 @@ void FLCommunicator::InitBrpcClient(
   if (_worker_ptr.get() == nullptr) {
     VLOG(0) << "fl-ps > FLCommunicator::InitBrpcClient get _worker_ptr";
     _worker_ptr =
+<<<<<<< HEAD
         fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted
                              // before, but no need for Coordinator
+=======
+        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted before,
+                             // but no need for Coordinator
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
   if (coordinator_client_ptr_ == nullptr) {
     coordinator_client_ptr_.reset(new CoordinatorClient);

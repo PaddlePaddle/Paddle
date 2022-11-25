@@ -16,6 +16,10 @@
 
 #include <string>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/eigen.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"

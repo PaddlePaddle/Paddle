@@ -46,9 +46,15 @@ struct LoDTensorToArrayFunctorImpl {
 
 struct LoDTensorToArrayFunctor
     : public std::unary_function<platform::Place, void> {
+<<<<<<< HEAD
   std::vector<const phi::DenseTensor *> ref_inputs_;
   mutable std::vector<phi::DenseTensor *> outputs_;
   const phi::DenseTensor &input_;
+=======
+  std::vector<const framework::Tensor *> ref_inputs_;
+  mutable std::vector<framework::Tensor *> outputs_;
+  const framework::Tensor &input_;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   explicit LoDTensorToArrayFunctor(const phi::DenseTensor &input)
       : input_(input) {}
@@ -108,7 +114,11 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto &x = GET_DATA_SAFELY(
                   scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
+<<<<<<< HEAD
                   .Get<phi::DenseTensor>();
+=======
+                  .Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
                                        "Input",
                                        "RankTable",

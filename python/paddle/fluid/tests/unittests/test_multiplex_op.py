@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplexOp(OpTest):
+
     def setUp(self):
         self.op_type = "multiplex"
         rows = 4
@@ -59,6 +60,7 @@ class TestMultiplexOp(OpTest):
 
 
 class TestMultiplexOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x1 = fluid.data(name='x1', shape=[None, 2], dtype='int64')
@@ -84,15 +86,22 @@ class TestMultiplexOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type)
 
             def test_type2():
+<<<<<<< HEAD
                 index2 = fluid.data(
                     name='index2', shape=[None, 1], dtype='int16'
                 )
+=======
+                index2 = fluid.data(name='index2',
+                                    shape=[None, 1],
+                                    dtype='int16')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 paddle.multiplex(inputs=[x1, x2], index=index2)
 
             self.assertRaises(TypeError, test_type2)
 
 
 class TestMultiplexODygrap(unittest.TestCase):
+
     def test_multiplex_dygraph(self):
         paddle.disable_static()
         img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
@@ -123,6 +132,7 @@ class TestMultiplexODygrap(unittest.TestCase):
                 res_eager.backward()
                 self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
                 self.assertEqual(
+<<<<<<< HEAD
                     (
                         inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()
                     ).all(),
@@ -134,6 +144,13 @@ class TestMultiplexODygrap(unittest.TestCase):
                     ).all(),
                     True,
                 )
+=======
+                    (inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()
+                     ).all(), True)
+                self.assertEqual(
+                    (inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()
+                     ).all(), True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

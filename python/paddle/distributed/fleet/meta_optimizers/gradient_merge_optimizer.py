@@ -18,6 +18,7 @@ __all__ = []
 
 
 class GradientMergeOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super().__init__(optimizer)
         self.inner_opt = optimizer
@@ -31,12 +32,20 @@ class GradientMergeOptimizer(MetaOptimizerBase):
         ]
         self.meta_optimizers_black_list = []
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
         super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(GradientMergeOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _init_wrapped_opt(self):
         config = self.user_defined_strategy.gradient_merge_configs

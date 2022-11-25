@@ -18,7 +18,12 @@
 import json
 
 
+<<<<<<< HEAD
 class Storable:
+=======
+class Storable(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def get_state(self):
         raise NotImplementedError
 

@@ -19,6 +19,7 @@ from simple_nets import simple_fc_net, init_data
 
 
 class TestMNIST(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.save_dirname = "./"
@@ -38,6 +39,7 @@ class TestMNIST(unittest.TestCase):
     def test_simple_fc(self):
         exe_loss = self.run_with_executor()
 
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
@@ -52,6 +54,16 @@ class TestMNIST(unittest.TestCase):
         train_exe = fluid.ParallelExecutor(
             use_cuda=False, main_program=inference_program
         )
+=======
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(self.save_dirname,
+                                                        self.exe,
+                                                        self.model_filename,
+                                                        self.params_filename)
+
+        train_exe = fluid.ParallelExecutor(use_cuda=False,
+                                           main_program=inference_program)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         feed_vars = [
             inference_program.global_block().var(var_name)
             for var_name in ["image", "label"]
@@ -81,6 +93,7 @@ class TestMNIST(unittest.TestCase):
             main, feed=feeder.feed(self.batch_data), fetch_list=[loss.name]
         )
 
+<<<<<<< HEAD
         fluid.io.save_inference_model(
             self.save_dirname,
             ["image", "label"],
@@ -90,6 +103,14 @@ class TestMNIST(unittest.TestCase):
             params_filename=self.params_filename,
             main_program=main,
         )
+=======
+        fluid.io.save_inference_model(self.save_dirname, ["image", "label"],
+                                      [loss],
+                                      self.exe,
+                                      model_filename=self.model_filename,
+                                      params_filename=self.params_filename,
+                                      main_program=main)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return loss_data
 

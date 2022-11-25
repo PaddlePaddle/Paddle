@@ -31,7 +31,9 @@ SEED = 2021
 
 
 def create_test_channel_last_class(parent):
+
     class TestChannelLastCase(parent):
+
         def init_data_format(self):
             self.data_format = "NHWC"
 
@@ -45,7 +47,9 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_padding_SAME_class(parent):
+
     class TestPaddingSMAECase(parent):
+
         def init_paddings(self):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
@@ -56,7 +60,9 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
+
     class TestPaddingVALIDCase(parent):
+
         def init_paddings(self):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
@@ -67,7 +73,9 @@ def create_test_padding_VALID_class(parent):
 
 
 def create_test_fp16_class(parent):
+
     class TestFp16Case(parent):
+
         def init_data_type(self):
             self.dtype = np.float16
 
@@ -77,6 +85,7 @@ def create_test_fp16_class(parent):
 
 
 class TestDepthwiseConvNPU(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "depthwise_conv2d"
@@ -139,6 +148,7 @@ class TestDepthwiseConvNPU(OpTest):
     def test_check_grad(self):
         if self.dilations[0] == 1 and self.dilations[1] == 1:
             if self.dtype == np.float16:
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     self.place,
                     {'Input', 'Filter'},
@@ -172,10 +182,34 @@ class TestDepthwiseConvNPU(OpTest):
                 max_relative_error=0.03,
                 numeric_place=paddle.CPUPlace(),
             )
+=======
+                self.check_grad_with_place(self.place, {'Input', 'Filter'},
+                                           'Output',
+                                           max_relative_error=0.9)
+            else:
+                self.check_grad_with_place(self.place, {'Input', 'Filter'},
+                                           'Output',
+                                           max_relative_error=0.03,
+                                           numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            self.check_grad_with_place(self.place, ['Input'],
+                                       'Output',
+                                       no_grad_set=set(['Filter']),
+                                       max_relative_error=0.9)
+        else:
+            self.check_grad_with_place(self.place, ['Input'],
+                                       'Output',
+                                       no_grad_set=set(['Filter']),
+                                       max_relative_error=0.03,
+                                       numeric_place=paddle.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_check_grad_no_input(self):
         if self.dilations[0] == 1 and self.dilations[1] == 1:
             if self.dtype == np.float16:
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     self.place,
                     ['Filter'],
@@ -192,6 +226,18 @@ class TestDepthwiseConvNPU(OpTest):
                     max_relative_error=0.03,
                     numeric_place=paddle.CPUPlace(),
                 )
+=======
+                self.check_grad_with_place(self.place, ['Filter'],
+                                           'Output',
+                                           no_grad_set=set(['Input']),
+                                           max_relative_error=0.9)
+            else:
+                self.check_grad_with_place(self.place, ['Filter'],
+                                           'Output',
+                                           no_grad_set=set(['Input']),
+                                           max_relative_error=0.03,
+                                           numeric_place=paddle.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -204,6 +250,7 @@ class TestDepthwiseConvNPU(OpTest):
 
 
 class TestDepthwiseConvNPU2(TestDepthwiseConvNPU):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.dilations = [1, 1]
@@ -216,6 +263,7 @@ class TestDepthwiseConvNPU2(TestDepthwiseConvNPU):
 
 
 class TestDepthwiseConvNPU3(TestDepthwiseConvNPU):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.dilations = [1, 1]
@@ -228,6 +276,7 @@ class TestDepthwiseConvNPU3(TestDepthwiseConvNPU):
 
 
 class TestDepthwiseConvNPU4(TestDepthwiseConvNPU):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.dilations = [1, 1]
@@ -240,6 +289,7 @@ class TestDepthwiseConvNPU4(TestDepthwiseConvNPU):
 
 
 class TestDepthwiseConvNPU_Padding(OpTest):
+
     def setUp(self):
         self.op_type = "depthwise_conv2d"
         self.dtype = np.float32
@@ -259,6 +309,7 @@ class TestDepthwiseConvNPU_Padding(OpTest):
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
 
+<<<<<<< HEAD
         output, _, _, _, _ = conv2d_forward_naive(
             input,
             filter,
@@ -267,6 +318,12 @@ class TestDepthwiseConvNPU_Padding(OpTest):
             self.padding_algorithm,
             self.data_format,
         )
+=======
+        output, _, _, _, _ = conv2d_forward_naive(input, filter, self.groups,
+                                                  conv2d_param,
+                                                  self.padding_algorithm,
+                                                  self.data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         output = output.astype(self.dtype)
 
         self.inputs = {
@@ -303,6 +360,7 @@ class TestDepthwiseConvNPU_Padding(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place,
                 {'Input', 'Filter'},
@@ -355,6 +413,42 @@ class TestDepthwiseConvNPU_Padding(OpTest):
                 no_grad_set=set(['Input']),
                 numeric_place=paddle.CPUPlace(),
             )
+=======
+            self.check_grad_with_place(self.place, {'Input', 'Filter'},
+                                       'Output',
+                                       max_relative_error=1.2)
+        else:
+            self.check_grad_with_place(self.place, {'Input', 'Filter'},
+                                       'Output',
+                                       max_relative_error=0.03,
+                                       numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            self.check_grad_with_place(self.place, ['Input'],
+                                       'Output',
+                                       max_relative_error=0.7,
+                                       no_grad_set=set(['Filter']))
+        else:
+            self.check_grad_with_place(self.place, ['Input'],
+                                       'Output',
+                                       max_relative_error=0.03,
+                                       no_grad_set=set(['Filter']),
+                                       numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            self.check_grad_with_place(self.place, ['Filter'],
+                                       'Output',
+                                       max_relative_error=0.8,
+                                       no_grad_set=set(['Input']))
+        else:
+            self.check_grad_with_place(self.place, ['Filter'],
+                                       'Output',
+                                       max_relative_error=0.03,
+                                       no_grad_set=set(['Input']),
+                                       numeric_place=paddle.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -371,6 +465,7 @@ class TestDepthwiseConvNPU_Padding(OpTest):
 
 
 class TestDepthwiseConvNPU2_Padding(TestDepthwiseConvNPU_Padding):
+
     def init_test_case(self):
         self.pad = [1, 1, 0, 1]
         self.dilations = [1, 1]
@@ -387,6 +482,7 @@ class TestDepthwiseConvNPU2_Padding(TestDepthwiseConvNPU_Padding):
 
 
 class TestDepthwiseConvNPU3_Padding(TestDepthwiseConvNPU_Padding):
+
     def init_test_case(self):
         self.pad = [1, 1, 0, 1]
         self.dilations = [1, 1]

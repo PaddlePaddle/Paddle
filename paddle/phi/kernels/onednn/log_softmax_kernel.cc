@@ -14,8 +14,13 @@
 
 #include "paddle/phi/kernels/log_softmax_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+=======
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_context.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,6 +28,7 @@
 namespace phi {
 
 template <typename T>
+<<<<<<< HEAD
 class LogSoftmaxOneDNNHandler
     : public funcs::OneDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward> {
  public:
@@ -32,6 +38,18 @@ class LogSoftmaxOneDNNHandler
                           const int axis)
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward>(
             onednn_engine, cpu_place) {
+=======
+class LogSoftmaxMKLDNNHandler
+    : public paddle::platform::
+          MKLDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward> {
+ public:
+  LogSoftmaxMKLDNNHandler(const dnnl::engine mkldnn_engine,
+                          Place cpu_place,
+                          const DenseTensor& x,
+                          const int axis)
+      : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward>(
+            mkldnn_engine, cpu_place) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_inference, x.mem_desc(), axis);
   }
@@ -42,11 +60,19 @@ void LogSoftmaxKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int axis,
                       DenseTensor* out) {
+<<<<<<< HEAD
   const auto& onednn_engine = dev_ctx.GetEngine();
   axis = axis >= 0 ? axis : x.dims().size() + axis;
 
   LogSoftmaxOneDNNHandler<T> handler(
       onednn_engine, dev_ctx.GetPlace(), x, axis);
+=======
+  const auto& mkldnn_engine = dev_ctx.GetEngine();
+  axis = axis >= 0 ? axis : x.dims().size() + axis;
+
+  LogSoftmaxMKLDNNHandler<T> handler(
+      mkldnn_engine, dev_ctx.GetPlace(), x, axis);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
   auto dst_memory_p = handler.AcquireDstMemory(out);
@@ -65,7 +91,11 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(log_softmax,
                    OneDNN,
+<<<<<<< HEAD
                    ONEDNN,
+=======
+                   ALL_LAYOUT,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                    phi::LogSoftmaxKernel,
                    float,
                    phi::dtype::bfloat16) {}

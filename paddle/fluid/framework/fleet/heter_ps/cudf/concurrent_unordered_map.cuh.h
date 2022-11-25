@@ -524,6 +524,10 @@ class concurrent_unordered_map : public managed {
   __forceinline__ __device__ iterator
   insert(const value_type& x,
          aggregation_type op,
+<<<<<<< HEAD
+=======
+         uint64_t* local_count = NULL,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
          comparison_type keys_equal = key_equal(),
          bool precomputed_hash = false,
          hash_value_type precomputed_hash_value = 0) {
@@ -548,7 +552,6 @@ class concurrent_unordered_map : public managed {
     const key_type insert_key = x.first;
 
     bool insert_success = false;
-
     size_type counter = 0;
     while (false == insert_success) {
       if (counter++ >= hashtbl_size) {
@@ -577,6 +580,7 @@ class concurrent_unordered_map : public managed {
       if (keys_equal(unused_key, old_key) || keys_equal(insert_key, old_key)) {
         update_existing_value(existing_value, x, op);
         insert_success = true;
+<<<<<<< HEAD
         if (m_enable_collision_stat) {
           atomicAdd(&m_insert_times, 1);
         }
@@ -586,10 +590,25 @@ class concurrent_unordered_map : public managed {
       if (m_enable_collision_stat) {
         atomicAdd(&m_insert_collisions, 1);
       }
+=======
+        if (local_count != NULL && keys_equal(unused_key, old_key)) {
+          atomicAdd(local_count, 1);
+        }
+        break;
+      }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       current_index = (current_index + 1) % hashtbl_size;
       current_hash_bucket = &(hashtbl_values[current_index]);
     }
 
+<<<<<<< HEAD
+=======
+    if (m_enable_collision_stat) {
+      atomicAdd(&m_insert_times, 1);
+      atomicAdd(&m_insert_collisions, uint64_t(counter + 1));
+    }
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return iterator(
         m_hashtbl_values, m_hashtbl_values + hashtbl_size, current_hash_bucket);
   }
@@ -684,6 +703,10 @@ x.second );
 
     if (m_enable_collision_stat) {
       atomicAdd(&m_query_times, 1);
+<<<<<<< HEAD
+=======
+      atomicAdd(&m_query_collisions, (uint64_t)(counter + 1));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
 
     return const_iterator(

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from typing import Optional
 import unittest
 import itertools
@@ -19,6 +24,11 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+<<<<<<< HEAD
+=======
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from op_test import OpTest
 
 
@@ -26,6 +36,7 @@ def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):
     return np.log(np.cumsum(np.exp(x), axis=axis))
 
 
+<<<<<<< HEAD
 def np_logcumsumexp(
     x: np.ndarray,
     axis: Optional[int] = None,
@@ -33,6 +44,13 @@ def np_logcumsumexp(
     reverse: bool = False,
     exclusive: bool = False,
 ):
+=======
+def np_logcumsumexp(x: np.ndarray,
+                    axis: Optional[int] = None,
+                    flatten: Optional[bool] = None,
+                    reverse: bool = False,
+                    exclusive: bool = False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     # `flatten` aligns with c++ op
     if flatten:
         assert axis in [0, None]
@@ -78,6 +96,7 @@ def np_logcumsumexp_grad(
     log_grad_negative = np.where(dout < 0, np.log(-dout), np.finfo(x.dtype).min)
 
     output_pos = np.exp(
+<<<<<<< HEAD
         np_logcumsumexp(
             log_grad_positive - out,
             axis=axis,
@@ -97,17 +116,35 @@ def np_logcumsumexp_grad(
         ).reshape(x.shape)
         + x
     )
+=======
+        np_logcumsumexp(log_grad_positive - out,
+                        axis=axis,
+                        flatten=flatten,
+                        reverse=not reverse,
+                        exclusive=exclusive).reshape(x.shape) + x)
+    output_neg = np.exp(
+        np_logcumsumexp(log_grad_negative - out,
+                        axis=axis,
+                        flatten=flatten,
+                        reverse=not reverse,
+                        exclusive=exclusive).reshape(x.shape) + x)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return output_pos - output_neg
 
 
 class TestLogcumsumexp(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def run_imperative(self):
         data_np = np.arange(12, dtype=np.float32).reshape(3, 4)
         data = paddle.to_tensor(data_np)
 
         y = paddle.logcumsumexp(data)
         z = np_logcumsumexp(data_np)
+<<<<<<< HEAD
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         y = paddle.logcumsumexp(data, axis=0)
@@ -117,13 +154,28 @@ class TestLogcumsumexp(unittest.TestCase):
         y = paddle.logcumsumexp(data, axis=-1)
         z = np_logcumsumexp(data_np, axis=-1)
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(z, y.numpy()))
+
+        y = paddle.logcumsumexp(data, axis=0)
+        z = np_logcumsumexp(data_np, axis=0)
+        self.assertTrue(np.allclose(z, y.numpy()))
+
+        y = paddle.logcumsumexp(data, axis=-1)
+        z = np_logcumsumexp(data_np, axis=-1)
+        self.assertTrue(np.allclose(z, y.numpy()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         y = paddle.logcumsumexp(data, dtype='float32')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
+<<<<<<< HEAD
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(z, y.numpy()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         with self.assertRaises(IndexError):
             y = paddle.logcumsumexp(data, axis=-3)
@@ -140,7 +192,11 @@ class TestLogcumsumexp(unittest.TestCase):
         z = np_logcumsumexp(data_np)
         # check that our algorithm doesn't overflow
         self.assertTrue(all(z != np.inf))
+<<<<<<< HEAD
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(z, y.numpy()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def run_static(self, use_gpu=False):
         with fluid.program_guard(fluid.Program()):
@@ -155,6 +211,7 @@ class TestLogcumsumexp(unittest.TestCase):
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
             out = exe.run(
                 feed={'X': data_np},
                 fetch_list=[
@@ -175,6 +232,26 @@ class TestLogcumsumexp(unittest.TestCase):
             self.assertTrue(out[3].dtype == np.float64)
             z = np_logcumsumexp(data_np, axis=-2)
             np.testing.assert_allclose(z, out[4], rtol=1e-05)
+=======
+            out = exe.run(feed={'X': data_np},
+                          fetch_list=[
+                              y.name,
+                              y2.name,
+                              y3.name,
+                              y4.name,
+                              y5.name,
+                          ])
+
+            z = np_logcumsumexp(data_np)
+            self.assertTrue(np.allclose(z, out[0]))
+            z = np_logcumsumexp(data_np, axis=0)
+            self.assertTrue(np.allclose(z, out[1]))
+            z = np_logcumsumexp(data_np, axis=-1)
+            self.assertTrue(np.allclose(z, out[2]))
+            self.assertTrue(out[3].dtype == np.float64)
+            z = np_logcumsumexp(data_np, axis=-2)
+            self.assertTrue(np.allclose(z, out[4]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -213,20 +290,30 @@ class TestLogcumsumexp(unittest.TestCase):
 
 
 class BaseTestCases:
+<<<<<<< HEAD
     class BaseOpTest(OpTest):
+=======
+
+    class BaseOpTest(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.op_type = "logcumsumexp"
             input, attrs = self.input_and_attrs()
             self.inputs = {'X': input}
             self.attrs = attrs
+<<<<<<< HEAD
             if "dtype" in attrs:
                 del attrs["dtype"]
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
         def test_check_output(self):
             self.check_output()
 
         def test_check_grad(self):
+<<<<<<< HEAD
             self.check_grad(
                 ['X'],
                 'Out',
@@ -238,39 +325,73 @@ class BaseTestCases:
                     )
                 ],
             )
+=======
+            self.check_grad(['X'],
+                            'Out',
+                            user_defined_grads=[
+                                np_logcumsumexp_grad(self.inputs['X'],
+                                                     1 / self.inputs['X'].size,
+                                                     **self.attrs)
+                            ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def input_and_attrs(self):
             raise NotImplementedError()
 
 
 class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def input_and_attrs(self):
         return np.arange(100, dtype=np.float64).reshape(10, 10), {
             'axis': 0,
             'flatten': True,
+<<<<<<< HEAD
             'reverse': True,
+=======
+            'reverse': True
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestLogcumsumexpOp2(BaseTestCases.BaseOpTest):
+<<<<<<< HEAD
     def input_and_attrs(self):
         return np.arange(100, dtype=np.float64).reshape(10, 10), {
             'axis': 1,
             'reverse': True,
+=======
+
+    def input_and_attrs(self):
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+            'axis': 1,
+            'reverse': True
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestLogcumsumexpOp3(BaseTestCases.BaseOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def input_and_attrs(self):
         return np.arange(100, dtype=np.float64).reshape(10, 10), {'axis': 1}
 
 
 class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def input_and_attrs(self):
         return np.arange(100, dtype=np.float64).reshape(10, 10), {
             'axis': 0,
             'flatten': True,
             'reverse': True,
+<<<<<<< HEAD
             'exclusive': True,
         }
 
@@ -305,5 +426,11 @@ class TestLogcumsumexpFP16(unittest.TestCase):
         np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
 
 
+=======
+            'exclusive': True
+        }
+
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if __name__ == '__main__':
     unittest.main()

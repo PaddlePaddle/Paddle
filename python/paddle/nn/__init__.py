@@ -109,7 +109,10 @@ from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+<<<<<<< HEAD
 from .layer.loss import MultiMarginLoss
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.loss import TripletMarginLoss
 from .layer.loss import SoftMarginLoss
@@ -163,12 +166,19 @@ from . import quant  # noqa: F401
 import paddle.utils.deprecated as deprecated
 
 
+<<<<<<< HEAD
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.funcitional.diag_embed",
     level=1,
     reason="diag_embed in paddle.nn will be removed in future",
 )
+=======
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.funcitional.diag_embed",
+            level=1,
+            reason="diag_embed in paddle.nn will be removed in future")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 def diag_embed(*args):
     '''
     alias name of paddle.nn.functional.diag_embed
@@ -176,12 +186,19 @@ def diag_embed(*args):
     return functional.diag_embed(*args)
 
 
+<<<<<<< HEAD
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.remove_weight_norm",
     level=1,
     reason="remove_weight_norm in paddle.nn will be removed in future",
 )
+=======
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.remove_weight_norm",
+            level=1,
+            reason="remove_weight_norm in paddle.nn will be removed in future")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 def remove_weight_norm(*args):
     '''
     alias name of paddle.nn.utils.remove_weight_norm
@@ -189,12 +206,19 @@ def remove_weight_norm(*args):
     return utils.remove_weight_norm(*args)
 
 
+<<<<<<< HEAD
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.weight_norm",
     level=1,
     reason="weight_norm in paddle.nn will be removed in future",
 )
+=======
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.weight_norm",
+            level=1,
+            reason="weight_norm in paddle.nn will be removed in future")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 def weight_norm(*args):
     '''
     alias name of paddle.nn.utils.weight_norm
@@ -326,7 +350,10 @@ __all__ = [  # noqa
     'Identity',
     'CosineEmbeddingLoss',
     'RReLU',
+<<<<<<< HEAD
     'MultiMarginLoss',
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     'TripletMarginWithDistanceLoss',
     'TripletMarginLoss',
     'SoftMarginLoss',

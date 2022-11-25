@@ -138,7 +138,11 @@ static int _PySlice_GetIndices(PySliceObject* r,
   return 0;
 }
 
+<<<<<<< HEAD
 static void ParseIndexingSlice(phi::DenseTensor* tensor,
+=======
+static void ParseIndexingSlice(framework::LoDTensor* tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                PyObject* _index,
                                std::vector<int>* slice_axes,
                                std::vector<int>* slice_starts,

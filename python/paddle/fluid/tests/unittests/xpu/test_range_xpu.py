@@ -29,11 +29,13 @@ paddle.enable_static()
 
 
 class XPUTestRangeOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = "range"
         self.use_dynamic_create_class = False
 
     class TestRangeOp(XPUOpTest):
+
         def setUp(self):
             self.set_xpu()
             self.op_type = "range"
@@ -46,9 +48,15 @@ class XPUTestRangeOp(XPUOpTestWrapper):
             }
 
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.arange(
                     self.case[0], self.case[1], self.case[2]
                 ).astype(self.dtype)
+=======
+                'Out':
+                np.arange(self.case[0], self.case[1],
+                          self.case[2]).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
         def set_xpu(self):
@@ -65,22 +73,27 @@ class XPUTestRangeOp(XPUOpTestWrapper):
             self.check_output_with_place(place, check_dygraph=False)
 
     class TestRangeOpCase0(TestRangeOp):
+
         def init_config(self):
             self.case = (0, 5, 1)
 
     class TestRangeOpCase1(TestRangeOp):
+
         def init_config(self):
             self.case = (0, 5, 2)
 
     class TestRangeOpCase2(TestRangeOp):
+
         def init_config(self):
             self.case = (10, 1, -2)
 
     class TestRangeOpCase3(TestRangeOp):
+
         def init_config(self):
             self.case = (-1, -10, -2)
 
     class TestRangeOpCase4(TestRangeOp):
+
         def init_config(self):
             self.case = (10, -10, -11)
 

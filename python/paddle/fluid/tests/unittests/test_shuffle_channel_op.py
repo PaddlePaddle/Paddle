@@ -18,6 +18,7 @@ from op_test import OpTest
 
 
 class TestShuffleChannelOp(OpTest):
+
     def setUp(self):
         self.op_type = "shuffle_channel"
         self.batch_size = 10

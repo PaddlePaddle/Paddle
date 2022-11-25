@@ -54,7 +54,11 @@ class BatchNormOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -69,7 +73,11 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

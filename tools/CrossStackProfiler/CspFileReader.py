@@ -43,6 +43,7 @@ dcgmMetricParameterMap = {
     "02_gpuUtility": [("GPUTL", "GPUTL"), ("GRACT", "GRACT")],
     "03_smUtility": [("SMACT", "SMACT"), ("SMOCC", "SMOCC")],
     "04_memUtility": [("FB_USED_RATIO", "FB_USED_RATIO"), ("DRAMA", "DRAMA")],
+<<<<<<< HEAD
     "05_txUtility": [
         ("NVLTX", "NVLTX"),
         ("NVLRX", "NVLRX"),
@@ -54,6 +55,12 @@ dcgmMetricParameterMap = {
         ("FP16A", "FP16A"),
         ("TENSO", "TENSO"),
     ],
+=======
+    "05_txUtility": [("NVLTX", "NVLTX"), ("NVLRX", "NVLRX"), ("PCITX", "PCITX"),
+                     ("PCIRX", "PCIRX")],
+    "06_calUtility": [("FP32A", "FP32A"), ("FP16A", "FP16A"),
+                      ("TENSO", "TENSO")]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 DCGMINFO_TRACE_NUM = len(dcgmMetricParameterMap.keys())
 NETINFO_TRACE_NUM = 2
@@ -73,7 +80,12 @@ FILEORGANIZEFORM = [
 ]
 
 
+<<<<<<< HEAD
 class FileReader:
+=======
+class FileReader(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, logger, args):
         self._logger = logger
         self._args = args
@@ -189,9 +201,14 @@ class FileReader:
                 )
 
         if not self._fileList:
+<<<<<<< HEAD
             if (
                 self._getId(self._fileList[-1]) - self._getId(self._fileList[0])
             ) != len(self._fileList) - 1:
+=======
+            if (self._getId(self._fileList[-1]) -
+                    self._getId(self._fileList[0])) != len(self._fileList) - 1:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 raise Exception("The file id should be countious!")
 
         # sort
@@ -215,9 +232,14 @@ class FileReader:
     def _getId(self, fileName, organizeForm, sed="."):
         if self._organizeForm != organizeForm:
             raise TypeError(
+<<<<<<< HEAD
                 "Can not get rank id when organizer form is not %s!"
                 % organizeForm
             )
+=======
+                "Can not get rank id when organizer form is not %s!" %
+                organizeForm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if not os.path.isfile(fileName):
             raise IOError("[%s] is not a valid file!" % (fileName))
@@ -313,6 +335,7 @@ class FileReader:
                 )
         return data
 
+<<<<<<< HEAD
     def dumpOpInfoDict(
         self, data, groupId, gpuId, pretty=False, tmpPath="./tmp"
     ):
@@ -328,6 +351,36 @@ class FileReader:
     def dumpDict(
         self, data, name, groupId, gpuId, pretty=False, tmpPath="./tmp"
     ):
+=======
+    def dumpOpInfoDict(self,
+                       data,
+                       groupId,
+                       gpuId,
+                       pretty=False,
+                       tmpPath="./tmp"):
+        return self.dumpDict(data,
+                             "opinfo",
+                             groupId,
+                             gpuId,
+                             pretty=False,
+                             tmpPath="./tmp")
+
+    def dumpDCGMDict(self, data, groupId, gpuId, pretty=False, tmpPath="./tmp"):
+        return self.dumpDict(data,
+                             "dcgm",
+                             groupId,
+                             gpuId,
+                             pretty=False,
+                             tmpPath="./tmp")
+
+    def dumpDict(self,
+                 data,
+                 name,
+                 groupId,
+                 gpuId,
+                 pretty=False,
+                 tmpPath="./tmp"):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._lock.acquire()
         if not os.path.exists(tmpPath):
             os.makedirs(tmpPath)

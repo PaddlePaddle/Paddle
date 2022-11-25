@@ -21,6 +21,7 @@ from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 
 class RangeIterableDatasetSplit(IterableDataset):
+
     def __init__(self, start, end):
         self.start = start
         self.end = end
@@ -33,9 +34,13 @@ class RangeIterableDatasetSplit(IterableDataset):
         else:
             per_worker = int(
                 math.ceil(
+<<<<<<< HEAD
                     (self.end - self.start) / float(worker_info.num_workers)
                 )
             )
+=======
+                    (self.end - self.start) / float(worker_info.num_workers)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             worker_id = worker_info.id
             iter_start = self.start + worker_id * per_worker
             iter_end = min(iter_start + per_worker, self.end)
@@ -45,10 +50,12 @@ class RangeIterableDatasetSplit(IterableDataset):
 
 
 class TestDynamicDataLoaderIterSplit(unittest.TestCase):
+
     def test_main(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RangeIterableDatasetSplit(0, 10)
+<<<<<<< HEAD
             dataloader = DataLoader(
                 dataset,
                 places=place,
@@ -56,6 +63,13 @@ class TestDynamicDataLoaderIterSplit(unittest.TestCase):
                 batch_size=1,
                 drop_last=True,
             )
+=======
+            dataloader = DataLoader(dataset,
+                                    places=place,
+                                    num_workers=2,
+                                    batch_size=1,
+                                    drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             rets = []
             for d in dataloader:
@@ -65,6 +79,7 @@ class TestDynamicDataLoaderIterSplit(unittest.TestCase):
 
 
 class RangeIterableDataset(IterableDataset):
+
     def __init__(self, start, end):
         self.start = start
         self.end = end
@@ -75,6 +90,7 @@ class RangeIterableDataset(IterableDataset):
 
 
 class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
+
     def test_main(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
@@ -94,6 +110,7 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 dataset.start = start + worker_id * num_per_worker
                 dataset.end = min(dataset.start + num_per_worker, end)
 
+<<<<<<< HEAD
             dataloader = DataLoader(
                 dataset,
                 places=place,
@@ -102,6 +119,14 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 drop_last=True,
                 worker_init_fn=worker_spliter,
             )
+=======
+            dataloader = DataLoader(dataset,
+                                    places=place,
+                                    num_workers=1,
+                                    batch_size=1,
+                                    drop_last=True,
+                                    worker_init_fn=worker_spliter)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             rets = []
             for d in dataloader:

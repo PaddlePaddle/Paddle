@@ -44,14 +44,25 @@ KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Conv3dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+<<<<<<< HEAD
   return KernelSignature("conv3d_double_grad",
+=======
+  return KernelSignature("conv3d_grad_grad",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
+<<<<<<< HEAD
                           "data_format"},
+=======
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                          {"DInput", "DFilter", "DDOutput"});
 }
 

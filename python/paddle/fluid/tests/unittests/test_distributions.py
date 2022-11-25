@@ -48,6 +48,7 @@ class DistributionNumpy:
 
 
 class UniformNumpy(DistributionNumpy):
+
     def __init__(self, low, high):
         self.low = np.array(low).astype('float32')
         self.high = np.array(high).astype('float32')
@@ -68,6 +69,7 @@ class UniformNumpy(DistributionNumpy):
 
 
 class NormalNumpy(DistributionNumpy):
+
     def __init__(self, loc, scale):
         self.loc = np.array(loc).astype('float32')
         self.scale = np.array(scale).astype('float32')
@@ -79,6 +81,7 @@ class NormalNumpy(DistributionNumpy):
     def log_prob(self, value):
         var = self.scale * self.scale
         log_scale = np.log(self.scale)
+<<<<<<< HEAD
         return (
             -((value - self.loc) * (value - self.loc)) / (2.0 * var)
             - log_scale
@@ -91,6 +94,15 @@ class NormalNumpy(DistributionNumpy):
             + 0.5 * np.log(np.array(2.0 * math.pi).astype('float32'))
             + np.log(self.scale)
         )
+=======
+        return -((value - self.loc) *
+                 (value - self.loc)) / (2. * var) - log_scale - math.log(
+                     math.sqrt(2. * math.pi))
+
+    def entropy(self):
+        return 0.5 + 0.5 * np.log(np.array(
+            2. * math.pi).astype('float32')) + np.log(self.scale)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def kl_divergence(self, other):
         var_ratio = self.scale / other.scale
@@ -101,6 +113,7 @@ class NormalNumpy(DistributionNumpy):
 
 
 class CategoricalNumpy(DistributionNumpy):
+
     def __init__(self, logits):
         self.logits = np.array(logits).astype('float32')
 
@@ -131,6 +144,7 @@ class CategoricalNumpy(DistributionNumpy):
 
 
 class MultivariateNormalDiagNumpy(DistributionNumpy):
+
     def __init__(self, loc, scale):
         self.loc = np.array(loc).astype('float32')
         self.scale = np.array(scale).astype('float32')
@@ -152,11 +166,17 @@ class MultivariateNormalDiagNumpy(DistributionNumpy):
         return inv_diag
 
     def entropy(self):
+<<<<<<< HEAD
         return 0.5 * (
             self.scale.shape[0]
             * (1.0 + np.log(np.array(2 * math.pi).astype('float32')))
             + np.log(self._det(self.scale))
         )
+=======
+        return 0.5 * (self.scale.shape[0] *
+                      (1.0 + np.log(np.array(2 * math.pi).astype('float32'))) +
+                      np.log(self._det(self.scale)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def kl_divergence(self, other):
         tr_cov_matmul = np.sum(self._inv(other.scale) * self.scale)
@@ -172,6 +192,7 @@ class MultivariateNormalDiagNumpy(DistributionNumpy):
 
 
 class DistributionTest(unittest.TestCase):
+
     def setUp(self, use_gpu=False):
         self.use_gpu = use_gpu
         if not use_gpu:
@@ -201,12 +222,21 @@ class DistributionTest(unittest.TestCase):
             loc = layers.data(name='loc', shape=[dims], dtype='float32')
             scale = layers.data(name='scale', shape=[dims], dtype='float32')
 
+<<<<<<< HEAD
             other_loc = layers.data(
                 name='other_loc', shape=[dims], dtype='float32'
             )
             other_scale = layers.data(
                 name='other_scale', shape=[dims], dtype='float32'
             )
+=======
+            other_loc = layers.data(name='other_loc',
+                                    shape=[dims],
+                                    dtype='float32')
+            other_scale = layers.data(name='other_scale',
+                                      shape=[dims],
+                                      dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             values = layers.data(name='values', shape=[dims], dtype='float32')
 
@@ -341,8 +371,12 @@ class DistributionTest(unittest.TestCase):
         np_other_normal_float = NormalNumpy(other_loc_float, other_scale_float)
         np_normal_float_np_broadcast = NormalNumpy(loc_float, scale_np)
         np_other_normal_float_np_broadcast = NormalNumpy(
+<<<<<<< HEAD
             other_loc_float, other_scale_np
         )
+=======
+            other_loc_float, other_scale_np)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         np_normal = NormalNumpy(loc_np, scale_np)
         np_other_normal = NormalNumpy(other_loc_np, other_scale_np)
 
@@ -384,6 +418,7 @@ class DistributionTest(unittest.TestCase):
             program=test_program, feed=feed_vars, fetch_list=fetch_list
         )
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             output_sample_float.shape,
             gt_sample_float.shape,
@@ -465,6 +500,71 @@ class DistributionTest(unittest.TestCase):
         low_np,
         values_np,
     ):
+=======
+        np.testing.assert_allclose(output_sample_float.shape,
+                                   gt_sample_float.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_sample_float_np_broadcast.shape,
+                                   gt_sample_float_np_broadcast.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_sample_np.shape,
+                                   gt_sample_np.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_sample_variable.shape,
+                                   gt_sample_np.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_float,
+                                   gt_entropy_float,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_float_np_broadcast,
+                                   gt_entropy_float_np_broadcast,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_np,
+                                   gt_entropy,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_variable,
+                                   gt_entropy,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_lp_float_np_broadcast,
+                                   gt_lp_float_np_broadcast,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_lp_np,
+                                   gt_lp,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_lp_variable,
+                                   gt_lp,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_kl_float,
+                                   gt_kl_float,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_kl_float_np_broadcast,
+                                   gt_kl_float_np_broadcast,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_kl_np,
+                                   gt_kl,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_kl_variable,
+                                   gt_kl,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+
+    def build_uniform_program(self, test_program, batch_size, dims, low_float,
+                              high_float, high_np, low_np, values_np):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with fluid.program_guard(test_program):
             low = layers.data(name='low', shape=[dims], dtype='float32')
             high = layers.data(name='high', shape=[dims], dtype='float32')
@@ -566,6 +666,7 @@ class DistributionTest(unittest.TestCase):
             program=test_program, feed=feed_vars, fetch_list=fetch_list
         )
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             output_sample_float.shape,
             gt_sample_float.shape,
@@ -620,6 +721,52 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(
             output_lp_variable, gt_lp, rtol=tolerance, atol=tolerance
         )
+=======
+        np.testing.assert_allclose(output_sample_float.shape,
+                                   gt_sample_float.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_sample_float_np_broadcast.shape,
+                                   gt_sample_float_np_broadcast.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_sample_np.shape,
+                                   gt_sample_np.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_sample_variable.shape,
+                                   gt_sample_np.shape,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_float,
+                                   gt_entropy_float,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_float_np_broadcast,
+                                   gt_entropy_float_np_broadcast,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_np,
+                                   gt_entropy,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_entropy_variable,
+                                   gt_entropy,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_lp_float_np_broadcast,
+                                   gt_lp_float_np_broadcast,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_lp_np,
+                                   gt_lp,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_lp_variable,
+                                   gt_lp,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_categorical_distribution(
         self, batch_size=2, dims=3, tolerance=1e-6
@@ -631,9 +778,15 @@ class DistributionTest(unittest.TestCase):
 
         with fluid.program_guard(test_program):
             logits = layers.data(name='logits', shape=[dims], dtype='float32')
+<<<<<<< HEAD
             other_logits = layers.data(
                 name='other_logits', shape=[dims], dtype='float32'
             )
+=======
+            other_logits = layers.data(name='other_logits',
+                                       shape=[dims],
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             categorical_np = Categorical(logits_np)
             other_categorical_np = Categorical(other_logits_np)
@@ -649,6 +802,7 @@ class DistributionTest(unittest.TestCase):
         gt_kl_np = np_categorical.kl_divergence(np_other_categorical)
 
         # result calculated by paddle
+<<<<<<< HEAD
         [output_entropy_np, output_kl_np] = self.executor.run(
             program=test_program,
             feed={'logits': logits_np},
@@ -660,12 +814,27 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(
             output_kl_np, gt_kl_np, rtol=tolerance, atol=tolerance
         )
+=======
+        [output_entropy_np,
+         output_kl_np] = self.executor.run(program=test_program,
+                                           feed={'logits': logits_np},
+                                           fetch_list=[entropy_np, kl_np])
+        np.testing.assert_allclose(output_entropy_np,
+                                   gt_entropy_np,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_kl_np,
+                                   gt_kl_np,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_multivariateNormalDiag_distribution(
         self, batch_size=2, tolerance=1e-6
     ):
         test_program = fluid.Program()
 
+<<<<<<< HEAD
         loc_np = np.random.random(
             batch_size,
         ).astype('float32')
@@ -717,6 +886,39 @@ class DistributionTest(unittest.TestCase):
             other_multivariate_np = MultivariateNormalDiag(
                 other_loc, other_scale
             )
+=======
+        loc_np = np.random.random(batch_size, ).astype('float32')
+        scale_np = np.diag(np.random.random(batch_size, )).astype('float32')
+        other_loc_np = np.random.random(batch_size, ).astype('float32')
+        other_scale_np = np.diag(np.random.random(
+            batch_size, )).astype('float32')
+
+        with fluid.program_guard(test_program):
+            loc = layers.data(name='loc',
+                              shape=[
+                                  batch_size,
+                              ],
+                              dtype='float32',
+                              append_batch_size=False)
+            scale = layers.data(name='scale',
+                                shape=[batch_size, batch_size],
+                                dtype='float32',
+                                append_batch_size=False)
+            other_loc = layers.data(name='other_loc',
+                                    shape=[
+                                        batch_size,
+                                    ],
+                                    dtype='float32',
+                                    append_batch_size=False)
+            other_scale = layers.data(name='other_scale',
+                                      shape=[batch_size, batch_size],
+                                      dtype='float32',
+                                      append_batch_size=False)
+
+            multivariate_np = MultivariateNormalDiag(loc, scale)
+            other_multivariate_np = MultivariateNormalDiag(
+                other_loc, other_scale)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             entropy_np = multivariate_np.entropy()
             other_entropy_np = other_multivariate_np.entropy()
@@ -726,12 +928,17 @@ class DistributionTest(unittest.TestCase):
 
         np_multivariate = MultivariateNormalDiagNumpy(loc_np, scale_np)
         np_other_multivariate = MultivariateNormalDiagNumpy(
+<<<<<<< HEAD
             other_loc_np, other_scale_np
         )
+=======
+            other_loc_np, other_scale_np)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         gt_entropy_np = np_multivariate.entropy()
         gt_kl_np = np_multivariate.kl_divergence(np_other_multivariate)
 
         # result calculated by paddle
+<<<<<<< HEAD
         [output_entropy_np, output_kl_np] = self.executor.run(
             program=test_program,
             feed={
@@ -748,9 +955,29 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(
             output_kl_np, gt_kl_np, rtol=tolerance, atol=tolerance
         )
+=======
+        [output_entropy_np,
+         output_kl_np] = self.executor.run(program=test_program,
+                                           feed={
+                                               'loc': loc_np,
+                                               'scale': scale_np,
+                                               'other_loc': other_loc_np,
+                                               'other_scale': other_scale_np
+                                           },
+                                           fetch_list=[entropy_np, kl_np])
+        np.testing.assert_allclose(output_entropy_np,
+                                   gt_entropy_np,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(output_kl_np,
+                                   gt_kl_np,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class DistributionTestError(unittest.TestCase):
+
     def test_normal_error(self):
         loc = int(1)
         scale = int(1)

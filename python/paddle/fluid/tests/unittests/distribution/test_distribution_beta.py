@@ -19,8 +19,11 @@ import scipy.stats
 from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
+<<<<<<< HEAD
 import paddle
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 np.random.seed(2022)
 
 
@@ -34,6 +37,7 @@ np.random.seed(2022)
     ],
 )
 class TestBeta(unittest.TestCase):
+
     def setUp(self):
         # scale no need convert to tensor for scale input unittest
         alpha, beta = self.alpha, self.beta
@@ -109,9 +113,14 @@ class TestBeta(unittest.TestCase):
         ]
         for case in cases:
             self.assertTrue(
+<<<<<<< HEAD
                 self._paddle_beta.sample(case.get('input')).shape
                 == case.get('expect')
             )
+=======
+                self._paddle_beta.sample(case.get('input')).shape == case.get(
+                    'expect'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

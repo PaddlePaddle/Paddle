@@ -24,6 +24,7 @@ def gen_data():
 
 
 class TestFleetStaticEMA(unittest.TestCase):
+
     def setUp(self):
         self._places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():

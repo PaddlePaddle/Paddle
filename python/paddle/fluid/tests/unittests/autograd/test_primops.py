@@ -14,6 +14,7 @@
 import unittest
 import uuid
 
+<<<<<<< HEAD
 import config
 import numpy as np
 import utils
@@ -21,12 +22,23 @@ from numpy.random import randint, randn
 
 import paddle
 from paddle.incubate.autograd import primops
+=======
+import numpy as np
+import paddle
+from numpy.random import randint, randn
+from paddle.incubate.autograd import primops, primx
+from paddle.incubate.autograd import utils as prim_utils
+
+import config
+import utils
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
+<<<<<<< HEAD
     (
         utils.TEST_CASE_NAME,
         'op',
@@ -35,6 +47,10 @@ paddle.enable_static()
         'expected_shape',
         'expected_dtype',
     ),
+=======
+    (utils.TEST_CASE_NAME, 'op', 'args', 'kwargs', 'expected_shape',
+     'expected_dtype'),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     (
         ('add', primops.add, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
         ('sub', primops.sub, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
@@ -46,6 +62,7 @@ paddle.enable_static()
         ('sin', primops.sin, randn(2, 3), {}, (2, 3), 'float64'),
         ('cos', primops.cos, randn(2, 3), {}, (2, 3), 'float64'),
         ('exp', primops.exp, randn(2, 3), {}, (2, 3), 'float64'),
+<<<<<<< HEAD
         ('erf', primops.erf, randn(2, 3), {}, (2, 3), 'float64'),
         ('abs', primops.abs, randn(2, 3), {}, (2, 3), 'float64'),
         ('log', primops.log, randn(2, 3), {}, (2, 3), 'float64'),
@@ -187,6 +204,64 @@ paddle.enable_static()
     ),
 )
 class TestPrimops(unittest.TestCase):
+=======
+        ('reshape', primops.reshape, randn(2, 3), {
+            'shape': (3, 2)
+        }, (3, 2), 'float64'),
+        ('broadcast', primops.broadcast, randn(2), {
+            'shape': (3, 2)
+        }, (3, 2), 'float64'),
+        ('transpose', primops.transpose, randn(2, 3), {
+            'axis': (1, 0)
+        }, (3, 2), 'float64'),
+        ('concat_axis0', primops.concat, ((randn(2, 3), randn(2, 3)), ), {
+            'axis': 0
+        }, (4, 3), 'float64'),
+        ('concat_axis1', primops.concat, ((randn(2, 3), randn(2, 3)), ), {
+            'axis': 1
+        }, (2, 6), 'float64'),
+        ('reduce_axis1', primops.reduce, randn(2, 3), {
+            'axis': (1, )
+        }, (2, ), 'float64'),
+        ('reduce_axis01', primops.reduce, randn(2, 3), {
+            'axis': (0, 1)
+        }, (1, ), 'float64'),
+        ('split', primops.split, randn(2, 3), {
+            'num_or_sections': [1, 2],
+            'axis': 1
+        }, ((2, 1), (2, 2)), ('float64', 'float64')),
+        ('matmul', primops.matmul, (randn(2, 3), randn(3, 2)), {},
+         (2, 2), 'float64'),
+        ('slice_select', primops.slice_select, randn(3, 2), {
+            'axis': [0],
+            'starts': [0],
+            'ends': [2],
+            'strides': [1]
+        }, (2, 2), 'float64'),
+        ('slice_assign', primops.slice_assign, (randn(2, 3), randn(2, 2)), {
+            'axis': [1],
+            'starts': [1],
+            'ends': [3],
+            'strides': [1]
+        }, (2, 3), 'float64'),
+        ('gather', primops.gather, (randn(3, 2), randint(0, 2,
+                                                         (5, ), np.int32)), {
+                                                             'axis': 0
+                                                         }, (5, 2), 'float64'),
+        ('scatter_add', primops.scatter_add,
+         (randn(3, 2), randn(5, 2), randint(0, 2, (5, ), np.int32)), {
+             'axis': 0
+         }, (3, 2), 'float64'),
+        ('fill_const', primops.fill_const, (), {
+            'value': 10,
+            'shape': (3, 2),
+            'dtype': paddle.float32
+        }, (3, 2), 'float32'),
+        ('neg', primops.neg, randn(2, 3), {}, (2, 3), 'float64'),
+    ))
+class TestPrimops(unittest.TestCase):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     @classmethod
     def setUpClass(cls):
         paddle.enable_static()
@@ -213,18 +288,27 @@ class TestPrimops(unittest.TestCase):
         """convert numpy ndarray to paddle Variable recursively."""
         return [
             paddle.static.data(f'x{uuid.uuid4()}', v.shape, v.dtype)
+<<<<<<< HEAD
             if isinstance(v, np.ndarray)
             else self.arr2var(v)
             for v in arr
+=======
+            if isinstance(v, np.ndarray) else self.arr2var(v) for v in arr
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
 
     def _as_tuple(self, input):
         if isinstance(input, (tuple, list)) and len(input) == 0:
             return input
         if not isinstance(input, (tuple, list)) or all(
+<<<<<<< HEAD
             isinstance(i, int) for i in input
         ):
             return (input,)
+=======
+                isinstance(i, int) for i in input):
+            return (input, )
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return input
 
 

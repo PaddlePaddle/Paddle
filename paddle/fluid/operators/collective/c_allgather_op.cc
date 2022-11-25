@@ -69,9 +69,17 @@ reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OP_WITHOUT_GRADIENT(c_allgather,
                              ops::CAllGatherOp,
                              ops::CAllGatherOpMaker);
+=======
+REGISTER_OPERATOR(c_allgather,
+                  ops::CAllGatherOp,
+                  ops::CAllGatherOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CAllGatherOpGradMaker<paddle::imperative::OpBase>,
+                  ops::CAllGatherOpMaker);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 REGISTER_OP_CPU_KERNEL(c_allgather,
                        ops::CAllGatherOpCPUKernel<float>,

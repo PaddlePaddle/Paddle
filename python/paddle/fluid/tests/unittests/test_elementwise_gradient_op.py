@@ -20,12 +20,14 @@ import paddle.fluid as fluid
 
 
 class TestElementWiseAddOp(unittest.TestCase):
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.testing.assert_allclose(
             np.array(tensor), np_array, rtol=1e-05, atol=atol, err_msg=msg
         )
 
     def check_forward_backward(self):
+
         def test_with_place(place):
             out_grad = np.random.random_sample(self.x.shape).astype(np.float32)
             x_grad = out_grad
@@ -48,6 +50,7 @@ class TestElementWiseAddOp(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
+<<<<<<< HEAD
                     block.create_var(
                         name=name,
                         dtype='float32',
@@ -66,6 +69,23 @@ class TestElementWiseAddOp(unittest.TestCase):
                         "axis": self.axis,
                     },
                 )
+=======
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
+                elementwise_add_op = block.append_op(type="elementwise_add",
+                                                     inputs={
+                                                         "X": block.var('x'),
+                                                         "Y": block.var('y'),
+                                                     },
+                                                     outputs={
+                                                         "Out":
+                                                         block.var('out'),
+                                                     },
+                                                     attrs={
+                                                         "axis": self.axis,
+                                                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(

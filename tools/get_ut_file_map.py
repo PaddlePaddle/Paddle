@@ -98,9 +98,14 @@ def handle_ut_file_map(rootPath):
                     source_file = line.replace('/build', '')
                     # source_file = re.sub('.pb.*', '.proto', source_file)
                 elif 'precise test map fileeee:' in line:
+<<<<<<< HEAD
                     source_file = line.split('precise test map fileeee:')[
                         1
                     ].strip()
+=======
+                    source_file = line.split(
+                        'precise test map fileeee:')[1].strip()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 else:
                     source_file = line
                 if source_file not in ut_file_map:

@@ -19,14 +19,20 @@ from paddle.fluid.op import Operator
 
 
 class TestFakeInitOpSelectedRows(unittest.TestCase):
+
     def check_with_place(self, place, is_selected_rows):
         scope = core.Scope()
 
         out_var_name = 'Out'
         if is_selected_rows:
+<<<<<<< HEAD
             out_tensor = (
                 scope.var(out_var_name).get_selected_rows().get_tensor()
             )
+=======
+            out_tensor = scope.var(
+                out_var_name).get_selected_rows().get_tensor()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             out_tensor = scope.var(out_var_name).get_tensor()
 

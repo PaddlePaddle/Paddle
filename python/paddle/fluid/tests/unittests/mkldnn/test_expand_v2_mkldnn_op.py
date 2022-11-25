@@ -30,6 +30,7 @@ from paddle.fluid.tests.unittests.op_test import (
     "CUDA required dygraph so oneDNN UT must be skipped",
 )
 class TestExpandV2OneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
@@ -59,6 +60,7 @@ class TestExpandV2OneDNNOp(OpTest):
 
 
 class TestExpandV2ExpandDimOneDNNOp(TestExpandV2OneDNNOp):
+
     def init_data(self):
         self.ori_shape = [120]
         self.shape = [2, 120]
@@ -66,6 +68,7 @@ class TestExpandV2ExpandDimOneDNNOp(TestExpandV2OneDNNOp):
 
 
 class TestExpandV2CopyScenarioOneDNNOp(TestExpandV2OneDNNOp):
+
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.shape = (2, 10, 5)
@@ -73,6 +76,7 @@ class TestExpandV2CopyScenarioOneDNNOp(TestExpandV2OneDNNOp):
 
 
 class TestExpandV2CopyScenarioShapeNotGivenOneDNNOp(TestExpandV2OneDNNOp):
+
     def init_data(self):
         self.ori_shape = (2, 4, 5, 7)
         self.shape = (-1, -1, -1, -1)
@@ -80,6 +84,7 @@ class TestExpandV2CopyScenarioShapeNotGivenOneDNNOp(TestExpandV2OneDNNOp):
 
 
 class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
+
     def init_data(self):
         self.ori_shape = [100, 1]
         self.expand_times = [1, 2]
@@ -99,8 +104,13 @@ class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
 
 
 class TestExpandV2ExpandShapesTensor2OneDNNOp(
+<<<<<<< HEAD
     TestExpandV2ExpandShapesTensor1OneDNNOp
 ):
+=======
+        TestExpandV2ExpandShapesTensor1OneDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_data(self):
         self.ori_shape = [12, 14]
         self.expand_times = [1, 1]
@@ -109,6 +119,7 @@ class TestExpandV2ExpandShapesTensor2OneDNNOp(
 
 
 class TestExpandV2ShapesTensorOneDNNOp(TestExpandV2OneDNNOp):
+
     def init_data(self):
         self.ori_shape = [100]
         self.expand_times = [2, 1]
@@ -121,8 +132,10 @@ class TestExpandV2ShapesTensorOneDNNOp(TestExpandV2OneDNNOp):
 
 #   BF16 TESTS
 def create_expand_v2_bf16_test_class(parent):
+
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestExpandV2BF16OneDNNOp(parent):
+
         def set_inputs(self):
             self.attrs['mkldnn_data_type'] = 'bfloat16'
             self.inputs = {"X": convert_float_to_uint16(self.x)}

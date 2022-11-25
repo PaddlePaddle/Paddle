@@ -25,7 +25,11 @@ namespace operators {
 
 // Returns the integer in mask whose numel must be 1. The integer means the
 // selected branch number.
+<<<<<<< HEAD
 inline int GetBranchNumber(const phi::DenseTensor &mask) {
+=======
+inline int GetBranchNumber(const framework::LoDTensor &mask) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   PADDLE_ENFORCE_EQ(mask.numel(),
                     1,
                     platform::errors::InvalidArgument(

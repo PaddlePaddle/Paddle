@@ -439,8 +439,13 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::PreconditionNotMet(
                                 "Input variable should not be null"));
+<<<<<<< HEAD
     if (var->IsType<phi::DenseTensor>()) {
       return var->Get<phi::DenseTensor>().dims();
+=======
+    if (var->IsType<framework::LoDTensor>()) {
+      return var->Get<framework::LoDTensor>().dims();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else {

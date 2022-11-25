@@ -42,9 +42,15 @@ os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestImperativeQat(unittest.TestCase):
@@ -75,6 +81,7 @@ class TestImperativeQat(unittest.TestCase):
 
         with fluid.dygraph.guard():
             # For CI coverage
+<<<<<<< HEAD
             conv1 = Conv2D(
                 in_channels=3,
                 out_channels=2,
@@ -83,15 +90,30 @@ class TestImperativeQat(unittest.TestCase):
                 padding=1,
                 padding_mode='replicate',
             )
+=======
+            conv1 = Conv2D(in_channels=3,
+                           out_channels=2,
+                           kernel_size=3,
+                           stride=1,
+                           padding=1,
+                           padding_mode='replicate')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             quant_conv1 = QuantizedConv2D(conv1)
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             quant_conv1(fluid.dygraph.to_variable(data))
 
             conv_transpose = Conv2DTranspose(4, 6, (3, 3))
             quant_conv_transpose = QuantizedConv2DTranspose(conv_transpose)
+<<<<<<< HEAD
             x_var = paddle.uniform(
                 (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0
             )
+=======
+            x_var = paddle.uniform((2, 4, 8, 8),
+                                   dtype='float32',
+                                   min=-1.0,
+                                   max=1.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             quant_conv_transpose(x_var)
 
             seed = 1
@@ -102,6 +124,7 @@ class TestImperativeQat(unittest.TestCase):
             lenet = ImperativeLenet()
             lenet = fix_model_dict(lenet)
             imperative_qat.quantize(lenet)
+<<<<<<< HEAD
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=lenet.parameters()
             )
@@ -112,11 +135,22 @@ class TestImperativeQat(unittest.TestCase):
             test_reader = paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=32
             )
+=======
+            adam = AdamOptimizer(learning_rate=0.001,
+                                 parameter_list=lenet.parameters())
+
+            train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                        batch_size=32,
+                                        drop_last=True)
+            test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                       batch_size=32)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             epoch_num = 1
             for epoch in range(epoch_num):
                 lenet.train()
                 for batch_id, data in enumerate(train_reader()):
+<<<<<<< HEAD
                     x_data = np.array(
                         [x[0].reshape(1, 28, 28) for x in data]
                     ).astype('float32')
@@ -125,6 +159,12 @@ class TestImperativeQat(unittest.TestCase):
                         .astype('int64')
                         .reshape(-1, 1)
                     )
+=======
+                    x_data = np.array([x[0].reshape(1, 28, 28)
+                                       for x in data]).astype('float32')
+                    y_data = np.array([x[1] for x in data
+                                       ]).astype('int64').reshape(-1, 1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
@@ -137,16 +177,23 @@ class TestImperativeQat(unittest.TestCase):
                     lenet.clear_gradients()
                     if batch_id % 100 == 0:
                         _logger.info(
+<<<<<<< HEAD
                             "Train | At epoch {} step {}: loss = {:}, acc= {:}".format(
                                 epoch, batch_id, avg_loss.numpy(), acc.numpy()
                             )
                         )
+=======
+                            "Train | At epoch {} step {}: loss = {:}, acc= {:}".
+                            format(epoch, batch_id, avg_loss.numpy(),
+                                   acc.numpy()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     if batch_id == 500:  # For shortening CI time
                         break
 
                 lenet.eval()
                 eval_acc_top1_list = []
                 for batch_id, data in enumerate(test_reader()):
+<<<<<<< HEAD
                     x_data = np.array(
                         [x[0].reshape(1, 28, 28) for x in data]
                     ).astype('float32')
@@ -155,21 +202,37 @@ class TestImperativeQat(unittest.TestCase):
                         .astype('int64')
                         .reshape(-1, 1)
                     )
+=======
+                    x_data = np.array([x[0].reshape(1, 28, 28)
+                                       for x in data]).astype('float32')
+                    y_data = np.array([x[1] for x in data
+                                       ]).astype('int64').reshape(-1, 1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
 
                     out = lenet(img)
+<<<<<<< HEAD
                     acc_top1 = fluid.layers.accuracy(
                         input=out, label=label, k=1
                     )
                     acc_top5 = fluid.layers.accuracy(
                         input=out, label=label, k=5
                     )
+=======
+                    acc_top1 = fluid.layers.accuracy(input=out,
+                                                     label=label,
+                                                     k=1)
+                    acc_top5 = fluid.layers.accuracy(input=out,
+                                                     label=label,
+                                                     k=5)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     if batch_id % 100 == 0:
                         eval_acc_top1_list.append(float(acc_top1.numpy()))
                         _logger.info(
+<<<<<<< HEAD
                             "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}".format(
                                 epoch,
                                 batch_id,
@@ -177,12 +240,18 @@ class TestImperativeQat(unittest.TestCase):
                                 acc_top5.numpy(),
                             )
                         )
+=======
+                            "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}"
+                            .format(epoch, batch_id, acc_top1.numpy(),
+                                    acc_top5.numpy()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 # check eval acc
                 eval_acc_top1 = sum(eval_acc_top1_list) / len(
                     eval_acc_top1_list
                 )
                 print('eval_acc_top1', eval_acc_top1)
+<<<<<<< HEAD
                 self.assertTrue(
                     eval_acc_top1 > 0.9,
                     msg="The test acc {%f} is less than 0.9." % eval_acc_top1,
@@ -196,6 +265,18 @@ class TestImperativeQat(unittest.TestCase):
             y_data = (
                 np.array([x[1] for x in data]).astype('int64').reshape(-1, 1)
             )
+=======
+                self.assertTrue(eval_acc_top1 > 0.9,
+                                msg="The test acc {%f} is less than 0.9." %
+                                eval_acc_top1)
+
+            # test the correctness of `paddle.jit.save`
+            data = next(test_reader())
+            test_data = np.array([x[0].reshape(1, 28, 28)
+                                  for x in data]).astype('float32')
+            y_data = np.array([x[1]
+                               for x in data]).astype('int64').reshape(-1, 1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             test_img = fluid.dygraph.to_variable(test_data)
             label = fluid.dygraph.to_variable(y_data)
             lenet.eval()
@@ -208,9 +289,14 @@ class TestImperativeQat(unittest.TestCase):
                 layer=lenet,
                 path=os.path.join(tmpdir, "lenet"),
                 input_spec=[
+<<<<<<< HEAD
                     paddle.static.InputSpec(
                         shape=[None, 1, 28, 28], dtype='float32'
                     )
+=======
+                    paddle.static.InputSpec(shape=[None, 1, 28, 28],
+                                            dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 ],
             )
             print('Quantized model saved in %s' % tmpdir)
@@ -249,6 +335,7 @@ class TestImperativeQat(unittest.TestCase):
 
 
 class TestImperativeQatONNXFormat(unittest.TestCase):
+
     def set_vars(self):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'

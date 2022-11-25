@@ -177,8 +177,11 @@ class VariableScope {
 
   void SetScope(Scope* scope);
 
+<<<<<<< HEAD
   void SetLocalScope(Scope* local_scope);
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   ~VariableScope();
 
   // Get variable id by name, return -1 if not found
@@ -213,6 +216,7 @@ class VariableScope {
     return vec_meta_info_;
   }
 
+<<<<<<< HEAD
   const std::vector<std::pair<std::string, int>>& DataTransferAddedVars()
       const {
     return data_transfer_added_vars_;
@@ -228,6 +232,12 @@ class VariableScope {
 
   bool GetVarSikpInplace(int id) const;
 
+=======
+  void SetVarSikpInplace(const std::string& name, bool skip);
+
+  bool GetVarSikpInplace(int id) const;
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
  private:
   // not owned, better remove it since all vars should be
   // accessed by Scope instead of VariableScope
@@ -240,6 +250,16 @@ class VariableScope {
   // TODO(zhiqiu): find a better way to support local scope.
   Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
+<<<<<<< HEAD
+=======
+};
+
+class NextInstruction {
+ public:
+  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
+
+  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   // var_name -> var_type
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
@@ -256,9 +276,14 @@ struct EventInter {
 };
 
 enum class OpFuncType {
+<<<<<<< HEAD
   kCpuSync,  // CPU kernel, block host
   kGpuSync,  // GPU or other device kernel without asynchronous operation
   kGpuAsync  // GPU or other device kernel with asynchronous operation
+=======
+  kQueueSync = 0,   // CPU kernel, block host
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 class RuntimeInferShapeContext;
 
@@ -284,6 +309,7 @@ class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
+<<<<<<< HEAD
               const platform::DeviceContext& dev_ctx,
               const Priority priority);
 
@@ -317,6 +343,9 @@ class Instruction {
   void AddNextInstrInSameThread(size_t id) {
     next_instrs_in_same_thread.push_back(id);
   }
+=======
+              const platform::DeviceContext& dev_ctx);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   void RecordEvent(const Place& place) const;
 
@@ -476,6 +505,12 @@ class ResetAtomicGuard {
   std::vector<std::shared_ptr<OpDepInfo>>* deps_;
   std::vector<std::shared_ptr<VarRefInfo>>* refs_;
 };
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place);
+}
 
 }  // namespace interpreter
 

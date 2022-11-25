@@ -22,6 +22,7 @@ from paddle.fluid.framework import Program, program_guard, _test_eager_guard
 
 
 class TestOneHotOp(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -45,6 +46,7 @@ class TestOneHotOp(OpTest):
 
 
 class TestOneHotOp_attr(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -69,6 +71,7 @@ class TestOneHotOp_attr(OpTest):
 
 
 class TestOneHotOp_default_dtype(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -92,6 +95,7 @@ class TestOneHotOp_default_dtype(OpTest):
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -116,6 +120,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOp_exception(unittest.TestCase):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         self.depth = 10
@@ -131,6 +136,7 @@ class TestOneHotOp_exception(unittest.TestCase):
     def test_check_output(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             x = fluid.layers.data(
                 name='x', shape=[self.dimension], dtype='float32', lod_level=1
             )
@@ -146,6 +152,20 @@ class TestOneHotOp_exception(unittest.TestCase):
                 attrs={'depth': self.depth},
                 outputs={'Out': one_hot_out},
             )
+=======
+            x = fluid.layers.data(name='x',
+                                  shape=[self.dimension],
+                                  dtype='float32',
+                                  lod_level=1)
+            block = program.current_block()
+            one_hot_out = block.create_var(name="one_hot_out",
+                                           type=core.VarDesc.VarType.LOD_TENSOR,
+                                           dtype='float32')
+            block.append_op(type='one_hot',
+                            inputs={'X': x},
+                            attrs={'depth': self.depth},
+                            outputs={'Out': one_hot_out})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             exe = fluid.Executor(self.place)
 
             def run():
@@ -159,6 +179,7 @@ class TestOneHotOp_exception(unittest.TestCase):
 
 
 class TestOneHotOpApi(unittest.TestCase):
+
     def test_api(self):
         depth = 10
         self._run(depth)
@@ -196,6 +217,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         ret = exe.run(
             feed={
                 'label': label_data,
@@ -203,19 +225,34 @@ class TestOneHotOpApi(unittest.TestCase):
             fetch_list=[one_hot_label],
             return_numpy=False,
         )
+=======
+        ret = exe.run(feed={
+            'label': label_data,
+        },
+                      fetch_list=[one_hot_label],
+                      return_numpy=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class BadInputTestOnehotV2(unittest.TestCase):
+
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
+<<<<<<< HEAD
                 label = fluid.layers.data(
                     name="label",
                     shape=[4],
                     append_batch_size=False,
                     dtype="float32",
                 )
+=======
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 one_hot_label = fluid.one_hot(input=label, depth=4)
 
             self.assertRaises(TypeError, test_bad_x)

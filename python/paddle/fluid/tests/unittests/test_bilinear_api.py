@@ -21,6 +21,7 @@ import numpy as np
 
 
 class TestBilinearAPI(unittest.TestCase):
+
     def test_api(self):
         with fluid.program_guard(
             fluid.default_startup_program(), fluid.default_main_program()
@@ -37,6 +38,7 @@ class TestBilinearAPI(unittest.TestCase):
             layer1 = np.random.random((5, 5)).astype('float32')
             layer2 = np.random.random((5, 4)).astype('float32')
 
+<<<<<<< HEAD
             bilinear = paddle.nn.Bilinear(
                 in1_features=5, in2_features=4, out_features=1000
             )
@@ -46,17 +48,37 @@ class TestBilinearAPI(unittest.TestCase):
             ret_fetch = exe.run(
                 feed={'X1': layer1, 'X2': layer2}, fetch_list=[ret.name]
             )
+=======
+            bilinear = paddle.nn.Bilinear(in1_features=5,
+                                          in2_features=4,
+                                          out_features=1000)
+            ret = bilinear(data1, data2)
+
+            exe.run(fluid.default_startup_program())
+            ret_fetch = exe.run(feed={
+                'X1': layer1,
+                'X2': layer2
+            },
+                                fetch_list=[ret.name])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertEqual(ret_fetch[0].shape, (5, 1000))
 
 
 class TestBilinearAPIDygraph(unittest.TestCase):
+
     def test_api(self):
         paddle.disable_static()
         layer1 = np.random.random((5, 5)).astype('float32')
         layer2 = np.random.random((5, 4)).astype('float32')
+<<<<<<< HEAD
         bilinear = paddle.nn.Bilinear(
             in1_features=5, in2_features=4, out_features=1000
         )
+=======
+        bilinear = paddle.nn.Bilinear(in1_features=5,
+                                      in2_features=4,
+                                      out_features=1000)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ret = bilinear(paddle.to_tensor(layer1), paddle.to_tensor(layer2))
         self.assertEqual(ret.shape, [5, 1000])
 

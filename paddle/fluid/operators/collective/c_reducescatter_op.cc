@@ -72,9 +72,15 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OP_WITHOUT_GRADIENT(c_reducescatter,
                              ops::CReduceScatterOp,
                              ops::CReduceScatterOpMaker);
+=======
+REGISTER_OPERATOR(c_reducescatter,
+                  ops::CReduceScatterOp,
+                  ops::CReduceScatterOpMaker);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 REGISTER_OP_CPU_KERNEL(c_reducescatter,
                        ops::CReduceScatterOpCPUKernel<float>,

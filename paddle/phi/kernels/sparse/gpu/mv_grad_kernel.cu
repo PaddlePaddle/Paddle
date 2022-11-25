@@ -70,16 +70,26 @@ void MvCooGradKernel(const Context &dev_ctx,
     // InferMeta of SparseCooTensor 'dx', CreateLikeInferMeta
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz());
+<<<<<<< HEAD
     PD_VISIT_BASE_INTEGRAL_TYPES(
         dx->indices().dtype(), "MvCooGradKernel", ([&] {
+=======
+    PD_VISIT_INTEGRAL_TYPES(
+        dx->non_zero_indices().dtype(), "MvCooGradKernel", ([&] {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           MvCooGradGpuKernel<T>
               <<<config.block_per_grid.x,
                  config.thread_per_block.x,
                  0,
                  dev_ctx.stream()>>>(dout.data<T>(),
                                      vec.data<T>(),
+<<<<<<< HEAD
                                      dx->indices().data<data_t>(),
                                      dx->mutable_values()->data<T>(),
+=======
+                                     dx->non_zero_indices().data<data_t>(),
+                                     dx->mutable_non_zero_elements()->data<T>(),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                      dx->nnz());
         }));
   }
@@ -117,6 +127,7 @@ void MvCsrGradKernel(const Context &dev_ctx,
     int col_number = dx->dims()[1];
     auto config = phi::backends::gpu::GetGpuLaunchConfig2D(
         dev_ctx, col_number, row_number);
+<<<<<<< HEAD
     PD_VISIT_BASE_INTEGRAL_TYPES(dx->crows().dtype(), "MvCsrGradKernel", ([&] {
                                    MvCsrGradGpuKernel<T>
                                        <<<config.block_per_grid.x,
@@ -130,6 +141,21 @@ void MvCsrGradKernel(const Context &dev_ctx,
                                            dx->mutable_values()->data<T>(),
                                            row_number);
                                  }));
+=======
+    PD_VISIT_INTEGRAL_TYPES(
+        dx->non_zero_crows().dtype(), "MvCsrGradKernel", ([&] {
+          MvCsrGradGpuKernel<T>
+              <<<config.block_per_grid.x,
+                 config.thread_per_block.x,
+                 0,
+                 dev_ctx.stream()>>>(dout.data<T>(),
+                                     vec.data<T>(),
+                                     dx->non_zero_crows().data<data_t>(),
+                                     dx->non_zero_cols().data<data_t>(),
+                                     dx->mutable_non_zero_elements()->data<T>(),
+                                     row_number);
+        }));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
   // dvec{Dense} = x'{SparseCsr} * dout{Dense}

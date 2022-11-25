@@ -31,7 +31,12 @@ class ProgramDesc;
 namespace jit {
 class Layer;
 using Variable = paddle::framework::Variable;
+<<<<<<< HEAD
 using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
+=======
+using Name2VariableMap =
+    std::unordered_map<std::string, std::shared_ptr<Variable>>;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 // Export Layer into local disk
 class Serializer {
@@ -55,11 +60,19 @@ class Deserializer {
   void ReadTensorData(const std::string& file_name,
                       const std::set<std::string>& var_name,
                       const phi::Place& place,
+<<<<<<< HEAD
                       VariableMap* params_dict) const;
 
   // property pb
   void ReadAttributeData(const std::string& file_path,
                          VariableMap* attrs_dict) const;
+=======
+                      Name2VariableMap* params_dict) const;
+
+  // property pb
+  void ReadAttributeData(const std::string& file_path,
+                         Name2VariableMap* attrs_dict) const;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   // void ReadExtraInfo(const std::string& file_name) const;
 

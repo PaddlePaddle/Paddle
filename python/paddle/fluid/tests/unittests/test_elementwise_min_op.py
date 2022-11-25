@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestElementwiseOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -49,6 +50,7 @@ class TestElementwiseOp(OpTest):
             self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
+<<<<<<< HEAD
         self.check_grad(
             ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X")
         )
@@ -87,12 +89,25 @@ class TestElementwiseMinOp_ZeroDim3(TestElementwiseOp):
         y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
+=======
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set('Y'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseMinOp_scalar(TestElementwiseOp):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -103,6 +118,7 @@ class TestElementwiseMinOp_scalar(TestElementwiseOp):
 
 
 class TestElementwiseMinOp_Vector(TestElementwiseOp):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -114,6 +130,7 @@ class TestElementwiseMinOp_Vector(TestElementwiseOp):
 
 
 class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -126,13 +143,19 @@ class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
 
         self.attrs = {'axis': 0}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.minimum(
                 self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
             )
+=======
+            'Out': np.minimum(self.inputs['X'],
+                              self.inputs['Y'].reshape(100, 1, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -145,13 +168,19 @@ class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
 
         self.attrs = {'axis': 1}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.minimum(
                 self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
             )
+=======
+            'Out': np.minimum(self.inputs['X'],
+                              self.inputs['Y'].reshape(1, 100, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -163,13 +192,19 @@ class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
         self.inputs = {'X': x, 'Y': y}
 
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.minimum(
                 self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
             )
+=======
+            'Out': np.minimum(self.inputs['X'],
+                              self.inputs['Y'].reshape(1, 1, 100))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -189,6 +224,7 @@ class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
 
 
 class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
+
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
@@ -201,6 +237,7 @@ class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
 
 
 class TestElementwiseMinOpFP16(unittest.TestCase):
+
     def get_out_and_grad(self, x_np, y_np, axis, place, use_fp32=False):
         assert x_np.dtype == np.float16
         assert y_np.dtype == np.float16
@@ -236,9 +273,17 @@ class TestElementwiseMinOpFP16(unittest.TestCase):
             x_np, y_np, axis, place, False
         )
         z_2, x_g_2, y_g_2 = self.get_out_and_grad(x_np, y_np, axis, place, True)
+<<<<<<< HEAD
         np.testing.assert_array_equal(z_1, z_2)
         np.testing.assert_array_equal(x_g_1, x_g_2)
         np.testing.assert_array_equal(y_g_1, y_g_2)
+=======
+        self.assertTrue(np.array_equal(z_1, z_2), "{} vs {}".format(z_1, z_2))
+        self.assertTrue(np.array_equal(x_g_1, x_g_2),
+                        "{} vs {}".format(x_g_1, x_g_2))
+        self.assertTrue(np.array_equal(y_g_1, y_g_2),
+                        "{} vs {}".format(y_g_1, y_g_2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_main(self):
         self.check_main((13, 17), (13, 17))

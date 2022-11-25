@@ -31,7 +31,11 @@ class RangeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const phi::DenseTensor &tensor,
+=======
+      const framework::Tensor &tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::OpKernelType &expected_kernel_type) const override {
     if (platform::is_xpu_place(tensor.place())) {
       return framework::OpKernelType(

@@ -320,8 +320,12 @@ def _coalesce_tensors(var_groups):
         for g_var in grad_vars:
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
+<<<<<<< HEAD
                 paddle.reshape(x=g_var, shape=[np.prod(g_var.shape)])
             )
+=======
+                nn.reshape(x=g_var, shape=[np.prod(g_var.shape)]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         coalesced_grad = nn.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(
             [coalesced_grad, grad_vars, g_var_shapes]
@@ -332,12 +336,22 @@ def _coalesce_tensors(var_groups):
 @framework.dygraph_only
 def _reshape_inplace(x, shape):
     x_shape = framework._varbase_creator(dtype=x.dtype)
+<<<<<<< HEAD
     framework._dygraph_tracer().trace_op(
         type="reshape2",
         inputs={'X': x},
         outputs={'Out': x, 'XShape': x_shape},
         attrs={'shape': shape},
     )
+=======
+    framework._dygraph_tracer().trace_op(type="reshape2",
+                                         inputs={'X': x},
+                                         outputs={
+                                             'Out': x,
+                                             'XShape': x_shape
+                                         },
+                                         attrs={'shape': shape})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @framework.dygraph_only
@@ -353,8 +367,15 @@ def _split_tensors(coalesced_grads_and_grad_vars):
                 type='split',
                 inputs={'X': coalesced_grad},
                 outputs={'Out': origin_grad_vars},
+<<<<<<< HEAD
                 attrs={'sections': grad_var_len, 'axis': 0},
             )
+=======
+                attrs={
+                    'sections': grad_var_len,
+                    'axis': 0
+                })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 _reshape_inplace(x=g_var, shape=g_shape)
                 assert g_var.shape == g_shape
@@ -440,9 +461,16 @@ def sync_params_buffers(
     coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
 
     for coalesced_var, _, _ in coalesced_vars:
+<<<<<<< HEAD
         paddle.distributed.broadcast(
             coalesced_var, src=src_rank, group=comm_group, sync_op=True
         )
+=======
+        paddle.distributed.broadcast(coalesced_var,
+                                     src=src_rank,
+                                     group=comm_group,
+                                     use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     for coalesced_var, origin_vars, var_shapes in coalesced_vars:
         var_len = [np.prod(v_shape) for v_shape in var_shapes]
@@ -450,8 +478,15 @@ def sync_params_buffers(
             type='split',
             inputs={'X': coalesced_var},
             outputs={'Out': origin_vars},
+<<<<<<< HEAD
             attrs={'sections': var_len, 'axis': 0},
         )
+=======
+            attrs={
+                'sections': var_len,
+                'axis': 0
+            })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class DataParallel(layers.Layer):
@@ -741,10 +776,15 @@ class DataParallel(layers.Layer):
             )
 
             self._reducer = core.EagerReducer(
+<<<<<<< HEAD
                 trainable_parameters,
                 list(reversed(self.group_indices)),
                 is_sparse_gradient,
                 self.group.process_group,
+=======
+                trainable_parameters, list(reversed(self.group_indices)),
+                is_sparse_gradient, self.group.process_group,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters,
             )
@@ -756,10 +796,15 @@ class DataParallel(layers.Layer):
             )
 
             self._reducer = core.Reducer(
+<<<<<<< HEAD
                 trainable_parameters,
                 list(reversed(self.group_indices)),
                 is_sparse_gradient,
                 parallel_helper.__parallel_ctx__clz__,
+=======
+                trainable_parameters, list(reversed(self.group_indices)),
+                is_sparse_gradient, parallel_helper.__parallel_ctx__clz__,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters,
             )
@@ -821,6 +866,7 @@ class DataParallel(layers.Layer):
 
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
+<<<<<<< HEAD
         if (
             self._strategy.nranks > 1
             and framework._dygraph_tracer()._has_grad
@@ -834,6 +880,16 @@ class DataParallel(layers.Layer):
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore."
     )
+=======
+        if self._strategy.nranks > 1 and framework._dygraph_tracer(
+        )._has_grad and self.grad_need_sync:
+            self._reducer.prepare_for_backward(list(
+                self._find_varbase(outputs)))
+        return outputs
+
+    @deprecated(since="2.0.0",
+                reason="This method does not need to be called anymore.")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def scale_loss(self, loss):
         """
         Deprecated method, now ``scale_loss`` is an empty method,
@@ -841,9 +897,14 @@ class DataParallel(layers.Layer):
         """
         return loss
 
+<<<<<<< HEAD
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore."
     )
+=======
+    @deprecated(since="2.0.0",
+                reason="This method does not need to be called anymore.")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def apply_collective_grads(self):
         """
         Deprecated method, now ``apply_collective_grads`` is an empty method,
@@ -920,9 +981,14 @@ class DataParallel(layers.Layer):
 
         '''
 
+<<<<<<< HEAD
         self._layers.set_state_dict(
             state_dict, use_structured_name=use_structured_name
         )
+=======
+        self._layers.set_state_dict(state_dict,
+                                    use_structured_name=use_structured_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

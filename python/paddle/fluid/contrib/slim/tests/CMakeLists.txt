@@ -246,13 +246,19 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_program_resnet50)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
   list(REMOVE_ITEM TEST_OPS test_imperative_ptq)
   list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
   list(REMOVE_ITEM TEST_OPS test_quantize_transpiler_v2)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_lsq)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -506,7 +512,10 @@ if(WIN32)
       test_moving_average_abs_max_scale_op
       test_imperative_qat_channelwise
       test_imperative_qat
+<<<<<<< HEAD
       test_imperative_qat_lsq
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       test_imperative_out_scale
       test_graph)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
@@ -523,10 +532,15 @@ endforeach()
 if(NOT WIN32)
   set_tests_properties(test_post_training_quantization_lstm_model
                        PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
   set_tests_properties(test_post_training_quantization_program_resnet50
                        PROPERTIES TIMEOUT 240)
   set_tests_properties(test_post_training_quantization_mobilenetv1
                        PROPERTIES TIMEOUT 900 LABELS "RUN_TYPE=NIGHTLY")
+=======
+  set_tests_properties(test_post_training_quantization_mobilenetv1
+                       PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   set_tests_properties(test_post_training_quantization_resnet50
                        PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT

@@ -26,10 +26,12 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTInspectorTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 16, 16], dtype="float32")
+<<<<<<< HEAD
             matmul_out = fluid.layers.matmul(
                 x=data,
                 y=data,
@@ -37,6 +39,13 @@ class TensorRTInspectorTest(InferencePassTest):
                 transpose_y=self.transpose_y,
                 alpha=self.alpha,
             )
+=======
+            matmul_out = fluid.layers.matmul(x=data,
+                                             y=data,
+                                             transpose_x=self.transpose_x,
+                                             transpose_y=self.transpose_y,
+                                             alpha=self.alpha)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {

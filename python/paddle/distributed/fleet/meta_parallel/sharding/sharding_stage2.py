@@ -75,11 +75,17 @@ class ShardingStage2(nn.Layer):
 
         # training options
         self._layer = layer
+<<<<<<< HEAD
         self._sharding_optimizers = (
             [sharding_optimizer]
             if not isinstance(sharding_optimizer, list)
             else sharding_optimizer
         )
+=======
+        self._sharding_optimizers = [
+            sharding_optimizer
+        ] if not isinstance(sharding_optimizer, list) else sharding_optimizer
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         assert all(
             list(
                 map(
@@ -92,11 +98,16 @@ class ShardingStage2(nn.Layer):
         self._auto_refresh_trainable = auto_refresh_trainable
 
         # Communication related attributes
+<<<<<<< HEAD
         self._group = (
             collective.new_group(_get_global_group().ranks)
             if group is None
             else group
         )
+=======
+        self._group = dist.new_group(
+            _get_global_group().ranks) if group is None else group
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._world_size_scaling = 1.0 / self._group.nranks
         assert (
             self._group.nranks > 1
@@ -119,9 +130,14 @@ class ShardingStage2(nn.Layer):
         self._param_grads = []
 
         # Set grad storage size & Display param sizes and model sizes
+<<<<<<< HEAD
         model_size = sum(
             [np.prod(p.shape) for p in self._layer.parameters()]
         ).item()
+=======
+        model_size = sum([np.prod(p.shape)
+                          for p in self._layer.parameters()]).item()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         assert buffer_max_size >= 0, "buffer_max_size must be GE than 0."
         self._buffer_max_size = self._rank_buffer_size(
             buffer_max_size, model_size
@@ -182,6 +198,7 @@ class ShardingStage2(nn.Layer):
         return fw
 
     def set_state_dict(self, state_dict, use_structured_name=True):
+<<<<<<< HEAD
         self._layer.set_state_dict(
             state_dict, use_structured_name=use_structured_name
         )
@@ -195,6 +212,18 @@ class ShardingStage2(nn.Layer):
         return self._layer.state_dict(
             destination=None, include_sublayers=True, structured_name_prefix=""
         )
+=======
+        self._layer.set_state_dict(state_dict,
+                                   use_structured_name=use_structured_name)
+
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
+        return self._layer.state_dict(destination=None,
+                                      include_sublayers=True,
+                                      structured_name_prefix="")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _clear_gradients(self):
         """
@@ -314,9 +343,16 @@ class ShardingStage2(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
+<<<<<<< HEAD
             dist.broadcast(
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
+=======
+            dist.broadcast(buffer,
+                           self._global_root_rank,
+                           self._group,
+                           use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # Multi stream operation will be supported later
         collective.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
@@ -370,6 +406,7 @@ class ShardingStage2(nn.Layer):
 
                     # Synchronize the reduce parameter gradient
                     self._tasks_flow.append(
+<<<<<<< HEAD
                         Taskflow(
                             task=dist.reduce(
                                 tensor=param.grad,
@@ -387,6 +424,19 @@ class ShardingStage2(nn.Layer):
                         group=self._group,
                         use_calc_stream=True,
                     )
+=======
+                        Taskflow(task=dist.reduce(
+                            tensor=param.grad,
+                            dst=self._group.ranks[dst_rank],
+                            group=self._group,
+                            use_calc_stream=True),
+                                 callback=cleanup))
+
+                    # Multi stream operation will be supported later
+                    dist.wait(tensor=param.grad,
+                              group=self._group,
+                              use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     self._clear_task_flow()
@@ -434,6 +484,7 @@ class ShardingStage2(nn.Layer):
                         # Reduce the bucket
                         grad_storage.sent = True
                         self._tasks_flow.append(
+<<<<<<< HEAD
                             Taskflow(
                                 task=dist.reduce(
                                     tensor=grad_storage.buffer,
@@ -453,6 +504,19 @@ class ShardingStage2(nn.Layer):
                             group=self._group,
                             use_calc_stream=True,
                         )
+=======
+                            Taskflow(task=dist.reduce(
+                                tensor=grad_storage.buffer,
+                                dst=self._group.ranks[grad_storage.destination],
+                                group=self._group,
+                                use_calc_stream=True),
+                                     callback=cleanup))
+
+                        # Multi stream operation will be supported later
+                        dist.wait(tensor=grad_storage.buffer,
+                                  group=self._group,
+                                  use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     self._clear_task_flow()
@@ -516,6 +580,7 @@ class ShardingStage2(nn.Layer):
             else:
                 self._param_grads.append(param.name)
                 print(
+<<<<<<< HEAD
                     "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, ".format(
                         param.name,
                         param.shape,
@@ -523,6 +588,12 @@ class ShardingStage2(nn.Layer):
                         self._grad_storages[param.dtype][dst_rank]._fill,
                     )
                 )
+=======
+                    "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, "
+                    .format(param.name, param.shape,
+                            self._trainable_param2align[param.name],
+                            self._grad_storages[param.dtype][dst_rank]._fill))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self._grad_storage_list = list(
             chain(
@@ -582,6 +653,7 @@ class ShardingStage2(nn.Layer):
         if Type.fp16.value in rank_buffer_size.keys():
             # FP16 GradStorage and model size
             print(
+<<<<<<< HEAD
                 "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".format(
                     rank_buffer_size[Type.fp16.value] / 2**19,
                     model_size / 2**19,
@@ -595,6 +667,17 @@ class ShardingStage2(nn.Layer):
                     model_size / 2**18,
                 )
             )
+=======
+                "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
+                .format(rank_buffer_size[Type.fp16.value] / 2**19,
+                        model_size / 2**19))
+        if Type.fp32.value in rank_buffer_size.keys():
+            # FP32 GradStorage and model size
+            print(
+                "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
+                .format(rank_buffer_size[Type.fp32.value] / 2**18,
+                        model_size / 2**18))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return rank_buffer_size
 
     def _redefine_opt_step(self):

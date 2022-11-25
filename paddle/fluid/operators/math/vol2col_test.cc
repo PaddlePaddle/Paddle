@@ -16,7 +16,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/tensor_util.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -134,10 +137,17 @@ void testVol2col() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
+<<<<<<< HEAD
   phi::DenseTensor input;
   phi::DenseTensor input_tmp;
   phi::DenseTensor output;
   phi::DenseTensor output_tmp;
+=======
+  paddle::framework::Tensor input;
+  paddle::framework::Tensor input_tmp;
+  paddle::framework::Tensor output;
+  paddle::framework::Tensor output_tmp;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   auto* place = new paddle::platform::CUDAPlace();
   auto* context = new phi::GPUContext(*place);
@@ -202,7 +212,11 @@ void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
                               output_width},
                              *place);
 
+<<<<<<< HEAD
   phi::funcs::Vol2ColFunctor<phi::GPUContext, float> vol2col;
+=======
+  paddle::operators::math::Vol2ColFunctor<phi::GPUContext, float> vol2col;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   vol2col(*context, input, dilations, strides, paddings, &output);
 
   float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
@@ -228,7 +242,11 @@ void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
 
+<<<<<<< HEAD
   phi::funcs::Col2VolFunctor<phi::GPUContext, float> col2vol;
+=======
+  paddle::operators::math::Col2VolFunctor<phi::GPUContext, float> col2vol;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   col2vol(*context, output, dilations, strides, paddings, &input);
 
   float* in_ptr;

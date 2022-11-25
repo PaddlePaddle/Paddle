@@ -61,11 +61,17 @@ class TestHistogramOpAPI(unittest.TestCase):
                 inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
                 inputs = paddle.to_tensor(inputs_np)
                 actual = paddle.histogram(inputs, bins=5, min=1, max=5)
+<<<<<<< HEAD
                 self.assertTrue(
                     (actual.numpy() == expected).all(),
                     msg='histogram output is wrong, out ='
                     + str(actual.numpy()),
                 )
+=======
+                self.assertTrue((actual.numpy() == expected).all(),
+                                msg='histogram output is wrong, out =' +
+                                str(actual.numpy()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestHistogramOpError(unittest.TestCase):
@@ -83,9 +89,15 @@ class TestHistogramOpError(unittest.TestCase):
         """Test bins should be greater than or equal to 1."""
 
         def net_func():
+<<<<<<< HEAD
             input_value = paddle.fluid.layers.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
+=======
+            input_value = paddle.fluid.layers.fill_constant(shape=[3, 4],
+                                                            dtype='float32',
+                                                            value=3.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.histogram(input=input_value, bins=-1, min=1, max=5)
 
         with self.assertRaises(ValueError):
@@ -95,9 +107,15 @@ class TestHistogramOpError(unittest.TestCase):
         """Test max must be larger or equal to min."""
 
         def net_func():
+<<<<<<< HEAD
             input_value = paddle.fluid.layers.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
+=======
+            input_value = paddle.fluid.layers.fill_constant(shape=[3, 4],
+                                                            dtype='float32',
+                                                            value=3.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.histogram(input=input_value, bins=1, min=5, max=1)
 
         with self.assertRaises(ValueError):
@@ -107,9 +125,15 @@ class TestHistogramOpError(unittest.TestCase):
         """Test range of min, max is not finite"""
 
         def net_func():
+<<<<<<< HEAD
             input_value = paddle.fluid.layers.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
+=======
+            input_value = paddle.fluid.layers.fill_constant(shape=[3, 4],
+                                                            dtype='float32',
+                                                            value=3.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.histogram(input=input_value, bins=1, min=-np.inf, max=5)
 
         with self.assertRaises(TypeError):
@@ -118,6 +142,7 @@ class TestHistogramOpError(unittest.TestCase):
     def test_type_errors(self):
         with program_guard(Program()):
             # The input type must be Variable.
+<<<<<<< HEAD
             self.assertRaises(
                 TypeError, paddle.histogram, 1, bins=5, min=1, max=5
             )
@@ -126,9 +151,26 @@ class TestHistogramOpError(unittest.TestCase):
             self.assertRaises(
                 TypeError, paddle.histogram, x_bool, bins=5, min=1, max=5
             )
+=======
+            self.assertRaises(TypeError,
+                              paddle.histogram,
+                              1,
+                              bins=5,
+                              min=1,
+                              max=5)
+            # The input type must be 'int32', 'int64', 'float32', 'float64'
+            x_bool = fluid.data(name='x_bool', shape=[4, 3], dtype='bool')
+            self.assertRaises(TypeError,
+                              paddle.histogram,
+                              x_bool,
+                              bins=5,
+                              min=1,
+                              max=5)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestHistogramOp(OpTest):
+
     def setUp(self):
         self.op_type = "histogram"
         self.init_test_case()
@@ -136,9 +178,15 @@ class TestHistogramOp(OpTest):
         self.python_api = paddle.histogram
         self.inputs = {"X": np_input}
         self.init_attrs()
+<<<<<<< HEAD
         Out, _ = np.histogram(
             np_input, bins=self.bins, range=(self.min, self.max)
         )
+=======
+        Out, _ = np.histogram(np_input,
+                              bins=self.bins,
+                              range=(self.min, self.max))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.outputs = {"Out": Out.astype(np.int64)}
 
     def init_test_case(self):

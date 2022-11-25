@@ -22,6 +22,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDatasetAbstract(unittest.TestCase):
+
     def func_test_main(self):
         dataset = Dataset()
         try:
@@ -43,9 +44,11 @@ class TestDatasetAbstract(unittest.TestCase):
 
 
 class TestDatasetWithDiffOutputPlace(unittest.TestCase):
+
     def get_dataloader(self, num_workers):
         dataset = paddle.vision.datasets.MNIST(
             mode='test',
+<<<<<<< HEAD
             transform=transforms.Compose(
                 [
                     transforms.CenterCrop(20),
@@ -58,6 +61,18 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
         loader = paddle.io.DataLoader(
             dataset, batch_size=32, num_workers=num_workers, shuffle=True
         )
+=======
+            transform=transforms.Compose([
+                transforms.CenterCrop(20),
+                transforms.RandomResizedCrop(14),
+                transforms.Normalize(),
+                transforms.ToTensor()
+            ]))
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=32,
+                                      num_workers=num_workers,
+                                      shuffle=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return loader
 
     def run_check_on_cpu(self):

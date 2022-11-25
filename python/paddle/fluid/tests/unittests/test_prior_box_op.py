@@ -19,6 +19,7 @@ from op_test import OpTest
 import paddle
 
 
+<<<<<<< HEAD
 def python_prior_box(
     input,
     image,
@@ -34,6 +35,21 @@ def python_prior_box(
     min_max_aspect_ratios_order=False,
     name=None,
 ):
+=======
+def python_prior_box(input,
+                     image,
+                     min_sizes,
+                     aspect_ratios=[1.],
+                     variances=[0.1, 0.1, 0.2, 0.2],
+                     max_sizes=None,
+                     flip=False,
+                     clip=False,
+                     step_w=0,
+                     step_h=0,
+                     offset=0.5,
+                     min_max_aspect_ratios_order=False,
+                     name=None):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return paddle.fluid.layers.detection.prior_box(
         input,
         image,
@@ -46,11 +62,16 @@ def python_prior_box(
         steps=[step_w, step_h],
         offset=offset,
         name=name,
+<<<<<<< HEAD
         min_max_aspect_ratios_order=min_max_aspect_ratios_order,
     )
+=======
+        min_max_aspect_ratios_order=min_max_aspect_ratios_order)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestPriorBoxOp(OpTest):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -109,6 +130,11 @@ class TestPriorBoxOp(OpTest):
         self.flip = True
         self.set_min_max_aspect_ratios_order()
         self.real_aspect_ratios = [1, 2.0, 1.0 / 2.0, 3.0, 1.0 / 3.0]
+<<<<<<< HEAD
+=======
+        self.aspect_ratios = np.array(self.aspect_ratios,
+                                      dtype=np.float64).flatten()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.variances = [0.1, 0.1, 0.2, 0.2]
         self.variances = np.array(self.variances, dtype=np.float64).flatten()
 
@@ -146,24 +172,40 @@ class TestPriorBoxOp(OpTest):
                             ar = self.real_aspect_ratios[r]
                             c_w = min_size * math.sqrt(ar) / 2
                             c_h = (min_size / math.sqrt(ar)) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             idx += 1
 
                         if len(self.max_sizes) > 0:
                             max_size = self.max_sizes[s]
                             # second prior: aspect_ratio = 1,
                             c_w = c_h = math.sqrt(min_size * max_size) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             idx += 1
                     else:
                         c_w = c_h = min_size / 2.0
@@ -178,12 +220,20 @@ class TestPriorBoxOp(OpTest):
                             max_size = self.max_sizes[s]
                             # second prior: aspect_ratio = 1,
                             c_w = c_h = math.sqrt(min_size * max_size) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             idx += 1
 
                         # rest of priors
@@ -193,31 +243,46 @@ class TestPriorBoxOp(OpTest):
                                 continue
                             c_w = min_size * math.sqrt(ar) / 2
                             c_h = (min_size / math.sqrt(ar)) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             idx += 1
 
         # clip the prior's coordidate such that it is within[0, 1]
         if self.clip:
             out_boxes = np.clip(out_boxes, 0.0, 1.0)
         # set the variance.
+<<<<<<< HEAD
         out_var = np.tile(
             self.variances, (self.layer_h, self.layer_w, self.num_priors, 1)
         )
+=======
+        out_var = np.tile(self.variances,
+                          (self.layer_h, self.layer_w, self.num_priors, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
 
 
 class TestPriorBoxOpWithoutMaxSize(TestPriorBoxOp):
+
     def set_max_sizes(self):
         self.max_sizes = []
 
 
 class TestPriorBoxOpWithSpecifiedOutOrder(TestPriorBoxOp):
+
     def set_min_max_aspect_ratios_order(self):
         self.min_max_aspect_ratios_order = True
 

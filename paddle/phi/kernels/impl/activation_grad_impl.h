@@ -21,7 +21,10 @@
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/scale_kernel.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace phi {
 
@@ -340,6 +343,7 @@ void PowGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void PowDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
@@ -512,6 +516,8 @@ void PowTripleGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void SqrtDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dx,
@@ -594,6 +600,7 @@ void SquareDoubleGradKernel(const Context& dev_ctx,
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void SinDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
@@ -698,4 +705,6 @@ void CosTripleGradKernel(const Context& dev_ctx,
           d_ddx);  // output
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }  // namespace phi

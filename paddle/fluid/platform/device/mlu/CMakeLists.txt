@@ -2,11 +2,22 @@ if(NOT WITH_MLU)
   return()
 endif()
 
+<<<<<<< HEAD
 cc_test(mlu_enforce_test SRCS enforce_test.cc)
 cc_library(
   mlu_info
   SRCS mlu_info.cc
   DEPS enforce glog malloc monitor neuware_lib)
+=======
+cc_test(
+  mlu_enforce_test
+  SRCS enforce_test.cc
+  DEPS stringpiece)
+cc_library(
+  mlu_info
+  SRCS mlu_info.cc
+  DEPS enforce glog monitor neuware_lib)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_library(
   mlu_stream
   SRCS mlu_stream.cc

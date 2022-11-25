@@ -25,10 +25,12 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertLeakyReluTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -54,9 +56,15 @@ class TrtConvertLeakyReluTest(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "input_data": TensorConfig(
                                 data_gen=partial(generate_input1, shape)
                             )
+=======
+                            "input_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, shape))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         },
                         outputs=["y_data"],
                     )
@@ -64,8 +72,13 @@ class TrtConvertLeakyReluTest(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             if self.input_dim == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
@@ -119,8 +132,12 @@ class TrtConvertLeakyReluTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
+=======
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True

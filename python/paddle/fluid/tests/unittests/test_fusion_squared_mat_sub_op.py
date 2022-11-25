@@ -18,6 +18,7 @@ from op_test import OpTest
 
 
 class TestFusionSquaredMatSubOp(OpTest):
+
     def setUp(self):
         self.op_type = 'fusion_squared_mat_sub'
         self.m = 11
@@ -36,6 +37,12 @@ class TestFusionSquaredMatSubOp(OpTest):
         self.attrs = {
             'scalar': self.scalar,
         }
+<<<<<<< HEAD
+=======
+        self.attrs = {
+            'scalar': self.scalar,
+        }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def set_conf(self):
         pass
@@ -45,6 +52,7 @@ class TestFusionSquaredMatSubOp(OpTest):
 
 
 class TestFusionSquaredMatSubOpCase1(TestFusionSquaredMatSubOp):
+
     def set_conf(self):
         self.scalar = -0.3
 

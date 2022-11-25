@@ -38,6 +38,7 @@ def conv2d_residual_naive(out, residual):
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestConv2DBF16Op(TestConv2DOp):
+
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -69,9 +70,15 @@ class TestConv2DBF16Op(TestConv2DOp):
 
         self.inputs_fp32 = {'Input': self.input, 'Filter': self.filter}
 
+<<<<<<< HEAD
         conv_out, _, _, _, _ = conv2d_forward_naive(
             self.input, self.filter, self.groups, self.conv2d_param
         )
+=======
+        conv_out, _, _, _, _ = conv2d_forward_naive(self.input, self.filter,
+                                                    self.groups,
+                                                    self.conv2d_param)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.conv_output_float = conv_out
 
         if self.fuse_residual:
@@ -97,10 +104,17 @@ class TestConv2DBF16Op(TestConv2DOp):
             self.filter = convert_float_to_uint16(self.filter)
 
         self.inputs = {
+<<<<<<< HEAD
             'Input': self.input,
             'Filter': OpTest.np_dtype_to_fluid_dtype(
                 self.filter.astype(self.weight_type)
             ),
+=======
+            'Input':
+            self.input,
+            'Filter':
+            OpTest.np_dtype_to_fluid_dtype(self.filter.astype(self.weight_type))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
         if self.fuse_residual:
@@ -167,6 +181,7 @@ class TestConv2DBF16Op(TestConv2DOp):
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
+
     def init_fuse_relu(self):
         self.fuse_activation = None
 
@@ -249,6 +264,7 @@ def conv_backward(dout, x, w, params):
                     for k in range(H_out):
                         for l in range(W_out):
                             for ic in range(IC):
+<<<<<<< HEAD
                                 dweights[oc, ic, i, j] += (
                                     x_padded[
                                         n,
@@ -260,6 +276,13 @@ def conv_backward(dout, x, w, params):
                                 )
 
     dx_padded = np.pad(dx, ((0,), (0,), (padding,), (padding,)), 'constant')
+=======
+                                dweights[oc, ic, i, j] += x_padded[
+                                    n, ic, i + k * stride[0],
+                                    j + l * stride[1]] * dout[n, oc, k, l]
+
+    dx_padded = np.pad(dx, ((0, ), (0, ), (padding, ), (padding, )), 'constant')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     w_ = np.zeros_like(w)
     for i in range(KH):
@@ -273,6 +296,7 @@ def conv_backward(dout, x, w, params):
                     for kh in range(KH):
                         for kw in range(KW):
                             for ic in range(IC):
+<<<<<<< HEAD
                                 dx_padded[
                                     n,
                                     ic,
@@ -281,6 +305,12 @@ def conv_backward(dout, x, w, params):
                                 ] += (
                                     dout[n, oc, i, j] * w[oc, ic, kh, kw]
                                 )
+=======
+                                dx_padded[n, ic, stride[0] * i + kh,
+                                          stride[1] * j +
+                                          kw] += dout[n, oc, i, j] * w[oc, ic,
+                                                                       kh, kw]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if padding == 0:
         dx = dx_padded
@@ -291,18 +321,21 @@ def conv_backward(dout, x, w, params):
 
 
 class TestConv2DBF16WithPadding1(TestConv2DWithGradBF16Op):
+
     def init_test_case(self):
         TestConv2DWithGradBF16Op.init_test_case(self)
         self.pad = [1, 1]
 
 
 class TestConv2DBF16WithStride2(TestConv2DWithGradBF16Op):
+
     def init_test_case(self):
         TestConv2DWithGradBF16Op.init_test_case(self)
         self.stride = [2, 3]
 
 
 class TestConv2D(TestConv2DBF16Op):
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -317,6 +350,7 @@ class TestConv2D(TestConv2DBF16Op):
 
 
 class TestWithPad(TestConv2D):
+
     def init_test_case(self):
         TestConv2D.init_test_case(self)
         self.pad = [1, 1]
@@ -324,11 +358,13 @@ class TestWithPad(TestConv2D):
 
 
 class TestWithGroup(TestConv2D):
+
     def init_group(self):
         self.groups = 3
 
 
 class TestWithStride(TestConv2DBF16Op):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -343,6 +379,7 @@ class TestWithStride(TestConv2DBF16Op):
 
 
 class TestWithDilations(TestConv2DBF16Op):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -358,6 +395,7 @@ class TestWithDilations(TestConv2DBF16Op):
 
 
 class TestWith1x1ForceFP32Output(TestConv2DBF16Op):
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -374,6 +412,7 @@ class TestWith1x1ForceFP32Output(TestConv2DBF16Op):
 
 
 class TestWithInput1x1Filter1x1(TestConv2DBF16Op):
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]

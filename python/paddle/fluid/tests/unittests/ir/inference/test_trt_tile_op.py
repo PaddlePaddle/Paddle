@@ -24,11 +24,18 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTTileTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[4, 3, 224, 256], dtype="float32"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[4, 3, 224, 256],
+                              dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             tile_out = paddle.tile(x=data, repeat_times=[1, 1, 1, 1])
             out = fluid.layers.batch_norm(tile_out, is_test=True)
 
@@ -51,6 +58,7 @@ class TRTTileTest(InferencePassTest):
 
 
 class TRTTileExpandTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
@@ -76,6 +84,7 @@ class TRTTileExpandTest(InferencePassTest):
 
 
 class TRTTileExpandStaticTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
@@ -101,6 +110,7 @@ class TRTTileExpandStaticTest(InferencePassTest):
 
 
 class TRTTileExpandHalfTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")

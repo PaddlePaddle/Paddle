@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 
 
 class TestInferNoNeedBufferSlots(unittest.TestCase):
+
     def net(self):
         x1 = (
             fluid.default_main_program()

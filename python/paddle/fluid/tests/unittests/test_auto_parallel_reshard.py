@@ -39,6 +39,7 @@ PP_MESH_1 = None
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -59,10 +60,33 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+        bias_attr = None
+
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
         if _global_parallel_strategy == "pp":
+<<<<<<< HEAD
             auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
             auto.shard_tensor(self.linear1.weight, PP_MESH_1, [None, None])
         else:
@@ -72,6 +96,29 @@ class MLPLayer(nn.Layer):
             auto.shard_tensor(
                 self.linear1.weight, _global_process_mesh, [None, None]
             )
+=======
+            auto.shard_tensor(self.linear0.weight,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_0,
+                                  "dims_mapping": [-1, -1]
+                              })
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_1,
+                                  "dims_mapping": [-1, -1]
+                              })
+        else:
+            auto.shard_tensor(self.linear0.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, -1]
+                              })
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, -1]
+                              })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -88,6 +135,7 @@ def mlp_forward(train_program, start_program):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
+<<<<<<< HEAD
         input = static.data(
             name="input", shape=[batch_size, hidden_size], dtype='float32'
         )
@@ -108,6 +156,42 @@ def mlp_forward(train_program, start_program):
             intermediate_size=4 * hidden_size,
             initializer_range=0.02,
         )
+=======
+        input = static.data(name="input",
+                            shape=[batch_size, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
+
+        if _global_parallel_strategy == "pp":
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_0,
+                                  "dims_mapping": [-1, -1]
+                              })
+            auto.shard_tensor(label,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_1,
+                                  "dims_mapping": [-1, -1]
+                              })
+        elif _global_parallel_strategy == "dp":
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
+        else:
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, -1]
+                              })
+
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
@@ -141,6 +225,7 @@ def get_dist_prog(
     if change_process_mesh:
         global PP_MESH_1
         dist_context.get_tensor_dist_attr_for_program(
+<<<<<<< HEAD
             train_program.global_block().vars["gelu_0.tmp_0"]
         ).process_mesh = PP_MESH_1
 
@@ -152,6 +237,17 @@ def get_dist_prog(
         no_grad_set=None,
         callbacks=None,
     )
+=======
+            train_program.global_block(
+            ).vars["gelu_0.tmp_0"]).process_mesh = PP_MESH_1
+
+    params_grads = parallelizer._generate_backward(complete_train_program,
+                                                   startup_program,
+                                                   loss,
+                                                   parameter_list=None,
+                                                   no_grad_set=None,
+                                                   callbacks=None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # logical partition
     partitioner = Partitioner(dist_context, rank_id)
@@ -232,10 +328,14 @@ def check_send_recv_result(dist_main_prog, rank_id):
                 and "gelu_0.tmp_0@GRAD" in op.input_arg_names
             ):
                 send_result = True
+<<<<<<< HEAD
             if (
                 op.type == "recv_v2"
                 and "gelu_0.tmp_0" in op.output_arg_names[0]
             ):
+=======
+            if op.type == "recv_v2" and "gelu_0.tmp_0" in op.output_arg_names[0]:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 recv_result = True
 
     return send_result and recv_result
@@ -284,6 +384,7 @@ def check_initialization_for_dp(dist_startup_prog):
 
 
 class TestMLPReshard(unittest.TestCase):
+
     def test_complete_backward_annotation(self):
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(mesh=[0, 1])

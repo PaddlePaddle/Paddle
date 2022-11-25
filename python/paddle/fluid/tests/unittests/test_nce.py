@@ -55,6 +55,7 @@ def nce(
         o = sample_out[i]
         cost = -np.log(o / (o + b)) if samples[i][2] else -np.log(b / (o + b))
         out[samples[i][0]] += cost * samples[i][3]
+<<<<<<< HEAD
     return (
         out[:, np.newaxis],
         np.array(sample_out).reshape(
@@ -76,6 +77,19 @@ class TestNCE(OpTest):
         num_neg_samples,
         is_sparse,
     ):
+=======
+    return (out[:, np.newaxis],
+            np.array(sample_out).reshape(batch_size,
+                                         num_sample_class + num_true_class),
+            np.array(sample_labels).reshape(batch_size,
+                                            num_sample_class + num_true_class))
+
+
+class TestNCE(OpTest):
+
+    def generate_data(self, dim, batch_size, num_classes, num_true_class,
+                      num_neg_samples, is_sparse):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         input = np.random.randn(batch_size, dim).astype(np.float32)
         weight = np.random.randn(num_classes, dim).astype(np.float32)
         bias = np.random.randn(num_classes).astype(np.float32)
@@ -135,12 +149,19 @@ class TestNCE(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["Input", "Weight", "Bias"], "Cost", max_relative_error=0.02
         )
+=======
+        self.check_grad(["Input", "Weight", "Bias"],
+                        "Cost",
+                        max_relative_error=0.02)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNCECase1Tensor(TestNCE):
+
     def set_data(self):
         self.generate_data(10, 20, 100, 2, 5, False)
 
@@ -155,6 +176,7 @@ class TestNCETensorIsTest(TestNCE):
 
 
 class TestNCECase1SelectedRows(unittest.TestCase):
+
     def setUp(self):
         self.base_lr = 0.0001
         self.batch_size = 8
@@ -189,6 +211,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         input = fluid.layers.data(name="input", shape=[10], dtype="float32")
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
+<<<<<<< HEAD
         w_param = (
             fluid.default_main_program()
             .global_block()
@@ -223,6 +246,30 @@ class TestNCECase1SelectedRows(unittest.TestCase):
             num_neg_samples=num_neg_samples,
             is_sparse=is_sparse,
         )
+=======
+        w_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 10],
+            dtype='float32',
+            name='nce_w',
+            initializer=initializer.ConstantInitializer())
+        b_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 1],
+            dtype='float32',
+            name='nce_b',
+            initializer=initializer.ConstantInitializer())
+
+        cost = fluid.layers.nce(input=input,
+                                label=label,
+                                num_total_classes=num_total_classes,
+                                sampler=sampler,
+                                custom_dist=custom_dist,
+                                sample_weight=None,
+                                param_attr='nce_w',
+                                bias_attr='nce_b',
+                                seed=1,
+                                num_neg_samples=num_neg_samples,
+                                is_sparse=is_sparse)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = self.get_optimizer()
@@ -282,8 +329,10 @@ class TestNCECase1SelectedRows(unittest.TestCase):
 
 
 class TestNCE_OpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             input1 = fluid.create_lod_tensor(
                 np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace()
             )
@@ -317,14 +366,49 @@ class TestNCE_OpError(unittest.TestCase):
             label4 = fluid.layers.data(
                 name='label4', shape=[-1, 1], dtype="int32"
             )
+=======
+            input1 = fluid.create_lod_tensor(np.array([0.0, 3.0, 2.0, 4.0]),
+                                             [[1, 1, 2]], fluid.CPUPlace())
+            label1 = fluid.layers.data(name='label1',
+                                       shape=[-1, 4],
+                                       dtype="int64")
+            # the input(input) of nce layer must be Variable.
+            self.assertRaises(TypeError, fluid.layers.nce, input1, label1, 5)
+
+            input2 = fluid.layers.data(name='input2',
+                                       shape=[-1, 4],
+                                       dtype="float32")
+            label2 = fluid.create_lod_tensor(np.array([0.0, 3.0, 2.0, 4.0]),
+                                             [[1, 1, 2]], fluid.CPUPlace())
+            # the input(label) of nce layer must be Variable.
+            self.assertRaises(TypeError, fluid.layers.nce, input2, label2, 5)
+
+            input3 = fluid.layers.data(name='input3',
+                                       shape=[-1, 4],
+                                       dtype="float16")
+            label3 = fluid.layers.data(name='label3',
+                                       shape=[-1, 1],
+                                       dtype="int64")
+            # the data type of input(input) must be float32 or float64.
+            self.assertRaises(TypeError, fluid.layers.nce, input3, label3, 5)
+
+            input4 = fluid.layers.data(name='input4',
+                                       shape=[-1, 4],
+                                       dtype="float32")
+            label4 = fluid.layers.data(name='label4',
+                                       shape=[-1, 1],
+                                       dtype="int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             # the data type of input(label) must be int64.
             self.assertRaises(TypeError, fluid.layers.nce, input4, label4, 5)
 
 
 class TestDygraphNCE_OpError(unittest.TestCase):
+
     def test_NCE_errors(self):
         with program_guard(Program(), Program()):
             nce = fluid.NCE(20, 5)
+<<<<<<< HEAD
             input1 = fluid.create_lod_tensor(
                 np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace()
             )
@@ -367,6 +451,48 @@ class TestDygraphNCE_OpError(unittest.TestCase):
             label5 = fluid.layers.data(
                 name='label5', shape=[-1, 1], dtype="int64"
             )
+=======
+            input1 = fluid.create_lod_tensor(np.array([0.0, 3.0, 2.0, 4.0]),
+                                             [[1, 1, 2]], fluid.CPUPlace())
+            label1 = fluid.layers.data(name='label1',
+                                       shape=[-1, 4],
+                                       dtype="int64")
+            # the input(input) of NCE layer must be Variable.
+            self.assertRaises(TypeError, nce, input1, label1)
+
+            input2 = fluid.layers.data(name='input2',
+                                       shape=[-1, 4],
+                                       dtype="float32")
+            label2 = fluid.create_lod_tensor(np.array([0.0, 3.0, 2.0, 4.0]),
+                                             [[1, 1, 2]], fluid.CPUPlace())
+            # the input(label) of NCE layer must be Variable.
+            self.assertRaises(TypeError, nce, input2, label2)
+
+            input3 = fluid.layers.data(name='input3',
+                                       shape=[-1, 4],
+                                       dtype="float16")
+            label3 = fluid.layers.data(name='label3',
+                                       shape=[-1, 1],
+                                       dtype="int64")
+            # the data type of input(input) must be float32 or float64.
+            self.assertRaises(TypeError, nce, input3, label3)
+
+            input4 = fluid.layers.data(name='input4',
+                                       shape=[-1, 4],
+                                       dtype="float32")
+            label4 = fluid.layers.data(name='label4',
+                                       shape=[-1, 1],
+                                       dtype="int32")
+            # the data type of input(label) must be int64.
+            self.assertRaises(TypeError, nce, input4, label4)
+
+            input5 = fluid.layers.data(name='input5',
+                                       shape=[-1, 4],
+                                       dtype="float32")
+            label5 = fluid.layers.data(name='label5',
+                                       shape=[-1, 1],
+                                       dtype="int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             sample_weight = fluid.create_lod_tensor(
                 np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace()
             )

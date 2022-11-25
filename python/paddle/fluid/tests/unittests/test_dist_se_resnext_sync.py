@@ -22,18 +22,26 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistSeResneXt2x2(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reader_alloc = False
 
     @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_se_resnext.py",
             delta=1e-7,
             check_error_log=True,
             log_name=flag_name,
         )
+=======
+        self.check_with_place("dist_se_resnext.py",
+                              delta=1e-7,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

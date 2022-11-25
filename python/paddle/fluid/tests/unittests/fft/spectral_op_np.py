@@ -70,10 +70,19 @@ def _fftc2r(a, n=None, axis=-1, norm=None, forward=None):
     a = asarray(a)
     if n is None:
         n = (a.shape[axis] - 1) * 2
+<<<<<<< HEAD
     inv_norm = _get_inv_norm(n, norm)
     output = _raw_fft(
         a.conj() if forward else a, n, axis, True, False, inv_norm
     )
+=======
+    if forward:
+        inv_norm = _get_forward_norm(n, norm)
+    else:
+        inv_norm = _get_backward_norm(n, norm)
+    output = _raw_fft(a.conj() if forward else a, n, axis, True, False,
+                      inv_norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return output
 
 

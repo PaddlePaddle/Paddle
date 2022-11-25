@@ -181,9 +181,15 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
 }
 
 template <typename BinaryOperation>
+<<<<<<< HEAD
 phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
                                       const phi::DenseTensor& vec_b,
                                       BinaryOperation f) {
+=======
+LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a,
+                               const LoDTensor& vec_b,
+                               BinaryOperation f) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   PADDLE_ENFORCE_EQ(vec_a.dims(),
                     vec_b.dims(),
                     platform::errors::InvalidArgument(
@@ -191,7 +197,11 @@ phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
                         "different: %s, %s.",
                         vec_a.dims(),
                         vec_b.dims()));
+<<<<<<< HEAD
   phi::DenseTensor vec_y;
+=======
+  LoDTensor vec_y;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
   const float* b = vec_b.data<float>();

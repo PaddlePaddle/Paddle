@@ -30,7 +30,11 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+<<<<<<< HEAD
 bool OpSupportPrecision(const std::string& op_type,
+=======
+bool OpSupportPrecision(const std::string& phi_op_type,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         phi::Backend backend,
                         phi::DataType precision,
                         const std::unordered_set<std::string>& blacklist);
@@ -51,8 +55,13 @@ void ConvertToMixedPrecision(const std::string& model_file,
                              const std::string& mixed_params_file,
                              phi::DataType mixed_precision,
                              phi::Backend backend,
+<<<<<<< HEAD
                              bool keep_io_types,
                              const std::unordered_set<std::string>& black_list);
+=======
+                             bool keep_io_types = true,
+                             std::unordered_set<std::string> black_list = {});
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 }  // namespace analysis
 }  // namespace inference

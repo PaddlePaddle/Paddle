@@ -16,6 +16,7 @@
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
+<<<<<<< HEAD
 
 import os
 from paddle.utils import gast
@@ -73,6 +74,28 @@ from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import (
 from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import (
     DecoratorTransformer,
 )
+=======
+import os
+from paddle.utils import gast
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import EarlyReturnTransformer
+from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
+from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
+from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
+from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakTransformOptimizer
+from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
+from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
+from paddle.fluid.dygraph.dygraph_to_static.grad_transformer import GradTransformer
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
+from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
+from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
+from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTransformer
+from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import CreateVariableTransformer
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -96,6 +119,21 @@ def apply_optimization(transformers):
         transformers.insert(3, BreakTransformOptimizer)
 
 
+<<<<<<< HEAD
+=======
+def apply_optimization(transformers):
+    """
+    Judge wheter to apply optimized transformation, such as BreakTransformOptimizer.
+    And not all optimized transformations are applied by default. It's controlled by
+    'export FLAGS_optim_transformation=1'
+    """
+    flag = str(
+        os.environ.get('FLAGS_optim_transformation')) in ['1', 'True', 'true']
+    if flag:
+        transformers.insert(3, BreakTransformOptimizer)
+
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class DygraphToStaticAst(BaseTransformer):
     """
     Main class to transform Dygraph to Static Graph
@@ -132,6 +170,10 @@ class DygraphToStaticAst(BaseTransformer):
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
+<<<<<<< HEAD
+=======
+            ListTransformer,  # List used in control flow
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not

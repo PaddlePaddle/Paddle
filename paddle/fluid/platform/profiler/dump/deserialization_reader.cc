@@ -274,7 +274,10 @@ DeserializationReader::RestoreOperatorSupplementEventNode(
   op_supplement_event.timestamp_ns = op_supplement_event_proto.timestamp_ns();
   op_supplement_event.op_type = op_supplement_event_proto.op_type();
   op_supplement_event.callstack = op_supplement_event_proto.callstack();
+<<<<<<< HEAD
   op_supplement_event.op_id = op_supplement_event_proto.op_id();
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   op_supplement_event.process_id = op_supplement_event_proto.process_id();
   op_supplement_event.thread_id = op_supplement_event_proto.thread_id();
   std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;

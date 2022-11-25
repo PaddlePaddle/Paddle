@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+<<<<<<< HEAD
 #include <thread>
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -195,9 +198,14 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
       static_unique_ptr_cast<Allocation>(std::move(underlying_allocation)),
       default_stream_,
       this);
+<<<<<<< HEAD
   VLOG(8) << "Thread " << std::this_thread::get_id() << " Allocate "
           << allocation->size() << " bytes at address " << allocation->ptr()
           << "  , stream: " << default_stream_;
+=======
+  VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
+          << allocation->ptr() << "  , stream: " << default_stream_;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   return allocation;
 }
 

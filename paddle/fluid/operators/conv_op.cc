@@ -190,8 +190,35 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+<<<<<<< HEAD
   // todo enable data layout when it's ready
   // (https://github.com/PaddlePaddle/Paddle/pull/20042)
+=======
+  std::string data_format =
+      "AnyLayout";  // todo enable data layout when it's ready
+  framework::DataLayout layout = framework::StringToDataLayout(data_format);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kCUDNN;
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+    customized_type_value =
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
+            ? OperatorWithKernel::IndicateVarDataType(ctx, "Filter") ==
+                      framework::DataTypeTrait<int8_t>::DataType()
+                  ? kConvMKLDNNINT8WS8
+                  : kConvMKLDNNINT8
+            : kConvMKLDNNFP32;
+  }
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   if (input_data_type != framework::proto::VarType::INT8 &&
       input_data_type != framework::proto::VarType::UINT8 &&
@@ -208,13 +235,42 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(input_data_type),
             paddle::framework::DataTypeToString(filter_data_type)));
   }
+<<<<<<< HEAD
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
+=======
+// #ifndef PADDLE_WITH_ASCEND_CL
+//   if (input_data_type == framework::proto::VarType::FP16) {
+//     PADDLE_ENFORCE_EQ(
+//         library, framework::LibraryType::kCUDNN,
+//         platform::errors::InvalidArgument(
+//             "float16 can only be used when CUDNN or NPU is used"));
+//   }
+// #endif
+#if PADDLE_WITH_CUDA
+  if (input_data_type == framework::proto::VarType::BF16 &&
+      library == framework::LibraryType::kCUDNN) {
+    PADDLE_ENFORCE_GE(
+        platform::DnnVersion(),
+        8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
+#endif  // PADDLE_WITH_CUDA
+
+  auto type = framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout, library, customized_type_value);
+  return type;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 framework::OpKernelType ConvOp::GetKernelTypeForVar(
     const std::string& var_name,
+<<<<<<< HEAD
     const phi::DenseTensor& tensor,
+=======
+    const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
@@ -228,7 +284,11 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
     auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for conv
     // op. Treat this as NCHW (default data_format value)
+<<<<<<< HEAD
     if (dl != phi::DataLayout::kAnyLayout) {
+=======
+    if (dl != framework::DataLayout::kAnyLayout) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -297,6 +357,85 @@ void Conv2DOpMaker::Make() {
                             "dilations(h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1});
+<<<<<<< HEAD
+=======
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<bool>("fuse_relu_before_depthwise_conv",
+                "(bool, default false) Only used in cuda depthwise kernel")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<bool>(
+      "use_quantizer",
+      "(bool, default false) "
+      "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "int8", "bfloat16"})
+      .AsExtra();
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<std::string>("fuse_activation",
+                       "(string, default \"\") Only used in mkldnn kernel")
+      .SetDefault("")
+      .AsExtra();
+  AddAttr<float>("fuse_alpha",
+                 "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f)
+      .AsExtra();
+  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f)
+      .AsExtra();
+  AddAttr<bool>(
+      "use_addto",
+      "(bool, default false) If use addto strategy or not, only used in "
+      "cudnn kernel")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<bool>("fuse_residual_connection",
+                "(bool, default false) Only used in mkldnn kernel. Used "
+                "whenever convolution output is as an input to residual "
+                "connection.")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<float>("Scale_in",
+                 "Scale_in to be used for int8 input data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f)
+      .AsExtra();
+  AddAttr<float>("Scale_out",
+                 "Scale_out to be used for int8 output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f)
+      .AsExtra();
+  AddAttr<float>("Scale_in_eltwise",
+                 "Scale_in_eltwise to be used for int8 eltwise input data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f)
+      .AsExtra();
+  AddAttr<std::vector<float>>("Scale_weights",
+                              "Scale_weights to be used for int8 weights data."
+                              "Only used with MKL-DNN INT8.")
+      .SetDefault({1.0f})
+      .AsExtra();
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force INT8 kernel output FP32, only "
+                "used in MKL-DNN INT8")
+      .SetDefault(false)
+      .AsExtra();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -458,12 +597,38 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+<<<<<<< HEAD
   return framework::OpKernelType(data_type, ctx.GetPlace());
+=======
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+    customized_type_value = kConvMKLDNNFP32;
+  }
+#endif
+
+  auto type = framework::OpKernelType(
+      data_type, ctx.GetPlace(), layout_, library_, customized_type_value);
+  return type;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
     const std::string& var_name,
+<<<<<<< HEAD
     const phi::DenseTensor& tensor,
+=======
+    const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
@@ -478,7 +643,11 @@ framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
     auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
+<<<<<<< HEAD
     if (dl != phi::DataLayout::kAnyLayout) {
+=======
+    if (dl != framework::DataLayout::kAnyLayout) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -628,8 +797,29 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   return framework::OpKernelType(data_type, ctx.GetPlace());
+=======
+  int customized_type_value =
+      framework::OpKernelType::kDefaultCustomizedTypeValue;
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = "AnyLayout";
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+  auto type = framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_,
+      customized_type_value);
+  return type;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 }  // namespace operators
@@ -651,7 +841,11 @@ REGISTER_OPERATOR(conv2d_grad_grad, ops::ConvOpDoubleGrad);
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d,
                   ops::ConvOp,
+<<<<<<< HEAD
                   ops::DepthwiseConv2DOpMaker,
+=======
+                  ops::Conv2DOpMaker,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
                   ops::Conv2DGradMaker<paddle::imperative::OpBase>);

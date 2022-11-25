@@ -28,6 +28,7 @@ SEED = 2022
 
 
 class TestAdamW(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adamw"
@@ -86,6 +87,7 @@ class TestAdamW(OpTest):
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adamw"
@@ -138,6 +140,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
 
 
 class TestAdamOpWithoutDecay(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adamw"
@@ -190,6 +193,7 @@ class TestAdamOpWithoutDecay(OpTest):
 
 
 class TestNet(unittest.TestCase):
+
     def _test(self, run_mlu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -204,9 +208,15 @@ class TestNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -230,11 +240,21 @@ class TestNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "b": b_np, "label": label_np},
                 fetch_list=[prediction, loss],
             )
+=======
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if epoch % 10 == 0:
                 print(
                     "Epoch {} | Prediction[0]: {}, Loss: {}".format(

@@ -8,7 +8,11 @@ register_operators(EXCLUDES conditional_block_op DEPS naive_executor)
 cc_library(
   conditional_block_op
   SRCS conditional_block_op.cc
+<<<<<<< HEAD
   DEPS standalone_executor executor)
+=======
+  DEPS executor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 cc_library(
   op_variant
   SRCS op_variant.cc
@@ -29,7 +33,11 @@ cc_library(
 cc_test(
   conditional_block_op_test
   SRCS conditional_block_op_test.cc
+<<<<<<< HEAD
   DEPS conditional_block_op standalone_executor executor)
+=======
+  DEPS conditional_block_op executor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 if(WITH_UNITY_BUILD)
   target_link_libraries(paddle_operators_controlflow_unity conditional_block_op)

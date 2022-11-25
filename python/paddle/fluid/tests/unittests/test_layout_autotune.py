@@ -17,12 +17,23 @@ import json
 import tempfile
 import unittest
 import warnings
+<<<<<<< HEAD
 
 import paddle
 import paddle.nn.functional as F
+=======
+import numpy
+
+import paddle
+import paddle.nn.functional as F
+from paddle.fluid.framework import _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class SimpleNet(paddle.nn.Layer):
+
     def __init__(self, data_format="NCHW", class_num=2):
         super().__init__()
         self.conv = paddle.nn.Conv2D(3, 8, (3, 3))
@@ -43,6 +54,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class LayoutAutoTune(unittest.TestCase):
+<<<<<<< HEAD
     def test_config(self):
         paddle.fluid.core.enable_layout_autotune()
         if self.use_autoune():
@@ -53,6 +65,8 @@ class LayoutAutoTune(unittest.TestCase):
 
     def setUp(self):
         self.use_autoune()
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def use_autoune(self):
         if paddle.is_compiled_with_cuda():
@@ -133,16 +147,44 @@ class LayoutAutoTune(unittest.TestCase):
         self.assertEqual(out.shape, [1, 112, 12])
 
     def test_argmax_op_transposer_keep_dims(self):
+<<<<<<< HEAD
+=======
+        if not self.use_autoune():
+            return
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         with paddle.amp.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.argmax(conv_out, axis=1, keepdim=True)
+<<<<<<< HEAD
         self.assertEqual(conv_out.shape, [1, 8, 14, 12])
         self.assertEqual(out.shape, [1, 1, 14, 12])
 
     def test_concat_op_transposer(self):
+=======
+
+        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+        self.assertEqual(out.shape, [1, 14, 12, 1])
+
+    def test_argmax_op_transposer(self):
+        if not self.use_autoune():
+            return
+        conv = paddle.nn.Conv2D(3, 8, (3, 3))
+        data = paddle.rand([1, 3, 16, 14])
+        with paddle.amp.auto_cast(level="O2"):
+            conv_out = conv(data)
+            # conv_out.shape = [1, 14, 12, 8] with NHWC
+            out = paddle.argmax(conv_out)
+
+        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+        self.assertEqual(out.shape, [1])
+
+    def test_concat_op_transposer(self):
+        if not self.use_autoune():
+            return
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         in1 = paddle.rand([1, 8, 14, 12])
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
@@ -151,10 +193,19 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.concat(x=[conv_out, in1], axis=0)
 
+<<<<<<< HEAD
         self.assertEqual(conv_out.shape, [1, 8, 14, 12])
         self.assertEqual(out.shape, [2, 8, 14, 12])
 
     def test_concat_op_no_transposer(self):
+=======
+        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+        self.assertEqual(out.shape, [2, 8, 14, 12])
+
+    def test_concat_op_no_transposer(self):
+        if not self.use_autoune():
+            return
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data1 = paddle.rand([1, 3, 16, 14])
         data2 = paddle.rand([1, 3, 16, 14])
@@ -164,11 +215,17 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.concat(x=[conv_out1, conv_out2], axis=0)
 
+<<<<<<< HEAD
         self.assertEqual(conv_out1.shape, [1, 8, 14, 12])
         self.assertEqual(out.shape, [2, 8, 14, 12])
+=======
+        self.assertEqual(conv_out1.shape, [1, 14, 12, 8])
+        self.assertEqual(out.shape, [2, 14, 12, 8])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestAutoTuneAPI(unittest.TestCase):
+
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"layout": {"enable": 1}}

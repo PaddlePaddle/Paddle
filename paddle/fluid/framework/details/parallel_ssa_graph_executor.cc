@@ -282,7 +282,11 @@ FetchResultType ParallelSSAGraphExecutor::Run(
             PADDLE_GET_CONST(FetchList, fetch_data[scope_idx]);
         if (data_is_lod_tensor(fetch_list[fetch_idx])) {
           lodtensor_ptrs.push_back(
+<<<<<<< HEAD
               &(PADDLE_GET_CONST(phi::DenseTensor, fetch_list[fetch_idx])));
+=======
+              &(PADDLE_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         } else {
           lodtensorarray_ptrs.push_back(
               &(PADDLE_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));

@@ -26,6 +26,7 @@ paddle.enable_static()
 
 
 class TestMeshgridOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "meshgrid"
@@ -71,30 +72,36 @@ class TestMeshgridOp(OpTest):
     reason="The backward test is not supported for float16 type on NPU."
 )
 class TestMeshgridOpFP16(TestMeshgridOp):
+
     def get_dtype(self):
         return "float16"
 
 
 class TestMeshgridOpINT32(TestMeshgridOp):
+
     def get_dtype(self):
         return "int32"
 
 
 class TestMeshgridOpINT64(TestMeshgridOp):
+
     def get_dtype(self):
         return "int64"
 
 
 class TestMeshgridOp2(TestMeshgridOp):
+
     def get_x_shape(self):
         return [100, 300]
 
 
 class TestMeshgridOp3(unittest.TestCase):
+
     def test_api(self):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
+<<<<<<< HEAD
         input_1 = np.random.randint(
             0,
             100,
@@ -109,6 +116,14 @@ class TestMeshgridOp3(unittest.TestCase):
                 200,
             ],
         ).astype('int32')
+=======
+        input_1 = np.random.randint(0, 100, [
+            100,
+        ]).astype('int32')
+        input_2 = np.random.randint(0, 100, [
+            200,
+        ]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -117,21 +132,32 @@ class TestMeshgridOp3(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.NPUPlace(0))
         grid_x, grid_y = paddle.tensor.meshgrid(x, y)
+<<<<<<< HEAD
         res_1, res_2 = exe.run(
             fluid.default_main_program(),
             feed={'x': input_1, 'y': input_2},
             fetch_list=[grid_x, grid_y],
         )
+=======
+        res_1, res_2 = exe.run(fluid.default_main_program(),
+                               feed={
+                                   'x': input_1,
+                                   'y': input_2
+                               },
+                               fetch_list=[grid_x, grid_y])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         np.testing.assert_allclose(res_1, out_1)
         np.testing.assert_allclose(res_2, out_2)
 
 
 class TestMeshgridOp4(unittest.TestCase):
+
     def test_list_input(self):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
+<<<<<<< HEAD
         input_1 = np.random.randint(
             0,
             100,
@@ -146,6 +172,14 @@ class TestMeshgridOp4(unittest.TestCase):
                 200,
             ],
         ).astype('int32')
+=======
+        input_1 = np.random.randint(0, 100, [
+            100,
+        ]).astype('int32')
+        input_2 = np.random.randint(0, 100, [
+            200,
+        ]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -154,21 +188,32 @@ class TestMeshgridOp4(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.NPUPlace(0))
         grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+<<<<<<< HEAD
         res_1, res_2 = exe.run(
             fluid.default_main_program(),
             feed={'x': input_1, 'y': input_2},
             fetch_list=[grid_x, grid_y],
         )
+=======
+        res_1, res_2 = exe.run(fluid.default_main_program(),
+                               feed={
+                                   'x': input_1,
+                                   'y': input_2
+                               },
+                               fetch_list=[grid_x, grid_y])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         np.testing.assert_allclose(res_1, out_1)
         np.testing.assert_allclose(res_2, out_2)
 
 
 class TestMeshgridOp5(unittest.TestCase):
+
     def test_tuple_input(self):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
+<<<<<<< HEAD
         input_1 = np.random.randint(
             0,
             100,
@@ -183,6 +228,14 @@ class TestMeshgridOp5(unittest.TestCase):
                 200,
             ],
         ).astype('int32')
+=======
+        input_1 = np.random.randint(0, 100, [
+            100,
+        ]).astype('int32')
+        input_2 = np.random.randint(0, 100, [
+            200,
+        ]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -191,19 +244,30 @@ class TestMeshgridOp5(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.NPUPlace(0))
         grid_x, grid_y = paddle.tensor.meshgrid((x, y))
+<<<<<<< HEAD
         res_1, res_2 = exe.run(
             fluid.default_main_program(),
             feed={'x': input_1, 'y': input_2},
             fetch_list=[grid_x, grid_y],
         )
+=======
+        res_1, res_2 = exe.run(fluid.default_main_program(),
+                               feed={
+                                   'x': input_1,
+                                   'y': input_2
+                               },
+                               fetch_list=[grid_x, grid_y])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         np.testing.assert_allclose(res_1, out_1)
         np.testing.assert_allclose(res_2, out_2)
 
 
 class TestMeshgridOp6(unittest.TestCase):
+
     def test_api_with_dygraph(self):
         paddle.disable_static(paddle.NPUPlace(0))
+<<<<<<< HEAD
         input_3 = np.random.randint(
             0,
             100,
@@ -218,6 +282,14 @@ class TestMeshgridOp6(unittest.TestCase):
                 200,
             ],
         ).astype('int32')
+=======
+        input_3 = np.random.randint(0, 100, [
+            100,
+        ]).astype('int32')
+        input_4 = np.random.randint(0, 100, [
+            200,
+        ]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_3 = np.reshape(input_3, [100, 1])
         out_3 = np.broadcast_to(out_3, [100, 200])
@@ -234,8 +306,10 @@ class TestMeshgridOp6(unittest.TestCase):
 
 
 class TestMeshgridOp7(unittest.TestCase):
+
     def test_api_with_dygraph_list_input(self):
         paddle.disable_static(paddle.NPUPlace(0))
+<<<<<<< HEAD
         input_3 = np.random.randint(
             0,
             100,
@@ -250,6 +324,14 @@ class TestMeshgridOp7(unittest.TestCase):
                 200,
             ],
         ).astype('int32')
+=======
+        input_3 = np.random.randint(0, 100, [
+            100,
+        ]).astype('int32')
+        input_4 = np.random.randint(0, 100, [
+            200,
+        ]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_3 = np.reshape(input_3, [100, 1])
         out_3 = np.broadcast_to(out_3, [100, 200])
@@ -266,8 +348,10 @@ class TestMeshgridOp7(unittest.TestCase):
 
 
 class TestMeshgridOp8(unittest.TestCase):
+
     def test_api_with_dygraph_tuple_input(self):
         paddle.disable_static(paddle.NPUPlace(0))
+<<<<<<< HEAD
         input_3 = np.random.randint(
             0,
             100,
@@ -282,6 +366,14 @@ class TestMeshgridOp8(unittest.TestCase):
                 200,
             ],
         ).astype('int32')
+=======
+        input_3 = np.random.randint(0, 100, [
+            100,
+        ]).astype('int32')
+        input_4 = np.random.randint(0, 100, [
+            200,
+        ]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_3 = np.reshape(input_3, [100, 1])
         out_3 = np.broadcast_to(out_3, [100, 200])

@@ -43,7 +43,10 @@ MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
   driver_version_ = GetMLUDriverVersion(place_.device);
   runtime_version_ = GetMLURuntimeVersion(place_.device);
   cnnl_version_ = GetMLUCnnlVersion(place_.device);
+<<<<<<< HEAD
   mluOp_version_ = GetMLUOpVersion(place_.device);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   LOG_FIRST_N(WARNING, 1)
       << "Please NOTE: device: " << static_cast<int>(place_.device)
@@ -54,9 +57,13 @@ MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
       << ", Runtime API Version: " << runtime_version_ / 10000 << "."
       << (runtime_version_ / 100) % 100 << "." << runtime_version_ % 100
       << ", Cnnl API Version: " << cnnl_version_ / 10000 << "."
+<<<<<<< HEAD
       << (cnnl_version_ / 100) % 100 << "." << cnnl_version_ % 100
       << ", MluOp API Version: " << mluOp_version_ / 10000 << "."
       << (mluOp_version_ / 100) % 100 << "." << mluOp_version_ % 100;
+=======
+      << (cnnl_version_ / 100) % 100 << "." << cnnl_version_ % 100;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   default_ctx_.reset(new MLUContext(place_));
 }

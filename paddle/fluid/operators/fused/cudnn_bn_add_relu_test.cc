@@ -53,7 +53,11 @@ void InitRandomTensor(const std::vector<int64_t> &dims,
 template <typename T>
 void InitConstantTensor(const std::vector<int64_t> &dims,
                         T value,
+<<<<<<< HEAD
                         phi::DenseTensor *cpu_out) {
+=======
+                        framework::Tensor *cpu_out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   T *cpu_out_ptr =
       cpu_out->mutable_data<T>(phi::make_ddim(dims), platform::CPUPlace());
   for (int i = 0; i < cpu_out->numel(); ++i) {
@@ -63,8 +67,13 @@ void InitConstantTensor(const std::vector<int64_t> &dims,
 
 template <typename T>
 void CheckOutput(std::string name,
+<<<<<<< HEAD
                  const phi::DenseTensor &cpu_res,
                  const phi::DenseTensor &cpu_base,
+=======
+                 const framework::Tensor &cpu_res,
+                 const framework::Tensor &cpu_base,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                  float diff,
                  bool is_relative_atol = false) {
   if (cpu_res.dims().size() == cpu_base.dims().size()) {
@@ -412,11 +421,19 @@ class CudnnBNAddReluTester {
                       select(&saved_reserve_space_z_));
     }
 
+<<<<<<< HEAD
     phi::DenseTensor cpu_mean_x;
     phi::DenseTensor cpu_var_x;
     phi::DenseTensor cpu_y;
     phi::DenseTensor cpu_mean_z;
     phi::DenseTensor cpu_var_z;
+=======
+    framework::Tensor cpu_mean_x;
+    framework::Tensor cpu_var_x;
+    framework::Tensor cpu_y;
+    framework::Tensor cpu_mean_z;
+    framework::Tensor cpu_var_z;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     FusedForward(*ctx,
                  &cpu_mean_x,
                  &cpu_var_x,
@@ -466,6 +483,7 @@ class CudnnBNAddReluTester {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
+<<<<<<< HEAD
     phi::DenseTensor cpu_dx_base;
     phi::DenseTensor cpu_dz_base;
     phi::DenseTensor cpu_dscale_base;
@@ -477,6 +495,19 @@ class CudnnBNAddReluTester {
     phi::DenseTensor cpu_dz;
     phi::DenseTensor cpu_dscale;
     phi::DenseTensor cpu_dbias;
+=======
+    framework::Tensor cpu_dx_base;
+    framework::Tensor cpu_dz_base;
+    framework::Tensor cpu_dscale_base;
+    framework::Tensor cpu_dbias_base;
+    BaselineBackwardFusedBNAddRelu(
+        *ctx, &cpu_dx_base, &cpu_dz_base, &cpu_dscale_base, &cpu_dbias_base);
+
+    framework::Tensor cpu_dx;
+    framework::Tensor cpu_dz;
+    framework::Tensor cpu_dscale;
+    framework::Tensor cpu_dbias;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     FusedBackward(*ctx, &cpu_dx, &cpu_dz, &cpu_dscale, &cpu_dbias);
 
     CheckOutput<T>("DX", cpu_dx, cpu_dx_base, diff, is_relative_atol);
@@ -620,8 +651,13 @@ class CudnnBNAddReluTester {
                                    Tensor *saved_var,
                                    Tensor *equiv_scale,
                                    Tensor *equiv_bias) {
+<<<<<<< HEAD
     phi::DenseTensor cpu_sum;
     phi::DenseTensor cpu_sum_of_square;
+=======
+    framework::Tensor cpu_sum;
+    framework::Tensor cpu_sum_of_square;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     ComputeSumAndSquareSum<T>(cpu_x, &cpu_sum, &cpu_sum_of_square);
 
     auto place = ctx.GetPlace();
@@ -806,6 +842,7 @@ class CudnnBNAddReluTester {
                      Tensor *cpu_dz,
                      Tensor *cpu_dscale,
                      Tensor *cpu_dbias) {
+<<<<<<< HEAD
     phi::DenseTensor dy;
     phi::DenseTensor x;
     phi::DenseTensor bn_scale;
@@ -817,6 +854,19 @@ class CudnnBNAddReluTester {
     phi::DenseTensor dz;
     phi::DenseTensor dscale;
     phi::DenseTensor dbias;
+=======
+    framework::Tensor dy;
+    framework::Tensor x;
+    framework::Tensor bn_scale;
+    framework::Tensor bn_bias;
+    framework::Tensor saved_mean;
+    framework::Tensor saved_var;
+    framework::Tensor bitmask;
+    framework::Tensor dx;
+    framework::Tensor dz;
+    framework::Tensor dscale;
+    framework::Tensor dbias;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto place = ctx.GetPlace();
     paddle::framework::TensorCopySync(cpu_dy_, place, &dy);

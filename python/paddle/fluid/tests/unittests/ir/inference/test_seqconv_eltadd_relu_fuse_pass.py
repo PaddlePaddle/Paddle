@@ -22,6 +22,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -40,6 +41,7 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.random.random(shape).astype(np.float32)
 
+<<<<<<< HEAD
         im2sequence_op = OpConfig(
             type="im2sequence",
             inputs={"X": ["input_data"]},
@@ -77,6 +79,43 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
             outputs={"Out": ["relu_output"]},
             attrs={},
         )
+=======
+        im2sequence_op = OpConfig(type="im2sequence",
+                                  inputs={"X": ["input_data"]},
+                                  outputs={"Out": ["seq_out"]},
+                                  attrs={
+                                      "kernels": [6, 1],
+                                      "out_stride": [1, 1],
+                                      "paddings": [0, 0, 0, 0],
+                                      "strides": [1, 1]
+                                  })
+
+        sequence_conv_op = OpConfig(type="sequence_conv",
+                                    inputs={
+                                        "X": ["seq_out"],
+                                        "Filter": ["conv_weight"]
+                                    },
+                                    outputs={"Out": ["conv_out"]},
+                                    attrs={
+                                        "contextLength": contextLength,
+                                        "contextStart": contextStart,
+                                        "contextStride": contextStride,
+                                        "paddingTrainable": paddingTrainable
+                                    })
+
+        elementwise_add_op = OpConfig(type="elementwise_add",
+                                      inputs={
+                                          "X": ["conv_out"],
+                                          "Y": ["elt_weight"]
+                                      },
+                                      outputs={"Out": ["elt_output"]},
+                                      attrs={'axis': axis})
+
+        relu_op = OpConfig(type="relu",
+                           inputs={"X": ["elt_output"]},
+                           outputs={"Out": ["relu_output"]},
+                           attrs={})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         model_net = [
             im2sequence_op,
@@ -88,12 +127,21 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=model_net,
             weights={
+<<<<<<< HEAD
                 "conv_weight": TensorConfig(
                     data_gen=partial(generate_weight, [768 * contextLength, 16])
                 ),
                 "elt_weight": TensorConfig(
                     data_gen=partial(generate_weight, [16])
                 ),
+=======
+                "conv_weight":
+                TensorConfig(
+                    data_gen=partial(generate_weight, [768 *
+                                                       contextLength, 16])),
+                "elt_weight":
+                TensorConfig(data_gen=partial(generate_weight, [16]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input))
@@ -105,6 +153,7 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config()
+<<<<<<< HEAD
         yield config, ["im2sequence", "fusion_seqconv_eltadd_relu"], (
             1e-5,
             1e-5,
@@ -114,6 +163,14 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False, passes=["seqconv_eltadd_relu_fuse_pass"]
         )
+=======
+        yield config, ["im2sequence",
+                       "fusion_seqconv_eltadd_relu"], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(quant=False,
+                            passes=["seqconv_eltadd_relu_fuse_pass"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

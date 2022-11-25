@@ -32,6 +32,7 @@ class TestWeightNormalization(unittest.TestCase):
 
     @classmethod
     def set_program(cls):
+<<<<<<< HEAD
         data = fluid.layers.data(
             name=cls.data_desc[0][0], shape=cls.data_desc[0][1]
         )
@@ -46,6 +47,18 @@ class TestWeightNormalization(unittest.TestCase):
             bias_attr=False,
             act=None,
         )
+=======
+        data = fluid.layers.data(name=cls.data_desc[0][0],
+                                 shape=cls.data_desc[0][1])
+        out = fluid.layers.fc(input=data,
+                              size=cls.hidden_size,
+                              param_attr=WeightNormParamAttr(
+                                  dim=None,
+                                  name='weight_norm_param',
+                                  initializer=ConstantInitializer(1.0)),
+                              bias_attr=False,
+                              act=None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         loss = fluid.layers.reduce_sum(out)
         fluid.backward.append_backward(loss=loss)
         cls.fetch_list = [
@@ -88,10 +101,16 @@ class TestWeightNormalization(unittest.TestCase):
                     else sum(lod_level_i),  # noqa: F821
                 ).tolist()
                 data_lod.append(lod_level_i)
+<<<<<<< HEAD
             data_value = np.random.random(
                 size=[sum(data_lod[-1]) if data_lod else self.batch_size]
                 + data_shape
             ).astype('float32')
+=======
+            data_value = numpy.random.random(
+                size=[sum(data_lod[-1]) if data_lod else self.batch_size] +
+                data_shape).astype('float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.data[data_name] = (data_value, data_lod)
 
     def set_inputs(self, place):
@@ -104,6 +123,7 @@ class TestWeightNormalization(unittest.TestCase):
             self.inputs[desc[0]] = tensor
 
     def weight_normalize(self):
+<<<<<<< HEAD
         v = np.ones(
             (self.data[self.data_desc[0][0]][0].shape[-1], self.hidden_size)
         )
@@ -115,6 +135,17 @@ class TestWeightNormalization(unittest.TestCase):
             np.dot(x.T, np.ones_like(out))
             * (v / np.linalg.norm(v, axis=None, keepdims=True))
         ).sum(axis=None, keepdims=True)
+=======
+        v = numpy.ones(
+            (self.data[self.data_desc[0][0]][0].shape[-1], self.hidden_size))
+        g = numpy.linalg.norm(v, axis=None, keepdims=True)
+        w = g * v / numpy.linalg.norm(v, axis=None, keepdims=True)
+        x = self.data[self.data_desc[0][0]][0]
+        out = numpy.dot(x, w)
+        g_grad = (numpy.dot(x.T, numpy.ones_like(out)) *
+                  (v / numpy.linalg.norm(v, axis=None, keepdims=True))).sum(
+                      axis=None, keepdims=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return g, v, g_grad
 
     def test_weight_normalization(self):
@@ -123,9 +154,14 @@ class TestWeightNormalization(unittest.TestCase):
         expect_output = self.weight_normalize()
         for actual_output in self.actual_outputs:
             [
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     np.array(actual), expect, rtol=1e-05, atol=0.001
                 )
+=======
+                self.assertTrue(
+                    numpy.allclose(numpy.array(actual), expect, atol=0.001))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 for expect, actual in zip(expect_output, actual_output)
             ]
 

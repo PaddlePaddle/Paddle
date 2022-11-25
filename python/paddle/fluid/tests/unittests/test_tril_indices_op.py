@@ -12,15 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
+=======
+from paddle.fluid import Program, program_guard
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTrilIndicesOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "tril_indices"
         self.inputs = {}
@@ -33,13 +46,22 @@ class TestTrilIndicesOp(OpTest):
 
     def init_config(self):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': -1}
+<<<<<<< HEAD
         self.target = np.tril_indices(
             self.attrs['rows'], self.attrs['offset'], self.attrs['cols']
         )
+=======
+        self.target = np.tril_indices(self.attrs['rows'], self.attrs['offset'],
+                                      self.attrs['cols'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.target = np.array(self.target)
 
 
 class TestTrilIndicesOpCase1(TestTrilIndicesOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_config(self):
         self.attrs = {'rows': 0, 'cols': 0, 'offset': 0}
         self.target = np.tril_indices(0, 0, 0)
@@ -47,15 +69,24 @@ class TestTrilIndicesOpCase1(TestTrilIndicesOp):
 
 
 class TestTrilIndicesOpCase2(TestTrilIndicesOp):
+<<<<<<< HEAD
     def init_config(self):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': 2}
         self.target = np.tril_indices(
             self.attrs['rows'], self.attrs['offset'], self.attrs['cols']
         )
+=======
+
+    def init_config(self):
+        self.attrs = {'rows': 4, 'cols': 4, 'offset': 2}
+        self.target = np.tril_indices(self.attrs['rows'], self.attrs['offset'],
+                                      self.attrs['cols'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.target = np.array(self.target)
 
 
 class TestTrilIndicesAPICaseStatic(unittest.TestCase):
+<<<<<<< HEAD
     def test_static(self):
         places = (
             [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
@@ -81,6 +112,30 @@ class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
             if fluid.core.is_compiled_with_cuda()
             else [paddle.CPUPlace()]
         )
+=======
+
+    def test_static(self):
+        places = [
+            paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
+        ] if fluid.core.is_compiled_with_cuda() else [paddle.CPUPlace()]
+        paddle.enable_static()
+        for place in places:
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                data1 = paddle.tril_indices(4, 4, -1)
+                exe1 = paddle.static.Executor(place)
+                result1 = exe1.run(feed={}, fetch_list=[data1])
+            expected_result1 = np.tril_indices(4, -1, 4)
+            self.assertTrue(np.allclose(result1, expected_result1))
+
+
+class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
+
+    def test_dygraph(self):
+        places = [
+            paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
+        ] if fluid.core.is_compiled_with_cuda() else [paddle.CPUPlace()]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for place in places:
             with fluid.dygraph.base.guard(place=place):
                 out1 = paddle.tril_indices(4, 4, 2)
@@ -93,7 +148,13 @@ class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseError(unittest.TestCase):
+<<<<<<< HEAD
     def test_case_error(self):
+=======
+
+    def test_case_error(self):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def test_num_rows_type_check():
             out1 = paddle.tril_indices(1.0, 1, 2)
 
@@ -111,6 +172,7 @@ class TestTrilIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseDefault(unittest.TestCase):
+<<<<<<< HEAD
     def test_default_CPU(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -121,6 +183,18 @@ class TestTrilIndicesAPICaseDefault(unittest.TestCase):
             (result,) = exe.run(feed={}, fetch_list=[data])
         expected_result = np.tril_indices(4, 2)
         np.testing.assert_allclose(result, expected_result, rtol=1e-05)
+=======
+
+    def test_default_CPU(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data = paddle.tril_indices(4, None, 2)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            result = exe.run(feed={}, fetch_list=[data])
+        expected_result = np.tril_indices(4, 2)
+        self.assertTrue(np.allclose(result, expected_result))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         with fluid.dygraph.base.guard(paddle.CPUPlace()):
             out = paddle.tril_indices(4, None, 2)

@@ -48,7 +48,11 @@ class WhereIndexOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(where_index,
                             WhereIndexInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::NonZeroInferMeta));
+=======
+                            PD_INFER_META(phi::WhereIndexInferMeta));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 REGISTER_OPERATOR(
     where_index,
     ops::WhereIndexOp,

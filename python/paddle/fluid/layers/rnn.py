@@ -127,6 +127,7 @@ class RNNCell:
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
+<<<<<<< HEAD
         check_variable_and_dtype(
             batch_ref,
             'batch_ref',
@@ -134,6 +135,20 @@ class RNNCell:
             'RNNCell',
         )
         check_type(shape, 'shape', (list, tuple, type(None), int), 'RNNCell')
+=======
+        if sys.version_info < (3, ):
+            integer_types = (
+                int,
+                long,
+            )
+        else:
+            integer_types = (int, )
+        check_variable_and_dtype(batch_ref, 'batch_ref',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'RNNCell')
+        check_type(shape, 'shape', (list, tuple, type(None), integer_types),
+                   'RNNCell')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if isinstance(shape, (list, tuple)):
             shapes = map_structure(lambda x: x, shape)
             if isinstance(shape, list):
@@ -147,6 +162,16 @@ class RNNCell:
         batch_ref = flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
+<<<<<<< HEAD
+=======
+            if sys.version_info < (3, ):
+                integer_types = (
+                    int,
+                    long,
+                )
+            else:
+                integer_types = (int, )
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             """For shape, list/tuple of integer is the finest-grained objection"""
             if isinstance(seq, list) or isinstance(seq, tuple):
                 if reduce(
@@ -156,9 +181,17 @@ class RNNCell:
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
+<<<<<<< HEAD
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
         class Shape:
+=======
+            return (isinstance(seq, Sequence)
+                    and not isinstance(seq, six.string_types))
+
+        class Shape(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
@@ -542,7 +575,12 @@ def rnn(
         )
 
 
+<<<<<<< HEAD
 class ArrayWrapper:
+=======
+class ArrayWrapper(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, x):
         self.array = [x]
 
@@ -589,10 +627,17 @@ def _rnn_dynamic_graph(
         inputs = map_structure(_transpose_batch_time, inputs)
 
     if sequence_length is not None:
+<<<<<<< HEAD
         mask = sequence_lod.sequence_mask(
             sequence_length, maxlen=time_steps, dtype=inputs.dtype
         )
         mask = paddle.transpose(mask, [1, 0])
+=======
+        mask = sequence_lod.sequence_mask(sequence_length,
+                                          maxlen=time_steps,
+                                          dtype=inputs.dtype)
+        mask = nn.transpose(mask, [1, 0])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if is_reverse:
         inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
@@ -608,9 +653,14 @@ def _rnn_dynamic_graph(
         step_inputs = map_structure(lambda x: x[i], inputs)
         step_outputs, new_states = cell(step_inputs, states, **kwargs)
         if sequence_length is not None:
+<<<<<<< HEAD
             new_states = map_structure(
                 partial(_maybe_copy, step_mask=mask[i]), states, new_states
             )
+=======
+            new_states = map_structure(partial(_maybe_copy, step_mask=mask[i]),
+                                       states, new_states)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         states = new_states
         outputs = (
             map_structure(lambda x: ArrayWrapper(x), step_outputs)
@@ -621,6 +671,7 @@ def _rnn_dynamic_graph(
         )
 
     final_outputs = map_structure(
+<<<<<<< HEAD
         lambda x: paddle.stack(x.array, axis=time_step_index), outputs
     )
 
@@ -628,6 +679,13 @@ def _rnn_dynamic_graph(
         final_outputs = map_structure(
             lambda x: tensor.reverse(x, axis=time_step_index), final_outputs
         )
+=======
+        lambda x: nn.stack(x.array, axis=time_step_index), outputs)
+
+    if is_reverse:
+        final_outputs = map_structure(
+            lambda x: tensor.reverse(x, axis=time_step_index), final_outputs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     final_states = new_states
     return final_outputs, final_states
@@ -695,8 +753,12 @@ def _rnn_static_graph(
         if sequence_length:
             step_mask = rnn.step_input(mask)
             new_states = map_structure(
+<<<<<<< HEAD
                 partial(_maybe_copy, step_mask=step_mask), states, new_states
             )
+=======
+                partial(_maybe_copy, step_mask=step_mask), states, new_states)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         map_structure(rnn.update_memory, states, new_states)
         flat_outputs = flatten(outputs)
@@ -1033,6 +1095,7 @@ class BeamSearchDecoder(Decoder):
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
         x = paddle.tile(x, expand_times)  # [batch_size, beam_size, ...]
+<<<<<<< HEAD
         x = paddle.transpose(
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
@@ -1043,6 +1106,18 @@ class BeamSearchDecoder(Decoder):
         x = paddle.transpose(
             x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
         )  # [batch_size * beam_size, ...]
+=======
+        x = nn.transpose(x,
+                         list(range(2, len(x.shape))) +
+                         [0, 1])  # [..., batch_size, beam_size]
+        # use 0 to copy to avoid wrong shape
+        x = nn.reshape(x, shape=[0] * (len(x.shape) - 2) +
+                       [-1])  # [..., batch_size * beam_size]
+        x = nn.transpose(
+            x, [len(x.shape) - 1] +
+            list(range(0,
+                       len(x.shape) - 1)))  # [batch_size * beam_size, ...]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return x
 
     def _split_batch_beams(self, x):
@@ -1128,8 +1203,12 @@ class BeamSearchDecoder(Decoder):
         probs = nn.elementwise_mul(
             paddle.tile(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
             self.noend_mask_tensor,
+<<<<<<< HEAD
             axis=-1,
         ) - nn.elementwise_mul(probs, (finished - 1), axis=0)
+=======
+            axis=-1) - nn.elementwise_mul(probs, (finished - 1), axis=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return probs
 
     def _gather(self, x, indices, batch_size):
@@ -1160,12 +1239,18 @@ class BeamSearchDecoder(Decoder):
         )
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = paddle.tile(
+<<<<<<< HEAD
             nn.unsqueeze(
                 paddle.arange(0, batch_size, 1, dtype=indices.dtype), [1]
             ),
             [1, self.beam_size],
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
+=======
+            nn.unsqueeze(tensor.range(0, batch_size, 1, dtype=indices.dtype),
+                         [1]), [1, self.beam_size])
+        topk_coordinates = nn.stack([batch_pos, indices], axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
@@ -1218,6 +1303,7 @@ class BeamSearchDecoder(Decoder):
         state = flatten(initial_cell_states)[0]
         self.batch_size = nn.shape(state)[0]
 
+<<<<<<< HEAD
         self.start_token_tensor = tensor.fill_constant(
             shape=[1], dtype="int64", value=self.start_token
         )
@@ -1242,6 +1328,24 @@ class BeamSearchDecoder(Decoder):
             ),
             [self.batch_size, 1],
         )
+=======
+        self.start_token_tensor = tensor.fill_constant(shape=[1],
+                                                       dtype="int64",
+                                                       value=self.start_token)
+        self.end_token_tensor = tensor.fill_constant(shape=[1],
+                                                     dtype="int64",
+                                                     value=self.end_token)
+
+        init_cell_states = map_structure(self._expand_to_beam_size,
+                                         initial_cell_states)
+        init_inputs = paddle.full(shape=[self.batch_size, self.beam_size],
+                                  fill_value=self.start_token_tensor,
+                                  dtype=self.start_token_tensor.dtype)
+        log_probs = paddle.tile(
+            tensor.assign(
+                np.array([[0.] + [-self.kinf] * (self.beam_size - 1)],
+                         dtype="float32")), [self.batch_size, 1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if paddle.get_default_dtype() == "float64":
             log_probs = tensor.cast(log_probs, "float64")
         # TODO: remove the restriction of force_cpu
@@ -1293,9 +1397,15 @@ class BeamSearchDecoder(Decoder):
 
         """
         self.vocab_size = logits.shape[-1]
+<<<<<<< HEAD
         self.vocab_size_tensor = tensor.fill_constant(
             shape=[1], dtype="int64", value=self.vocab_size
         )
+=======
+        self.vocab_size_tensor = tensor.fill_constant(shape=[1],
+                                                      dtype="int64",
+                                                      value=self.vocab_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         noend_array = [-self.kinf] * self.vocab_size
         noend_array[self.end_token] = 0
 
@@ -1307,9 +1417,15 @@ class BeamSearchDecoder(Decoder):
 
         step_log_probs = nn.log(nn.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
+<<<<<<< HEAD
         log_probs = nn.elementwise_add(
             x=step_log_probs, y=beam_state.log_probs, axis=0
         )
+=======
+        log_probs = nn.elementwise_add(x=step_log_probs,
+                                       y=beam_state.log_probs,
+                                       axis=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # TODO: length penalty
         scores = log_probs
         scores = paddle.reshape(scores, [-1, self.beam_size * self.vocab_size])
@@ -1324,6 +1440,7 @@ class BeamSearchDecoder(Decoder):
         )
         next_cell_states = map_structure(
             lambda x: self._gather(x, beam_indices, self.batch_size),
+<<<<<<< HEAD
             next_cell_states,
         )
         next_finished = self._gather(
@@ -1335,6 +1452,15 @@ class BeamSearchDecoder(Decoder):
         next_lengths = next_lengths + tensor.cast(
             paddle.logical_not(next_finished), beam_state.lengths.dtype
         )
+=======
+            next_cell_states)
+        next_finished = self._gather(beam_state.finished, beam_indices,
+                                     self.batch_size)
+        next_lengths = self._gather(beam_state.lengths, beam_indices,
+                                    self.batch_size)
+        next_lengths = next_lengths + tensor.cast(nn.logical_not(next_finished),
+                                                  beam_state.lengths.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         next_finished = control_flow.logical_or(
             next_finished,
             control_flow.equal(token_indices, self.end_token_tensor),
@@ -1448,6 +1574,7 @@ class BeamSearchDecoder(Decoder):
         return True
 
 
+<<<<<<< HEAD
 def _dynamic_decode_imperative(
     decoder,
     inits=None,
@@ -1458,6 +1585,17 @@ def _dynamic_decode_imperative(
     return_length=False,
     **kwargs
 ):
+=======
+def _dynamic_decode_imperative(decoder,
+                               inits=None,
+                               max_step_num=None,
+                               output_time_major=False,
+                               impute_finished=False,
+                               is_test=False,
+                               return_length=False,
+                               **kwargs):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def _maybe_copy(state, new_state, step_mask):
         # TODO: use where_op
         state_dtype = state.dtype
@@ -1470,8 +1608,14 @@ def _dynamic_decode_imperative(
             # to sum(bool) error.
             step_mask.stop_gradient = True
         new_state = nn.elementwise_mul(
+<<<<<<< HEAD
             state, step_mask, axis=0
         ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
+=======
+            state, step_mask, axis=0) - nn.elementwise_mul(new_state,
+                                                           (step_mask - 1),
+                                                           axis=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
@@ -1487,6 +1631,7 @@ def _dynamic_decode_imperative(
     outputs = None
 
     step_idx = 0
+<<<<<<< HEAD
     step_idx_tensor = tensor.fill_constant(
         shape=[1], dtype="int64", value=step_idx
     )
@@ -1494,6 +1639,15 @@ def _dynamic_decode_imperative(
         (step_outputs, next_states, next_inputs, next_finished) = decoder.step(
             step_idx_tensor, inputs, states, **kwargs
         )
+=======
+    step_idx_tensor = tensor.fill_constant(shape=[1],
+                                           dtype="int64",
+                                           value=step_idx)
+    while cond.numpy():
+        (step_outputs, next_states, next_inputs,
+         next_finished) = decoder.step(step_idx_tensor, inputs, states,
+                                       **kwargs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if not decoder.tracks_own_finished:
             # BeamSearchDecoder would track it own finished, since
             # beams would be reordered and the finished status of each
@@ -1505,10 +1659,15 @@ def _dynamic_decode_imperative(
             tensor.assign(next_finished, finished)
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
+<<<<<<< HEAD
                 tensor.cast(
                     paddle.logical_not(finished), sequence_lengths.dtype
                 ),
             )
+=======
+                tensor.cast(control_flow.logical_not(finished),
+                            sequence_lengths.dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if impute_finished:  # rectify the states for the finished.
                 next_states = map_structure(
                     lambda x, y: _maybe_copy(x, y, finished),
@@ -1519,6 +1678,7 @@ def _dynamic_decode_imperative(
             warnings.warn(
                 "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
             ) if not hasattr(next_states, "lengths") else None
+<<<<<<< HEAD
             next_sequence_lengths = getattr(
                 next_states, "lengths", sequence_lengths
             )
@@ -1536,6 +1696,18 @@ def _dynamic_decode_imperative(
             next_finished,
             next_sequence_lengths,
         )
+=======
+            next_sequence_lengths = getattr(next_states, "lengths",
+                                            sequence_lengths)
+
+        outputs = map_structure(
+            lambda x: ArrayWrapper(x),
+            step_outputs) if step_idx == 0 else map_structure(
+                lambda x, x_array: x_array.append(x), step_outputs, outputs)
+        inputs, states, finished, sequence_lengths = (next_inputs, next_states,
+                                                      next_finished,
+                                                      next_sequence_lengths)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
         step_idx += 1
@@ -1550,9 +1722,15 @@ def _dynamic_decode_imperative(
     final_states = states
 
     try:
+<<<<<<< HEAD
         final_outputs, final_states = decoder.finalize(
             final_outputs, final_states, sequence_lengths
         )
+=======
+        final_outputs, final_states = decoder.finalize(final_outputs,
+                                                       final_states,
+                                                       sequence_lengths)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     except NotImplementedError:
         pass
 
@@ -1582,19 +1760,31 @@ def _dynamic_decode_declarative(
     **kwargs
 ):
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
+<<<<<<< HEAD
     global_inputs, global_states, global_finished = (
         initial_inputs,
         initial_states,
         initial_finished,
     )
+=======
+    global_inputs, global_states, global_finished = (initial_inputs,
+                                                     initial_states,
+                                                     initial_finished)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     global_finished.stop_gradient = True
     step_idx = tensor.fill_constant(shape=[1], dtype="int64", value=0)
 
     cond = paddle.logical_not((nn.reduce_all(initial_finished)))
     if max_step_num is not None:
+<<<<<<< HEAD
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num
         )
+=======
+        max_step_num = tensor.fill_constant(shape=[1],
+                                            dtype="int64",
+                                            value=max_step_num)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     while_op = control_flow.While(cond, is_test=is_test)
 
     sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
@@ -1625,8 +1815,14 @@ def _dynamic_decode_declarative(
             # to sum(bool) error.
             step_mask.stop_gradient = True
         new_state = nn.elementwise_mul(
+<<<<<<< HEAD
             state, step_mask, axis=0
         ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
+=======
+            state, step_mask, axis=0) - nn.elementwise_mul(new_state,
+                                                           (step_mask - 1),
+                                                           axis=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
@@ -1667,11 +1863,16 @@ def _dynamic_decode_declarative(
             )
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
+<<<<<<< HEAD
                 tensor.cast(
                     paddle.logical_not(global_finished),
                     sequence_lengths.dtype,
                 ),
             )
+=======
+                tensor.cast(control_flow.logical_not(global_finished),
+                            sequence_lengths.dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if impute_finished:  # rectify the states for the finished.
                 next_states = map_structure(
                     lambda x, y: _maybe_copy(x, y, global_finished),
@@ -1745,9 +1946,15 @@ def _dynamic_decode_declarative(
         )
 
     try:
+<<<<<<< HEAD
         final_outputs, final_states = decoder.finalize(
             final_outputs, final_states, sequence_lengths
         )
+=======
+        final_outputs, final_states = decoder.finalize(final_outputs,
+                                                       final_states,
+                                                       sequence_lengths)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     except NotImplementedError:
         pass
 
@@ -2017,10 +2224,16 @@ class TrainingHelper(DecodeHelper):
         """
         init_finished = control_flow.equal(
             self.sequence_length,
+<<<<<<< HEAD
             tensor.fill_constant(
                 shape=[1], dtype=self.sequence_length.dtype, value=0
             ),
         )
+=======
+            tensor.fill_constant(shape=[1],
+                                 dtype=self.sequence_length.dtype,
+                                 value=0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # TODO: support zero length
         init_inputs = map_structure(
             lambda x: x[0] if self.time_major else x[:, 0], self.inputs
@@ -2078,11 +2291,16 @@ class TrainingHelper(DecodeHelper):
                 shape `[batch_size]`.
         """
         # TODO: compatibility of int32 and int64
+<<<<<<< HEAD
         time = (
             tensor.cast(time, "int32")
             if convert_dtype(time.dtype) not in ["int32"]
             else time
         )
+=======
+        time = tensor.cast(time, "int32") if convert_dtype(
+            time.dtype) not in ["int32"] else time
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if self.sequence_length.dtype != time.dtype:
             self.sequence_length = tensor.cast(self.sequence_length, time.dtype)
         next_time = time + 1
@@ -2090,12 +2308,20 @@ class TrainingHelper(DecodeHelper):
 
         def _slice(x):  # TODO: use Variable.__getitem__
             axes = [0 if self.time_major else 1]
+<<<<<<< HEAD
             return nn.squeeze(
                 nn.slice(
                     x, axes=axes, starts=[next_time], ends=[next_time + 1]
                 ),
                 axes=axes,
             )
+=======
+            return nn.squeeze(nn.slice(x,
+                                       axes=axes,
+                                       starts=[next_time],
+                                       ends=[next_time + 1]),
+                              axes=axes)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         next_inputs = map_structure(_slice, self.inputs_)
         return finished, next_inputs, states
@@ -2153,9 +2379,15 @@ class GreedyEmbeddingHelper(DecodeHelper):
         """
         self.embedding_fn = embedding_fn
         self.start_tokens = start_tokens
+<<<<<<< HEAD
         self.end_token = tensor.fill_constant(
             shape=[1], dtype="int64", value=end_token
         )
+=======
+        self.end_token = tensor.fill_constant(shape=[1],
+                                              dtype="int64",
+                                              value=end_token)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def initialize(self):
         r"""
@@ -2338,9 +2570,15 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
         # not pass to probs, since sampling_id op does not have corresponding
         # grad op and thus can not pass.
         probs.stop_gradient = True
+<<<<<<< HEAD
         sample_ids = nn.sampling_id(
             probs, seed=self.seed, dtype=self.start_tokens.dtype
         )
+=======
+        sample_ids = nn.sampling_id(probs,
+                                    seed=self.seed,
+                                    dtype=self.start_tokens.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return sample_ids
 
 
@@ -2468,6 +2706,7 @@ class BasicDecoder(Decoder):
         cell_outputs, cell_states = self.cell(inputs, states, **kwargs)
         if self.output_fn is not None:
             cell_outputs = self.output_fn(cell_outputs)
+<<<<<<< HEAD
         sample_ids = self.helper.sample(
             time=time, outputs=cell_outputs, states=cell_states
         )
@@ -2478,6 +2717,17 @@ class BasicDecoder(Decoder):
             states=cell_states,
             sample_ids=sample_ids,
         )
+=======
+        sample_ids = self.helper.sample(time=time,
+                                        outputs=cell_outputs,
+                                        states=cell_states)
+        sample_ids.stop_gradient = True
+        (finished, next_inputs,
+         next_states) = self.helper.next_inputs(time=time,
+                                                outputs=cell_outputs,
+                                                states=cell_states,
+                                                sample_ids=sample_ids)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         outputs = self.OutputWrapper(cell_outputs, sample_ids)
         return (outputs, next_states, next_inputs, finished)
 
@@ -2621,6 +2871,7 @@ def dynamic_lstm(
 
     helper = LayerHelper('lstm', **locals())
     size = size // 4
+<<<<<<< HEAD
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype
     )
@@ -2630,6 +2881,18 @@ def dynamic_lstm(
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
     )
+=======
+    weight = helper.create_parameter(attr=helper.param_attr,
+                                     shape=[size, 4 * size],
+                                     dtype=dtype)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(attr=helper.bias_attr,
+                                   shape=bias_size,
+                                   dtype=dtype,
+                                   is_bias=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     hidden = helper.create_variable_for_type_inference(dtype)
     cell = helper.create_variable_for_type_inference(dtype)
@@ -2648,6 +2911,7 @@ def dynamic_lstm(
         )
         inputs['C0'] = c_0
 
+<<<<<<< HEAD
     helper.append_op(
         type='lstm',
         inputs=inputs,
@@ -2687,6 +2951,41 @@ def lstm(
     default_initializer=None,
     seed=-1,
 ):
+=======
+    helper.append_op(type='lstm',
+                     inputs=inputs,
+                     outputs={
+                         'Hidden': hidden,
+                         'Cell': cell,
+                         'BatchGate': batch_gate,
+                         'BatchCellPreAct': batch_cell_pre_act
+                     },
+                     attrs={
+                         'use_peepholes': use_peepholes,
+                         'is_reverse': is_reverse,
+                         'gate_activation': gate_activation,
+                         'cell_activation': cell_activation,
+                         'candidate_activation': candidate_activation
+                     })
+    return hidden, cell
+
+
+@deprecated(since='2.0.0',
+            update_to='paddle.nn.LSTM',
+            reason="This API may occur CUDNN errors.")
+def lstm(input,
+         init_h,
+         init_c,
+         max_len,
+         hidden_size,
+         num_layers,
+         dropout_prob=0.0,
+         is_bidirec=False,
+         is_test=False,
+         name=None,
+         default_initializer=None,
+         seed=-1):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     r"""
 	:api_attr: Static Graph
 
@@ -2813,12 +3112,19 @@ def lstm(
         weight_size += input_weight_size + hidden_weight_size
         weight_size += hidden_size * 8 * num_dirrection
 
+<<<<<<< HEAD
     weight = helper.create_parameter(
         attr=helper.param_attr,
         shape=[weight_size],
         dtype=dtype,
         default_initializer=default_initializer,
     )
+=======
+    weight = helper.create_parameter(attr=helper.param_attr,
+                                     shape=[weight_size],
+                                     dtype=dtype,
+                                     default_initializer=default_initializer)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     out = helper.create_variable_for_type_inference(dtype)
     last_h = helper.create_variable_for_type_inference(dtype)
@@ -2831,6 +3137,7 @@ def lstm(
     )
     state_out.persistable = True
 
+<<<<<<< HEAD
     helper.append_op(
         type='cudnn_lstm',
         inputs={
@@ -2856,6 +3163,31 @@ def lstm(
             'seed': seed,
         },
     )
+=======
+    helper.append_op(type='cudnn_lstm',
+                     inputs={
+                         'Input': input,
+                         'InitH': init_h,
+                         'InitC': init_c,
+                         'W': weight,
+                     },
+                     outputs={
+                         'Out': out,
+                         'LastH': last_h,
+                         'LastC': last_c,
+                         'Reserve': reserve,
+                         'StateOut': state_out,
+                     },
+                     attrs={
+                         'is_bidirec': is_bidirec,
+                         'input_size': input_size,
+                         'hidden_size': hidden_size,
+                         'num_layers': num_layers,
+                         'is_test': is_test,
+                         'dropout_prob': dropout_prob,
+                         'seed': seed,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out, last_h, last_c
 
 
@@ -3026,6 +3358,7 @@ def dynamic_lstmp(
 
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
+<<<<<<< HEAD
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype
     )
@@ -3038,6 +3371,21 @@ def dynamic_lstmp(
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
     )
+=======
+    weight = helper.create_parameter(attr=helper.param_attr,
+                                     shape=[proj_size, 4 * size],
+                                     dtype=dtype)
+    proj_weight = helper.create_parameter(attr=helper.param_attr,
+                                          shape=[size, proj_size],
+                                          dtype=dtype)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(attr=helper.bias_attr,
+                                   shape=bias_size,
+                                   dtype=dtype,
+                                   is_bias=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     projection = helper.create_variable_for_type_inference(dtype)
     cell = helper.create_variable_for_type_inference(dtype)
@@ -3068,6 +3416,7 @@ def dynamic_lstmp(
     if proj_clip:
         assert proj_clip >= 0, "proj_clip should not be negative."
 
+<<<<<<< HEAD
     helper.append_op(
         type='lstmp',
         inputs=inputs,
@@ -3089,6 +3438,27 @@ def dynamic_lstmp(
             'proj_activation': proj_activation,
         },
     )
+=======
+    helper.append_op(type='lstmp',
+                     inputs=inputs,
+                     outputs={
+                         'Projection': projection,
+                         'Cell': cell,
+                         'BatchHidden': batch_hidden,
+                         'BatchGate': batch_gate,
+                         'BatchCellPreAct': batch_cell_pre_act
+                     },
+                     attrs={
+                         'use_peepholes': use_peepholes,
+                         'cell_clip': cell_clip,
+                         'proj_clip': proj_clip,
+                         'is_reverse': is_reverse,
+                         'gate_activation': gate_activation,
+                         'cell_activation': cell_activation,
+                         'candidate_activation': candidate_activation,
+                         'proj_activation': proj_activation
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return projection, cell
 
 
@@ -3225,6 +3595,7 @@ def dynamic_gru(
     helper = LayerHelper('gru', **locals())
     dtype = helper.input_dtype()
 
+<<<<<<< HEAD
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype
     )
@@ -3237,6 +3608,21 @@ def dynamic_gru(
         assert h_0.shape == (batch_size, size), (
             'The shape of h0 should be(batch_size, %d)' % size
         )
+=======
+    weight = helper.create_parameter(attr=helper.param_attr,
+                                     shape=[size, 3 * size],
+                                     dtype=dtype)
+    bias = helper.create_parameter(attr=helper.bias_attr,
+                                   shape=[1, 3 * size],
+                                   dtype=dtype,
+                                   is_bias=True)
+    batch_size = input.shape[0]
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    if h_0:
+        assert h_0.shape == (
+            batch_size,
+            size), 'The shape of h0 should be(batch_size, %d)' % size
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         inputs['H0'] = h_0
 
     hidden = helper.create_variable_for_type_inference(dtype)
@@ -3244,6 +3630,7 @@ def dynamic_gru(
     batch_reset_hidden_prev = helper.create_variable_for_type_inference(dtype)
     batch_hidden = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type='gru',
         inputs=inputs,
@@ -3260,6 +3647,22 @@ def dynamic_gru(
             'origin_mode': origin_mode,
         },
     )
+=======
+    helper.append_op(type='gru',
+                     inputs=inputs,
+                     outputs={
+                         'Hidden': hidden,
+                         'BatchGate': batch_gate,
+                         'BatchResetHiddenPrev': batch_reset_hidden_prev,
+                         'BatchHidden': batch_hidden
+                     },
+                     attrs={
+                         'is_reverse': is_reverse,
+                         'gate_activation': gate_activation,
+                         'activation': candidate_activation,
+                         'origin_mode': origin_mode
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return hidden
 
 
@@ -3392,9 +3795,15 @@ def gru_unit(
     size = size // 3
 
     # create weight
+<<<<<<< HEAD
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype
     )
+=======
+    weight = helper.create_parameter(attr=helper.param_attr,
+                                     shape=[size, 3 * size],
+                                     dtype=dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     gate = helper.create_variable_for_type_inference(dtype)
     reset_hidden_pre = helper.create_variable_for_type_inference(dtype)
@@ -3403,9 +3812,16 @@ def gru_unit(
     # create bias
     if helper.bias_attr:
         bias_size = [1, 3 * size]
+<<<<<<< HEAD
         bias = helper.create_parameter(
             attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
         )
+=======
+        bias = helper.create_parameter(attr=helper.bias_attr,
+                                       shape=bias_size,
+                                       dtype=dtype,
+                                       is_bias=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         inputs['Bias'] = bias
 
     helper.append_op(
@@ -3658,6 +4074,7 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
         dtype=scores.dtype
     )
 
+<<<<<<< HEAD
     helper.append_op(
         type="beam_search_decode",
         inputs={"Ids": ids, "Scores": scores},
@@ -3667,6 +4084,21 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
         },
         attrs={"beam_size": beam_size, "end_id": end_id},
     )
+=======
+    helper.append_op(type="beam_search_decode",
+                     inputs={
+                         "Ids": ids,
+                         "Scores": scores
+                     },
+                     outputs={
+                         "SentenceIds": sentence_ids,
+                         "SentenceScores": sentence_scores
+                     },
+                     attrs={
+                         "beam_size": beam_size,
+                         "end_id": end_id
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return sentence_ids, sentence_scores
 
@@ -3764,12 +4196,19 @@ def lstm_unit(
     """
     helper = LayerHelper('lstm_unit', **locals())
     check_variable_and_dtype(x_t, 'x_t', ['float32', 'float64'], 'lstm_unit')
+<<<<<<< HEAD
     check_variable_and_dtype(
         hidden_t_prev, 'hidden_t_prev', ['float32', 'float64'], 'lstm_unit'
     )
     check_variable_and_dtype(
         cell_t_prev, 'cell_t_prev', ['float32', 'float64'], 'lstm_unit'
     )
+=======
+    check_variable_and_dtype(hidden_t_prev, 'hidden_t_prev',
+                             ['float32', 'float64'], 'lstm_unit')
+    check_variable_and_dtype(cell_t_prev, 'cell_t_prev', ['float32', 'float64'],
+                             'lstm_unit')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if len(x_t.shape) != 2:
         raise ValueError("Rank of x_t must be 2.")
 
@@ -3809,11 +4248,24 @@ def lstm_unit(
     c = helper.create_variable_for_type_inference(dtype)
     h = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type='lstm_unit',
         inputs={"X": fc_out, "C_prev": cell_t_prev},
         outputs={"C": c, "H": h},
         attrs={"forget_bias": forget_bias},
     )
+=======
+    helper.append_op(type='lstm_unit',
+                     inputs={
+                         "X": fc_out,
+                         "C_prev": cell_t_prev
+                     },
+                     outputs={
+                         "C": c,
+                         "H": h
+                     },
+                     attrs={"forget_bias": forget_bias})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return h, c

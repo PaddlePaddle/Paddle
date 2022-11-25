@@ -26,6 +26,7 @@ def pow_grad(x, y, dout):
 
 
 class TestElementwisePowOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -82,6 +83,7 @@ class TestElementwisePowOp_ZeroDim3(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -93,6 +95,7 @@ class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -107,6 +110,7 @@ class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwisePowOp_scalar(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -118,6 +122,7 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_tensor(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -129,6 +134,7 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -140,6 +146,7 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -154,6 +161,7 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -163,13 +171,19 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
         }
         self.attrs = {'axis': 0}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.power(
                 self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
             )
+=======
+            'Out': np.power(self.inputs['X'],
+                            self.inputs['Y'].reshape(100, 1, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -179,13 +193,19 @@ class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
         }
         self.attrs = {'axis': 1}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.power(
                 self.inputs['X'], self.inputs['Y'].reshape(1, 20, 5, 1)
             )
+=======
+            'Out': np.power(self.inputs['X'],
+                            self.inputs['Y'].reshape(1, 20, 5, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -197,6 +217,7 @@ class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
 
 
 class TestElementwisePowOpInt(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
@@ -211,6 +232,7 @@ class TestElementwisePowOpInt(OpTest):
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
+
     def setUp(self):
         self.x = np.asarray([1, 3, 6])
         self.y = np.asarray([1, 1, 1])
@@ -239,6 +261,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
                 y.stop_gradient = False
                 res = x**y
                 res.backward()
+<<<<<<< HEAD
                 np.testing.assert_array_equal(res.gradient(), self.grad_res)
                 np.testing.assert_array_equal(x.gradient(), self.grad_x)
                 np.testing.assert_array_equal(y.gradient(), self.grad_y)
@@ -270,6 +293,12 @@ class TestElementwisePowOpFP16(OpTest):
             ),
             check_eager=True,
         )
+=======
+                self.assertTrue(np.array_equal(res.gradient(), self.grad_res))
+                self.assertTrue(np.array_equal(x.gradient(), self.grad_x))
+                self.assertTrue(np.array_equal(y.gradient(), self.grad_y))
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

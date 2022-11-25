@@ -28,6 +28,11 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 template <typename T>
 struct AttnMaskFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
@@ -85,11 +90,18 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx = context.cuda_device_context();
     // Inouts
+<<<<<<< HEAD
     const phi::DenseTensor* attn = context.Input<phi::DenseTensor>("Attn");
     const phi::DenseTensor* x = context.Input<phi::DenseTensor>("X");
     const phi::DenseTensor* mask = context.Input<phi::DenseTensor>("Mask");
     const phi::DenseTensor* new_mask =
         context.Input<phi::DenseTensor>("NewMask");
+=======
+    const Tensor* attn = context.Input<Tensor>("Attn");
+    const Tensor* x = context.Input<Tensor>("X");
+    const Tensor* mask = context.Input<Tensor>("Mask");
+    const Tensor* new_mask = context.Input<Tensor>("NewMask");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     // Input dims
     auto attn_dims = attn->dims();
@@ -107,16 +119,22 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     const bool keep_order = context.Attr<bool>("keep_order");
 
     // Outputs
+<<<<<<< HEAD
     phi::DenseTensor* out_slimmed_x =
         context.Output<phi::DenseTensor>("SlimmedX");
     phi::DenseTensor* slimmed_indices =
         context.Output<phi::DenseTensor>("CLSInds");
+=======
+    Tensor* out_slimmed_x = context.Output<Tensor>("SlimmedX");
+    Tensor* slimmed_indices = context.Output<Tensor>("CLSInds");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto* out_slimmed_x_data =
         out_slimmed_x->mutable_data<T>(context.GetPlace());
     auto* slimmed_indices_data =
         slimmed_indices->mutable_data<int64_t>(context.GetPlace());
 
     // Intermediate variable
+<<<<<<< HEAD
     phi::DenseTensor attn_tmp;
     auto* attn_tmp_data =
         attn_tmp.mutable_data<T>(attn_dims, context.GetPlace());
@@ -138,6 +156,29 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     // 1. Filter attn by mask
     std::vector<const phi::DenseTensor*> ins;
     std::vector<phi::DenseTensor*> outs;
+=======
+    Tensor attn_tmp;
+    auto* attn_tmp_data =
+        attn_tmp.mutable_data<T>(attn_dims, context.GetPlace());
+    Tensor attn_accu;
+    auto* attn_accu_data =
+        attn_accu.mutable_data<T>({bsz, max_seq_len}, context.GetPlace());
+    Tensor attn_accu_indices;
+    auto* attn_accu_indices_data = attn_accu_indices.mutable_data<int64_t>(
+        {bsz, max_seq_len}, context.GetPlace());
+    Tensor sort_attn_accu;
+    auto* sort_attn_accu_data =
+        sort_attn_accu.mutable_data<T>({bsz, max_seq_len}, context.GetPlace());
+    Tensor sort_attn_accu_indices;
+    auto* sort_attn_accu_indices_data =
+        sort_attn_accu_indices.mutable_data<int64_t>({bsz, max_seq_len},
+                                                     context.GetPlace());
+    Tensor temp_storage;
+
+    // 1. Filter attn by mask
+    std::vector<const Tensor*> ins;
+    std::vector<Tensor*> outs;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     ins.emplace_back(attn);
     ins.emplace_back(mask);
     outs.emplace_back(&attn_tmp);

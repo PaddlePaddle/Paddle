@@ -25,6 +25,7 @@ from check_api_compatible import check_compatible_str
 
 
 class Test_check_compatible(unittest.TestCase):
+
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         self.argspec_str_o = (
@@ -70,6 +71,7 @@ class Test_check_compatible(unittest.TestCase):
 
 
 class Test_check_compatible_str(unittest.TestCase):
+
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         # paddle.fluid.layer_helper_base.LayerHelperBase.create_parameter
@@ -133,6 +135,7 @@ class Test_check_compatible_str(unittest.TestCase):
 
 
 class Test_read_argspec_from_file(unittest.TestCase):
+
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         self.argspec_str_o = (

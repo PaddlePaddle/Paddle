@@ -68,10 +68,16 @@ class RecordEvent(ContextDecorator):
     """
 
     def __init__(
+<<<<<<< HEAD
         self,
         name: str,
         event_type: TracerEventType = TracerEventType.PythonUserDefined,
     ):
+=======
+            self,
+            name: str,
+            event_type: TracerEventType = TracerEventType.PythonUserDefined):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.name = name
         self.event_type = event_type
         self.event = None
@@ -168,13 +174,20 @@ def in_profiler_mode():
 
 
 def wrap_optimizers():
+
     def optimizer_warpper(func):
+
         @functools.wraps(func)
         def warpper(*args, **kwargs):
             if in_profiler_mode():
+<<<<<<< HEAD
                 with RecordEvent(
                     'Optimization Step', event_type=TracerEventType.Optimization
                 ):
+=======
+                with RecordEvent('Optimization Step',
+                                 event_type=TracerEventType.Optimization):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     return func(*args, **kwargs)
             else:
                 return func(*args, **kwargs)

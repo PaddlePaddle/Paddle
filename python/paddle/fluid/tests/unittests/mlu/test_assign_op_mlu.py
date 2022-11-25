@@ -25,6 +25,7 @@ SEED = 2022
 
 
 class TestAssign(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "assign"

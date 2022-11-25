@@ -31,6 +31,7 @@ def get_input_descs(args, mode="train"):
     input_descs_train = {
         "src_word": [(batch_size, seq_len), "int64", 2],
         "src_pos": [(batch_size, seq_len), "int64"],
+<<<<<<< HEAD
         "src_slf_attn_bias": [
             (batch_size, n_head, seq_len, seq_len),
             "float32",
@@ -45,6 +46,17 @@ def get_input_descs(args, mode="train"):
             (batch_size, n_head, seq_len, seq_len),
             "float32",
         ],  # TODO: 1 for predict, seq_len for train
+=======
+        "src_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
+        "trg_word": [(batch_size, seq_len), "int64", 2],
+        "trg_pos": [(batch_size, seq_len), "int64"],
+        "trg_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
+        "trg_src_attn_bias":
+        [(batch_size, n_head, seq_len, seq_len),
+         "float32"],  # TODO: 1 for predict, seq_len for train
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         "enc_output": [(batch_size, seq_len, d_model), "float32"],
         "lbl_word": [(None, 1), "int64"],
         "lbl_weight": [(None, 1), "float32"],
@@ -54,6 +66,7 @@ def get_input_descs(args, mode="train"):
     input_descs_predict = {
         "src_word": [(batch_size, seq_len), "int64", 2],
         "src_pos": [(batch_size, seq_len), "int64"],
+<<<<<<< HEAD
         "src_slf_attn_bias": [
             (batch_size, n_head, seq_len, seq_len),
             "float32",
@@ -64,6 +77,14 @@ def get_input_descs(args, mode="train"):
             (batch_size, n_head, seq_len, seq_len),
             "float32",
         ],
+=======
+        "src_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
+        "trg_word": [(batch_size, seq_len), "int64", 2],
+        "trg_pos": [(batch_size, seq_len), "int64"],
+        "trg_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         "trg_src_attn_bias": [(batch_size, n_head, 1, seq_len), "float32"],
         "enc_output": [(batch_size, seq_len, d_model), "float32"],
         "lbl_word": [(None, 1), "int64"],
@@ -265,11 +286,18 @@ def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head):
 
 
 def get_feed_data_reader(args, mode='train'):
+
     def __for_train__():
+<<<<<<< HEAD
         train_reader = paddle.batch(
             wmt16.train(args.src_vocab_size, args.trg_vocab_size),
             batch_size=args.batch_size,
         )
+=======
+        train_reader = paddle.batch(wmt16.train(args.src_vocab_size,
+                                                args.trg_vocab_size),
+                                    batch_size=args.batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for batch in train_reader():
             tensors = prepare_train_input(
                 batch, args.eos_idx, args.eos_idx, args.n_head
@@ -277,10 +305,16 @@ def get_feed_data_reader(args, mode='train'):
             yield tensors
 
     def __for_test__():
+<<<<<<< HEAD
         test_reader = paddle.batch(
             wmt16.test(args.src_vocab_size, args.trg_vocab_size),
             batch_size=args.batch_size,
         )
+=======
+        test_reader = paddle.batch(wmt16.test(args.src_vocab_size,
+                                              args.trg_vocab_size),
+                                   batch_size=args.batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for batch in test_reader():
             tensors = prepare_infer_input(
                 batch, args.eos_idx, args.eos_idx, args.n_head
@@ -290,11 +324,17 @@ def get_feed_data_reader(args, mode='train'):
     return __for_train__ if mode == 'train' else __for_test__
 
 
+<<<<<<< HEAD
 class InputField:
+=======
+class InputField(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, input_slots):
         self.feed_list = []
         for slot in input_slots:
             self.feed_list.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=slot['name'],
                     shape=slot['shape'],
@@ -303,6 +343,13 @@ class InputField:
                     append_batch_size=False,
                 )
             )
+=======
+                fluid.layers.data(name=slot['name'],
+                                  shape=slot['shape'],
+                                  dtype=slot['dtype'],
+                                  lod_level=slot.get('lod_level', 0),
+                                  append_batch_size=False))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def load(program, model_path, executor=None, var_list=None):

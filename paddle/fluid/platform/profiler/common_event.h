@@ -115,6 +115,7 @@ struct OperatorSupplementOriginEvent {
       const std::map<std::string, std::vector<framework::DDim>> &input_shapes,
       const std::map<std::string, std::vector<framework::proto::VarType::Type>>
           &dtypes,
+<<<<<<< HEAD
       const framework::AttributeMap &attributes,
       uint64_t op_id)
       : timestamp_ns(timestamp_ns),
@@ -122,10 +123,18 @@ struct OperatorSupplementOriginEvent {
         dtypes(dtypes),
         attributes(attributes),
         op_id(op_id) {
+=======
+      const std::vector<std::string> callstack)
+      : timestamp_ns(timestamp_ns),
+        input_shapes(input_shapes),
+        dtypes(dtypes),
+        callstack(callstack) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
     strncpy(buf, type_name.c_str(), type_name.length() + 1);
     op_type = buf;
   }
+<<<<<<< HEAD
   OperatorSupplementOriginEvent(
       std::function<void *(size_t)> arena_allocator,
       uint64_t timestamp_ns,
@@ -147,15 +156,22 @@ struct OperatorSupplementOriginEvent {
       input_shapes[std::string((*it).first)] = (*it).second;
     }
   }
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   uint64_t timestamp_ns;
   const char *op_type = nullptr;  // not owned, designed for performance
   // input shapes
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+<<<<<<< HEAD
   // op attributes
   framework::AttributeMap attributes;
   // op id
   uint64_t op_id;
+=======
+  // call stack
+  const std::vector<std::string> callstack;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 }  // namespace platform

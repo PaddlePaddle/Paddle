@@ -30,10 +30,13 @@ if(WITH_ASCEND_CL)
     npu_op_runner
     SRCS npu_op_runner.cc
     DEPS operator npu_info)
+<<<<<<< HEAD
 endif()
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn
 if(WITH_MKLDNN)
   add_dependencies(npu_collective_helper mkldnn)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endif()

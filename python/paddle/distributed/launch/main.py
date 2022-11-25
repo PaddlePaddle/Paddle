@@ -94,12 +94,20 @@ def launch():
     IPU Parameters:
         IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
         The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
+<<<<<<< HEAD
         The ``training_script`` is only allowed to set as ``ipu``.
+=======
+        The ``training_script`` is only allowed to set as ``ipu``. 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
         ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
 
         - ``--hosts``: The hosts for IPU distributd training. Each host is able to include multiple processes.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         - ``--nproc_per_host``: The number of processes launched per host. Each process is able to include multiple replicas.
 
         - ``--ipus_per_replica``: The number of IPUs requested per replica. Each replica is able to include multiple IPUs.
@@ -260,6 +268,7 @@ def launch():
             # Please Check the `IPU Parameters` for details
             python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
 
+<<<<<<< HEAD
     Examples 11 (rpc, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash11
@@ -281,6 +290,8 @@ def launch():
 
             python -m paddle.distributed.launch --master 192.168.0.16:8765 --nnodes 2 --nproc_per_node 2 --rank 1 --run_mode rpc train.py
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     """
 
     # initialize the context to run

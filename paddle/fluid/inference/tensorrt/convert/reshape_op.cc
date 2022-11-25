@@ -70,6 +70,7 @@ class ReshapeOpConverter : public OpConverter {
       layer->setReshapeDimensions(reshape_dim);
     else
       layer->setInput(1, *real_shape_tensor);
+<<<<<<< HEAD
 
     PADDLE_ENFORCE_GE(
         layer->getOutput(0)->getDimensions().nbDims,
@@ -80,6 +81,8 @@ class ReshapeOpConverter : public OpConverter {
             "config.exp_disable_tensorrt_ops([\"reshape2\"]) to forbid "
             "reshape2 op into "
             "Paddle-TRT."));
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
   }

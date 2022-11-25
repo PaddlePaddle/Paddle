@@ -19,8 +19,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using paddle::platform::CreateKey;
 using phi::funcs::OneDNNGetDataType;
+=======
+using paddle::framework::LoDTensor;
+using paddle::framework::Tensor;
+using paddle::platform::CreateKey;
+using paddle::platform::MKLDNNGetDataType;
+using paddle::platform::MKLDNNMemDesc;
+using phi::CPUContext;
+using platform::to_void_cast;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T, typename T_alg, typename T_out = T>
 class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
@@ -29,9 +39,15 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
                    const platform::MKLDNNDeviceContext& dev_ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
+<<<<<<< HEAD
                    const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
                    const phi::DenseTensor* h0,
+=======
+                   const LoDTensor* input,
+                   const Tensor* weight_h,
+                   const Tensor* h0,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                    const bool is_reverse,
                    const int64_t N,
                    const int64_t Ti,
@@ -39,11 +55,19 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
                    const int64_t OC,
                    const int64_t G,
                    const std::string& unique_name)
+<<<<<<< HEAD
       : phi::funcs::OneDNNHandlerT<T, T_alg>(
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
             CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>(), Ti)),
+=======
+      : platform::MKLDNNHandlerT<T, T_alg>(
+            dev_ctx,
+            dev_ctx.GetEngine(),
+            cpu_place,
+            CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>(), Ti)),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         N(N),
         Ti(Ti),
         IC(IC),
@@ -165,7 +189,12 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N * Ti * IC);
 
+<<<<<<< HEAD
     if (is_NTC(this->fwd_pd_->src_desc())) {
+=======
+    if (platform::GetMKLDNNFormat(this->fwd_pd_->src_desc()) ==
+        dnnl::memory::format_tag::ntc) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       reorderRNNdata(x_data,
                      x_onednn_data,
                      input_lod,
@@ -207,9 +236,15 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
       auto user_h0_memory = dnnl::memory();
       if (h0) {
         user_h0_memory = dnnl::memory(
+<<<<<<< HEAD
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_,
             phi::funcs::to_void_cast(h0->data<U>()));
+=======
+            {{1, 1, N, OC}, MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
+            this->engine_,
+            to_void_cast(h0->data<U>()));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       } else {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},

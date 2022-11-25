@@ -129,6 +129,7 @@ class LookAhead(Optimizer):
         else:
             parameters = self.inner_optimizer._parameter_list
 
+<<<<<<< HEAD
         super().__init__(
             learning_rate=alpha,
             parameters=parameters,
@@ -136,6 +137,13 @@ class LookAhead(Optimizer):
             grad_clip=None,
             name=name,
         )
+=======
+        super(LookAhead, self).__init__(learning_rate=alpha,
+                                        parameters=parameters,
+                                        weight_decay=None,
+                                        grad_clip=None,
+                                        name=name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.alpha = alpha
         self.k = k
@@ -180,9 +188,15 @@ class LookAhead(Optimizer):
                 grad_var = param._grad_ivar()
                 params_grads.append((param, grad_var))
 
+<<<<<<< HEAD
         self._apply_optimize(
             loss=None, startup_program=None, params_grads=params_grads
         )
+=======
+        self._apply_optimize(loss=None,
+                             startup_program=None,
+                             params_grads=params_grads)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -200,6 +214,7 @@ class LookAhead(Optimizer):
                 persistable=True,
             )
 
+<<<<<<< HEAD
         self.helper.append_op(
             type='increment',
             inputs={'X': [self._global_step_var]},
@@ -212,6 +227,18 @@ class LookAhead(Optimizer):
         zero_var = paddle.zeros(
             shape=[1], dtype='int32', name='lookahead_zeros'
         )
+=======
+        self.helper.append_op(type='increment',
+                              inputs={'X': [self._global_step_var]},
+                              outputs={'Out': [self._global_step_var]},
+                              attrs={'step': 1.0})
+
+    def _append_optimize_op(self, block, param_and_grad):
+        one_var = paddle.ones(shape=[1], dtype='int32', name='lookahead_ones')
+        zero_var = paddle.zeros(shape=[1],
+                                dtype='int32',
+                                name='lookahead_zeros')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         k_var = layers.create_global_var(
             name=unique_name.generate("lookahead_k"),
             shape=[1],
@@ -295,8 +322,14 @@ class LookAhead(Optimizer):
 
         self._increment_global_var()
 
+<<<<<<< HEAD
         _ = self._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
+=======
+        _ = self._apply_optimize(loss,
+                                 startup_program=startup_program,
+                                 params_grads=params_grads)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return optimize_ops, params_grads

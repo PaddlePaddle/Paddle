@@ -35,7 +35,11 @@
 
 namespace paddle {
 
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
+=======
+using framework::LoDTensor;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 using framework::Variable;
 using framework::ir::Graph;
 using platform::CPUPlace;
@@ -539,7 +543,11 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
 
 std::pair<std::vector<int>, float>
 AnalysisPredictor::MkldnnQuantizer::Histogram(
+<<<<<<< HEAD
     const phi::DenseTensor& var_tensor,
+=======
+    const framework::LoDTensor& var_tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     float min_val,
     float max_val,
     size_t num_bins) const {

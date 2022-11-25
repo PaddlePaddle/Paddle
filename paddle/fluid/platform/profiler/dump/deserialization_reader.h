@@ -39,10 +39,13 @@ class DeserializationReader {
   MemTraceEventNode* RestoreMemTraceEventNode(const MemTraceEventNodeProto&);
   OperatorSupplementEventNode* RestoreOperatorSupplementEventNode(
       const OperatorSupplementEventNodeProto&);
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuDeviceProp RestoreDeviceProperty(const DevicePropertyProto&);
 #endif
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   std::string filename_;
   std::ifstream input_file_stream_;
   NodeTreesProto* node_trees_proto_;

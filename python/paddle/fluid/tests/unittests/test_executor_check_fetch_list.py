@@ -20,6 +20,7 @@ import unittest
 
 
 class TestCheckFetchList(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         self.feed = {"x": np.array([[0], [0], [1], [0]], dtype='float32')}
@@ -31,9 +32,16 @@ class TestCheckFetchList(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
+<<<<<<< HEAD
             output = paddle.unique_consecutive(
                 x, return_inverse=True, return_counts=True, axis=0
             )
+=======
+            output = paddle.unique_consecutive(x,
+                                               return_inverse=True,
+                                               return_counts=True,
+                                               axis=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.main_program = main_program
         self.fetch_list = output

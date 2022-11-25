@@ -31,10 +31,15 @@ def fc_with_batchnorm(use_feed):
             hidden,
             size=200,
             act='tanh',
+<<<<<<< HEAD
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
+=======
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         hidden = fluid.layers.batch_norm(input=hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
@@ -44,6 +49,7 @@ def fc_with_batchnorm(use_feed):
 
 
 class TestIrInplace(TestParallelExecutorBase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -57,7 +63,14 @@ class TestIrInplace(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
             fc_with_batchnorm,
+<<<<<<< HEAD
             feed_dict={"image": img, "label": label},
+=======
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             use_device=DeviceType.CUDA,
             use_ir_memory_optimize=ir_memory_optimize,
             enable_inplace=enable_inplace,

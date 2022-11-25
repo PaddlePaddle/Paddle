@@ -26,6 +26,7 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestFusionGRUBF16MKLDNNOp(OpTest):
+
     def set_confs(self):
         pass
 
@@ -80,6 +81,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
             else np.zeros((N, self.D), dtype='float32')
         )
 
+<<<<<<< HEAD
         _, _, _, hidden = fusion_gru(
             x_fp32,
             self.lod,
@@ -92,6 +94,13 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
             ACTIVATION[self.act_state],
             ACTIVATION[self.act_gate],
         )
+=======
+        _, _, _, hidden = fusion_gru(x_fp32, self.lod, h0_fp32, wx_fp32,
+                                     wh_fp32, bias, self.is_reverse,
+                                     self.origin_mode,
+                                     ACTIVATION[self.act_state],
+                                     ACTIVATION[self.act_gate])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         hidden_bf16 = convert_float_to_uint16(hidden)
 
@@ -133,16 +142,19 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
 
 
 class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUBF16MKLDNNOp):
+
     def set_confs(self):
         self.origin_mode = False
 
 
 class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUBF16MKLDNNOp):
+
     def set_confs(self):
         self.with_bias = False
 
 
 class TestFusionGRUINT8MKLDNNBF16WeightsOp(TestFusionGRUBF16MKLDNNOp):
+
     def set_confs(self):
         self.weights_dtype = 'bf16'
 

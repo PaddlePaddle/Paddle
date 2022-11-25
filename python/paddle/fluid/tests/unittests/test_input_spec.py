@@ -27,6 +27,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import (
 
 
 class TestInputSpec(unittest.TestCase):
+
     def test_default(self):
         tensor_spec = InputSpec([3, 4])
         self.assertEqual(
@@ -120,6 +121,7 @@ class TestInputSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpec(paddle.nn.Layer):
+
     def __init__(self, in_num, out_num):
         super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
@@ -160,6 +162,7 @@ class NetWithNonTensorSpec(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpec(unittest.TestCase):
+
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -245,6 +248,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpecPrune(paddle.nn.Layer):
+
     def __init__(self, in_num, out_num):
         super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
@@ -264,6 +268,7 @@ class NetWithNonTensorSpecPrune(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
+
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -311,6 +316,7 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
 
 class UnHashableObject:
+
     def __init__(self, val):
         self.val = val
 
@@ -319,6 +325,7 @@ class UnHashableObject:
 
 
 class TestCompatibleNonTensorSpec(unittest.TestCase):
+
     def test_case(self):
         self.assertTrue(_compatible_non_tensor_spec([1, 2, 3], [1, 2, 3]))
         self.assertFalse(_compatible_non_tensor_spec([1, 2, 3], [1, 2]))
@@ -326,10 +333,15 @@ class TestCompatibleNonTensorSpec(unittest.TestCase):
 
         # not supported unhashable object.
         self.assertTrue(
+<<<<<<< HEAD
             _compatible_non_tensor_spec(
                 UnHashableObject(1), UnHashableObject(1)
             )
         )
+=======
+            _compatible_non_tensor_spec(UnHashableObject(1),
+                                        UnHashableObject(1)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

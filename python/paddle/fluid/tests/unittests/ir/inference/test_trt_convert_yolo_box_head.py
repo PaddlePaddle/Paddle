@@ -24,7 +24,9 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
+
     def sample_program_configs(self):
+
         def generate_input(attrs: List[Dict[str, Any]], batch, shape):
             gen_shape = shape.copy()
             gen_shape.insert(0, batch)
@@ -60,6 +62,7 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                     ops=ops,
                     weights={},
                     inputs={
+<<<<<<< HEAD
                         "yolo_box_head_input": TensorConfig(
                             data_gen=partial(
                                 generate_input,
@@ -68,6 +71,11 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                                 input_shape[i],
                             )
                         )
+=======
+                        "yolo_box_head_input":
+                        TensorConfig(data_gen=partial(
+                            generate_input, attrs_dict, batch, input_shape[i]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     },
                     outputs=["yolo_box_head_output"],
                 )

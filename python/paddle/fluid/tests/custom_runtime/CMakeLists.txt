@@ -1,13 +1,18 @@
+<<<<<<< HEAD
 if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   set(PLUGIN_URL https://github.com/PaddlePaddle/PaddleCustomDevice.git)
   set(PLUGIN_TAG develop)
 
+=======
+if(WITH_CUSTOM_DEVICE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   file(
     GLOB TEST_OPS
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "test_*.py")
   string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+<<<<<<< HEAD
   foreach(TEST_OP ${TEST_OPS})
     py_test(${TEST_OP}
             SRCS ${TEST_OP}.py ENVS FLAGS_allocator_strategy=naive_best_fit
@@ -28,4 +33,10 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   set_tests_properties(test_custom_cpu_profiler_plugin PROPERTIES TIMEOUT 120)
   set_tests_properties(test_fleet_launch_custom_device PROPERTIES TIMEOUT 120)
   set_tests_properties(test_custom_cpu_to_static PROPERTIES TIMEOUT 120)
+=======
+  list(REMOVE_ITEM TEST_OPS "test_collective_process_group_xccl")
+  foreach(TEST_OP ${TEST_OPS})
+    py_test(${TEST_OP} SRCS ${TEST_OP}.py)
+  endforeach()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endif()

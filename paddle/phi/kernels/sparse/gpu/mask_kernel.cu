@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 
 namespace phi {
 namespace sparse {
@@ -59,8 +58,8 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
       x.dims(),
       mask.dims(),
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
-  const DenseTensor& indices = mask.indices();
-  const DenseTensor& values = mask.values();
+  const DenseTensor& indices = mask.non_zero_indices();
+  const DenseTensor& values = mask.non_zero_elements();
   const int sparse_dim = mask.sparse_dim();
   DenseTensor sparse_offsets = phi::Empty<GPUContext>(
       dev_ctx,
@@ -104,7 +103,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
 
 /**
  * @brief Filter the DenseTensor x by the
- * mask.indices() and output a SparseCooTensor
+ * mask.non_zero_indices() and output a SparseCooTensor
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
@@ -112,27 +111,22 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      mask.indices().dtype(), "SparseMaskGPUKernel", ([&] {
+  PD_VISIT_INTEGRAL_TYPES(
+      mask.non_zero_indices().dtype(), "SparseMaskGPUKernel", ([&] {
         SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
 }
 
 template <typename IntT>
-__global__ void MaskTable(const IntT* x_indexs,
-                          const int n,
-                          int* index_flags,
-                          int* table) {
+__global__ void MaskTable(const IntT* x_indexs, const int n, int* table) {
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     int index = x_indexs[i];
-    phi::funcs::sparse::SetBits(index, index_flags);
-    table[index] = i;
+    table[index] = i == 0 ? -1 : i;
   }
 }
 
 template <typename T, typename IntT, int VecSize>
 __global__ void MaskCopy(const IntT* mask_indexs,
-                         const int* index_flags,
                          const int* table,
                          const int n,
                          const int stride,
@@ -141,10 +135,9 @@ __global__ void MaskCopy(const IntT* mask_indexs,
   using LoadT = phi::AlignedVector<T, VecSize>;
   using StoreT = phi::AlignedVector<T, VecSize>;
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
-    const int mask_index = mask_indexs[i];
-    const bool flag = phi::funcs::sparse::TestBits(mask_index, index_flags);
-    if (flag) {
-      int j = table[mask_index];
+    int j = table[mask_indexs[i]];
+    if (j != 0) {
+      if (j == -1) j = 0;
       for (int k = 0; k < stride; k += VecSize) {
         LoadT vec_x;
         phi::Load<T, VecSize>(x_values + j * stride + k, &vec_x);
@@ -204,7 +197,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
                                              config.thread_per_block,
                                              0,
                                              dev_ctx.stream()>>>(
-      x.indices().data<IntT>(),
+      x.non_zero_indices().data<IntT>(),
       d_sparse_offsets.data<IntT>(),
       x_indexs.numel(),
       sparse_dim,
@@ -224,18 +217,15 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
 
   int table_size = 1;
   auto x_dims = x.dims();
-  for (int i = 0; i < sparse_dim; i++) {
+  for (int i = 0; i < x_dims.size() - 1; i++) {
     table_size *= x_dims[i];
   }
   DenseTensor table = phi::Empty<int>(dev_ctx, {table_size});
-  DenseTensor index_flags = phi::Empty<int>(dev_ctx, {(table_size + 31) / 32});
-  phi::backends::gpu::GpuMemsetAsync(index_flags.data<int>(),
-                                     0,
-                                     index_flags.numel() * sizeof(int),
-                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemsetAsync(
+      table.data<int>(), 0, table_size * sizeof(int), dev_ctx.stream());
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
-  *out = phi::EmptyLike<T>(dev_ctx, x.values());
+      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
+  *out = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();
@@ -244,36 +234,33 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   MaskTable<<<config.block_per_grid,
               config.thread_per_block,
               0,
-              dev_ctx.stream()>>>(x_indexs_ptr,
-                                  x_indexs.numel(),
-                                  index_flags.data<int>(),
-                                  table.data<int>());
+              dev_ctx.stream()>>>(
+      x_indexs_ptr, x_indexs.numel(), table.data<int>());
   config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, mask_indexs.numel(), 1);
 
   const int VecBytes = 16;
   const int VecSize = VecBytes / sizeof(T);
   if (stride % VecSize == 0) {
-    MaskCopy<T, IntT, VecSize><<<config.block_per_grid,
-                                 config.thread_per_block,
-                                 0,
-                                 dev_ctx.stream()>>>(mask_indexs_ptr,
-                                                     index_flags.data<int>(),
-                                                     table.data<int>(),
-                                                     mask_indexs.numel(),
-                                                     stride,
-                                                     x.values().data<T>(),
-                                                     out_ptr);
+    MaskCopy<T, IntT, VecSize>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(mask_indexs_ptr,
+                               table.data<int>(),
+                               mask_indexs.numel(),
+                               stride,
+                               x.non_zero_elements().data<T>(),
+                               out_ptr);
   } else {
     MaskCopy<T, IntT, 1><<<config.block_per_grid,
                            config.thread_per_block,
                            0,
                            dev_ctx.stream()>>>(mask_indexs_ptr,
-                                               index_flags.data<int>(),
                                                table.data<int>(),
                                                mask_indexs.numel(),
                                                stride,
-                                               x.values().data<T>(),
+                                               x.non_zero_elements().data<T>(),
                                                out_ptr);
   }
 }
@@ -283,8 +270,8 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
         SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
 }

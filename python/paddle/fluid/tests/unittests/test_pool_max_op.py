@@ -129,6 +129,7 @@ def max_pool2D_forward_naive(
 
 
 class TestMaxPoolWithIndex_Op(OpTest):
+
     def setUp(self):
         self.init_test_case()
         self.init_global()
@@ -180,11 +181,13 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
 
 class TestCase1(TestMaxPoolWithIndex_Op):
+
     def init_global(self):
         self.global_pool = True
 
 
 class TestCase2(TestMaxPoolWithIndex_Op):
+
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -198,12 +201,14 @@ class TestCase2(TestMaxPoolWithIndex_Op):
 
 
 class TestCase3(TestCase2):
+
     def init_global(self):
         self.global_pool = False
 
 
 # ----------------max_pool2d_with_index----------------
 class TestCase4(TestMaxPoolWithIndex_Op):
+
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -217,11 +222,13 @@ class TestCase4(TestMaxPoolWithIndex_Op):
 
 
 class TestCase5(TestCase4):
+
     def init_global(self):
         self.global_pool = False
 
 
 class TestCase6(TestMaxPoolWithIndex_Op):
+
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -235,16 +242,19 @@ class TestCase6(TestMaxPoolWithIndex_Op):
 
 
 class TestCase7(TestCase6):
+
     def init_global(self):
         self.global_pool = False
 
 
 class TestCastAdaptive2d(TestCase6):
+
     def init_adaptive(self):
         self.adaptive = True
 
 
 class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
+
     def init_adaptive(self):
         self.adaptive = True
 

@@ -25,6 +25,7 @@ def AffineGrid(theta, grid_shape):
     n = grid_shape[0]
     h = grid_shape[1]
     w = grid_shape[2]
+<<<<<<< HEAD
     h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[
         :, :, np.newaxis
     ]
@@ -34,6 +35,14 @@ def AffineGrid(theta, grid_shape):
     grid = np.concatenate(
         [w_idx, h_idx, np.ones([h, w, 1])], axis=2
     )  # h * w * 3
+=======
+    h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w,
+                      axis=0).T[:, :, np.newaxis]
+    w_idx = np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h,
+                      axis=0)[:, :, np.newaxis]
+    grid = np.concatenate([w_idx, h_idx, np.ones([h, w, 1])],
+                          axis=2)  # h * w * 3
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     grid = np.repeat(grid[np.newaxis, :], n, axis=0)  # n * h * w *3
 
     ret = np.zeros([n, h * w, 2])
@@ -144,9 +153,14 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
     if align_corners:
         grid_slice = 0.5 * ((grid_slice.astype('float64') + 1.0) * max_val)
     else:
+<<<<<<< HEAD
         grid_slice = (
             0.5 * ((grid_slice.astype('float64') + 1.0) * (max_val + 1)) - 0.5
         )
+=======
+        grid_slice = 0.5 * ((grid_slice.astype('float64') + 1.0) *
+                            (max_val + 1)) - 0.5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if padding_mode == "border":
         grid_slice = clip(grid_slice, 0, max_val)
@@ -157,9 +171,14 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
         )
         extra = grid_abs - np.floor(grid_abs / double_range) * double_range
         grid_slice = np.minimum(extra, double_range - extra)
+<<<<<<< HEAD
         grid_slice = (
             grid_slice if align_corners else clip(grid_slice - 0.5, 0, max_val)
         )
+=======
+        grid_slice = grid_slice if align_corners else clip(
+            grid_slice - 0.5, 0, max_val)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return grid_slice
 
 
@@ -327,6 +346,7 @@ def GridSampler3D(
 
 
 class TestGridSamplerOp(OpTest):
+
     def setUp(self):
         self.use_cudnn = False
         self.numeric_grad_delta = 0.0001
@@ -338,6 +358,7 @@ class TestGridSamplerOp(OpTest):
         self.initTestCase()
         x = np.random.randint(0, 255, self.x_shape).astype('float64')
         theta = np.zeros(self.theta_shape).astype('float64')
+<<<<<<< HEAD
 
         if len(self.grid_shape) == 4:
             for i in range(self.theta_shape[0]):
@@ -375,11 +396,32 @@ class TestGridSamplerOp(OpTest):
                     x, grid, self.align_corners, self.mode, self.padding_mode
                 )
             }
+=======
+        for i in range(self.theta_shape[0]):
+            for j in range(2):
+                for k in range(3):
+                    theta[i, j, k] = np.random.rand(1)[0]
+        grid = AffineGrid(theta, self.grid_shape)
+
+        self.inputs = {'X': x, 'Grid': grid}
+        self.attrs = {
+            'use_cudnn': self.use_cudnn,
+            "align_corners": self.align_corners,
+            "padding_mode": self.padding_mode,
+            "mode": self.mode
+        }
+        self.outputs = {
+            'Output':
+            GridSampler(x, grid, self.align_corners, self.mode,
+                        self.padding_mode)
+        }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X', 'Grid'],
             'Output',
@@ -387,6 +429,13 @@ class TestGridSamplerOp(OpTest):
             numeric_grad_delta=self.numeric_grad_delta,
             check_eager=True,
         )
+=======
+        self.check_grad(['X', 'Grid'],
+                        'Output',
+                        max_relative_error=0.01,
+                        numeric_grad_delta=self.numeric_grad_delta,
+                        check_eager=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def initTestCase(self):
         self.x_shape = (2, 3, 8, 8)
@@ -399,6 +448,7 @@ class TestGridSamplerOp(OpTest):
 
 
 class Case1(TestGridSamplerOp):
+
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -409,6 +459,7 @@ class Case1(TestGridSamplerOp):
 
 
 class Case1_(TestGridSamplerOp):
+
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -419,6 +470,7 @@ class Case1_(TestGridSamplerOp):
 
 
 class Case2(TestGridSamplerOp):
+
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -429,6 +481,7 @@ class Case2(TestGridSamplerOp):
 
 
 class Case3(TestGridSamplerOp):
+
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -439,6 +492,7 @@ class Case3(TestGridSamplerOp):
 
 
 class Case4(TestGridSamplerOp):
+
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
@@ -454,6 +508,7 @@ class Case4(TestGridSamplerOp):
     + "however it is desirable to cover the forward pass"
 )
 class LargeInputCase(TestGridSamplerOp):
+
     def get_places(self):
         places = []
         if core.is_compiled_with_cuda():
@@ -478,6 +533,7 @@ class LargeInputCase(TestGridSamplerOp):
     + "however it is desirable to cover the forward pass"
 )
 class Case5(LargeInputCase):
+
     def initTestCase(self):
         self.no_need_check_grad = True
         self.x_shape = (2, 3, 128, 128)

@@ -23,9 +23,23 @@ from utils import matmul, mul, nested, o2, reduce, reduce_dim
 
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
 import paddle.nn.functional as F
 from paddle.fluid.framework import _test_eager_guard
 from paddle.incubate.autograd.utils import as_tensors
+=======
+import paddle.compat as cpt
+import paddle.nn.functional as F
+from paddle.incubate.autograd.utils import as_tensors
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
+
+import config
+import utils
+from utils import (_compute_numerical_batch_hessian, _compute_numerical_hessian,
+                   _compute_numerical_vhp, _compute_numerical_jacobian,
+                   _compute_numerical_batch_jacobian)
+from utils import matmul, mul, nested, o2, pow, reduce, reduce_dim, unuse
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def make_v(f, inputs):
@@ -34,6 +48,7 @@ def make_v(f, inputs):
 
 
 class TestAutogradFunctional(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.RAW_INPUTS = {
@@ -51,9 +66,14 @@ class TestAutogradFunctional(unittest.TestCase):
     def gen_input(self, inp, stop_gradient=False):
         if isinstance(inp, paddle.Tensor):
             return inp
+<<<<<<< HEAD
         return paddle.to_tensor(
             self.RAW_INPUTS[inp], stop_gradient=stop_gradient
         )
+=======
+        return paddle.to_tensor(self.RAW_INPUTS[inp],
+                                stop_gradient=stop_gradient)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def gen_inputs(self, inputs):
         if isinstance(inputs, list):
@@ -62,9 +82,19 @@ class TestAutogradFunctional(unittest.TestCase):
             inputs = [self.gen_input(inputs)]
         return inputs
 
+<<<<<<< HEAD
     def gen_test_pairs(
         self, func, inputs, v=None, create_graph=False, allow_unused=False
     ):
+=======
+    def gen_test_pairs(self,
+                       func,
+                       inputs,
+                       v=None,
+                       create_graph=False,
+                       allow_unused=False):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def vjp_test():
             nonlocal v
             xs = self.gen_inputs(inputs)
@@ -82,6 +112,7 @@ class TestAutogradFunctional(unittest.TestCase):
                 v = self.gen_inputs(v)
             outputs = func(*xs)
             if v is not None:
+<<<<<<< HEAD
                 inputs_grad = paddle.grad(
                     outputs,
                     xs,
@@ -96,13 +127,35 @@ class TestAutogradFunctional(unittest.TestCase):
                     create_graph=create_graph,
                     allow_unused=allow_unused,
                 )
+=======
+                inputs_grad = paddle.grad(outputs,
+                                          xs,
+                                          v,
+                                          create_graph=create_graph,
+                                          allow_unused=allow_unused)
+            else:
+                inputs_grad = paddle.grad(outputs,
+                                          xs,
+                                          create_graph=create_graph,
+                                          allow_unused=allow_unused)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return outputs, inputs_grad
 
         return vjp_test, grad_test
 
+<<<<<<< HEAD
     def gen_jvp_tests(
         self, func, inputs, v=None, create_graph=False, allow_unused=False
     ):
+=======
+    def gen_jvp_tests(self,
+                      func,
+                      inputs,
+                      v=None,
+                      create_graph=False,
+                      allow_unused=False):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def jvp_test():
             nonlocal v
             xs = self.gen_inputs(inputs)
@@ -142,6 +195,7 @@ class TestAutogradFunctional(unittest.TestCase):
 
 
 class TestVJP(TestAutogradFunctional):
+
     def func_vjp_i1o1(self):
         test_cases = [
             [reduce, 'A'],  # noqa
@@ -219,13 +273,18 @@ class TestVJP(TestAutogradFunctional):
     def test_input_single_tensor(self):
         self.assertIsInstance(
             paddle.incubate.autograd.vjp(paddle.tanh, paddle.rand((3, 4)))[1],
+<<<<<<< HEAD
             paddle.fluid.framework.Variable,
         )
+=======
+            paddle.fluid.framework.Variable)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'expected_exception'),
+<<<<<<< HEAD
     (
         (
             'v_shape_not_equal_ys',
@@ -236,12 +295,22 @@ class TestVJP(TestAutogradFunctional):
         ),
     ),
 )
+=======
+    (('v_shape_not_equal_ys', utils.square, np.random.rand(3),
+      np.random.rand(1), RuntimeError), ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestVJPException(unittest.TestCase):
+
     def func_vjp(self):
         with self.assertRaises(self.expected_exception):
+<<<<<<< HEAD
             paddle.incubate.autograd.vjp(
                 self.fun, paddle.to_tensor(self.xs), paddle.to_tensor(self.v)
             )
+=======
+            paddle.incubate.autograd.vjp(self.fun, paddle.to_tensor(self.xs),
+                                         paddle.to_tensor(self.v))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_all_cases(self):
         with _test_eager_guard():
@@ -251,8 +320,12 @@ class TestVJPException(unittest.TestCase):
 
 def jac(grad_fn, f, inputs):
     assert grad_fn in [
+<<<<<<< HEAD
         paddle.incubate.autograd.vjp,
         paddle.incubate.autograd.jvp,
+=======
+        paddle.incubate.autograd.vjp, paddle.incubate.autograd.jvp
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     ]
     if grad_fn is paddle.incubate.autograd.jvp:
         vs = [paddle.zeros_like(x) for x in inputs]
@@ -281,6 +354,7 @@ def jac(grad_fn, f, inputs):
 
 
 class TestJVP(TestAutogradFunctional):
+
     def func_jvp_i1o1(self):
         test_cases = [
             [reduce, 'A'],  # noqa
@@ -336,6 +410,7 @@ class TestJVP(TestAutogradFunctional):
 
 
 @utils.place(config.DEVICES)
+<<<<<<< HEAD
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'func', 'xs'),
     (
@@ -378,6 +453,30 @@ class TestJacobianNoBatch(unittest.TestCase):
             if isinstance(self.xs, typing.Sequence)
             else paddle.to_tensor(self.xs)
         )
+=======
+@utils.parameterize((utils.TEST_CASE_NAME, 'func', 'xs'), (
+    ('1d_in_1d_out', utils.square, np.array([2., 3.])),
+    ('3d_in_3d_out', utils.square, np.random.rand(2, 3, 4)),
+    ('single_in_single_out', utils.square, np.random.rand(2, 3)),
+    ('multi_in_single_out', paddle.matmul,
+     (np.random.rand(2, 2), np.random.rand(2, 2))),
+))
+class TestJacobianNoBatch(unittest.TestCase):
+
+    def setUp(self):
+        self._dtype = self.xs[0].dtype if isinstance(
+            self.xs, typing.Sequence) else self.xs.dtype
+        self._eps = config.TOLERANCE.get(str(
+            self._dtype)).get("first_order_grad").get("eps")
+        self._rtol = config.TOLERANCE.get(str(
+            self._dtype)).get("first_order_grad").get("rtol")
+        self._atol = config.TOLERANCE.get(str(
+            self._dtype)).get("first_order_grad").get("atol")
+
+    def func_jacobian(self):
+        xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
+            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._actual = paddle.incubate.autograd.Jacobian(self.func, xs, False)
         self._expected = self._get_expected()
 
@@ -395,7 +494,12 @@ class TestJacobianNoBatch(unittest.TestCase):
                 self._expected.__getitem__(index.value),
                 rtol=self._rtol,
                 atol=self._atol,
+<<<<<<< HEAD
                 err_msg=f'Testcase {index.type} index not passed, value is {index.value}',
+=======
+                err_msg=
+                f'Testcase {index.type} index not passed, value is {index.value}'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             )
 
     def _get_expected(self):
@@ -416,6 +520,7 @@ class TestJacobianNoBatch(unittest.TestCase):
 
 
 @utils.place(config.DEVICES)
+<<<<<<< HEAD
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'func', 'xs'),
     (
@@ -457,10 +562,33 @@ class TestJacobianBatchFirst(unittest.TestCase):
             if isinstance(self.xs, typing.Sequence)
             else paddle.to_tensor(self.xs)
         )
+=======
+@utils.parameterize((utils.TEST_CASE_NAME, 'func', 'xs'), (
+    ('1d_in_1d_out', utils.square, np.array([[1., 2., 3.], [3., 4., 3.]])),
+    ('3d_in_3d_out', utils.square, np.random.rand(2, 3, 4)),
+    ('multi_in_single_out', utils.square, np.random.rand(2, 3)),
+))
+class TestJacobianBatchFirst(unittest.TestCase):
+
+    def setUp(self):
+        self._dtype = self.xs[0].dtype if isinstance(
+            self.xs, typing.Sequence) else self.xs.dtype
+        self._eps = config.TOLERANCE.get(str(
+            self._dtype)).get("first_order_grad").get("eps")
+        self._rtol = config.TOLERANCE.get(str(
+            self._dtype)).get("first_order_grad").get("rtol")
+        self._atol = config.TOLERANCE.get(str(
+            self._dtype)).get("first_order_grad").get("atol")
+
+    def func_jacobian(self):
+        xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
+            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._actual = paddle.incubate.autograd.Jacobian(self.func, xs, True)
         self._expected = self._get_expected()
 
         Index = collections.namedtuple('Index', ('type', 'value'))
+<<<<<<< HEAD
         indexes = (
             Index(
                 'all',
@@ -481,6 +609,20 @@ class TestJacobianBatchFirst(unittest.TestCase):
                 (slice(0, 1, None), slice(0, 2, 1), slice(0, None, None)),
             ),
         )
+=======
+        indexes = (Index(
+            'all',
+            (slice(0, None, None), slice(0, None, None), slice(0, None, None))),
+                   Index('row',
+                         (slice(0, None, None), 0, slice(0, None, None))),
+                   Index('col',
+                         (slice(0, None, None), slice(0, None, None), 0)),
+                   Index('batch', (slice(0, 2, None), slice(
+                       0, None, None), slice(0, None, None))),
+                   Index('multi_row',
+                         (slice(0, 1, None), slice(0, 2, 1), slice(
+                             0, None, None))))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertEqual(self._actual[:].numpy().dtype, self._expected.dtype)
         for index in indexes:
             np.testing.assert_allclose(
@@ -488,7 +630,12 @@ class TestJacobianBatchFirst(unittest.TestCase):
                 self._expected.__getitem__(index.value),
                 rtol=self._rtol,
                 atol=self._atol,
+<<<<<<< HEAD
                 err_msg=f'Testcase {index.type} index not passed, value is {index.value}',
+=======
+                err_msg=
+                f'Testcase {index.type} index not passed, value is {index.value}'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             )
 
     def _get_expected(self):
@@ -512,11 +659,16 @@ class TestJacobianBatchFirst(unittest.TestCase):
 
 
 class TestHessianNoBatch(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     @classmethod
     def setUpClass(self):
         self.shape = (2, 2)
         self.dtype = 'float32'
         self.np_dtype = np.float32
+<<<<<<< HEAD
         self.numerical_delta = (
             config.TOLERANCE.get(self.dtype).get("second_order_grad").get("eps")
         )
@@ -530,10 +682,19 @@ class TestHessianNoBatch(unittest.TestCase):
             .get("second_order_grad")
             .get("atol")
         )
+=======
+        self.numerical_delta = config.TOLERANCE.get(
+            self.dtype).get("second_order_grad").get("eps")
+        self.rtol = config.TOLERANCE.get(
+            self.dtype).get("second_order_grad").get("rtol")
+        self.atol = config.TOLERANCE.get(
+            self.dtype).get("second_order_grad").get("atol")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
     def func_single_input(self):
+
         def func(x):
             return paddle.sum(paddle.matmul(x, x))
 
@@ -544,11 +705,17 @@ class TestHessianNoBatch(unittest.TestCase):
 
         self.x.stop_gradient = False
         hessian = paddle.incubate.autograd.Hessian(func, self.x)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )
+=======
+        np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
+                                   self.rtol, self.atol)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def func_multi_input(self):
+
         def func(x, y):
             return paddle.sum(paddle.matmul(x, y))
 
@@ -559,14 +726,22 @@ class TestHessianNoBatch(unittest.TestCase):
         self.x.stop_gradient = False
         self.y.stop_gradient = False
         hessian = paddle.incubate.autograd.Hessian(func, [self.x, self.y])
+<<<<<<< HEAD
         np.testing.assert_allclose(
             hessian[:].numpy(),
             numerical_hessian,
             rtol=self.rtol,
             atol=self.atol,
         )
+=======
+        np.testing.assert_allclose(hessian[:].numpy(),
+                                   numerical_hessian,
+                                   rtol=self.rtol,
+                                   atol=self.atol)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def func_allow_unused_true(self):
+
         def func(x, y):
             return paddle.sum(paddle.matmul(x, x))
 
@@ -577,9 +752,14 @@ class TestHessianNoBatch(unittest.TestCase):
         self.x.stop_gradient = False
         self.y.stop_gradient = False
         hessian = paddle.incubate.autograd.Hessian(func, [self.x, self.y])
+<<<<<<< HEAD
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )
+=======
+        np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
+                                   self.rtol, self.atol)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def func_create_graph_true(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -593,13 +773,20 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
         hessian = paddle.incubate.autograd.Hessian(func, self.x)
+<<<<<<< HEAD
         assert not hessian[:].stop_gradient
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )
+=======
+        assert hessian[:].stop_gradient == False
+        np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
+                                   self.rtol, self.atol)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_out_not_single(self):
+
         def func(x):
             return x * x
 
@@ -623,6 +810,10 @@ class TestHessianNoBatch(unittest.TestCase):
 
 
 class TestHessianBatchFirst(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     @classmethod
     def setUpClass(self):
         self.x_shape = (5, 2)
@@ -631,6 +822,7 @@ class TestHessianBatchFirst(unittest.TestCase):
         self.nbatch, self.nrow = 5, 2
         self.dtype = 'float32'
         self.np_dtype = np.float32
+<<<<<<< HEAD
         self.numerical_delta = (
             config.TOLERANCE.get(self.dtype).get('second_order_grad').get('eps')
         )
@@ -644,11 +836,20 @@ class TestHessianBatchFirst(unittest.TestCase):
             .get('second_order_grad')
             .get('atol')
         )
+=======
+        self.numerical_delta = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('eps')
+        self.rtol = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('rtol')
+        self.atol = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('atol')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.x = paddle.rand(shape=self.x_shape, dtype=self.dtype)
         self.weight = paddle.rand(shape=self.weight_shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.y_shape, dtype=self.dtype)
 
     def func_single_input(self):
+
         def func(x):
             return paddle.matmul(x * x, self.weight)[:, 0:1]
 
@@ -657,14 +858,21 @@ class TestHessianBatchFirst(unittest.TestCase):
         )
 
         H = paddle.incubate.autograd.Hessian(func, self.x, is_batched=True)
+<<<<<<< HEAD
         actual = utils._np_transpose_matrix_format(
             H[:].numpy(), utils.MatrixFormat.BNM, utils.MatrixFormat.NBM
         )
+=======
+        actual = utils._np_transpose_matrix_format(H[:].numpy(),
+                                                   utils.MatrixFormat.BNM,
+                                                   utils.MatrixFormat.NBM)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         actual = actual.reshape((H.shape[1], -1))
 
         np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
 
     def func_multi_input(self):
+
         def func(x, y):
             return paddle.matmul(x * x * y * y, self.weight)[:, 0:1]
 
@@ -681,16 +889,25 @@ class TestHessianBatchFirst(unittest.TestCase):
 
         self.x.stop_gradient = False
         self.y.stop_gradient = False
+<<<<<<< HEAD
         H = paddle.incubate.autograd.Hessian(
             func, [self.x, self.y], is_batched=True
         )
         actual = utils._np_transpose_matrix_format(
             H[:].numpy(), utils.MatrixFormat.BNM, utils.MatrixFormat.NBM
         )
+=======
+        H = paddle.incubate.autograd.Hessian(func, [self.x, self.y],
+                                             is_batched=True)
+        actual = utils._np_transpose_matrix_format(H[:].numpy(),
+                                                   utils.MatrixFormat.BNM,
+                                                   utils.MatrixFormat.NBM)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
 
     def func_allow_unused(self):
+
         def func(x, y):
             return paddle.matmul(x * x, self.weight)[:, 0:1]
 
@@ -704,6 +921,7 @@ class TestHessianBatchFirst(unittest.TestCase):
         )
         expected = [[n for n in row] for row in expected]
         expected = utils._np_concat_matrix_sequence(expected)
+<<<<<<< HEAD
         expected = utils._np_transpose_matrix_format(
             expected, utils.MatrixFormat.NBM, utils.MatrixFormat.BNM
         )
@@ -715,8 +933,22 @@ class TestHessianBatchFirst(unittest.TestCase):
         np.testing.assert_allclose(
             actual, expected, rtol=self.rtol, atol=self.atol
         )
+=======
+        expected = utils._np_transpose_matrix_format(expected,
+                                                     utils.MatrixFormat.NBM,
+                                                     utils.MatrixFormat.BNM)
+
+        actual = paddle.incubate.autograd.Hessian(func, [self.x, self.y],
+                                                  is_batched=True)[:]
+
+        np.testing.assert_allclose(actual,
+                                   expected,
+                                   rtol=self.rtol,
+                                   atol=self.atol)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def func_stop_gradient(self):
+
         def func(x):
             return paddle.matmul(x * x, self.weight)[:, 0:1]
 
@@ -727,21 +959,34 @@ class TestHessianBatchFirst(unittest.TestCase):
         x = self.x.clone()
         x.stop_gradient = True
         H = paddle.incubate.autograd.Hessian(func, self.x, is_batched=True)[:]
+<<<<<<< HEAD
         actual = utils._np_transpose_matrix_format(
             H[:].numpy(), utils.MatrixFormat.BNM, utils.MatrixFormat.NBM
         )
+=======
+        actual = utils._np_transpose_matrix_format(H[:].numpy(),
+                                                   utils.MatrixFormat.BNM,
+                                                   utils.MatrixFormat.NBM)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         actual = actual.reshape((H.shape[1], -1))
 
         np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
 
     def func_out_not_single(self):
+
         def func(x):
             return x * x
 
         with self.assertRaises(RuntimeError):
+<<<<<<< HEAD
             paddle.incubate.autograd.Hessian(
                 func, paddle.ones((3, 3)), is_batched=True
             )
+=======
+            paddle.incubate.autograd.Hessian(func,
+                                             paddle.ones((3, 3)),
+                                             is_batched=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_all_cases(self):
         with _test_eager_guard():

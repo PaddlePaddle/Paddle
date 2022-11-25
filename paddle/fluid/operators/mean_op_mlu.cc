@@ -77,8 +77,12 @@ template <typename T>
 class MeanMLUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto output_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_ENFORCE_EQ(output_grad->numel(),
                       1,
                       platform::errors::InvalidArgument(

@@ -35,6 +35,7 @@ paddle.enable_static()
 
 
 class TestCollectiveIdentity(TestCollectiveRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -42,14 +43,21 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
         ring_id = 0
         nranks = 2
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32'
             )
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             toutdata = main_prog.current_block().create_var(
                 name="outofgather",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
@@ -58,6 +66,16 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
                 outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id, 'nranks': nranks},
             )
+=======
+                stop_gradient=False)
+            main_prog.global_block().append_op(type="c_identity",
+                                               inputs={'X': tindata},
+                                               outputs={'Out': toutdata},
+                                               attrs={
+                                                   'ring_id': ring_id,
+                                                   'nranks': nranks
+                                               })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return toutdata
 
 

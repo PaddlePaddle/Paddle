@@ -44,8 +44,13 @@ struct ArrayToLoDFunctorImpl {
 };
 
 struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> in;
   mutable phi::DenseTensor *out;
+=======
+  std::vector<framework::Tensor> in;
+  mutable framework::Tensor *out;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   template <typename Place>
   void operator()(Place place) const {

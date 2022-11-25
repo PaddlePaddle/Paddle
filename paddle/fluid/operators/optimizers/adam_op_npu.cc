@@ -30,7 +30,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -39,7 +43,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       true,
                       platform::errors::InvalidArgument(
                           "The Grad(%s)'s type should be LoDTensor, "
@@ -62,7 +70,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
+<<<<<<< HEAD
       auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+=======
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -138,7 +150,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     Tensor epsilon_tmp(experimental::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
+<<<<<<< HEAD
       beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
+=======
+      beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_EQ(beta1_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -152,7 +168,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("Beta2Tensor")) {
+<<<<<<< HEAD
       beta2_tensor = ctx.Input<phi::DenseTensor>("Beta2Tensor");
+=======
+      beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_EQ(beta2_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -166,7 +186,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("EpsilonTensor")) {
+<<<<<<< HEAD
       epsilon_tensor = ctx.Input<phi::DenseTensor>("EpsilonTensor");
+=======
+      epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_EQ(epsilon_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -264,7 +288,11 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       VLOG(3) << "Has SkipUpdate";
+<<<<<<< HEAD
       auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+=======
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -312,7 +340,11 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         param_out->mutable_data<T>(ctx.GetPlace());
 
         const auto* param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
         PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+=======
+        PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                           true,
                           platform::errors::InvalidArgument(
                               "The Var(%s)'s type should be LoDTensor, "
@@ -324,7 +356,11 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         const auto& runner =
             NpuOpRunner("Mul",
                         {*param, decay},
+<<<<<<< HEAD
                         {*const_cast<phi::DenseTensor*>(param)},
+=======
+                        {*const_cast<framework::LoDTensor*>(param)},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         {});
         runner.Run(stream);
       }

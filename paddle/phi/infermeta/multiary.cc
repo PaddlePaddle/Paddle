@@ -1146,6 +1146,7 @@ void DeformableConvInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+<<<<<<< HEAD
 void EditDistanceInferMeta(const MetaTensor& hyps,
                            const MetaTensor& refs,
                            const MetaTensor& hypslength,
@@ -1341,6 +1342,24 @@ void HSigmoidLossInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaTensor* pre_out,
                            MetaTensor* w_out) {
+=======
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  const MetaTensor& path,
+                                  const MetaTensor& code,
+                                  const MetaTensor& bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   const int64_t input_dims = x.dims()[0];
   const int64_t label_dims = label.dims()[0];
   PADDLE_ENFORCE_EQ(input_dims,
@@ -2703,8 +2722,13 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
+<<<<<<< HEAD
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad) {
+=======
+                      MetaTensor* warpctcgrad,
+                      MetaTensor* loss) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto logits_dims = logits.dims();
   int sequence_width = 0;
 
@@ -2759,6 +2783,7 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
+<<<<<<< HEAD
 void YoloLossInferMeta(const MetaTensor& x,
                        const MetaTensor& gt_box,
                        const MetaTensor& gt_label,
@@ -2773,6 +2798,118 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* loss,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask) {
+=======
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes) {
+  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
+                                   std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GraphReindexShapeCheck(x.dims(), "X");
+  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
+  GraphReindexShapeCheck(count.dims(), "Count");
+  if (flag_buffer_hashtable) {
+    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
+  }
+
+  reindex_src->set_dims({-1});
+  reindex_src->set_dtype(neighbors.dtype());
+  reindex_dst->set_dims({-1});
+  reindex_dst->set_dtype(neighbors.dtype());
+  out_nodes->set_dims({-1});
+  out_nodes->set_dtype(x.dtype());
+}
+
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   const MetaTensor& eids,
+                                   const MetaTensor& perm_buffer,
+                                   int sample_size,
+                                   bool return_eids,
+                                   bool flag_perm_buffer,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count,
+                                   MetaTensor* out_eids) {
+  // GSN: GraphSampleNeighbors
+  auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GSNShapeCheck(row.dims(), "Row");
+  GSNShapeCheck(col_ptr.dims(), "Col_Ptr");
+  GSNShapeCheck(x.dims(), "X");
+  if (return_eids) {
+    GSNShapeCheck(eids.dims(), "Eids");
+    out_eids->set_dims({-1});
+    out_eids->set_dtype(row.dtype());
+  }
+  if (flag_perm_buffer) {
+    GSNShapeCheck(perm_buffer.dims(), "Perm_Buffer");
+  }
+
+  out->set_dims({-1});
+  out->set_dtype(row.dtype());
+  out_count->set_dims({-1});
+  out_count->set_dtype(DataType::INT32);
+}
+
+void Yolov3LossInferMeta(const MetaTensor& x,
+                         const MetaTensor& gt_box,
+                         const MetaTensor& gt_label,
+                         const MetaTensor& gt_score,
+                         const std::vector<int>& anchors,
+                         const std::vector<int>& anchor_mask,
+                         int class_num,
+                         float ignore_thresh,
+                         int downsample_ratio,
+                         bool use_label_smooth,
+                         float scale_x_y,
+                         MetaTensor* loss,
+                         MetaTensor* objectness_mask,
+                         MetaTensor* gt_match_mask) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto dim_x = x.dims();
   auto dim_gtbox = gt_box.dims();
   auto dim_gtlabel = gt_label.dims();

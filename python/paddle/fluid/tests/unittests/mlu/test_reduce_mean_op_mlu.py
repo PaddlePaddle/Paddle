@@ -25,6 +25,7 @@ paddle.enable_static()
 
 
 class TestMeanOp(OpTest):
+
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
@@ -43,6 +44,7 @@ class TestMeanOp(OpTest):
 
 
 class TestMeanOp5D(TestMeanOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -53,6 +55,7 @@ class TestMeanOp5D(TestMeanOp):
 
 
 class TestMeanOp6D(TestMeanOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -63,6 +66,7 @@ class TestMeanOp6D(TestMeanOp):
 
 
 class TestMeanOp8D(TestMeanOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -74,6 +78,7 @@ class TestMeanOp8D(TestMeanOp):
 
 
 class Test1DReduce(TestMeanOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -82,6 +87,7 @@ class Test1DReduce(TestMeanOp):
 
 
 class Test2DReduce0(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -91,6 +97,7 @@ class Test2DReduce0(Test1DReduce):
 
 
 class Test2DReduce1(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -102,6 +109,7 @@ class Test2DReduce1(Test1DReduce):
 
 
 class Test3DReduce0(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -113,6 +121,7 @@ class Test3DReduce0(Test1DReduce):
 
 
 class Test3DReduce1(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -124,6 +133,7 @@ class Test3DReduce1(Test1DReduce):
 
 
 class Test3DReduce2(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -135,6 +145,7 @@ class Test3DReduce2(Test1DReduce):
 
 
 class Test3DReduce3(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -146,19 +157,27 @@ class Test3DReduce3(Test1DReduce):
 
 
 class TestKeepDimReduce(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out': self.inputs['X'].mean(
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
             )
+=======
+            'Out':
+            self.inputs['X'].mean(axis=tuple(self.attrs['dim']),
+                                  keepdims=self.attrs['keep_dim'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestKeepDim8DReduce(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"
@@ -167,13 +186,20 @@ class TestKeepDim8DReduce(Test1DReduce):
         }
         self.attrs = {'dim': (3, 4, 5), 'keep_dim': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out': self.inputs['X'].mean(
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
             )
+=======
+            'Out':
+            self.inputs['X'].mean(axis=tuple(self.attrs['dim']),
+                                  keepdims=self.attrs['keep_dim'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestReduceAll(Test1DReduce):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "reduce_mean"

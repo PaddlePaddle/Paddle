@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+<<<<<<< HEAD
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
@@ -24,12 +25,15 @@ from paddle.fluid.tests.unittests.op_test import (
     convert_float_to_uint16,
     skip_check_grad_ci,
 )
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestReduceSumDefaultBF16OneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -75,6 +79,7 @@ class TestReduceSumDefaultBF16OneDNNOp(OpTest):
 
 
 class TestReduceDefaultWithGradBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
+
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
@@ -88,8 +93,13 @@ class TestReduceDefaultWithGradBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
 
 
 class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
+<<<<<<< HEAD
     TestReduceDefaultWithGradBF16OneDNNOp
 ):
+=======
+        TestReduceDefaultWithGradBF16OneDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -101,8 +111,13 @@ class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
 
 
 class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16OneDNNOp(
+<<<<<<< HEAD
     TestReduceDefaultWithGradBF16OneDNNOp
 ):
+=======
+        TestReduceDefaultWithGradBF16OneDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -114,8 +129,13 @@ class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16OneDNNOp(
 
 
 class TestReduceSum5DReduceAllKeepDimsBF16OneDNNOp(
+<<<<<<< HEAD
     TestReduceDefaultWithGradBF16OneDNNOp
 ):
+=======
+        TestReduceDefaultWithGradBF16OneDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -126,9 +146,15 @@ class TestReduceSum5DReduceAllKeepDimsBF16OneDNNOp(
         self.outputs = {'Out': self.x_fp32.sum(keepdims=self.attrs['keep_dim'])}
 
 
+<<<<<<< HEAD
 class TestReduceSum4DReduceAllBF16OneDNNOp(
     TestReduceDefaultWithGradBF16OneDNNOp
 ):
+=======
+class TestReduceSum4DReduceAllBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp
+                                           ):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -193,6 +219,7 @@ class TestReduceMin3DBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
 
 
 class TestReduceMean3DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -204,6 +231,7 @@ class TestReduceMean3DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
 
 
 class TestReduceMean4DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -212,8 +240,14 @@ class TestReduceMean4DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
         self.inputs = {'X': self.x_bf16}
         self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1]}
         self.outputs = {
+<<<<<<< HEAD
             'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim']))
             / (self.x_fp32.shape[0] * self.x_fp32.shape[1])
+=======
+            'Out':
+            self.x_fp32.sum(axis=tuple(self.attrs['dim'])) /
+            (self.x_fp32.shape[0] * self.x_fp32.shape[1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 

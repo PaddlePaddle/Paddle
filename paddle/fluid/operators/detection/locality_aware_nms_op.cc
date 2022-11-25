@@ -118,15 +118,26 @@ void GetMaxScoreIndexWithLocalityAware(
     if (index > -1) {
       T overlap = T(0.);
       if (box_size == 4) {
+<<<<<<< HEAD
         overlap = phi::funcs::JaccardOverlap<T>(
+=======
+        overlap = JaccardOverlap<T>(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             bbox_data + i * box_size, bbox_data + index * box_size, normalized);
       }
       // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
       if (box_size == 8 || box_size == 16 || box_size == 24 || box_size == 32) {
+<<<<<<< HEAD
         overlap = phi::funcs::PolyIoU<T>(bbox_data + i * box_size,
                                          bbox_data + index * box_size,
                                          box_size,
                                          normalized);
+=======
+        overlap = PolyIoU<T>(bbox_data + i * box_size,
+                             bbox_data + index * box_size,
+                             box_size,
+                             normalized);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       }
 
       if (overlap > nms_threshold) {
@@ -156,7 +167,11 @@ void GetMaxScoreIndexWithLocalityAware(
   // Sort the score pair according to the scores in descending order
   std::stable_sort(sorted_indices->begin(),
                    sorted_indices->end(),
+<<<<<<< HEAD
                    phi::funcs::SortScorePairDescend<int>);
+=======
+                   SortScorePairDescend<int>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   // Keep top_k scores if needed.
   if (top_k > -1 && top_k < static_cast<int>(sorted_indices->size())) {
     sorted_indices->resize(top_k);
@@ -166,8 +181,13 @@ void GetMaxScoreIndexWithLocalityAware(
 template <typename T>
 class LocalityAwareNMSKernel : public framework::OpKernel<T> {
  public:
+<<<<<<< HEAD
   void LocalityAwareNMSFast(phi::DenseTensor* bbox,
                             phi::DenseTensor* scores,
+=======
+  void LocalityAwareNMSFast(Tensor* bbox,
+                            Tensor* scores,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             const T score_threshold,
                             const T nms_threshold,
                             const T eta,
@@ -207,18 +227,31 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
           T overlap = T(0.);
           // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
+<<<<<<< HEAD
             overlap =
                 phi::funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
                                               bbox_data + kept_idx * box_size,
                                               normalized);
+=======
+            overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
+                                        bbox_data + kept_idx * box_size,
+                                        normalized);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           }
           // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
           if (box_size == 8 || box_size == 16 || box_size == 24 ||
               box_size == 32) {
+<<<<<<< HEAD
             overlap = phi::funcs::PolyIoU<T>(bbox_data + idx * box_size,
                                              bbox_data + kept_idx * box_size,
                                              box_size,
                                              normalized);
+=======
+            overlap = PolyIoU<T>(bbox_data + idx * box_size,
+                                 bbox_data + kept_idx * box_size,
+                                 box_size,
+                                 normalized);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           }
           keep = overlap <= adaptive_threshold;
         } else {
@@ -237,8 +270,13 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
   }
 
   void LocalityAwareNMS(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                         phi::DenseTensor* scores,
                         phi::DenseTensor* bboxes,
+=======
+                        Tensor* scores,
+                        Tensor* bboxes,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         const int scores_size,
                         std::map<int, std::vector<int>>* indices,
                         int* num_nmsed_out) const {
@@ -291,7 +329,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
       // Keep top k results per image.
       std::stable_sort(score_index_pairs.begin(),
                        score_index_pairs.end(),
+<<<<<<< HEAD
                        phi::funcs::SortScorePairDescend<std::pair<int, int>>);
+=======
+                       SortScorePairDescend<std::pair<int, int>>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       score_index_pairs.resize(keep_top_k);
 
       // Store the new indices.
@@ -309,11 +351,19 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
   void LocalityAwareNMSOutput(
       const platform::DeviceContext& ctx,
+<<<<<<< HEAD
       const phi::DenseTensor& scores,
       const phi::DenseTensor& bboxes,
       const std::map<int, std::vector<int>>& selected_indices,
       const int scores_size,
       phi::DenseTensor* outs,
+=======
+      const Tensor& scores,
+      const Tensor& bboxes,
+      const std::map<int, std::vector<int>>& selected_indices,
+      const int scores_size,
+      Tensor* outs,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       int* oindices = nullptr,
       const int offset = 0) const {
     int64_t predict_dim = scores.dims()[1];

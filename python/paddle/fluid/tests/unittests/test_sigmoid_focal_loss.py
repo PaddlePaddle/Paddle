@@ -19,12 +19,27 @@ import unittest
 from paddle.fluid.framework import _test_eager_guard
 
 
+<<<<<<< HEAD
 def call_sfl_functional(
     logit, label, normalizer, alpha=0.25, gamma=2.0, reduction='sum'
 ):
     res = paddle.nn.functional.sigmoid_focal_loss(
         logit, label, normalizer, alpha=alpha, gamma=gamma, reduction=reduction
     )
+=======
+def call_sfl_functional(logit,
+                        label,
+                        normalizer,
+                        alpha=0.25,
+                        gamma=2.0,
+                        reduction='sum'):
+    res = paddle.nn.functional.sigmoid_focal_loss(logit,
+                                                  label,
+                                                  normalizer,
+                                                  alpha=alpha,
+                                                  gamma=gamma,
+                                                  reduction=reduction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return res
 
 
@@ -41,19 +56,34 @@ def test_static(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
+<<<<<<< HEAD
         logit = paddle.fluid.data(
             name='logit', shape=logit_np.shape, dtype='float64'
         )
         label = paddle.fluid.data(
             name='label', shape=label_np.shape, dtype='float64'
         )
+=======
+        logit = paddle.fluid.data(name='logit',
+                                  shape=logit_np.shape,
+                                  dtype='float64')
+        label = paddle.fluid.data(name='label',
+                                  shape=label_np.shape,
+                                  dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         feed_dict = {"logit": logit_np, "label": label_np}
 
         normalizer = None
         if normalizer_np is not None:
+<<<<<<< HEAD
             normalizer = paddle.fluid.data(
                 name='normalizer', shape=normalizer_np.shape, dtype='float64'
             )
+=======
+            normalizer = paddle.fluid.data(name='normalizer',
+                                           shape=normalizer_np.shape,
+                                           dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             feed_dict["normalizer"] = normalizer_np
 
         res = call_sfl_functional(
@@ -119,7 +149,9 @@ def calc_sigmoid_focal_loss(
 
 
 class TestSigmoidFocalLoss(unittest.TestCase):
+
     def test_SigmoidFocalLoss(self):
+<<<<<<< HEAD
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64
         )
@@ -129,6 +161,14 @@ class TestSigmoidFocalLoss(unittest.TestCase):
         normalizer_nps = [
             np.asarray([np.sum(label_np > 0)], dtype=label_np.dtype),
             None,
+=======
+        logit_np = np.random.uniform(0.1, 0.8,
+                                     size=(2, 3, 4, 10)).astype(np.float64)
+        label_np = np.random.randint(0, 2,
+                                     size=(2, 3, 4, 10)).astype(np.float64)
+        normalizer_nps = [
+            np.asarray([np.sum(label_np > 0)], dtype=label_np.dtype), None
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -170,6 +210,7 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                                     reduction,
                                 )
                             expected = calc_sigmoid_focal_loss(
+<<<<<<< HEAD
                                 logit_np,
                                 label_np,
                                 normalizer_np,
@@ -189,11 +230,22 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                             np.testing.assert_allclose(
                                 eager_result, expected, rtol=1e-05
                             )
+=======
+                                logit_np, label_np, normalizer_np, alpha, gamma,
+                                reduction)
+                            self.assertTrue(np.allclose(static_result,
+                                                        expected))
+                            self.assertTrue(
+                                np.allclose(static_result, dy_result))
+                            self.assertTrue(np.allclose(dy_result, expected))
+                            self.assertTrue(np.allclose(eager_result, expected))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_SigmoidFocalLoss_error(self):
         paddle.disable_static()
         logit = paddle.to_tensor([[0.97], [0.91], [0.03]], dtype='float32')
         label = paddle.to_tensor([[1.0], [1.0], [0.0]], dtype='float32')
+<<<<<<< HEAD
         self.assertRaises(
             ValueError,
             paddle.nn.functional.sigmoid_focal_loss,
@@ -202,6 +254,14 @@ class TestSigmoidFocalLoss(unittest.TestCase):
             normalizer=None,
             reduction="unsupport reduction",
         )
+=======
+        self.assertRaises(ValueError,
+                          paddle.nn.functional.sigmoid_focal_loss,
+                          logit=logit,
+                          label=label,
+                          normalizer=None,
+                          reduction="unsupport reduction")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.enable_static()
 
 

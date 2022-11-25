@@ -25,6 +25,7 @@ LOADED_VAR_SUFFIX = ".load_0"
 
 
 def convolutional_neural_network(img):
+<<<<<<< HEAD
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
@@ -42,6 +43,21 @@ def convolutional_neural_network(img):
         pool_stride=2,
         act="relu",
     )
+=======
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                  filter_size=5,
+                                                  num_filters=20,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                  filter_size=5,
+                                                  num_filters=50,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     return prediction
 
@@ -59,6 +75,7 @@ def static_train_net(img, label):
 
 
 class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
+
     def setUp(self):
         self.seed = 90
         self.epoch_num = 1
@@ -66,6 +83,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         self.batch_num = 50
 
     def reader_decorator(self, reader):
+
         def _reader_impl():
             for item in reader():
                 image = np.array(item[0]).reshape(1, 28, 28)
@@ -79,30 +97,47 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             startup_program = fluid.default_startup_program()
             main_program = fluid.default_main_program()
 
+<<<<<<< HEAD
             img = fluid.data(
                 name='img', shape=[None, 1, 28, 28], dtype='float32'
             )
+=======
+            img = fluid.data(name='img',
+                             shape=[None, 1, 28, 28],
+                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
             prediction, avg_loss = static_train_net(img, label)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             exe = fluid.Executor(place)
 
             feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
             exe.run(startup_program)
 
+<<<<<<< HEAD
             train_reader = paddle.batch(
                 paddle.reader.shuffle(
                     paddle.dataset.mnist.train(), buf_size=100
                 ),
                 batch_size=self.batch_size,
             )
+=======
+            train_reader = paddle.batch(paddle.reader.shuffle(
+                paddle.dataset.mnist.train(), buf_size=100),
+                                        batch_size=self.batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             for _ in range(0, self.epoch_num):
                 for batch_id, data in enumerate(train_reader()):
@@ -115,6 +150,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                     if batch_id > self.batch_num:
                         break
 
+<<<<<<< HEAD
             fluid.io.save_inference_model(
                 self.save_dirname,
                 ["img"],
@@ -131,6 +167,18 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+            fluid.io.save_inference_model(self.save_dirname, ["img"],
+                                          [prediction],
+                                          exe,
+                                          model_filename=self.model_filename,
+                                          params_filename=self.params_filename,
+                                          clip_extra=False)
+
+    def load_and_train_dygraph(self):
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
@@ -154,11 +202,18 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                 learning_rate=0.001, parameter_list=mnist.parameters()
             )
 
+<<<<<<< HEAD
             train_reader = paddle.batch(
                 self.reader_decorator(paddle.dataset.mnist.train()),
                 batch_size=self.batch_size,
                 drop_last=True,
             )
+=======
+            train_reader = paddle.batch(self.reader_decorator(
+                paddle.dataset.mnist.train()),
+                                        batch_size=self.batch_size,
+                                        drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             train_loader = fluid.io.DataLoader.from_generator(capacity=10)
             train_loader.set_sample_list_generator(train_reader, places=place)
 
@@ -202,28 +257,46 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
 
+<<<<<<< HEAD
             img = fluid.data(
                 name='img', shape=[None, 1, 28, 28], dtype='float32'
             )
+=======
+            img = fluid.data(name='img',
+                             shape=[None, 1, 28, 28],
+                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
             prediction, avg_loss = static_train_net(img, label)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
+<<<<<<< HEAD
             fluid.io.load_params(
                 exe,
                 self.save_dirname,
                 main_program=fluid.default_main_program(),
                 filename=self.params_filename,
             )
+=======
+            fluid.io.load_params(exe,
+                                 self.save_dirname,
+                                 main_program=fluid.default_main_program(),
+                                 filename=self.params_filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             static_param_init_value = {}
             static_param_name_list = []
@@ -233,27 +306,48 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                     param.name
                 )
 
+<<<<<<< HEAD
             train_reader = paddle.batch(
                 self.reader_decorator(paddle.dataset.mnist.train()),
                 batch_size=self.batch_size,
                 drop_last=True,
             )
+=======
+            train_reader = paddle.batch(self.reader_decorator(
+                paddle.dataset.mnist.train()),
+                                        batch_size=self.batch_size,
+                                        drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             for epoch in range(self.epoch_num):
                 for batch_id, data in enumerate(train_reader()):
                     static_x_data = np.array([x[0] for x in data])
+<<<<<<< HEAD
                     y_data = np.array([x[1] for x in data]).reshape(
                         [self.batch_size, 1]
                     )
+=======
+                    y_data = np.array([x[1] for x in data
+                                       ]).reshape([self.batch_size, 1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)
 
+<<<<<<< HEAD
                     out = exe.run(
                         fluid.default_main_program(),
                         feed={"img": static_x_data, "label": y_data},
                         fetch_list=fetch_list,
                     )
+=======
+                    out = exe.run(fluid.default_main_program(),
+                                  feed={
+                                      "img": static_x_data,
+                                      "label": y_data
+                                  },
+                                  fetch_list=fetch_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     if batch_id >= self.batch_num:
                         break
@@ -271,11 +365,16 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         )
 
     def load_and_infer_dygraph(self):
+<<<<<<< HEAD
         place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with fluid.dygraph.guard(place):
             fluid.default_main_program().random_seed = self.seed
 
@@ -283,11 +382,18 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                 model_dir=self.save_dirname, model_filename=self.model_filename
             )
 
+<<<<<<< HEAD
             train_reader = paddle.batch(
                 self.reader_decorator(paddle.dataset.mnist.test()),
                 batch_size=self.batch_size,
                 drop_last=True,
             )
+=======
+            train_reader = paddle.batch(self.reader_decorator(
+                paddle.dataset.mnist.test()),
+                                        batch_size=self.batch_size,
+                                        drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             train_loader = fluid.io.DataLoader.from_generator(capacity=10)
             train_loader.set_sample_list_generator(train_reader, places=place)
 
@@ -307,6 +413,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
     def load_and_infer_static(self):
         with new_program_scope():
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -326,6 +433,20 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                 batch_size=self.batch_size,
                 drop_last=True,
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+
+            exe = fluid.Executor(place)
+            [infer_program, feed_target_names, fetch_targets
+             ] = fluid.io.load_inference_model(self.save_dirname, exe)
+            infer_program.random_seed = self.seed
+
+            train_reader = paddle.batch(self.reader_decorator(
+                paddle.dataset.mnist.test()),
+                                        batch_size=self.batch_size,
+                                        drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             for batch_id, data in enumerate(train_reader()):
                 static_x_data = np.array([x[0] for x in data])
@@ -391,6 +512,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         self.train_and_save_model()
 
         # Phase 2. load model & train dygraph
+<<<<<<< HEAD
         (
             dy_x_data,
             dy_out,
@@ -405,6 +527,13 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             static_param_init_value,
             static_param_value,
         ) = self.load_and_train_static()
+=======
+        dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
+            self.load_and_train_dygraph()
+
+        static_x_data, static_out, static_param_init_value, static_param_value = \
+            self.load_and_train_static()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Phase 3. compare
         np.testing.assert_array_equal(static_x_data, dy_x_data)

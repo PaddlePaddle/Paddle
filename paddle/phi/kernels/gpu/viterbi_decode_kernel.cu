@@ -91,8 +91,14 @@ struct BinaryOperation {
                   DenseTensor* output) {
     std::vector<const DenseTensor*> ins{&lhs, &rhs};
     std::vector<DenseTensor*> outs{output};
+<<<<<<< HEAD
     phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
         dev_ctx, ins, &outs, 0, BinaryFunctor<T>());
+=======
+    paddle::operators::
+        LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+            dev_ctx, ins, &outs, -1, BinaryFunctor<T>());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 };
 

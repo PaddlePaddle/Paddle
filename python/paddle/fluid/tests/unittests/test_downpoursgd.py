@@ -51,9 +51,15 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+<<<<<<< HEAD
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
+=======
+            x_emb = fluid.layers.embedding(input=x,
+                                           size=[1, 2],
+                                           is_distributed=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
@@ -113,9 +119,15 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+<<<<<<< HEAD
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
+=======
+            x_emb = fluid.layers.embedding(input=x,
+                                           size=[1, 2],
+                                           is_distributed=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
@@ -173,9 +185,15 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+<<<<<<< HEAD
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
+=======
+            x_emb = fluid.layers.embedding(input=x,
+                                           size=[1, 2],
+                                           is_distributed=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)

@@ -66,7 +66,11 @@ class CopyCrossScopeOp : public framework::OperatorBase {
         platform::errors::NotFound("No variable with name %s found.", id_name));
     auto id_tensor = id_var->GetMutable<LoDTensor>();
     auto it = scope.kids().begin();
+<<<<<<< HEAD
     phi::DenseTensor cpu_id_tensor;
+=======
+    framework::Tensor cpu_id_tensor;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     paddle::framework::TensorCopySync(
         *id_tensor, platform::CPUPlace(), &cpu_id_tensor);
     auto id_value = cpu_id_tensor.data<int64_t>();

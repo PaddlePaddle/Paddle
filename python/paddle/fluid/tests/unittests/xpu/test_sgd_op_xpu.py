@@ -15,6 +15,10 @@
 import unittest
 import numpy as np
 import sys
+<<<<<<< HEAD
+=======
+import os
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("..")
 import paddle
@@ -31,11 +35,13 @@ from xpu.get_test_cover_info import (
 
 
 class XPUTestSgdOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'sgd'
         self.use_dynamic_create_class = False
 
     class TestSGDOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "sgd"
             self.dtype = self.in_type
@@ -55,6 +61,7 @@ class XPUTestSgdOp(XPUOpTestWrapper):
             self.check_output_with_place(paddle.XPUPlace(0))
 
     class TestSGDOpCase8X(TestSGDOp):
+
         def conf(self):
             self.h = 10
             self.w = 64
@@ -66,11 +73,18 @@ for stype in support_types:
 
 
 class TestSGDOpWithLargeInput(unittest.TestCase):
+
     def runTest(self):
         data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
+<<<<<<< HEAD
         label = fluid.layers.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32'
         )
+=======
+        label = fluid.layers.fill_constant(shape=[1, 150],
+                                           value=0.5,
+                                           dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         emb = fluid.embedding(input=data, size=(10000, 150), dtype='float32')
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 

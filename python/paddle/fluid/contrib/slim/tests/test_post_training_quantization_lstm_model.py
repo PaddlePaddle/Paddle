@@ -34,8 +34,10 @@ np.random.seed(0)
 
 
 class TestPostTrainingQuantization(unittest.TestCase):
+
     def setUp(self):
         self.download_path = 'int8/download'
+<<<<<<< HEAD
         self.cache_folder = os.path.expanduser(
             '~/.cache/paddle/dataset/' + self.download_path
         )
@@ -51,6 +53,18 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     self.int8_model_path, str(e)
                 )
             )
+=======
+        self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
+                                               self.download_path)
+        self.root_path = tempfile.TemporaryDirectory()
+        self.int8_model_path = os.path.join(self.root_path.name,
+                                            "post_training_quantization")
+        try:
+            os.system("mkdir -p " + self.int8_model_path)
+        except Exception as e:
+            print("Failed to create {} due to {}".format(
+                self.int8_model_path, str(e)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             sys.exit(-1)
 
     def tearDown(self):
@@ -59,8 +73,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
             cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
+<<<<<<< HEAD
                 target_folder, zip_path
             )
+=======
+                target_folder, zip_path)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
@@ -74,6 +92,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         return data_cache_folder
 
     def get_batch_reader(self, data_path, place):
+
         def reader():
             with open(data_path, 'rb') as in_file:
                 while True:
@@ -87,15 +106,23 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
                     label = in_file.read(4 * label_len)
                     label = np.frombuffer(label, dtype=np.int32).reshape(
+<<<<<<< HEAD
                         [len(label) // 4]
                     )
+=======
+                        [len(label) // 4])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     if label.shape[0] != 1 or label[0] > 6350:
                         continue
 
                     feat = in_file.read(4 * seq_len * 8)
                     feat = np.frombuffer(feat, dtype=np.float32).reshape(
+<<<<<<< HEAD
                         [len(feat) // 4 // 8, 8]
                     )
+=======
+                        [len(feat) // 4 // 8, 8])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     lod_feat = [feat.shape[0]]
 
                     minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
@@ -104,6 +131,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         return reader
 
     def get_simple_reader(self, data_path, place):
+
         def reader():
             with open(data_path, 'rb') as in_file:
                 while True:
@@ -117,15 +145,23 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
                     label = in_file.read(4 * label_len)
                     label = np.frombuffer(label, dtype=np.int32).reshape(
+<<<<<<< HEAD
                         [len(label) // 4]
                     )
+=======
+                        [len(label) // 4])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     if label.shape[0] != 1 or label[0] > 6350:
                         continue
 
                     feat = in_file.read(4 * seq_len * 8)
                     feat = np.frombuffer(feat, dtype=np.float32).reshape(
+<<<<<<< HEAD
                         [len(feat) // 4 // 8, 8]
                     )
+=======
+                        [len(feat) // 4 // 8, 8])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     lod_feat = [feat.shape[0]]
 
                     minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
@@ -193,6 +229,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         scope = fluid.global_scope()
         batch_generator = self.get_batch_reader(data_path, place)
 
+<<<<<<< HEAD
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
@@ -206,6 +243,19 @@ class TestPostTrainingQuantization(unittest.TestCase):
             onnx_format=onnx_format,
             is_use_cache_file=is_use_cache_file,
         )
+=======
+        ptq = PostTrainingQuantization(executor=exe,
+                                       model_dir=model_path,
+                                       batch_generator=batch_generator,
+                                       batch_nums=batch_nums,
+                                       algo=algo,
+                                       quantizable_op_type=quantizable_op_type,
+                                       round_type=round_type,
+                                       is_full_quantize=is_full_quantize,
+                                       optimize_model=is_optimize_model,
+                                       onnx_format=onnx_format,
+                                       is_use_cache_file=is_use_cache_file)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ptq.quantize()
         if onnx_format:
             ptq._clip_extra = False
@@ -236,6 +286,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         data_path = self.download_model(data_url, data_md5, data_name)
         data_path = os.path.join(data_path, data_name)
 
+<<<<<<< HEAD
         print(
             "Start FP32 inference for {0} on {1} samples ...".format(
                 model_name, infer_iterations
@@ -272,6 +323,25 @@ class TestPostTrainingQuantization(unittest.TestCase):
         (int8_latency, int8_acc) = self.run_program(
             self.int8_model_path, data_path, infer_iterations
         )
+=======
+        print("Start FP32 inference for {0} on {1} samples ...".format(
+            model_name, infer_iterations))
+        (fp32_latency, fp32_acc) = self.run_program(fp32_model_path, data_path,
+                                                    infer_iterations)
+
+        print("Start post training quantization for {0} on {1} samples ...".
+              format(model_name, quant_iterations))
+        self.generate_quantized_model(fp32_model_path, data_path, algo,
+                                      round_type, quantizable_op_type,
+                                      is_full_quantize, is_use_cache_file,
+                                      is_optimize_model, quant_iterations,
+                                      onnx_format)
+
+        print("Start INT8 inference for {0} on {1} samples ...".format(
+            model_name, infer_iterations))
+        (int8_latency, int8_acc) = self.run_program(self.int8_model_path,
+                                                    data_path, infer_iterations)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         print("---Post training quantization of {} method---".format(algo))
         print(
@@ -291,6 +361,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
 
 class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
+
     def test_post_training_avg(self):
         model_name = "nlp_lstm_fp32_model"
         model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
@@ -327,7 +398,12 @@ class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
 
 
 class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
+<<<<<<< HEAD
     def not_test_post_training_avg_onnx_format(self):
+=======
+
+    def test_post_training_avg_onnx_format(self):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         model_name = "nlp_lstm_fp32_model"
         model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
         model_md5 = "519b8eeac756e7b4b7bcb2868e880452"
@@ -344,6 +420,7 @@ class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
         infer_iterations = 100
         quant_iterations = 10
         onnx_format = True
+<<<<<<< HEAD
         self.run_test(
             model_name,
             model_url,
@@ -362,6 +439,24 @@ class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
             quant_iterations,
             onnx_format=onnx_format,
         )
+=======
+        self.run_test(model_name,
+                      model_url,
+                      model_md5,
+                      data_name,
+                      data_url,
+                      data_md5,
+                      algo,
+                      round_type,
+                      quantizable_op_type,
+                      is_full_quantize,
+                      is_use_cache_file,
+                      is_optimize_model,
+                      diff_threshold,
+                      infer_iterations,
+                      quant_iterations,
+                      onnx_format=onnx_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

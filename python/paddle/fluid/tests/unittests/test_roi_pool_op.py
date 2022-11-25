@@ -33,6 +33,7 @@ def _round(x):
 
 
 class TestROIPoolOp(OpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -157,15 +158,24 @@ class TestROIPoolOp(OpTest):
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois = np.array(rois).astype("float64")
+<<<<<<< HEAD
         self.boxes_num = np.array(
             [bno + 1 for bno in range(self.batch_size)]
         ).astype('int32')
+=======
+        self.boxes_num = np.array([bno + 1 for bno in range(self.batch_size)
+                                   ]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def setUp(self):
         self.op_type = "roi_pool"
         self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale: paddle.vision.ops.roi_pool(
+<<<<<<< HEAD
             x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale
         )
+=======
+            x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.python_out_sig = ["Out"]
         self.set_data()
 
@@ -177,27 +187,45 @@ class TestROIPoolOp(OpTest):
 
 
 class BadInputTestRoiPool(unittest.TestCase):
+
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
+<<<<<<< HEAD
                 x = fluid.layers.data(
                     name='data1', shape=[2, 1, 4, 4], dtype='int64'
                 )
                 label = fluid.layers.data(
                     name='label', shape=[2, 4], dtype='float32', lod_level=1
                 )
+=======
+                x = fluid.layers.data(name='data1',
+                                      shape=[2, 1, 4, 4],
+                                      dtype='int64')
+                label = fluid.layers.data(name='label',
+                                          shape=[2, 4],
+                                          dtype='float32',
+                                          lod_level=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
 
             self.assertRaises(TypeError, test_bad_x)
 
             def test_bad_y():
+<<<<<<< HEAD
                 x = fluid.layers.data(
                     name='data2',
                     shape=[2, 1, 4, 4],
                     dtype='float32',
                     append_batch_size=False,
                 )
+=======
+                x = fluid.layers.data(name='data2',
+                                      shape=[2, 1, 4, 4],
+                                      dtype='float32',
+                                      append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 label = [[1, 2, 3, 4], [2, 3, 4, 5]]
                 output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
 
@@ -205,6 +233,7 @@ class BadInputTestRoiPool(unittest.TestCase):
 
 
 class TestROIPoolInLodOp(TestROIPoolOp):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()

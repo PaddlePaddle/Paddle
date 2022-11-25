@@ -24,6 +24,7 @@ paddle.enable_static()
 np.random.seed(0)
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda()
     or paddle.get_cudnn_version() < 8000
@@ -32,7 +33,15 @@ np.random.seed(0)
     "only support with cuda and cudnn version is at least 8.0 "
     "and device's compute capability is at least 7.0 and less than 9.0",
 )
+=======
+@unittest.skipIf(not paddle.is_compiled_with_cuda()
+                 or paddle.get_cudnn_version() < 8000
+                 or paddle.device.cuda.get_device_capability()[0] < 7,
+                 "only support with cuda and cudnn version is at least 8.0 "
+                 "and device's compute capability is at least 7.0")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestFuseResNetUnit(unittest.TestCase):
+
     def test_fuse_resenet_unit(self):
         place = paddle.CUDAPlace(0)
         program = paddle.static.Program()
@@ -40,12 +49,23 @@ class TestFuseResNetUnit(unittest.TestCase):
         with paddle.static.amp.fp16_guard():
             with paddle.static.program_guard(program, startup_program):
                 x = paddle.static.data("x", [1, 64, 64, 8])
+<<<<<<< HEAD
                 conv2d = paddle.nn.Conv2D(
                     8, 32, 1, bias_attr=False, data_format='NHWC'
                 )
                 batch_norm = paddle.nn.BatchNorm(
                     32, act='relu', data_layout='NHWC'
                 )
+=======
+                conv2d = paddle.nn.Conv2D(8,
+                                          32,
+                                          1,
+                                          bias_attr=False,
+                                          data_format='NHWC')
+                batch_norm = paddle.nn.BatchNorm(32,
+                                                 act='relu',
+                                                 data_layout='NHWC')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 out = batch_norm(conv2d(x))
         graph = core.Graph(program.desc)
         core.get_pass("fuse_resnet_unit").apply(graph)
@@ -54,9 +74,15 @@ class TestFuseResNetUnit(unittest.TestCase):
         after_params = paddle.static.amp.cast_model_to_fp16(after_program)
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
+<<<<<<< HEAD
         paddle.static.amp.cast_parameters_to_fp16(
             place, program, to_fp16_var_names=params
         )
+=======
+        paddle.static.amp.cast_parameters_to_fp16(place,
+                                                  program,
+                                                  to_fp16_var_names=params)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.static.amp.cast_parameters_to_fp16(
             place, after_program, to_fp16_var_names=after_params
         )

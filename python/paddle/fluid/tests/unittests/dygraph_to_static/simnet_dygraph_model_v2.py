@@ -320,8 +320,12 @@ class FC(paddle.nn.Layer):
     def _build_once(self, input):
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(
+<<<<<<< HEAD
             input, self._param_attr
         ):
+=======
+                input, self._param_attr):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             input_shape = inp.shape
 
             param_shape = [
@@ -332,6 +336,7 @@ class FC(paddle.nn.Layer):
             self.__w.append(
                 self.add_parameter(
                     '_w%d' % i,
+<<<<<<< HEAD
                     self.create_parameter(
                         attr=param,
                         shape=param_shape,
@@ -346,6 +351,19 @@ class FC(paddle.nn.Layer):
         self._b = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True
         )
+=======
+                    self.create_parameter(attr=param,
+                                          shape=param_shape,
+                                          dtype=self._dtype,
+                                          is_bias=False)))
+            i += 1
+
+        size = list([self._size])
+        self._b = self.create_parameter(attr=self._bias_attr,
+                                        shape=size,
+                                        dtype=self._dtype,
+                                        is_bias=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # TODO(songyouwei): We should remove _w property
     @property
@@ -381,6 +399,7 @@ class FC(paddle.nn.Layer):
         mul_results = list()
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(
+<<<<<<< HEAD
             input, self._param_attr
         ):
             tmp = self._helper.create_variable_for_type_inference(self._dtype)
@@ -393,6 +412,20 @@ class FC(paddle.nn.Layer):
                     "y_num_col_dims": 1,
                 },
             )
+=======
+                input, self._param_attr):
+            tmp = self._helper.create_variable_for_type_inference(self._dtype)
+            self._helper.append_op(type="mul",
+                                   inputs={
+                                       "X": inp,
+                                       "Y": self.__w[i]
+                                   },
+                                   outputs={"Out": tmp},
+                                   attrs={
+                                       "x_num_col_dims": self._num_flatten_dims,
+                                       "y_num_col_dims": 1
+                                   })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             i += 1
             mul_results.append(tmp)
 
@@ -400,6 +433,7 @@ class FC(paddle.nn.Layer):
             pre_bias = mul_results[0]
         else:
             pre_bias = self._helper.create_variable_for_type_inference(
+<<<<<<< HEAD
                 self._dtype
             )
             self._helper.append_op(
@@ -419,6 +453,24 @@ class FC(paddle.nn.Layer):
                 outputs={'Out': [pre_activation]},
                 attrs={'axis': self._num_flatten_dims},
             )
+=======
+                self._dtype)
+            self._helper.append_op(type="sum",
+                                   inputs={"X": mul_results},
+                                   outputs={"Out": pre_bias},
+                                   attrs={"use_mkldnn": False})
+
+        if self._b is not None:
+            pre_activation = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(type='elementwise_add',
+                                   inputs={
+                                       'X': [pre_bias],
+                                       'Y': [self._b]
+                                   },
+                                   outputs={'Out': [pre_activation]},
+                                   attrs={'axis': self._num_flatten_dims})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in dygraph mode
@@ -472,12 +524,19 @@ class BOW(paddle.nn.Layer):
         self.emb_dim = conf_dict["net"]["emb_dim"]
         self.bow_dim = conf_dict["net"]["bow_dim"]
         self.seq_len = conf_dict["seq_len"]
+<<<<<<< HEAD
         self.emb_layer = EmbeddingLayer(
             self.dict_size, self.emb_dim, "emb"
         ).ops()
         self.bow_layer = paddle.nn.Linear(
             in_features=self.bow_dim, out_features=self.bow_dim
         )
+=======
+        self.emb_layer = EmbeddingLayer(self.dict_size, self.emb_dim,
+                                        "emb").ops()
+        self.bow_layer = paddle.nn.Linear(in_features=self.bow_dim,
+                                          out_features=self.bow_dim)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 
@@ -490,12 +549,19 @@ class BOW(paddle.nn.Layer):
         # embedding layer
         left_emb = self.emb_layer(left)
         right_emb = self.emb_layer(right)
+<<<<<<< HEAD
         left_emb = paddle.reshape(
             left_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
         right_emb = paddle.reshape(
             right_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
+=======
+        left_emb = paddle.reshape(left_emb,
+                                  shape=[-1, self.seq_len, self.bow_dim])
+        right_emb = paddle.reshape(right_emb,
+                                   shape=[-1, self.seq_len, self.bow_dim])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         bow_left = paddle.fluid.layers.reduce_sum(left_emb, dim=1)
         bow_right = paddle.fluid.layers.reduce_sum(right_emb, dim=1)

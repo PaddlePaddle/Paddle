@@ -28,6 +28,7 @@ from CspFileReader import FILEORGANIZEFORM_BYTRAINER
 
 
 class dcgmFileReader(FileReader):
+
     def parseFileByGroup(self, groupId, processNum=8):
         fileFist = self.getFileListByGroup(groupId)
         displaySize = min(self._displaySize, len(fileFist))
@@ -48,6 +49,7 @@ class dcgmFileReader(FileReader):
 
             taskList = self._splitTaskListForMultiProcess(fileFist, processNum)
             for task in taskList:
+<<<<<<< HEAD
                 subproc = Process(
                     target=self._parseTask,
                     args=(
@@ -55,6 +57,12 @@ class dcgmFileReader(FileReader):
                         q,
                     ),
                 )
+=======
+                subproc = Process(target=self._parseTask, args=(
+                    task,
+                    q,
+                ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 processPool.append(subproc)
                 subproc.start()
                 pidList.append(subproc.pid)
@@ -77,9 +85,15 @@ class dcgmFileReader(FileReader):
                     isFistProcess = False
                     dcgm_data = q.get()
                 else:
+<<<<<<< HEAD
                     dcgm_data = pd.concat(
                         [dcgm_data, q.get()], axis=0, join='outer'
                     )
+=======
+                    dcgm_data = pd.concat([dcgm_data, q.get()],
+                                          axis=0,
+                                          join='outer')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             return dcgm_data
 
@@ -95,9 +109,15 @@ class dcgmFileReader(FileReader):
                 is_first = False
                 dcgm_data = tmp_data
             else:
+<<<<<<< HEAD
                 dcgm_data = pd.concat(
                     [dcgm_data, tmp_data], axis=0, join='outer'
                 )
+=======
+                dcgm_data = pd.concat([dcgm_data, tmp_data],
+                                      axis=0,
+                                      join='outer')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         dcgm_data = dcgm_data.dropna()
         if q is not None:
             q.put(dcgm_data)
@@ -130,8 +150,12 @@ class dcgmFileReader(FileReader):
                     continue
 
                 if not line.strip().startswith(
+<<<<<<< HEAD
                     "GPU"
                 ) and not line.strip().startswith("# Entity"):
+=======
+                        "GPU") and not line.strip().startswith("# Entity"):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     continue
 
                 # skip non-needed headers (only the header in 1th line was needed)
@@ -228,6 +252,7 @@ class dcgmFileReader(FileReader):
         pidList = []
 
         for gpuId in range(self._gpuPerTrainer):
+<<<<<<< HEAD
             subproc = Process(
                 target=self._getDCGMTraceInfoByGpuId,
                 args=(
@@ -238,6 +263,16 @@ class dcgmFileReader(FileReader):
                     q,
                 ),
             )
+=======
+            subproc = Process(target=self._getDCGMTraceInfoByGpuId,
+                              args=(
+                                  groupId,
+                                  gpuId,
+                                  dcgm_data,
+                                  pid_map,
+                                  q,
+                              ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)

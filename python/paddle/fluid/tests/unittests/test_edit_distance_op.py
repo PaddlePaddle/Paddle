@@ -68,6 +68,7 @@ def Levenshtein(hyp, ref):
 
 
 class TestEditDistanceOp(OpTest):
+
     def setUp(self):
         self.op_type = "edit_distance"
         self.python_api = python_edit_distance
@@ -105,6 +106,7 @@ class TestEditDistanceOp(OpTest):
 
 
 class TestEditDistanceOpNormalizedCase0(OpTest):
+
     def reset_config(self):
         pass
 
@@ -155,18 +157,21 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
 
 
 class TestEditDistanceOpNormalizedCase1(TestEditDistanceOpNormalizedCase0):
+
     def reset_config(self):
         self.x1_lod = [0, 6, 0]
         self.x2_lod = [2, 1, 2]
 
 
 class TestEditDistanceOpNormalizedCase2(TestEditDistanceOpNormalizedCase0):
+
     def reset_config(self):
         self.x1_lod = [0, 0, 6]
         self.x2_lod = [2, 2, 1]
 
 
 class TestEditDistanceOpNormalizedTensor(OpTest):
+
     def reset_config(self):
         self.x1 = np.array([[10, 3, 0, 0], [6, 5, 8, 2]], dtype=np.int64)
         self.x2 = np.array([[10, 4, 0], [6, 7, 8]], dtype=np.int64)
@@ -185,10 +190,15 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
         sequence_num = np.array(num_strs).astype("int64")
 
         for i in range(0, num_strs):
+<<<<<<< HEAD
             distance[i] = Levenshtein(
                 hyp=self.x1[i][0 : self.x1_lod[i]],
                 ref=self.x2[i][0 : self.x2_lod[i]],
             )
+=======
+            distance[i] = Levenshtein(hyp=self.x1[i][0:self.x1_lod[i]],
+                                      ref=self.x2[i][0:self.x2_lod[i]])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if normalized is True:
                 len_ref = self.x2_lod[i]
                 distance[i] = distance[i] / len_ref

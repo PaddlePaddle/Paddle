@@ -37,6 +37,16 @@ class TakeAlongAxisOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
         ctx.device_context());
   }
+<<<<<<< HEAD
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 class TakeAlongAxisOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -70,6 +80,16 @@ class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
                                        ctx, framework::GradVarName("Result")),
                                    ctx.device_context());
   }
+<<<<<<< HEAD
+=======
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 template <typename T>

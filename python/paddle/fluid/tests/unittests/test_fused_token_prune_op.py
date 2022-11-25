@@ -14,14 +14,25 @@
 
 import unittest
 import numpy as np
+<<<<<<< HEAD
+=======
+import paddle
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from op_test import OpTest
 from paddle.framework import core
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestFusedTokenPruneOp(OpTest):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFusedTokenPruneOp(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setDtype(self):
         self.dtype = np.float32
 
@@ -30,14 +41,19 @@ class TestFusedTokenPruneOp(OpTest):
         attn = np.array(attn, dtype=self.dtype)
         attn = np.expand_dims(attn, axis=0)
         self.attn = np.expand_dims(
+<<<<<<< HEAD
             attn, axis=0
         )  # [1,1,2,2] bsz = 1, nd_head=1, max_seq_len=2
+=======
+            attn, axis=0)  # [1,1,2,2] bsz = 1, nd_head=1, max_seq_len=2
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         mask = [[1, 1], [-1, -1]]
         mask = np.array(mask, dtype=self.dtype)
         mask = np.expand_dims(mask, axis=0)
         self.mask = np.expand_dims(mask, axis=0)  # same as attn
         x = [[1, 2, 3], [4, 5, 6]]
         x = np.array(x, dtype=self.dtype)
+<<<<<<< HEAD
         self.x = np.expand_dims(
             x, axis=0
         )  # [1, 2, 3] bsz = 1, max_seq_len=2, c=3
@@ -45,6 +61,14 @@ class TestFusedTokenPruneOp(OpTest):
         new_mask = np.array(new_mask, dtype=self.dtype)
         new_mask = np.expand_dims(new_mask, axis=0)
         self.new_mask = np.expand_dims(new_mask, axis=0)  # [1, 1, 1, 1]
+=======
+        self.x = np.expand_dims(x,
+                                axis=0)  # [1, 2, 3] bsz = 1, max_seq_len=2, c=3
+        new_mask = [[1]]
+        new_mask = np.array(new_mask, dtype=self.dtype)
+        new_mask = np.expand_dims(new_mask, axis=0)
+        self.new_mask = np.expand_dims(new_mask, axis=0)  #[1, 1, 1, 1]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out_slimmedx_py = [[[1, 2, 3]]]
         self.out_slimmedx_py = np.array(out_slimmedx_py, dtype=self.dtype)
@@ -60,26 +84,42 @@ class TestFusedTokenPruneOp(OpTest):
             'Attn': self.attn,
             'Mask': self.mask,
             'X': self.x,
+<<<<<<< HEAD
             'NewMask': self.new_mask,
+=======
+            'NewMask': self.new_mask
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
         self.outputs = {
             'SlimmedX': self.out_slimmedx_py,
+<<<<<<< HEAD
             'CLSInds': self.out_cls_inds_py,
+=======
+            'CLSInds': self.out_cls_inds_py
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0))
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestFusedTokenPruneOpFloat64(TestFusedTokenPruneOp):
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFusedTokenPruneOpFloat64(TestFusedTokenPruneOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setDtype(self):
         self.dtype = np.float64
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -122,6 +162,31 @@ class TestFusedTokenPruneOp2(TestFusedTokenPruneOp):
         )  # [1, 2, 2, 2]
 
         out_slimmedx_py = [[[1.1, 1.1, 1.1], [4.4, 4.4, 4.4]]]  # [1, 2, 3]
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFusedTokenPruneOp2(TestFusedTokenPruneOp):
+
+    def setInouts(self):
+        attn = [[[[1, 2, 3, 4], [4, 3, 2, 1], [5, 9, 5, 4], [9, 6, 5, 4]],
+                 [[8, 5, 2, 0], [1, 0, 2, 3], [2, 2, 3, 2], [7, 4, 1, 8]]]]
+        self.attn = np.array(
+            attn,
+            dtype=self.dtype)  # [1,2,4,4] bsz = 1, nd_head=2, max_seq_len=4
+        mask = [[[[-1, -1, -1, 1], [-1, -1, 1, 1], [-1, -1, 1, 1],
+                  [-1, -1, 1, 1]],
+                 [[-1, -1, 1, 1], [-1, -1, 1, 1], [-1, -1, 1, 1],
+                  [-1, -1, 1, 1]]]]
+        self.mask = np.array(mask, dtype=self.dtype)  # same as attn
+        x = [[[1.1, 1.1, 1.1], [2.2, 2.2, 2.2], [3.3, 3.3, 3.3],
+              [4.4, 4.4, 4.4]]]
+        self.x = np.array(
+            x, dtype=self.dtype)  # [1, 4, 3] bsz = 1, max_seq_len=4, c=3
+        self.new_mask = np.random.rand(1, 2, 2,
+                                       2).astype(self.dtype)  #[1, 2, 2, 2]
+
+        out_slimmedx_py = [[[1.1, 1.1, 1.1], [4.4, 4.4, 4.4]]]  #[1, 2, 3]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.out_slimmedx_py = np.array(out_slimmedx_py, dtype=self.dtype)
 
         out_cls_inds_py = [[0, 3]]

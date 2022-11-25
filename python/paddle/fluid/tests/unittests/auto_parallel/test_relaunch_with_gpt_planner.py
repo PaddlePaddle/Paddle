@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import tempfile
+import unittest
+import os
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import json
 import os
 import subprocess
@@ -21,6 +28,10 @@ import unittest
 
 
 class TestPlannerReLaunch(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -30,12 +41,19 @@ class TestPlannerReLaunch(unittest.TestCase):
     def test_relaunch_with_planner(self):
         from test_auto_parallel_relaunch import cluster_json, mapping_josn
 
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster.json"
         )
         mapping_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_rank_mapping.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
+        mapping_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_rank_mapping.json")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
@@ -55,6 +73,7 @@ class TestPlannerReLaunch(unittest.TestCase):
         else:
             coverage_args = []
 
+<<<<<<< HEAD
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
@@ -72,6 +91,14 @@ class TestPlannerReLaunch(unittest.TestCase):
                 launch_model_path,
             ]
         )
+=======
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "paddle.distributed.launch", "--log_dir", self.temp_dir.name,
+            "--cluster_topo_path", cluster_json_path, "--rank_mapping_path",
+            mapping_json_path, "--enable_auto_mapping", "True",
+            launch_model_path
+        ]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         process = subprocess.Popen(cmd)
         process.wait()
         self.assertEqual(process.returncode, 0)

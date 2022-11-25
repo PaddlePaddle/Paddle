@@ -28,9 +28,14 @@ def CTCAlign(input, lod, blank, merge_repeated, padding=0, input_length=None):
             prev_token = -1
             for j in range(cur_offset, cur_offset + lod0[i]):
                 token = input[j][0]
+<<<<<<< HEAD
                 if (token != blank) and not (
                     merge_repeated and token == prev_token
                 ):
+=======
+                if (token != blank) and not (merge_repeated
+                                             and token == prev_token):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     result.append(token)
                 prev_token = token
             cur_offset += lod0[i]
@@ -45,15 +50,21 @@ def CTCAlign(input, lod, blank, merge_repeated, padding=0, input_length=None):
             prev_token = -1
             for j in range(input_length[i][0]):
                 token = input[i][j]
+<<<<<<< HEAD
                 if (token != blank) and not (
                     merge_repeated and token == prev_token
                 ):
+=======
+                if (token != blank) and not (merge_repeated
+                                             and token == prev_token):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     result[i].append(token)
                 prev_token = token
             start = len(result[i])
             output_length.append([start])
             for j in range(start, len(input[i])):
                 result[i].append(padding)
+<<<<<<< HEAD
         result = (
             np.array(result)
             .reshape([len(input), len(input[0])])
@@ -62,21 +73,34 @@ def CTCAlign(input, lod, blank, merge_repeated, padding=0, input_length=None):
         output_length = (
             np.array(output_length).reshape([len(input), 1]).astype("int32")
         )
+=======
+        result = np.array(result).reshape([len(input),
+                                           len(input[0])]).astype("int32")
+        output_length = np.array(output_length).reshape([len(input),
+                                                         1]).astype("int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return result, output_length
 
 
 class TestCTCAlignOp(OpTest):
+
     def config(self):
         self.op_type = "ctc_align"
         self.input_lod = [[11, 7]]
         self.blank = 0
         self.merge_repeated = False
+<<<<<<< HEAD
         self.input = (
             np.array([0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6, 6, 0, 0, 7, 7, 7, 0])
             .reshape([18, 1])
             .astype("int32")
         )
+=======
+        self.input = np.array(
+            [0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6, 6, 0, 0, 7, 7, 7,
+             0]).reshape([18, 1]).astype("int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def setUp(self):
         self.config()
@@ -98,19 +122,27 @@ class TestCTCAlignOp(OpTest):
 
 
 class TestCTCAlignOpCase1(TestCTCAlignOp):
+
     def config(self):
         self.op_type = "ctc_align"
         self.input_lod = [[11, 8]]
         self.blank = 0
         self.merge_repeated = True
+<<<<<<< HEAD
         self.input = (
             np.array([0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6, 6, 0, 0, 7, 7, 7, 0, 0])
             .reshape([19, 1])
             .astype("int32")
         )
+=======
+        self.input = np.array(
+            [0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6, 6, 0, 0, 7, 7, 7, 0,
+             0]).reshape([19, 1]).astype("int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCTCAlignOpCase2(TestCTCAlignOp):
+
     def config(self):
         self.op_type = "ctc_align"
         self.input_lod = [[4]]
@@ -120,12 +152,14 @@ class TestCTCAlignOpCase2(TestCTCAlignOp):
 
 
 class TestCTCAlignPaddingOp(OpTest):
+
     def config(self):
         self.op_type = "ctc_align"
         self.input_lod = []
         self.blank = 0
         self.padding_value = 0
         self.merge_repeated = True
+<<<<<<< HEAD
         self.input = (
             np.array(
                 [
@@ -136,6 +170,11 @@ class TestCTCAlignPaddingOp(OpTest):
             .reshape([2, 11])
             .astype("int32")
         )
+=======
+        self.input = np.array([[0, 2, 4, 4, 0, 6, 3, 6, 6, 0, 0],
+                               [1, 1, 3, 0, 0, 4, 5, 6, 0, 0,
+                                0]]).reshape([2, 11]).astype("int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.input_length = np.array([[9], [8]]).reshape([2, 1]).astype("int32")
 
     def setUp(self):
@@ -164,12 +203,14 @@ class TestCTCAlignPaddingOp(OpTest):
 
 
 class TestCTCAlignOpCase3(TestCTCAlignPaddingOp):
+
     def config(self):
         self.op_type = "ctc_align"
         self.blank = 0
         self.input_lod = []
         self.merge_repeated = True
         self.padding_value = 0
+<<<<<<< HEAD
         self.input = (
             np.array(
                 [[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0], [0, 7, 7, 7, 0, 0]]
@@ -180,6 +221,13 @@ class TestCTCAlignOpCase3(TestCTCAlignPaddingOp):
         self.input_length = (
             np.array([[6], [5], [4]]).reshape([3, 1]).astype("int32")
         )
+=======
+        self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
+                               [0, 7, 7, 7, 0, 0]]).reshape([3,
+                                                             6]).astype("int32")
+        self.input_length = np.array([[6], [5],
+                                      [4]]).reshape([3, 1]).astype("int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCTCAlignOpCase4(TestCTCAlignPaddingOp):
@@ -193,6 +241,7 @@ class TestCTCAlignOpCase4(TestCTCAlignPaddingOp):
         self.input_lod = []
         self.merge_repeated = False
         self.padding_value = 0
+<<<<<<< HEAD
         self.input = (
             np.array(
                 [[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0], [0, 7, 7, 7, 0, 0]]
@@ -203,15 +252,24 @@ class TestCTCAlignOpCase4(TestCTCAlignPaddingOp):
         self.input_length = (
             np.array([[6], [5], [4]]).reshape([3, 1]).astype("int32")
         )
+=======
+        self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
+                               [0, 7, 7, 7, 0, 0]]).reshape([3,
+                                                             6]).astype("int32")
+        self.input_length = np.array([[6], [5],
+                                      [4]]).reshape([3, 1]).astype("int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCTCAlignOpCase5(TestCTCAlignPaddingOp):
+
     def config(self):
         self.op_type = "ctc_align"
         self.blank = 0
         self.input_lod = []
         self.merge_repeated = False
         self.padding_value = 1
+<<<<<<< HEAD
         self.input = (
             np.array(
                 [[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0], [0, 7, 1, 7, 0, 0]]
@@ -222,9 +280,17 @@ class TestCTCAlignOpCase5(TestCTCAlignPaddingOp):
         self.input_length = (
             np.array([[6], [5], [4]]).reshape([3, 1]).astype("int32")
         )
+=======
+        self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
+                               [0, 7, 1, 7, 0, 0]]).reshape([3,
+                                                             6]).astype("int32")
+        self.input_length = np.array([[6], [5],
+                                      [4]]).reshape([3, 1]).astype("int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCTCAlignOpApi(unittest.TestCase):
+
     def test_api(self):
         x = fluid.layers.data('x', shape=[4], dtype='float32')
         y = fluid.layers.ctc_greedy_decoder(x, blank=0)
@@ -258,6 +324,7 @@ class TestCTCAlignOpApi(unittest.TestCase):
 
 
 class BadInputTestCTCAlignr(unittest.TestCase):
+
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 

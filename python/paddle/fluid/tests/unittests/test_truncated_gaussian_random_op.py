@@ -23,6 +23,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
+
     def setUp(self):
         self.op_type = "truncated_gaussian_random"
         self.inputs = {}
@@ -48,9 +49,15 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")
+<<<<<<< HEAD
         op = block.append_op(
             type=self.op_type, outputs={"Out": vout}, attrs=self.attrs
         )
+=======
+        op = block.append_op(type=self.op_type,
+                             outputs={"Out": vout},
+                             attrs=self.attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)

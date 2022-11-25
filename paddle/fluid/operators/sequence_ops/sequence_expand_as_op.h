@@ -28,7 +28,11 @@ template <typename DeviceContext, typename T>
 struct SequenceExpandAsFunctor {
   void operator()(
       const DeviceContext &ctx,
+<<<<<<< HEAD
       const phi::DenseTensor &x,
+=======
+      const framework::LoDTensor &x,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out);
 };
@@ -37,7 +41,11 @@ template <typename DeviceContext, typename T>
 struct SequenceExpandAsGradFunctor {
   void operator()(
       const DeviceContext &ctx,
+<<<<<<< HEAD
       const phi::DenseTensor &dout,
+=======
+      const framework::LoDTensor &dout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *dx);
 };
@@ -46,7 +54,11 @@ template <typename T>
 struct SequenceExpandAsFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext &context,
+<<<<<<< HEAD
       const phi::DenseTensor &x,
+=======
+      const framework::LoDTensor &x,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out) {
     int64_t height = x.dims()[0];
@@ -124,7 +136,11 @@ template <typename T>
 struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext &context,
+<<<<<<< HEAD
       const phi::DenseTensor &dout,
+=======
+      const framework::LoDTensor &dout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *dx) {
     int64_t height = dx->dims()[0];

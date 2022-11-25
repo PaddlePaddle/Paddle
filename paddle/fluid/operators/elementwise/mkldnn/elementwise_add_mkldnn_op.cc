@@ -25,3 +25,14 @@ REGISTER_OP_KERNEL(
                              dnnl::algorithm::binary_add>,
     ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_add>,
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_add>)
+<<<<<<< HEAD
+=======
+
+REGISTER_OP_KERNEL(
+    elementwise_add_grad,
+    MKLDNN,
+    ::paddle::platform::CPUPlace,
+    ops::EltwiseMKLDNNGradKernel<paddle::platform::bfloat16,
+                                 dnnl::algorithm::binary_add>,
+    ops::EltwiseMKLDNNGradKernel<float, dnnl::algorithm::binary_add>)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

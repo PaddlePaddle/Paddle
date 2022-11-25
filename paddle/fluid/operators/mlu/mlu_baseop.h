@@ -87,7 +87,11 @@ inline cnnlInterpBackwardMode_t GetMLUCnnlInterpBackwardMode(
       "Not support interp mode of MLU Device: %s", interp_mode));
 }
 
+<<<<<<< HEAD
 inline const void* GetBasePtr(const phi::DenseTensor* t) { return t->data(); }
+=======
+inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 inline void* GetBasePtr(phi::DenseTensor* t) { return t->data(); }
 
@@ -309,18 +313,30 @@ class MLUCnnlTensorDesc {
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
+<<<<<<< HEAD
   MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+  MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     const cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype);
 
   explicit MLUCnnlTensorDesc(const phi::DenseTensor& tensor);
 
+<<<<<<< HEAD
   MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+  MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
+<<<<<<< HEAD
   MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
+=======
+  MLUCnnlTensorDesc(const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position,
@@ -2042,6 +2058,7 @@ class MLUCnnl {
                               const cnnlTensorDescriptor_t output_desc,
                               void* output);
 
+<<<<<<< HEAD
   static void SmoothL1LossForward(const ExecutionContext& ctx,
                                   const cnnlTensorDescriptor_t x_desc,
                                   const void* x,
@@ -2064,6 +2081,8 @@ class MLUCnnl {
                                    const cnnlTensorDescriptor_t dx_desc,
                                    void* dx);
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   static void EmbeddingForward(const ExecutionContext& ctx,
                                const int padding_idx,
                                const cnnlTensorDescriptor_t weight_desc,
@@ -2292,6 +2311,7 @@ class MLUCnnl {
       void* diff_x);
 };
 
+<<<<<<< HEAD
 class MLUOP {
  public:
   static void OpYoloBox(const ExecutionContext& ctx,
@@ -2336,6 +2356,8 @@ class MLUOP {
                          const mluOpTensorDescriptor_t var_desc,
                          void* var);
 };
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 const std::map<const std::string, std::pair<std::vector<int>, std::vector<int>>>
     TransPermMap = {
         // trans_mode, (forward_perm, backward_perm)
@@ -2428,7 +2450,11 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
 template <typename T>
 inline void FillMLUTensorWithHostValue(const ExecutionContext& ctx,
                                        T value,
+<<<<<<< HEAD
                                        phi::DenseTensor* out) {
+=======
+                                       Tensor* out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   MLUCnnlTensorDesc out_desc(*out);
   MLUCnnl::Fill(
       ctx, CNNL_POINTER_MODE_HOST, &value, out_desc.get(), GetBasePtr(out));

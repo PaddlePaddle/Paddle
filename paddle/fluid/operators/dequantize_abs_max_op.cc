@@ -35,10 +35,17 @@ namespace operators {
 template <typename T>
 struct DequantizeFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor* in,
                   const phi::DenseTensor* scale,
                   float max_range,
                   phi::DenseTensor* out) {
+=======
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  float max_range,
+                  framework::Tensor* out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());

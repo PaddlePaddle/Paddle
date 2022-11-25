@@ -26,8 +26,16 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
 using dnnl::stream;
+=======
+using platform::to_void_cast;
+using Tensor = framework::Tensor;
+using dnnl::stream;
+using framework::DataLayout;
+using platform::GetMKLDNNFormat;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
@@ -67,8 +75,18 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
           DNNL_ARG_SRC, mask, {static_cast<int32_t>(quantization_shift)});
     }
 
+<<<<<<< HEAD
     phi::funcs::ReorderOneDNNHandler reorder_handler(
         x_tz, x->dtype(), x_type, out->dtype(), out_type, dev_ctx.GetEngine());
+=======
+    platform::ReorderMKLDNNHandler reorder_handler(
+        x_tz,
+        x_paddle_dtype,
+        framework::ToMKLDNNDataType(x_paddle_dtype),
+        out_paddle_dtype,
+        framework::ToMKLDNNDataType(out_paddle_dtype),
+        dev_ctx.GetEngine());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));

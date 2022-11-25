@@ -28,6 +28,7 @@ np.random.seed(10)
 
 
 class TestEyeOp(OpTest):
+
     def setUp(self):
         '''
         Test eye op with specified shape
@@ -72,35 +73,41 @@ class TestEyeOp(OpTest):
 
 
 class TestEyeOp1(TestEyeOp):
+
     def initTestCase(self):
         self.num_rows = 50
 
 
 class TestEyeOp2(TestEyeOp):
+
     def initTestCase(self):
         self.num_rows = 50
         self.dtype = np.int32
 
 
 class TestEyeOp3(TestEyeOp):
+
     def initTestCase(self):
         self.num_rows = 50
         self.dtype = np.float16
 
 
 class TestEyeOp4(TestEyeOp):
+
     def initTestCase(self):
         self.num_rows = 1
         self.num_columns = 99
 
 
 class TestEyeOp5(TestEyeOp):
+
     def initTestCase(self):
         self.num_rows = 100
         self.num_columns = 100
 
 
 class TestEyeOp6(TestEyeOp):
+
     def initTestCase(self):
         self.num_rows = 100
         self.num_columns = 100
@@ -108,6 +115,7 @@ class TestEyeOp6(TestEyeOp):
 
 
 class API_TestTensorEye(unittest.TestCase):
+
     def test_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)

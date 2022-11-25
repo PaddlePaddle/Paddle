@@ -14,9 +14,12 @@
 
 import random
 import sys
+<<<<<<< HEAD
 import unittest
 
 import numpy as np
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("../")
 from op_test import OpTest
@@ -48,10 +51,16 @@ def seqconv(
                     [offset[i] - in_begin, offset[i + 1] - offset[i]]
                 )
                 if padding_trainable:
+<<<<<<< HEAD
                     sub_w = padding_data[j : j + pad_size, :]
                     col[
                         offset[i] : offset[i] + pad_size, j * M : (j + 1) * M
                     ] = sub_w
+=======
+                    sub_w = padding_data[j:j + pad_size, :]
+                    col[offset[i]:offset[i] + pad_size,
+                        j * M:(j + 1) * M] = sub_w
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 out_begin = offset[i] + pad_size
                 in_begin = offset[i]
 
@@ -60,6 +69,7 @@ def seqconv(
                     [in_end - offset[i + 1], offset[i + 1] - offset[i]]
                 )
                 if padding_trainable:
+<<<<<<< HEAD
                     sub_w = padding_data[
                         begin_pad
                         + context_start
@@ -73,6 +83,13 @@ def seqconv(
                         offset[i + 1] - pad_size : offset[i + 1],
                         j * M : (j + 1) * M,
                     ] = sub_w
+=======
+                    sub_w = padding_data[begin_pad + context_start + j -
+                                         pad_size:begin_pad + context_start +
+                                         j, :]
+                    col[offset[i + 1] - pad_size:offset[i + 1],
+                        j * M:(j + 1) * M] = sub_w
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 in_end = offset[i + 1]
                 out_end = offset[i + 1] - pad_size
             if in_end <= in_begin:
@@ -83,6 +100,7 @@ def seqconv(
 
 
 class TestSeqProject(OpTest):
+
     def setUp(self):
         self.init_test_case()
         self.op_type = 'sequence_conv'
@@ -101,6 +119,7 @@ class TestSeqProject(OpTest):
 
         # one level, batch size
         x = np.random.uniform(
+<<<<<<< HEAD
             0.1, 1, [self.input_size[0], self.input_size[1]]
         ).astype('float32')
         w = np.random.uniform(
@@ -111,6 +130,12 @@ class TestSeqProject(OpTest):
                 self.output_represention,
             ],
         ).astype('float32')
+=======
+            0.1, 1, [self.input_size[0], self.input_size[1]]).astype('float32')
+        w = np.random.uniform(0.1, 1, [
+            self.context_length * self.input_size[1], self.output_represention
+        ]).astype('float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         begin_pad = np.max([0, -self.context_start])
         end_pad = np.max([0, self.context_start + self.context_length - 1])
@@ -155,6 +180,7 @@ class TestSeqProject(OpTest):
 
     def test_check_grad(self):
         if self.padding_trainable:
+<<<<<<< HEAD
             self.check_grad(
                 set(self.inputs_val), 'Out', max_relative_error=0.05
             )
@@ -207,6 +233,50 @@ class TestSeqProject(OpTest):
                 max_relative_error=0.05,
                 no_grad_set=set(['X']),
             )
+=======
+            self.check_grad(set(self.inputs_val),
+                            'Out',
+                            max_relative_error=0.05)
+
+    def test_check_grad_input(self):
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.05,
+                        no_grad_set=set(self.inputs_val_no_x))
+
+    def test_check_grad_padding_data(self):
+        if self.padding_trainable:
+            self.check_grad(['PaddingData'],
+                            'Out',
+                            no_grad_set=set(['X', 'Filter']))
+
+    def test_check_grad_Filter(self):
+        self.check_grad(['Filter'],
+                        'Out',
+                        max_relative_error=0.05,
+                        no_grad_set=set(self.inputs_val_no_f))
+
+    def test_check_grad_input_filter(self):
+        if self.padding_trainable:
+            self.check_grad(['X', 'Filter'],
+                            'Out',
+                            max_relative_error=0.05,
+                            no_grad_set=set(['PaddingData']))
+
+    def test_check_grad_padding_input(self):
+        if self.padding_trainable:
+            self.check_grad(self.inputs_val_no_f,
+                            'Out',
+                            max_relative_error=0.05,
+                            no_grad_set=set(['Filter']))
+
+    def test_check_grad_padding_filter(self):
+        if self.padding_trainable:
+            self.check_grad(self.inputs_val_no_x,
+                            'Out',
+                            max_relative_error=0.05,
+                            no_grad_set=set(['X']))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def init_test_case(self):
         self.input_row = 11
@@ -225,6 +295,7 @@ class TestSeqProject(OpTest):
 
 
 class TestSeqProjectCase1(TestSeqProject):
+
     def init_test_case(self):
         self.input_row = 11
         self.context_start = -1
@@ -242,6 +313,7 @@ class TestSeqProjectCase1(TestSeqProject):
 
 
 class TestSeqProjectCase2Len0(TestSeqProject):
+
     def init_test_case(self):
         self.input_row = 11
         self.context_start = -1
@@ -259,6 +331,7 @@ class TestSeqProjectCase2Len0(TestSeqProject):
 
 
 class TestSeqProjectCase3(TestSeqProject):
+
     def init_test_case(self):
         self.input_row = 25
         self.context_start = 2
@@ -280,13 +353,21 @@ class TestSeqProjectCase3(TestSeqProject):
 
 
 class TestSeqConvApi(unittest.TestCase):
+
     def test_api(self):
         import paddle.fluid as fluid
 
         x = fluid.layers.data('x', shape=[32], lod_level=1)
+<<<<<<< HEAD
         y = fluid.layers.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
+=======
+        y = fluid.layers.sequence_conv(input=x,
+                                       num_filters=2,
+                                       filter_size=3,
+                                       padding_start=None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(

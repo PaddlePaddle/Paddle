@@ -166,12 +166,19 @@ class CommonFeatureValueAccessor {
       float mf_size
       std::vector<float> embedx_w;
     */
+<<<<<<< HEAD
     __host__ __device__ static int Dim(int embedx_dim) {
       return 4 + embedx_dim;
     }
     __host__ __device__ int DimSize(size_t dim) { return sizeof(float); }
     __host__ __device__ int Size(int embedx_dim) {
       return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
+=======
+    __host__ __device__ int Dim(int embedx_dim) { return 4 + embedx_dim; }
+    __host__ __device__ int DimSize(size_t dim) { return sizeof(float); }
+    __host__ __device__ int Size(int embedx_dim) {
+      return Dim(embedx_dim) * sizeof(float);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     __host__ __device__ int ShowIndex() { return 0; }
     __host__ __device__ int ClickIndex() { return 1; }
@@ -198,7 +205,11 @@ class CommonFeatureValueAccessor {
       return sizeof(float);
     }
     __host__ __device__ int Size(int embedx_dim) {
+<<<<<<< HEAD
       return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
+=======
+      return Dim(embedx_dim) * sizeof(float);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     __host__ __device__ int SlotIndex() { return 0; }
     __host__ __device__ int ShowIndex() {
@@ -420,6 +431,12 @@ class CommonFeatureValueAccessor {
     // set pull value real dim size
     int mf_dim = int(src_val[common_feature_value.MfDimIndex()]);
     dest_val[common_pull_value.MfSizeIndex()] = mf_dim;
+<<<<<<< HEAD
+=======
+    // check
+    PADDLE_ENFORCE(
+        mf_dim <= mf_size, "mf_dim[%d] <= mf_size[%d]", mf_dim, mf_size);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     int embedx_off = common_pull_value.EmbedxWIndex();
     int value_off = common_feature_value.EmbedxWIndex();
@@ -427,6 +444,16 @@ class CommonFeatureValueAccessor {
       dest_val[embedx_off + k] = src_val[value_off + k];
     }
   }
+<<<<<<< HEAD
+=======
+  // set zero value by infer
+  __host__ __device__ void PullZeroValue(float* dest_val) {
+    dest_val[common_pull_value.ShowIndex()] = 0.0;
+    dest_val[common_pull_value.ClickIndex()] = 0.0;
+    dest_val[common_pull_value.EmbedWIndex()] = 0.0;
+    dest_val[common_pull_value.MfSizeIndex()] = 0;
+  }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   // dy_mf_fill_shard_grads_kernel,update_one 阶段 gpukernel
   // 中从src_val赋值给dest_val
@@ -507,10 +534,17 @@ class CommonFeatureValueAccessor {
       *(dest_val + common_pull_value.EmbedWIndex()) =
           src_val[common_feature_value.EmbedWIndex()];
     }
+<<<<<<< HEAD
 
     if (src_val[common_feature_value.MfSizeIndex()] == 0 || *key == 0) {
       for (int j = 0; j < mf_dim; j++) {
         *(dest_val + common_pull_value.EmbedxWIndex() + j) = 0;
+=======
+    int mf_size = int(src_val[common_feature_value.MfSizeIndex()]);
+    if (mf_size == 0 || *key == 0) {
+      for (int j = 0; j < mf_dim; j++) {
+        *(dest_val + 3 + j) = 0;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       }
     } else {
       for (int j = 0; j < mf_dim; j++) {

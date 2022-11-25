@@ -104,7 +104,11 @@ void InitTensorHolder(Scope* scope,
                       const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
+<<<<<<< HEAD
   auto tensor = x->GetMutable<phi::DenseTensor>();
+=======
+  auto tensor = x->GetMutable<LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   tensor->mutable_data(
       place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }

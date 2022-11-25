@@ -20,6 +20,7 @@ from paddle.distributed.auto_parallel.tuner import recorder as rd
 
 
 class TestRecorder(unittest.TestCase):
+
     def test_register(self):
         recorder = rd.MetricsRecorder()
         recorder.register("metric")
@@ -35,9 +36,14 @@ class TestRecorder(unittest.TestCase):
         recorder = rd.MetricsRecorder()
         recorder.update("metric", 4, 1000)
         self.assertEqual(recorder.records["metric"].direction, "min")
+<<<<<<< HEAD
         self.assertEqual(
             recorder.get_records("metric"), [rd.MetricRecord(4, 1000)]
         )
+=======
+        self.assertEqual(recorder.get_records("metric"),
+                         [rd.MetricRecord(4, 1000)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_get_records(self):
         recorder = rd.MetricsRecorder()
@@ -45,6 +51,7 @@ class TestRecorder(unittest.TestCase):
         recorder.update("metric", 2, step=1)
         recorder.update("metric", 3, step=2)
         recorder.update("metric", 4, step=3)
+<<<<<<< HEAD
         self.assertEqual(
             recorder.get_records("metric"),
             [
@@ -54,6 +61,14 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(4, 3),
             ],
         )
+=======
+        self.assertEqual(recorder.get_records("metric"), [
+            rd.MetricRecord(1, 0),
+            rd.MetricRecord(2, 1),
+            rd.MetricRecord(3, 2),
+            rd.MetricRecord(4, 3),
+        ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_set_records(self):
         recorder = rd.MetricsRecorder()
@@ -66,6 +81,7 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(4, 3),
             ],
         )
+<<<<<<< HEAD
         self.assertEqual(
             recorder.get_records("metric"),
             [
@@ -75,6 +91,14 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(4, 3),
             ],
         )
+=======
+        self.assertEqual(recorder.get_records("metric"), [
+            rd.MetricRecord(1, 0),
+            rd.MetricRecord(2, 1),
+            rd.MetricRecord(3, 2),
+            rd.MetricRecord(4, 3),
+        ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_get_best_value(self):
         recorder = rd.MetricsRecorder()

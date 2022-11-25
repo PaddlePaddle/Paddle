@@ -19,15 +19,23 @@ import random
 
 
 class TestSliceVar(unittest.TestCase):
+
     def check_slice_output(self, shapes, expected_sizes, min_size):
         var_list = []
         program = fluid.Program()
         for shape in shapes:
+<<<<<<< HEAD
             var = program.global_block().create_var(
                 name=str(random.randint(10000, 99999)),
                 persistable=True,
                 shape=shape,
             )
+=======
+            var = program.global_block().create_var(name=str(
+                random.randint(10000, 99999)),
+                                                    persistable=True,
+                                                    shape=shape)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             var_list.append(var)
         blocks = slice_variable(var_list, 10, min_size)
         all_sizes = []
@@ -40,6 +48,7 @@ class TestSliceVar(unittest.TestCase):
 
     def test_1k(self):
         shapes = [[3, 5], [1024], [28, 784], [8, 1020], [800, 10]]
+<<<<<<< HEAD
         expected_sizes = [
             [15],
             [1024],
@@ -47,6 +56,14 @@ class TestSliceVar(unittest.TestCase):
             [2040, 2040, 2040, 2040],
             [1150, 1150, 1150, 1150, 1150, 1150, 1100],
         ]
+=======
+        expected_sizes = [[15], [1024],
+                          [
+                              2352, 2352, 2352, 2352, 2352, 2352, 2352, 2352,
+                              2352, 784
+                          ], [2040, 2040, 2040, 2040],
+                          [1150, 1150, 1150, 1150, 1150, 1150, 1100]]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.check_slice_output(shapes, expected_sizes, 1024)
 

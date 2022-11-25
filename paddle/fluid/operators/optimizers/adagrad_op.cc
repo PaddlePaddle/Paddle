@@ -17,10 +17,17 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace paddle {
 namespace operators {

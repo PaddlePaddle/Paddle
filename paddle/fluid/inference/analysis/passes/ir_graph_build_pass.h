@@ -43,8 +43,12 @@ class IrGraphBuildPass : public AnalysisPass {
       const std::string &params_path,
       framework::Scope *scope,
       const platform::Place &place,
+<<<<<<< HEAD
       bool model_from_memory,
       bool skip_load_params);
+=======
+      bool model_from_memory);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   std::string model_binary_str_;
 };

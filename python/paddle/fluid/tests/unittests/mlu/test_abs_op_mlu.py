@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 import numpy as np
 import sys
@@ -29,6 +34,10 @@ np.random.seed(10)
 
 
 class TestAbs(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "abs"
         self.set_mlu()
@@ -55,12 +64,21 @@ class TestAbs(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X'], ['Out'], check_eager=False
         )
 
 
 class TestAbsHalf(OpTest):
+=======
+        self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                   check_eager=False)
+
+
+class TestAbsHalf(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "abs"
         self.set_mlu()
@@ -87,9 +105,14 @@ class TestAbsHalf(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X'], ['Out'], check_eager=False
         )
+=======
+        self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                   check_eager=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

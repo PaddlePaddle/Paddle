@@ -25,10 +25,16 @@ class ReduceMaxOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_max"; }
 };
 
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(
     reduce_max,
     ReduceMaxInferShapeFunctor,
     PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_max,
+                            ReduceMaxInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 REGISTER_OPERATOR(
     reduce_max,

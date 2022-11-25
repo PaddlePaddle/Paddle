@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -24,6 +25,19 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertSplitTest(TrtLayerAutoScanTest):
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
+import unittest
+import numpy as np
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+
+
+class TrtConvertSplitTest(TrtLayerAutoScanTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -35,6 +49,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     self.dims = dims
                     self.axes = axes
                     dics = [{"axes": axes}]
+<<<<<<< HEAD
                     ops_config = [
                         {
                             "op_type": "unsqueeze2",
@@ -46,6 +61,19 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                             "op_attrs": dics[0],
                         }
                     ]
+=======
+                    ops_config = [{
+                        "op_type": "unsqueeze2",
+                        "op_inputs": {
+                            "X": ["in_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["out_data"],
+                            "XShape": ["XShape_data"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     # generate input data
                     self.input_shape = [1] * dims
@@ -55,26 +83,43 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     def generate_input1(attrs: List[Dict[str, Any]], batch):
                         self.input_shape[0] = batch
                         return np.random.random(self.input_shape).astype(
+<<<<<<< HEAD
                             np.float32
                         )
+=======
+                            np.float32)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "in_data": TensorConfig(
                                 data_gen=partial(generate_input1, dics, batch)
                             )
                         },
                         outputs=["out_data"],
                     )
+=======
+                            "in_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch))
+                        },
+                        outputs=["out_data"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             max_shape = list(self.input_shape)
             min_shape = list(self.input_shape)
@@ -101,23 +146,37 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-3
+=======
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def add_skip_trt_case(self):
         pass

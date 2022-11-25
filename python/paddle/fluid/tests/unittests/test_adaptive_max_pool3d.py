@@ -77,6 +77,7 @@ def adaptive_pool3d_forward(
                 w_end = adaptive_end_index(j, W, output_size[2])
 
                 if data_format == 'NCDHW':
+<<<<<<< HEAD
                     x_masked = x[
                         :, :, d_start:d_end, h_start:h_end, w_start:w_end
                     ]
@@ -89,13 +90,27 @@ def adaptive_pool3d_forward(
                         out[:, :, k, i, j] = (
                             np.sum(x_masked, axis=(2, 3, 4)) / field_size
                         )
+=======
+                    x_masked = x[:, :, d_start:d_end, h_start:h_end,
+                                 w_start:w_end]
+                    if pool_type == 'avg':
+                        field_size = (d_end - d_start) * (h_end - h_start) * (
+                            w_end - w_start)
+                        out[:, :, k, i,
+                            j] = np.sum(x_masked, axis=(2, 3, 4)) / field_size
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     elif pool_type == 'max':
                         out[:, :, k, i, j] = np.max(x_masked, axis=(2, 3, 4))
 
                 elif data_format == 'NDHWC':
+<<<<<<< HEAD
                     x_masked = x[
                         :, d_start:d_end, h_start:h_end, w_start:w_end, :
                     ]
+=======
+                    x_masked = x[:, d_start:d_end, h_start:h_end,
+                                 w_start:w_end, :]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     if pool_type == 'avg':
                         field_size = (
                             (d_end - d_start)
@@ -111,8 +126,10 @@ def adaptive_pool3d_forward(
 
 
 class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
+<<<<<<< HEAD
         self.res_1_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[3, 3, 3], pool_type="max"
         )
@@ -135,6 +152,28 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
         self.res_5_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[None, 3, None], pool_type="max"
         )
+=======
+        self.res_1_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="max")
+
+        self.res_2_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="max")
+
+        self.res_3_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[2, 3, 5],
+                                                pool_type="max")
+
+        self.res_4_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="max",
+                                                data_format="NDHWC")
+
+        self.res_5_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[None, 3, None],
+                                                pool_type="max")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_graph(self):
         for use_cuda in (
@@ -142,9 +181,15 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
+<<<<<<< HEAD
             x = paddle.fluid.data(
                 name="x", shape=[2, 3, 5, 7, 7], dtype="float32"
             )
+=======
+            x = paddle.fluid.data(name="x",
+                                  shape=[2, 3, 5, 7, 7],
+                                  dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             out_1 = paddle.nn.functional.adaptive_max_pool3d(
                 x=x, output_size=[3, 3, 3]
@@ -164,11 +209,18 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
             )
 
             exe = paddle.static.Executor(place=place)
+<<<<<<< HEAD
             [res_1, res_2, res_3, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_5],
             )
+=======
+            [res_1, res_2, res_3,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_5])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -222,8 +274,10 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
 
 
 class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
+<<<<<<< HEAD
         self.res_1_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[3, 3, 3], pool_type="max"
         )
@@ -235,6 +289,19 @@ class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
         self.res_3_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[2, 3, 5], pool_type="max"
         )
+=======
+        self.res_1_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="max")
+
+        self.res_2_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="max")
+
+        self.res_3_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[2, 3, 5],
+                                                pool_type="max")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # self.res_4_np = adaptive_pool3d_forward(
         #     x=self.x_np,
@@ -242,9 +309,15 @@ class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
         #     pool_type="max",
         #     data_format="NDHWC")
 
+<<<<<<< HEAD
         self.res_5_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[None, 3, None], pool_type="max"
         )
+=======
+        self.res_5_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[None, 3, None],
+                                                pool_type="max")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_graph(self):
         for use_cuda in (
@@ -252,9 +325,15 @@ class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
+<<<<<<< HEAD
             x = paddle.fluid.data(
                 name="x", shape=[2, 3, 5, 7, 7], dtype="float32"
             )
+=======
+            x = paddle.fluid.data(name="x",
+                                  shape=[2, 3, 5, 7, 7],
+                                  dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
                 output_size=[3, 3, 3]
@@ -279,11 +358,18 @@ class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
             out_5 = adaptive_max_pool(x=x)
 
             exe = paddle.static.Executor(place=place)
+<<<<<<< HEAD
             [res_1, res_2, res_3, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_5],
             )
+=======
+            [res_1, res_2, res_3,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_5])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -337,15 +423,23 @@ class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
 
 
 class TestOutDtype(unittest.TestCase):
+
     def test_max_pool(self):
         api_fn = F.adaptive_max_pool3d
         shape = [1, 3, 32, 32, 32]
+<<<<<<< HEAD
         check_out_dtype(
             api_fn,
             in_specs=[(shape,)],
             expect_dtypes=['float32', 'float64'],
             output_size=16,
         )
+=======
+        check_out_dtype(api_fn,
+                        in_specs=[(shape, )],
+                        expect_dtypes=['float32', 'float64'],
+                        output_size=16)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

@@ -176,12 +176,21 @@ class OverflowKernel : public framework::OpKernel<T> {
       auto& in = ctx.Input<phi::SelectedRows>("X")->value();
       functor(in, out);
     } else {
+<<<<<<< HEAD
       PADDLE_ENFORCE_EQ(true,
                         false,
                         platform::errors::InvalidArgument(
                             "The input type mismatch, the type of Input(X) "
                             "must be phi::DenseTensor or "
                             "SelectedRows, please check your input."));
+=======
+      PADDLE_ENFORCE_EQ(
+          true,
+          false,
+          platform::errors::InvalidArgument(
+              "The input type mismatch, the type of Input(X) must be Tensor or "
+              "SelectedRows, please check your input."));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 };

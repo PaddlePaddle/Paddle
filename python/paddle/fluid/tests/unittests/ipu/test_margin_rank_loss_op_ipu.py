@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -55,6 +62,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
+<<<<<<< HEAD
         label = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
@@ -65,6 +73,18 @@ class TestBase(IPUOpTest):
             name=self.feed_list[2], shape=self.feed_shape[2], dtype='float32'
         )
         out = paddle.nn.functional.margin_ranking_loss(left, right, label)
+=======
+        label = paddle.static.data(name=self.feed_list[0],
+                                   shape=self.feed_shape[0],
+                                   dtype="float32")
+        left = paddle.static.data(name=self.feed_list[1],
+                                  shape=self.feed_shape[1],
+                                  dtype='float32')
+        right = paddle.static.data(name=self.feed_list[2],
+                                   shape=self.feed_shape[2],
+                                   dtype='float32')
+        out = paddle.fluid.layers.margin_rank_loss(label, left, right)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -79,6 +99,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_op_attrs(self):
         self.attrs = {
             'margin': 0.5,

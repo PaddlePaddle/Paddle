@@ -78,17 +78,26 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
+<<<<<<< HEAD
         "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
+=======
+        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[ \t\r\n\/]*[a-z0-9_]*"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
+<<<<<<< HEAD
       if(WITH_ROCM OR WITH_NV_JETSON)
+=======
+      if(WITH_ROCM)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
           continue()
         endif()
       endif()
+<<<<<<< HEAD
       # parse the registerd kernel message
       string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${first_registry}")
       string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_msg
@@ -106,12 +115,50 @@ function(kernel_declare TARGET_LIST)
         APPEND ${kernel_declare_file}
         "PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});\n"
       )
+=======
+      # parse the first kernel name
+      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_name "${first_registry}")
+      string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_name
+                     "${kernel_name}")
+      string(REPLACE "," "" kernel_name "${kernel_name}")
+      string(REGEX REPLACE "[ \t\r\n]+" "" kernel_name "${kernel_name}")
+      string(REGEX REPLACE "//cuda_only" "" kernel_name "${kernel_name}")
+      # append kernel declare into declarations.h
+      # TODO(chenweihang): default declare ALL_LAYOUT for each kernel
+      if(${kernel_path} MATCHES "./cpu\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")
+      elseif(${kernel_path} MATCHES "./gpu\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, GPU, ALL_LAYOUT);\n")
+      elseif(${kernel_path} MATCHES "./xpu\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, XPU, ALL_LAYOUT);\n")
+      elseif(${kernel_path} MATCHES "./gpudnn\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, GPUDNN, ALL_LAYOUT);\n")
+      elseif(${kernel_path} MATCHES "./kps\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, KPS, ALL_LAYOUT);\n")
+      elseif(${kernel_path} MATCHES "./onednn\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, OneDNN, ALL_LAYOUT);\n")
+      else()
+        # deal with device independent kernel, now we use CPU temporaary
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")
+      endif()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     endif()
   endforeach()
 endfunction()
 
 function(append_op_util_declare TARGET)
+<<<<<<< HEAD
   file(READ ${TARGET} target_content)
+=======
+  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET} target_content)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   string(
     REGEX
       MATCH
@@ -134,16 +181,27 @@ function(register_op_utils TARGET_NAME)
   cmake_parse_arguments(register_op_utils "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
+<<<<<<< HEAD
   file(GLOB SIGNATURES "${PADDLE_SOURCE_DIR}/paddle/phi/ops/compat/*_sig.cc")
   foreach(target ${SIGNATURES})
     append_op_util_declare(${target})
     list(APPEND utils_srcs ${target})
+=======
+  file(
+    GLOB SIGNATURES
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "*_sig.cc")
+  foreach(target ${SIGNATURES})
+    append_op_util_declare(${target})
+    list(APPEND utils_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${target})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   endforeach()
 
   cc_library(
     ${TARGET_NAME}
     SRCS ${utils_srcs}
     DEPS ${register_op_utils_DEPS})
+<<<<<<< HEAD
 endfunction()
 
 function(prune_declaration_h)
@@ -176,4 +234,6 @@ function(prune_declaration_h)
       file(APPEND ${kernel_declare_file} "${kernel_registry}\n")
     endif()
   endforeach()
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 endfunction()

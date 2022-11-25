@@ -38,8 +38,13 @@ namespace framework {
 struct CastDataLayout {
   CastDataLayout(const platform::DeviceContext* ctx,
                  const std::vector<int>& axis,
+<<<<<<< HEAD
                  const phi::DenseTensor& in,
                  phi::DenseTensor* out)
+=======
+                 const framework::Tensor& in,
+                 framework::Tensor* out)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
 
   const phi::DenseTensor in_;
@@ -85,15 +90,25 @@ inline OneDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
                                     DataLayout out_layout,
+<<<<<<< HEAD
                                     const phi::DenseTensor& in,
                                     phi::DenseTensor* out,
+=======
+                                    const Tensor& in,
+                                    Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                     platform::Place place,
                                     bool always_copy = false);
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
+<<<<<<< HEAD
                                const phi::DenseTensor& in,
                                phi::DenseTensor* out);
+=======
+                               const Tensor& in,
+                               Tensor* out);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 void* GetDataFromTensor(const phi::DenseTensor& tensor, OneDNNDataType type);
 
@@ -103,8 +118,13 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type,
+<<<<<<< HEAD
                      const phi::DenseTensor& in,
                      phi::DenseTensor* out);
+=======
+                     const Tensor& in,
+                     Tensor* out);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 }  // namespace framework
 }  // namespace paddle

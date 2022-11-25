@@ -30,6 +30,7 @@ SEED = 2049
 
 
 class TestExpNPUOP(OpTest):
+
     def setUp(self):
 
         self.set_npu()
@@ -62,6 +63,7 @@ class TestExpNPUOP(OpTest):
 
 
 class TestExpNPUOPFloat64(TestExpNPUOP):
+
     def init_dtype(self):
         self.dtype = np.float64
 

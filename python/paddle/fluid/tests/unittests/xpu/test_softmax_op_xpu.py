@@ -48,6 +48,7 @@ def ref_softmax(x, axis=None, dtype=None):
 
 
 class XPUTestSoftmaxOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'softmax'
         self.use_dynamic_create_class = True
@@ -65,6 +66,7 @@ class XPUTestSoftmaxOp(XPUOpTestWrapper):
         return base_class, classes
 
     class TestSoftmaxOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "softmax"
             if not hasattr(self, 'shape'):

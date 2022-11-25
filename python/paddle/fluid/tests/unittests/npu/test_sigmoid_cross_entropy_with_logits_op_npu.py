@@ -39,6 +39,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         batch_size = 64
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes)).astype(
                     self.dtype
@@ -47,6 +48,15 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
             'Label': np.random.randint(0, 2, (batch_size, num_classes)).astype(
                 self.dtype
             ),
+=======
+            'X':
+            logit(
+                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+                    self.dtype)),
+            'Label':
+            np.random.randint(0, 2,
+                              (batch_size, num_classes)).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -71,6 +81,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.dtype = np.float32
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
@@ -78,6 +89,14 @@ class TestSigmoidCrossEntropyWithLogitsOp3(
     TestSigmoidCrossEntropyWithLogitsOp1
 ):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestSigmoidCrossEntropyWithLogitsOp3(TestSigmoidCrossEntropyWithLogitsOp1
+                                           ):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    """
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -87,6 +106,7 @@ class TestSigmoidCrossEntropyWithLogitsOp3(
         batch_size = 64
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes)).astype(
                     self.dtype
@@ -95,6 +115,15 @@ class TestSigmoidCrossEntropyWithLogitsOp3(
             'Label': np.random.uniform(0, 1, (batch_size, num_classes)).astype(
                 self.dtype
             ),
+=======
+            'X':
+            logit(
+                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+                    self.dtype)),
+            'Label':
+            np.random.uniform(0, 1,
+                              (batch_size, num_classes)).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -106,6 +135,7 @@ class TestSigmoidCrossEntropyWithLogitsOp3(
         self.outputs = {'Out': -term1 - term2}
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
@@ -113,6 +143,14 @@ class TestSigmoidCrossEntropyWithLogitsOp5(
     TestSigmoidCrossEntropyWithLogitsOp1
 ):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestSigmoidCrossEntropyWithLogitsOp5(TestSigmoidCrossEntropyWithLogitsOp1
+                                           ):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    """
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -122,6 +160,7 @@ class TestSigmoidCrossEntropyWithLogitsOp5(
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X': logit(
                 np.random.uniform(
                     0, 1, tuple(batch_size + [num_classes])
@@ -130,6 +169,16 @@ class TestSigmoidCrossEntropyWithLogitsOp5(
             'Label': np.random.uniform(
                 0, 1, tuple(batch_size + [num_classes])
             ).astype(self.dtype),
+=======
+            'X':
+            logit(
+                np.random.uniform(0, 1,
+                                  tuple(batch_size + [num_classes])).astype(
+                                      self.dtype)),
+            'Label':
+            np.random.uniform(0, 1, tuple(batch_size + [num_classes])).astype(
+                self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -141,6 +190,7 @@ class TestSigmoidCrossEntropyWithLogitsOp5(
         self.outputs = {'Out': -term1 - term2}
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
@@ -148,6 +198,14 @@ class TestSigmoidCrossEntropyWithLogitsOp6(
     TestSigmoidCrossEntropyWithLogitsOp1
 ):
     """Test sigmoid_cross_entropy_with_logit_op with binary label"""
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestSigmoidCrossEntropyWithLogitsOp6(TestSigmoidCrossEntropyWithLogitsOp1
+                                           ):
+    """Test sigmoid_cross_entropy_with_logit_op with binary label
+    """
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -157,6 +215,7 @@ class TestSigmoidCrossEntropyWithLogitsOp6(
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X': logit(
                 np.random.uniform(
                     0, 1, tuple(batch_size + [num_classes])
@@ -165,6 +224,16 @@ class TestSigmoidCrossEntropyWithLogitsOp6(
             'Label': np.random.randint(
                 0, 2, tuple(batch_size + [num_classes])
             ).astype(self.dtype),
+=======
+            'X':
+            logit(
+                np.random.uniform(0, 1,
+                                  tuple(batch_size + [num_classes])).astype(
+                                      self.dtype)),
+            'Label':
+            np.random.randint(0, 2, tuple(batch_size + [num_classes])).astype(
+                self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by

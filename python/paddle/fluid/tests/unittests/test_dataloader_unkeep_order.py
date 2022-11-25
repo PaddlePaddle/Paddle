@@ -22,6 +22,7 @@ keep_data_loader_order(False)
 
 
 def create_reader(shape, batch_number):
+
     def __impl__():
         idx = 0
         for _ in range(batch_number):
@@ -32,6 +33,7 @@ def create_reader(shape, batch_number):
 
 
 class DataLoaderKeepOrderTestBase(unittest.TestCase):
+
     def initParameters(self):
         self.iterable = False
         self.break_num = 10000
@@ -47,13 +49,20 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
 
     def build_network(self, places):
         input_data = fluid.data(shape=self.shape, dtype='float32', name="input")
+<<<<<<< HEAD
         loader = fluid.io.DataLoader.from_generator(
             capacity=16, feed_list=[input_data], iterable=self.iterable
         )
+=======
+        loader = fluid.io.DataLoader.from_generator(capacity=16,
+                                                    feed_list=[input_data],
+                                                    iterable=self.iterable)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         fc = fluid.layers.fc(input_data, size=10)
         loss = fluid.layers.reduce_mean(fc)
 
+<<<<<<< HEAD
         loader.set_batch_generator(
             create_reader(self.shape, self.batch_num),
             places=places if loader.iterable else None,
@@ -64,6 +73,18 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
     def assertInputData(
         self, batch_id, input_data, dev_cnt, check_visited=True
     ):
+=======
+        loader.set_batch_generator(create_reader(self.shape, self.batch_num),
+                                   places=places if loader.iterable else None)
+
+        return input_data, loss, loader
+
+    def assertInputData(self,
+                        batch_id,
+                        input_data,
+                        dev_cnt,
+                        check_visited=True):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if isinstance(input_data, list):
             self.assertTrue(len(input_data), dev_cnt)
             start_val = dev_cnt * batch_id
@@ -80,10 +101,15 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
 
                 start_val += 1
         else:
+<<<<<<< HEAD
             self.assertEqual(
                 list(input_data.shape),
                 [self.shape[0] * dev_cnt] + self.shape[1:],
             )
+=======
+            self.assertEqual(list(input_data.shape),
+                             [self.shape[0] * dev_cnt] + self.shape[1:])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             start_val = dev_cnt * batch_id
             for idx in range(dev_cnt):
                 data_part = input_data[
@@ -104,8 +130,13 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 place_list.extend([fluid.cuda_places(0)])
             else:
                 place_list.extend(
+<<<<<<< HEAD
                     [fluid.cuda_places(0), fluid.cuda_places([0, 1])]
                 )
+=======
+                    [fluid.cuda_places(0),
+                     fluid.cuda_places([0, 1])])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return place_list
 
     def test_main(self):
@@ -130,8 +161,13 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 main_program = fluid.default_main_program()
                 if use_compiled_program:
                     main_program = fluid.CompiledProgram(
+<<<<<<< HEAD
                         main_program
                     ).with_data_parallel(loss_name=loss.name, places=places)
+=======
+                        main_program).with_data_parallel(loss_name=loss.name,
+                                                         places=places)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 max_batch_num = min(
                     self.break_num, int(self.batch_num / dev_cnt)
@@ -147,6 +183,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                             if batch_id >= self.break_num:
                                 early_break = True
                                 break
+<<<<<<< HEAD
                             self.assertInputData(
                                 batch_id, data, dev_cnt, check_visited=False
                             )
@@ -155,6 +192,15 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                                 feed=data,
                                 fetch_list=fetch_list,
                             )
+=======
+                            self.assertInputData(batch_id,
+                                                 data,
+                                                 dev_cnt,
+                                                 check_visited=False)
+                            fetch_val, = exe.run(program=main_program,
+                                                 feed=data,
+                                                 fetch_list=fetch_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             self.assertInputData(batch_id, fetch_val, dev_cnt)
                             batch_id += 1
 
@@ -192,30 +238,35 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
 
 
 class IterableDataLoaderKeepOrderTest2(DataLoaderKeepOrderTestBase):
+
     def initParameters(self):
         self.iterable = True
         self.break_num = 10000
 
 
 class IterableDataLoaderKeepOrderTest3(DataLoaderKeepOrderTestBase):
+
     def initParameters(self):
         self.iterable = False
         self.break_num = 2
 
 
 class IterableDataLoaderKeepOrderTest4(DataLoaderKeepOrderTestBase):
+
     def initParameters(self):
         self.iterable = True
         self.break_num = 2
 
 
 class IterableDataLoaderKeepOrderTest5(DataLoaderKeepOrderTestBase):
+
     def initParameters(self):
         self.iterable = False
         self.break_num = 0
 
 
 class IterableDataLoaderKeepOrderTest6(DataLoaderKeepOrderTestBase):
+
     def initParameters(self):
         self.iterable = True
         self.break_num = 0

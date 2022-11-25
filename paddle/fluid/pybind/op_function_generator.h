@@ -61,7 +61,10 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "QKVW",
       "QKVBias",
       "CacheKV",
+<<<<<<< HEAD
       "PreCaches",
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       "TimeStep",
       "SrcMask",
       "OutLinearW",
@@ -72,12 +75,15 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "FFN1Bias",
       "FFN2Weight",
       "FFN2Bias"}},
+<<<<<<< HEAD
     {"fused_multi_transformer_int8",
      {"X",           "LnScale",           "LnBias",       "QKVW",
       "QKVBias",     "CacheKV",           "TimeStep",     "SrcMask",
       "OutLinearW",  "OutLinearBias",     "FFNLnScale",   "FFNLnBias",
       "FFN1Weight",  "FFN1Bias",          "FFN2Weight",   "FFN2Bias",
       "QKVOutScale", "OutLinearOutScale", "FFN1OutScale", "FFN2OutScale"}},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     {"fused_bias_dropout_residual_layer_norm",
      {"X", "Residual", "Bias", "LnScale", "LnBias"}},
     {"instance_norm", {"X", "Scale", "Bias"}},
@@ -233,7 +239,10 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Mean3",
       "Var3"}},
     {"graph_send_recv", {"X", "Src_index", "Dst_index", "Out_size"}},
+<<<<<<< HEAD
     {"graph_send_ue_recv", {"X", "Y", "Src_index", "Dst_index", "Out_size"}},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -336,7 +345,10 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "Beta2PowOut",
       "MasterParamOut"}},
     {"fused_multi_transformer", {"CacheKVOut", "Out"}},
+<<<<<<< HEAD
     {"fused_multi_transformer_int8", {"CacheKVOut", "Out"}},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     {"resnet_basic_block",
      {"Y",         "Conv1",     "SavedMean1", "SavedInvstd1", "Mean1Out",
       "Var1Out",   "Conv2",     "SavedMean2", "SavedInvstd2", "Mean2Out",
@@ -441,7 +453,10 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"split", {"Out"}},
     {"concat", {"Out"}},
     {"fused_multi_transformer", {"CacheKVOut"}},
+<<<<<<< HEAD
     {"fused_multi_transformer_int8", {"CacheKVOut"}},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     {"group_norm", {"Mean", "Variance"}},
     {"resnet_basic_block",
      {"Mean1Out", "Var1Out", "Mean2Out", "Var2Out", "Mean3Out", "Var3Out"}},

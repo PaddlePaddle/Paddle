@@ -27,6 +27,7 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
+<<<<<<< HEAD
 from .nn import logical_and, logical_or
 from .utils import (
     assert_same_structure,
@@ -39,6 +40,10 @@ from .utils import (
     flatten,
     to_sequence,
 )
+=======
+from .nn import logical_and, logical_not, logical_or
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure, is_sequence, pack_sequence_as, flatten, to_sequence
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import numpy
 import warnings
 from functools import reduce, partial
@@ -101,11 +106,20 @@ def select_output(input, outputs, mask):
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_output')
     check_type(outputs, 'outputs', (list, tuple), 'select_output')
 
+<<<<<<< HEAD
     helper.append_op(
         type='select_output',
         inputs={'X': input, 'Mask': mask},
         outputs={'Out': outputs},
     )
+=======
+    helper.append_op(type='select_output',
+                     inputs={
+                         'X': input,
+                         'Mask': mask
+                     },
+                     outputs={'Out': outputs})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return outputs
 
 
@@ -154,6 +168,7 @@ def select_input(inputs, mask):
     output_dtype = inputs[1].dtype
     output_type = inputs[1].type
 
+<<<<<<< HEAD
     out = helper.create_variable(
         dtype=output_dtype, shape=output_shape, type=output_type
     )
@@ -177,6 +192,29 @@ def select_input_with_buildin_type(inputs, mask, name):
         true_var, UndefinedVar
     ):
         """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
+=======
+    out = helper.create_variable(dtype=input_dtype,
+                                 shape=input_shape,
+                                 type=input_type)
+    helper.append_op(type='select_input',
+                     inputs={
+                         'X': inputs,
+                         'Mask': mask
+                     },
+                     outputs={'Out': out})
+    return out
+
+
+def select_input_with_buildin_type(inputs, mask):
+    from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_var_like
+    false_var, true_var = inputs
+
+    if isinstance(false_var, UndefinedVar) and isinstance(
+            true_var, UndefinedVar):
+        """ None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None.
+        """
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return None
 
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
@@ -187,14 +225,20 @@ def select_input_with_buildin_type(inputs, mask, name):
                 f"Exceptions throwed while doing select_input on {name}:\n{e}"
             )
 
+<<<<<<< HEAD
     elif isinstance(false_var, support_ret_buildin_type) and isinstance(
         false_var, type(true_var)
     ):
+=======
+    elif (isinstance(false_var, (support_ret_buildin_type))
+          and isinstance(false_var, type(true_var))):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if false_var == true_var:
             return false_var
         else:
             inputs = [
                 to_static_variable(false_var),
+<<<<<<< HEAD
                 to_static_variable(true_var),
             ]
     # Deal with the situations like this: false_var is int and true_var is Variable
@@ -228,6 +272,41 @@ def select_input_with_buildin_type(inputs, mask, name):
             false_var
         )
         inputs = [false_var, true_var]
+=======
+                to_static_variable(true_var)
+            ]
+    # Deal with the situations like this: false_var is int and true_var is Variable
+    elif ((isinstance(false_var, support_ret_buildin_type)
+           and isinstance(true_var, Variable))
+          or (isinstance(true_var, support_ret_buildin_type)
+              and isinstance(false_var, Variable))):
+        inputs = [to_static_variable(false_var), to_static_variable(true_var)]
+        warnings.warn(
+            "Return results from different branches in cond are not same type: "
+            "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
+            "'{}'".format(type(false_var), type(true_var)))
+    elif ((isinstance(false_var, UndefinedVar)
+           and isinstance(true_var, (Variable, ) + support_ret_buildin_type))
+          or (isinstance(true_var, UndefinedVar)
+              and isinstance(false_var,
+                             (Variable, ) + support_ret_buildin_type))):
+
+        def create_var_if_not_undefined_var(a):
+            if isinstance(a, UndefinedVar): return a
+            return to_static_variable(a)
+
+        def create_like_if_undefined_var(a, b):
+            if isinstance(a, UndefinedVar): return create_undefined_var_like(b)
+            return a
+
+        # TODO(xiongkun): add warning here.
+        true_var, false_var = create_var_if_not_undefined_var(
+            true_var), create_var_if_not_undefined_var(false_var)
+        inputs = [
+            create_like_if_undefined_var(false_var, true_var),
+            create_like_if_undefined_var(true_var, false_var)
+        ]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
@@ -288,6 +367,7 @@ def split_lod_tensor(input, mask, level=0):
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
     out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='split_lod_tensor',
         inputs={
@@ -297,6 +377,18 @@ def split_lod_tensor(input, mask, level=0):
         outputs={'OutTrue': out_true, 'OutFalse': out_false},
         attrs={'level': level},
     )
+=======
+    helper.append_op(type='split_lod_tensor',
+                     inputs={
+                         'X': input,
+                         'Mask': mask,
+                     },
+                     outputs={
+                         'OutTrue': out_true,
+                         'OutFalse': out_false
+                     },
+                     attrs={'level': level})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out_true, out_false
 
 
@@ -358,12 +450,24 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
         'fluid.layers.merge_lod_tensor',
     )
     out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x, 'Mask': mask, 'InTrue': in_true, 'InFalse': in_false},
         outputs={'Out': out},
         attrs={'level': level},
     )
+=======
+    helper.append_op(type='merge_lod_tensor',
+                     inputs={
+                         'X': x,
+                         'Mask': mask,
+                         'InTrue': in_true,
+                         'InFalse': in_false
+                     },
+                     outputs={'Out': out},
+                     attrs={'level': level})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -446,6 +550,7 @@ def Print(
 
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='print',
         inputs={'In': input},
@@ -462,6 +567,22 @@ def Print(
             'print_phase': print_phase.upper(),
         },
     )
+=======
+    helper.append_op(type='print',
+                     inputs={'In': input},
+                     outputs={'Out': output},
+                     attrs={
+                         'first_n': first_n,
+                         'summarize': summarize,
+                         'message': message or "",
+                         'print_tensor_name': print_tensor_name,
+                         'print_tensor_type': print_tensor_type,
+                         'print_tensor_shape': print_tensor_shape,
+                         'print_tensor_layout': print_tensor_layout,
+                         'print_tensor_lod': print_tensor_lod,
+                         'print_phase': print_phase.upper()
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return output
 
 
@@ -528,11 +649,20 @@ def Assert(cond, data=None, summarize=20, name=None):
     layer_name = name if name else ('assert_' + cond.name)
     helper = LayerHelper(layer_name, **locals())
 
+<<<<<<< HEAD
     op = helper.append_op(
         type="assert",
         inputs={"Cond": cond, "Data": [] if data is None else list(data)},
         attrs={"summarize": summarize},
     )
+=======
+    op = helper.append_op(type="assert",
+                          inputs={
+                              "Cond": cond,
+                              "Data": [] if data is None else list(data)
+                          },
+                          attrs={"summarize": summarize})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return op
 
@@ -582,7 +712,12 @@ class BlockGuardWithCompletion(BlockGuard):
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn._complete_op()
+<<<<<<< HEAD
         return super().__exit__(exc_type, exc_val, exc_tb)
+=======
+        return super(BlockGuardWithCompletion,
+                     self).__exit__(exc_type, exc_val, exc_tb)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class StaticRNNMemoryLink:
@@ -797,6 +932,7 @@ class StaticRNN:
                     "if init is None, memory at least need shape and batch_ref"
                 )
             parent_block = self._parent_block()
+<<<<<<< HEAD
             var_name = unique_name.generate_with_ignorable_key(
                 "@".join([self.helper.name, "memory_boot"])
             )
@@ -819,6 +955,25 @@ class StaticRNN:
                     'output_dim_idx': init_batch_dim_idx,
                 },
             )
+=======
+            var_name = unique_name.generate_with_ignorable_key("@".join(
+                [self.helper.name, "memory_boot"]))
+            boot_var = parent_block.create_var(name=var_name,
+                                               shape=shape,
+                                               dtype=batch_ref.dtype,
+                                               persistable=False)
+
+            parent_block.append_op(type="fill_constant_batch_size_like",
+                                   inputs={'Input': [batch_ref]},
+                                   outputs={'Out': [boot_var]},
+                                   attrs={
+                                       'value': init_value,
+                                       'shape': boot_var.shape,
+                                       'dtype': boot_var.dtype,
+                                       'input_dim_idx': ref_batch_dim_idx,
+                                       'output_dim_idx': init_batch_dim_idx
+                                   })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             return self.memory(init=boot_var)
         else:
@@ -827,11 +982,17 @@ class StaticRNN:
                     "@".join([self.helper.name, "mem"])
                 ),
                 dtype=init.dtype,
+<<<<<<< HEAD
                 shape=init.shape,
             )
             self.memories[pre_mem.name] = StaticRNNMemoryLink(
                 init=init, pre_mem=pre_mem
             )
+=======
+                shape=init.shape)
+            self.memories[pre_mem.name] = StaticRNNMemoryLink(init=init,
+                                                              pre_mem=pre_mem)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return pre_mem
 
     def step_input(self, x):
@@ -882,9 +1043,16 @@ class StaticRNN:
         elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
+<<<<<<< HEAD
         ipt = self.helper.create_variable(
             name=x.name, dtype=x.dtype, shape=list(x.shape[1:]), type=x.type
         )
+=======
+        ipt = self.helper.create_variable(name=x.name,
+                                          dtype=x.dtype,
+                                          shape=list(x.shape[1:]),
+                                          type=x.type)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.inputs.append(ipt)
         return ipt
 
@@ -935,6 +1103,7 @@ class StaticRNN:
         check_type(o, "o", Variable, "fluid.layers.StaticRNN.step_output")
 
         tmp_o = self.helper.create_variable_for_type_inference(dtype=o.dtype)
+<<<<<<< HEAD
         self.helper.append_op(
             type='rnn_memory_helper',
             inputs={'X': [o]},
@@ -947,6 +1116,17 @@ class StaticRNN:
             shape=[self.seq_len] + list(tmp_o.shape),
             dtype=tmp_o.dtype,
         )
+=======
+        self.helper.append_op(type='rnn_memory_helper',
+                              inputs={'X': [o]},
+                              outputs={'Out': tmp_o},
+                              attrs={'dtype': o.dtype})
+
+        out_var = self._parent_block().create_var(name=tmp_o.name,
+                                                  shape=[self.seq_len] +
+                                                  list(tmp_o.shape),
+                                                  dtype=tmp_o.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.outputs.append(out_var)
 
@@ -1083,6 +1263,7 @@ class StaticRNN:
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
             new_mem = self.helper.create_variable_for_type_inference(
+<<<<<<< HEAD
                 dtype=mem_var.dtype
             )
             rnn_block.append_op(
@@ -1109,9 +1290,36 @@ class StaticRNN:
                 'sub_block': rnn_block,
             },
         )
+=======
+                dtype=mem_var.dtype)
+            rnn_block.append_op(type='rnn_memory_helper',
+                                inputs={'X': [mem_var]},
+                                outputs={'Out': [new_mem]},
+                                attrs={'dtype': mem_var.dtype})
+
+            memories.append(new_mem.name)
+
+        parent_block.append_op(type='recurrent',
+                               inputs={
+                                   'inputs': inlinks,
+                                   'initial_states': boot_memories,
+                                   'parameters': parameters
+                               },
+                               outputs={
+                                   'outputs': outlinks,
+                                   'step_scopes': [step_scope]
+                               },
+                               attrs={
+                                   'has_states': len(pre_memories) > 0,
+                                   'ex_states': pre_memories,
+                                   'states': memories,
+                                   'sub_block': rnn_block
+                               })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class WhileGuard(BlockGuard):
+
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
@@ -1288,8 +1496,12 @@ class While:
         main_program = self.helper.main_program
         while_block = main_program.current_block()
         parent_block = main_program.block(
+<<<<<<< HEAD
             main_program.current_block().parent_idx
         )
+=======
+            main_program.current_block().parent_idx)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         inner_outputs = {self.cond_var.name}
         x_name_list = set()
@@ -1315,6 +1527,7 @@ class While:
         parent_block.append_op(
             type='while',
             inputs={
+<<<<<<< HEAD
                 'X': [
                     parent_block._var_recursive(x_name)
                     for x_name in x_name_list
@@ -1327,12 +1540,30 @@ class While:
 
 
 support_ret_buildin_type = (bool, float, int)
+=======
+                'X':
+                [parent_block._var_recursive(x_name) for x_name in x_name_list],
+                'Condition': [self.cond_var]
+            },
+            outputs={
+                'Out': out_vars,
+                'StepScopes': [step_scope]
+            },
+            attrs={
+                'sub_block': while_block,
+                "is_test": self.is_test
+            })
+
+
+support_ret_buildin_type = (bool, float, six.integer_types)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+<<<<<<< HEAD
 
     def has_shape_diff(x_var, y_var):
         if len(x_var.shape) != len(y_var.shape):
@@ -1346,6 +1577,11 @@ def assign_skip_lod_tensor_array(input, output):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
+=======
+    if not isinstance(input, (Variable, core.VarBase)):
+        if isinstance(output, Variable) and isinstance(
+                input, support_ret_buildin_type):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             assign(input, output)
         else:
             output = input
@@ -1354,8 +1590,12 @@ def assign_skip_lod_tensor_array(input, output):
     if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         main_program = input.block.program
         parent_block = main_program.block(
+<<<<<<< HEAD
             main_program.current_block().parent_idx
         )
+=======
+            main_program.current_block().parent_idx)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if parent_block and not parent_block._find_var_recursive(input.name):
             assign(input, output)
     else:
@@ -1474,8 +1714,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         except ValueError as e:
             raise ValueError(
                 "body in while_loop should return the same arity "
+<<<<<<< HEAD
                 "(length and structure) as loop_vars: {0}".format(e)
             )
+=======
+                "(length and structure) as loop_vars: {0}".format(e))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         now_cond = cond(*output_vars)
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
@@ -1483,6 +1727,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
 
 def _deal_with_undefined_var(output_vars, loop_vars):
+<<<<<<< HEAD
     """Deal with undefined var cases, We create undefined variable based on the results of body().
     In Dy2Static, we use undefined var to represent the var created in control flow. This function
     expand the loop_vars and replace original loop_vars.
@@ -1507,6 +1752,24 @@ def _deal_with_undefined_var(output_vars, loop_vars):
             Create a complex container class inside the body of while, including Python list and python Dict
             """
             return map_structure(lambda x: create_undefined_variable(), o_var)
+=======
+    """ Deal with undefined var cases, We create undefined variable based on the results of body().
+        In Dy2Static, we use undefined var to represent the var created in control flow. This function
+        expand the loop_vars and replace original loop_vars.
+        1. UndefinedVar = Variable      # create a variable
+        2. UndefinedVar = None          # create a undefined var with RETURN_NO_VALUE_MAGIC_NUM
+        3. UndefinedVar = List(int)     # create a list of variable
+        4. UndefinedVar = value         # create a variable
+    """
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_variable
+
+    def create_var_like(o_var):
+        if isinstance(o_var,
+                      (Variable, ) + support_ret_buildin_type) or o_var is None:
+            return create_undefined_variable()
+        if isinstance(o_var, (tuple, list)):
+            return [create_undefined_variable() for i in range(len(o_var))]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if len(output_vars) != len(loop_vars):
         raise ValueError("The length of loop_vars should be the same.")
@@ -1576,6 +1839,7 @@ def lod_rank_table(x, level=0):
             )
 
     helper = LayerHelper("lod_rank_table", **locals())
+<<<<<<< HEAD
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,
         name=unique_name.generate("lod_rank_table"),
@@ -1586,6 +1850,14 @@ def lod_rank_table(x, level=0):
         outputs={'Out': table},
         attrs={'level': level},
     )
+=======
+    table = helper.create_variable(type=core.VarDesc.VarType.LOD_RANK_TABLE,
+                                   name=unique_name.generate("lod_rank_table"))
+    helper.append_op(type='lod_rank_table',
+                     inputs={'X': x},
+                     outputs={'Out': table},
+                     attrs={'level': level})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return table
 
 
@@ -1608,11 +1880,17 @@ def max_sequence_len(rank_table):
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_variable_for_type_inference(dtype="int64")
+<<<<<<< HEAD
     helper.append_op(
         type="max_sequence_len",
         inputs={"RankTable": rank_table},
         outputs={"Out": res},
     )
+=======
+    helper.append_op(type="max_sequence_len",
+                     inputs={"RankTable": rank_table},
+                     outputs={"Out": res})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return res
 
 
@@ -1667,6 +1945,7 @@ def lod_tensor_to_array(x, table):
     array = helper.create_variable(
         name=unique_name.generate("lod_tensor_to_array"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+<<<<<<< HEAD
         dtype=x.dtype,
     )
     helper.append_op(
@@ -1674,6 +1953,15 @@ def lod_tensor_to_array(x, table):
         inputs={'X': x, 'RankTable': table},
         outputs={'Out': array},
     )
+=======
+        dtype=x.dtype)
+    helper.append_op(type='lod_tensor_to_array',
+                     inputs={
+                         'X': x,
+                         'RankTable': table
+                     },
+                     outputs={'Out': array})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return array
 
 
@@ -1720,11 +2008,20 @@ def array_to_lod_tensor(x, table):
 
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="array_to_lod_tensor",
         inputs={'X': x, 'RankTable': table},
         outputs={'Out': tmp},
     )
+=======
+    helper.append_op(type="array_to_lod_tensor",
+                     inputs={
+                         'X': x,
+                         'RankTable': table
+                     },
+                     outputs={'Out': tmp})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return tmp
 
 
@@ -1760,12 +2057,19 @@ def increment(x, value=1.0, in_place=True):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         out = x
+<<<<<<< HEAD
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
         outputs={'Out': [out]},
         attrs={'step': float(value)},
     )
+=======
+    helper.append_op(type='increment',
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]},
+                     attrs={'step': float(value)})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -1848,10 +2152,16 @@ def array_write(x, i, array=None):
     check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
     if array is not None:
+<<<<<<< HEAD
         if (
             not isinstance(array, Variable)
             or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
         ):
+=======
+        if not isinstance(
+                array, Variable
+        ) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             raise TypeError(
                 "array should be tensor array vairable in array_write Op"
             )
@@ -1859,6 +2169,7 @@ def array_write(x, i, array=None):
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+<<<<<<< HEAD
             dtype=x.dtype,
         )
     helper.append_op(
@@ -1866,6 +2177,15 @@ def array_write(x, i, array=None):
         inputs={'X': [x], 'I': [i]},
         outputs={'Out': [array]},
     )
+=======
+            dtype=x.dtype)
+    helper.append_op(type='write_to_array',
+                     inputs={
+                         'X': [x],
+                         'I': [i]
+                     },
+                     outputs={'Out': [array]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return array
 
 
@@ -1896,20 +2216,30 @@ def create_array(dtype, initialized_list=None):
     if initialized_list is not None:
         if not isinstance(initialized_list, (list, tuple)):
             raise TypeError(
+<<<<<<< HEAD
                 "Require type(initialized_list) should be list/tuple, but received {}".format(
                     type(initialized_list)
                 )
             )
+=======
+                "Require type(initialized_list) should be list/tuple, but received {}"
+                .format(type(initialized_list)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         array = list(initialized_list)
 
     # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
     for val in array:
         if not isinstance(val, Variable):
             raise TypeError(
+<<<<<<< HEAD
                 "All values in `initialized_list` should be Variable, but recevied {}.".format(
                     type(val)
                 )
             )
+=======
+                "All values in `initialized_list` should be Variable, but recevied {}."
+                .format(type(val)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if _non_static_mode():
         return array
@@ -1976,12 +2306,22 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
     if force_cpu is not None:
         attrs['force_cpu'] = force_cpu
 
+<<<<<<< HEAD
     helper.append_op(
         type='less_than',
         inputs={'X': [x], 'Y': [y]},
         outputs={'Out': [cond]},
         attrs=attrs,
     )
+=======
+    helper.append_op(type='less_than',
+                     inputs={
+                         'X': [x],
+                         'Y': [y]
+                     },
+                     outputs={'Out': [cond]},
+                     attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return cond
 
 
@@ -2032,12 +2372,22 @@ def less_equal(x, y, cond=None, name=None):
 
     attrs = dict()
 
+<<<<<<< HEAD
     helper.append_op(
         type='less_equal',
         inputs={'X': [x], 'Y': [y]},
         outputs={'Out': [cond]},
         attrs=attrs,
     )
+=======
+    helper.append_op(type='less_equal',
+                     inputs={
+                         'X': [x],
+                         'Y': [y]
+                     },
+                     outputs={'Out': [cond]},
+                     attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return cond
 
 
@@ -2090,12 +2440,22 @@ def greater_than(x, y, cond=None, name=None):
     if in_dygraph_mode():
         return _C_ops.greater_than(x, y)
     else:
+<<<<<<< HEAD
         helper.append_op(
             type='greater_than',
             inputs={'X': [x], 'Y': [y]},
             outputs={'Out': [cond]},
             attrs=attrs,
         )
+=======
+        helper.append_op(type='greater_than',
+                         inputs={
+                             'X': [x],
+                             'Y': [y]
+                         },
+                         outputs={'Out': [cond]},
+                         attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return cond
 
 
@@ -2147,12 +2507,22 @@ def greater_equal(x, y, cond=None, name=None):
 
     attrs = dict()
 
+<<<<<<< HEAD
     helper.append_op(
         type='greater_equal',
         inputs={'X': [x], 'Y': [y]},
         outputs={'Out': [cond]},
         attrs=attrs,
     )
+=======
+    helper.append_op(type='greater_equal',
+                     inputs={
+                         'X': [x],
+                         'Y': [y]
+                     },
+                     outputs={'Out': [cond]},
+                     attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return cond
 
 
@@ -2202,9 +2572,18 @@ def equal(x, y, cond=None, name=None):
         cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
+<<<<<<< HEAD
     helper.append_op(
         type='equal', inputs={'X': [x], 'Y': [y]}, outputs={'Out': [cond]}
     )
+=======
+    helper.append_op(type='equal',
+                     inputs={
+                         'X': [x],
+                         'Y': [y]
+                     },
+                     outputs={'Out': [cond]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return cond
 
 
@@ -2250,9 +2629,18 @@ def not_equal(x, y, cond=None, name=None):
         cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
+<<<<<<< HEAD
     helper.append_op(
         type='not_equal', inputs={'X': [x], 'Y': [y]}, outputs={'Out': [cond]}
     )
+=======
+    helper.append_op(type='not_equal',
+                     inputs={
+                         'X': [x],
+                         'Y': [y]
+                     },
+                     outputs={'Out': [cond]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return cond
 
 
@@ -2338,11 +2726,20 @@ def array_read(array, i):
     ):
         raise TypeError("array should be tensor array vairable")
     out = helper.create_variable_for_type_inference(dtype=array.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='read_from_array',
         inputs={'X': [array], 'I': [i]},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='read_from_array',
+                     inputs={
+                         'X': [array],
+                         'I': [i]
+                     },
+                     outputs={'Out': [out]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -2376,12 +2773,23 @@ def shrink_memory(x, i, table):
     check_type(i, 'i', Variable, 'shrink_memory')
     check_type(table, 'table', Variable, 'shrink_memory')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='shrink_rnn_memory',
         inputs={'X': [x], 'I': [i], 'RankTable': [table]},
         outputs={'Out': [out]},
         attrs={},
     )
+=======
+    helper.append_op(type='shrink_rnn_memory',
+                     inputs={
+                         'X': [x],
+                         'I': [i],
+                         'RankTable': [table]
+                     },
+                     outputs={'Out': [out]},
+                     attrs={})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -2448,9 +2856,15 @@ def array_length(array):
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
+<<<<<<< HEAD
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]}
     )
+=======
+    helper.append_op(type='lod_array_length',
+                     inputs={'X': [array]},
+                     outputs={'Out': [tmp]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return tmp
 
 
@@ -2472,7 +2886,12 @@ class ConditionalBlockGuard(BlockGuard):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.block.complete()
+<<<<<<< HEAD
         return super().__exit__(exc_type, exc_val, exc_tb)
+=======
+        return super(ConditionalBlockGuard,
+                     self).__exit__(exc_type, exc_val, exc_tb)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class ConditionalBlock:
@@ -2518,9 +2937,16 @@ class ConditionalBlock:
 
         intermediate = set()
         params = set()
+<<<<<<< HEAD
         params, intermediate = get_inputs_outputs_in_block(
             inside_block, params, intermediate, helper=self.helper
         )
+=======
+        params, intermediate = get_inputs_outputs_in_block(inside_block,
+                                                           params,
+                                                           intermediate,
+                                                           helper=self.helper)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Todo(liym27) Here assume that all params are in recursive parent block
         # but when minimize() called in control flow, some params may be in
@@ -2544,7 +2970,14 @@ class ConditionalBlock:
                 'Cond': self.inputs,
                 'Input': param_list,
             },
+<<<<<<< HEAD
             outputs={'Out': out_list, 'Scope': [step_scope]},
+=======
+            outputs={
+                'Out': out_list,
+                'Scope': [step_scope]
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             attrs={
                 'sub_block': inside_block,
                 'is_scalar_condition': self.is_scalar_condition,
@@ -2607,8 +3040,13 @@ class ConditionalBlock:
                 param_list.append(inner_var.name)
 
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+<<<<<<< HEAD
             conditional_block_op.desc, set(), [grad_sub_block.desc]
         )
+=======
+            conditional_block_op.desc, cpt.to_text(set()),
+            [grad_sub_block.desc])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # append op_desc in grad_op_descs to target_block
         op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -2624,10 +3062,15 @@ class ConditionalBlock:
 
         new_vars = set()
         for grad_var_name in new_op_desc.output_arg_names():
+<<<<<<< HEAD
             if (
                 grad_sub_block.desc.has_var_recursive(grad_var_name.encode())
                 or grad_var_name == core.empty_var_name()
             ):
+=======
+            if grad_sub_block.desc.has_var_recursive(cpt.to_bytes(
+                    grad_var_name)) or grad_var_name == core.empty_var_name():
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 continue
             grad_sub_block.desc.var(grad_var_name.encode())
             new_vars.add(grad_var_name)
@@ -2661,9 +3104,15 @@ def copy_var_to_parent_block(var, layer_helper):
     ):
         parent_block_var = var
     else:
+<<<<<<< HEAD
         parent_block_var = parent_block.create_var(
             dtype=var.dtype, shape=var.shape, type=var.type
         )
+=======
+        parent_block_var = parent_block.create_var(dtype=var.dtype,
+                                                   shape=var.shape,
+                                                   type=var.type)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         assign(var, parent_block_var)
     return parent_block_var
 
@@ -2717,9 +3166,15 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
+<<<<<<< HEAD
         return_names(sequence of string, optional): The default value is ``None`` .
              Normally users don't have to set this parameters.  A sequence of strings
              to represents the name of returned vars.  The structure of sequence must
+=======
+        return_names(sequence of string, optional): The default value is ``None`` . 
+             Normally users don't have to set this parameters.  A sequence of strings 
+             to represents the name of returned vars.  The structure of sequence must 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
              be same with return values of true_fn and false_fn.
 
     Returns:
@@ -2785,10 +3240,15 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             if false_fn is not None:
                 if not callable(false_fn):
                     raise TypeError(
+<<<<<<< HEAD
                         "The false_fn in cond must be callable, but received {}".format(
                             type(false_fn).__name__
                         )
                     )
+=======
+                        "The false_fn in cond must be callable, but received {}"
+                        .format(type(false_fn).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 return false_fn()
         return None
 
@@ -2816,12 +3276,18 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         if not callable(false_fn):
             raise TypeError(
                 "The false_fn in cond must be callable, but received {}".format(
+<<<<<<< HEAD
                     type(false_fn).__name__
                 )
             )
         false_cond_block = ConditionalBlock(
             [paddle.logical_not(pred)], is_scalar_condition=True
         )
+=======
+                    type(false_fn).__name__))
+        false_cond_block = ConditionalBlock([logical_not(pred)],
+                                            is_scalar_condition=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with false_cond_block.block():
             origin_false_output = false_fn()
             if origin_false_output is not None:
@@ -2843,6 +3309,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             "true_fn returns non-None while false_fn returns None"
         )
 
+<<<<<<< HEAD
     # Merge true and false output if they are not None
     if return_names is None:
         is_dy2staic = False
@@ -2876,10 +3343,32 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(false_output),
         _to_sequence_except_dict(return_names),
     ):
+=======
+    # Merge ture and false output if they are not None
+    if return_names is None:
+        return_names = ["no name"] * len(to_sequence(true_output))
+    else:
+        """ 
+        dy2static will set the return_names and expand the return values to UndefinedVar.
+        """
+        true_output, false_output = expand_undefined_var(
+            true_output, false_output, return_names)
+        true_output, false_output = change_none_to_undefinedvar(
+            true_output, false_output)
+    if len(to_sequence(true_output)) != len(to_sequence(false_output)):
+        raise ValueError(
+            "true fn returns {} vars, but false fn returns {} vars, which is not equals"
+            .format(len(to_sequence(true_output)),
+                    len(to_sequence(false_output))))
+    for true_out, false_out, return_name in zip(to_sequence(true_output),
+                                                to_sequence(false_output),
+                                                to_sequence(return_names)):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         try:
             assert_same_structure(true_out, false_out, check_types=False)
         except ValueError as e:
             raise ValueError(
+<<<<<<< HEAD
                 "Incompatible return values of `{}` in true_fn and false_fn in cond: {}".format(
                     return_name, e
                 )
@@ -2938,6 +3427,15 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         )
     )
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
+=======
+                "Incompatible return values of `{}` in true_fn and false_fn in cond: {}"
+                .format(return_name, e))
+
+    mask = cast(pred, dtype='int32')
+    merge_func = lambda false_var, true_var: select_input_with_buildin_type(
+        [false_var, true_var], mask)
+    merged_output = map_structure(merge_func, false_output, true_output)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return merged_output
 
 
@@ -2945,8 +3443,12 @@ def change_none_to_undefinedvar(nest1, nest2):
     from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
 
     def map_fn(x):
+<<<<<<< HEAD
         if x is None:
             return UndefinedVar("padding")
+=======
+        if x is None: return UndefinedVar("padding")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return x
 
     nest1_out = pack_sequence_as(nest1, list(map(map_fn, flatten(nest1))))
@@ -2954,6 +3456,7 @@ def change_none_to_undefinedvar(nest1, nest2):
     return nest1_out, nest2_out
 
 
+<<<<<<< HEAD
 def _to_sequence_except_dict(x):
     """
     In this function, dict is not viewed as sequence.
@@ -3009,10 +3512,29 @@ def expand_undefined_var(nest1, nest2, names):
                             name, type(n2), n2, type(n1), n1
                         )
                     )
+=======
+def expand_undefined_var(nest1, nest2, names):
+    """ TODO: make this function recursively.
+        nest1: Var1, (UndefinedVar, [1,2,3])
+        nest2: Var2, ([1,2,3,4], UndefinedVar)
+        In this case, we should not expand recursively.
+    """
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_VALUE_PREFIX
+
+    def pack_undefined_var_as(seq):
+        return pack_sequence_as(seq,
+                                [UndefinedVar("padding") for i in flatten(seq)])
+
+    def map_fn(n1, n2, name):
+        if not name.startswith(RETURN_VALUE_PREFIX) and (isinstance(
+                n1, UndefinedVar) or n1 is None):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return pack_undefined_var_as(n2)
         return n1
 
     nest1_out = list(
+<<<<<<< HEAD
         map(
             map_fn,
             _to_sequence_except_dict(nest1),
@@ -3034,6 +3556,13 @@ def expand_undefined_var(nest1, nest2, names):
         nest1_out = nest1_out[0]
     if not _is_sequence_except_dict(nest2):
         nest2_out = nest2_out[0]
+=======
+        map(map_fn, to_sequence(nest1), to_sequence(nest2), to_sequence(names)))
+    nest2_out = list(
+        map(map_fn, to_sequence(nest2), to_sequence(nest1), to_sequence(names)))
+    if not is_sequence(nest1): nest1_out = nest1_out[0]
+    if not is_sequence(nest2): nest2_out = nest2_out[0]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return nest1_out, nest2_out
 
 
@@ -3138,6 +3667,7 @@ def case(pred_fn_pairs, default=None, name=None):
                 )
             if len(pred_fn) != 2:
                 raise TypeError(
+<<<<<<< HEAD
                     _error_message(
                         "The tuple's size",
                         "pred_fn_pairs",
@@ -3146,6 +3676,11 @@ def case(pred_fn_pairs, default=None, name=None):
                         str(len(pred_fn)) + "-tuple",
                     )
                 )
+=======
+                    _error_message("The tuple's size", "pred_fn_pairs", "case",
+                                   "2",
+                                   str(len(pred_fn)) + "-tuple"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             pred, fn = pred_fn
 
             if not isinstance(pred, Variable):
@@ -3278,6 +3813,7 @@ class Switch:
         else:
             pre_cond_num = len(self.pre_not_conditions)
             pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
+<<<<<<< HEAD
             new_not_cond = logical_and(
                 x=pre_not_cond, y=paddle.logical_not(x=condition)
             )
@@ -3286,6 +3822,14 @@ class Switch:
                 [logical_and(x=pre_not_cond, y=condition)],
                 is_scalar_condition=True,
             )
+=======
+            new_not_cond = logical_and(x=pre_not_cond,
+                                       y=logical_not(x=condition))
+            self.pre_not_conditions.append(new_not_cond)
+            cond_block = ConditionalBlock(
+                [logical_and(x=pre_not_cond, y=condition)],
+                is_scalar_condition=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return ConditionalBlockGuard(cond_block)
 
@@ -3315,7 +3859,12 @@ class Switch:
         return True
 
 
+<<<<<<< HEAD
 class IfElseBlockGuard:
+=======
+class IfElseBlockGuard(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, is_true, ifelse):
         if not isinstance(ifelse, IfElse):
             raise TypeError("ifelse must be an instance of IfElse class")
@@ -3456,6 +4005,7 @@ class IfElse:
             )
 
             out_false = parent_block.create_var(
+<<<<<<< HEAD
                 name=unique_name.generate_with_ignorable_key(
                     'ifelse_input' + self.helper.name
                 ),
@@ -3470,6 +4020,21 @@ class IfElse:
                 outputs={'OutTrue': out_true, 'OutFalse': out_false},
                 attrs={'level': 0},
             )
+=======
+                name=unique_name.generate_with_ignorable_key('ifelse_input' +
+                                                             self.helper.name),
+                dtype=x.dtype)
+            parent_block.append_op(type='split_lod_tensor',
+                                   inputs={
+                                       'X': x,
+                                       'Mask': self.cond,
+                                   },
+                                   outputs={
+                                       'OutTrue': out_true,
+                                       'OutFalse': out_false
+                                   },
+                                   attrs={'level': 0})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.input_table[id(x)] = (out_true, out_false)
         else:
             out_true, out_false = self.input_table[id(x)]
@@ -3531,6 +4096,7 @@ class IfElse:
         rlist = []
         for false_var, true_var in zip(*self.output_table):
             rlist.append(
+<<<<<<< HEAD
                 merge_lod_tensor(
                     in_true=true_var,
                     in_false=false_var,
@@ -3539,6 +4105,13 @@ class IfElse:
                     level=0,
                 )
             )
+=======
+                merge_lod_tensor(in_true=true_var,
+                                 in_false=false_var,
+                                 mask=self.cond,
+                                 x=self.cond,
+                                 level=0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return rlist
 
 
@@ -3730,17 +4303,25 @@ class DynamicRNN:
                 type=core.VarDesc.VarType.LOD_RANK_TABLE,
             )
             self.lod_rank_table.stop_gradient = True
+<<<<<<< HEAD
             parent_block.append_op(
                 type='lod_rank_table',
                 inputs={"X": x},
                 outputs={"Out": self.lod_rank_table},
                 attrs={"level": level},
             )
+=======
+            parent_block.append_op(type='lod_rank_table',
+                                   inputs={"X": x},
+                                   outputs={"Out": self.lod_rank_table},
+                                   attrs={"level": level})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.max_seq_len = parent_block.create_var(
                 name=unique_name.generate('dynamic_rnn_max_seq_len'),
                 dtype='int64',
             )
             self.max_seq_len.stop_gradient = False
+<<<<<<< HEAD
             parent_block.append_op(
                 type='max_sequence_len',
                 inputs={'RankTable': self.lod_rank_table},
@@ -3753,6 +4334,19 @@ class DynamicRNN:
                 outputs={'Out': self.cond},
                 attrs={'force_cpu': True},
             )
+=======
+            parent_block.append_op(type='max_sequence_len',
+                                   inputs={'RankTable': self.lod_rank_table},
+                                   outputs={"Out": self.max_seq_len})
+            self.cond.stop_gradient = True
+            parent_block.append_op(type='less_than',
+                                   inputs={
+                                       'X': self.step_idx,
+                                       'Y': self.max_seq_len
+                                   },
+                                   outputs={'Out': self.cond},
+                                   attrs={'force_cpu': True})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         input_array = parent_block.create_var(
             name=unique_name.generate('dynamic_rnn_input_array'),
@@ -3760,11 +4354,20 @@ class DynamicRNN:
             dtype=x.dtype,
         )
         self.input_array.append((input_array, x.dtype))
+<<<<<<< HEAD
         parent_block.append_op(
             type='lod_tensor_to_array',
             inputs={'X': x, 'RankTable': self.lod_rank_table},
             outputs={'Out': input_array},
         )
+=======
+        parent_block.append_op(type='lod_tensor_to_array',
+                               inputs={
+                                   'X': x,
+                                   'RankTable': self.lod_rank_table
+                               },
+                               outputs={'Out': input_array})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return array_read(array=input_array, i=self.step_idx)
 
     def static_input(self, x):
@@ -3903,6 +4506,7 @@ class DynamicRNN:
         x_reordered = parent_block.create_var(
             name=unique_name.generate("dynamic_rnn_static_input_reordered"),
             type=core.VarDesc.VarType.LOD_TENSOR,
+<<<<<<< HEAD
             dtype=x.dtype,
         )
         parent_block.append_op(
@@ -3910,6 +4514,15 @@ class DynamicRNN:
             inputs={'X': [x], 'RankTable': [self.lod_rank_table]},
             outputs={'Out': [x_reordered]},
         )
+=======
+            dtype=x.dtype)
+        parent_block.append_op(type='reorder_lod_tensor_by_rank',
+                               inputs={
+                                   'X': [x],
+                                   'RankTable': [self.lod_rank_table]
+                               },
+                               outputs={'Out': [x_reordered]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return shrink_memory(x_reordered, self.step_idx, self.lod_rank_table)
 
     @signature_safe_contextmanager
@@ -3924,9 +4537,16 @@ class DynamicRNN:
         """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
+<<<<<<< HEAD
         self.step_idx = fill_constant(
             shape=[1], dtype='int64', value=0, force_cpu=True
         )
+=======
+        self.step_idx = fill_constant(shape=[1],
+                                      dtype='int64',
+                                      value=0,
+                                      force_cpu=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.step_idx.stop_gradient = False
         self.status = DynamicRNN.IN_RNN
         with self.while_op.block():
@@ -3936,18 +4556,29 @@ class DynamicRNN:
             for new_mem, mem_array in self.mem_link:
                 array_write(x=new_mem, i=self.step_idx, array=mem_array)
 
+<<<<<<< HEAD
             less_than(
                 x=self.step_idx,
                 y=self.max_seq_len,
                 force_cpu=True,
                 cond=self.cond,
             )
+=======
+            less_than(x=self.step_idx,
+                      y=self.max_seq_len,
+                      force_cpu=True,
+                      cond=self.cond)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.status = DynamicRNN.AFTER_RNN
         for each_array in self.output_array:
             self.outputs.append(
+<<<<<<< HEAD
                 array_to_lod_tensor(x=each_array, table=self.lod_rank_table)
             )
+=======
+                array_to_lod_tensor(x=each_array, table=self.lod_rank_table))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def __call__(self, *args, **kwargs):
         """
@@ -4092,6 +4723,7 @@ class DynamicRNN:
                 init_reordered = parent_block.create_var(
                     name=unique_name.generate('dynamic_rnn_mem_init_reordered'),
                     type=core.VarDesc.VarType.LOD_TENSOR,
+<<<<<<< HEAD
                     dtype=init.dtype,
                 )
                 parent_block.append_op(
@@ -4102,10 +4734,20 @@ class DynamicRNN:
                     },
                     outputs={'Out': [init_reordered]},
                 )
+=======
+                    dtype=init.dtype)
+                parent_block.append_op(type='reorder_lod_tensor_by_rank',
+                                       inputs={
+                                           'X': [init_tensor],
+                                           'RankTable': [self.lod_rank_table]
+                                       },
+                                       outputs={'Out': [init_reordered]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 init_tensor = init_reordered
             mem_array = parent_block.create_var(
                 name=unique_name.generate('dynamic_rnn_mem_array'),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+<<<<<<< HEAD
                 dtype=init.dtype,
             )
             parent_block.append_op(
@@ -4117,6 +4759,19 @@ class DynamicRNN:
             retv = shrink_memory(
                 x=retv, i=self.step_idx, table=self.lod_rank_table
             )
+=======
+                dtype=init.dtype)
+            parent_block.append_op(type='write_to_array',
+                                   inputs={
+                                       'X': init_tensor,
+                                       'I': self.zero_idx
+                                   },
+                                   outputs={'Out': mem_array})
+            retv = array_read(array=mem_array, i=self.step_idx)
+            retv = shrink_memory(x=retv,
+                                 i=self.step_idx,
+                                 table=self.lod_rank_table)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.mem_dict[retv.name] = mem_array
             return retv
         else:
@@ -4129,6 +4784,7 @@ class DynamicRNN:
                 name=unique_name.generate('mem_init'), dtype=dtype
             )
             arr, dtype = self.input_array[0]
+<<<<<<< HEAD
             in0 = parent_block.create_var(
                 name=unique_name.generate('in0'), dtype=dtype
             )
@@ -4147,6 +4803,24 @@ class DynamicRNN:
                     'dtype': init.dtype,
                 },
             )
+=======
+            in0 = parent_block.create_var(name=unique_name.generate('in0'),
+                                          dtype=dtype)
+            parent_block.append_op(type='read_from_array',
+                                   inputs={
+                                       'X': [arr],
+                                       'I': [self.zero_idx]
+                                   },
+                                   outputs={'Out': [in0]})
+            parent_block.append_op(type='fill_constant_batch_size_like',
+                                   inputs={'Input': [in0]},
+                                   outputs={'Out': [init]},
+                                   attrs={
+                                       'shape': [-1] + shape,
+                                       'value': float(value),
+                                       'dtype': init.dtype
+                                   })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return self.memory(init=init)
 
     def update_memory(self, ex_mem, new_mem):
@@ -4223,6 +4897,7 @@ class DynamicRNN:
         if self.zero_idx is None:
             parent_block = self._parent_block_()
             self.zero_idx = parent_block.create_var(
+<<<<<<< HEAD
                 name=unique_name.generate('zero_idx'), dtype='int64'
             )
             parent_block.append_op(
@@ -4236,6 +4911,18 @@ class DynamicRNN:
                     'force_cpu': True,
                 },
             )
+=======
+                name=unique_name.generate('zero_idx'), dtype='int64')
+            parent_block.append_op(type='fill_constant',
+                                   inputs={},
+                                   outputs={'Out': [self.zero_idx]},
+                                   attrs={
+                                       'shape': [1],
+                                       'dtype': self.zero_idx.dtype,
+                                       'value': float(0),
+                                       'force_cpu': True
+                                   })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _parent_block_(self):
         prog = self.helper.main_program
@@ -4248,8 +4935,12 @@ class DynamicRNN:
     def _assert_in_rnn_block_(self, method):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError(
+<<<<<<< HEAD
                 "{0} can only be invoked inside rnn block.".format(method)
             )
+=======
+                "{0} can only be invoked inside rnn block.".format(method))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def switch_case(branch_index, branch_fns, default=None, name=None):
@@ -4387,10 +5078,15 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             if key in keys_of_fns:
                 raise ValueError(
+<<<<<<< HEAD
                     "The key in 'branch_fns' must be unique, but '{}' appears more than once.".format(
                         key
                     )
                 )
+=======
+                    "The key in 'branch_fns' must be unique, but '{}' appears more than once."
+                    .format(key))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 keys_of_fns.append(key)
 
@@ -4398,12 +5094,16 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
                 raise TypeError(
                     _error_message(
                         "The type of function for key {}".format(key),
+<<<<<<< HEAD
                         "branch_fns",
                         "switch_case",
                         "callable",
                         type(fn),
                     )
                 )
+=======
+                        "branch_fns", "switch_case", "callable", type(fn)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if default is None:
             default = sorted(branch_fns)[-1][1]
@@ -4463,11 +5163,20 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='reorder_lod_tensor_by_rank',
         inputs={'X': [x], 'RankTable': [rank_table]},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='reorder_lod_tensor_by_rank',
+                     inputs={
+                         'X': [x],
+                         'RankTable': [rank_table]
+                     },
+                     outputs={'Out': [out]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -4514,7 +5223,13 @@ def is_empty(x, name=None):
     helper = LayerHelper("is_empty", **locals())
     cond = helper.create_variable_for_type_inference(dtype='bool')
     cond.stop_gradient = True
+<<<<<<< HEAD
     helper.append_op(
         type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]}
     )
+=======
+    helper.append_op(type='is_empty',
+                     inputs={'X': [x]},
+                     outputs={'Out': [cond]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return cond

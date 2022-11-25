@@ -13,11 +13,15 @@
 # limitations under the License.
 
 import json
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
 
 from test_cluster import cluster_json, multi_cluster_json
+=======
+import tempfile
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
@@ -34,6 +38,10 @@ from paddle.distributed.auto_parallel.cost import (
 
 
 class TestCommOpCost(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -42,9 +50,14 @@ class TestCommOpCost(unittest.TestCase):
 
     def test_comm_cost(self):
         # Build cluster
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster0.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster0.json")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -57,17 +70,25 @@ class TestCommOpCost(unittest.TestCase):
         comm_context = CommContext(cluster)
 
         # Check AllreduceSumCost 128MB ring cost
+<<<<<<< HEAD
         allreduce_sum_op_desc = build_comm_desc(
             "c_allreduce_sum",
             [0, 1, 2, 3, 4, 5, 6, 7],
             paddle.float32,
             [1, 32 * (10**6)],
         )
+=======
+        allreduce_sum_op_desc = build_comm_desc("c_allreduce_sum",
+                                                [0, 1, 2, 3, 4, 5, 6, 7],
+                                                paddle.float32,
+                                                [1, 32 * (10**6)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         allreduce_sum_op_cost = AllreduceSumOpCost(
             op_desc=allreduce_sum_op_desc, comm_context=comm_context
         )
 
         # Check AllgatherOpCost cost
+<<<<<<< HEAD
         allgather_op_desc = build_comm_desc(
             "c_allgather",
             [0, 1, 2, 3, 4, 5, 6, 7],
@@ -116,13 +137,54 @@ class TestCommOpCost(unittest.TestCase):
         identity_op_cost = IdentityOpCost(
             op_desc=identity_op_desc, comm_context=comm_context
         )
+=======
+        allgather_op_desc = build_comm_desc("c_allgather",
+                                            [0, 1, 2, 3, 4, 5, 6, 7],
+                                            paddle.float32, [1, 32 * (10**6)])
+        allgather_op_cost = AllgatherOpCost(op_desc=allgather_op_desc,
+                                            comm_context=comm_context)
+        self.assertTrue(allgather_op_cost.time > 0)
+
+        # Check BroadcastOpCost cost
+        broadcast_op_desc = build_comm_desc("c_broadcast",
+                                            [0, 1, 2, 3, 4, 5, 6, 7],
+                                            paddle.float32, [1, 32 * (10**6)])
+        broadcast_op_cost = BroadcastOpCost(op_desc=broadcast_op_desc,
+                                            comm_context=comm_context)
+        self.assertTrue(broadcast_op_cost.time > 0)
+
+        # Check SendOpCost cost
+        send_op_desc = build_comm_desc("send_v2", [0, 1], paddle.float32,
+                                       [1, 32 * (10**6)])
+        send_op_cost = SendOpCost(op_desc=send_op_desc,
+                                  comm_context=comm_context)
+        self.assertTrue(send_op_cost.time > 0)
+
+        # Check RecvOpCost cost
+        recv_op_desc = build_comm_desc("recv_v2", [0, 1], paddle.float32,
+                                       [1, 32 * (10**6)])
+        recv_op_cost = RecvOpCost(op_desc=recv_op_desc,
+                                  comm_context=comm_context)
+        self.assertTrue(recv_op_cost.time > 0)
+
+        # Check IdentityOpCost cost
+        identity_op_desc = build_comm_desc("c_identity", [0, 1], paddle.float32,
+                                           [1, 32 * (10**6)])
+        identity_op_cost = IdentityOpCost(op_desc=identity_op_desc,
+                                          comm_context=comm_context)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertTrue(identity_op_cost.time >= 0)
 
     def test_cross_machine_comm_cost(self):
         # Build cluster
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster1.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster1.json")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         cluster_json_object = json.loads(multi_cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -149,18 +211,25 @@ class TestCommOpCost(unittest.TestCase):
         allgather_op_desc = build_comm_desc(
             "c_allgather",
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+<<<<<<< HEAD
             paddle.float32,
             [1, 32 * (10**6)],
         )
         allgather_op_cost = AllgatherOpCost(
             op_desc=allgather_op_desc, comm_context=comm_context
         )
+=======
+            paddle.float32, [1, 32 * (10**6)])
+        allgather_op_cost = AllgatherOpCost(op_desc=allgather_op_desc,
+                                            comm_context=comm_context)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertTrue(allgather_op_cost.time > 0)
 
         # Check BroadcastOpCost cost
         broadcast_op_desc = build_comm_desc(
             "c_broadcast",
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+<<<<<<< HEAD
             paddle.float32,
             [1, 32 * (10**6)],
         )
@@ -185,6 +254,25 @@ class TestCommOpCost(unittest.TestCase):
         recv_op_cost = RecvOpCost(
             op_desc=recv_op_desc, comm_context=comm_context
         )
+=======
+            paddle.float32, [1, 32 * (10**6)])
+        broadcast_op_cost = BroadcastOpCost(op_desc=broadcast_op_desc,
+                                            comm_context=comm_context)
+        self.assertTrue(broadcast_op_cost.time > 0)
+
+        # Check SendOpCost cost
+        send_op_desc = build_comm_desc("send_v2", [0, 1], paddle.float32,
+                                       [1, 32 * (10**6)])
+        send_op_cost = SendOpCost(op_desc=send_op_desc,
+                                  comm_context=comm_context)
+        self.assertTrue(send_op_cost.time > 0)
+
+        # Check RecvOpCost cost
+        recv_op_desc = build_comm_desc("recv_v2", [0, 1], paddle.float32,
+                                       [1, 32 * (10**6)])
+        recv_op_cost = RecvOpCost(op_desc=recv_op_desc,
+                                  comm_context=comm_context)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertTrue(recv_op_cost.time > 0)
 
         # Remove unnecessary files

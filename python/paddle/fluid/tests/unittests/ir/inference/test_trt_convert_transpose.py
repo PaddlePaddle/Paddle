@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertTransposeTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -40,6 +41,7 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
@@ -50,6 +52,7 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
 
         for dims in [2, 3, 4]:
             for batch in [1, 2, 4]:
+<<<<<<< HEAD
                 for axis in [
                     [0, 1, 3, 2],
                     [0, 3, 2, 1],
@@ -60,6 +63,11 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
                     [1, 0],
                     [0, 1],
                 ]:
+=======
+                for axis in [[0, 1, 3, 2], [0, 3, 2, 1], [3, 2, 0, 1],
+                             [0, 1, 2, 3], [0, 1, 2], [2, 0, 1], [1, 0], [0,
+                                                                          1]]:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     self.dims = dims
                     dics = [{"axis": axis}, {}]
                     ops_config = [
@@ -75,9 +83,15 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "transpose_input": TensorConfig(
                                 data_gen=partial(generate_input1, dics, batch)
                             )
+=======
+                            "transpose_input":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         },
                         outputs=["transpose_out"],
                     )
@@ -85,8 +99,13 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -151,12 +170,19 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test(self):
         self.run_test()

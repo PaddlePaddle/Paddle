@@ -24,10 +24,18 @@ framework::OpKernelType DeQuantOp::GetExpectedKernelType(
   auto input_data_type =
       framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
+<<<<<<< HEAD
   return framework::OpKernelType(input_data_type,
                                  ctx.GetPlace(),
                                  phi::DataLayout::ONEDNN,
                                  framework::LibraryType::kMKLDNN);
+=======
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 void DeQuantOpMaker::Make() {

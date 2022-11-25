@@ -320,8 +320,13 @@ static void FillConstantLike(const VariableWrapper &ref_var,
                              VariableWrapper *dst_var,
                              const platform::Place &place,
                              float value) {
+<<<<<<< HEAD
   auto &ref_tensor = ref_var.Var().Get<phi::DenseTensor>();
   auto *dst_tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto &ref_tensor = ref_var.Var().Get<framework::LoDTensor>();
+  auto *dst_tensor = dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ref_tensor.dims());
   // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in

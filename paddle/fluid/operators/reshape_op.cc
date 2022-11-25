@@ -393,7 +393,11 @@ class ReshapeKernel {
       for (auto &tensor : list_new_shape_tensor) {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
+<<<<<<< HEAD
           phi::DenseTensor temp;
+=======
+          framework::Tensor temp;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           paddle::framework::TensorCopySync(
               *tensor, platform::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
@@ -406,7 +410,11 @@ class ReshapeKernel {
       phi::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
+<<<<<<< HEAD
         phi::DenseTensor temp;
+=======
+        framework::Tensor temp;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle::framework::TensorCopySync(
             *shape_tensor, platform::CPUPlace(), &temp);
         pt_shape = std::move(temp);
@@ -518,6 +526,7 @@ class Reshape2Op : public ReshapeOp {
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override {
+<<<<<<< HEAD
     if (ctx->HasOutput("XShape")) {
       const auto &x_dims = ctx->GetInputDim("X");
       std::vector<int64_t> xshape_dims(x_dims.size() + 1);
@@ -527,6 +536,17 @@ class Reshape2Op : public ReshapeOp {
       }
       ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
       ctx->ShareLoD("X", /*->*/ "XShape");
+=======
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Output(XShape) of ReshapeOp should not be null."));
+    const auto &x_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     ReshapeOp::InferShape(ctx);
   }

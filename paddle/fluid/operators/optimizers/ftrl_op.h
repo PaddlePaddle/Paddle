@@ -21,7 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -193,7 +197,11 @@ class FTRLOpKernel : public framework::OpKernel<T> {
 
       phi::SelectedRows tmp_merged_grad;
       phi::SelectedRows* merged_grad = &tmp_merged_grad;
+<<<<<<< HEAD
       phi::funcs::scatter::MergeAdd<DeviceContext, T> merge_func;
+=======
+      math::scatter::MergeAdd<DeviceContext, T> merge_func;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       merge_func(
           ctx.template device_context<DeviceContext>(), *grad, merged_grad);
 

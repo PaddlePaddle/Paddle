@@ -25,7 +25,11 @@ void AMinKernel(const Context& dev_ctx,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
                 DenseTensor* out) {
+<<<<<<< HEAD
   bool reduce_all = recompute_reduce_all(x, dims);
+=======
+  bool reduce_all = false;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   AMinRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 

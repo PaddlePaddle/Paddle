@@ -41,6 +41,7 @@ endif()
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_xpu.cc)
+<<<<<<< HEAD
   detection_library(prior_box_op SRCS prior_box_op.cc)
   detection_library(yolo_box_op SRCS yolo_box_op.cc)
   detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
@@ -59,6 +60,23 @@ else()
                     iou_similarity_op.cu)
   detection_library(prior_box_op SRCS prior_box_op.cc)
   detection_library(yolo_box_op SRCS yolo_box_op.cc)
+=======
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_xpu.cc)
+  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
+                    generate_proposals_v2_op_xpu.cc)
+elseif(WITH_MLU)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
+                    iou_similarity_op_mlu.cc)
+elseif(WITH_ASCEND_CL)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
+                    iou_similarity_op_npu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu
+                    prior_box_op_npu.cc)
+else()
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
+                    iou_similarity_op.cu)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   # detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
 endif()
 
@@ -77,6 +95,10 @@ detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS gpc)
 detection_library(matrix_nms_op SRCS matrix_nms_op.cc DEPS gpc)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
+<<<<<<< HEAD
+=======
+detection_library(yolo_box_op SRCS yolo_box_op.cc)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
                   box_decoder_and_assign_op.cu)
 detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
@@ -95,9 +117,16 @@ if(WITH_GPU OR WITH_ROCM)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc
                     generate_proposals_op.cu DEPS ${TMPDEPS})
   detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
+<<<<<<< HEAD
                     DEPS ${TMPDEPS})
   detection_library(distribute_fpn_proposals_op SRCS
                     distribute_fpn_proposals_op.cc DEPS ${TMPDEPS})
+=======
+                    generate_proposals_v2_op.cu DEPS ${TMPDEPS})
+  detection_library(
+    distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc
+    distribute_fpn_proposals_op.cu DEPS ${TMPDEPS})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc
                     collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
 else()
@@ -124,5 +153,12 @@ cc_test(
   mask_util_test
   SRCS mask_util_test.cc
   DEPS memory mask_util)
+<<<<<<< HEAD
+=======
+cc_library(
+  gpc
+  SRCS gpc.cc
+  DEPS op_registry)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)

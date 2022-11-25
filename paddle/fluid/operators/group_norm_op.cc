@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/group_norm_op.h"
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include <memory>
 #include <string>
 #include <unordered_map>

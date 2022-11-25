@@ -22,15 +22,25 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/api/include/tensor.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+=======
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -50,10 +60,20 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup *pg = map->get(ring_id);
+<<<<<<< HEAD
     auto pg_nccl = static_cast<distributed::ProcessGroupNCCL *>(pg);
     paddle::distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::SUM;
     auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
+=======
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(tensor);
+    out_tensor.push_back(tensor);
+    paddle::distributed::AllreduceOptions opts;
+    opts.reduce_op = distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     task->Wait();
   } else {
     auto dtype = platform::ToNCCLDataType(
@@ -61,7 +81,11 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     int64_t numel = tensor.numel();
     const void *sendbuff = tensor.data<T>();
     auto place = ctx.GetPlace();
+<<<<<<< HEAD
     void *recvbuff = ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
+=======
+    void *recvbuff = tensor.mutable_data<T>(place);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto stream = ctx.stream();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
@@ -260,12 +284,18 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       auto *ln_scale_data =
           (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
       auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
+<<<<<<< HEAD
       auto *ln_mean_data =
           dev_ctx.template Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
       auto *ln_var_data =
           dev_ctx.template Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
       auto *ln_out_data =
           dev_ctx.template Alloc<T>(ln_out, ln_out->numel() * sizeof(T));
+=======
+      auto *ln_mean_data = ln_mean->mutable_data<U>(ctx.GetPlace());
+      auto *ln_var_data = ln_var->mutable_data<U>(ctx.GetPlace());
+      auto *ln_out_data = ln_out->mutable_data<T>(ctx.GetPlace());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
       layer_norm_compute.ComputeForward(x_data,
                                         ln_scale_data,
@@ -336,6 +366,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
       const U *ln_scale_2_ptr = ln_scale_2 ? ln_scale_2->data<U>() : nullptr;
       const U *ln_bias_2_ptr = ln_bias_2 ? ln_bias_2->data<U>() : nullptr;
+<<<<<<< HEAD
       T *bias_dropout_residual_out_ptr = dev_ctx.template Alloc<T>(
           bias_dropout_residual_out,
           bias_dropout_residual_out->numel() * sizeof(T));
@@ -343,6 +374,12 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
           dev_ctx.template Alloc<U>(ln_mean_2, ln_mean_2->numel() * sizeof(U));
       U *ln_var_2_ptr =
           dev_ctx.template Alloc<U>(ln_var_2, ln_var_2->numel() * sizeof(U));
+=======
+      T *bias_dropout_residual_out_ptr =
+          bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
+      U *ln_mean_2_ptr = ln_mean_2->mutable_data<U>(ctx.GetPlace());
+      U *ln_var_2_ptr = ln_var_2->mutable_data<U>(ctx.GetPlace());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       // output = layernorm(residual + dropout(input + bias))
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
           ctx.cuda_device_context(),
@@ -370,7 +407,10 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     const float ln2epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_prob = ctx.Attr<float>("attn_dropout_rate");
+<<<<<<< HEAD
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
@@ -532,8 +572,12 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     T *d_residual_data = nullptr;
     if (add_residual) {
       d_residual.Resize(input_x_dims);
+<<<<<<< HEAD
       d_residual_data = dev_ctx.template Alloc<T>(
           &d_residual, d_residual.numel() * sizeof(T));
+=======
+      d_residual_data = d_residual.mutable_data<T>(ctx.GetPlace());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
 
     bool transA = false;
@@ -597,6 +641,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       auto *d_ln_2_scale_data =
           (d_ln_2_scale == nullptr
                ? nullptr
+<<<<<<< HEAD
                : dev_ctx.template Alloc<U>(d_ln_2_scale,
                                            d_ln_2_scale->numel() * sizeof(U)));
       auto *d_ln_2_bias_data =
@@ -607,6 +652,15 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       auto *d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
           d_bias_dropout_residual_out,
           d_bias_dropout_residual_out->numel() * sizeof(T));
+=======
+               : d_ln_2_scale->mutable_data<U>(ctx.GetPlace()));
+      auto *d_ln_2_bias_data =
+          (d_ln_2_bias == nullptr
+               ? nullptr
+               : d_ln_2_bias->mutable_data<U>(ctx.GetPlace()));
+      auto *d_bias_dropout_residual_out_data =
+          d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
       fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
           ctx.cuda_device_context(),

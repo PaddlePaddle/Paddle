@@ -72,6 +72,7 @@ def optimizer_setting(params, parameter_list=None):
 
 
 class TestDygraphResnetSortGradient(unittest.TestCase):
+
     def func_test_resnet_sort_gradient_float32(self):
         seed = 90
 
@@ -83,9 +84,14 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet()
+<<<<<<< HEAD
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters()
             )
+=======
+            optimizer = optimizer_setting(train_parameters,
+                                          parameter_list=resnet.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             np.random.seed(seed)
             import random
 
@@ -103,6 +109,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 if batch_id >= batch_num:
                     break
 
+<<<<<<< HEAD
                 dy_x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
@@ -111,6 +118,12 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     .astype('int64')
                     .reshape(batch_size, 1)
                 )
+=======
+                dy_x_data = np.array([x[0].reshape(3, 224, 224)
+                                      for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(batch_size, 1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
@@ -133,11 +146,17 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 for param in resnet.parameters():
                     if param.trainable:
                         np_array = np.array(
+<<<<<<< HEAD
                             param._grad_ivar().value().get_tensor()
                         )
                         dy_grad_value[
                             param.name + core.grad_var_suffix()
                         ] = np_array
+=======
+                            param._grad_ivar().value().get_tensor())
+                        dy_grad_value[param.name +
+                                      core.grad_var_suffix()] = np_array
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()
@@ -168,9 +187,15 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 batch_size=batch_size,
             )
 
+<<<<<<< HEAD
             img = fluid.layers.data(
                 name='pixel', shape=[3, 224, 224], dtype='float32'
             )
+=======
+            img = fluid.layers.data(name='pixel',
+                                    shape=[3, 224, 224],
+                                    dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = resnet(img)
             loss = fluid.layers.cross_entropy(input=out, label=label)
@@ -202,6 +227,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     break
 
                 static_x_data = np.array(
+<<<<<<< HEAD
                     [x[0].reshape(3, 224, 224) for x in data]
                 ).astype('float32')
                 y_data = (
@@ -209,15 +235,29 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     .astype('int64')
                     .reshape([batch_size, 1])
                 )
+=======
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape([batch_size, 1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
                 fetch_list.extend(static_grad_name_list)
+<<<<<<< HEAD
                 out = exe.run(
                     fluid.default_main_program(),
                     feed={"pixel": static_x_data, "label": y_data},
                     fetch_list=fetch_list,
                 )
+=======
+                out = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "pixel": static_x_data,
+                                  "label": y_data
+                              },
+                              fetch_list=fetch_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 static_param_value = {}
                 static_grad_value = {}

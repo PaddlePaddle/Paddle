@@ -27,6 +27,7 @@ import paddle.fluid as fluid
 
 
 class TranspilerTest(unittest.TestCase):
+
     def setUp(self):
         self.trainer_id = 0
         self.trainers = 2
@@ -84,6 +85,7 @@ class TranspilerTest(unittest.TestCase):
         if not self.transpiler:
             main = self.get_main_program()
             self.transpiler = fluid.DistributeTranspiler(config=config)
+<<<<<<< HEAD
             self.transpiler.transpile(
                 self.trainer_id,
                 program=main,
@@ -91,6 +93,13 @@ class TranspilerTest(unittest.TestCase):
                 trainers=self.trainers,
                 sync_mode=sync_mode,
             )
+=======
+            self.transpiler.transpile(self.trainer_id,
+                                      program=main,
+                                      pservers=self.pserver_eps,
+                                      trainers=self.trainers,
+                                      sync_mode=sync_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return self.transpiler
 
@@ -112,6 +121,7 @@ class TranspilerTest(unittest.TestCase):
 
 
 class TestBasicModel(TranspilerTest):
+
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         pserver2, startup2 = self.get_pserver(self.pserver2_ep)
@@ -203,6 +213,7 @@ class TestBasicModel(TranspilerTest):
 
 
 class TestBasicModelWithLargeBlockSize(TranspilerTest):
+
     def transpiler_test_impl(self):
         config = fluid.DistributeTranspilerConfig()
         config.min_block_size = 1048576
@@ -274,6 +285,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
 
 
 class TestNoSliceVar(TranspilerTest):
+
     def setUp(self):
         super().setUp()
 
@@ -293,6 +305,7 @@ class TestNoSliceVar(TranspilerTest):
 
 
 class TestLRDecay(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
@@ -306,6 +319,7 @@ class TestLRDecay(TranspilerTest):
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(
+<<<<<<< HEAD
             learning_rate=fluid.layers.exponential_decay(
                 learning_rate=1.0,
                 decay_steps=2100,
@@ -313,6 +327,12 @@ class TestLRDecay(TranspilerTest):
                 staircase=True,
             )
         )
+=======
+            learning_rate=fluid.layers.exponential_decay(learning_rate=1.0,
+                                                         decay_steps=2100,
+                                                         decay_rate=0.1,
+                                                         staircase=True))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         sgd_optimizer.minimize(avg_cost)
 
     def transpiler_test_impl(self):
@@ -338,9 +358,11 @@ class TestLRDecay(TranspilerTest):
 
 
 class TestFakeInit(TranspilerTest):
+
     def net_conf(self):
         dict_size, embedding_size, neg_num = 10000, 8, 5
 
+<<<<<<< HEAD
         input_word = fluid.layers.data(
             name="input_word", shape=[1], dtype='int64', lod_level=1
         )
@@ -350,6 +372,20 @@ class TestFakeInit(TranspilerTest):
         neg_word = fluid.layers.data(
             name="neg_label", shape=[1], dtype='int64', lod_level=1
         )
+=======
+        input_word = fluid.layers.data(name="input_word",
+                                       shape=[1],
+                                       dtype='int64',
+                                       lod_level=1)
+        true_word = fluid.layers.data(name='true_label',
+                                      shape=[1],
+                                      dtype='int64',
+                                      lod_level=1)
+        neg_word = fluid.layers.data(name="neg_label",
+                                     shape=[1],
+                                     dtype='int64',
+                                     lod_level=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         inputs = [input_word, true_word, neg_word]
 
         init_width = 0.5 / embedding_size
@@ -357,11 +393,17 @@ class TestFakeInit(TranspilerTest):
             input=inputs[0],
             is_sparse=True,
             size=[dict_size, embedding_size],
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 name='emb',
                 initializer=fluid.initializer.Uniform(-init_width, init_width),
             ),
         )
+=======
+            param_attr=fluid.ParamAttr(name='emb',
+                                       initializer=fluid.initializer.Uniform(
+                                           -init_width, init_width)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         true_emb_w = fluid.layers.embedding(
             input=inputs[1],
@@ -384,6 +426,7 @@ class TestFakeInit(TranspilerTest):
         neg_word_reshape = paddle.reshape(inputs[2], shape=[-1, 1])
         neg_word_reshape.stop_gradient = True
 
+<<<<<<< HEAD
         neg_emb_w = fluid.layers.embedding(
             input=neg_word_reshape,
             is_sparse=True,
@@ -401,10 +444,27 @@ class TestFakeInit(TranspilerTest):
             size=[dict_size, 1],
             param_attr=fluid.ParamAttr(name='emb_b', learning_rate=1.0),
         )
+=======
+        neg_emb_w = fluid.layers.embedding(input=neg_word_reshape,
+                                           is_sparse=True,
+                                           size=[dict_size, embedding_size],
+                                           param_attr=fluid.ParamAttr(
+                                               name='emb_w', learning_rate=1.0))
+
+        neg_emb_w_re = fluid.layers.reshape(neg_emb_w,
+                                            shape=[-1, neg_num, embedding_size])
+
+        neg_emb_b = fluid.layers.embedding(input=neg_word_reshape,
+                                           is_sparse=True,
+                                           size=[dict_size, 1],
+                                           param_attr=fluid.ParamAttr(
+                                               name='emb_b', learning_rate=1.0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         neg_emb_b_vec = paddle.reshape(neg_emb_b, shape=[-1, neg_num])
 
         true_logits = fluid.layers.elementwise_add(
+<<<<<<< HEAD
             fluid.layers.reduce_sum(
                 fluid.layers.elementwise_mul(input_emb, true_emb_w),
                 dim=1,
@@ -448,6 +508,43 @@ class TestFakeInit(TranspilerTest):
                 staircase=True,
             )
         )
+=======
+            fluid.layers.reduce_sum(fluid.layers.elementwise_mul(
+                input_emb, true_emb_w),
+                                    dim=1,
+                                    keep_dim=True), true_emb_b)
+
+        input_emb_re = fluid.layers.reshape(input_emb,
+                                            shape=[-1, 1, embedding_size])
+
+        neg_matmul = fluid.layers.matmul(input_emb_re,
+                                         neg_emb_w_re,
+                                         transpose_y=True)
+        neg_matmul_re = fluid.layers.reshape(neg_matmul, shape=[-1, neg_num])
+        neg_logits = fluid.layers.elementwise_add(neg_matmul_re, neg_emb_b_vec)
+        # nce loss
+        label_ones = fluid.layers.fill_constant_batch_size_like(true_logits,
+                                                                shape=[-1, 1],
+                                                                value=1.0,
+                                                                dtype='float32')
+        label_zeros = fluid.layers.fill_constant_batch_size_like(
+            true_logits, shape=[-1, neg_num], value=0.0, dtype='float32')
+
+        true_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+            true_logits, label_ones)
+        neg_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+            neg_logits, label_zeros)
+        cost = fluid.layers.elementwise_add(
+            fluid.layers.reduce_sum(true_xent, dim=1),
+            fluid.layers.reduce_sum(neg_xent, dim=1))
+        avg_cost = fluid.layers.reduce_mean(cost)
+
+        sgd_optimizer = fluid.optimizer.SGD(
+            learning_rate=fluid.layers.exponential_decay(learning_rate=1.0,
+                                                         decay_steps=2100,
+                                                         decay_rate=0.1,
+                                                         staircase=True))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         sgd_optimizer.minimize(avg_cost)
 
     def transpiler_test_impl(self):
@@ -462,6 +559,7 @@ class TestFakeInit(TranspilerTest):
 
 
 class TestDecayedAdagrad(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
@@ -483,6 +581,7 @@ class TestDecayedAdagrad(TranspilerTest):
 
 
 class TestFtrl(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
@@ -504,6 +603,7 @@ class TestFtrl(TranspilerTest):
 
 
 class TestLRDecayConditional(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
@@ -568,17 +668,24 @@ class TestLRDecayConditional(TranspilerTest):
 
 
 class TestL2Decay(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
             input=x,
             size=1000,
             act=None,
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 name='fc_w', regularizer=fluid.regularizer.L2Decay()
             ),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
+=======
+            param_attr=fluid.ParamAttr(name='fc_w',
+                                       regularizer=fluid.regularizer.L2Decay()),
+            bias_attr=fluid.ParamAttr(name='fc_b'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
@@ -607,6 +714,7 @@ class TestL2Decay(TranspilerTest):
 
 
 class TestL2DecayWithPiecewise(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
@@ -623,9 +731,14 @@ class TestL2DecayWithPiecewise(TranspilerTest):
         bd = [1, 10, 20, 30]
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
         sgd_optimizer = fluid.optimizer.Momentum(
+<<<<<<< HEAD
             learning_rate=fluid.layers.piecewise_decay(
                 boundaries=bd, values=lr
             ),
+=======
+            learning_rate=fluid.layers.piecewise_decay(boundaries=bd,
+                                                       values=lr),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             momentum=0.9,
             regularization=fluid.regularizer.L2Decay(1e-4),
         )
@@ -682,6 +795,7 @@ class TestL2DecayWithPiecewise(TranspilerTest):
 
 
 class TestEmptyPserverOptimizeBlocks(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         # only one parameter
@@ -709,12 +823,14 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
 
 
 class TestDistLookupTableBase(TranspilerTest):
+
     def network_with_table(self, is_sparse, is_distributed):
         self.table_size = 1000
         self.emb_size = 64
         self.lookup_table_name = 'shared_w'
 
         def emb_pool(ids, table_name, is_distributed):
+<<<<<<< HEAD
             emb = fluid.layers.embedding(
                 input=ids,
                 size=[self.table_size, self.emb_size],
@@ -748,6 +864,39 @@ class TestDistLookupTableBase(TranspilerTest):
             param_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
+=======
+            emb = fluid.layers.embedding(input=ids,
+                                         size=[self.table_size, self.emb_size],
+                                         dtype='float32',
+                                         param_attr=table_name,
+                                         is_sparse=is_sparse,
+                                         is_distributed=is_distributed)
+            pool = fluid.layers.sequence_pool(input=emb, pool_type='average')
+            return pool
+
+        title_ids = fluid.layers.data(name='title_ids',
+                                      shape=[1],
+                                      dtype='int64',
+                                      lod_level=1)
+        brand_ids = fluid.layers.data(name='brand_ids',
+                                      shape=[1],
+                                      dtype='int64',
+                                      lod_level=1)
+        profile_ids = fluid.layers.data(name='brand_ids',
+                                        shape=[1],
+                                        dtype='int64',
+                                        lod_level=1)
+        title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed)
+        brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed)
+        profile_emb = emb_pool(profile_ids, "profile_emb", False)
+        fc0 = fluid.layers.concat(input=[title_emb, brand_emb, profile_emb],
+                                  axis=1)
+        predict = fluid.layers.fc(input=fc0,
+                                  size=2,
+                                  act=None,
+                                  param_attr=fluid.ParamAttr(name='fc_w'),
+                                  bias_attr=fluid.ParamAttr(name='fc_b'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         cost = fluid.layers.cross_entropy(input=predict, label=label)
@@ -757,6 +906,7 @@ class TestDistLookupTableBase(TranspilerTest):
 
 
 class TestLocalLookupTable(TestDistLookupTableBase):
+
     def net_conf(self):
         self.network_with_table(is_sparse=True, is_distributed=False)
 
@@ -826,6 +976,7 @@ class TestLocalLookupTable(TestDistLookupTableBase):
 
 
 class TestDistLookupTable(TestDistLookupTableBase):
+
     def net_conf(self):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
@@ -926,6 +1077,7 @@ class TestDistLookupTable(TestDistLookupTableBase):
 
 
 class TestAsyncLocalLookupTable(TestDistLookupTableBase):
+
     def net_conf(self):
         self.network_with_table(is_sparse=True, is_distributed=False)
 
@@ -993,6 +1145,7 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
 
 
 class TestAsyncDistLookupTable(TestDistLookupTableBase):
+
     def net_conf(self):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
@@ -1091,6 +1244,7 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
 
 
 class TestDistLookupTableSliceSize(TestDistLookupTableBase):
+
     def net_conf(self):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
@@ -1108,6 +1262,7 @@ class TestDistLookupTableSliceSize(TestDistLookupTableBase):
 
 
 class TestDistArgsInProgram(TestDistLookupTableBase):
+
     def net_conf(self):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
@@ -1125,6 +1280,7 @@ class TestDistArgsInProgram(TestDistLookupTableBase):
 
 
 class TestRMSPropOptimizer(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
@@ -1158,6 +1314,7 @@ class TestRMSPropOptimizer(TranspilerTest):
 
 
 class TestLoadSliceVar(TranspilerTest):
+
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         y_predict = fluid.layers.fc(
@@ -1221,6 +1378,7 @@ class TestLoadSliceVar(TranspilerTest):
 
 
 class TestNCCL2Transpile(TranspilerTest):
+
     def test_nccl2_transpile(self):
         if fluid.core.is_compiled_with_cuda():  # test nccl2 only with cuda
             main = fluid.Program()
@@ -1232,12 +1390,19 @@ class TestNCCL2Transpile(TranspilerTest):
             config.mode = "nccl2"
             config.wait_port = False
             t = fluid.DistributeTranspiler(config=config)
+<<<<<<< HEAD
             t.transpile(
                 0,
                 trainers="127.0.0.1:6174,127.0.0.1:6175",
                 current_endpoint="127.0.0.1:6174",
                 startup_program=startup,
             )
+=======
+            t.transpile(0,
+                        trainers="127.0.0.1:6174,127.0.0.1:6175",
+                        current_endpoint="127.0.0.1:6174",
+                        startup_program=startup)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             print([op.type for op in startup.global_block().ops])
             self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
             self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
@@ -1248,6 +1413,7 @@ class TestNCCL2Transpile(TranspilerTest):
 
 # test for remote prefetch
 class TestRemoteLookupTable(TestDistLookupTableBase):
+
     def net_conf(self):
         import os
 
@@ -1321,6 +1487,7 @@ class TestRemoteLookupTable(TestDistLookupTableBase):
 
 # test for remote prefetch
 class TestRemoteNce(TestDistLookupTableBase):
+
     def network_with_table(self, is_sparse, is_distributed):
 
         num_total_classes = 20
@@ -1330,6 +1497,7 @@ class TestRemoteNce(TestDistLookupTableBase):
         input = fluid.layers.data(name="input", shape=[10], dtype="float32")
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
+<<<<<<< HEAD
         w_param = (
             fluid.default_main_program()
             .global_block()
@@ -1364,6 +1532,30 @@ class TestRemoteNce(TestDistLookupTableBase):
             num_neg_samples=5,
             is_sparse=is_sparse,
         )
+=======
+        w_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 10],
+            dtype='float32',
+            name='nce_w',
+            initializer=fluid.initializer.ConstantInitializer())
+        b_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 1],
+            dtype='float32',
+            name='nce_b',
+            initializer=fluid.initializer.ConstantInitializer())
+
+        cost = fluid.layers.nce(input=input,
+                                label=label,
+                                num_total_classes=num_total_classes,
+                                sampler=sampler,
+                                custom_dist=nid_freq_arr.tolist(),
+                                sample_weight=None,
+                                param_attr='nce_w',
+                                bias_attr='nce_b',
+                                seed=1,
+                                num_neg_samples=5,
+                                is_sparse=is_sparse)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = fluid.optimizer.Adam(learning_rate=0.003)
@@ -1396,12 +1588,14 @@ class TestRemoteNce(TestDistLookupTableBase):
 
 # test for remote prefetch
 class TestRemoteHsigmoid(TestDistLookupTableBase):
+
     def network_with_table(self, is_sparse, is_distributed):
 
         num_total_classes = 3
 
         input = fluid.layers.data(name="input", shape=[1], dtype="float32")
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+<<<<<<< HEAD
         path_table = fluid.layers.data(
             name='path_table', shape=[3], dtype='int64'
         )
@@ -1428,6 +1622,24 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 initializer=fluid.initializer.ConstantInitializer(),
             )
         )
+=======
+        path_table = fluid.layers.data(name='path_table',
+                                       shape=[3],
+                                       dtype='int64')
+        path_code = fluid.layers.data(name='path_code',
+                                      shape=[3],
+                                      dtype='int64')
+        w_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 10],
+            dtype='float32',
+            name='hs_w',
+            initializer=fluid.initializer.ConstantInitializer())
+        b_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[3, 1],
+            dtype='float32',
+            name='hs_b',
+            initializer=fluid.initializer.ConstantInitializer())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         emb = fluid.layers.embedding(
             input=input,
@@ -1447,12 +1659,22 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             is_sparse=is_sparse,
         )
 
+<<<<<<< HEAD
         cost = loss(
             input=emb,
             label=label,
             path_table=path_table,
             path_code=path_code,
         )
+=======
+        cost = fluid.layers.hsigmoid(input=emb,
+                                     label=label,
+                                     num_classes=num_total_classes,
+                                     path_table=path_table,
+                                     path_code=path_code,
+                                     is_custom=True,
+                                     is_sparse=is_sparse)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = fluid.optimizer.SGD(learning_rate=0.003)

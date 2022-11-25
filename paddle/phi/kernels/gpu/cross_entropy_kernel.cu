@@ -22,9 +22,16 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+=======
+#include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -1063,6 +1070,7 @@ __global__ void WarpSoftmaxForward(T* loss,
   }
 }
 
+<<<<<<< HEAD
 #define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, LabelT, VecT, AccT) \
   case Log2Elements:                                                \
     WarpSoftmaxForward<T, LabelT, VecT, AccT, Log2Elements, mode>   \
@@ -1074,6 +1082,19 @@ __global__ void WarpSoftmaxForward(T* loss,
                                          stride,                    \
                                          element_count,             \
                                          ignore_index);             \
+=======
+#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, LabelT, VecT, AccT)            \
+  case Log2Elements:                                                           \
+    WarpSoftmaxForward<T, LabelT, VecT, AccT, Log2Elements, mode, IgnoreIndex> \
+        <<<blocks, threads, 0, stream>>>(loss,                                 \
+                                         softmax,                              \
+                                         src,                                  \
+                                         label,                                \
+                                         batch_size,                           \
+                                         stride,                               \
+                                         element_count,                        \
+                                         ignore_index);                        \
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     break;
 
 /*
@@ -1142,7 +1163,11 @@ void LaunchVectorizedSoftmaxForward(T* loss,
   block_size = std::max(block_size, kps::details::kWarpSize);
   dim3 grids(high_dim);
   dim3 blocks(block_size);
+<<<<<<< HEAD
   VectorizedSoftmaxForward<T, AccT, LabelT, vec_size>
+=======
+  VectorizedSoftmaxForward<T, AccT, LabelT, vec_size, IgnoreIndex>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       <<<grids, blocks, 0, stream>>>(
           loss, softmax, logits, label, high_dim, mid_dim, ignore_index);
 }
@@ -1231,8 +1256,14 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     int threads = 128;
     int blocks = (N * dim * D + threads - 1) / threads;
     // compute cross entropy, input is log softmax
+<<<<<<< HEAD
     CrossEntropyExpHardLabel<T, LabelT><<<blocks, threads, 0, stream>>>(
         loss_data, softmax_data, labels_data, N, dim, D, ignore_index);
+=======
+    CrossEntropyExpHardLabel<T, LabelT, IgnoreIndex>
+        <<<blocks, threads, 0, stream>>>(
+            loss_data, softmax_data, labels_data, N, dim, D, ignore_index);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 }
 
@@ -1327,6 +1358,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       auto* labels_data = labels.data<LabelT>();
       int threads = 128;
       int blocks = (n * d / axis_dim + threads - 1) / threads;
+<<<<<<< HEAD
       CrossEntropyHardLabel<T, LabelT>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
                                                      logits_data,
@@ -1335,6 +1367,27 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                      axis_dim,
                                                      d / axis_dim,
                                                      ignore_index);
+=======
+      if (ignore_index >= 0 && ignore_index < axis_dim) {
+        CrossEntropyHardLabel<T, LabelT, true>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
+                                                       logits_data,
+                                                       labels_data,
+                                                       n,
+                                                       axis_dim,
+                                                       d / axis_dim,
+                                                       ignore_index);
+      } else {
+        CrossEntropyHardLabel<T, LabelT, false>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
+                                                       logits_data,
+                                                       labels_data,
+                                                       n,
+                                                       axis_dim,
+                                                       d / axis_dim,
+                                                       ignore_index);
+      }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
 
     // cause of input is softmax

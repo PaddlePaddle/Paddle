@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/erfinv_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -35,5 +36,8 @@ void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 }
 
 }  // namespace phi
+=======
+#include "paddle/phi/kernels/impl/erfinv_kernel_impl.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 PD_REGISTER_KERNEL(erfinv, CPU, ALL_LAYOUT, phi::ErfinvKernel, float, double) {}

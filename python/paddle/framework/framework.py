@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+# TODO: define framework api
+from paddle.fluid.layer_helper_base import LayerHelperBase
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import _dygraph_tracer
+import numpy as np
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from contextlib import contextmanager
 
 import numpy as np

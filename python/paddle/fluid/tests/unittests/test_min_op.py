@@ -22,6 +22,7 @@ from test_sum_op import TestReduceOPTensorAxisBase
 
 
 class ApiMinTest(unittest.TestCase):
+
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -87,9 +88,11 @@ class ApiMinTest(unittest.TestCase):
 
 
 class TestOutDtype(unittest.TestCase):
+
     def test_min(self):
         api_fn = paddle.min
         shape = [10, 16]
+<<<<<<< HEAD
         check_out_dtype(
             api_fn,
             in_specs=[(shape,)],
@@ -118,6 +121,11 @@ class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
             paddle.to_tensor([2], 'int64'),
         ]
         self.keepdim = True
+=======
+        check_out_dtype(api_fn,
+                        in_specs=[(shape, )],
+                        expect_dtypes=['float32', 'float64', 'int32', 'int64'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

@@ -30,6 +30,7 @@ def gen_data():
 
 
 class GraphConv(fluid.Layer):
+
     def __init__(self, name_scope, in_features, out_features):
         super().__init__(name_scope)
 
@@ -38,11 +39,18 @@ class GraphConv(fluid.Layer):
         self.weight = self.create_parameter(
             attr=None,
             dtype='float32',
+<<<<<<< HEAD
             shape=[self._in_features, self._out_features],
         )
         self.bias = self.create_parameter(
             attr=None, dtype='float32', shape=[self._out_features]
         )
+=======
+            shape=[self._in_features, self._out_features])
+        self.bias = self.create_parameter(attr=None,
+                                          dtype='float32',
+                                          shape=[self._out_features])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, features, adj):
         support = fluid.layers.matmul(features, self.weight)
@@ -51,6 +59,7 @@ class GraphConv(fluid.Layer):
 
 
 class GCN(fluid.Layer):
+
     def __init__(self, name_scope, num_hidden):
         super().__init__(name_scope)
         self.gc = GraphConv(self.full_name(), num_hidden, 32)
@@ -62,6 +71,7 @@ class GCN(fluid.Layer):
 
 
 class TestDygraphGNN(unittest.TestCase):
+
     def func_gnn_float32(self):
         paddle.seed(90)
         paddle.framework.random._manual_program_seed(90)
@@ -70,6 +80,7 @@ class TestDygraphGNN(unittest.TestCase):
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
+<<<<<<< HEAD
             features = fluid.layers.data(
                 name='features',
                 shape=[1, 100, 50],
@@ -89,6 +100,21 @@ class TestDygraphGNN(unittest.TestCase):
                 dtype='int64',
                 append_batch_size=False,
             )
+=======
+            features = fluid.layers.data(name='features',
+                                         shape=[1, 100, 50],
+                                         dtype='float32',
+                                         append_batch_size=False)
+            # Use selected rows when it's supported.
+            adj = fluid.layers.data(name='adj',
+                                    shape=[1, 100, 100],
+                                    dtype='float32',
+                                    append_batch_size=False)
+            labels = fluid.layers.data(name='labels',
+                                       shape=[100, 1],
+                                       dtype='int64',
+                                       append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             model = GCN('test_gcn', 50)
             logits = model(features, adj)
@@ -106,6 +132,7 @@ class TestDygraphGNN(unittest.TestCase):
                 else fluid.CUDAPlace(0)
             )
             exe.run(startup)
+<<<<<<< HEAD
             static_loss = exe.run(
                 feed={
                     'features': np.ones([1, 100, 50], dtype=np.float32),
@@ -114,6 +141,17 @@ class TestDygraphGNN(unittest.TestCase):
                 },
                 fetch_list=[loss],
             )[0]
+=======
+            static_loss = exe.run(feed={
+                'features':
+                np.ones([1, 100, 50], dtype=np.float32),
+                'adj':
+                np.ones([1, 100, 100], dtype=np.float32),
+                'labels':
+                np.ones([100, 1], dtype=np.int64)
+            },
+                                  fetch_list=[loss])[0]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             static_weight = np.array(
                 scope.find_var(model.gc.weight.name).get_tensor()
@@ -134,6 +172,7 @@ class TestDygraphGNN(unittest.TestCase):
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss = fluid.layers.softmax_with_cross_entropy(
+<<<<<<< HEAD
                 logits, to_variable(labels)
             )
             loss = fluid.layers.reduce_sum(loss)
@@ -141,6 +180,13 @@ class TestDygraphGNN(unittest.TestCase):
             adam = AdamOptimizer(
                 learning_rate=1e-3, parameter_list=model.parameters()
             )
+=======
+                logits, to_variable(labels))
+            loss = fluid.layers.reduce_sum(loss)
+            loss.backward()
+            adam = AdamOptimizer(learning_rate=1e-3,
+                                 parameter_list=model.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             adam.minimize(loss)
             model.clear_gradients()
@@ -166,9 +212,14 @@ class TestDygraphGNN(unittest.TestCase):
             )
             loss2 = fluid.layers.reduce_sum(loss2)
             loss2.backward()
+<<<<<<< HEAD
             adam2 = AdamOptimizer(
                 learning_rate=1e-3, parameter_list=model2.parameters()
             )
+=======
+            adam2 = AdamOptimizer(learning_rate=1e-3,
+                                  parameter_list=model2.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             adam2.minimize(loss2)
             model2.clear_gradients()
             loss2_value = loss2.numpy()

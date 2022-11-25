@@ -23,9 +23,15 @@ using Tensor = phi::DenseTensor;
 template <typename T>
 void HuberLossSub(const platform::Place& place,
                   const aclrtStream& stream,
+<<<<<<< HEAD
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* y,
                   phi::DenseTensor* z) {
+=======
+                  const Tensor* x,
+                  const Tensor* y,
+                  Tensor* z) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   //  Calculate z = x - y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
@@ -35,9 +41,15 @@ void HuberLossSub(const platform::Place& place,
 template <typename T>
 void HuberLossMuls(const platform::Place& place,
                    const aclrtStream& stream,
+<<<<<<< HEAD
                    const phi::DenseTensor* x,
                    float scalar,
                    phi::DenseTensor* y) {
+=======
+                   const Tensor* x,
+                   float scalar,
+                   Tensor* y) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
@@ -47,8 +59,13 @@ void HuberLossMuls(const platform::Place& place,
 template <typename T>
 void HuberLossZerosLike(const platform::Place& place,
                         const aclrtStream& stream,
+<<<<<<< HEAD
                         const phi::DenseTensor* x,
                         phi::DenseTensor* y) {
+=======
+                        const Tensor* x,
+                        Tensor* y) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("ZerosLike", {*x}, {*y}, {});
   runner.Run(stream);
@@ -57,10 +74,17 @@ void HuberLossZerosLike(const platform::Place& place,
 template <typename T>
 void HuberLossSmoothL1Loss(const platform::Place& place,
                            const aclrtStream& stream,
+<<<<<<< HEAD
                            const phi::DenseTensor* x,
                            const phi::DenseTensor* y,
                            float delta,
                            phi::DenseTensor* z) {
+=======
+                           const Tensor* x,
+                           const Tensor* y,
+                           float delta,
+                           Tensor* z) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   z->mutable_data<T>(x->dims(), place);
   const auto& runner =
       NpuOpRunner("SmoothL1Loss", {*x, *y}, {*z}, {{"sigma", delta}});
@@ -70,11 +94,19 @@ void HuberLossSmoothL1Loss(const platform::Place& place,
 template <typename T>
 void HuberLossSmoothL1LossGrad(const platform::Place& place,
                                const aclrtStream& stream,
+<<<<<<< HEAD
                                const phi::DenseTensor* pred,
                                const phi::DenseTensor* lab,
                                const phi::DenseTensor* dout,
                                float sigma,
                                phi::DenseTensor* grad) {
+=======
+                               const Tensor* pred,
+                               const Tensor* lab,
+                               const Tensor* dout,
+                               float sigma,
+                               Tensor* grad) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   grad->mutable_data<T>(pred->dims(), place);
   const auto& runner = NpuOpRunner(
       "SmoothL1LossGrad", {*pred, *lab, *dout}, {*grad}, {{"sigma", sigma}});

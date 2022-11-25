@@ -42,8 +42,12 @@ def to_tensor(pic, data_format='CHW'):
 
     if data_format not in ['CHW', 'HWC']:
         raise ValueError(
+<<<<<<< HEAD
             'data_format should be CHW or HWC. Got {}'.format(data_format)
         )
+=======
+            'data_format should be CHW or HWC. Got {}'.format(data_format))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if pic.ndim == 2:
         pic = pic[:, :, None]
@@ -114,11 +118,17 @@ def resize(img, size, interpolation='bilinear'):
                 interpolation=_cv2_interp_from_str[interpolation],
             )
     else:
+<<<<<<< HEAD
         output = cv2.resize(
             img,
             dsize=(size[1], size[0]),
             interpolation=_cv2_interp_from_str[interpolation],
         )
+=======
+        output = cv2.resize(img,
+                            dsize=(size[1], size[0]),
+                            interpolation=_cv2_interp_from_str[interpolation])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if len(img.shape) == 3 and img.shape[2] == 1:
         return output[:, :, np.newaxis]
     else:
@@ -201,6 +211,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         pad_bottom = padding[3]
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.copyMakeBorder(
             img,
             top=pad_top,
@@ -220,6 +231,23 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             borderType=_cv2_pad_from_str[padding_mode],
             value=fill,
         )
+=======
+        return cv2.copyMakeBorder(img,
+                                  top=pad_top,
+                                  bottom=pad_bottom,
+                                  left=pad_left,
+                                  right=pad_right,
+                                  borderType=_cv2_pad_from_str[padding_mode],
+                                  value=fill)[:, :, np.newaxis]
+    else:
+        return cv2.copyMakeBorder(img,
+                                  top=pad_top,
+                                  bottom=pad_bottom,
+                                  left=pad_left,
+                                  right=pad_right,
+                                  borderType=_cv2_pad_from_str[padding_mode],
+                                  value=fill)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def crop(img, top, left, height, width):
@@ -368,9 +396,14 @@ def adjust_saturation(img, saturation_factor):
 
     dtype = img.dtype
     img = img.astype(np.float32)
+<<<<<<< HEAD
     alpha = np.random.uniform(
         max(0, 1 - saturation_factor), 1 + saturation_factor
     )
+=======
+    alpha = np.random.uniform(max(0, 1 - saturation_factor),
+                              1 + saturation_factor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray_img = gray_img[..., np.newaxis]
     img = img * alpha + gray_img * (1 - alpha)
@@ -403,8 +436,12 @@ def adjust_hue(img, hue_factor):
 
     if not (-0.5 <= hue_factor <= 0.5):
         raise ValueError(
+<<<<<<< HEAD
             'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor)
         )
+=======
+            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     dtype = img.dtype
     img = img.astype(np.uint8)
@@ -487,6 +524,7 @@ def affine(
     M[1, 2] = ty
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.warpAffine(
             img,
             M,
@@ -502,6 +540,19 @@ def affine(
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill,
         )
+=======
+        return cv2.warpAffine(img,
+                              M,
+                              dsize=(w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpAffine(img,
+                              M,
+                              dsize=(w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def rotate(
@@ -588,6 +639,7 @@ def rotate(
         w, h = int(nw), int(nh)
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.warpAffine(
             img,
             M,
@@ -603,6 +655,17 @@ def rotate(
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill,
         )
+=======
+        return cv2.warpAffine(img,
+                              M, (w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpAffine(img,
+                              M, (w, h),
+                              flags=_cv2_interp_from_str[interpolation],
+                              borderValue=fill)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
@@ -640,6 +703,7 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
     matrix = cv2.getPerspectiveTransform(startpoints, endpoints)
 
     if len(img.shape) == 3 and img.shape[2] == 1:
+<<<<<<< HEAD
         return cv2.warpPerspective(
             img,
             matrix,
@@ -655,6 +719,19 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill,
         )
+=======
+        return cv2.warpPerspective(img,
+                                   matrix,
+                                   dsize=(w, h),
+                                   flags=_cv2_interp_from_str[interpolation],
+                                   borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpPerspective(img,
+                                   matrix,
+                                   dsize=(w, h),
+                                   flags=_cv2_interp_from_str[interpolation],
+                                   borderValue=fill)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def to_grayscale(img, num_output_channels=1):

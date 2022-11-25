@@ -25,6 +25,7 @@ from simple_nets import simple_fc_net, init_data
 
 
 class TestMNIST(TestParallelExecutorBase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -35,12 +36,22 @@ class TestMNIST(TestParallelExecutorBase):
             return
 
         img, label = init_data()
+<<<<<<< HEAD
         self.check_network_convergence(
             simple_fc_net,
             feed_dict={"image": img, "label": label},
             use_device=use_device,
             use_reduce=use_reduce,
         )
+=======
+        self.check_network_convergence(simple_fc_net,
+                                       feed_dict={
+                                           "image": img,
+                                           "label": label
+                                       },
+                                       use_device=use_device,
+                                       use_reduce=use_reduce)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_simple_fc(self):
         # use_device
@@ -53,6 +64,7 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = init_data()
         single_first_loss, single_last_loss, _ = self.check_network_convergence(
             method=simple_fc_net,
+<<<<<<< HEAD
             feed_dict={"image": img, "label": label},
             use_device=use_device,
             use_parallel_executor=False,
@@ -64,6 +76,20 @@ class TestMNIST(TestParallelExecutorBase):
         ) = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={"image": img, "label": label},
+=======
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+            use_device=use_device,
+            use_parallel_executor=False)
+        parallel_first_loss, parallel_last_loss, _ = self.check_network_convergence(
+            method=simple_fc_net,
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             use_device=use_device,
             use_parallel_executor=True,
         )
@@ -73,9 +99,15 @@ class TestMNIST(TestParallelExecutorBase):
             single_first_loss,
             delta=1e-6,
         )
+<<<<<<< HEAD
         self.assertAlmostEquals(
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6
         )
+=======
+        self.assertAlmostEquals(np.mean(parallel_last_loss),
+                                single_last_loss,
+                                delta=1e-6)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_simple_fc_parallel_accuracy(self):
         self.check_simple_fc_parallel_accuracy(DeviceType.CUDA)

@@ -181,8 +181,13 @@ def extract_cuda_device_id(device, op_name):
         else:
             raise ValueError(
                 "The current string {} is not expected. Because {} only support string which is like 'gpu:x'. "
+<<<<<<< HEAD
                 "Please input appropriate string again!".format(device, op_name)
             )
+=======
+                "Please input appropriate string again!".format(
+                    device, op_name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         raise ValueError(
             "The device type {} is not expected. Because {} only support int, str or paddle.CUDAPlace. "

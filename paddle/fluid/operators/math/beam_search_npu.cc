@@ -35,6 +35,7 @@ template <typename T>
 class BeamSearchFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor* pre_ids,
                   const phi::DenseTensor* pre_scores,
                   const phi::DenseTensor* ids,
@@ -42,6 +43,15 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
                   phi::DenseTensor* selected_ids,
                   phi::DenseTensor* selected_scores,
                   phi::DenseTensor* parent_idx,
+=======
+                  const framework::LoDTensor* pre_ids,
+                  const framework::LoDTensor* pre_scores,
+                  const framework::LoDTensor* ids,
+                  const framework::LoDTensor* scores,
+                  framework::LoDTensor* selected_ids,
+                  framework::LoDTensor* selected_scores,
+                  framework::Tensor* parent_idx,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   size_t level,
                   size_t beam_size,
                   int end_id,

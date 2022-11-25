@@ -22,6 +22,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestClipOp(OpTest):
+
     def setUp(self):
         self.max_relative_error = 0.006
         self.python_api = paddle.clip
@@ -69,6 +70,7 @@ class TestClipOp(OpTest):
 
 
 class TestCase1(TestClipOp):
+
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (8, 16, 8)
@@ -77,6 +79,7 @@ class TestCase1(TestClipOp):
 
 
 class TestCase2(TestClipOp):
+
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (8, 16)
@@ -85,6 +88,7 @@ class TestCase2(TestClipOp):
 
 
 class TestCase3(TestClipOp):
+
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 16)
@@ -93,6 +97,7 @@ class TestCase3(TestClipOp):
 
 
 class TestCase4(TestClipOp):
+
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 8)
@@ -103,6 +108,7 @@ class TestCase4(TestClipOp):
 
 
 class TestCase5(TestClipOp):
+
     def initTestCase(self):
         self.dtype = np.float32
         self.shape = (4, 8, 16)
@@ -111,6 +117,7 @@ class TestCase5(TestClipOp):
 
 
 class TestCase6(TestClipOp):
+
     def initTestCase(self):
         self.dtype == np.float16
         self.shape = (4, 8, 8)
@@ -121,6 +128,7 @@ class TestCase6(TestClipOp):
 
 
 class TestClipOpError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -140,6 +148,7 @@ class TestClipOpError(unittest.TestCase):
 
 
 class TestClipAPI(unittest.TestCase):
+
     def _executed_api(self, x, min=None, max=None):
         return paddle.clip(x, min, max)
 
@@ -151,11 +160,16 @@ class TestClipAPI(unittest.TestCase):
         min = fluid.data(name='min', shape=[1], dtype='float32')
         max = fluid.data(name='max', shape=[1], dtype='float32')
 
+<<<<<<< HEAD
         place = (
             fluid.CUDAPlace(0)
             if fluid.core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        place = fluid.CUDAPlace(
+            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         exe = fluid.Executor(place)
 
         out_1 = self._executed_api(images, min=min, max=max)
@@ -166,6 +180,7 @@ class TestClipAPI(unittest.TestCase):
         out_6 = self._executed_api(images, max=max)
         out_7 = self._executed_api(images, max=-1.0)
         out_8 = self._executed_api(images)
+<<<<<<< HEAD
         out_9 = self._executed_api(
             paddle.cast(images, 'float64'), min=0.2, max=0.9
         )
@@ -189,6 +204,19 @@ class TestClipAPI(unittest.TestCase):
             res10,
             res11,
         ) = exe.run(
+=======
+        out_9 = self._executed_api(paddle.cast(images, 'float64'),
+                                   min=0.2,
+                                   max=0.9)
+        out_10 = self._executed_api(paddle.cast(images * 10, 'int32'),
+                                    min=2,
+                                    max=8)
+        out_11 = self._executed_api(paddle.cast(images * 10, 'int64'),
+                                    min=2,
+                                    max=8)
+
+        res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11 = exe.run(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fluid.default_main_program(),
             feed={
                 "image": data,
@@ -196,6 +224,7 @@ class TestClipAPI(unittest.TestCase):
                 "max": np.array([0.8]).astype('float32'),
             },
             fetch_list=[
+<<<<<<< HEAD
                 out_1,
                 out_2,
                 out_3,
@@ -227,15 +256,41 @@ class TestClipAPI(unittest.TestCase):
         np.testing.assert_allclose(
             res11, (data * 10).astype(np.int64).clip(2, 8), rtol=1e-05
         )
+=======
+                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8, out_9,
+                out_10, out_11
+            ])
+
+        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
+        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
+        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
+        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
+        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
+        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
+        self.assertTrue(np.allclose(res7, data.clip(max=-1)))
+        self.assertTrue(np.allclose(res8, data))
+        self.assertTrue(
+            np.allclose(res9,
+                        data.astype(np.float64).clip(0.2, 0.9)))
+        self.assertTrue(
+            np.allclose(res10, (data * 10).astype(np.int32).clip(2, 8)))
+        self.assertTrue(
+            np.allclose(res11, (data * 10).astype(np.int64).clip(2, 8)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.disable_static()
 
     def func_clip_dygraph(self):
         paddle.disable_static()
+<<<<<<< HEAD
         place = (
             fluid.CUDAPlace(0)
             if fluid.core.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        place = fluid.CUDAPlace(
+            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
@@ -249,12 +304,21 @@ class TestClipAPI(unittest.TestCase):
         images = paddle.to_tensor(data, dtype='float32')
         out_3 = self._executed_api(images, min=v_min, max=v_max)
 
+<<<<<<< HEAD
         out_4 = self._executed_api(
             paddle.cast(images * 10, 'int32'), min=2, max=8
         )
         out_5 = self._executed_api(
             paddle.cast(images * 10, 'int64'), min=2, max=8
         )
+=======
+        out_4 = self._executed_api(paddle.cast(images * 10, 'int32'),
+                                   min=2,
+                                   max=8)
+        out_5 = self._executed_api(paddle.cast(images * 10, 'int64'),
+                                   min=2,
+                                   max=8)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # test with numpy.generic
         out_6 = self._executed_api(images, min=np.abs(0.2), max=np.abs(0.8))
 
@@ -311,6 +375,7 @@ class TestClipAPI(unittest.TestCase):
 
 
 class TestInplaceClipAPI(TestClipAPI):
+
     def _executed_api(self, x, min=None, max=None):
         return x.clip_(min, max)
 

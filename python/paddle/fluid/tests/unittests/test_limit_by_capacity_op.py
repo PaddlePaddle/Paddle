@@ -47,13 +47,23 @@ def all_close(exp, out, n_worker):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestLimitByCapacityInt64API(unittest.TestCase):
+
     def init_test_case(self):
+<<<<<<< HEAD
         self.expert_count = np.random.randint(
             0, 1000, size=(len(self.capacity) * self.n_worker)
         )
         self.out = limit_by_capacity(
             self.expert_count, self.capacity, self.n_worker
         )
+=======
+        self.expert_count = np.random.randint(0,
+                                              1000,
+                                              size=(len(self.capacity) *
+                                                    self.n_worker))
+        self.out = limit_by_capacity(self.expert_count, self.capacity,
+                                     self.n_worker)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.expert_count = self.expert_count.astype("int64")
         self.capacity = self.capacity.astype("int64")
         self.place = paddle.CUDAPlace(0)
@@ -66,9 +76,15 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             capacity = paddle.static.data(
                 'capacity', shape=self.capacity.shape, dtype="int64"
             )
+=======
+            capacity = paddle.static.data('capacity',
+                                          shape=self.capacity.shape,
+                                          dtype="int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             expert_count_tensor = paddle.static.data(
                 'ExpertCount', shape=self.expert_count.shape, dtype="int64"
             )
@@ -105,6 +121,7 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestLimitByCapacityInt64API_SmallWorker(TestLimitByCapacityInt64API):
+
     def setUp(self):
         self.capacity = np.array([100, 12000, 1200, 0, 4700, 1000, 57, 200])
         self.n_worker = 1

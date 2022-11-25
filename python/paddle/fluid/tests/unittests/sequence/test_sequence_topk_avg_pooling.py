@@ -15,14 +15,19 @@
 import sys
 import unittest
 from copy import deepcopy
+<<<<<<< HEAD
 
 import numpy as np
+=======
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("../")
 from op_test import OpTest
 
 
 class TestSequenceTopkAvgPoolingOp(OpTest):
+
     def setUp(self):
         self.init_op_type()
         self.set_data()
@@ -72,9 +77,15 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
                     for k_idx in range(len(topks)):
                         for k in range(topks[k_idx]):
                             if pos_data[pos_idx + k] != -1:
+<<<<<<< HEAD
                                 gradient[in_idx + pos_data[pos_idx + k]] += (
                                     dout_val / topks[k_idx]
                                 )
+=======
+                                gradient[in_idx +
+                                         pos_data[pos_idx +
+                                                  k]] += dout_val / topks[k_idx]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 in_offset += row_size * col_size
                 pos_offset += row_size * max_k
         return gradient
@@ -112,12 +123,19 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
 
                     offset += col_lod[0][idx]
 
+<<<<<<< HEAD
             out_tmp = out_tmp.reshape([channel_num, -1, len(topks)]).transpose(
                 1, 0, 2
             )
             pos_tmp = pos_tmp.reshape([channel_num, -1, max_k]).transpose(
                 1, 0, 2
             )
+=======
+            out_tmp = out_tmp.reshape([channel_num, -1,
+                                       len(topks)]).transpose(1, 0, 2)
+            pos_tmp = pos_tmp.reshape([channel_num, -1,
+                                       max_k]).transpose(1, 0, 2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = np.vstack(
                 (out, out_tmp.reshape([-1, len(topks) * channel_num]))
             )
@@ -155,6 +173,7 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
 
 
 class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
+
     def set_data(self):
         topks = [2, 3]
         channel_num = 5
@@ -169,9 +188,17 @@ class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
         x = fluid.layers.data(name='x', shape=[1], lod_level=1)
         row = fluid.layers.data(name='row', shape=[10], lod_level=1)
         col = fluid.layers.data(name='col', shape=[10], lod_level=1)
+<<<<<<< HEAD
         topk_avg = fluid.contrib.sequence_topk_avg_pooling(
             input=x, row=row, col=col, topks=[1, 3, 5], channel_num=5
         )
+=======
+        topk_avg = fluid.contrib.sequence_topk_avg_pooling(input=x,
+                                                           row=row,
+                                                           col=col,
+                                                           topks=[1, 3, 5],
+                                                           channel_num=5)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
@@ -186,11 +213,21 @@ class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         ret = exe.run(
             feed={'x': x_tensor, 'row': row_tensor, 'col': col_tensor},
             fetch_list=[topk_avg],
             return_numpy=False,
         )
+=======
+        ret = exe.run(feed={
+            'x': x_tensor,
+            'row': row_tensor,
+            'col': col_tensor
+        },
+                      fetch_list=[topk_avg],
+                      return_numpy=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

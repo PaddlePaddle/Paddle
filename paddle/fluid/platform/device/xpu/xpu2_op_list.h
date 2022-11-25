@@ -33,6 +33,7 @@ XPUOpMap& get_kl2_ops() {
       {"abs_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"adadelta", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"adamw",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
@@ -45,6 +46,11 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+      {"adamw", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"adam", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"argsort",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -70,17 +76,21 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+<<<<<<< HEAD
       {"beam_search_decode",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"bilinear_interp_v2",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"bilinear_interp_v2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"broadcast", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"c_allgather",
        XPUKernelSet({pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
@@ -108,14 +118,23 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::UINT8, XPUPlace()),
+=======
+      {"cast",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace()),
+                     pOpKernelType(vartype::BOOL, XPUPlace()),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                      pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
       {"check_finite_and_unscale",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"clip", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"clip_by_norm",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"coalesce_tensor",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"concat_grad",
@@ -123,21 +142,29 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"concat",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+<<<<<<< HEAD
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+=======
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"conv2d_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"conv2d",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"conv3d",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"conv2d_transpose_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"conv2d_transpose",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"cumsum",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
@@ -146,6 +173,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"deformable_conv",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"depthwise_conv2d_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"depthwise_conv2d",
@@ -204,6 +233,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
+<<<<<<< HEAD
       {"empty",
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
@@ -216,11 +246,16 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP64, XPUPlace())})},
       {"embedding_sparse_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"equal",
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"exp_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"exp", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"expand_as_v2",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
@@ -315,10 +350,13 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP32, XPUPlace())})},
       {"grid_sampler",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"hard_sigmoid_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"hard_sigmoid",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"hard_swish_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -337,6 +375,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT64, XPUPlace())})},
       {"instance_norm",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"instance_norm_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"label_smooth",
@@ -344,12 +383,18 @@ XPUOpMap& get_kl2_ops() {
       {"lamb",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"lars_momentum",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"layer_norm_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
+=======
+      {"layer_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"layer_norm",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -364,12 +409,15 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"load_combine",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"log", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"log_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"log_softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -384,12 +432,15 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"masked_select_grad",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"matmul_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -408,6 +459,7 @@ XPUOpMap& get_kl2_ops() {
       {"mean",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"merged_momentum",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -416,6 +468,9 @@ XPUOpMap& get_kl2_ops() {
       {"momentum",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+=======
+      {"momentum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"mul",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -438,8 +493,11 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT64, XPUPlace())})},
       {"p_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"p_norm_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"pad3d_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"pad3d", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"pool2d_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -503,15 +561,21 @@ XPUOpMap& get_kl2_ops() {
       {"roi_align", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"roi_align_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"roll", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"roll_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"scale",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
       {"scatter",
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
+<<<<<<< HEAD
                      pOpKernelType(vartype::INT32, XPUPlace()),
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                      pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sampling_id",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
@@ -519,9 +583,12 @@ XPUOpMap& get_kl2_ops() {
       {"sgd",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"sgd_dense_param_sparse_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"sigmoid_cross_entropy_with_logits_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sigmoid_cross_entropy_with_logits",
@@ -540,8 +607,12 @@ XPUOpMap& get_kl2_ops() {
       {"slice",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
+<<<<<<< HEAD
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+=======
+                     pOpKernelType(vartype::INT32, XPUPlace())})},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"softmax",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -559,6 +630,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"split",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+<<<<<<< HEAD
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
       {"split_with_num",
@@ -567,6 +639,9 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT32, XPUPlace())})},
       {"sqrt", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sqrt_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+                     pOpKernelType(vartype::INT32, XPUPlace())})},
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"square_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"square", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"squeeze2_grad",
@@ -585,6 +660,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::UINT8, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"squeeze_grad",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -601,6 +677,8 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::UINT8, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"stack",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -608,6 +686,7 @@ XPUOpMap& get_kl2_ops() {
       {"stack_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
+<<<<<<< HEAD
       {"strided_slice",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
@@ -618,6 +697,8 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::INT16, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"sum",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -629,10 +710,13 @@ XPUOpMap& get_kl2_ops() {
       {"tanh",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"temporal_shift",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"temporal_shift_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"tril_triu",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
@@ -656,8 +740,11 @@ XPUOpMap& get_kl2_ops() {
       {"transpose",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"truncated_gaussian_random",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"top_k",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -665,8 +752,11 @@ XPUOpMap& get_kl2_ops() {
       {"update_loss_scaling",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"uniform_random",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"unsqueeze2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -685,6 +775,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::UINT8, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+<<<<<<< HEAD
       {"unsqueeze_grad",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -704,6 +795,8 @@ XPUOpMap& get_kl2_ops() {
       {"warpctc_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"warpctc", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       {"where_index",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
@@ -718,13 +811,18 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sequence_conv_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"sequence_unpad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       // Fused op
       {"resnet_basic_block_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"resnet_basic_block",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+<<<<<<< HEAD
       {"fused_gemm_epilogue",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -743,6 +841,8 @@ XPUOpMap& get_kl2_ops() {
       {"fused_feedforward_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   };
 
   return s_xpu2_kernels;

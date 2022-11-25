@@ -50,9 +50,15 @@ template <typename T>
 class EmbEltwiseLayernormPluginDynamicImpl
     : public EmbEltwiseLayernormPluginDynamicImplBase {
  public:
+<<<<<<< HEAD
   explicit EmbEltwiseLayernormPluginDynamicImpl(std::vector<T*> input_embs,
                                                 T* bias,
                                                 T* scale,
+=======
+  explicit EmbEltwiseLayernormPluginDynamicImpl(std::vector<float*> input_embs,
+                                                float* bias,
+                                                float* scale,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                                 std::vector<int> emb_sizes,
                                                 int bias_size,
                                                 int scale_size,
@@ -102,9 +108,15 @@ class EmbEltwiseLayernormPluginDynamicImpl
 
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
+<<<<<<< HEAD
   explicit EmbEltwiseLayernormPluginDynamic(std::vector<void*> input_embs,
                                             void* bias,
                                             void* scale,
+=======
+  explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
+                                            float* bias,
+                                            float* scale,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                             std::vector<int> emb_sizes,
                                             int bias_size,
                                             int scale_size,
@@ -124,7 +136,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
+<<<<<<< HEAD
       instantiateImpl<half>();
+=======
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(embs_,
+                                                             bias_,
+                                                             scale_,
+                                                             emb_sizes_,
+                                                             bias_size_,
+                                                             scale_size_,
+                                                             hidden_size_,
+                                                             eps_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "The Ernie(Bert) tensorRT plugin should be "
@@ -135,7 +158,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 #endif
     } else {
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
+<<<<<<< HEAD
       instantiateImpl<float>();
+=======
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(embs_,
+                                                              bias_,
+                                                              scale_,
+                                                              emb_sizes_,
+                                                              bias_size_,
+                                                              scale_size_,
+                                                              hidden_size_,
+                                                              eps_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 
@@ -202,7 +236,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
+<<<<<<< HEAD
       instantiateImpl<half>();
+=======
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(embs_,
+                                                             bias_,
+                                                             scale_,
+                                                             emb_sizes_,
+                                                             bias_size_,
+                                                             scale_size_,
+                                                             hidden_size_,
+                                                             eps_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "The Ernie(Bert) tensorRT plugin should be "
@@ -212,7 +257,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
           "AnalysisConfig::Precision::kFloat32, false, false) "));
 #endif
     } else {
+<<<<<<< HEAD
       instantiateImpl<float>();
+=======
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(embs_,
+                                                              bias_,
+                                                              scale_,
+                                                              emb_sizes_,
+                                                              bias_size_,
+                                                              scale_size_,
+                                                              hidden_size_,
+                                                              eps_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 
@@ -303,11 +359,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, eps_);
   }
 
+<<<<<<< HEAD
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index,
       const nvinfer1::DimsExprs* inputs,
       int nb_inputs,
       nvinfer1::IExprBuilder& expr_builder)  // NOLINT
+=======
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,

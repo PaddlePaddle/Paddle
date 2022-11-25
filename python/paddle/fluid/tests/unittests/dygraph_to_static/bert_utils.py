@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import numpy as np
+<<<<<<< HEAD
+=======
+import random
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 SEED = 2020
 
@@ -87,9 +91,14 @@ def mask(batch_tokens, total_token_num, vocab_size, CLS=1, SEP=2, MASK=3):
 
         # ensure at least mask one word in a sentence
         while not mask_flag:
+<<<<<<< HEAD
             token_index = int(
                 self_random.randint(1, high=len(sent) - 1, size=1)
             )
+=======
+            token_index = int(self_random.randint(1, high=len(sent) - 1,
+                                                  size=1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if sent[token_index] != SEP and sent[token_index] != CLS:
                 mask_label.append(sent[token_index])
                 sent[token_index] = MASK
@@ -136,8 +145,12 @@ def pad_batch_data(
     if return_input_mask:
         # This is used to avoid attention on paddings.
         input_mask_data = np.array(
+<<<<<<< HEAD
             [[1] * len(inst) + [0] * (max_len - len(inst)) for inst in insts]
         )
+=======
+            [[1] * len(inst) + [0] * (max_len - len(inst)) for inst in insts])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         input_mask_data = np.expand_dims(input_mask_data, axis=-1)
         return_list += [input_mask_data.astype("float32")]
 
@@ -183,6 +196,7 @@ def prepare_batch_data(
 
     # First step: do mask without padding
     if mask_id >= 0:
+<<<<<<< HEAD
         out, mask_label, mask_pos = mask(
             batch_src_ids,
             total_token_num,
@@ -206,6 +220,28 @@ def prepare_batch_data(
         return_pos=False,
         return_input_mask=False,
     )
+=======
+        out, mask_label, mask_pos = mask(batch_src_ids,
+                                         total_token_num,
+                                         vocab_size=voc_size,
+                                         CLS=cls_id,
+                                         SEP=sep_id,
+                                         MASK=mask_id)
+    else:
+        out = batch_src_ids
+    # Second step: padding
+    src_id, self_input_mask = pad_batch_data(out,
+                                             pad_idx=pad_id,
+                                             return_input_mask=True)
+    pos_id = pad_batch_data(batch_pos_ids,
+                            pad_idx=pad_id,
+                            return_pos=False,
+                            return_input_mask=False)
+    sent_id = pad_batch_data(batch_sent_ids,
+                             pad_idx=pad_id,
+                             return_pos=False,
+                             return_input_mask=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if mask_id >= 0:
         return_list = [
@@ -223,6 +259,7 @@ def prepare_batch_data(
     return res
 
 
+<<<<<<< HEAD
 class DataReader:
     def __init__(
         self,
@@ -235,6 +272,19 @@ class DataReader:
         is_test=False,
         generate_neg_sample=False,
     ):
+=======
+class DataReader(object):
+
+    def __init__(self,
+                 batch_size=4096,
+                 in_tokens=True,
+                 max_seq_len=512,
+                 shuffle_files=False,
+                 epoch=100,
+                 voc_size=0,
+                 is_test=False,
+                 generate_neg_sample=False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.batch_size = batch_size
         self.in_tokens = in_tokens
@@ -287,7 +337,9 @@ class DataReader:
             yield token_ids, sent_ids, pos_ids, label
 
     def data_generator(self):
+
         def wrapper():
+
             def reader():
                 for epoch in range(self.epoch):
                     self.current_epoch = epoch + 1
@@ -311,16 +363,23 @@ class DataReader:
                         total_token_num += len(token_ids)
                     else:
                         yield batch, total_token_num
+<<<<<<< HEAD
                         batch, total_token_num, max_len = (
                             [parsed_line],
                             len(token_ids),
                             len(token_ids),
                         )
+=======
+                        batch, total_token_num, max_len = [
+                            parsed_line
+                        ], len(token_ids), len(token_ids)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 if len(batch) > 0:
                     yield batch, total_token_num
 
             for batch_data, total_token_num in batch_reader(
+<<<<<<< HEAD
                 reader, self.batch_size, self.in_tokens
             ):
                 yield prepare_batch_data(
@@ -335,6 +394,19 @@ class DataReader:
                     return_max_len=False,
                     return_num_token=False,
                 )
+=======
+                    reader, self.batch_size, self.in_tokens):
+                yield prepare_batch_data(batch_data,
+                                         total_token_num,
+                                         voc_size=self.voc_size,
+                                         pad_id=self.pad_id,
+                                         cls_id=self.cls_id,
+                                         sep_id=self.sep_id,
+                                         mask_id=self.mask_id,
+                                         return_input_mask=True,
+                                         return_max_len=False,
+                                         return_num_token=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return wrapper
 
@@ -349,6 +421,7 @@ class ModelHyperParams:
 
 def get_feed_data_reader(bert_config):
     args = ModelHyperParams()
+<<<<<<< HEAD
     data_reader = DataReader(
         batch_size=args.batch_size,
         in_tokens=args.in_tokens,
@@ -357,5 +430,13 @@ def get_feed_data_reader(bert_config):
         max_seq_len=args.max_seq_len,
         generate_neg_sample=args.generate_neg_sample,
     )
+=======
+    data_reader = DataReader(batch_size=args.batch_size,
+                             in_tokens=args.in_tokens,
+                             voc_size=bert_config['vocab_size'],
+                             epoch=args.epoch,
+                             max_seq_len=args.max_seq_len,
+                             generate_neg_sample=args.generate_neg_sample)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return data_reader

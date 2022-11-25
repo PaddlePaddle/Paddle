@@ -29,6 +29,7 @@ paddle.enable_static()
 
 
 class TestGaussianRandomOp(OpTest):
+
     def setUp(self):
         self.op_type = "gaussian_random"
         self.place = paddle.device.MLUPlace(0)
@@ -62,10 +63,16 @@ class TestGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
+<<<<<<< HEAD
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+=======
+        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
+                        "hist: " + str(hist) + " hist2: " + str(hist2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):
+
     def set_attrs(self):
         self.mean = 1
         self.std = 2

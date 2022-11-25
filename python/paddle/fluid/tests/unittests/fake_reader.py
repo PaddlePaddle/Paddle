@@ -15,6 +15,7 @@
 import numpy as np
 
 
+<<<<<<< HEAD
 def fake_imdb_reader(
     word_dict_size,
     sample_num,
@@ -33,6 +34,25 @@ def fake_imdb_reader(
             label = np.random.random_integers(
                 low=0, high=class_dim - 1, size=[1]
             ).astype('int64')[0]
+=======
+def fake_imdb_reader(word_dict_size,
+                     sample_num,
+                     lower_seq_len=100,
+                     upper_seq_len=200,
+                     class_dim=2):
+
+    def __reader__():
+        for _ in six.moves.range(sample_num):
+            length = np.random.random_integers(low=lower_seq_len,
+                                               high=upper_seq_len,
+                                               size=[1])[0]
+            ids = np.random.random_integers(low=0,
+                                            high=word_dict_size - 1,
+                                            size=[length]).astype('int64')
+            label = np.random.random_integers(low=0,
+                                              high=class_dim - 1,
+                                              size=[1]).astype('int64')[0]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             yield ids, label
 
     return __reader__

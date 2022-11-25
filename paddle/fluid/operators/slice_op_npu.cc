@@ -12,8 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
+=======
+#include "paddle/fluid/operators/slice_op.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
@@ -133,6 +137,7 @@ class SliceNPUKernel : public framework::OpKernel<T> {
 
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
+<<<<<<< HEAD
     auto& dev_ctx = ctx.template device_context<NPUDeviceContext>();
     auto stream = dev_ctx.stream();
 #if CANN_VERSION_CODE < 512000
@@ -149,6 +154,11 @@ class SliceNPUKernel : public framework::OpKernel<T> {
         .AddInput(std::move(size))
         .AddOutput(*out);
 #endif
+=======
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+    const auto& runner = NpuOpRunner(
+        "SliceD", {*input}, {*out}, {{"offsets", offsets}, {"size", size}});
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     runner.Run(stream);
   }
 };

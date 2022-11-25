@@ -17,6 +17,7 @@ import unittest as unittest
 
 
 class TestGetAndSetFlags(unittest.TestCase):
+
     def test_api(self):
         flags = {
             'FLAGS_eager_delete_tensor_gb': 1.0,
@@ -37,6 +38,7 @@ class TestGetAndSetFlags(unittest.TestCase):
 
 
 class TestGetAndSetFlagsErrors(unittest.TestCase):
+
     def test_errors(self):
         flags_list = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
         flag = 1

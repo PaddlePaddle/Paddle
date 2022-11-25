@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
 
 namespace phi {
 namespace funcs {

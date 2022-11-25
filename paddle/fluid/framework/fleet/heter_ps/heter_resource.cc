@@ -23,12 +23,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
+#include "paddle/utils/string/string_helper.h"
+
+DECLARE_bool(enable_auto_detect_gpu_topo);
+DECLARE_bool(enable_auto_rdma_trans);
 
 namespace paddle {
 namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
-GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
+GPUResource::GPUResource(std::vector<int> &dev_ids, int index) {
   index_ = index;
   dev_ids_ = dev_ids;
   dev_id_ = dev_ids_[index];
@@ -62,7 +66,7 @@ GPUResource::~GPUResource() {
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
-XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
+XPUResource::XPUResource(std::vector<int> &dev_ids, int index) {
   index_ = index;
   dev_ids_ = dev_ids;
   dev_id_ = dev_ids_[index];
@@ -119,8 +123,124 @@ void HeterPsResource::enable_p2p() {
   }
 #endif
 }
+static std::string excute_cmd_result(const std::string &cmd) {
+  FILE *fp = popen(cmd.c_str(), "r");
+  if (fp == NULL) {
+    fprintf(stderr, "cmd %s open failed\n", cmd.c_str());
+    return "";
+  }
 
-HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
+  std::string out;
+  size_t ret = 0;
+  char szline[1024] = {0};
+  while ((ret = fread(szline, sizeof(char), sizeof(szline), fp)) > 0) {
+    out.append(szline, ret);
+  }
+  pclose(fp);
+  fprintf(stderr, "cmd: %s, ret:\n%s\n", cmd.c_str(), out.c_str());
+  return paddle::string::trim_spaces(out);
+}
+#if defined(PADDLE_WITH_CUDA)
+static std::shared_ptr<GpuRDMAChecker> g_checker = nullptr;
+GpuRDMAChecker *GpuRDMAChecker::get(int device_num) {
+  if (g_checker == nullptr) {
+    g_checker = std::make_shared<GpuRDMAChecker>(device_num);
+  }
+  // check gpu num
+  CHECK(device_num == g_checker->device_num());
+  return g_checker.get();
+}
+GpuRDMAChecker::GpuRDMAChecker(int device_num) {
+  device_num_ = device_num;
+  rdma_trans_ = check_device_status(device_num, &rdma_status_);
+}
+bool GpuRDMAChecker::need_rdma_trans(void) {
+  return (FLAGS_enable_auto_rdma_trans && rdma_trans_);
+}
+bool GpuRDMAChecker::is_device_support_rdma(int devid) {
+  if (rdma_status_.empty()) {
+    return true;
+  }
+  return rdma_status_[devid];
+}
+bool GpuRDMAChecker::check_device_status(const int &device_count,
+                                         std::vector<int> *gpu_status) {
+  // not need auto detect gpu topo aware
+  if (!FLAGS_enable_auto_detect_gpu_topo) {
+    return false;
+  }
+  // a100
+  std::string str = excute_cmd_result("source ~/.bashrc && nvidia-smi topo -m");
+  if (str.empty()) {  // a100 auto gpu card rdma status
+    return false;
+  }
+  // mlx5_0  PXB PXB SYS SYS SYS SYS SYS SYS  X  SYS SYS
+  // mlx5_2  SYS SYS PXB PXB SYS SYS SYS SYS SYS NODE     X
+  std::vector<std::string> lines = paddle::string::split_string(str, "\n");
+  if (lines.empty()) {
+    fprintf(stdout, "%s\n", str.c_str());
+    return false;
+  }
+  std::vector<std::string> gpu_mlxs;
+  gpu_status->resize(device_count, 0);
+  gpu_mlxs.resize(device_count);
+  for (auto line : lines) {
+    std::vector<std::string> tags = paddle::string::split_string(line);
+    if (tags.size() < static_cast<size_t>(device_count + 1)) {
+      continue;
+    }
+    std::string &card_name = tags[0];
+    if (strncmp(card_name.c_str(), "GPU0", 4) == 0) {
+      // check topo_aware
+      topo_aware_ = false;
+      for (int j = 1; j < device_count; ++j) {
+        std::string &tag = tags[j + 1];
+        if (strncmp(tag.c_str(), "NV", 2) == 0) {
+          continue;
+        }
+        topo_aware_ = true;
+      }
+      continue;
+    }
+    if (strncmp(card_name.c_str(), "mlx5", 4) != 0) {
+      continue;
+    }
+    for (int j = 0; j < device_count; ++j) {
+      std::string &tag = tags[j + 1];
+      if (strcmp(tag.c_str(), "PXB") != 0 && strcmp(tag.c_str(), "PIX") != 0) {
+        continue;
+      }
+      (*gpu_status)[j] = 1;
+      if (!gpu_mlxs[j].empty()) {
+        gpu_mlxs[j].append(",");
+      }
+      gpu_mlxs[j].append(card_name);
+    }
+  }
+  int not_trans_cnt = 0;
+  int need_trans_cnt = 0;
+  // check all rdma
+  for (int j = 0; j < device_count; ++j) {
+    if ((*gpu_status)[j] > 0) {
+      fprintf(
+          stdout, "GPU%d: rdma check ok, used %s\n", j, gpu_mlxs[j].c_str());
+      continue;
+    }
+    int trans_id = (j + device_count / 2) % device_count;
+    if ((*gpu_status)[trans_id] > 0) {
+      fprintf(
+          stdout, "GPU%d: rdma check pcie, used trans id %d\n", j, trans_id);
+      ++need_trans_cnt;
+    } else {
+      ++not_trans_cnt;
+    }
+  }
+  // need trans device all connect to other device
+  return (need_trans_cnt > 0 && not_trans_cnt == 0);
+}
+#endif
+
+HeterPsResource::HeterPsResource(const std::vector<int> &dev_ids) {
   dev_ids_ = dev_ids;
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     std::shared_ptr<DevResource> resource =

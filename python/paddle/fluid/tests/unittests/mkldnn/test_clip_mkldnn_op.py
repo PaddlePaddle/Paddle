@@ -27,6 +27,7 @@ from paddle.fluid.tests.unittests.op_test import (
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestClipOneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "clip"
         self.set_inputs()
@@ -68,16 +69,19 @@ class TestClipOneDNNOp(OpTest):
 
 
 class TestClipMinAsInputOneDNNOp(TestClipOneDNNOp):
+
     def set_additional_inputs(self):
         self.inputs['Min'] = np.array([6.8]).astype('float32')
 
 
 class TestClipMaxAsInputOneDNNOp(TestClipOneDNNOp):
+
     def set_additional_inputs(self):
         self.inputs['Max'] = np.array([9.1]).astype('float32')
 
 
 class TestClipMaxAndMinAsInputsOneDNNOp(TestClipOneDNNOp):
+
     def set_additional_inputs(self):
         self.inputs['Max'] = np.array([8.5]).astype('float32')
         self.inputs['Min'] = np.array([7.1]).astype('float32')
@@ -85,8 +89,10 @@ class TestClipMaxAndMinAsInputsOneDNNOp(TestClipOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestClipBF16OneDNNOp(parent):
+
         def set_inputs(self):
             self.x_fp32 = np.random.random((10, 10)).astype(np.float32) * 25
             self.inputs = {'X': convert_float_to_uint16(self.x_fp32)}

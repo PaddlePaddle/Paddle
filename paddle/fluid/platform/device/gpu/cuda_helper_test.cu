@@ -22,6 +22,7 @@
 #include <random>
 
 #define PADDLE_CUDA_FP16
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -29,6 +30,15 @@
 
 using paddle::platform::float16;
 using phi::PADDLE_CUDA_NUM_THREADS;
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+
+using paddle::platform::float16;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T>
 __global__ void AddKernel(const T* data_a, T* data_b, size_t num) {

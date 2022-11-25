@@ -24,12 +24,19 @@ using dnnl::primitive;
 using dnnl::reorder;
 using dnnl::resampling_forward;
 using dnnl::stream;
+<<<<<<< HEAD
 using phi::DataLayout;
+=======
+using framework::DataLayout;
+using platform::GetMKLDNNFormat;
+using platform::to_void_cast;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T = float>
 class InterpolateOneDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward> {
  public:
+<<<<<<< HEAD
   InterpolateOneDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine,
                            platform::Place cpu_place,
@@ -40,6 +47,18 @@ class InterpolateOneDNNHandler
     const auto dst_tz = phi::vectorize(out->dims());
     const auto dst_md = memory::desc(
         dst_tz, phi::funcs::OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+=======
+  InterpolateMKLDNNHandler(const dnnl::algorithm algo,
+                           const dnnl::engine engine,
+                           platform::Place cpu_place,
+                           const Tensor* x,
+                           Tensor* out)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
+            engine, cpu_place) {
+    const auto dst_tz = phi::vectorize(out->dims());
+    const auto dst_md = memory::desc(
+        dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_inference, algo, x->mem_desc(), dst_md);
   }
@@ -146,7 +165,11 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = phi::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
+<<<<<<< HEAD
     InterpolateOneDNNHandler<T> handler(
+=======
+    InterpolateMKLDNNHandler<T> handler(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         algo, mkldnn_engine, ctx.GetPlace(), x, out);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
@@ -172,6 +195,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(nearest_interp,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
+<<<<<<< HEAD
                    ops::InterpolateOneDNNKernel<float>,
                    ops::InterpolateOneDNNKernel<int8_t>,
                    ops::InterpolateOneDNNKernel<uint8_t>);
@@ -179,3 +203,24 @@ REGISTER_OP_KERNEL(bilinear_interp,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::InterpolateOneDNNKernel<float>);
+=======
+                   ops::InterpolateMKLDNNKernel<float>,
+                   ops::InterpolateMKLDNNKernel<int8_t>,
+                   ops::InterpolateMKLDNNKernel<uint8_t>);
+REGISTER_OP_KERNEL(bilinear_interp,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
+
+REGISTER_OP_KERNEL(nearest_interp_v2,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>,
+                   ops::InterpolateMKLDNNKernel<paddle::platform::bfloat16>,
+                   ops::InterpolateMKLDNNKernel<int8_t>,
+                   ops::InterpolateMKLDNNKernel<uint8_t>);
+REGISTER_OP_KERNEL(bilinear_interp_v2,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

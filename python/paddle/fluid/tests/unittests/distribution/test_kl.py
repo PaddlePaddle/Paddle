@@ -30,6 +30,7 @@ paddle.set_default_dtype('float64')
 
 
 @param.place(config.DEVICES)
+<<<<<<< HEAD
 @param.parameterize_cls(
     (param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'),
     [
@@ -42,14 +43,30 @@ paddle.set_default_dtype('float64')
         ),
     ],
 )
+=======
+@param.parameterize_cls((param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
+    ('test_regular_input', 6.0 * np.random.random(
+        (4, 5)) + 1e-4, 6.0 * np.random.random(
+            (4, 5)) + 1e-4, 6.0 * np.random.random(
+                (4, 5)) + 1e-4, 6.0 * np.random.random((4, 5)) + 1e-4),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestKLBetaBeta(unittest.TestCase):
+
     def setUp(self):
+<<<<<<< HEAD
         self.p = paddle.distribution.Beta(
             paddle.to_tensor(self.a1), paddle.to_tensor(self.b1)
         )
         self.q = paddle.distribution.Beta(
             paddle.to_tensor(self.a2), paddle.to_tensor(self.b2)
         )
+=======
+        self.p = paddle.distribution.Beta(paddle.to_tensor(self.a1),
+                                          paddle.to_tensor(self.b1))
+        self.q = paddle.distribution.Beta(paddle.to_tensor(self.a2),
+                                          paddle.to_tensor(self.b2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_kl_divergence(self):
         with paddle.fluid.dygraph.guard(self.place):
@@ -71,6 +88,7 @@ class TestKLBetaBeta(unittest.TestCase):
 
 
 @param.place(config.DEVICES)
+<<<<<<< HEAD
 @param.param_cls(
     (param.TEST_CASE_NAME, 'conc1', 'conc2'),
     [
@@ -81,7 +99,14 @@ class TestKLBetaBeta(unittest.TestCase):
         ),
     ],
 )
+=======
+@param.param_cls((param.TEST_CASE_NAME, 'conc1', 'conc2'), [
+    ('test-regular-input', np.random.random(
+        (5, 7, 8, 10)), np.random.random((5, 7, 8, 10))),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestKLDirichletDirichlet(unittest.TestCase):
+
     def setUp(self):
         self.p = paddle.distribution.Dirichlet(paddle.to_tensor(self.conc1))
         self.q = paddle.distribution.Dirichlet(paddle.to_tensor(self.conc2))
@@ -97,6 +122,7 @@ class TestKLDirichletDirichlet(unittest.TestCase):
 
     def scipy_kl_diric_diric(self, conc1, conc2):
         return (
+<<<<<<< HEAD
             scipy.special.gammaln(np.sum(conc1, -1))
             - scipy.special.gammaln(np.sum(conc2, -1))
             - np.sum(
@@ -111,6 +137,15 @@ class TestKLDirichletDirichlet(unittest.TestCase):
                 -1,
             )
         )
+=======
+            scipy.special.gammaln(np.sum(conc1, -1)) -
+            scipy.special.gammaln(np.sum(conc2, -1)) - np.sum(
+                scipy.special.gammaln(conc1) - scipy.special.gammaln(conc2), -1)
+            + np.sum(
+                (conc1 - conc2) *
+                (scipy.special.digamma(conc1) -
+                 scipy.special.digamma(np.sum(conc1, -1, keepdims=True))), -1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class DummyDistribution(paddle.distribution.Distribution):
@@ -123,6 +158,7 @@ class DummyDistribution(paddle.distribution.Distribution):
     [('test-unregister', DummyDistribution(), DummyDistribution)],
 )
 class TestDispatch(unittest.TestCase):
+
     def test_dispatch_with_unregister(self):
         with self.assertRaises(NotImplementedError):
             paddle.distribution.kl_divergence(self.p, self.q)
@@ -131,6 +167,7 @@ class TestDispatch(unittest.TestCase):
 @param.place(config.DEVICES)
 @param.param_cls(
     (param.TEST_CASE_NAME, 'p', 'q'),
+<<<<<<< HEAD
     [
         (
             'test-diff-dist',
@@ -144,14 +181,29 @@ class TestDispatch(unittest.TestCase):
         ),
     ],
 )
+=======
+    [('test-diff-dist', mock.Exponential(paddle.rand((100, 200, 100)) + 1.0),
+      mock.Exponential(paddle.rand((100, 200, 100)) + 2.0)),
+     ('test-same-dist', mock.Exponential(
+         paddle.to_tensor(1.0)), mock.Exponential(paddle.to_tensor(1.0)))])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestKLExpfamilyExpFamily(unittest.TestCase):
+
     def test_kl_expfamily_expfamily(self):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             paddle.distribution.kl_divergence(self.p, self.q),
             kl._kl_expfamily_expfamily(self.p, self.q),
             rtol=config.RTOL.get(config.DEFAULT_DTYPE),
             atol=config.ATOL.get(config.DEFAULT_DTYPE),
         )
+=======
+        np.testing.assert_allclose(paddle.distribution.kl_divergence(
+            self.p, self.q),
+                                   kl._kl_expfamily_expfamily(self.p, self.q),
+                                   rtol=config.RTOL.get(config.DEFAULT_DTYPE),
+                                   atol=config.ATOL.get(config.DEFAULT_DTYPE))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

@@ -70,6 +70,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, single_device=False):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -82,19 +83,32 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+<<<<<<< HEAD
         batch_acc = fluid.layers.accuracy(
             input=predict, label=label, total=batch_size_tensor
         )
+=======
+        batch_acc = fluid.layers.accuracy(input=predict,
+                                          label=label,
+                                          total=batch_size_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         inference_program = fluid.default_main_program().clone()
 
         # Reader
+<<<<<<< HEAD
         train_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
+=======
+        train_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                    batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Optimization
         # TODO(typhoonzero): fix distributed adam optimizer

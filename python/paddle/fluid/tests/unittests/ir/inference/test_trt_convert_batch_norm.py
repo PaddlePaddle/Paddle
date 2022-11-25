@@ -24,10 +24,12 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 if attrs[0]['data_layout'] == "NCHW":
@@ -62,6 +64,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                             for momentum in [0.9, 0.8]:
                                 self.num_input = num_input
                                 self.dims = dims
+<<<<<<< HEAD
                                 dics = [
                                     {
                                         "epsilon": epsilon,
@@ -156,16 +159,90 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                                         "op_attrs": dics[0],
                                     }
                                 ]
+=======
+                                dics = [{
+                                    "epsilon": epsilon,
+                                    "data_layout": data_layout,
+                                    "momentum": momentum,
+                                    "is_test": True,
+                                    "trainable_statistics": False
+                                }, {}]
+                                dics_intput = [{
+                                    "X": ["batch_norm_input"],
+                                    "Bias": ["Bias"],
+                                    "Mean": ["Mean"],
+                                    "Scale": ["Scale"],
+                                    "Variance": ["Variance"],
+                                    "MomentumTensor": ["MomentumTensor"]
+                                }, {
+                                    "X": ["batch_norm_input"],
+                                    "Bias": ["Bias"],
+                                    "Mean": ["Mean"],
+                                    "Scale": ["Scale"],
+                                    "Variance": ["Variance"]
+                                }]
+                                dics_intputs = [{
+                                    "Bias":
+                                    TensorConfig(data_gen=partial(
+                                        generate_bias, dics, batch)),
+                                    "Mean":
+                                    TensorConfig(data_gen=partial(
+                                        generate_mean, dics, batch)),
+                                    "Scale":
+                                    TensorConfig(data_gen=partial(
+                                        generate_scale, dics, batch)),
+                                    "Variance":
+                                    TensorConfig(data_gen=partial(
+                                        generate_variance, dics, batch)),
+                                    "MomentumTensor":
+                                    TensorConfig(data_gen=partial(
+                                        generate_MomentumTensor, dics, batch)),
+                                }, {
+                                    "Bias":
+                                    TensorConfig(data_gen=partial(
+                                        generate_bias, dics, batch)),
+                                    "Mean":
+                                    TensorConfig(data_gen=partial(
+                                        generate_mean, dics, batch)),
+                                    "Scale":
+                                    TensorConfig(data_gen=partial(
+                                        generate_scale, dics, batch)),
+                                    "Variance":
+                                    TensorConfig(data_gen=partial(
+                                        generate_variance, dics, batch))
+                                }]
+                                ops_config = [{
+                                    "op_type":
+                                    "batch_norm",
+                                    "op_inputs":
+                                    dics_intput[num_input],
+                                    "op_outputs": {
+                                        "Y": ["batch_norm_out"],
+                                        "MeanOut": ["Mean"],
+                                        "VarianceOut": ["Variance"],
+                                        "SavedMean": ["SavedMean"],
+                                        "SavedVariance": ["SavedVariance"]
+                                    },
+                                    "op_attrs":
+                                    dics[0]
+                                }]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                 ops = self.generate_op_config(ops_config)
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights=dics_intputs[num_input],
                                     inputs={
+<<<<<<< HEAD
                                         "batch_norm_input": TensorConfig(
                                             data_gen=partial(
                                                 generate_input1, dics, batch
                                             )
                                         )
+=======
+                                        "batch_norm_input":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, dics, batch))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                     },
                                     outputs=["batch_norm_out"],
                                 )
@@ -173,8 +250,13 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 if attrs[0]['data_layout'] == "NCHW":
@@ -244,14 +326,22 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.weights) == 5:
                 return True

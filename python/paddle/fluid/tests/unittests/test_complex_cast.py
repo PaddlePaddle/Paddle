@@ -20,6 +20,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexCastOp(unittest.TestCase):
+
     def test_complex_to_real(self):
         r = np.random.random(size=[10, 10]) * 10
         i = np.random.random(size=[10, 10])

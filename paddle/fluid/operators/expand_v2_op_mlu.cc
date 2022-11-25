@@ -24,8 +24,13 @@ template <typename T>
 class ExpandV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* X = ctx.Input<phi::DenseTensor>("X");
     auto* Out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* X = ctx.Input<framework::Tensor>("X");
+    auto* Out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto in_dims = X->dims();
     auto expand_shape = get_expand_shape(ctx);
     auto vec_in_dims = phi::vectorize<int>(in_dims);

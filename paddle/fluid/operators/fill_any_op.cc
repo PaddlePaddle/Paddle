@@ -43,6 +43,21 @@ class FillAnyOp : public framework::OperatorWithKernel {
 class FillAnyGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
+=======
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "mul");
+    auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+  }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 template <typename T>
@@ -67,6 +82,7 @@ DECLARE_INPLACE_OP_INFERER(FillAnyGradInplaceInferer,
 }  // namespace paddle
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(fill_any,
                             FillAnyInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
@@ -74,11 +90,14 @@ DECLARE_INFER_SHAPE_FUNCTOR(fill_any_grad,
                             FillAnyGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 REGISTER_OPERATOR(fill_any,
                   ops::FillAnyOp,
                   ops::FillAnyOpMaker,
                   ops::FillAnyGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillAnyGradOpMaker<paddle::imperative::OpBase>,
+<<<<<<< HEAD
                   ops::FillAnyOpInplaceInferer,
                   FillAnyInferShapeFunctor);
 
@@ -86,3 +105,28 @@ REGISTER_OPERATOR(fill_any_grad,
                   ops::FillAnyGradOp,
                   ops::FillAnyGradInplaceInferer,
                   FillAnyGradInferShapeFunctor);
+=======
+                  ops::FillAnyOpInplaceInferer);
+
+REGISTER_OPERATOR(fill_any_grad,
+                  ops::FillAnyGradOp,
+                  ops::FillAnyGradInplaceInferer);
+
+REGISTER_OP_CPU_KERNEL(
+    fill_any,
+    ops::FillAnyKernel<phi::CPUContext, float>,
+    ops::FillAnyKernel<phi::CPUContext, double>,
+    ops::FillAnyKernel<phi::CPUContext, int64_t>,
+    ops::FillAnyKernel<phi::CPUContext, int>,
+    ops::FillAnyKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::FillAnyKernel<phi::CPUContext, bool>);
+
+REGISTER_OP_CPU_KERNEL(
+    fill_any_grad,
+    ops::FillAnyGradKernel<phi::CPUContext, float>,
+    ops::FillAnyGradKernel<phi::CPUContext, double>,
+    ops::FillAnyGradKernel<phi::CPUContext, int64_t>,
+    ops::FillAnyGradKernel<phi::CPUContext, int>,
+    ops::FillAnyGradKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::FillAnyGradKernel<phi::CPUContext, bool>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

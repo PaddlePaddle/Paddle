@@ -64,6 +64,7 @@ class TestCVMOpWithLodTensor(OpTest):
 
         lod = [[1]]
         self.inputs = {
+<<<<<<< HEAD
             'X': (
                 np.random.uniform(
                     0, 1, [self.batch_size, self.item_width]
@@ -71,6 +72,13 @@ class TestCVMOpWithLodTensor(OpTest):
                 lod,
             ),
             'CVM': np.array([[0.6, 0.4]]).astype("float32"),
+=======
+            'X': (np.random.uniform(
+                0, 1,
+                [self.batch_size, self.item_width]).astype("float32"), lod),
+            'CVM':
+            np.array([[0.6, 0.4]]).astype("float32"),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         self.attrs = {'use_cvm': False}
         out = []
@@ -89,9 +97,16 @@ class TestCVMOpWithLodTensor(OpTest):
         )
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
         )
+=======
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCVMOpWithOutLodTensor1(OpTest):
@@ -132,9 +147,16 @@ class TestCVMOpWithOutLodTensor1(OpTest):
         )
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
         )
+=======
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCVMOpWithOutLodTensor2(OpTest):
@@ -175,9 +197,16 @@ class TestCVMOpWithOutLodTensor2(OpTest):
         )
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
+<<<<<<< HEAD
         self.check_grad(
             ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
         )
+=======
+        self.check_grad(['X'],
+                        'Y',
+                        user_defined_grads=user_grads,
+                        check_dygraph=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

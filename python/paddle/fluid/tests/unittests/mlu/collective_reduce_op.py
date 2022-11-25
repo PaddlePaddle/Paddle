@@ -36,6 +36,7 @@ paddle.enable_static()
 
 
 class TestCollectiveReduce(TestCollectiveRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -43,14 +44,21 @@ class TestCollectiveReduce(TestCollectiveRunnerBase):
         ring_id = 0
         rootid = 1
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32'
             )
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             toutdata = main_prog.current_block().create_var(
                 name="outof" + col_type,
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
@@ -65,6 +73,20 @@ class TestCollectiveReduce(TestCollectiveRunnerBase):
                 outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id},
             )
+=======
+                stop_gradient=False)
+            main_prog.global_block().append_op(type="c_" + col_type,
+                                               inputs={'X': tindata},
+                                               attrs={
+                                                   'ring_id': ring_id,
+                                                   'root_id': rootid
+                                               },
+                                               outputs={'Out': toutdata})
+            main_prog.global_block().append_op(type="c_sync_comm_stream",
+                                               inputs={'X': toutdata},
+                                               outputs={'Out': toutdata},
+                                               attrs={'ring_id': ring_id})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return toutdata
 
 

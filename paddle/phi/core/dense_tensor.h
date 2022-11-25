@@ -15,7 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/storage_properties.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"

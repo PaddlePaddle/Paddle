@@ -105,12 +105,21 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Dst_index", this->Input("Dst_index"));
     op->SetInput("X", this->Input("X"));
 
+<<<<<<< HEAD
     if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MEAN") {
       op->SetInput("Dst_count", this->Output("Dst_count"));
     }
 
     if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MIN" ||
         PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MAX") {
+=======
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
+      op->SetInput("Dst_count", this->Output("Dst_count"));
+    }
+
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
+        PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       op->SetInput("Out", this->Output("Out"));
     }
 
@@ -127,7 +136,11 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(graph_send_recv,
                             GraphSendRecvInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::SendURecvInferMeta));
+=======
+                            PD_INFER_META(phi::GraphSendRecvInferMeta));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 REGISTER_OPERATOR(graph_send_recv,
                   ops::GraphSendRecvOP,
                   ops::GraphSendRecvOpMaker,

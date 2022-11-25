@@ -82,6 +82,7 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
+<<<<<<< HEAD
 // Only support transfering place for SelectedRows
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
     const Tensor& input,
@@ -93,6 +94,8 @@ paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out);

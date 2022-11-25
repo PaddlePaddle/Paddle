@@ -929,7 +929,57 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     combined_bias_desc->SetShape({3, bq_tensor->dims()[0]});
     combined_bias_desc->SetPersistable(true);
 
+<<<<<<< HEAD
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+=======
+    framework::LoDTensor tmp_combined_w_tensor;
+    tmp_combined_w_tensor.Resize(combined_w_dims);
+    auto* tmp_combined_w_data =
+        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+
+    std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
+    int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+    // Combine the three fc weights together.
+    for (int i = 0; i < dims_h; i++) {
+      for (int j = 0; j < 3; j++) {
+        for (int k = 0; k < dims_w; k++) {
+          int out_index = i * (3 * dims_w) + j * dims_w + k;
+          int in_index = i * dims_w + k;
+          tmp_combined_w_data[out_index] = w_vec[j][in_index];
+        }
+      }
+    }
+
+    wq_tensor->Resize(combined_w_dims);
+    auto* new_combined_w_data =
+        wq_tensor->mutable_data<float>(platform::CPUPlace());
+    memcpy(new_combined_w_data,
+           tmp_combined_w_data,
+           sizeof(float) * wq_tensor->numel());
+
+    scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+
+    framework::LoDTensor tmp_combined_bias_tensor;
+    tmp_combined_bias_tensor.Resize(combined_bias_dims);
+    auto* tmp_combined_bias_data =
+        tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+
+    size_t bias_size = bq_tensor->numel();
+    memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
+    memcpy(
+        tmp_combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
+    memcpy(tmp_combined_bias_data + 2 * bias_size,
+           bv_data,
+           sizeof(float) * bias_size);
+
+    bq_tensor->Resize(combined_bias_dims);
+    auto* new_combined_bias_data =
+        bq_tensor->mutable_data<float>(platform::CPUPlace());
+    memcpy(new_combined_bias_data,
+           tmp_combined_bias_data,
+           sizeof(float) * bq_tensor->numel());
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
 
     auto reshape_desc = reshape2->Op();

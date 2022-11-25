@@ -21,6 +21,7 @@ import unittest
 
 
 class AffineGridTestCase(unittest.TestCase):
+<<<<<<< HEAD
     def __init__(
         self,
         methodName='runTest',
@@ -32,6 +33,18 @@ class AffineGridTestCase(unittest.TestCase):
         variable_output_shape=False,
     ):
         super().__init__(methodName)
+=======
+
+    def __init__(self,
+                 methodName='runTest',
+                 theta_shape=(20, 2, 3),
+                 output_shape=[20, 2, 5, 7],
+                 align_corners=True,
+                 dtype="float32",
+                 invalid_theta=False,
+                 variable_output_shape=False):
+        super(AffineGridTestCase, self).__init__(methodName)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.theta_shape = theta_shape
         self.output_shape = output_shape
@@ -49,12 +62,19 @@ class AffineGridTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
+<<<<<<< HEAD
                 theta_var = fluid.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
                 y_var = paddle.nn.functional.affine_grid(
                     theta_var, self.output_shape
                 )
+=======
+                theta_var = fluid.data("input",
+                                       self.theta_shape,
+                                       dtype=self.dtype)
+                y_var = fluid.layers.affine_grid(theta_var, self.output_shape)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         feed_dict = {"input": self.theta}
         exe = fluid.Executor(place)
         exe.run(start)
@@ -67,6 +87,7 @@ class AffineGridTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
+<<<<<<< HEAD
                 theta_var = fluid.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
@@ -75,6 +96,14 @@ class AffineGridTestCase(unittest.TestCase):
                     self.output_shape,
                     align_corners=self.align_corners,
                 )
+=======
+                theta_var = fluid.data("input",
+                                       self.theta_shape,
+                                       dtype=self.dtype)
+                y_var = F.affine_grid(theta_var,
+                                      self.output_shape,
+                                      align_corners=self.align_corners)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         feed_dict = {"input": self.theta}
         exe = fluid.Executor(place)
         exe.run(start)
@@ -83,6 +112,7 @@ class AffineGridTestCase(unittest.TestCase):
 
     def paddle_dygraph_layer(self):
         paddle.disable_static()
+<<<<<<< HEAD
         theta_var = (
             dg.to_variable(self.theta) if not self.invalid_theta else "invalid"
         )
@@ -94,6 +124,16 @@ class AffineGridTestCase(unittest.TestCase):
         y_var = F.affine_grid(
             theta_var, output_shape, align_corners=self.align_corners
         )
+=======
+        theta_var = dg.to_variable(
+            self.theta) if not self.invalid_theta else "invalid"
+        output_shape = dg.to_variable(
+            self.output_shape
+        ) if self.variable_output_shape else self.output_shape
+        y_var = F.affine_grid(theta_var,
+                              output_shape,
+                              align_corners=self.align_corners)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         y_np = y_var.numpy()
         return y_np
 
@@ -116,6 +156,7 @@ class AffineGridTestCase(unittest.TestCase):
 
 
 class AffineGridErrorTestCase(AffineGridTestCase):
+
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -129,6 +170,7 @@ def add_cases(suite):
 
     suite.addTest(AffineGridTestCase(methodName='runTest', align_corners=False))
     suite.addTest(
+<<<<<<< HEAD
         AffineGridTestCase(methodName='runTest', variable_output_shape=True)
     )
 
@@ -140,12 +182,25 @@ def add_cases(suite):
             align_corners=True,
         )
     )
+=======
+        AffineGridTestCase(methodName='runTest', variable_output_shape=True))
+
+    suite.addTest(
+        AffineGridTestCase(methodName='runTest',
+                           theta_shape=(20, 2, 3),
+                           output_shape=[20, 1, 7, 7],
+                           align_corners=True))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def add_error_cases(suite):
     suite.addTest(
+<<<<<<< HEAD
         AffineGridErrorTestCase(methodName='runTest', output_shape="not_valid")
     )
+=======
+        AffineGridErrorTestCase(methodName='runTest', output_shape="not_valid"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     suite.addTest(
         AffineGridErrorTestCase(methodName='runTest', invalid_theta=True)
     )  # to test theta not variable error checking

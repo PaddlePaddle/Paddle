@@ -117,6 +117,7 @@ def get_sparse_tablenames(program, is_distributed):
 
 
 class MergedVariable:
+
     def __init__(self, merged, ordered, offsets):
         self.merged_var = merged
         self.ordered_vars = ordered
@@ -135,7 +136,12 @@ def Singleton(cls):
 
 
 @Singleton
+<<<<<<< HEAD
 class CompileTimeStrategy:
+=======
+class CompileTimeStrategy(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, main_program, startup_program, strategy, role_maker):
         self.min_block_size = 81920
 
@@ -368,9 +374,20 @@ class CompileTimeStrategy:
             )
         return related_var_names
 
+<<<<<<< HEAD
     def build_ctx(
         self, vars, mapping, is_grad, is_sparse, is_send, is_distributed=False
     ):
+=======
+    def build_ctx(self,
+                  vars,
+                  mapping,
+                  is_grad,
+                  is_sparse,
+                  is_send,
+                  is_distributed=False):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def get_grad_var_ep(slices):
             names = []
             eps = []
@@ -382,12 +399,19 @@ class CompileTimeStrategy:
                         names.append("{}.delta".format(slice.name))
                     else:
                         names.append(slice.name)
+<<<<<<< HEAD
                 elif (
                     is_grad and self.is_sync_mode() and self.get_trainers() > 1
                 ):
                     names.append(
                         "{}.trainer_{}".format(slice.name, self.get_role_id())
                     )
+=======
+                elif is_grad and self.is_sync_mode(
+                ) and self.get_trainers() > 1:
+                    names.append("{}.trainer_{}".format(slice.name,
+                                                        self.get_role_id()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 else:
                     names.append(slice.name)
 
@@ -472,6 +496,7 @@ class CompileTimeStrategy:
             for pairs in self.origin_sparse_pairs:
                 param, grad = pairs
                 param_name = param.name
+<<<<<<< HEAD
                 is_distributed = (
                     True if param_name in distibuted_varnames else False
                 )
@@ -505,6 +530,23 @@ class CompileTimeStrategy:
                     param_ctx.is_distributed(),
                     [],
                 )
+=======
+                is_distributed = True if param_name in distibuted_varnames else False
+
+                param_ctx = self.build_ctx(param, self.param_var_mapping, False,
+                                           True, True, is_distributed)
+                grad_ctx = self.build_ctx(grad, self.grad_var_mapping, True,
+                                          True, True, is_distributed)
+
+                ctx = CommContext(param_ctx.var_name(),
+                                  param_ctx.split_varnames(),
+                                  param_ctx.split_endpoints(),
+                                  param_ctx.sections(),
+                                  grad_ctx.origin_varnames(),
+                                  param_ctx.trainer_id(), param_ctx.aggregate(),
+                                  param_ctx.is_sparse(),
+                                  param_ctx.is_distributed())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 send_ctx[ctx.var_name()] = ctx
                 idx += 1
@@ -736,9 +778,14 @@ class CompileTimeStrategy:
             for merged in merged_dense_pairs:
                 grad = merged[1]
                 origin_varname = grad.merged_var.name
+<<<<<<< HEAD
                 var = self.origin_main_program.global_block().vars[
                     origin_varname
                 ]
+=======
+                var = self.origin_main_program.global_block(
+                ).vars[origin_varname]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 var_numel = reduce(lambda x, y: x * y, var.shape)
                 grad_name = origin_varname
                 aggregate = True
@@ -947,6 +994,7 @@ class CompileTimeStrategy:
 
             if len(split) == 1:
                 var_mapping[varname] = [orig_var]
+<<<<<<< HEAD
                 self.var_distributed.add_distributed_var(
                     origin_var=orig_var,
                     slice_var=orig_var,
@@ -955,6 +1003,14 @@ class CompileTimeStrategy:
                     is_slice=False,
                     vtype="Param",
                 )
+=======
+                self.var_distributed.add_distributed_var(origin_var=orig_var,
+                                                         slice_var=orig_var,
+                                                         block_id=0,
+                                                         offset=0,
+                                                         is_slice=False,
+                                                         vtype="Param")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 var_mapping[varname] = []
                 orig_shape = orig_var.shape
@@ -1089,12 +1145,19 @@ class CompileTimeStrategy:
                         # update split_count after aligning
                 split_count = int(math.ceil(var_numel / float(block_size)))
                 for block_id in range(split_count):
+<<<<<<< HEAD
                     curr_block_size = min(
                         block_size, var_numel - ((block_id) * block_size)
                     )
                     block = vars_metatools.VarBlock(
                         var.name, block_id, curr_block_size
                     )
+=======
+                    curr_block_size = min(block_size,
+                                          var_numel - ((block_id) * block_size))
+                    block = vars_metatools.VarBlock(var.name, block_id,
+                                                    curr_block_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     blocks.append(str(block))
             else:
                 block_size = var.shape[0] / slice_count
@@ -1183,8 +1246,15 @@ class CompileTimeStrategy:
         # create mapping of endpoint->split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
         [
+<<<<<<< HEAD
             self.param_grad_ep_mapping.update({ep: {"params": [], "grads": []}})
             for ep in self.get_ps_endpoints()
+=======
+            self.param_grad_ep_mapping.update({ep: {
+                "params": [],
+                "grads": []
+            }}) for ep in self.get_ps_endpoints()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
 
     def _build_var_distributed(self):
@@ -1373,6 +1443,7 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
         ), "must be LRScheduler"
         ops = _get_optimize_ops(compiled_config.origin_main_program)
         lr_param_dict = _get_lr_param_dict(ops)
+<<<<<<< HEAD
         (
             lr_decay_main_program,
             lr_decay_startup_program,
@@ -1389,6 +1460,15 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
             lr_decay_main_program,
             "GlobalStepTable",
         )
+=======
+        lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
+            compiled_config.origin_main_program.lr_sheduler, lr_param_dict,
+            lr_decay_steps)
+        compiled_config.add_tensor_table("@LR_DECAY_COUNTER@", lr_name,
+                                         lr_decay_startup_program,
+                                         lr_decay_main_program,
+                                         "GlobalStepTable")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def _get_lr_param_dict(opt_ops):
@@ -1474,10 +1554,15 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
             )
     else:
         raise ValueError(
+<<<<<<< HEAD
             "Not supported current LearningRate strategy, please use follow decay strategy: {}".format(
                 schedler_decay
             )
         )
+=======
+            "Not supported current LearningRate strategy, please use follow decay strategy: {}"
+            .format(schedler_decay))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return decay_main_program, decay_startup_program, lr_name
 

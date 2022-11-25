@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
+
     def test_api(self):
         num_voc = 128
         embed_dim = 64

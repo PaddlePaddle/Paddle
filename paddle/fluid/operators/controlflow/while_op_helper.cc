@@ -227,10 +227,16 @@ bool GetCondData(const phi::DenseTensor &cond) {
   // when platform::is_gpu_place(cond.place()) or
   // platform::is_npu_place(cond.place()) or
   // platform::is_xpu_place(cond.place()) is true
+<<<<<<< HEAD
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
+=======
+  std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(

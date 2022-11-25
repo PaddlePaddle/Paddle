@@ -48,7 +48,12 @@ class HeterPsBase {
   virtual void set_nccl_comm_and_size(
       const std::vector<ncclComm_t>& inner_comms,
       const std::vector<ncclComm_t>& inter_comms,
+<<<<<<< HEAD
       int comm_size) = 0;
+=======
+      int comm_size,
+      int rank_id) = 0;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   virtual void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) = 0;
 
 #endif
@@ -82,6 +87,14 @@ class HeterPsBase {
                                      uint32_t* d_merged_cnts,
                                      bool filter_zero) = 0;
 #endif
+<<<<<<< HEAD
+=======
+  virtual void reset_table(const int dev_id,
+                           size_t capacity,
+                           const OptimizerConfig& sgd_config,
+                           const OptimizerConfig& embedx_config,
+                           bool infer_mode) = 0;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 }  // end namespace framework

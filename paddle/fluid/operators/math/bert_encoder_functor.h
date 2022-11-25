@@ -68,8 +68,13 @@ class EmbEltwiseLayerNormFunctor {
                   int seq_len,
                   int hidden,
                   const int64_t *ids,
+<<<<<<< HEAD
                   const T *scale,
                   const T *bias,
+=======
+                  const float *scale,
+                  const float *bias,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   const int64_t *embs,
                   T *output,
                   float eps,
@@ -100,7 +105,10 @@ class MultiHeadGPUComputeFunctor {
                   int head_size,
                   T *qkptr,
                   const T *bias_qk_ptr,
+<<<<<<< HEAD
                   bool bias_is_mask,
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   T *tptr,
                   T alpha,
                   T beta);
@@ -126,10 +134,17 @@ class SkipLayerNormFunctor {
                   const int hidden,
                   const T *input1,
                   const T *input2,
+<<<<<<< HEAD
                   const T *scale,
                   const T *bias,
                   T *output,
                   float eps,
+=======
+                  const float *scale,
+                  const float *bias,
+                  T *output,
+                  T eps,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   gpuStream_t stream);
 };
 #endif

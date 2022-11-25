@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestLambOp1(OpTest):
+
     def set_attrs(self):
         self.attrs = {
             'epsilon': 1e-4,
@@ -75,6 +76,7 @@ class TestLambOp1(OpTest):
 
 
 class TestLambOp2(TestLambOp1):
+
     def set_attrs(self):
         self.attrs = {
             'epsilon': 1e-8,
@@ -85,6 +87,7 @@ class TestLambOp2(TestLambOp1):
 
 
 class TestLambOpMultipleSteps(TestLambOp1):
+
     def set_attrs(self):
         self.attrs = {
             'epsilon': 1e-8,
@@ -158,6 +161,7 @@ def lamb_step(inputs, attributes):
     moment2_unbiased = moment2_out / (1 - beta2_pow)
 
     r_1 = np.linalg.norm(param)
+<<<<<<< HEAD
     r_2 = np.linalg.norm(
         moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon)
         + weight_decay * param
@@ -168,6 +172,16 @@ def lamb_step(inputs, attributes):
         moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon)
         + weight_decay * param
     )
+=======
+    r_2 = np.linalg.norm(moment1_unbiased /
+                         (np.sqrt(moment2_unbiased) + epsilon) +
+                         weight_decay * param)
+    lr_t = lr * r_1 / r_2
+
+    param_out = param - lr_t * (moment1_unbiased /
+                                (np.sqrt(moment2_unbiased) + epsilon) +
+                                weight_decay * param)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     beta1_pow_out = beta1_pow * beta1
     beta2_pow_out = beta2_pow * beta2
@@ -203,6 +217,7 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     moment2_unbiased = np.zeros(shape=[height, row_numel])
 
     def update_mom(row_id, update_value):
+<<<<<<< HEAD
         moment1_out[row_id] = (
             beta1 * moment1[row_id] + (1 - beta1) * update_value
         )
@@ -216,6 +231,17 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
         moment2_out[row_id] = beta2 * moment2[row_id] + (1 - beta2) * np.square(
             update_value
         )
+=======
+        moment1_out[row_id] = beta1 * moment1[row_id] + (1 -
+                                                         beta1) * update_value
+        moment2_out[row_id] = beta2 * moment2[row_id] + (
+            1 - beta2) * np.square(update_value)
+
+        moment1_out[row_id] = beta1 * moment1[row_id] + (1 -
+                                                         beta1) * update_value
+        moment2_out[row_id] = beta2 * moment2[row_id] + (
+            1 - beta2) * np.square(update_value)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def update_param():
         r_1 = np.linalg.norm(param)
@@ -225,10 +251,16 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
         )
         lr_t = lr * r_1 / r_2
 
+<<<<<<< HEAD
         param_out = param - lr_t * (
             moment1_out / (np.sqrt(moment2_out) + epsilon)
             + weight_decay * param
         )
+=======
+        param_out = param - lr_t * (moment1_out /
+                                    (np.sqrt(moment2_out) + epsilon) +
+                                    weight_decay * param)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     for row_id in range(param_out.shape[0]):
         update_value = np.zeros(np_grad[0].shape).astype("float32")
@@ -244,6 +276,7 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
 
 
 class TestSparseLambOp(unittest.TestCase):
+
     def setup(self, scope, place):
         beta1 = 0.78
         beta2 = 0.836

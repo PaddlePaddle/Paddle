@@ -16,7 +16,12 @@ import paddle.fluid as fluid
 import unittest as unittest
 
 
+<<<<<<< HEAD
 class VarInfo:
+=======
+class VarInfo(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, var_name, var_type, writable):
         self.name = var_name
         self.type = var_type
@@ -24,6 +29,7 @@ class VarInfo:
 
 
 class TestGlobalVarGetterSetter(unittest.TestCase):
+
     def test_main(self):
         var_infos = [
             VarInfo("FLAGS_free_idle_chunk", bool, False),

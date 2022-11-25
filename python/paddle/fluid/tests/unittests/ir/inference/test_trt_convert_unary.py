@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -43,6 +44,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for op_type in [
+<<<<<<< HEAD
                     "exp",
                     "log",
                     "sqrt",
@@ -59,6 +61,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "atanh",
                     "ceil",
                     "floor",
+=======
+                        "exp", "log", "sqrt", "abs", "sin", "cos", "tan",
+                        "sinh", "cosh", "asin", "acos", "atan", "asinh",
+                        "atanh", "ceil", "floor"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 ]:
                     self.dims = dims
                     dics = [{}]
@@ -77,11 +84,17 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "input_data": TensorConfig(
                                 data_gen=partial(
                                     generate_input1, dims, batch, dics
                                 )
                             )
+=======
+                            "input_data":
+                            TensorConfig(data_gen=partial(
+                                generate_input1, dims, batch, dics))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         },
                         outputs=["output_data"],
                     )
@@ -89,8 +102,13 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
@@ -144,12 +162,19 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test(self):
         self.run_test()

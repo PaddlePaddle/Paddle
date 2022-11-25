@@ -75,13 +75,21 @@ class CinnCompiler {
 
   const CinnCompiledObject& Compile(
       const ir::Graph& graph,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const ::cinn::common::Target& target,
       void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
       int64_t compilation_key,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const ::cinn::common::Target& target,
       void* stream = nullptr);
 
@@ -109,7 +117,11 @@ class CinnCompiler {
   CinnCompiler() = default;
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
+<<<<<<< HEAD
       const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+=======
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const ::cinn::common::Target& target,
       std::int64_t compiled_num,
       void* stream = nullptr) const;

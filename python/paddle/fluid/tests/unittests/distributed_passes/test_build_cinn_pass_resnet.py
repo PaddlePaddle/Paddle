@@ -22,6 +22,7 @@ from paddle.distributed.passes import PassManager, new_pass
 
 
 class TestBuildCINNPass(DistPassTestBase):
+
     def init(self):
         self.atol = 0.5
         self.rtol = 0.0

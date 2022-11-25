@@ -26,6 +26,7 @@ SEED = 2021
 
 
 class TestExpand(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -54,6 +55,7 @@ class TestExpand(OpTest):
 
 
 class TestExpandV2(TestExpand):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -81,6 +83,7 @@ class TestExpandFp16(TestExpand):
 
 
 class TestExpandNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -93,9 +96,15 @@ class TestExpandNet(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 1], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             res = paddle.expand(a, [-1, 32])
             loss = res.sum()
@@ -112,11 +121,20 @@ class TestExpandNet(unittest.TestCase):
 
         for epoch in range(100):
 
+<<<<<<< HEAD
             loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "label": label_np},
                 fetch_list=[loss],
             )
+=======
+            loss_res = exe.run(main_prog,
+                               feed={
+                                   "a": a_np,
+                                   "label": label_np
+                               },
+                               fetch_list=[loss])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if epoch % 10 == 0:
                 print("Epoch {} | Loss: {}".format(epoch, loss))
 
@@ -135,6 +153,7 @@ class TestExpandNet(unittest.TestCase):
 
 
 class TestExpand_expand_times_all_one(TestExpand):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
