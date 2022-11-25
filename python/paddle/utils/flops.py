@@ -12,29 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from numpy import prod
 
 _FLOPS_COMPUTE_FUNC_MAP = {}
 
 
-def flops(op_type: str, input_shapes: tuple, **attrs) -> int:
+def prod(s):
+    p = 1
+    for v in s:
+        p *= v
+    return p
+
+
+def flops(op_type: str, input_shapes: dict, attrs: dict) -> int:
     """
-    count flops for operation.
+    count FLOPs for operation.
 
     Args:
         op_type (str): the type of operation.
-        input_shapes (tuple): the shapes of inputs.
+        input_shapes (dict): the shapes of inputs.
         attrs (dict): the attributes of the operation.
 
     Returns:
-        the total flops of the operation.
+        the total FLOPs of the operation.
     """
 
     if op_type not in _FLOPS_COMPUTE_FUNC_MAP:
         return 0
     else:
         func = _FLOPS_COMPUTE_FUNC_MAP[op_type]
-        return func(input_shapes, **attrs)
+        return func(input_shapes, attrs)
 
 
 def register_flops(op_type):
@@ -51,10 +57,10 @@ def register_flops(op_type):
 
 
 @register_flops("dropout")
-def _dropout_flops(input_shapes, **attrs):
+def _dropout_flops(input_shapes, attrs):
     return 0
 
 
 @register_flops("relu")
-def _relu_flops(input_shapes, **attrs):
-    return prod(input_shapes[0])
+def _relu_flops(input_shapes, attrs):
+    return prod(input_shapes.get('X')[0])

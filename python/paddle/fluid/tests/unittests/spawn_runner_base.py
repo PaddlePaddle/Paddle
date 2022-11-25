@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
-import paddle
+import numpy as np
 
 # used by model.run_trainer in test_dist_base
 from test_dist_base import RUN_STEP
+
+import paddle
 from paddle.fluid.framework import _test_eager_guard
 
 
