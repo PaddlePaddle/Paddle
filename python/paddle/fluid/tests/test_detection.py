@@ -294,7 +294,7 @@ class TestMultiBoxHead(unittest.TestCase):
         conv4 = fluid.layers.conv2d(conv3, 3, 3, 2)
         conv5 = fluid.layers.conv2d(conv4, 3, 3, 2)
 
-        mbox_locs, mbox_confs, box, var = layers.multi_box_head(
+        mbox_locs, mbox_confs, box, var = paddle.static.nn.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
             image=images,
             num_classes=21,

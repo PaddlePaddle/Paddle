@@ -22,8 +22,8 @@ from paddle.fluid.dygraph import declarative
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from ....data_feeder import check_type, check_variable_and_dtype
-from ....layer_helper import LayerHelper
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.layer_helper import LayerHelper
 from darknet import DarkNet53_conv_body
 from darknet import ConvBNLayer
 
