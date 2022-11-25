@@ -1027,7 +1027,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       //     ffn1_weights[i], buf1, nullptr, &ffn1_out, nullptr);
 
       ffn1_cublas_linear.Compute(
-          buf1, ffn1_weights[i], nullptr, &ffn1_out, "none");
+          buf1, ffn1_weights[i], nullptr, nullptr, &ffn1_out, "none");
 
       // printf("Buf 1 weight \n");
       // for(int i = 0; i < buf1->dims().size(); i++){

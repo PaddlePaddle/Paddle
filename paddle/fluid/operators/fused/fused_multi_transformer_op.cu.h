@@ -1520,15 +1520,26 @@ class CublasFusedMLP {
   void Compute(const phi::DenseTensor *x,
                const phi::DenseTensor *weight,
                const phi::DenseTensor *bias,
+               phi::DenseTensor *residual,
                phi::DenseTensor *output,
                const std::string &activation) {
-    auto *out_data = output->data<T>();
+    T *out_data = output->data<T>();
 
-    // cublasLtEpilogue_t epiloque_func =
-    //     get_epilogue_type_(activation, enable_auxiliary);
+    const bool add_residual = (residual == nullptr) ? false : true;
+    const bool add_bias = (bias == nullptr) ? false : true;
 
-    cublasLtEpilogue_t epiloque_func = CUBLASLT_EPILOGUE_DEFAULT;
+    const T *bias_data = nullptr;
+    if (add_bias) {
+      bias_data = bias->data<T>();
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc_,
+            CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+            &bias_data,
+            sizeof(bias_data)));
 
+    cublasLtEpilogue_t epiloque_func = GetEpilogueType_(activation, add_bias);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc_,
@@ -1536,17 +1547,7 @@ class CublasFusedMLP {
             &epiloque_func,
             sizeof(epiloque_func)));
 
-    const T *bias_data = nullptr;
-    if (bias != nullptr) {
-      bias_data = bias->data<T>();
-    }
-
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            operation_desc_,
-            CUBLASLT_MATMUL_DESC_BIAS_POINTER,
-            &bias_data,
-            sizeof(bias_data)));
+    T *residual_data = add_residual ? residual->data<T>() : out_data;
 
     cublasLtHandle_t lt_handle = dev_ctx_.cublaslt_handle();
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
@@ -1556,8 +1557,10 @@ class CublasFusedMLP {
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
 
-    double alpha64 = 1.0, beta64 = 0.0;
-    float alpha32 = 1.0f, beta32 = 0.0f;
+    // if add_residual, we compute result + 1.0 * residual, else result + 0.0 *
+    // out.
+    double alpha64 = 1.0, beta64 = add_residual ? 1.0 : 0.0;
+    float alpha32 = 1.0f, beta32 = add_residual ? 1.0f : 0.0f;
     void *alpha = nullptr, *beta = nullptr;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
@@ -1593,7 +1596,7 @@ class CublasFusedMLP {
                                           x_data,
                                           x_desc_,
                                           beta,
-                                          out_data,
+                                          residual_data,
                                           out_desc_,
                                           out_data,
                                           out_desc_,
