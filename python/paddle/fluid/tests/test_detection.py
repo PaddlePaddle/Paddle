@@ -272,69 +272,6 @@ class TestPriorBox2(unittest.TestCase):
             assert box.shape[3] == 4
 
 
-class TestGenerateMaskLabels(unittest.TestCase):
-    def test_generate_mask_labels(self):
-        program = Program()
-        with program_guard(program):
-            im_info = layers.data(
-                name='im_info',
-                shape=[1, 3],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            gt_classes = layers.data(
-                name='gt_classes',
-                shape=[2, 1],
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            is_crowd = layers.data(
-                name='is_crowd',
-                shape=[2, 1],
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            gt_segms = layers.data(
-                name='gt_segms',
-                shape=[20, 2],
-                dtype='float32',
-                lod_level=3,
-                append_batch_size=False,
-            )
-            rois = layers.data(
-                name='rois',
-                shape=[4, 4],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            labels_int32 = layers.data(
-                name='labels_int32',
-                shape=[4, 1],
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            num_classes = 5
-            resolution = 14
-            outs = fluid.layers.generate_mask_labels(
-                im_info=im_info,
-                gt_classes=gt_classes,
-                is_crowd=is_crowd,
-                gt_segms=gt_segms,
-                rois=rois,
-                labels_int32=labels_int32,
-                num_classes=num_classes,
-                resolution=resolution,
-            )
-            mask_rois, roi_has_mask_int32, mask_int32 = outs
-            assert mask_rois.shape[1] == 4
-            assert mask_int32.shape[1] == num_classes * resolution * resolution
-
-
 class TestMultiBoxHead(unittest.TestCase):
     def test_multi_box_head(self):
         data_shape = [3, 224, 224]
