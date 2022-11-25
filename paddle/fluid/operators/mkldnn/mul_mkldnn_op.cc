@@ -326,7 +326,7 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
                             framework::TransToProtoVarType(input_y->dtype()),
                             phi::vectorize(input_y->dims()),
                             ctx.OutputName("Out"));
-  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+  key = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));

@@ -417,7 +417,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
     std::string cache_key;
     cache_key.reserve(64);
-    cache_key = platform::ExtendKeyWithThreadInfoIfNeeded(
+    cache_key = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx,
         phi::funcs::CreateKey(dev_ctx,
                               ctx.InputName("Input"),

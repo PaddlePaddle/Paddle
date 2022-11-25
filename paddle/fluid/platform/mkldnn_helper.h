@@ -24,20 +24,12 @@ limitations under the License. */
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
-using OneDNNMemoryFormat = dnnl::memory::format_tag;
 using phi::OneDNNContext;
 #endif
 namespace platform {
-
-template <class Type>
-using tf_desc = typename Type::desc;
-
-template <class Type>
-using tf_pd = typename Type::primitive_desc;
 
 inline void ClearMKLDNNCache(const platform::Place& place,
                              void* ptr = nullptr) {
@@ -58,24 +50,6 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
   }
 }
 
-inline void Reorder(dnnl::memory src,
-                    dnnl::memory dst,
-                    const dnnl::engine& engine) {
-  auto reorder_prim = dnnl::reorder(src, dst);
-  auto& astream = OneDNNContext::tls().get_stream();
-  platform::RecordEvent record_reorder("int_reorder",
-                                       platform::TracerEventType::UserDefined,
-                                       2,
-                                       platform::EventRole::kUniqueOp);
-  reorder_prim.execute(astream, src, dst);
-  astream.wait();
-}
-
-inline std::string ThreadIDasStr(void) {
-  return std::to_string(
-      std::hash<std::thread::id>()(std::this_thread::get_id()));
-}
-
 // If MKLDNN build and CPU place then register suffix in DeviceContext
 inline void AttachPointerHashToMKLDNNKey(void* ptr,
                                          const platform::Place& place) {
@@ -86,7 +60,7 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
     static std::mutex static_vars_barrier;
     static_vars_barrier.lock();
     static auto first_exec = ptr;
-    static auto first_thread = ThreadIDasStr();
+    static auto first_thread = phi::funcs::ThreadIDasStr();
     static_vars_barrier.unlock();
 
     if (first_exec != ptr) {
@@ -97,17 +71,10 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
     OneDNNContext::tls().set_curr_exec(ptr);
 
     // For first thread
-    if (first_thread == ThreadIDasStr()) {
+    if (first_thread == phi::funcs::ThreadIDasStr()) {
       OneDNNContext::tls().disable_tid_in_key();
     }
   }
-}
-
-inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
-                                                   const std::string& key) {
-  return (OneDNNContext::tls().is_tid_used_in_key() == true)
-             ? key + "-t:" + ThreadIDasStr()
-             : key;
 }
 
 inline void RegisterModelLayout(

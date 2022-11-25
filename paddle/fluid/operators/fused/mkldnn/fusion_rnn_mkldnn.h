@@ -52,7 +52,7 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
         G(G) {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
+    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
 
     // Is it int8 kernel

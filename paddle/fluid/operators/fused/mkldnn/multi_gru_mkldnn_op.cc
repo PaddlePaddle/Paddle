@@ -112,7 +112,7 @@ class MultiGRUHandler {
     const std::string unique_name = ctx.OutputName("Hidden");
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
+    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx,
         phi::funcs::CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     key_ = memory_key_;
