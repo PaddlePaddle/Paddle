@@ -68,28 +68,6 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.new_shape = (36, 16)
 
 
-class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
-    def execute_api(self, x, axis=1):
-        if axis == 0:
-            x = paddle.flatten(x, 0, -1)
-            x = paddle.unsqueeze(x, 0)
-            return x
-        else:
-            x = paddle.flatten(x, axis, -1)
-            x = paddle.flatten(x, 0, axis - 1)
-            return x
-
-    def test_static_api(self):
-        paddle.enable_static()
-        main_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, paddle.static.Program()):
-            x = paddle.static.data(
-                name="x", shape=[-1, 3, -1, -1], dtype='float32'
-            )
-            out = self.execute_api(x, axis=2)
-        self.assertTrue((-1, -1) == out.shape)
-
-
 class TestFlatten2OpError(unittest.TestCase):
     def test_errors(self):
         def test_type():
