@@ -29,6 +29,10 @@ class OpKernelType;
 }  // namespace framework
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
