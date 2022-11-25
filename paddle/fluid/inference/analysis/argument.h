@@ -42,8 +42,6 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-using framework::ir::Graph;
-
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
@@ -148,7 +146,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
-  DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
+  DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
   // For JITLayer
   DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);

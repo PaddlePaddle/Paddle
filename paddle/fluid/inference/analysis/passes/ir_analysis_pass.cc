@@ -58,7 +58,7 @@ void IrAnalysisPass::CollectFusionStatis(Argument* argument) {
           framework::ir::kFuseStatisAttr));
 }
 
-std::string IrAnalysisPass::repr() const { return "ir-analysis-pass"; }
+std::string IrAnalysisPass::repr() const { return "ir_analysis_pass"; }
 
 }  // namespace analysis
 }  // namespace inference

@@ -157,8 +157,8 @@ NaiveExecutor::~NaiveExecutor() {
 #endif
 }
 
-void NaiveExecutor::ResetTrtOps(int num) {
 #ifdef PADDLE_WITH_TENSORRT
+void NaiveExecutor::ResetTrtOps(int num) {
   for (auto &op : ops_) {
     if (op->Type() == "tensorrt_engine") {
       operators::TensorRTEngineOp *trtop =
@@ -193,7 +193,7 @@ void NaiveExecutor::ResetTrtOps(int num) {
       }
     }
   }
-#endif
 }
+#endif
 }  // namespace framework
 }  // namespace paddle

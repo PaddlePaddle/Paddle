@@ -1075,7 +1075,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
-  argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
+  argument_.SetEnableIrOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
@@ -1224,48 +1224,33 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
-  auto passes = config_.pass_builder()->AllPasses();
+  auto *pass_builder = config_.pass_builder();
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
               << ", we will use a new PassStrategy. Note that only the GPU "
                  "backend is supported for now.";
-    passes.clear();
+    pass_builder->ClearPasses();
+    const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
     if (config_.tensorrt_engine_enabled()) {
       for (const auto &pass : kTrtLowerPrecisionPasses) {
-        passes.push_back(pass);
+        if (deleted_passes.count(pass)) continue;
+        pass_builder->AppendPass(pass);
       }
     } else if (config_.use_gpu()) {
       for (const auto &pass : kGpuLowerPrecisionPasses) {
-        passes.push_back(pass);
+        if (deleted_passes.count(pass)) continue;
+        pass_builder->AppendPass(pass);
       }
     }
-
-    const auto &deleted_passes = config_.pass_builder()->GetAllDeletedPasses();
-    for (const auto &it : deleted_passes) {
-      auto iterator = std::find(passes.begin(), passes.end(), it);
-      if (iterator != passes.end()) {
-        passes.erase(iterator);
-      }
-    }
-
-    if (config_.ir_debug_) {
-      auto it = std::begin(passes);
-      while (it != std::end(passes)) {
-        if (*it != "graph_viz_pass") {
-          it = passes.insert(it + 1, "graph_viz_pass");
-        } else {
-          ++it;
-        }
-      }
-    }
+    pass_builder->TurnOnDebug();
   }
   if (!config_.ir_optim()) {
-    passes.clear();
+    argument_.SetEnableIrOptim(false);
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
   }
   argument_.SetDisableLogs(config_.glog_info_disabled());
-  argument_.SetIrAnalysisPasses(passes);
-  argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
+  argument_.SetIrAnalysisPasses(pass_builder->AllPasses());
+  argument_.SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
 
   // mixed precison.
@@ -1934,64 +1919,6 @@ bool AnalysisPredictor::LoadProgramDesc() {
   return true;
 }
 
-bool AnalysisPredictor::LoadParameters() {
-  PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
-                          platform::errors::PreconditionNotMet(
-                              "The inference program should be loaded first."));
-
-  const auto &global_block = inference_program_->MutableBlock(0);
-
-  // create a temporary program to load parameters.
-
-  std::unique_ptr<framework::ProgramDesc> load_program(
-      new framework::ProgramDesc());
-  framework::BlockDesc *load_block = load_program->MutableBlock(0);
-  std::vector<std::string> params;
-
-  for (auto *var : global_block->AllVars()) {
-    if (IsPersistable(var)) {
-      VLOG(3) << "persistable variable's name: " << var->Name();
-
-      framework::VarDesc *new_var = load_block->Var(var->Name());
-      new_var->SetShape(var->GetShape());
-      new_var->SetDataType(var->GetDataType());
-      new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
-      new_var->SetPersistable(true);
-
-      if (!config_.params_file().empty()) {
-        params.push_back(new_var->Name());
-      } else {
-        // append_op
-        framework::OpDesc *op = load_block->AppendOp();
-        op->SetType("load");
-        op->SetOutput("Out", {new_var->Name()});
-        op->SetAttr("file_path", {config_.model_dir() + "/" + new_var->Name()});
-        op->CheckAttrs();
-      }
-    }
-  }
-
-  if (!config_.params_file().empty()) {
-    // sort paramlist to have consistent ordering
-    std::sort(params.begin(), params.end());
-    // append just the load_combine op
-    framework::OpDesc *op = load_block->AppendOp();
-    op->SetType("load_combine");
-    op->SetOutput("Out", params);
-    op->SetAttr("file_path", {config_.params_file()});
-    op->CheckAttrs();
-  }
-
-  // Use NaiveExecutor to Load parameters.
-  framework::NaiveExecutor e(place_);
-  e.Prepare(scope_.get(), *load_program, 0, false);
-  e.Run();
-  VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
-
-  return true;
-}
-
 uint64_t AnalysisPredictor::TryShrinkMemory() {
   ClearIntermediateTensor();
   return paddle::memory::Release(place_);
@@ -2139,7 +2066,9 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   }
   x->predictor_stream_ = stream;
   x->Init(scope_, inference_program_);
+#ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
+#endif
   return std::unique_ptr<PaddlePredictor>(x);
 }
 

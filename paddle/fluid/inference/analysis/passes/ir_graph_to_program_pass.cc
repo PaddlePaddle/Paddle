@@ -31,7 +31,7 @@ void IrGraphToProgramPass::RunImpl(Argument *argument) {
               new int(argument->memory_optim_sort_kind()));
   }
 
-  std::unique_ptr<Graph> graph(argument->main_graph_ptr());
+  std::unique_ptr<framework::ir::Graph> graph(argument->main_graph_ptr());
 
   // Direct using ProgramDesc desc(argument->main_program()) may cause
   // incomplete copies of information.

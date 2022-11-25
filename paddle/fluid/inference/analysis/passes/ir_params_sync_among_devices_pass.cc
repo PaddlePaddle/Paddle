@@ -167,7 +167,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
 }
 
 std::string IrParamsSyncAmongDevicesPass::repr() const {
-  return "ir-params-sync-among-devices-pass";
+  return "ir_params_sync_among_devices_pass";
 }
 
 }  // namespace analysis

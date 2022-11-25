@@ -38,8 +38,7 @@ void Analyzer::RunAnalysis(Argument *argument) {
     if (!disable_logs) {
       string::PrettyLogH1("--- Running analysis [%s]", pass);
     }
-    if (!argument->enable_analysis_optim() && pass == "ir_analysis_pass")
-      continue;
+    if (!argument->enable_ir_optim() && pass == "ir_analysis_pass") continue;
 
     auto *ptr = PassRegistry::Global().Retreive(pass);
     PADDLE_ENFORCE_NOT_NULL(ptr,
