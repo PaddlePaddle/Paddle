@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import warnings
+import paddle
 import paddle.distributed as dist
+import paddle.fluid.framework as framework
+import paddle.fluid.layer_helper as layer_helper
 
 
 class Group:
@@ -227,3 +230,67 @@ def get_group(id=0):
         return _GroupManager.group_map_by_id[id]
     warnings.warn("Group {} is not initialized.".format(id))
     return None
+
+
+def _sync_calc_stream(tensor):
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+
+    op_type = 'c_sync_calc_stream'
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+    )
+
+
+def _sync_comm_stream(tensor, ring_id=0):
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.c_sync_comm_stream(
+            [tensor], [tensor], 'ring_id', ring_id
+        )
+
+    op_type = 'c_sync_comm_stream'
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={'ring_id': ring_id},
+    )
+
+
+def wait(tensor, group=None, use_calc_stream=True):
+    """
+
+    wait to sync stream for group.
+
+    Args:
+        tensor (Tensor): The Tensor used before sync.
+        group (Group): The Group instance to perform sync.
+        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
+            Default to True.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.distributed.init_parallel_env()
+            tindata = paddle.randn(shape=[2, 3])
+            paddle.distributed.all_reduce(tindata, sync_op=True)
+            paddle.distributed.wait(tindata)
+
+    """
+    if group is not None and not group.is_member():
+        return
+
+    if use_calc_stream:
+        _sync_calc_stream(tensor)
+    else:
+        ring_id = 0 if group is None else group.id
+        _sync_comm_stream(tensor, ring_id)
