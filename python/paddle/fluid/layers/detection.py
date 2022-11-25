@@ -54,7 +54,6 @@ __all__ = [
     'yolov3_loss',
     'yolo_box',
     'retinanet_detection_output',
-    'distribute_fpn_proposals',
     'box_decoder_and_assign',
     'collect_fpn_proposals',
 ]
@@ -2456,93 +2455,6 @@ def retinanet_detection_output(
     )
     output.stop_gradient = True
     return output
-
-
-def distribute_fpn_proposals(
-    fpn_rois,
-    min_level,
-    max_level,
-    refer_level,
-    refer_scale,
-    rois_num=None,
-    name=None,
-):
-    r"""
-
-    **This op only takes LoDTensor as input.** In Feature Pyramid Networks
-    (FPN) models, it is needed to distribute all proposals into different FPN
-    level, with respect to scale of the proposals, the referring scale and the
-    referring level. Besides, to restore the order of proposals, we return an
-    array which indicates the original index of rois in current proposals.
-    To compute FPN level for each roi, the formula is given as follows:
-
-    .. math::
-
-        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
-
-        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
-
-    where BBoxArea is a function to compute the area of each roi.
-
-    Args:
-
-        fpn_rois(Variable): 2-D Tensor with shape [N, 4] and data type is
-            float32 or float64. The input fpn_rois.
-        min_level(int32): The lowest level of FPN layer where the proposals come
-            from.
-        max_level(int32): The highest level of FPN layer where the proposals
-            come from.
-        refer_level(int32): The referring level of FPN layer with specified scale.
-        refer_scale(int32): The referring scale of FPN layer with specified level.
-        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image.
-            The shape is [B] and data type is int32. B is the number of images.
-            If it is not None then return a list of 1-D Tensor. Each element
-            is the output RoIs' number of each image on the corresponding level
-            and the shape is [B]. None by default.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Tuple:
-
-        multi_rois(List) : A list of 2-D LoDTensor with shape [M, 4]
-        and data type of float32 and float64. The length is
-        max_level-min_level+1. The proposals in each FPN level.
-
-        restore_ind(Variable): A 2-D Tensor with shape [N, 1], N is
-        the number of total rois. The data type is int32. It is
-        used to restore the order of fpn_rois.
-
-        rois_num_per_level(List): A list of 1-D Tensor and each Tensor is
-        the RoIs' number in each image on the corresponding level. The shape
-        is [B] and data type of int32. B is the number of images
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            fpn_rois = fluid.data(
-                name='data', shape=[None, 4], dtype='float32', lod_level=1)
-            multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
-                fpn_rois=fpn_rois,
-                min_level=2,
-                max_level=5,
-                refer_level=4,
-                refer_scale=224)
-    """
-    return paddle.vision.ops.distribute_fpn_proposals(
-        fpn_rois=fpn_rois,
-        min_level=min_level,
-        max_level=max_level,
-        refer_level=refer_level,
-        refer_scale=refer_scale,
-        rois_num=rois_num,
-        name=name,
-    )
 
 
 @templatedoc()

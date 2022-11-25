@@ -725,7 +725,7 @@ class TestDistributeFpnProposals(LayerTest):
                 multi_rois,
                 restore_ind,
                 rois_num_per_level,
-            ) = layers.distribute_fpn_proposals(
+            ) = paddle.vision.ops.distribute_fpn_proposals(
                 fpn_rois=rois,
                 min_level=2,
                 max_level=5,
@@ -752,7 +752,7 @@ class TestDistributeFpnProposals(LayerTest):
                 multi_rois_dy,
                 restore_ind_dy,
                 rois_num_per_level_dy,
-            ) = layers.distribute_fpn_proposals(
+            ) = paddle.vision.ops.distribute_fpn_proposals(
                 fpn_rois=rois_dy,
                 min_level=2,
                 max_level=5,
@@ -779,7 +779,7 @@ class TestDistributeFpnProposals(LayerTest):
             )
             self.assertRaises(
                 TypeError,
-                layers.distribute_fpn_proposals,
+                paddle.vision.ops.distribute_fpn_proposals,
                 fpn_rois=fpn_rois,
                 min_level=2,
                 max_level=5,
