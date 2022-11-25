@@ -103,7 +103,6 @@ LookupTablePluginDynamic::LookupTablePluginDynamic(void const* data,
              d,
              mWeightSize * getElementSize(mType),
              cudaMemcpyHostToDevice);
-
 }
 
 // IPluginV2DynamicExt Methods
