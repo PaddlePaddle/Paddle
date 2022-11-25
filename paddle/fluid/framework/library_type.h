@@ -74,6 +74,8 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     return LibraryType::kPlain;
   } else if (s == std::string("MLU")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("KP")) {
+    return LibraryType::kKP;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unknown LibraryType string (%s), only support library type string "
