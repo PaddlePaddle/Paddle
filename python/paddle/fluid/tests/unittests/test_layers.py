@@ -4086,16 +4086,6 @@ class TestBook(LayerTest):
         np.testing.assert_array_equal(static_res, dy_eager_res_value)
         np.testing.assert_array_equal(static_res, dy_res_value)
 
-    def test_roi_perspective_transform(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[8], dtype="float32", lod_level=1
-            )
-            output = layers.roi_perspective_transform(x, rois, 7, 7, 0.6)
-            return output
-
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

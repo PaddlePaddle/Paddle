@@ -48,7 +48,6 @@ __all__ = [
     'rpn_target_assign',
     'retinanet_target_assign',
     'sigmoid_focal_loss',
-    'roi_perspective_transform',
     'generate_proposal_labels',
     'generate_proposals',
     'generate_mask_labels',
@@ -2294,108 +2293,6 @@ def multi_box_head(
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
-
-
-def roi_perspective_transform(
-    input,
-    rois,
-    transformed_height,
-    transformed_width,
-    spatial_scale=1.0,
-    name=None,
-):
-    """
-    **The** `rois` **of this op should be a LoDTensor.**
-
-    ROI perspective transform op applies perspective transform to map each roi into an
-    rectangular region. Perspective transform is a type of transformation in linear algebra.
-
-    Parameters:
-        input (Variable): 4-D Tensor, input of ROIPerspectiveTransformOp. The format of
-                          input tensor is NCHW. Where N is batch size, C is the
-                          number of input channels, H is the height of the feature,
-                          and W is the width of the feature. The data type is float32.
-        rois (Variable):  2-D LoDTensor, ROIs (Regions of Interest) to be transformed.
-                          It should be a 2-D LoDTensor of shape (num_rois, 8). Given as
-                          [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the
-                          top left coordinates, and (x2, y2) is the top right
-                          coordinates, and (x3, y3) is the bottom right coordinates,
-                          and (x4, y4) is the bottom left coordinates. The data type is the
-                          same as `input`
-        transformed_height (int): The height of transformed output.
-        transformed_width (int): The width of transformed output.
-        spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-            A tuple with three Variables. (out, mask, transform_matrix)
-
-            out: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
-            (num_rois, channels, transformed_h, transformed_w). The data type is the same as `input`
-
-            mask: The mask of ROIPerspectiveTransformOp which is a 4-D tensor with shape
-            (num_rois, 1, transformed_h, transformed_w). The data type is int32
-
-            transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
-            a 2-D tensor with shape (num_rois, 9). The data type is the same as `input`
-
-    Return Type:
-        tuple
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
-            rois = fluid.data(name='rois', shape=[None, 8], lod_level=1, dtype='float32')
-            out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
-    """
-    check_variable_and_dtype(
-        input, 'input', ['float32'], 'roi_perspective_transform'
-    )
-    check_variable_and_dtype(
-        rois, 'rois', ['float32'], 'roi_perspective_transform'
-    )
-    check_type(
-        transformed_height,
-        'transformed_height',
-        int,
-        'roi_perspective_transform',
-    )
-    check_type(
-        transformed_width, 'transformed_width', int, 'roi_perspective_transform'
-    )
-    check_type(
-        spatial_scale, 'spatial_scale', float, 'roi_perspective_transform'
-    )
-
-    helper = LayerHelper('roi_perspective_transform', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    mask = helper.create_variable_for_type_inference(dtype="int32")
-    transform_matrix = helper.create_variable_for_type_inference(dtype)
-    out2in_idx = helper.create_variable_for_type_inference(dtype="int32")
-    out2in_w = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="roi_perspective_transform",
-        inputs={"X": input, "ROIs": rois},
-        outputs={
-            "Out": out,
-            "Out2InIdx": out2in_idx,
-            "Out2InWeights": out2in_w,
-            "Mask": mask,
-            "TransformMatrix": transform_matrix,
-        },
-        attrs={
-            "transformed_height": transformed_height,
-            "transformed_width": transformed_width,
-            "spatial_scale": spatial_scale,
-        },
-    )
-    return out, mask, transform_matrix
 
 
 def generate_proposal_labels(
