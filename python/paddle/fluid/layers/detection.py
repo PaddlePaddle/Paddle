@@ -48,7 +48,6 @@ __all__ = [
     'rpn_target_assign',
     'retinanet_target_assign',
     'sigmoid_focal_loss',
-    'anchor_generator',
     'roi_perspective_transform',
     'generate_proposal_labels',
     'generate_proposals',
@@ -139,15 +138,11 @@ def retinanet_target_assign(
             one image, each anchor is represented as :math:`[xmin, ymin, xmax, ymax]`,
             :math:`[xmin, ymin]` is the left top coordinate of the anchor box,
             :math:`[xmax, ymax]` is the right bottom coordinate of the anchor box.
-            The data type of :attr:`anchor_box` is float32 or float64. Please refer
-            to the OP :ref:`api_fluid_layers_anchor_generator`
-            for the generation of :attr:`anchor_box`.
+            The data type of :attr:`anchor_box` is float32 or float64.
         anchor_var(Variable): A 2-D Tensor with shape :math:`[M,4]` represents the expanded
             factors of anchor locations used in loss function. :math:`M` is number of
             all anchors of one image, each anchor possesses a 4-vector expanded factor.
-            The data type of :attr:`anchor_var` is float32 or float64. Please refer
-            to the OP :ref:`api_fluid_layers_anchor_generator`
-            for the generation of :attr:`anchor_var`.
+            The data type of :attr:`anchor_var` is float32 or float64.
         gt_boxes(Variable): A 1-level 2-D LoDTensor with shape :math:`[G, 4]` represents
             locations of all ground-truth boxes. :math:`G` is the total number of
             all ground-truth boxes in a mini-batch, and each ground-truth box has 4
@@ -2299,115 +2294,6 @@ def multi_box_head(
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
-
-
-def anchor_generator(
-    input,
-    anchor_sizes=None,
-    aspect_ratios=None,
-    variance=[0.1, 0.1, 0.2, 0.2],
-    stride=None,
-    offset=0.5,
-    name=None,
-):
-    """
-
-    **Anchor generator operator**
-
-    Generate anchors for Faster RCNN algorithm.
-    Each position of the input produce N anchors, N =
-    size(anchor_sizes) * size(aspect_ratios). The order of generated anchors
-    is firstly aspect_ratios loop then anchor_sizes loop.
-
-    Args:
-       input(Variable): 4-D Tensor with shape [N,C,H,W]. The input feature map.
-       anchor_sizes(float32|list|tuple, optional): The anchor sizes of generated
-          anchors, given in absolute pixels e.g. [64., 128., 256., 512.].
-          For instance, the anchor size of 64 means the area of this anchor
-          equals to 64**2. None by default.
-       aspect_ratios(float32|list|tuple, optional): The height / width ratios
-           of generated anchors, e.g. [0.5, 1.0, 2.0]. None by default.
-       variance(list|tuple, optional): The variances to be used in box
-           regression deltas. The data type is float32, [0.1, 0.1, 0.2, 0.2] by
-           default.
-       stride(list|tuple, optional): The anchors stride across width and height.
-           The data type is float32. e.g. [16.0, 16.0]. None by default.
-       offset(float32, optional): Prior boxes center offset. 0.5 by default.
-       name(str, optional): For detailed information, please refer
-           to :ref:`api_guide_Name`. Usually name is no need to set and None
-           by default.
-
-    Returns:
-        Tuple:
-
-        Anchors(Variable): The output anchors with a layout of [H, W, num_anchors, 4].
-        H is the height of input, W is the width of input,
-        num_anchors is the box count of each position.
-        Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
-
-        Variances(Variable): The expanded variances of anchors
-        with a layout of [H, W, num_priors, 4].
-        H is the height of input, W is the width of input
-        num_anchors is the box count of each position.
-        Each variance is in (xcenter, ycenter, w, h) format.
-
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-
-            paddle.enable_static()
-            conv1 = fluid.data(name='conv1', shape=[None, 48, 16, 16], dtype='float32')
-            anchor, var = fluid.layers.anchor_generator(
-                input=conv1,
-                anchor_sizes=[64, 128, 256, 512],
-                aspect_ratios=[0.5, 1.0, 2.0],
-                variance=[0.1, 0.1, 0.2, 0.2],
-                stride=[16.0, 16.0],
-                offset=0.5)
-    """
-    helper = LayerHelper("anchor_generator", **locals())
-    dtype = helper.input_dtype()
-
-    def _is_list_or_tuple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
-
-    if not _is_list_or_tuple_(anchor_sizes):
-        anchor_sizes = [anchor_sizes]
-    if not _is_list_or_tuple_(aspect_ratios):
-        aspect_ratios = [aspect_ratios]
-    if not (_is_list_or_tuple_(stride) and len(stride) == 2):
-        raise ValueError(
-            'stride should be a list or tuple ',
-            'with length 2, (stride_width, stride_height).',
-        )
-
-    anchor_sizes = list(map(float, anchor_sizes))
-    aspect_ratios = list(map(float, aspect_ratios))
-    stride = list(map(float, stride))
-
-    attrs = {
-        'anchor_sizes': anchor_sizes,
-        'aspect_ratios': aspect_ratios,
-        'variances': variance,
-        'stride': stride,
-        'offset': offset,
-    }
-
-    anchor = helper.create_variable_for_type_inference(dtype)
-    var = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="anchor_generator",
-        inputs={"Input": input},
-        outputs={"Anchors": anchor, "Variances": var},
-        attrs=attrs,
-    )
-    anchor.stop_gradient = True
-    var.stop_gradient = True
-    return anchor, var
 
 
 def roi_perspective_transform(
