@@ -58,15 +58,17 @@ class Reshape(Layer):
 
           import paddle
 
-          input_tensor = paddle.randn(shape=[3, 6])
-          layer = paddle.nn.Reshape(shape=[0, 2, 3])
-          out = layer(input_tensor)
-          # input_tensor: [[-0.32342386 -1.200079  ]
-          #                [ 0.7979031  -0.90978354]
-          #                [ 0.40597573  1.8095392 ]]
-          # out: [[-0.32342386 -1.200079  ]
-          #      [ 0.7979031  -0.90978354]
-          #      [ 0.40597573  1.8095392 ]]
+          input_tensor = paddle.randn(shape=[3,6])
+          layer1 = paddle.nn.Reshape(shape=[0, 2, 3])
+          layer2 = paddle.nn.Reshape(shape=[0, 6])
+
+          out1 = layer1(input_tensor)
+          out2 = layer2(out1)
+          print(out1.shape)
+          # [3, 2, 3]
+
+          print(out2.shape)
+          # [3, 6]
     """
 
     def __init__(self, shape, name=None):
@@ -80,8 +82,8 @@ class Reshape(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'name={}, shape={}'.format(name_str, self.shape)
+        name_str = self.name if self.name else ''
+        return 'shape={}, name={}'.format(self.shape, name_str)
 
 
 class Identity(Layer):

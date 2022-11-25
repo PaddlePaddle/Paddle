@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 
 from op_test import OpTest, convert_float_to_uint16
 import paddle
@@ -369,6 +370,84 @@ class TestReshapeAPI(unittest.TestCase):
         assert np.array_equal(out_1.numpy(), input.reshape(shape))
         assert np.array_equal(out_2.numpy(), input.reshape([5, 10]))
         assert np.array_equal(out_3.numpy(), input.reshape(shape))
+
+
+class TestReshapeFAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(
+                name="input", shape=[2, 3, 4, 5, 6], dtype="float32"
+            )
+            res1 = paddle.nn.functional.reshape(x=input, shape=[0, 0, 0, 30])
+            res2 = paddle.nn.functional.reshape(
+                x=input, shape=[0, 0, 0, 0, 2, 3]
+            )
+
+            in_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
+            res_np = [
+                np.reshape(in_np, (2, 3, 4, 30)),
+                np.reshape(in_np, (2, 3, 4, 5, 2, 3)),
+            ]
+
+            exe = fluid.Executor(place)
+            res_list = [res1, res2]
+            for i, res in enumerate(res_list):
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"input": in_np},
+                    fetch_list=[res],
+                )
+                np.testing.assert_allclose(fetches[0], res_np[i], rtol=1e-05)
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                in_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
+                res_np = [
+                    np.reshape(in_np, (2, 3, 4, 30)),
+                    np.reshape(in_np, (2, 3, 4, 5, 2, 3)),
+                ]
+                input = fluid.dygraph.to_variable(in_np)
+
+                res1 = paddle.nn.functional.reshape(
+                    x=input, shape=[0, 0, 0, 30]
+                )
+                res2 = paddle.nn.functional.reshape(
+                    x=input, shape=[0, 0, 0, 0, 2, 3]
+                )
+
+            res_list = [res1, res2]
+            for i, res in enumerate(res_list):
+                np.testing.assert_allclose(res.numpy(), res_np[i], rtol=1e-05)
+
+
+class TestDropout3DCAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
+                res_np = np.reshape(input_np, (2, 3, 4, 30))
+                input = fluid.dygraph.to_variable(input_np)
+                m = paddle.nn.Reshape(shape=[0, 0, 0, 30])
+                m.eval()
+                result = m(input)
+                np.testing.assert_allclose(result.numpy(), res_np, rtol=1e-05)
 
 
 class TestStaticReshape_(TestReshapeAPI):

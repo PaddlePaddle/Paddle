@@ -87,6 +87,11 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.ThresholdedReLU()
         self.assertEqual(str(module), 'ThresholdedReLU(threshold=1.0)')
 
+        module = nn.Reshape(shape=[0, 3, 2], name='unit_test')
+        self.assertEqual(
+            str(module), 'Reshape(shape=[0, 3, 2], name=unit_test)'
+        )
+
         module = nn.LogSigmoid()
         self.assertEqual(str(module), 'LogSigmoid()')
 
