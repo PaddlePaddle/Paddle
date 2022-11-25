@@ -23,8 +23,6 @@ import unittest
 
 class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        weights = program_config.weights
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
@@ -49,14 +47,15 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
         for batch in [1, 2, 4]:
             for group in [1, 4, 32, -1]:
-                for epsilon in [0.0001, 0.0007, -1, 1]:
+                for epsilon in [0.00001, 0.00005]:
                     for data_layout in ['NCHW']:
                         dics = [
                             {
                                 "epsilon": epsilon,
                                 "groups": group,
                                 "data_layout": data_layout,
-                            }
+                            },
+                            {},
                         ]
                         ops_config = [
                             {
@@ -122,31 +121,31 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
+        self.trt_param.workspace_size = 2013265920
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), 1e-2
+
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), (1e-3, 1e-3)
-
         # for dynamic_shape
         generate_dynamic_shape(attrs)
+        self.trt_param.workspace_size = 2013265920
+
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-2
+
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
-
-    def add_skip_trt_case(self):
-        pass
 
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 
