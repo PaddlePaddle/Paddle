@@ -50,7 +50,7 @@ class MemoryPool {
   size_t block_size_;
 };
 
-// derived from managed, alloced by managed hbm
+// Derived from managed, alloced by managed hbm
 class HBMMemoryPool : public managed {
  public:
   HBMMemoryPool(size_t capacity, size_t block_size)
