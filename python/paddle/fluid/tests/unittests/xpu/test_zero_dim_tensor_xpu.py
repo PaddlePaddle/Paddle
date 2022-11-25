@@ -422,6 +422,7 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.searchsorted(x, y)
 
         self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 0)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
