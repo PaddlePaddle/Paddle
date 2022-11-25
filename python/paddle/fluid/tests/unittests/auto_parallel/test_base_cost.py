@@ -12,38 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import json
+import os
 import tempfile
+import unittest
+
+from test_cluster import cluster_json
 
 import paddle
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.utils as utils
-from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost.base_cost import (
-    build_comp_desc_from_dist_op,
-)
-from paddle.distributed.auto_parallel.cost.base_cost import (
-    build_comm_desc_from_dist_op,
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.cost import (
+    AllreduceSumOpCost,
+    _g_op_cost_factory,
 )
 from paddle.distributed.auto_parallel.cost.base_cost import (
     build_comm_costs_from_descs,
-)
-from paddle.distributed.auto_parallel.cost.base_cost import (
+    build_comm_desc_from_dist_op,
     build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
 )
-from paddle.distributed.auto_parallel.cost.base_cost import build_dp_costs
-from paddle.distributed.auto_parallel.cost import AllreduceSumOpCost
-from paddle.distributed.auto_parallel.cost import _g_op_cost_factory
-from test_cluster import cluster_json
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
+import unittest
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
