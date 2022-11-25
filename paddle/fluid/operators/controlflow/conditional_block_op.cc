@@ -105,6 +105,8 @@ class ConditionalBlockOp : public ConditionalOp {
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
 
       if (FLAGS_control_flow_use_new_executor) {
+        LOG_FIRST_N(INFO, 1)
+            << "[ControlFlow][ConditionalBlock] New Executor is Running.";
         if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
           std::set<std::string> skip_gc_vars(skip_vars.begin(),
                                              skip_vars.end());
@@ -215,6 +217,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
               << ", scope = " << &cur_scope;
 
       if (FLAGS_control_flow_use_new_executor) {
+        LOG_FIRST_N(INFO, 1)
+            << "[ControlFlow][ConditionalGradBlock] New Executor is Running.";
         if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
           VLOG(10) << "[interpreterCore cache]" << core_.get();
           VLOG_IF(10, core_)

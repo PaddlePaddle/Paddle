@@ -201,6 +201,7 @@ class WhileOp : public framework::OperatorBase {
     }
 
     if (FLAGS_control_flow_use_new_executor) {
+      LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
       if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for
@@ -388,6 +389,8 @@ class WhileGradOp : public framework::OperatorBase {
                           inside_og_names.size()));
 
     if (FLAGS_control_flow_use_new_executor) {
+      LOG_FIRST_N(INFO, 1)
+          << "[ControlFlow][WhileGradOp] New Executor is Running.";
       if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for

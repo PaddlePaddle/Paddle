@@ -381,13 +381,10 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           if (row_size >= 0) {
             ss << "[row_size=" << row_size << "]";
           }
-          std::string dtype = is_no_need_buffer_var
-                                  ? "unknown_dtype"
-                                  : GetDtype(*scope, var_name);
           std::string place = is_no_need_buffer_var
                                   ? "unknown_place"
                                   : GetPlace(*scope, var_name);
-          ss << ":" << dtype;
+          ss << ":" << GetDtype(*scope, var_name);
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
           ss << "(" << place << ")";
