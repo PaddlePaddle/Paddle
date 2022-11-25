@@ -102,13 +102,10 @@ __all__ = [
     'roi_pool',
     'roi_align',
     'image_resize',
-    'image_resize_short',
-    'resize_linear',
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
     'gather_nd',
-    'random_crop',
     'relu',
     'log',
     'crop_tensor',
@@ -5843,144 +5840,6 @@ def image_resize(
     return out
 
 
-@templatedoc(op_type="linear_interp")
-def resize_linear(
-    input,
-    out_shape=None,
-    scale=None,
-    name=None,
-    actual_shape=None,
-    align_corners=True,
-    align_mode=1,
-    data_format='NCW',
-):
-    """
-    This op resizes the input by performing linear interpolation based on given
-    output shape which specified by actual_shape, out_shape and scale
-    in priority order.
-
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in
-    the future and only use :attr:`out_shape` instead.
-
-    Align_corners and align_mode are optional parameters,the calculation
-    method of interpolation can be selected by them.
-
-    Example:
-
-    .. code-block:: text
-
-        For scale:
-
-            if align_corners = True && out_size > 1 :
-
-              scale_factor = (in_size-1.0)/(out_size-1.0)
-
-            else:
-
-              scale_factor = float(in_size/out_size)
-
-        Linear interpolation:
-
-          if:
-              align_corners = False , align_mode = 0
-
-              input : (N,C,W_in)
-              output: (N,C,W_out) where:
-
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-
-          else:
-
-              input : (N,C,W_in)
-              output: (N,C,W_out) where:
-              W_out = W_{in} * scale_{factor}
-
-    Parameters:
-        input(Variable): 3-D Tensor(NCW), its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
-        out_shape(list|tuple|Variable|None): Output shape of resize linear
-            layer, the shape is (out_w,). Default: None. If a list, each
-            element can be an integer or a Tensor Variable with shape: [1]. If a
-            Tensor Variable, its dimension size should be 1.
-        scale(float|Variable|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale`.
-             Default: None.
-        actual_shape(Variable): An optional input to specify output shape
-                                dynamically. If provided, image resize
-                                according to this given shape rather than
-                                :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the
-                                highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output
-                                shape dynamically, because :attr:`actual_shape`
-                                will be deprecated. When using actual_shape to
-                                specify output shape, one of :attr:`out_shape`
-                                and :attr:`scale` should also be set, otherwise
-                                errors would be occurred in graph constructing stage.
-                                Default: None
-        align_corners(bool): ${align_corners_comment}
-        align_mode(bool): ${align_mode_comment}
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCW"`, `"NWC"`.
-            The default is `"NCW"`. When it is `"NCW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_width]`.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: 3-D tensor(NCW or NWC).
-
-    Examples:
-        .. code-block:: python
-
-            #declarative mode
-            import paddle.fluid as fluid
-            import numpy as np
-            input = fluid.data(name="input", shape=[None,3,100])
-
-            output = fluid.layers.resize_linear(input=input,out_shape=[50,])
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-
-            input_data = np.random.rand(1,3,100).astype("float32")
-
-            output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data},
-                fetch_list=[output],
-                return_numpy=True)
-
-            print(output_data[0].shape)
-
-            # (1, 3, 50)
-
-            #imperative mode
-            import paddle.fluid.dygraph as dg
-
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                output = fluid.layers.resize_linear(input=input, out_shape=[50,])
-                print(output.shape)
-
-                # [1L, 3L, 50L]
-
-    """
-
-    return image_resize(
-        input,
-        out_shape,
-        scale,
-        name,
-        'LINEAR',
-        actual_shape,
-        align_corners,
-        align_mode,
-        data_format,
-    )
-
-
 @templatedoc(op_type="bilinear_interp")
 def resize_bilinear(
     input,
@@ -6505,46 +6364,6 @@ def resize_nearest(
     )
 
 
-def image_resize_short(input, out_short_len, resample='BILINEAR'):
-    """
-    This op resizes a batch of images. The short edge of input images will be
-    resized to the given 'out_short_len'. The long edge of input images
-    will be resized proportionately to make images' length-width ratio
-    constant.
-
-    Parameters:
-        input (Variable): 4-D tensor(NCHW), The input tensor of image resize layer.
-        out_short_len(int): The length of output images' short edge.
-        resample (str): resample method, default: BILINEAR.
-
-    Returns:
-        Variable: 4-D tensor(NCHW).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            input = fluid.data(name="input", shape=[None,3,6,9], dtype="float32")
-            out = fluid.layers.image_resize_short(input, out_short_len=3)
-    """
-    in_shape = input.shape
-    if len(in_shape) != 4:
-        raise ValueError(
-            "The rank of input must be 4 (num_batches, channels, in_h, in_w)."
-        )
-    hw = in_shape[2:4]
-    short_idx = hw.index(min(hw))
-    long_idx = 1 - short_idx
-    out_shape = list(hw)
-    out_shape[short_idx] = out_short_len
-    out_shape[long_idx] = int(
-        float(out_shape[long_idx])
-        * (float(out_short_len) / float(hw[short_idx]))
-        + 0.5
-    )
-    return image_resize(input=input, out_shape=out_shape, resample=resample)
-
-
 @deprecated(since="2.0.0", update_to="paddle.gather_nd")
 def gather_nd(input, index, name=None):
     """
@@ -6641,63 +6460,6 @@ def gather_nd(input, index, name=None):
         outputs={"Out": output},
     )
     return output
-
-
-@templatedoc()
-def random_crop(x, shape, seed=None):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        shape(${shape_type}): ${shape_comment}
-        seed(int|${seed_type}|None): ${seed_comment} By default, the seed will
-            get from `random.randint(-65536, 65535)`.
-
-    Returns:
-        ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            img = fluid.data("img", [None, 3, 256, 256])
-            # cropped_img is [-1, 3, 224, 224]
-            cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
-
-            # cropped_img2 shape: [-1, 2, 224, 224]
-            # cropped_img2 = fluid.layers.random_crop(img, shape=[2, 224, 224])
-
-            # cropped_img3 shape: [-1, 3, 128, 224]
-            # cropped_img3 = fluid.layers.random_crop(img, shape=[128, 224])
-
-    """
-    helper = LayerHelper("random_crop", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32'], 'random_crop'
-    )
-    check_type(shape, 'shape', (list, Variable), 'random_crop')
-    dtype = x.dtype
-    out = helper.create_variable_for_type_inference(dtype)
-    if seed is None:
-        seed = np.random.randint(-65536, 65536)
-    op_attrs = {"shape": shape}
-    if isinstance(seed, int):
-        op_attrs["startup_seed"] = seed
-        seed = helper.create_variable(
-            name=unique_name.generate("random_crop_seed"),
-            dtype="int64",
-            persistable=True,
-        )
-    elif not isinstance(seed, Variable):
-        raise ValueError("'seed' must be a Variable or an int.")
-    helper.append_op(
-        type="random_crop",
-        inputs={"X": x, "Seed": seed},
-        outputs={"Out": out, "SeedOut": seed},
-        attrs=op_attrs,
-    )
-    return out
 
 
 def log(x, name=None):

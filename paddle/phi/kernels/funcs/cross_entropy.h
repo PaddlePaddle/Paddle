@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <limits>
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -48,12 +49,27 @@ template <>
 struct TolerableValue<phi::dtype::float16> {
   HOSTDEVICE phi::dtype::float16 operator()(
       const phi::dtype::float16& x) const {
-    if (phi::dtype::isfinite(x))
+    if (phi::dtype::isfinite(x)) {
       return x;
-    else if (x > static_cast<phi::dtype::float16>(0))
+    } else if (x > static_cast<phi::dtype::float16>(0)) {
       return std::numeric_limits<phi::dtype::float16>::max();
-    else
+    } else {
       return std::numeric_limits<phi::dtype::float16>::min();
+    }
+  }
+};
+
+template <>
+struct TolerableValue<phi::dtype::bfloat16> {
+  HOSTDEVICE phi::dtype::bfloat16 operator()(
+      const phi::dtype::bfloat16& x) const {
+    if (phi::dtype::isfinite(x)) {
+      return x;
+    } else if (x > static_cast<phi::dtype::bfloat16>(0)) {
+      return std::numeric_limits<phi::dtype::bfloat16>::max();
+    } else {
+      return std::numeric_limits<phi::dtype::bfloat16>::min();
+    }
   }
 };
 
