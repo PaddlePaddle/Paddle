@@ -47,7 +47,6 @@ def flops(op_type: str, input_shapes: dict, attrs: dict) -> int:
         return flops
 
 
-
 def register_flops(op_type):
     """
     register flops computation function for operation.
@@ -71,12 +70,8 @@ def _dropout_flops(input_shapes, attrs):
 
 
 def _elementwise_flops_compute(input_shapes, attrs):
-    if isinstance(input_shapes, dict):
-        input_x = input_shapes.get("X")[0]
-        input_y = input_shapes.get("Y")[0]
-    else:
-        input_x = input_shapes[0]
-        input_y = input_shapes[1]
+    input_x = input_shapes.get("X")[0]
+    input_y = input_shapes.get("Y")[0]
     dim_x = len(input_x)
     dim_y = len(input_y)
     dim_output = max(dim_x, dim_y)
@@ -130,10 +125,7 @@ def _gelu_flops(input_shapes, attrs):
     For gelu(input):
         equation: flops = 5 * (numel)total number of elements in the input tensor.
     """
-    if isinstance(input_shapes, dict):
-        input = input_shapes.get('X')[0]
-    else:
-        input = input_shapes[0]
+    input = input_shapes.get('X')[0]
     return prod(input) * 5
 
 
@@ -145,10 +137,7 @@ def _layer_norm_flops(input_shapes, attrs):
         1): WITHOUT epsilon flops = 7 * (numel)total number of elements in the input tensor.
         2): WITH epsilon flops = 8 * (numel)total number of elements in the input tensor.
     """
-    if isinstance(input_shapes, dict):
-        input = input_shapes.get('X')[0]
-    else:
-        input = input_shapes[2]
+    input = input_shapes.get('X')[0]
     flops = prod(input) * 7
     if attrs.get('epsilon'):
         flops += prod(input)
@@ -166,14 +155,11 @@ def _matmul_flops(input_shapes, attrs):
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1)) ... dim_n_1, dim_m]
         equation: flops = 2 * numel(output) * dim_n
     """
-    if isinstance(input_shapes, dict):
-        x_shape = input_shapes.get("X")[0]
-        y_shape = input_shapes.get("Y")[0]
-    else:
-        x_shape = input_shapes[0]
-        y_shape = input_shapes[1]
+    x_shape = input_shapes.get("X")[0]
+    y_shape = input_shapes.get("Y")[0]
     if attrs.get('transpose_X') or attrs.get('transpose_x'):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
+
     if attrs.get('transpose_Y') or attrs.get('transpose_y'):
         y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
     dim_x = len(x_shape)
@@ -201,12 +187,8 @@ def _matmul_v2_flops(input_shapes, attrs):
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1))...dim_n_1, dim_m]
         equation: flops = 2 * numel(output) * dim_n
     """
-    if isinstance(input_shapes, dict):
-        x_shape = input_shapes.get('X')[0]
-        y_shape = input_shapes.get('Y')[0]
-    else:
-        x_shape = input_shapes[0]
-        y_shape = input_shapes[1]
+    x_shape = input_shapes.get('X')[0]
+    y_shape = input_shapes.get('Y')[0]
     if attrs.get('trans_x') is not None:
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
     if attrs.get('trans_y') is not None:
@@ -248,10 +230,7 @@ def _softmax_flops(input_shapes, attrs):
     For softmax(input):
         equation: flops = 3 * (numel)total number of elements in the input tensor.
     """
-    if isinstance(input_shapes, dict):
-        input = input_shapes.get('X')[0]
-    else:
-        input = input_shapes[0]
+    input = input_shapes.get('X')[0]
     return prod(input) * 3
 
 

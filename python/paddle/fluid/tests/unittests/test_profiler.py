@@ -229,46 +229,33 @@ class TestFLOPSAPI(unittest.TestCase):
         self.assertTrue(flops('dropout', {}, {'output': 4}) == 0)
         self.assertTrue(
             flops(
-                'matmul',
-                ([3, 12, 12, 8], [12, 12, 8]),
-                {'transpose_X': False, 'transpose_Y': True},
+                'transpose2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
             )
-            == 3 * 12 * 12 * 12 * 2 * 8
+            == 0
         )
         self.assertTrue(
             flops(
-                'matmul_v2',
-                ([3, 12, 12, 8], [12, 12, 8]),
-                {'trans_x': False, 'trans_y': True},
+                'reshape2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
             )
-            == 3 * 12 * 12 * 12 * 2 * 8
-        )
-        self.assertTrue(flops('transpose2', ([12, 12, 12],), {}) == 0)
-        self.assertTrue(flops('reshape2', ([12, 12, 12],), {}) == 0)
-        self.assertTrue(flops('unsqueeze2', ([12, 12, 12],), {}) == 0)
-        self.assertTrue(
-            flops('softmax', ([12, 12, 12],), {}) == 3 * 12 * 12 * 12
-        )
-        self.assertTrue(flops('gelu', ([12, 12, 12],), {}) == 5 * 12 * 12 * 12)
-        self.assertTrue(
-            flops('elementwise_add', ([12, 12, 12], [2, 2, 12]), {})
-            == 12 * 12 * 12
-        )
-        self.assertTrue(
-            flops('elementwise_mul', ([12, 12, 12], [2, 2, 12]), {})
-            == 12 * 12 * 12
-        )
-        self.assertTrue(
-            flops('elementwise_div', ([12, 12, 12], [2, 2, 12]), {})
-            == 12 * 12 * 12
+            == 0
         )
         self.assertTrue(
             flops(
-                'layer_norm',
-                ([12, 12, 12], [12, 12, 12], [12, 12, 12]),
-                {'epsilon': 0.01},
+                'unsqueeze2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
             )
-            == 12 * 12 * 12 * 8
+            == 0
         )
         self.assertTrue(
             flops(
@@ -309,6 +296,7 @@ class TestFLOPSAPI(unittest.TestCase):
         self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
+
 
 if __name__ == '__main__':
     paddle.enable_static()
