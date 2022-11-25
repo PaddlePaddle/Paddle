@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,19 +105,18 @@ static __global__ void FillIndexAndSegmentKernel(int2 *data,
   } while (false)
 
 template <typename KT, typename VT>
-static void RadixSortPairsImpl(const KT *keys_in,
-                               KT *keys_out,
+static void RadixSortPairs(const phi::GPUContext &ctx,
+                               const KT *keys_in,
                                const VT *values_in,
+                               KT *keys_out,
                                VT *values_out,
                                int64_t n,
-                               bool descending,
-                               int64_t begin_bit,
-                               int64_t end_bit,
-                               const phi::GPUContext &ctx) {
+                               bool descending = false,
+                               int64_t begin_bit = 0,
+                               int64_t end_bit = sizeof(KT) * 8) {
   if (keys_out == nullptr) {
     DenseTensor key_out_owner;
-    int64_t key_out_owner_size = n;
-    key_out_owner.Resize({key_out_owner_size});
+    key_out_owner.Resize({n});
     ctx.template Alloc<KT>(&key_out_owner);
     keys_out = key_out_owner.data<KT>();
   }
@@ -148,35 +146,14 @@ static void RadixSortPairsImpl(const KT *keys_in,
   }
 }
 
-template <typename KT, typename VT>
-static void RadixSortPairs(const phi::GPUContext &ctx,
-                           const KT *keys_in,
-                           KT *keys_out,
-                           const VT *values_in,
-                           VT *values_out,
-                           int64_t n,
-                           bool descending = false,
-                           int64_t begin_bit = 0,
-                           int64_t end_bit = sizeof(KT) * 8) {
-  RadixSortPairsImpl(keys_in,
-                     keys_out,
-                     values_in,
-                     values_out,
-                     n,
-                     descending,
-                     begin_bit,
-                     end_bit,
-                     ctx);
-}
-
 template <typename KT>
-static void RadixSortKeys(const KT *keys_in,
+static void RadixSortKeys(const phi::GPUContext &ctx,
+                          const KT *keys_in,
                           KT *keys_out,
                           int64_t n,
                           bool descending,
                           int64_t begin_bit,
-                          int64_t end_bit,
-                          const phi::GPUContext &ctx) {
+                          int64_t end_bit) {
   if (descending) {
     CUB_WRAPPER(cub::DeviceRadixSort::SortKeysDescending,
                 ctx,
@@ -222,14 +199,14 @@ static __global__ void SortPostprocessKernel(const T *in,
 }
 
 template <typename T>
-inline void SegmentedSortPairsByFullSort(const int64_t nsegments,
+inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
+                                         const int64_t nsegments,
                                          const int64_t nsort,
                                          const int64_t n,
                                          const bool descending,
                                          const T *const self_ptr,
                                          T *const values_ptr,
-                                         int64_t *const indices_ptr,
-                                         const phi::GPUContext &ctx) {
+                                         int64_t *const indices_ptr) {
   int64_t segment_bits = std::max<int64_t>(
       1L, static_cast<int64_t>(std::ceil(std::log2(nsegments))));
 
@@ -259,7 +236,7 @@ inline void SegmentedSortPairsByFullSort(const int64_t nsegments,
   auto i_s_ptr2 = reinterpret_cast<int2 *>(i_s_ptr2_base);
 
   RadixSortPairs<T, int2>(
-      ctx, self_ptr, nullptr, i_s_ptr, i_s_ptr2, n, descending);
+      ctx, self_ptr, i_s_ptr, nullptr, i_s_ptr2, n, descending);
 
   RadixSortKeys<int64_t>(reinterpret_cast<int64_t *>(i_s_ptr2),
                          reinterpret_cast<int64_t *>(i_s_ptr),
@@ -284,11 +261,6 @@ void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
                             const IndexType num_cols,
                             const bool descending) {
   auto gpu_stream = ctx.stream();
-  DenseTensor input_indices;
-  const std::vector<IndexType> dims = {num_rows, num_cols};
-  auto dim = phi::make_ddim(dims);
-  input_indices.Resize(dim);
-  ctx.template Alloc<IndexType>(&input_indices);
   size_t temp_storage_bytes = -1;
 
   IndexType numel = num_rows * num_cols;
@@ -303,7 +275,7 @@ void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
 
   T *sorted_out_ptr;
   IndexType *sorted_indices_ptr;
-  const T *inp = input->data<T>();
+  const T *input_data = input->data<T>();
   T *out = ctx.template Alloc<T>(output);
   IndexType *ind = ctx.template Alloc<IndexType>(indices);
   sorted_out_ptr = out;
@@ -319,13 +291,13 @@ void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
                                  nsort,
                                  n,
                                  descending,
-                                 inp,
+                                 input_data,
                                  sorted_out_ptr,
                                  sorted_indices_ptr,
                                  ctx);
 
     remaining -= n;
-    inp += n;
+    input_data += n;
     sorted_out_ptr += n;
     sorted_indices_ptr += n;
   }
