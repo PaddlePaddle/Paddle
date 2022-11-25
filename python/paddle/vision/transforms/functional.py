@@ -931,6 +931,7 @@ def to_grayscale(img, num_output_channels=1):
     Args:
         img (PIL.Image|np.array): Image to be converted to grayscale.
         num_output_chanels(int, optional): The number of channels for the output image. The default value is 1.
+
     Returns:
         PIL.Image or np.array: Grayscale version of the image.
             if num_output_channels = 1 : returned image is single channel
