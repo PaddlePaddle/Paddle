@@ -54,7 +54,6 @@ __all__ = [
     'yolov3_loss',
     'yolo_box',
     'retinanet_detection_output',
-    'box_decoder_and_assign',
     'collect_fpn_proposals',
 ]
 
@@ -2455,87 +2454,6 @@ def retinanet_detection_output(
     )
     output.stop_gradient = True
     return output
-
-
-@templatedoc()
-def box_decoder_and_assign(
-    prior_box, prior_box_var, target_box, box_score, box_clip, name=None
-):
-    """
-
-    ${comment}
-    Args:
-        prior_box(${prior_box_type}): ${prior_box_comment}
-        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
-        target_box(${target_box_type}): ${target_box_comment}
-        box_score(${box_score_type}): ${box_score_comment}
-        box_clip(${box_clip_type}): ${box_clip_comment}
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Tuple:
-
-        decode_box(${decode_box_type}): ${decode_box_comment}
-
-        output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            pb = fluid.data(
-                name='prior_box', shape=[None, 4], dtype='float32')
-            pbv = fluid.data(
-                name='prior_box_var', shape=[4], dtype='float32')
-            loc = fluid.data(
-                name='target_box', shape=[None, 4*81], dtype='float32')
-            scores = fluid.data(
-                name='scores', shape=[None, 81], dtype='float32')
-            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
-                pb, pbv, loc, scores, 4.135)
-
-    """
-    check_variable_and_dtype(
-        prior_box, 'prior_box', ['float32', 'float64'], 'box_decoder_and_assign'
-    )
-    check_variable_and_dtype(
-        target_box,
-        'target_box',
-        ['float32', 'float64'],
-        'box_decoder_and_assign',
-    )
-    check_variable_and_dtype(
-        box_score, 'box_score', ['float32', 'float64'], 'box_decoder_and_assign'
-    )
-    helper = LayerHelper("box_decoder_and_assign", **locals())
-
-    decoded_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype
-    )
-    output_assign_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype
-    )
-
-    helper.append_op(
-        type="box_decoder_and_assign",
-        inputs={
-            "PriorBox": prior_box,
-            "PriorBoxVar": prior_box_var,
-            "TargetBox": target_box,
-            "BoxScore": box_score,
-        },
-        attrs={"box_clip": box_clip},
-        outputs={
-            "DecodeBox": decoded_box,
-            "OutputAssignBox": output_assign_box,
-        },
-    )
-    return decoded_box, output_assign_box
 
 
 def collect_fpn_proposals(
