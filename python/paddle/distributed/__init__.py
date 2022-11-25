@@ -111,6 +111,4 @@ __all__ = [  # noqa
     "isend",
     "irecv",
     "reduce_scatter",
-    "rpc",
-    "stream",
 ]
