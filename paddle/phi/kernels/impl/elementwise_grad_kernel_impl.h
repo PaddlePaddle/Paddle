@@ -670,6 +670,11 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
 
       auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
       d_dout_t.device(place) = d_dout_t;
+    } else {
+      auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
+      auto dout_t = phi::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(&dout, "Input", "y", "MultiplyTripleGradKernel"));
+      d_dout_t.device(place) = static_cast<T>(0) * dout_t;
     }
   }
 
@@ -713,6 +718,11 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
 
       auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
       d_ddx_t.device(place) = d_ddx_t;
+    } else {
+      auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
+      auto x_t = phi::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(&x, "Input", "x", "MultiplyTripleGradKernel"));
+      d_ddx_t.device(place) = static_cast<T>(0) * x_t;
     }
   }
 
@@ -757,6 +767,11 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
 
       auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
       d_ddy_t.device(place) = d_ddy_t;
+    } else {
+      auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
+      auto y_t = phi::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(&y, "Input", "y", "MultiplyTripleGradKernel"));
+      d_ddy_t.device(place) = static_cast<T>(0) * y_t;
     }
   }
 }
