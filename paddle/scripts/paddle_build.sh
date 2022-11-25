@@ -583,7 +583,8 @@ function cmake_gen_and_build() {
     echo "pwd:"
     pwd
     echo "ls 1:"
-    ll build/dist
+    ll ${PADDLE_ROOT}/build
+    ll ${PADDLE_ROOT}/build/dist
     ll /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/
     echo "ls 2:"
     ll ${PADDLE_ROOT}/build/python/paddle/libs
