@@ -15,8 +15,6 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_HETERPS
-// #include
-// "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include <iostream>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
@@ -52,6 +50,7 @@ class MemoryPool {
   size_t block_size_;
 };
 
+// derived from managed, alloced by managed hbm
 class HBMMemoryPool : public managed {
  public:
   HBMMemoryPool(size_t capacity, size_t block_size)
