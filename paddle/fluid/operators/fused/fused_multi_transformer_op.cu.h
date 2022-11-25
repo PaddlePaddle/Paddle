@@ -1416,6 +1416,13 @@ class CublasFusedMLP {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
+      if (FLAGS_gemm_use_half_precision_compute_type) {
+        // This option default value is true, it tends to result NaN, but get
+        // better inference speed. you can turn off by using `export
+        // FLAGS_gemm_use_half_precision_compute_type=0`.
+        compute_type = CUBLAS_COMPUTE_16F;
+        scale_type = CUDA_R_16F;
+      }
     }
     if (std::is_same<T, platform::bfloat16>::value) {
       mat_type = CUDA_R_16BF;
@@ -1444,49 +1451,6 @@ class CublasFusedMLP {
         platform::dynload::cublasLtMatrixLayoutDestroy(w_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutDestroy(out_desc_));
-  }
-
-  void SetCublasMatrixLayout_(cublasLtMatrixLayout_t layout_desc,
-                              const bool transpose,
-                              const uint64_t cublas_row,
-                              const uint64_t cublas_col) {
-    cudaDataType_t mat_type = CUDA_R_32F;
-    if (std::is_same<T, paddle::platform::float16>::value) {
-      mat_type = CUDA_R_16F;
-    }
-    if (std::is_same<T, platform::bfloat16>::value) {
-      mat_type = CUDA_R_16BF;
-    }
-    if (std::is_same<T, double>::value) {
-      mat_type = CUDA_R_64F;
-    }
-
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatrixLayoutSetAttribute(
-            layout_desc,
-            CUBLASLT_MATRIX_LAYOUT_TYPE,
-            &mat_type,
-            sizeof(mat_type)));
-
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatrixLayoutSetAttribute(
-            layout_desc,
-            CUBLASLT_MATRIX_LAYOUT_ROWS,
-            transpose ? &cublas_row : &cublas_col,
-            sizeof(cublas_row)));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatrixLayoutSetAttribute(
-            layout_desc,
-            CUBLASLT_MATRIX_LAYOUT_COLS,
-            transpose ? &cublas_col : &cublas_row,
-            sizeof(cublas_col)));
-    int64_t cublas_ld = transpose ? cublas_row : cublas_col;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatrixLayoutSetAttribute(
-            layout_desc,
-            CUBLASLT_MATRIX_LAYOUT_LD,
-            &cublas_ld,
-            sizeof(cublas_ld)));
   }
 
   void Setup(const phi::DDim &x_shape,
@@ -1561,13 +1525,25 @@ class CublasFusedMLP {
     // else result + 0.0 * out.
     double alpha64 = 1.0, beta64 = add_residual ? 1.0 : 0.0;
     float alpha32 = 1.0f, beta32 = add_residual ? 1.0f : 0.0f;
+    half alpha16 = static_cast<half>(1.0),
+         beta16 =
+             add_residual ? static_cast<half>(1.0) : static_cast<half>(0.0);
+
     void *alpha = nullptr, *beta = nullptr;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
       beta = &beta64;
+    } else if (std::is_same<T, float>::value) {
+      alpha = &alpha64;
+      beta = &beta64;
+    } else if (std::is_same<T, phi::dtype::float16>::value) {
+      alpha = &alpha16;
+      beta = &beta16;
     } else {
-      alpha = &alpha32;
-      beta = &beta32;
+      PADDLE_ENFORCE_EQ(true,
+                        false,
+                        platform::errors::InvalidArgument(
+                            "Only support double, float, half data type. "));
     }
 
     const auto *x_data = x->data<T>();
@@ -1637,6 +1613,49 @@ class CublasFusedMLP {
               "But received activation=%s.",
               activation));
     }
+  }
+
+  void SetCublasMatrixLayout_(cublasLtMatrixLayout_t layout_desc,
+                              const bool transpose,
+                              const uint64_t cublas_row,
+                              const uint64_t cublas_col) {
+    cudaDataType_t mat_type = CUDA_R_32F;
+    if (std::is_same<T, paddle::platform::float16>::value) {
+      mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
+    }
+    if (std::is_same<T, double>::value) {
+      mat_type = CUDA_R_64F;
+    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_TYPE,
+            &mat_type,
+            sizeof(mat_type)));
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_ROWS,
+            transpose ? &cublas_row : &cublas_col,
+            sizeof(cublas_row)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_COLS,
+            transpose ? &cublas_col : &cublas_row,
+            sizeof(cublas_col)));
+    int64_t cublas_ld = transpose ? cublas_row : cublas_col;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_LD,
+            &cublas_ld,
+            sizeof(cublas_ld)));
   }
 
   const phi::GPUContext &dev_ctx_;

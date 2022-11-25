@@ -197,8 +197,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[1];
-    auto ffn1_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_ffn, dim_embed, false);
 
     auto ffn1_cublas_linear = CublasFusedMLP<T>(dev_ctx);
     const phi::DDim ffn1_input_shape({bsz_seq, dim_embed});

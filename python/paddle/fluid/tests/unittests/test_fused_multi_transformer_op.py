@@ -145,21 +145,27 @@ class TestFusedMultiTransformerOp(OpTest):
         )
 
     def generate_input_data(self):
-        self.query = np.random.rand(
-            self.batch_size, self.query_length, self.embed_dim
+        self.query = np.random.uniform(
+            -1, 1, (self.batch_size, self.query_length, self.embed_dim)
         ).astype(self.x_type)
+
         out_seq_len = self.key_length
         if self.has_cache_kv:
             assert self.training is False, ValueError(
                 'cache_kv can only used in inference'
             )
-            self.cache_kv = np.random.rand(
-                2,
-                self.batch_size,
-                self.num_heads,
-                self.cache_length,
-                self.head_dim,
+            self.cache_kv = np.random.uniform(
+                -1,
+                1,
+                (
+                    2,
+                    self.batch_size,
+                    self.num_heads,
+                    self.cache_length,
+                    self.head_dim,
+                ),
             ).astype(self.x_type)
+
             if self.gen_cache_kv:
                 self.cache_kv[:] = 0
             else:
@@ -169,12 +175,16 @@ class TestFusedMultiTransformerOp(OpTest):
 
         if self.has_pre_cache:
             out_seq_len += self.pre_cache_num
-            self.pre_cache_kv = np.random.rand(
-                2,
-                self.batch_size,
-                self.num_heads,
-                self.pre_cache_num,
-                self.head_dim,
+            self.pre_cache_kv = np.random.uniform(
+                -1,
+                1,
+                (
+                    2,
+                    self.batch_size,
+                    self.num_heads,
+                    self.pre_cache_num,
+                    self.head_dim,
+                ),
             ).astype(self.x_type)
 
         if self.has_attn_mask:
@@ -205,8 +215,8 @@ class TestFusedMultiTransformerOp(OpTest):
             self.attn_mask = None
         self.key, self.value = self.query, self.query
 
-        self.dout = np.random.random(
-            (self.batch_size, self.query_length, self.embed_dim)
+        self.dout = np.random.uniform(
+            -1, 1, (self.batch_size, self.query_length, self.embed_dim)
         ).astype(self.x_type)
 
     def GetBaselineOut(self):
