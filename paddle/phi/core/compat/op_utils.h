@@ -199,8 +199,12 @@ class OpUtilsMap {
  private:
   OpUtilsMap() = default;
 
+  // name map ( fluid op -> phi kenrel )
   paddle::flat_hash_map<std::string, std::string> base_kernel_name_map_;
+
+  // name map ( phi kenrel -> fluid op )
   paddle::flat_hash_map<std::string, std::string> fluid_op_name_map_;
+
   paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
