@@ -206,9 +206,7 @@ class Upsample(fluid.dygraph.Layer):
     def forward(self, inputs):
         # get dynamic upsample output shape
         shape_nchw = fluid.layers.shape(inputs)
-        shape_hw = fluid.layers.slice(
-            shape_nchw, axes=[0], starts=[2], ends=[4]
-        )
+        shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
         shape_hw.stop_gradient = True
         in_shape = fluid.layers.cast(shape_hw, dtype='int32')
         out_shape = in_shape * self.scale
