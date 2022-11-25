@@ -52,16 +52,6 @@ struct CastDataLayout {
   void apply();
 };
 
-#ifdef PADDLE_WITH_MKLDNN
-using OneDNNDataType = dnnl::memory::data_type;
-
-void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
-                               const OpKernelType& expected_kernel_type,
-                               const phi::DenseTensor& in,
-                               phi::DenseTensor* out);
-
-#endif
-
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,

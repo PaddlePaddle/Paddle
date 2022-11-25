@@ -108,15 +108,15 @@ class TransferLayoutFunctor {
             in_name_ == framework::GradVarName("Filter")) {
           target_layout = out_layout;
         }
-        VLOG(4) << "innerTransDataLayoutFromOneDNN: " << in_layout << "->"
+        VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
                 << target_layout;
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        phi::funcs::innerTransDataLayoutFromOneDNN(in_layout,
-                                                   target_layout,
-                                                   in_tensor,
-                                                   &out_tensor,
-                                                   dev_ctx_.GetPlace());
+        phi::funcs::TransDataLayoutFromOneDNN(in_layout,
+                                              target_layout,
+                                              in_tensor,
+                                              &out_tensor,
+                                              dev_ctx_.GetPlace());
       }
     } else {
       // Case3 - transfrom between Non-MKLDNN OPKernels

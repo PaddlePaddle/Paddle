@@ -33,8 +33,8 @@ static void DataCopy(const phi::DenseTensor &src_item,
       phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
-      VLOG(4) << "innerTransDataLayoutFromOneDNN";
-      phi::funcs::innerTransDataLayoutFromOneDNN(
+      VLOG(4) << "TransDataLayoutFromOneDNN";
+      phi::funcs::TransDataLayoutFromOneDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? phi::DataLayout::kNCHW

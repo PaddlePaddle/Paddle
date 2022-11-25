@@ -14,11 +14,8 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 
-#include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace framework {
@@ -91,32 +88,6 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
 
   out->set_layout(expected_kernel_type.data_layout_);
 }
-
-#ifdef PADDLE_WITH_MKLDNN
-using dnnl::memory;
-
-void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
-                               const OpKernelType& expected_kernel_type,
-                               const phi::DenseTensor& in,
-                               phi::DenseTensor* out) {
-  auto in_layout = kernel_type_for_var.data_layout_;
-  auto out_layout = expected_kernel_type.data_layout_;
-  auto place = expected_kernel_type.place_;
-
-  PADDLE_ENFORCE(
-      in_layout == DataLayout::ONEDNN && out_layout != DataLayout::ONEDNN,
-      platform::errors::InvalidArgument(
-          "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
-          "non-MKLDNN"));
-
-  phi::funcs::innerTransDataLayoutFromOneDNN(
-      in_layout,
-      paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout(),
-      in,
-      out,
-      place);
-}
-#endif
 
 }  // namespace framework
 }  // namespace paddle

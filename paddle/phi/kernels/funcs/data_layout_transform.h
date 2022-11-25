@@ -77,12 +77,12 @@ inline OneDNNDataType ToOneDNNDataType(DataType type) {
   return OneDNNDataType::undef;
 }
 
-void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const DenseTensor& in,
-                                    DenseTensor* out,
-                                    Place place,
-                                    bool always_copy = false);
+void TransDataLayoutFromOneDNN(DataLayout in_layout,
+                               DataLayout out_layout,
+                               const DenseTensor& in,
+                               DenseTensor* out,
+                               Place place,
+                               bool always_copy = false);
 void* GetDataFromTensor(const DenseTensor& tensor, OneDNNDataType type);
 
 #endif

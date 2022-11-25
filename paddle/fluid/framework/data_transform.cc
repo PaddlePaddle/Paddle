@@ -80,8 +80,20 @@ void TransformData(const OpKernelType &expected_kernel_type,
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        TransDataLayoutFromMKLDNN(
-            kernel_type_for_var, expected_kernel_type, in, &out);
+        PADDLE_ENFORCE(
+            kernel_type_for_var.data_layout_ == DataLayout::ONEDNN &&
+                expected_kernel_type.data_layout_ != DataLayout::ONEDNN,
+            platform::errors::InvalidArgument(
+                "TransDataLayoutFromOneDNN only supports "
+                "transform from ONEDNN to non-ONEDNN"));
+
+        phi::funcs::TransDataLayoutFromOneDNN(
+            kernel_type_for_var.data_layout_,
+            paddle::platform::MKLDNNDeviceContext::tls()
+                .get_cur_paddle_data_layout(),
+            in,
+            out,
+            expected_kernel_type.place_);
       }
     } else {
       // Case3 - transfrom between Non-MKLDNN OPKernels

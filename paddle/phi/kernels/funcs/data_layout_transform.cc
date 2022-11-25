@@ -52,12 +52,12 @@ void* GetDataFromTensor(const DenseTensor& tensor,
   }
 }
 
-void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const DenseTensor& in,
-                                    DenseTensor* out,
-                                    Place place,
-                                    bool always_copy) {
+void TransDataLayoutFromOneDNN(DataLayout in_layout,
+                               DataLayout out_layout,
+                               const DenseTensor& in,
+                               DenseTensor* out,
+                               Place place,
+                               bool always_copy) {
   // Set default as NCHW in case not specified
   out_layout = out_layout == DataLayout::ANY ? DataLayout::NCHW : out_layout;
 
