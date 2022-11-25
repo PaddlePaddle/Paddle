@@ -14,6 +14,10 @@
 
 import paddle
 import numpy as np
+<<<<<<< HEAD
+=======
+import scipy
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import scipy.sparse as sp
 import unittest
 import os
@@ -57,6 +61,7 @@ class TestMatmul(unittest.TestCase):
         sp_x.stop_gradient = False
         sp_y = origin_y.detach()
         sp_y.stop_gradient = False
+<<<<<<< HEAD
         sp_out = paddle.sparse.matmul(sp_x, sp_y)
 
         np.testing.assert_allclose(
@@ -78,14 +83,35 @@ class TestMatmul(unittest.TestCase):
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
         "only support cuda>=11.0",
     )
+=======
+        sp_out = paddle.incubate.sparse.matmul(sp_x, sp_y)
+
+        self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
+        if get_cuda_version() >= 11030:
+            dense_out.backward()
+            sp_out.backward()
+            self.assertTrue(
+                np.allclose(sp_x.grad.to_dense().numpy(),
+                            (dense_x.grad * mask).numpy()))
+            self.assertTrue(np.allclose(sp_y.grad.numpy(),
+                                        dense_y.grad.numpy()))
+
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11000, "only support cuda>=11.0")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def test_matmul_2d(self):
         self.check_result([16, 12], [12, 10], 'coo')
         self.check_result([16, 12], [12, 10], 'csr')
 
+<<<<<<< HEAD
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
         "only support cuda>=11.8",
     )
+=======
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11070, "only support cuda>=11.7")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def test_matmul_3d(self):
         self.check_result([8, 16, 12], [8, 12, 10], 'coo')
         self.check_result([8, 16, 12], [8, 12, 10], 'csr')
@@ -93,10 +119,16 @@ class TestMatmul(unittest.TestCase):
 
 class TestMaskedMatmul(unittest.TestCase):
     # x: dense, y: dense, out: sparse_`csr
+<<<<<<< HEAD
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11030,
         "only support on cuda>=11.3",
     )
+=======
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11030,
+                     "only support on cuda>=11.3")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def test_masked_matmul_2d(self):
         np_mask = np.random.rand(10, 6) < 0.2
 
@@ -113,6 +145,7 @@ class TestMaskedMatmul(unittest.TestCase):
         x = paddle.to_tensor(np_x, stop_gradient=False)
         y = paddle.to_tensor(np_y, stop_gradient=False)
         mask = paddle.to_tensor(np.ones([10, 6]) * np_mask).to_sparse_csr()
+<<<<<<< HEAD
         out = paddle.sparse.masked_matmul(x, y, mask)
 
         np.testing.assert_allclose(
@@ -134,6 +167,22 @@ class TestMaskedMatmul(unittest.TestCase):
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
         "only support on cuda>=11.8",
     )
+=======
+        out = paddle.incubate.sparse.masked_matmul(x, y, mask)
+
+        self.assertTrue(np.allclose(np_out.indptr, out.crows().numpy()))
+        self.assertTrue(np.allclose(np_out.indices, out.cols().numpy()))
+        self.assertTrue(np.allclose(np_out.data, out.values().numpy()))
+
+        out.backward()
+        self.assertTrue(np.allclose(out.is_sparse_csr(), True))
+        self.assertTrue(np.allclose(np_x_grad, x.grad.numpy()))
+        self.assertTrue(np.allclose(np_y_grad, y.grad.numpy()))
+
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11070,
+                     "only support on cuda>=11.7")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def test_masked_matmul_3d(self):
         paddle.set_default_dtype('float32')
         origin_x = paddle.rand([16, 16, 12])
@@ -152,6 +201,7 @@ class TestMaskedMatmul(unittest.TestCase):
         sp_x.stop_gradient = False
         sp_y = origin_y.detach()
         sp_y.stop_gradient = False
+<<<<<<< HEAD
         sp_out = paddle.sparse.matmul(sp_x, sp_y)
         sp_out.backward()
 
@@ -166,6 +216,16 @@ class TestMaskedMatmul(unittest.TestCase):
         np.testing.assert_allclose(
             sp_y.grad.numpy(), dense_y.grad.numpy(), rtol=1e-05
         )
+=======
+        sp_out = paddle.incubate.sparse.matmul(sp_x, sp_y)
+        sp_out.backward()
+
+        self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
+        self.assertTrue(
+            np.allclose(sp_x.grad.to_dense().numpy(),
+                        (dense_x.grad * mask).numpy()))
+        self.assertTrue(np.allclose(sp_y.grad.numpy(), dense_y.grad.numpy()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

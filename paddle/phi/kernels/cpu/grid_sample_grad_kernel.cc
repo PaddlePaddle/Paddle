@@ -76,6 +76,7 @@ static inline void ClipWithMask(const CPUContext& ctx,
           grid_scale_t *
           ((is_neg == one_more_flip).template cast<T>() -
            (is_neg != one_more_flip).template cast<T>()) *
+<<<<<<< HEAD
           in_bound;
       grid_slice_t.device(place) = clipped;
     }
@@ -137,6 +138,8 @@ static inline void ClipWithMask3D(const CPUContext& ctx,
           grid_scale_t *
           ((is_neg == one_more_flip).template cast<T>() -
            (is_neg != one_more_flip).template cast<T>()) *
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           in_bound;
       grid_slice_t.device(place) = clipped;
     }

@@ -22,21 +22,34 @@ import sys
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 import paddle
+<<<<<<< HEAD
 from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
     XPUOpTestWrapper,
 )
+=======
+import paddle.fluid as fluid
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 class XPUTestFlattenOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         self.op_name = 'flatten_contiguous_range'
         self.use_dynamic_create_class = False
 
     class TestFlattenOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.set_xpu()
             self.op_type = "flatten_contiguous_range"
@@ -54,7 +67,11 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
             self.init_attrs()
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
                 "XShape": np.random.random(self.in_shape).astype(self.dtype),
+=======
+                "XShape": np.random.random(self.in_shape).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
         def set_xpu(self):
@@ -70,7 +87,11 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 0
             self.stop_axis = -1
+<<<<<<< HEAD
             self.new_shape = 120
+=======
+            self.new_shape = (120)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def init_attrs(self):
             self.attrs = {
@@ -80,6 +101,10 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
             }
 
     class TestFlattenOp_1(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 1
@@ -89,10 +114,18 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
             }
 
     class TestFlattenOp_2(TestFlattenOp):
+=======
+                "stop_axis": self.stop_axis
+            }
+
+    class TestFlattenOp_2(TestFlattenOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 0
@@ -102,10 +135,18 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
             }
 
     class TestFlattenOp_3(TestFlattenOp):
+=======
+                "stop_axis": self.stop_axis
+            }
+
+    class TestFlattenOp_3(TestFlattenOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 0
@@ -115,10 +156,18 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
             }
 
     class TestFlattenOp_4(TestFlattenOp):
+=======
+                "stop_axis": self.stop_axis
+            }
+
+    class TestFlattenOp_4(TestFlattenOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = -2
@@ -128,10 +177,18 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
             }
 
     class TestFlattenOp_5(TestFlattenOp):
+=======
+                "stop_axis": self.stop_axis
+            }
+
+    class TestFlattenOp_5(TestFlattenOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 2
@@ -141,10 +198,18 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
             }
 
     class TestFlattenOpSixDims(TestFlattenOp):
+=======
+                "stop_axis": self.stop_axis
+            }
+
+    class TestFlattenOpSixDims(TestFlattenOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 3, 2, 4, 4)
             self.start_axis = 3
@@ -154,10 +219,18 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
             }
 
     class TestFlattenOp_Float32(TestFlattenOp):
+=======
+                "stop_axis": self.stop_axis
+            }
+
+    class TestFlattenOp_Float32(TestFlattenOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 0
@@ -168,10 +241,18 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
             }
 
     class TestFlattenOp_int32(TestFlattenOp):
+=======
+                "stop_axis": self.stop_axis
+            }
+
+    class TestFlattenOp_int32(TestFlattenOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 0
@@ -183,13 +264,21 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
             self.attrs = {
                 "start_axis": self.start_axis,
                 "stop_axis": self.stop_axis,
+<<<<<<< HEAD
                 'use_xpu': True,
+=======
+                'use_xpu': True
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
         def test_check_grad(self):
             pass
 
     class TestFlattenOp_int8(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 0
@@ -200,13 +289,21 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
+=======
+                "stop_axis": self.stop_axis
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
         def test_check_grad(self):
             pass
 
     class TestFlattenOp_int64(TestFlattenOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def init_test_case(self):
             self.in_shape = (3, 2, 5, 4)
             self.start_axis = 0
@@ -217,7 +314,11 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {
                 "start_axis": self.start_axis,
+<<<<<<< HEAD
                 "stop_axis": self.stop_axis,
+=======
+                "stop_axis": self.stop_axis
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
         def test_check_grad(self):
@@ -225,6 +326,7 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
 
 
 class TestFlatten2OpError(unittest.TestCase):
+
     def test_errors(self):
         image_shape = (2, 3, 4, 4)
         x = (
@@ -239,25 +341,43 @@ class TestFlatten2OpError(unittest.TestCase):
         x = x.astype('float32')
 
         def test_ValueError1():
+<<<<<<< HEAD
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
+=======
+            x_var = paddle.static.data(name="x",
+                                       shape=image_shape,
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = paddle.flatten(x_var, start_axis=2, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError1)
 
         def test_ValueError2():
+<<<<<<< HEAD
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
+=======
+            x_var = paddle.static.data(name="x",
+                                       shape=image_shape,
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.flatten(x_var, start_axis=10, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError2)
 
         def test_ValueError3():
+<<<<<<< HEAD
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
+=======
+            x_var = paddle.static.data(name="x",
+                                       shape=image_shape,
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.flatten(x_var, start_axis=2, stop_axis=10)
 
         self.assertRaises(ValueError, test_ValueError3)
@@ -274,9 +394,15 @@ class TestFlatten2OpError(unittest.TestCase):
                 / 100.0
             )
             x2 = x2.astype('float16')
+<<<<<<< HEAD
             x2_var = paddle.fluid.data(
                 name='x2', shape=[3, 2, 4, 5], dtype='float16'
             )
+=======
+            x2_var = paddle.fluid.data(name='x2',
+                                       shape=[3, 2, 4, 5],
+                                       dtype='float16')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.flatten(x2_var)
 
         self.assertRaises(TypeError, test_type)
@@ -288,6 +414,7 @@ class TestFlatten2OpError(unittest.TestCase):
 
 
 class TestStaticFlattenPythonAPI(unittest.TestCase):
+
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
@@ -297,9 +424,15 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
 
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, paddle.static.Program()):
+<<<<<<< HEAD
             x = paddle.static.data(
                 name="x", shape=[2, 3, 4, 4], dtype='float32'
             )
+=======
+            x = paddle.static.data(name="x",
+                                   shape=[2, 3, 4, 4],
+                                   dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = self.execute_api(x, start_axis=-2, stop_axis=-1)
 
         exe = paddle.static.Executor(place=paddle.XPUPlace(0))
@@ -308,11 +441,13 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
 
 
 class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
+
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return x.flatten_(start_axis, stop_axis)
 
 
 class TestFlattenPython(unittest.TestCase):
+
     def test_python_api(self):
         image_shape = (2, 3, 4, 4)
         x = (

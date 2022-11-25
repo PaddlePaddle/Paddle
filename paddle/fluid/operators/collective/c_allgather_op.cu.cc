@@ -96,7 +96,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_allgather,
                         ops::CAllGatherOpCUDAKernel<float>,
                         ops::CAllGatherOpCUDAKernel<double>,
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         ops::CAllGatherOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CAllGatherOpCUDAKernel<int>,

@@ -133,8 +133,13 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   for (auto& in_name : inputs) {
     VLOG(3) << "Custom Operator: input name - " << in_name;
     if (detail::IsDuplicableVar(in_name)) {
+<<<<<<< HEAD
       // return const std::vector<const phi::DenseTensor*>
       auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
+=======
+      // return const std::vector<const Tensor*>
+      auto vec_x = ctx.MultiInput<Tensor>(in_name);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_NE(vec_x.empty(),
                         true,
                         platform::errors::NotFound(
@@ -161,7 +166,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
     } else {
+<<<<<<< HEAD
       auto* x = ctx.Input<phi::DenseTensor>(in_name);
+=======
+      auto* x = ctx.Input<Tensor>(in_name);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_NOT_NULL(
           x,
           platform::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
@@ -231,7 +240,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                          "If custom operator's outputs contains `paddle::Vec("
                          ")` type, "
                          "it only can hold one output."));
+<<<<<<< HEAD
       auto vec_out = ctx.MultiOutput<phi::DenseTensor>(out_name);
+=======
+      auto vec_out = ctx.MultiOutput<Tensor>(out_name);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_NE(vec_out.empty(),
                         true,
                         platform::errors::NotFound(
@@ -253,7 +266,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       }
       kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
     } else {
+<<<<<<< HEAD
       auto* out = ctx.Output<phi::DenseTensor>(out_name);
+=======
+      auto* out = ctx.Output<Tensor>(out_name);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_NOT_NULL(out,
                               platform::errors::NotFound(
                                   "Output tensor (%s) is nullptr.", out_name));
@@ -431,7 +448,11 @@ class CustomOperator : public OperatorWithKernel {
    */
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const OpKernelType& expected_kernel_type) const override {
     return OpKernelType(expected_kernel_type.data_type_,
                         expected_kernel_type.place_,

@@ -23,7 +23,12 @@ class StridedSliceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+<<<<<<< HEAD
     VLOG(4) << "convert strided_slice op to tensorrt layer";
+=======
+    VLOG(4) << "convert fluid StridedSlice op to tensorrt Slice layer";
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
@@ -39,8 +44,23 @@ class StridedSliceOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> strides =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+<<<<<<< HEAD
     std::vector<int> decrease_axises =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
+=======
+    int axes_size = axes.size();
+    nvinfer1::Dims start;
+    nvinfer1::Dims stride;
+    nvinfer1::Dims size;
+    start.nbDims = input_dims.nbDims;
+    stride.nbDims = input_dims.nbDims;
+    size.nbDims = input_dims.nbDims;
+    for (int i = 0; i < input_dims.nbDims; i++) {
+      start.d[i] = 0;
+      stride.d[i] = 1;
+      size.d[i] = input_dims.d[i];
+    }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {
@@ -67,6 +87,7 @@ class StridedSliceOpConverter : public OpConverter {
                 ends[i],
                 starts[i]));
       }
+<<<<<<< HEAD
     }
 
     nvinfer1::ILayer* layer = nullptr;
@@ -87,6 +108,15 @@ class StridedSliceOpConverter : public OpConverter {
         trt_end_dims.d[trt_axis] = ends[i];
         trt_step_dims.d[axes[i]] = strides[i];
         if (starts[i] < 0 || ends[i] < 0) has_neg_indices = true;
+=======
+      auto* layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, start, size, stride);
+      RreplenishLayerAndOutput(
+          layer, "strided_slice", {output_name}, test_mode);
+    } else {
+      for (int i = 0; i < axes_size; i++) {
+        start.d[axes[i]] = starts[i];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       }
       auto* shape_tensor = Shape(input);
       auto* start_tensor = Add1DConstantLayer(trt_start_dims);
@@ -109,6 +139,7 @@ class StridedSliceOpConverter : public OpConverter {
         }
       }
 
+<<<<<<< HEAD
       auto* size_tensor =
           Sub(start_tensor, Min(Concat(end_vec_tensor), shape_tensor));
       auto zero_t =
@@ -179,6 +210,36 @@ class StridedSliceOpConverter : public OpConverter {
         reshape_layer->setReshapeDimensions(real_trt_size_dims);
         layer = static_cast<nvinfer1::ILayer*>(reshape_layer);
       }
+=======
+      int* weight_data = create_weights(const_weight, "size");
+
+      TensorRTEngine::Weight weight{nvinfer1::DataType::kINT32,
+                                    static_cast<void*>(weight_data),
+                                    static_cast<size_t>(input_dims.nbDims)};
+
+      int input_dim_size = input_dims.nbDims;
+      nvinfer1::Dims input_shape;
+      input_shape.nbDims = 1;
+      input_shape.d[0] = input_dim_size;
+
+      auto const_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
+
+      auto shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
+      // slice layer
+      auto* layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, start, size, stride);
+      // elementwise layer for get size tensor
+      auto size_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *shape_layer->getOutput(0),
+                               *const_layer->getOutput(0),
+                               nvinfer1::ElementWiseOperation::kSUB);
+      layer->setInput(2, *size_layer->getOutput(0));
+      RreplenishLayerAndOutput(
+          layer, "strided_slice", {output_name}, test_mode);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     RreplenishLayerAndOutput(layer, "strided_slice", {output_name}, test_mode);
   }

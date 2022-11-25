@@ -27,6 +27,7 @@ np.random.seed(2021)
 
 
 class TestNpuDensityPriorBoxOp(OpTest):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -88,9 +89,14 @@ class TestNpuDensityPriorBoxOp(OpTest):
         if len(self.fixed_sizes) > 0 and len(self.densities) > 0:
             for density in self.densities:
                 if len(self.fixed_ratios) > 0:
+<<<<<<< HEAD
                     self.num_priors += len(self.fixed_ratios) * (
                         pow(density, 2)
                     )
+=======
+                    self.num_priors += len(self.fixed_ratios) * (pow(
+                        density, 2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.offset = 0.5
         self.atol = 1e-5
 
@@ -173,6 +179,7 @@ class TestNpuDensityPriorBoxOp(OpTest):
 
 
 class TestNpuDensityPriorBoxFlatten(TestNpuDensityPriorBoxOp):
+
     def set_density(self):
         self.densities = [3, 4]
         self.fixed_sizes = [1.0, 2.0]
@@ -185,6 +192,7 @@ class TestNpuDensityPriorBoxFlatten(TestNpuDensityPriorBoxOp):
 
 
 class TestNpuDensityPriorBoxOp1(TestNpuDensityPriorBoxOp):
+
     def set_density(self):
         super().set_density()
         self.layer_w = 1
@@ -192,6 +200,7 @@ class TestNpuDensityPriorBoxOp1(TestNpuDensityPriorBoxOp):
 
 
 class TestNpuDensityPriorBoxOp2(TestNpuDensityPriorBoxOp):
+
     def set_density(self):
         super().set_density()
         self.layer_w = 15
@@ -201,12 +210,14 @@ class TestNpuDensityPriorBoxOp2(TestNpuDensityPriorBoxOp):
 
 
 class TestNpuDensityPriorBoxOp3(TestNpuDensityPriorBoxOp):
+
     def set_density(self):
         super().set_density()
         self.fixed_ratios = [1.0, 4.0]
 
 
 class TestNpuDensityPriorBoxOpFP16(TestNpuDensityPriorBoxOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 

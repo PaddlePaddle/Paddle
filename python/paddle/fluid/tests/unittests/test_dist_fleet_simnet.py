@@ -21,6 +21,7 @@ paddle.enable_static()
 
 
 class TestDistSimnetASync2x2(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
@@ -46,9 +47,15 @@ class TestDistSimnetASync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_simnet_bow.py", delta=1e-5, check_error_log=True
         )
+=======
+        self.check_with_place("dist_fleet_simnet_bow.py",
+                              delta=1e-5,
+                              check_error_log=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

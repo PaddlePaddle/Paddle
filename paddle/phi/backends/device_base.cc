@@ -309,7 +309,10 @@ void DeviceInterface::CCLReduce(void* in_data,
                                 size_t num,
                                 ccl::CCLDataType data_type,
                                 ccl::CCLReduceOp reduce_op,
+<<<<<<< HEAD
                                 size_t root_id,
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                 const ccl::CCLComm& ccl_comm,
                                 const stream::Stream& stream) {
   INTERFACE_UNIMPLEMENT;
@@ -368,6 +371,7 @@ void DeviceInterface::BlasAXPBY(size_t dev_id,
   INTERFACE_UNIMPLEMENT;
 }
 
+<<<<<<< HEAD
 // profiler
 void DeviceInterface::ProfilerInitialize(
     paddle::platform::TraceEventCollector* collector, void** user_data) {
@@ -401,6 +405,8 @@ void DeviceInterface::ProfilerCollectTraceData(
   INTERFACE_UNIMPLEMENT;
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi

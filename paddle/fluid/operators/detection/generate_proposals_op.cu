@@ -131,6 +131,7 @@ template <typename DeviceContext, typename T>
 class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *scores = context.Input<phi::DenseTensor>("Scores");
     auto *bbox_deltas = context.Input<phi::DenseTensor>("BboxDeltas");
     auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
@@ -143,6 +144,19 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
                         "Input",
                         "Variances",
                         "GenerateProposals");
+=======
+    auto *scores = context.Input<Tensor>("Scores");
+    auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
+    auto *im_info = context.Input<Tensor>("ImInfo");
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"),
+                                   "Input",
+                                   "Anchors",
+                                   "GenerateProposals");
+    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
+                                     "Input",
+                                     "Variances",
+                                     "GenerateProposals");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");

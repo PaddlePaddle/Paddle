@@ -19,6 +19,7 @@ __all__ = []
 
 
 class ASPOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super().__init__(optimizer)
         self.inner_opt = optimizer
@@ -33,12 +34,20 @@ class ASPOptimizer(MetaOptimizerBase):
         ]
         self.meta_optimizers_black_list = []
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
         super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(ASPOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _can_apply(self):
         if not self.role_maker._is_collective:

@@ -331,6 +331,10 @@ __device__ __forceinline__ void Reduce(T* out,
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
+<<<<<<< HEAD
+=======
+ * BlockSize: Identifies the current device thread index method. For xpu,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
  * core_id() is used as the index.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -345,7 +349,16 @@ __device__ __forceinline__ void Reduce(T* out,
  * out: The register pointer of out, the size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
+<<<<<<< HEAD
 template <typename InT, typename OutT, int NX, int NY, class OpFunc>
+=======
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {

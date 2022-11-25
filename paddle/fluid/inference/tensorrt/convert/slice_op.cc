@@ -10,6 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace paddle {
 namespace inference {
@@ -41,6 +45,10 @@ class SliceOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> decrease_axises =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto input_dims = input->getDimensions();
     nvinfer1::ILayer* layer = nullptr;
 
@@ -173,6 +181,125 @@ class SliceOpConverter : public OpConverter {
       trt_step_dims.nbDims = chw_input_dims.nbDims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
+<<<<<<< HEAD
+      // input : [C,H,W]
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i] - 1;
+        trt_start_dims.d[trt_axis] = starts[i];
+        trt_size_dims.d[trt_axis] = ends[i] - starts[i];
+      }
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
+      nvinfer1::Dims real_trt_size_dims;
+      real_trt_size_dims.nbDims = 0;
+
+      if (decrease_axises.size() > 0) {
+        for (size_t i = 0; i < decrease_axises.size(); i++) {
+          decrease_axises[i]--;
+        }
+=======
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      auto nchw_input_dims = input->getDimensions();
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = nchw_input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
+      nvinfer1::Dims trt_size_dims = trt_start_dims;
+      nvinfer1::Dims trt_end_dims = trt_start_dims;
+      nvinfer1::Dims trt_step_dims = trt_start_dims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+
+      // input : [N,C,H,W]
+      bool has_neg_indices = false;
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i];
+        trt_start_dims.d[trt_axis] = starts[i];
+        trt_end_dims.d[trt_axis] = ends[i];
+        if (starts[i] < 0 || ends[i] < 0) has_neg_indices = true;
+      }
+      auto* shape_tensor = Shape(input);
+      auto* start_tensor = Add1DConstantLayer(trt_start_dims);
+      if (has_neg_indices) {
+        start_tensor = FixNegIndices(shape_tensor, start_tensor);
+      }
+
+      std::vector<nvinfer1::ITensor*> end_vec_tensor;
+      for (int i = 0; i < trt_end_dims.nbDims; i++) {
+        end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
+      }
+
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i];
+        if (ends[i] >= 0) {
+          end_vec_tensor[trt_axis] = Add1DConstantLayer(ends[i]);
+        } else {
+          end_vec_tensor[trt_axis] =
+              Sum(end_vec_tensor[trt_axis], Add1DConstantLayer(ends[i]));
+        }
+      }
+
+// CI failed in trt 6015 but success in 7134, may be a trt bug
+#if IS_TRT_VERSION_GE(7134)
+      auto* size_tensor =
+          Sub(Min(Concat(end_vec_tensor), shape_tensor), start_tensor);
+#else
+      auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
+#endif
+
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
+      layer->setInput(1, *start_tensor);
+      layer->setInput(2, *size_tensor);
+
+      if (decrease_axises.size() > 0) {
+        std::vector<int32_t> gather_indices;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+        for (int i = 0; i < trt_size_dims.nbDims; i++) {
+          if (decrease_axises.end() !=
+              std::find(decrease_axises.begin(), decrease_axises.end(), i))
+            continue;
+<<<<<<< HEAD
+          real_trt_size_dims.d[real_trt_size_dims.nbDims] = trt_size_dims.d[i];
+          real_trt_size_dims.nbDims++;
+        }
+        if (real_trt_size_dims.nbDims == 0) {
+          real_trt_size_dims.nbDims = 1;
+          real_trt_size_dims.d[0] = 1;
+        }
+        auto reshape_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+        reshape_layer->setReshapeDimensions(real_trt_size_dims);
+        layer = static_cast<nvinfer1::ILayer*>(reshape_layer);
+      }
+=======
+          gather_indices.push_back(i);
+        }
+        if (gather_indices.empty())
+          gather_indices.push_back(decrease_axises[0]);
+        auto real_size_tensor = Gather(size_tensor, gather_indices);
+        layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+        layer->setInput(1, *real_size_tensor);
+      }
+#else
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      int decrease_axis = decrease_axises.size() == 0 ? -1 : decrease_axises[0];
+      plugin::SlicePluginDynamic* plugin = new plugin::SlicePluginDynamic(
+          starts, ends, axes, decrease_axis, with_fp16);
+      layer = engine_->AddDynamicPlugin(&input, 1, plugin);
+#endif
+    } else {
+#if IS_TRT_VERSION_GE(6000)
+      auto chw_input_dims = input->getDimensions();
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = chw_input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * chw_input_dims.nbDims);
+      nvinfer1::Dims trt_size_dims = chw_input_dims;
+      nvinfer1::Dims trt_step_dims;
+      trt_step_dims.nbDims = chw_input_dims.nbDims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+
       // input : [C,H,W]
       for (size_t i = 0; i < axes.size(); i++) {
         int trt_axis = axes[i] - 1;
@@ -204,6 +331,14 @@ class SliceOpConverter : public OpConverter {
         reshape_layer->setReshapeDimensions(real_trt_size_dims);
         layer = static_cast<nvinfer1::ILayer*>(reshape_layer);
       }
+#else
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::SlicePlugin* plugin =
+          new plugin::SlicePlugin(starts, ends, axes, with_fp16);
+      layer = engine_->AddPlugin(&input, 1, plugin);
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
   }

@@ -139,9 +139,14 @@ class Momentum(Optimizer):
         if momentum is None:
             raise ValueError("momentum is not set")
 
+<<<<<<< HEAD
         predicate = lambda regular: isinstance(
             regular, (L2DecayRegularizer, float)
         )
+=======
+        predicate = lambda regular: isinstance(regular,
+                                               (L2DecayRegularizer, float))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if isinstance(parameters, list):
             if isinstance(parameters[0], dict):
                 for param_group in parameters:
@@ -157,6 +162,7 @@ class Momentum(Optimizer):
                     param_group['weight_decay'] = py_regular
 
         py_regular = None if predicate(weight_decay) else weight_decay
+<<<<<<< HEAD
         super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
@@ -164,6 +170,13 @@ class Momentum(Optimizer):
             grad_clip=grad_clip,
             name=name,
         )
+=======
+        super(Momentum, self).__init__(learning_rate=learning_rate,
+                                       parameters=parameters,
+                                       weight_decay=py_regular,
+                                       grad_clip=grad_clip,
+                                       name=name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
@@ -211,6 +224,7 @@ class Momentum(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
+<<<<<<< HEAD
             var = layers.create_global_var(
                 name=var_name,
                 shape=param.shape,
@@ -228,6 +242,21 @@ class Momentum(Optimizer):
                     "out_dtype": core.VarDesc.VarType.FP32,
                 },
             )
+=======
+            var = layers.create_global_var(name=var_name,
+                                           shape=param.shape,
+                                           value=0,
+                                           dtype='float32',
+                                           persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(type="cast",
+                            inputs={"X": [param]},
+                            outputs={"Out": [var]},
+                            attrs={
+                                "in_dtype": param.dtype,
+                                "out_dtype": core.VarDesc.VarType.FP32
+                            })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self._master_weights[param.name] = var
         return var
 
@@ -250,6 +279,7 @@ class Momentum(Optimizer):
             self._master_weights[param.name] if find_master else param
         )
         target_name = target_param.name
+<<<<<<< HEAD
         if (
             name not in self._accumulators
             or target_name not in self._accumulators[name]
@@ -259,6 +289,13 @@ class Momentum(Optimizer):
                     name, target_name
                 )
             )
+=======
+        if (name not in self._accumulators
+                or target_name not in self._accumulators[name]):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
@@ -402,6 +439,7 @@ class Momentum(Optimizer):
             outputs["MasterParamOut"] = master_weight
 
         # create the momentum optimize op
+<<<<<<< HEAD
         momentum_op = block.append_op(
             type=self.type,
             inputs=inputs,
@@ -409,6 +447,13 @@ class Momentum(Optimizer):
             attrs=attrs,
             stop_gradient=True,
         )
+=======
+        momentum_op = block.append_op(type=self.type,
+                                      inputs=inputs,
+                                      outputs=outputs,
+                                      attrs=attrs,
+                                      stop_gradient=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return momentum_op
 
@@ -613,6 +658,7 @@ class Momentum(Optimizer):
                         ],
                     }
                     attrs = {
+<<<<<<< HEAD
                         "mu": self._momentum,
                         "use_nesterov": self._use_nesterov,
                         "regularization_method": self._regularization_method_dict[
@@ -623,6 +669,16 @@ class Momentum(Optimizer):
                         "regularization_coeff": self._regularization_coeff_dict[
                             key
                         ][param_group_idx],
+=======
+                        "mu":
+                        self._momentum,
+                        "use_nesterov":
+                        self._use_nesterov,
+                        "regularization_method":
+                        self._regularization_method_dict[key],
+                        "regularization_coeff":
+                        self._regularization_coeff_dict[key],
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     }
                     if find_master:
                         inputs["MasterParam"] = self._master_weight_dict[key][
@@ -632,6 +688,7 @@ class Momentum(Optimizer):
                             key
                         ][param_group_idx]
                         attrs["multi_precision"] = find_master
+<<<<<<< HEAD
                     target_block.append_op(
                         type="merged_momentum",
                         inputs=inputs,
@@ -639,6 +696,13 @@ class Momentum(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
+=======
+                    target_block.append_op(type="merged_momentum",
+                                           inputs=inputs,
+                                           outputs=outputs,
+                                           attrs=attrs,
+                                           stop_gradient=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return None
 
     def _update_param_group(self, parameters):

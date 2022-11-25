@@ -432,8 +432,13 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   The fused_attention operator is the same as following pseudo codes:
 
+<<<<<<< HEAD
   // @input: [batch_size, seq_len, embed_dim]
   // @final_out: [batch_size, seq_len, num_heads, head_dim]
+=======
+  // @input: [batch_size, seq_len, embed_dim] 
+  // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   residual = input
   if (pre_layernorm)
     query = layer_norm(input);
@@ -720,9 +725,13 @@ REGISTER_OPERATOR(fused_attention,
                   ops::FusedAttentionOpMaker,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
+<<<<<<< HEAD
 REGISTER_OPERATOR(fused_attention_grad,
                   ops::FusedAttentionGradOp,
                   ops::FusedAttentionGradNoNeedBufferInferer);
+=======
+REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 REGISTER_OP_VERSION(fused_attention)
     .AddCheckpoint(

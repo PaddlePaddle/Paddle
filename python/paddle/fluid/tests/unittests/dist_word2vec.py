@@ -30,6 +30,7 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistWord2vec2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2):
         BATCH_SIZE = batch_size
 
@@ -92,12 +93,18 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=dict_size,
                 act='softmax',
                 param_attr=fluid.ParamAttr(
+<<<<<<< HEAD
                     initializer=fluid.initializer.Constant(value=0.1)
                 ),
             )
             cost = fluid.layers.cross_entropy(
                 input=predict_word, label=words[4]
             )
+=======
+                    initializer=fluid.initializer.Constant(value=0.1)))
+            cost = fluid.layers.cross_entropy(input=predict_word,
+                                              label=words[4])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             avg_cost = paddle.mean(cost)
             return avg_cost, predict_word
 
@@ -105,9 +112,15 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
         dict_size = len(word_dict)
 
         first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
+<<<<<<< HEAD
         second_word = fluid.layers.data(
             name='secondw', shape=[1], dtype='int64'
         )
+=======
+        second_word = fluid.layers.data(name='secondw',
+                                        shape=[1],
+                                        dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
         forth_word = fluid.layers.data(name='forthw', shape=[1], dtype='int64')
         next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
@@ -120,12 +133,19 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
+<<<<<<< HEAD
         train_reader = paddle.batch(
             paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE
         )
         test_reader = paddle.batch(
             paddle.dataset.imikolov.test(word_dict, N), BATCH_SIZE
         )
+=======
+        train_reader = paddle.batch(paddle.dataset.imikolov.train(word_dict, N),
+                                    BATCH_SIZE)
+        test_reader = paddle.batch(paddle.dataset.imikolov.test(word_dict, N),
+                                   BATCH_SIZE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return (
             inference_program,

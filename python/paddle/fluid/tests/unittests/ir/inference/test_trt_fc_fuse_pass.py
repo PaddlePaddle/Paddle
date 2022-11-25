@@ -23,14 +23,25 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class FCFusePassTRTTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[32, 128, 2, 2], dtype="float32"
             )
             fc_out1 = fluid.layers.fc(
                 input=data, size=128, num_flatten_dims=1, act="relu"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[32, 128, 2, 2],
+                              dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=128,
+                                      num_flatten_dims=1,
+                                      act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.softmax(input=fc_out1)
 
         self.feeds = {
@@ -53,14 +64,25 @@ class FCFusePassTRTTest(InferencePassTest):
 
 
 class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[32, 128, 32, 8], dtype="float32"
             )
             fc_out1 = fluid.layers.fc(
                 input=data, size=64, num_flatten_dims=1, act="relu"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[32, 128, 32, 8],
+                              dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=64,
+                                      num_flatten_dims=1,
+                                      act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.softmax(input=fc_out1)
 
         self.feeds = {
@@ -81,14 +103,25 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
 
 
 class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[3, 24, 16, 16], dtype="float32"
             )
             fc_out1 = fluid.layers.fc(
                 input=data, size=32, num_flatten_dims=2, act="relu"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[3, 24, 16, 16],
+                              dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=32,
+                                      num_flatten_dims=2,
+                                      act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.softmax(input=fc_out1)
 
         self.feeds = {
@@ -109,6 +142,7 @@ class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
 
 
 class FCFusePassTRTDynamicDims2Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[32, 128], dtype="float32")
@@ -120,6 +154,7 @@ class FCFusePassTRTDynamicDims2Test(InferencePassTest):
         self.feeds = {"data": np.random.random((32, 128)).astype("float32")}
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTDynamicDims2Test.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = (
@@ -130,6 +165,11 @@ class FCFusePassTRTDynamicDims2Test(InferencePassTest):
                 False,
             )
         )
+=======
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = FCFusePassTRTDynamicDims2Test.DynamicShapeParam(
+            {'data': [1, 128]}, {'data': [64, 128]}, {'data': [32, 128]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -141,6 +181,7 @@ class FCFusePassTRTDynamicDims2Test(InferencePassTest):
 
 
 class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[32, 128, 32], dtype="float32")
@@ -152,6 +193,7 @@ class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
         self.feeds = {"data": np.random.random((32, 128, 32)).astype("float32")}
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTDynamicDims3Cols1Test.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = (
@@ -162,6 +204,12 @@ class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
                 False,
             )
         )
+=======
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = FCFusePassTRTDynamicDims3Cols1Test.DynamicShapeParam(
+            {'data': [1, 128, 32]}, {'data': [64, 128, 32]},
+            {'data': [32, 128, 32]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -173,6 +221,7 @@ class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
 
 
 class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[32, 128, 32], dtype="float32")
@@ -184,6 +233,7 @@ class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
         self.feeds = {"data": np.random.random((32, 128, 32)).astype("float32")}
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTDynamicDims3Cols2Test.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = (
@@ -194,6 +244,12 @@ class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
                 False,
             )
         )
+=======
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = FCFusePassTRTDynamicDims3Cols2Test.DynamicShapeParam(
+            {'data': [1, 32, 32]}, {'data': [64, 256, 32]},
+            {'data': [32, 128, 32]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -205,14 +261,25 @@ class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
 
 
 class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[32, 12, 4, 6], dtype="float32"
             )
             fc_out1 = fluid.layers.fc(
                 input=data, size=64, num_flatten_dims=1, act="relu"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[32, 12, 4, 6],
+                              dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=64,
+                                      num_flatten_dims=1,
+                                      act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.softmax(input=fc_out1)
 
         self.feeds = {
@@ -220,6 +287,7 @@ class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTDynamicDims4Cols1Test.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = (
@@ -230,6 +298,12 @@ class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
                 False,
             )
         )
+=======
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = FCFusePassTRTDynamicDims4Cols1Test.DynamicShapeParam(
+            {'data': [1, 12, 4, 6]}, {'data': [64, 12, 4, 6]},
+            {'data': [32, 12, 4, 6]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -241,14 +315,25 @@ class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
 
 
 class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )
             fc_out1 = fluid.layers.fc(
                 input=data, size=64, num_flatten_dims=2, act="relu"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[32, 128, 32, 32],
+                              dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=64,
+                                      num_flatten_dims=2,
+                                      act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.softmax(input=fc_out1)
 
         self.feeds = {
@@ -256,6 +341,7 @@ class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTDynamicDims4Cols2Test.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = (
@@ -266,6 +352,12 @@ class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
                 False,
             )
         )
+=======
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = FCFusePassTRTDynamicDims4Cols2Test.DynamicShapeParam(
+            {'data': [1, 64, 32, 32]}, {'data': [64, 256, 32, 32]},
+            {'data': [32, 128, 32, 32]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -277,14 +369,25 @@ class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
 
 
 class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )
             fc_out1 = fluid.layers.fc(
                 input=data, size=64, num_flatten_dims=3, act="relu"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[32, 128, 32, 32],
+                              dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=64,
+                                      num_flatten_dims=3,
+                                      act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.softmax(input=fc_out1)
 
         self.feeds = {
@@ -292,6 +395,7 @@ class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTDynamicDims4Cols3Test.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = (
@@ -302,6 +406,12 @@ class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
                 False,
             )
         )
+=======
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = FCFusePassTRTDynamicDims4Cols3Test.DynamicShapeParam(
+            {'data': [1, 128, 32, 32]}, {'data': [64, 128, 32, 32]},
+            {'data': [32, 128, 32, 32]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def test_check_output(self):

@@ -18,6 +18,7 @@ __all__ = []
 
 
 class MetaOptimizerBase(Optimizer):
+
     def __init__(self, optimizer):
         self.inner_opt = optimizer
         self._learning_rate = self.inner_opt._learning_rate
@@ -50,16 +51,24 @@ class MetaOptimizerBase(Optimizer):
     def _disable_strategy(self, dist_strategy):
         raise NotImplementedError(
             "you should implement disable strategy in {}".format(
+<<<<<<< HEAD
                 type(self).__name__
             )
         )
+=======
+                type(self).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _enable_strategy(self, dist_strategy, context=None):
         raise NotImplementedError(
             "you should implement enable strategy in {}".format(
+<<<<<<< HEAD
                 type(self).__name__
             )
         )
+=======
+                type(self).__name__))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def apply_gradients(self, params_grads):
         return self.inner_opt.apply_gradients(params_grads=params_grads)
@@ -77,6 +86,7 @@ class MetaOptimizerBase(Optimizer):
         )
 
     def apply_optimize(self, loss, startup_program, params_grads):
+<<<<<<< HEAD
         return self.inner_opt.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
@@ -103,4 +113,34 @@ class MetaOptimizerBase(Optimizer):
         optimize_ops, params_grads = self.minimize_impl(
             loss, startup_program, parameter_list, no_grad_set
         )
+=======
+        return self.inner_opt.apply_optimize(loss,
+                                             startup_program=startup_program,
+                                             params_grads=params_grads)
+
+    def minimize_impl(self,
+                      loss,
+                      startup_program=None,
+                      parameter_list=None,
+                      no_grad_set=None):
+        params_grads = self.backward(loss,
+                                     startup_program=startup_program,
+                                     parameter_list=parameter_list,
+                                     no_grad_set=no_grad_set)
+
+        optimize_ops = self.apply_optimize(loss,
+                                           startup_program=startup_program,
+                                           params_grads=params_grads)
+
+        return optimize_ops, params_grads
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        optimize_ops, params_grads = self.minimize_impl(loss, startup_program,
+                                                        parameter_list,
+                                                        no_grad_set)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return optimize_ops, params_grads

@@ -178,7 +178,11 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
                                    y_dim));
 
   const int kThreadsPerBlock = 256;
+<<<<<<< HEAD
   int block_cols = std::min<int64_t>(x_dim, kThreadsPerBlock);
+=======
+  int block_cols = std::min(x_dim, kThreadsPerBlock);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   int block_rows = std::max(kThreadsPerBlock / block_cols, 1);
 
   int max_physical_threads = context.GetMaxPhysicalThreadCount();
@@ -188,9 +192,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   // Noticed, block size is not align to 32, if needed do it yourself.
   config.thread_per_block = dim3(block_cols, block_rows, 1);
 
+<<<<<<< HEAD
   int grid_x = std::min<int64_t>(DivUp<int64_t>(x_dim, block_cols), max_blocks);
   int grid_y = std::min<int64_t>(max_blocks / grid_x,
                                  std::max<int64_t>(y_dim / block_rows, 1));
+=======
+  int grid_x = std::min(DivUp<int>(x_dim, block_cols), max_blocks);
+  int grid_y = std::min(max_blocks / grid_x, std::max(y_dim / block_rows, 1));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
   return config;

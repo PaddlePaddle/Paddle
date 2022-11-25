@@ -143,8 +143,13 @@ framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.GetPlace(),
+<<<<<<< HEAD
       phi::DataLayout::ONEDNN,
       framework::LibraryType::kMKLDNN);
+=======
+      layout,
+      library);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 void MultiGRUOpMaker::Make() {

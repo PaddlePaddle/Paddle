@@ -50,6 +50,7 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
     int* label_int32_ptr = RAII_GUARD.alloc_l3_or_gm<int>(size);
     PADDLE_ENFORCE_XDNN_NOT_NULL(label_int32_ptr);
 
+<<<<<<< HEAD
     int r = xpu::cast<int64_t, int32_t>(
         dev_ctx.x_context(), indices_data, indices_int32_ptr, size);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
@@ -57,6 +58,15 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
     r = xpu::cast<int64_t, int32_t>(
         dev_ctx.x_context(), label_data, label_int32_ptr, size);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+=======
+    int r = xpu::cast_v2<int64_t, int32_t>(
+        dev_ctx.x_context(), indices_data, indices_int32_ptr, size);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+
+    r = xpu::cast_v2<int64_t, int32_t>(
+        dev_ctx.x_context(), label_data, label_int32_ptr, size);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     r = xpu::accuracy(dev_ctx.x_context(),
                       indices_int32_ptr,

@@ -81,9 +81,14 @@ def static(
 
         def fn_2(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
+<<<<<<< HEAD
                 loss = layers.softmax_with_cross_entropy(
                     logits=pred, label=label
                 )
+=======
+                loss = layers.softmax_with_cross_entropy(logits=pred,
+                                                         label=label)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 avg_loss = paddle.mean(loss, name='mean_softmax_loss')
             opt.minimize(avg_loss)
             return avg_loss
@@ -102,6 +107,7 @@ def static(
         if loss_in_switch:
             avg_loss = layers.case(
                 [(mod_two, lambda: fn_1(adam, None, prediction, label))],
+<<<<<<< HEAD
                 lambda: fn_2(sgd, None, prediction, label),
             )
         else:
@@ -115,6 +121,17 @@ def static(
                 [(mod_two, lambda: fn_1(adam, avg_loss_1))],
                 lambda: fn_2(sgd, avg_loss_2),
             )
+=======
+                lambda: fn_2(sgd, None, prediction, label))
+        else:
+            loss_1 = layers.cross_entropy(input=prediction, label=label)
+            avg_loss_1 = paddle.mean(loss_1)
+            loss_2 = layers.softmax_with_cross_entropy(logits=prediction,
+                                                       label=label)
+            avg_loss_2 = paddle.mean(loss_2)
+            avg_loss = layers.case([(mod_two, lambda: fn_1(adam, avg_loss_1))],
+                                   lambda: fn_2(sgd, avg_loss_2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
@@ -135,18 +152,26 @@ def static(
 
 
 class DygraphLayer(fluid.dygraph.Layer):
+
     def __init__(self):
         super().__init__()
         self.fc_1 = fluid.dygraph.nn.Linear(
             INPUT_SIZE,
             FC_SIZE,
             act='relu',
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.99)
             ),
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)
             ),
+=======
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.99)),
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.5)),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         )
 
         self.fc_2 = fluid.dygraph.nn.Linear(
@@ -173,12 +198,19 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
         fluid.default_startup_program().random_seed = SEED
         fluid.default_main_program().random_seed = SEED
         dy_layer = DygraphLayer()
+<<<<<<< HEAD
         adam = fluid.optimizer.Adam(
             learning_rate=LR, parameter_list=dy_layer.parameters()
         )
         sgd = fluid.optimizer.SGD(
             learning_rate=LR, parameter_list=dy_layer.parameters()
         )
+=======
+        adam = fluid.optimizer.Adam(learning_rate=LR,
+                                    parameter_list=dy_layer.parameters())
+        sgd = fluid.optimizer.SGD(learning_rate=LR,
+                                  parameter_list=dy_layer.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         for epoch in range(EPOCH_NUM):
             image_data, label = train_data[epoch]
@@ -193,8 +225,12 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
                 adam.minimize(loss)
             else:
                 softmax_loss = layers.softmax_with_cross_entropy(
+<<<<<<< HEAD
                     prediction, var_label
                 )
+=======
+                    prediction, var_label)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 loss = paddle.mean(softmax_loss)
                 loss.backward()
                 sgd.minimize(loss)
@@ -218,9 +254,15 @@ class TestMultiTask(unittest.TestCase):
         np.random.seed(seed)
         image_np = np.random.random(size=image_shape).astype('float32')
         np.random.seed(seed)
+<<<<<<< HEAD
         label_np = np.random.randint(
             low=0, high=CLASS_NUM - 1, size=label_shape
         ).astype('int64')
+=======
+        label_np = np.random.randint(low=0,
+                                     high=CLASS_NUM - 1,
+                                     size=label_shape).astype('int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return image_np, label_np
 
     def init_train_data(self):
@@ -233,15 +275,32 @@ class TestMultiTask(unittest.TestCase):
         use_cuda = core.is_compiled_with_cuda()
         hidden_2, pre_2, loss_2 = dynamic(self.train_data, use_cuda)
         for loss_in_switch in [True, False]:
+<<<<<<< HEAD
             hidden_1, pre_1, loss_1 = static(
                 self.train_data, loss_in_switch, use_cuda
             )
             np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)
             np.testing.assert_allclose(pre_1, pre_2, rtol=1e-05)
             np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
+=======
+            hidden_1, pre_1, loss_1 = static(self.train_data, loss_in_switch,
+                                             use_cuda)
+            self.assertTrue(
+                np.allclose(hidden_1, hidden_2),
+                msg='static hidden is {}\ndynamic hidden is {}'.format(
+                    hidden_1, hidden_2))
+            self.assertTrue(
+                np.allclose(pre_1, pre_2),
+                msg='static prediction is {}\ndynamic prediction is {}'.format(
+                    pre_1, pre_2))
+            self.assertTrue(np.allclose(loss_1, loss_2),
+                            msg='static loss is {}\ndynamic loss is {}'.format(
+                                loss_1, loss_2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestMultiOptimizersMultiCardsError(unittest.TestCase):
+
     def test_error(self):
         startup_program = Program()
         main_program = Program()
@@ -284,6 +343,7 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             # to use multi cards ** only on CPU ** not GPU to reduce CI time.
             os.environ['CPU_NUM'] = str(2)
 
+<<<<<<< HEAD
             pe_exe = fluid.ParallelExecutor(
                 use_cuda=use_cuda,
                 main_program=main_program,
@@ -298,6 +358,19 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
                     },
                     fetch_list=[avg_loss.name],
                 )
+=======
+            pe_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                            main_program=main_program,
+                                            loss_name=avg_loss.name)
+            num_devices = pe_exe.device_count
+
+            def not_implemented_error():
+                pe_exe.run(feed={
+                    'X':
+                    np.random.random(size=[64, 10]).astype('float32'),
+                },
+                           fetch_list=[avg_loss.name])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             if num_devices > 1:
                 self.assertRaises(NotImplementedError, not_implemented_error)

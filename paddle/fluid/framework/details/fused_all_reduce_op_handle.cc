@@ -239,9 +239,16 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
     std::sort(
         g_tensor.begin(),
         g_tensor.end(),
+<<<<<<< HEAD
         [](const std::pair<std::string, const phi::DenseTensor *> &grad1,
            const std::pair<std::string, const phi::DenseTensor *> &grad2)
             -> bool { return grad1.second->data() < grad2.second->data(); });
+=======
+        [](const std::pair<std::string, const LoDTensor *> &grad1,
+           const std::pair<std::string, const LoDTensor *> &grad2) -> bool {
+          return grad1.second->data() < grad2.second->data();
+        });
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     size_t size_of_dtype = framework::SizeOfType(dtype);
     for (size_t k = 1; k < g_tensor.size(); ++k) {
@@ -320,7 +327,11 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           var,
           platform::errors::NotFound(
               "The variable '%s' is not found in local scope.", var_name));
+<<<<<<< HEAD
       auto &lod_tensor = var->Get<phi::DenseTensor>();
+=======
+      auto &lod_tensor = var->Get<LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
@@ -353,7 +364,11 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
         var,
         platform::errors::NotFound(
             "The variable '%s' is not found in local scope.", var_name));
+<<<<<<< HEAD
     auto &lod_tensor = var->Get<phi::DenseTensor>();
+=======
+    auto &lod_tensor = var->Get<LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     PADDLE_ENFORCE_EQ(
         platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
@@ -367,8 +382,12 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
 }
 
 void FusedAllReduceOpHandle::GetDTypeAndNumel(
+<<<<<<< HEAD
     const std::vector<std::pair<std::string, const phi::DenseTensor *>>
         &grad_tensor,
+=======
+    const std::vector<std::pair<std::string, const LoDTensor *>> &grad_tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     proto::VarType::Type *dtype,
     int64_t *numel) const {
   *numel = 0;

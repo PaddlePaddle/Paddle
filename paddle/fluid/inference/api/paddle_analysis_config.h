@@ -168,6 +168,16 @@ struct PD_INFER_DECL AnalysisConfig {
     kInt8,         ///< int8
     kHalf,         ///< fp16
     kBf16,         ///< bf16
+<<<<<<< HEAD
+=======
+  };
+
+  enum class Backend {
+    kCPU = 0,
+    kGPU,
+    kXPU,
+    kNPU,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   };
 
   ///
@@ -563,7 +573,11 @@ struct PD_INFER_DECL AnalysisConfig {
   /// quantization).
   ///
   ///
+<<<<<<< HEAD
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
+=======
+  void EnableTensorRtEngine(int workspace_size = 1 << 20,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             int max_batch_size = 1,
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
@@ -631,6 +645,25 @@ struct PD_INFER_DECL AnalysisConfig {
   /// runtime.
   ///
   bool trt_allow_build_at_runtime() const;
+
+  ///
+  /// \brief Set execution stream. If not set a stream will be created
+  /// internally.
+  ///
+  void SetExecStream(void* stream);
+
+  ///
+  /// \brief Get execution stream. The user needs to explicitly cast into a
+  /// stream type such as cudaStream_t, hipStream_t, etc.
+  ///
+  void* GetExecStream() const;
+
+  ///
+  /// \brief Whether the external stream is used, if True, the predictor clone
+  /// operation must use the external stream, otherwise the framework manages
+  /// the stream internally.
+  ///
+  bool external_stream_enabled() const;
 
   ///
   /// \brief Set execution stream. If not set a stream will be created
@@ -994,10 +1027,13 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_SetBlackListOpsForMixedModel(
       const std::unordered_set<std::string>& black_list);
 
+<<<<<<< HEAD
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
  protected:
   // Update the config.
   void Update();

@@ -17,6 +17,11 @@ import paddle
 import os
 import unittest
 import tempfile
+<<<<<<< HEAD
+=======
+
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
@@ -171,9 +176,14 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role23._get_size()
         role23._get_size()
 
+<<<<<<< HEAD
         path = os.path.join(
             self.temp_dir.name, "test_fleet_gloo_role_maker_1.txt"
         )
+=======
+        path = os.path.join(self.temp_dir.name,
+                            "test_fleet_gloo_role_maker_1.txt")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with open(path, "w") as f:
             data = "1 1 1 1\n"
             f.write(data)

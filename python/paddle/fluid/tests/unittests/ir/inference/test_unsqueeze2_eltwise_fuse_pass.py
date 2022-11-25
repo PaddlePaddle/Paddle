@@ -41,8 +41,12 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
+=======
+            use_calib_mode=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         yield config, [
             'elementwise_mul',
         ], (1e-5, 1e-5)
@@ -50,10 +54,16 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of mul
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=10), min_size=4, max_size=4
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=10),
+                     min_size=4,
+                     max_size=4))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         axis = -1
 
         # 2. Generate legal shape and attr of input:Y of unsqueeze2
@@ -68,11 +78,25 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
                 "AxesTensorList": [],
             },
             axes=unsqueeze2_axes,
+<<<<<<< HEAD
             outputs={"Out": ["unsqueeze2_out"], "XShape": ["xshape"]},
         )
         mul_op = OpConfig(
             "elementwise_mul",
             inputs={"Y": ["unsqueeze2_out"], "X": ["mul_x"]},
+=======
+            outputs={
+                "Out": ["unsqueeze2_out"],
+                "XShape": ["xshape"]
+            },
+        )
+        mul_op = OpConfig(
+            "elementwise_mul",
+            inputs={
+                "Y": ["unsqueeze2_out"],
+                "X": ["mul_x"]
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             axis=axis,
             outputs={"Out": ["mul_out"]},
         )
@@ -94,11 +118,17 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=300,
             passes=["unsqueeze2_eltwise_fuse_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=300,
+                            passes=["unsqueeze2_eltwise_fuse_pass"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

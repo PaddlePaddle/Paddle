@@ -2112,6 +2112,22 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
 #endif
+<<<<<<< HEAD
+=======
+  if (gpu_graph_mode_) {
+    train_mode_ = true;
+  } else {
+    train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
+  }
+}
+
+void SlotRecordInMemoryDataFeed::InitGraphResource() {
+  gpu_graph_data_generator_.AllocResource(thread_id_, feed_vec_);
+}
+
+void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
+  gpu_graph_data_generator_.AllocTrainResource(thread_id_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
@@ -2650,7 +2666,11 @@ bool SlotRecordInMemoryDataFeed::Start() {
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
 #endif
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+<<<<<<< HEAD
   gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_);
+=======
+  gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #endif
   return true;
 }
@@ -2691,6 +2711,12 @@ int SlotRecordInMemoryDataFeed::Next() {
   return 0;
 #endif
 }
+
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+void SlotRecordInMemoryDataFeed::DoWalkandSage() {
+  gpu_graph_data_generator_.DoWalkandSage();
+}
+#endif
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {

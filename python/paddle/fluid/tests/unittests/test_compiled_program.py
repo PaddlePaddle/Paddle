@@ -22,9 +22,11 @@ from simple_nets import simple_fc_net
 
 
 class TestCompiledProgram(unittest.TestCase):
+
     def setUp(self):
         self.seed = 100
         self.img = np.random.random(size=(16, 784)).astype('float32')
+<<<<<<< HEAD
         self.label = np.random.randint(
             low=0, high=10, size=[16, 1], dtype=np.int64
         )
@@ -36,54 +38,95 @@ class TestCompiledProgram(unittest.TestCase):
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+        self.label = np.random.randint(low=0,
+                                       high=10,
+                                       size=[16, 1],
+                                       dtype=np.int64)
+        with new_program_scope():
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             exe = fluid.Executor(place)
 
             loss = simple_fc_net()
             exe.run(fluid.default_startup_program())
 
+<<<<<<< HEAD
             (loss_data,) = exe.run(
                 fluid.default_main_program(),
                 feed={"image": self.img, "label": self.label},
                 fetch_list=[loss.name],
             )
+=======
+            loss_data, = exe.run(fluid.default_main_program(),
+                                 feed={
+                                     "image": self.img,
+                                     "label": self.label
+                                 },
+                                 fetch_list=[loss.name])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.loss = loss_data[0]
 
     def test_compiled_program_base(self):
         with new_program_scope():
             paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             exe = fluid.Executor(place)
 
             loss = simple_fc_net()
             exe.run(fluid.default_startup_program())
             compiled_prog = fluid.CompiledProgram(fluid.default_main_program())
 
+<<<<<<< HEAD
             (loss_data,) = exe.run(
                 compiled_prog,
                 feed={"image": self.img, "label": self.label},
                 fetch_list=[loss.name],
             )
             np.testing.assert_array_equal(loss_data[0], self.loss)
+=======
+            loss_data, = exe.run(compiled_prog,
+                                 feed={
+                                     "image": self.img,
+                                     "label": self.label
+                                 },
+                                 fetch_list=[loss.name])
+            self.assertTrue(np.array_equal(loss_data[0], self.loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_compiled_program_with_data_parallel(self):
         with new_program_scope():
             paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             exe = fluid.Executor(place)
 
             loss = simple_fc_net()
             exe.run(fluid.default_startup_program())
             compiled_prog = fluid.CompiledProgram(
+<<<<<<< HEAD
                 fluid.default_main_program()
             ).with_data_parallel(loss_name=loss.name, places=[place])
 
@@ -93,16 +136,35 @@ class TestCompiledProgram(unittest.TestCase):
                 fetch_list=[loss.name],
             )
             np.testing.assert_array_equal(loss_data[0], self.loss)
+=======
+                fluid.default_main_program()).with_data_parallel(
+                    loss_name=loss.name, places=[place])
+
+            loss_data, = exe.run(compiled_prog,
+                                 feed={
+                                     "image": self.img,
+                                     "label": self.label
+                                 },
+                                 fetch_list=[loss.name])
+            self.assertTrue(np.array_equal(loss_data[0], self.loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestCompiledProgramError(unittest.TestCase):
+
     def test_program_or_graph_error(self):
         self.assertRaises(TypeError, fluid.CompiledProgram, "program")
 
     def build_simple_model(self):
+<<<<<<< HEAD
         img = fluid.layers.data(
             name='image', shape=[1, 28, 28], dtype='float32'
         )
+=======
+        img = fluid.layers.data(name='image',
+                                shape=[1, 28, 28],
+                                dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         prediction = fluid.layers.fc(input=img, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)

@@ -20,6 +20,11 @@ namespace paddle {
 namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
+<<<<<<< HEAD
+=======
+static const char* version = "1.0.1";
+static uint32_t span_indx = 0;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();
@@ -197,7 +202,10 @@ void SerializationLogger::LogHostTraceEventNode(
         op_supplement_event_node->ThreadId());
     op_supplement_event_proto->set_callstack(
         op_supplement_event_node->CallStack());
+<<<<<<< HEAD
     op_supplement_event_proto->set_op_id(op_supplement_event_node->OpId());
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     OperatorSupplementEventProto::input_shape_proto* input_shape_proto =
         op_supplement_event_proto->mutable_input_shapes();

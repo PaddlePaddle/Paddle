@@ -152,13 +152,19 @@ def dyfunc_print_continue_vars(x):
 
 
 class TestPrintBase(unittest.TestCase):
+
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
+<<<<<<< HEAD
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.set_test_func()
 
     def set_test_func(self):
@@ -178,6 +184,7 @@ class TestPrintBase(unittest.TestCase):
 
 
 class TestPrintVariable(TestPrintBase):
+
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_variable
 
@@ -187,31 +194,37 @@ class TestPrintVariable(TestPrintBase):
 
 
 class TestPrintNdArray(TestPrintVariable):
+
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_ndarray
 
 
 class TestPrintWithFormat(TestPrintVariable):
+
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_with_format
 
 
 class TestPrintWithFormat2(TestPrintVariable):
+
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_with_format2
 
 
 class TestPrintWithIfElse(TestPrintVariable):
+
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_with_ifelse
 
 
 class TestPrintMultipleVar(TestPrintVariable):
+
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_multi_vars
 
 
 class TestPrintContinueVar(TestPrintVariable):
+
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_continue_vars
 

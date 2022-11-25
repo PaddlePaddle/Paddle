@@ -17,8 +17,11 @@ from .dist_context import get_default_distributed_context
 from .tuner.parallel_tuner import ParallelTuner
 from .utils import is_naive_data_parallel
 
+# from .tuner.parallel_tuner import ParallelTuner
+
 
 class Planner:
+
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context
@@ -27,8 +30,12 @@ class Planner:
         # dependency of backward-forward ops in forward completion.
         default_ctx = get_default_distributed_context()
         self._dist_context._dist_op_context = default_ctx.dist_op_context
+<<<<<<< HEAD
         self._dist_context.data_parallel = default_ctx.data_parallel
         if not is_naive_data_parallel(self._dist_context):
+=======
+        if not default_ctx.data_parallel:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             # Use SSA graph for complex parallism
             self._dist_context.initialize(with_graph=True)
         else:
@@ -38,17 +45,24 @@ class Planner:
         self._completer = Completer(self._dist_context)
 
         self._strategy = dist_context.strategy
+<<<<<<< HEAD
         # set parallel tuner for auto search
         if self._strategy.auto_mode == "full":
             self._parallel_tuner = ParallelTuner(
                 self._dist_context, mode=self._mode
             )
+=======
+        # if self._strategy.auto_search:
+        #     self._parallel_tuner = ParallelTuner(
+        #         self._dist_context, mode=self._mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     @property
     def completer(self):
         return self._completer
 
     def plan(self):
+<<<<<<< HEAD
         if self._strategy.auto_mode == "full":
             self._parallel_tuner.tune()
         else:
@@ -57,3 +71,13 @@ class Planner:
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program
         )
+=======
+        self._completer.complete_forward_annotation()
+        # if self._strategy.auto_search:
+        #     self._parallel_tuner.tune()
+        # else:
+        #     self._completer.complete_forward_annotation()
+        # parse forward sub block
+        self._dist_context.block_state.parse_forward_blocks(
+            self._dist_context.serial_main_program)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

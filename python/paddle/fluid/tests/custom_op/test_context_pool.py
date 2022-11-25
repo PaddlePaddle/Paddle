@@ -26,8 +26,12 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\context_pool_jit\\context_pool_jit.pyd'.format(
+<<<<<<< HEAD
     get_build_directory()
 )
+=======
+    get_build_directory())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -44,6 +48,7 @@ custom_ops = load(
 
 
 class TestContextPool(unittest.TestCase):
+
     def setUp(self):
         self.devices = ['cpu']
         if paddle.is_compiled_with_cuda():

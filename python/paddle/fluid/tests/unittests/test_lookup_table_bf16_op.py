@@ -14,12 +14,19 @@
 
 import unittest
 import numpy as np
+<<<<<<< HEAD
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
     skip_check_grad_ci,
 )
+=======
+from paddle.fluid.tests.unittests.op_test import (OpTest,
+                                                  convert_float_to_uint16,
+                                                  convert_uint16_to_float,
+                                                  skip_check_grad_ci)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -57,6 +64,7 @@ def _get_grad(weights, ids, flat_ids, op_version="lookup_table"):
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestLookupTableBF16Op(OpTest):
+
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (4, 1)
@@ -85,6 +93,7 @@ class TestLookupTableBF16Op(OpTest):
         self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             core.CPUPlace(),
             ['W'],
@@ -95,12 +104,22 @@ class TestLookupTableBF16Op(OpTest):
             user_defined_grads=[self.w_grad_fp32],
             user_defined_grad_outputs=[self.out_bf16],
         )
+=======
+        self.check_grad_with_place(core.CPUPlace(), ['W'],
+                                   'Out',
+                                   no_grad_set=set('Ids'),
+                                   check_dygraph=False,
+                                   max_relative_error=1.5e-2,
+                                   user_defined_grads=[self.w_grad_fp32],
+                                   user_defined_grad_outputs=[self.out_bf16])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestLookupTableBF16OpIds4D(TestLookupTableBF16Op):
+
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (2, 4, 5, 1)
@@ -110,15 +129,21 @@ class TestLookupTableBF16OpIds4D(TestLookupTableBF16Op):
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
+
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (10, 1)
 
     def setUp(self):
         self.init_test()
+<<<<<<< HEAD
         self.ids = np.random.randint(
             low=0, high=15, size=self.ids_shape
         ).astype("int64")
+=======
+        self.ids = np.random.randint(low=0, high=15,
+                                     size=self.ids_shape).astype("int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.flat_ids = self.ids.flatten()
         self.w_fp32 = np.random.random((15, 32)).astype("float32")
         self.w_bf16 = convert_float_to_uint16(self.w_fp32)
@@ -162,8 +187,13 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestLookupTableBF16OpWIsSelectedRows4DIds(
+<<<<<<< HEAD
     TestLookupTableBF16OpWIsSelectedRows
 ):
+=======
+        TestLookupTableBF16OpWIsSelectedRows):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (3, 4, 5, 1)
@@ -182,6 +212,7 @@ class TestLookupTableBF16OpWIsSelectedRows4DIds(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestLookupTableBF16OpWithPadding(TestLookupTableBF16Op):
+
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -199,6 +230,7 @@ class TestLookupTableBF16OpWithPadding(TestLookupTableBF16Op):
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestLookupTableBF16OpIds4DPadding(TestLookupTableBF16OpIds4D):
+
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
@@ -219,9 +251,14 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     def setUp(self):
         self.ids_shape = [4, 1]
         self.w_shape = [10, 64]
+<<<<<<< HEAD
         self.ids = np.random.randint(low=0, high=9, size=self.ids_shape).astype(
             "int64"
         )
+=======
+        self.ids = np.random.randint(low=0, high=9,
+                                     size=self.ids_shape).astype("int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.flat_ids = self.ids.flatten()
         self.value = 3.0
         self.w_fp32 = np.full(self.w_shape, self.value)
@@ -232,6 +269,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
         with fluid.program_guard(self.prog, self.startup_prog):
             x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
+<<<<<<< HEAD
             self.emb = fluid.layers.embedding(
                 input=x,
                 size=self.w_shape,
@@ -241,6 +279,15 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
                 is_sparse=False,
                 dtype="uint16",
             )  # bfloat16
+=======
+            self.emb = fluid.layers.embedding(input=x,
+                                              size=self.w_shape,
+                                              param_attr=fluid.ParamAttr(
+                                                  name="emb_weight",
+                                                  initializer=self.initializer),
+                                              is_sparse=False,
+                                              dtype="uint16")  # bfloat16
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         exe = fluid.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(

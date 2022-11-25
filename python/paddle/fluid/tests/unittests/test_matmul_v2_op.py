@@ -106,9 +106,16 @@ class TestMatMulV2Op(OpTest):
 
     def test_check_grad(self):
         if core.is_compiled_with_rocm():
+<<<<<<< HEAD
             self.check_grad(
                 ['X', 'Y'], 'Out', max_relative_error=1e-2, check_eager=False
             )
+=======
+            self.check_grad(['X', 'Y'],
+                            'Out',
+                            max_relative_error=1e-2,
+                            check_eager=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             self.check_grad(['X', 'Y'], 'Out', check_eager=False)
 
@@ -333,10 +340,17 @@ class TestMatMulOpBroadcast2(TestMatMulV2Op):
 
 
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     class TestMatMulOpFp16Case(parent):
+
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -344,9 +358,15 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
+<<<<<<< HEAD
                     self.check_output_with_place(
                         place, atol=atol, check_eager=False
                     )
+=======
+                    self.check_output_with_place(place,
+                                                 atol=atol,
+                                                 check_eager=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -386,12 +406,18 @@ create_test_fp16_class(TestMatMulOp17)
 
 
 def create_test_bf16_class(parent, atol=0.01):
+
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+<<<<<<< HEAD
         "core is not compiled with CUDA and not support the bfloat16",
     )
+=======
+        "core is not compiled with CUDA and not support the bfloat16")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     class TestMatMulOpBf16Case(parent):
+
         def get_numeric_grad(self, place, check_name):
             scope = core.Scope()
             self._check_grad_helper()
@@ -412,6 +438,7 @@ def create_test_bf16_class(parent, atol=0.01):
         def test_check_grad_x(self):
             place = core.CUDAPlace(0)
             numeric_grads = self.get_numeric_grad(place, 'X')
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -419,10 +446,17 @@ def create_test_bf16_class(parent, atol=0.01):
                 no_grad_set=set(['Y']),
                 user_defined_grads=[numeric_grads],
             )
+=======
+            self.check_grad_with_place(place, ['X'],
+                                       'Out',
+                                       no_grad_set=set(['Y']),
+                                       user_defined_grads=[numeric_grads])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def test_check_grad_y(self):
             place = core.CUDAPlace(0)
             numeric_grads = self.get_numeric_grad(place, 'Y')
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place,
                 ['Y'],
@@ -430,6 +464,12 @@ def create_test_bf16_class(parent, atol=0.01):
                 no_grad_set=set(['X']),
                 user_defined_grads=[numeric_grads],
             )
+=======
+            self.check_grad_with_place(place, ['Y'],
+                                       'Out',
+                                       no_grad_set=set(['X']),
+                                       user_defined_grads=[numeric_grads])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def test_check_grad(self):
             pass
@@ -459,6 +499,7 @@ create_test_bf16_class(TestMatMulOp17)
 
 
 class TestMatMulV2API(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -475,11 +516,20 @@ class TestMatMulV2API(unittest.TestCase):
             y_np = np.random.random([3, 4]).astype("float32")
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             fetches = exe.run(
                 fluid.default_main_program(),
                 feed={"input_x": x_np, "input_y": y_np},
                 fetch_list=[result],
             )
+=======
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input_x": x_np,
+                                  "input_y": y_np
+                              },
+                              fetch_list=[result])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static(self):
         for place in self.places:
@@ -511,8 +561,12 @@ class TestMatMulV2API(unittest.TestCase):
             if core.is_float16_supported(place):
                 with fluid.dygraph.guard(place):
                     paddle.set_flags(
+<<<<<<< HEAD
                         {'FLAGS_gemm_use_half_precision_compute_type': False}
                     )
+=======
+                        {'FLAGS_gemm_use_half_precision_compute_type': False})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     input_x = np.random.random([2, 8, 16]).astype("float16")
                     input_y = np.random.random([2, 16, 8]).astype("float16")
                     for i in range(0, 16, 2):
@@ -526,10 +580,16 @@ class TestMatMulV2API(unittest.TestCase):
                     result_np = np.matmul(input_x, input_y)
                     self.assertTrue(paddle.isfinite(result)[0, 0, 0])
                     self.assertTrue(np.isfinite(result_np)[0, 0, 0])
+<<<<<<< HEAD
                     np.testing.assert_array_equal(result_np, result.numpy())
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': True}
                     )
+=======
+                    self.assertTrue(np.array_equal(result_np, result.numpy()))
+                    paddle.set_flags(
+                        {'FLAGS_gemm_use_half_precision_compute_type': True})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_compute_type_fp16_nan(self):
         if core.is_compiled_with_cuda():
@@ -537,8 +597,12 @@ class TestMatMulV2API(unittest.TestCase):
             if core.is_float16_supported(place):
                 with fluid.dygraph.guard(place):
                     paddle.set_flags(
+<<<<<<< HEAD
                         {'FLAGS_gemm_use_half_precision_compute_type': True}
                     )
+=======
+                        {'FLAGS_gemm_use_half_precision_compute_type': True})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     input_x = np.random.random([2, 8, 16]).astype("float16")
                     input_y = np.random.random([2, 16, 8]).astype("float16")
                     for i in range(0, 16, 2):
@@ -551,12 +615,19 @@ class TestMatMulV2API(unittest.TestCase):
                     result = paddle.matmul(x, y)
                     result_np = np.matmul(input_x, input_y)
                     self.assertFalse(
+<<<<<<< HEAD
                         paddle.isfinite(result)[0, 0, 0]
                     )  # contains nan/inf
                     self.assertTrue(np.isfinite(result_np)[0, 0, 0])
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': False}
                     )
+=======
+                        paddle.isfinite(result)[0, 0, 0])  # contains nan/inf
+                    self.assertTrue(np.isfinite(result_np)[0, 0, 0])
+                    paddle.set_flags(
+                        {'FLAGS_gemm_use_half_precision_compute_type': False})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
@@ -565,6 +636,7 @@ class TestMatMulV2API(unittest.TestCase):
 
 
 class TestComplexMatMulOp(OpTest):
+
     def setUp(self):
         self.op_type = "matmul_v2"
         self.init_base_dtype()
@@ -601,6 +673,7 @@ class TestComplexMatMulOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X', 'Y'],
             'Out',
@@ -628,9 +701,33 @@ class TestComplexMatMulOp(OpTest):
             user_defined_grad_outputs=[self.grad_out],
             check_eager=False,
         )
+=======
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestComplexMatMulOpBroadcast(OpTest):
+
     def setUp(self):
         self.op_type = "matmul_v2"
         self.init_base_dtype()
@@ -669,6 +766,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X', 'Y'],
             'Out',
@@ -696,9 +794,33 @@ class TestComplexMatMulOpBroadcast(OpTest):
             user_defined_grad_outputs=[self.grad_out],
             check_eager=False,
         )
+=======
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestMatMulTypePromotion(TestComplexMatMulOp):
+
     def init_input_output(self):
         self.x = np.random.random((10, 10)).astype(self.dtype)
         self.y = np.random.random((10, 10)).astype(

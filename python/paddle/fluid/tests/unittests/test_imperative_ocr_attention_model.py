@@ -65,6 +65,7 @@ class Config:
 
 
 class ConvBNPool(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         group,
@@ -76,6 +77,18 @@ class ConvBNPool(fluid.dygraph.Layer):
         use_cudnn=True,
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 group,
+                 out_ch,
+                 channels,
+                 act="relu",
+                 is_test=False,
+                 pool=True,
+                 use_cudnn=True):
+        super(ConvBNPool, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.group = group
         self.pool = pool
 
@@ -90,6 +103,7 @@ class ConvBNPool(fluid.dygraph.Layer):
             initializer=fluid.initializer.Normal(0.0, conv_std_1)
         )
 
+<<<<<<< HEAD
         self.conv_0_layer = paddle.nn.Conv2D(
             channels[0],
             out_ch[0],
@@ -117,6 +131,33 @@ class ConvBNPool(fluid.dygraph.Layer):
                 use_cudnn=use_cudnn,
                 ceil_mode=True,
             )
+=======
+        self.conv_0_layer = Conv2D(channels[0],
+                                   out_ch[0],
+                                   3,
+                                   padding=1,
+                                   param_attr=conv_param_0,
+                                   bias_attr=False,
+                                   act=None,
+                                   use_cudnn=use_cudnn)
+        self.bn_0_layer = BatchNorm(out_ch[0], act=act, is_test=is_test)
+        self.conv_1_layer = Conv2D(out_ch[0],
+                                   num_filters=out_ch[1],
+                                   filter_size=3,
+                                   padding=1,
+                                   param_attr=conv_param_1,
+                                   bias_attr=False,
+                                   act=None,
+                                   use_cudnn=use_cudnn)
+        self.bn_1_layer = BatchNorm(out_ch[1], act=act, is_test=is_test)
+
+        if self.pool:
+            self.pool_layer = Pool2D(pool_size=2,
+                                     pool_type='max',
+                                     pool_stride=2,
+                                     use_cudnn=use_cudnn,
+                                     ceil_mode=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, inputs):
         conv_0 = self.conv_0_layer(inputs)
@@ -130,7 +171,9 @@ class ConvBNPool(fluid.dygraph.Layer):
 
 
 class OCRConv(fluid.dygraph.Layer):
+
     def __init__(self, is_test=False, use_cudnn=True):
+<<<<<<< HEAD
         super().__init__()
         self.conv_bn_pool_1 = ConvBNPool(
             2, [8, 8], [1, 8], is_test=is_test, use_cudnn=use_cudnn
@@ -149,6 +192,22 @@ class OCRConv(fluid.dygraph.Layer):
             pool=False,
             use_cudnn=use_cudnn,
         )
+=======
+        super(OCRConv, self).__init__()
+        self.conv_bn_pool_1 = ConvBNPool(2, [8, 8], [1, 8],
+                                         is_test=is_test,
+                                         use_cudnn=use_cudnn)
+        self.conv_bn_pool_2 = ConvBNPool(2, [8, 8], [8, 8],
+                                         is_test=is_test,
+                                         use_cudnn=use_cudnn)
+        self.conv_bn_pool_3 = ConvBNPool(2, [8, 8], [8, 8],
+                                         is_test=is_test,
+                                         use_cudnn=use_cudnn)
+        self.conv_bn_pool_4 = ConvBNPool(2, [16, 16], [8, 16],
+                                         is_test=is_test,
+                                         pool=False,
+                                         use_cudnn=use_cudnn)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, inputs):
         inputs_1 = self.conv_bn_pool_1(inputs)
@@ -160,6 +219,7 @@ class OCRConv(fluid.dygraph.Layer):
 
 
 class DynamicGRU(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         size,
@@ -181,6 +241,26 @@ class DynamicGRU(fluid.dygraph.Layer):
             gate_activation=gate_activation,
             origin_mode=origin_mode,
         )
+=======
+
+    def __init__(self,
+                 size,
+                 param_attr=None,
+                 bias_attr=None,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 candidate_activation='tanh',
+                 h_0=None,
+                 origin_mode=False):
+        super(DynamicGRU, self).__init__()
+
+        self.gru_unit = GRUUnit(size * 3,
+                                param_attr=param_attr,
+                                bias_attr=bias_attr,
+                                activation=candidate_activation,
+                                gate_activation=gate_activation,
+                                origin_mode=origin_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.h_0 = h_0
         self.is_reverse = is_reverse
@@ -192,12 +272,24 @@ class DynamicGRU(fluid.dygraph.Layer):
         for i in range(inputs.shape[1]):
             if self.is_reverse:
                 i = inputs.shape[1] - 1 - i
+<<<<<<< HEAD
             input_ = fluid.layers.slice(
                 inputs, axes=[1], starts=[i], ends=[i + 1]
             )
             input_ = paddle.reshape(input_, [-1, input_.shape[2]])
             hidden, reset, gate = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
+=======
+            input_ = fluid.layers.slice(inputs,
+                                        axes=[1],
+                                        starts=[i],
+                                        ends=[i + 1])
+            input_ = fluid.layers.reshape(input_, [-1, input_.shape[2]],
+                                          inplace=False)
+            hidden, reset, gate = self.gru_unit(input_, hidden)
+            hidden_ = fluid.layers.reshape(hidden, [-1, 1, hidden.shape[1]],
+                                           inplace=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if self.is_reverse:
                 res = [hidden_] + res
             else:
@@ -207,6 +299,7 @@ class DynamicGRU(fluid.dygraph.Layer):
 
 
 class EncoderNet(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(
         self, rnn_hidden_size=Config.encoder_size, is_test=False, use_cudnn=True
     ):
@@ -222,6 +315,23 @@ class EncoderNet(fluid.dygraph.Layer):
             h_0 = np.zeros(
                 (Config.batch_size, rnn_hidden_size), dtype="float32"
             )
+=======
+
+    def __init__(self,
+                 rnn_hidden_size=Config.encoder_size,
+                 is_test=False,
+                 use_cudnn=True):
+        super(EncoderNet, self).__init__()
+        self.rnn_hidden_size = rnn_hidden_size
+        para_attr = fluid.ParamAttr(
+            initializer=fluid.initializer.Normal(0.0, 0.02))
+        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Normal(
+            0.0, 0.02),
+                                    learning_rate=2.0)
+        if fluid.framework._non_static_mode():
+            h_0 = np.zeros((Config.batch_size, rnn_hidden_size),
+                           dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             h_0 = to_variable(h_0)
         else:
             h_0 = fluid.layers.fill_constant(
@@ -231,6 +341,7 @@ class EncoderNet(fluid.dygraph.Layer):
             )
         self.ocr_convs = OCRConv(is_test=is_test, use_cudnn=use_cudnn)
 
+<<<<<<< HEAD
         self.fc_1_layer = Linear(
             32, rnn_hidden_size * 3, param_attr=para_attr, bias_attr=False
         )
@@ -256,6 +367,31 @@ class EncoderNet(fluid.dygraph.Layer):
         self.encoded_proj_fc = Linear(
             rnn_hidden_size * 2, Config.decoder_size, bias_attr=False
         )
+=======
+        self.fc_1_layer = Linear(32,
+                                 rnn_hidden_size * 3,
+                                 param_attr=para_attr,
+                                 bias_attr=False)
+        self.fc_2_layer = Linear(32,
+                                 rnn_hidden_size * 3,
+                                 param_attr=para_attr,
+                                 bias_attr=False)
+        self.gru_forward_layer = DynamicGRU(size=rnn_hidden_size,
+                                            h_0=h_0,
+                                            param_attr=para_attr,
+                                            bias_attr=bias_attr,
+                                            candidate_activation='relu')
+        self.gru_backward_layer = DynamicGRU(size=rnn_hidden_size,
+                                             h_0=h_0,
+                                             param_attr=para_attr,
+                                             bias_attr=bias_attr,
+                                             candidate_activation='relu',
+                                             is_reverse=True)
+
+        self.encoded_proj_fc = Linear(rnn_hidden_size * 2,
+                                      Config.decoder_size,
+                                      bias_attr=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, inputs):
         conv_features = self.ocr_convs(inputs)
@@ -264,6 +400,7 @@ class EncoderNet(fluid.dygraph.Layer):
         #    stride=[1, 1],
         #    filter_size=[conv_features.shape[2], 1])
 
+<<<<<<< HEAD
         transpose_conv_features = paddle.transpose(
             conv_features, perm=[0, 3, 1, 2]
         )
@@ -276,15 +413,29 @@ class EncoderNet(fluid.dygraph.Layer):
                 * transpose_conv_features.shape[3],
             ],
         )
+=======
+        transpose_conv_features = fluid.layers.transpose(conv_features,
+                                                         perm=[0, 3, 1, 2])
+        sliced_feature = fluid.layers.reshape(transpose_conv_features, [
+            -1, 8,
+            transpose_conv_features.shape[2] * transpose_conv_features.shape[3]
+        ],
+                                              inplace=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         fc_1 = self.fc_1_layer(sliced_feature)
         fc_2 = self.fc_2_layer(sliced_feature)
         gru_forward = self.gru_forward_layer(fc_1)
 
         gru_backward = self.gru_backward_layer(fc_2)
 
+<<<<<<< HEAD
         encoded_vector = fluid.layers.concat(
             input=[gru_forward, gru_backward], axis=2
         )
+=======
+        encoded_vector = fluid.layers.concat(input=[gru_forward, gru_backward],
+                                             axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         encoded_proj = self.encoded_proj_fc(encoded_vector)
 
@@ -292,12 +443,20 @@ class EncoderNet(fluid.dygraph.Layer):
 
 
 class SimpleAttention(fluid.dygraph.Layer):
+
     def __init__(self, decoder_size):
         super().__init__()
 
+<<<<<<< HEAD
         self.fc_1 = Linear(
             decoder_size, decoder_size, act=None, bias_attr=False
         )
+=======
+        self.fc_1 = Linear(decoder_size,
+                           decoder_size,
+                           act=None,
+                           bias_attr=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fc_2 = Linear(decoder_size, 1, act=None, bias_attr=False)
 
     def forward(self, encoder_vec, encoder_proj, decoder_state):
@@ -322,19 +481,27 @@ class SimpleAttention(fluid.dygraph.Layer):
         )
 
         weights_reshape = fluid.layers.softmax(weights_reshape)
+<<<<<<< HEAD
         scaled = fluid.layers.elementwise_mul(
             x=encoder_vec, y=weights_reshape, axis=0
         )
+=======
+        scaled = fluid.layers.elementwise_mul(x=encoder_vec,
+                                              y=weights_reshape,
+                                              axis=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         context = fluid.layers.reduce_sum(scaled, dim=1)
 
         return context
 
 
 class GRUDecoderWithAttention(fluid.dygraph.Layer):
+
     def __init__(self, decoder_size, num_classes):
         super().__init__()
         self.simple_attention = SimpleAttention(decoder_size)
 
+<<<<<<< HEAD
         self.fc_1_layer = Linear(
             Config.encoder_size * 2, decoder_size * 3, bias_attr=False
         )
@@ -347,6 +514,21 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         self.out_layer = Linear(
             decoder_size, num_classes + 2, bias_attr=None, act='softmax'
         )
+=======
+        self.fc_1_layer = Linear(Config.encoder_size * 2,
+                                 decoder_size * 3,
+                                 bias_attr=False)
+        self.fc_2_layer = Linear(decoder_size,
+                                 decoder_size * 3,
+                                 bias_attr=False)
+        self.gru_unit = GRUUnit(size=decoder_size * 3,
+                                param_attr=None,
+                                bias_attr=None)
+        self.out_layer = Linear(decoder_size,
+                                num_classes + 2,
+                                bias_attr=None,
+                                act='softmax')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.decoder_size = decoder_size
 
@@ -356,6 +538,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         res = []
         hidden_mem = decoder_boot
         for i in range(target_embedding.shape[1]):
+<<<<<<< HEAD
             current_word = fluid.layers.slice(
                 target_embedding, axes=[1], starts=[i], ends=[i + 1]
             )
@@ -366,6 +549,18 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             context = self.simple_attention(
                 encoder_vec, encoder_proj, hidden_mem
             )
+=======
+            current_word = fluid.layers.slice(target_embedding,
+                                              axes=[1],
+                                              starts=[i],
+                                              ends=[i + 1])
+            current_word = fluid.layers.reshape(current_word,
+                                                [-1, current_word.shape[2]],
+                                                inplace=False)
+
+            context = self.simple_attention(encoder_vec, encoder_proj,
+                                            hidden_mem)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fc_1 = self.fc_1_layer(context)
             fc_2 = self.fc_2_layer(current_word)
             decoder_inputs = fluid.layers.elementwise_add(x=fc_1, y=fc_2)
@@ -381,15 +576,23 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
 
 
 class OCRAttention(fluid.dygraph.Layer):
+
     def __init__(self):
         super().__init__()
         self.encoder_net = EncoderNet()
+<<<<<<< HEAD
         self.fc = Linear(
             Config.encoder_size,
             Config.decoder_size,
             bias_attr=False,
             act='relu',
         )
+=======
+        self.fc = Linear(Config.encoder_size,
+                         Config.decoder_size,
+                         bias_attr=False,
+                         act='relu')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.embedding = Embedding(
             [Config.num_classes + 2, Config.word_vector_dim], dtype='float32'
         )
@@ -399,12 +602,22 @@ class OCRAttention(fluid.dygraph.Layer):
 
     def forward(self, inputs, label_in):
         gru_backward, encoded_vector, encoded_proj = self.encoder_net(inputs)
+<<<<<<< HEAD
         backward_first = fluid.layers.slice(
             gru_backward, axes=[1], starts=[0], ends=[1]
         )
         backward_first = paddle.reshape(
             backward_first, [-1, backward_first.shape[2]]
         )
+=======
+        backward_first = fluid.layers.slice(gru_backward,
+                                            axes=[1],
+                                            starts=[0],
+                                            ends=[1])
+        backward_first = fluid.layers.reshape(backward_first,
+                                              [-1, backward_first.shape[2]],
+                                              inplace=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         decoder_boot = self.fc(backward_first)
         label_in = paddle.reshape(label_in, [-1])
         trg_embedding = self.embedding(label_in)
@@ -414,14 +627,21 @@ class OCRAttention(fluid.dygraph.Layer):
             [-1, Config.max_length, trg_embedding.shape[1]],
         )
 
+<<<<<<< HEAD
         prediction = self.gru_decoder_with_attention(
             trg_embedding, encoded_vector, encoded_proj, decoder_boot
         )
+=======
+        prediction = self.gru_decoder_with_attention(trg_embedding,
+                                                     encoded_vector,
+                                                     encoded_proj, decoder_boot)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return prediction
 
 
 class TestDygraphOCRAttention(unittest.TestCase):
+
     def test_ocr_test(self):
         seed = 90
         epoch_num = 1
@@ -430,6 +650,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
         else:
             batch_num = 2
         np.random.seed = seed
+<<<<<<< HEAD
         image_np = np.random.randn(
             Config.batch_size,
             Config.DATA_SHAPE[0],
@@ -465,6 +686,28 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     ).reshape([1, Config.max_length]),
                 )
             )
+=======
+        image_np = np.random.randn(Config.batch_size, Config.DATA_SHAPE[0],
+                                   Config.DATA_SHAPE[1],
+                                   Config.DATA_SHAPE[2]).astype('float32')
+        label_in_np = np.arange(0, Config.max_length,
+                                dtype='int64').reshape([1, Config.max_length])
+        for i in range(2, Config.batch_size + 1):
+            label_in_np = np.vstack(
+                (label_in_np,
+                 np.arange((i - 1) * Config.max_length,
+                           i * Config.max_length,
+                           dtype='int64').reshape([1, Config.max_length])))
+
+        label_out_np = np.arange(0, Config.max_length,
+                                 dtype='int64').reshape([1, Config.max_length])
+        for i in range(2, Config.batch_size + 1):
+            label_out_np = np.vstack(
+                (label_out_np,
+                 np.arange((i - 1) * Config.max_length,
+                           i * Config.max_length,
+                           dtype='int64').reshape([1, Config.max_length])))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def run_dygraph():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
@@ -491,6 +734,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     label_out.stop_gradient = True
                     img = to_variable(image_np)
                     dy_prediction = ocr_attention(img, label_in)
+<<<<<<< HEAD
                     label_out = paddle.reshape(label_out, [-1, 1])
                     dy_prediction = paddle.reshape(
                         dy_prediction, [label_out.shape[0], -1]
@@ -498,6 +742,14 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     loss = fluid.layers.cross_entropy(
                         input=dy_prediction, label=label_out
                     )
+=======
+                    label_out = fluid.layers.reshape(label_out, [-1, 1],
+                                                     inplace=False)
+                    dy_prediction = fluid.layers.reshape(
+                        dy_prediction, [label_out.shape[0], -1], inplace=False)
+                    loss = fluid.layers.cross_entropy(input=dy_prediction,
+                                                      label=label_out)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     avg_loss = fluid.layers.reduce_sum(loss)
 
                     dy_out = avg_loss.numpy()
@@ -511,11 +763,17 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     for param in ocr_attention.parameters():
                         if param.trainable:
                             np_array = np.array(
+<<<<<<< HEAD
                                 param._grad_ivar().value().get_tensor()
                             )
                             dy_grad_value[
                                 param.name + core.grad_var_suffix()
                             ] = np_array
+=======
+                                param._grad_ivar().value().get_tensor())
+                            dy_grad_value[param.name +
+                                          core.grad_var_suffix()] = np_array
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     optimizer.minimize(avg_loss)
                     ocr_attention.clear_gradients()
@@ -555,6 +813,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 
+<<<<<<< HEAD
             images = fluid.layers.data(
                 name='pixel', shape=Config.DATA_SHAPE, dtype='float32'
             )
@@ -564,6 +823,19 @@ class TestDygraphOCRAttention(unittest.TestCase):
             static_label_out = fluid.layers.data(
                 name='label_out', shape=[1], dtype='int64', lod_level=0
             )
+=======
+            images = fluid.layers.data(name='pixel',
+                                       shape=Config.DATA_SHAPE,
+                                       dtype='float32')
+            static_label_in = fluid.layers.data(name='label_in',
+                                                shape=[1],
+                                                dtype='int64',
+                                                lod_level=0)
+            static_label_out = fluid.layers.data(name='label_out',
+                                                 shape=[1],
+                                                 dtype='int64',
+                                                 lod_level=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             static_label_out.stop_gradient = True
             static_label_out.trainable = False
 
@@ -573,9 +845,14 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 static_prediction, shape=[-1, Config.num_classes + 2]
             )
 
+<<<<<<< HEAD
             cost = fluid.layers.cross_entropy(
                 input=static_prediction, label=static_label_out
             )
+=======
+            cost = fluid.layers.cross_entropy(input=static_prediction,
+                                              label=static_label_out)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             static_avg_loss = fluid.layers.reduce_sum(cost)
             # param_grad_list = fluid.backward.append_backward(static_avg_loss)
             optimizer.minimize(static_avg_loss)
@@ -619,9 +896,14 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     static_grad_value = {}
                     static_out = out[0]
                     for i in range(1, len(static_param_name_list) + 1):
+<<<<<<< HEAD
                         static_param_value[static_param_name_list[i - 1]] = out[
                             i
                         ]
+=======
+                        static_param_value[static_param_name_list[i -
+                                                                  1]] = out[i]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     grad_start_pos = len(static_param_name_list) + 1
                     for i in range(
                         grad_start_pos,
@@ -647,10 +929,16 @@ class TestDygraphOCRAttention(unittest.TestCase):
         for key, value in static_param_init_value.items():
             np.testing.assert_array_equal(value, eager_param_init_value[key])
 
+<<<<<<< HEAD
         for key, value in static_param_value.items():
             np.testing.assert_allclose(
                 value, eager_param_value[key], rtol=1e-05, atol=1e-8
             )
+=======
+        for key, value in six.iteritems(static_param_value):
+            self.assertTrue(
+                np.allclose(value, eager_param_value[key], rtol=1e-05))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

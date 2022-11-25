@@ -20,6 +20,7 @@ from op_test import OpTest, skip_check_grad_ci
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
 class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
+
     def setUp(self):
         pass
 
@@ -66,6 +67,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
 
 
 class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
+
     def setUp(self):
         pass
 

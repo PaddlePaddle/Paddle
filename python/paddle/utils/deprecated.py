@@ -113,6 +113,7 @@ def deprecated(update_to="", since="", reason="", level=0):
             v_current += [0] * (4 - len(v_current))
             v_since = [int(i) for i in _since.split(".")]
             v_since += [0] * (4 - len(v_since))
+<<<<<<< HEAD
             if (
                 paddle.__version__ == "0.0.0"
                 or _since == ""
@@ -121,6 +122,12 @@ def deprecated(update_to="", since="", reason="", level=0):
                 warnings.warn(
                     warningmsg, category=DeprecationWarning, stacklevel=2
                 )
+=======
+            if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
+                warnings.warn(warningmsg,
+                              category=DeprecationWarning,
+                              stacklevel=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             return func(*args, **kwargs)
 

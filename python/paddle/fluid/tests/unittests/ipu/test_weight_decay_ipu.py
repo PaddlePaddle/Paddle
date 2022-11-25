@@ -16,8 +16,13 @@ import os
 import tempfile
 import unittest
 
+import os
 import numpy as np
+<<<<<<< HEAD
 
+=======
+import tempfile
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -25,6 +30,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -57,6 +63,7 @@ class TestBase(IPUOpTest):
         }
 
     def _test_optimizer(self, run_ipu=True):
+
         def exclude_fn(param):
             return param.name.endswith('.w_0')
 
@@ -69,16 +76,29 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32'
                 )
+=======
+                image = paddle.static.data(name='image',
+                                           shape=[1, 3, 10, 10],
+                                           dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 bias = paddle.fluid.layers.create_parameter(
                     shape=[1, 3, 10, 10], is_bias=True, dtype='float32'
                 )
                 add1 = image + bias
+<<<<<<< HEAD
                 conv1 = paddle.static.nn.conv2d(
                     add1, num_filters=3, filter_size=3, bias_attr=False
                 )
+=======
+                conv1 = paddle.static.nn.conv2d(add1,
+                                                num_filters=3,
+                                                filter_size=3,
+                                                bias_attr=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 loss = paddle.mean(conv1)
                 opt = paddle.optimizer.Lamb(
@@ -102,11 +122,18 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_options(
+<<<<<<< HEAD
                     {'loss_scaling': self.attrs["loss_scaling"]}
                 )
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy
                 ).compile(feed_list, fetch_list)
+=======
+                    {'loss_scaling': self.attrs["loss_scaling"]})
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 program = main_prog
 

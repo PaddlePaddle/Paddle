@@ -20,6 +20,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
+
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.pass_builder().append_pass("int8_scale_calculation_mkldnn_pass")
@@ -80,45 +81,75 @@ class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=5, max_value=100), min_size=4, max_size=4
             )
         )
+=======
+            st.lists(st.integers(min_value=5, max_value=100),
+                     min_size=4,
+                     max_size=4))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         x_shape[1] = draw(st.integers(min_value=5, max_value=10))
 
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
 
         f_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=4, max_size=4
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=4,
+                     max_size=4))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if data_format == "NCHW":
             f_shape[1] = x_shape[1]
         else:
             f_shape[1] = x_shape[3]
 
         strides = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
         padding = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=4, max_size=4
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=4,
+                     max_size=4))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         groups = draw(st.integers(min_value=1, max_value=3))
 
         dilations = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         bias_shape = [f_shape[0]]
         inputs = dict()
@@ -144,6 +175,7 @@ class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
                 "filter": TensorConfig(shape=f_shape),
             }
 
+<<<<<<< HEAD
         conv2d_op = OpConfig(
             "conv2d",
             inputs=inputs,
@@ -157,6 +189,19 @@ class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
             use_mkldnn=use_mkldnn,
             mkldnn_data_type="int8",
         )
+=======
+        conv2d_op = OpConfig("conv2d",
+                             inputs=inputs,
+                             outputs={"Output": ["conv2d_out"]},
+                             strides=strides,
+                             padding_algorithm=padding_algorithm,
+                             paddings=padding,
+                             groups=groups,
+                             dilations=dilations,
+                             data_format=data_format,
+                             use_mkldnn=use_mkldnn,
+                             mkldnn_data_type="int8")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         ops = [conv2d_op]
 
@@ -169,11 +214,17 @@ class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=100,
             passes=["int8_scale_calculation_mkldnn_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=100,
+                            passes=["int8_scale_calculation_mkldnn_pass"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

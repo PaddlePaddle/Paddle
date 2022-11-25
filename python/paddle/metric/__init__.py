@@ -19,6 +19,7 @@ from .metrics import Recall  # noqa: F401
 from .metrics import Auc  # noqa: F401
 from .metrics import accuracy  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     'Metric',
     'Accuracy',
@@ -26,4 +27,8 @@ __all__ = [  # noqa
     'Recall',
     'Auc',
     'accuracy',
+=======
+__all__ = [  #noqa
+    'Metric', 'Accuracy', 'Precision', 'Recall', 'Auc', 'accuracy'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 ]

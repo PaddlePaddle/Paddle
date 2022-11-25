@@ -243,7 +243,11 @@ bool PD_SpecifyInputName(const PD_AnalysisConfig* config) {
 }
 
 void PD_EnableTensorRtEngine(PD_AnalysisConfig* config,
+<<<<<<< HEAD
                              int64_t workspace_size,
+=======
+                             int workspace_size,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                              int max_batch_size,
                              int min_subgraph_size,
                              Precision precision,

@@ -126,11 +126,17 @@ class Dirichlet(exponential_family.ExponentialFamily):
         Args:
             value (Tensor): Value to be evaluated.
         """
+<<<<<<< HEAD
         return (
             (paddle.log(value) * (self.concentration - 1.0)).sum(-1)
             + paddle.lgamma(self.concentration.sum(-1))
             - paddle.lgamma(self.concentration).sum(-1)
         )
+=======
+        return ((paddle.log(value) * (self.concentration - 1.0)).sum(-1) +
+                paddle.lgamma(self.concentration.sum(-1)) -
+                paddle.lgamma(self.concentration).sum(-1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def entropy(self):
         """Entropy of Dirichlet distribution.
@@ -140,6 +146,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
         """
         concentration0 = self.concentration.sum(-1)
         k = self.concentration.shape[-1]
+<<<<<<< HEAD
         return (
             paddle.lgamma(self.concentration).sum(-1)
             - paddle.lgamma(concentration0)
@@ -148,6 +155,13 @@ class Dirichlet(exponential_family.ExponentialFamily):
                 (self.concentration - 1.0) * paddle.digamma(self.concentration)
             ).sum(-1)
         )
+=======
+        return (paddle.lgamma(self.concentration).sum(-1) -
+                paddle.lgamma(concentration0) -
+                (k - concentration0) * paddle.digamma(concentration0) -
+                ((self.concentration - 1.0) *
+                 paddle.digamma(self.concentration)).sum(-1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     @property
     def _natural_parameters(self):
@@ -165,6 +179,7 @@ def _dirichlet(concentration, name=None):
     )
 
     if in_dygraph_mode():
+<<<<<<< HEAD
         return paddle._C_ops.dirichlet(concentration)
     elif _in_legacy_dygraph():
         return paddle._legacy_C_ops.dirichlet(concentration)
@@ -179,4 +194,17 @@ def _dirichlet(concentration, name=None):
             outputs={'Out': out},
             attrs={},
         )
+=======
+        return paddle._C_ops.final_state_dirichlet(concentration)
+    elif _in_legacy_dygraph():
+        return paddle._C_ops.dirichlet(concentration)
+    else:
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=concentration.dtype)
+        helper.append_op(type=op_type,
+                         inputs={"Alpha": concentration},
+                         outputs={'Out': out},
+                         attrs={})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return out

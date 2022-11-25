@@ -75,7 +75,11 @@ class TestOriginInfo(unittest.TestCase):
         self.func = simple_func
 
     def set_static_lineno(self):
+<<<<<<< HEAD
         self.static_abs_lineno_list = [9, 11, 12]
+=======
+        self.static_abs_lineno_list = [7, 8, 9]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def set_dygraph_info(self):
         self.line_num = 3
@@ -163,7 +167,11 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
         self.func = nested_func
 
     def set_static_lineno(self):
+<<<<<<< HEAD
         self.static_abs_lineno_list = [9, 12, 14, 16, 17]
+=======
+        self.static_abs_lineno_list = [7, 9, 10, 11, 12]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def set_dygraph_info(self):
         self.line_num = 5
@@ -192,7 +200,11 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
         self.func = decorated_func
 
     def set_static_lineno(self):
+<<<<<<< HEAD
         self.static_abs_lineno_list = [9, 11]
+=======
+        self.static_abs_lineno_list = [7, 8]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def set_dygraph_info(self):
         self.line_num = 2
@@ -226,7 +238,11 @@ class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
         self.func = decorated_func2
 
     def set_static_lineno(self):
+<<<<<<< HEAD
         self.static_abs_lineno_list = [9, 11]
+=======
+        self.static_abs_lineno_list = [7, 8]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def set_dygraph_info(self):
         self.line_num = 2

@@ -52,6 +52,7 @@ class FusedTokenPruneOpConverter : public OpConverter {
         auto* word_id = engine_->GetITensor("word_id");
         auto* pos_id = engine_->GetITensor("pos_id");
         auto* mask_id = engine_->GetITensor("mask_id");
+<<<<<<< HEAD
 
         // reduce_sum: (-1,headsize,token_length,token_length) ->
         // (-1,token_length)
@@ -67,6 +68,10 @@ class FusedTokenPruneOpConverter : public OpConverter {
         auto* Reduced = reduce_sum_layer->getOutput(0);
         std::vector<nvinfer1::ITensor*> itensors = {
             Reduced, X, Mask, NewMask, word_id, pos_id, mask_id};
+=======
+        std::vector<nvinfer1::ITensor*> itensors = {
+            Attn, X, Mask, NewMask, word_id, pos_id, mask_id};
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         layer = engine_->AddDynamicPlugin(itensors.data(), 7, plugin);
 
         layer->getOutput(0)->setName(output_name.c_str());

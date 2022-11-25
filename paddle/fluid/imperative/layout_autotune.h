@@ -39,6 +39,10 @@ class LayoutAutoTune {
     return heavily_layout_sensitive_ops_.count(op_type) != 0;
   }
 
+  bool IsHeavilyLayoutSensitive(const std::string& op_type) const {
+    return heavily_layout_sensitive_ops_.count(op_type) != 0;
+  }
+
   bool IsLightlyLayoutSensitive(const std::string& op_type) const {
     return lightly_layout_sensitive_ops_.count(op_type) != 0;
   }

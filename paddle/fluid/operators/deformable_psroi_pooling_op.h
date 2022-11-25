@@ -196,7 +196,11 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
             "is:%d.",
             num_rois,
             out->dims()[0]));
+<<<<<<< HEAD
     phi::DenseTensor roi_batch_id_list;
+=======
+    framework::Tensor roi_batch_id_list;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     roi_batch_id_list.Resize({num_rois});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());

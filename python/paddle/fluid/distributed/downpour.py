@@ -113,6 +113,7 @@ class DownpourSGD:
         param_grads_list = []
         for loss_index in range(len(losses)):
             program_config = ps_param.trainer_param.program_config.add()
+<<<<<<< HEAD
             program_config.program_id = str(
                 id(losses[loss_index].block.program)
             )
@@ -124,6 +125,15 @@ class DownpourSGD:
                 ),
                 key=lambda x: x[0].name,
             )
+=======
+            program_config.program_id = str(id(
+                losses[loss_index].block.program))
+            program_config.pull_sparse_table_id.extend([sparse_table_index])
+            program_config.push_sparse_table_id.extend([sparse_table_index])
+            params_grads = sorted(append_backward(losses[loss_index],
+                                                  parameter_list, no_grad_set),
+                                  key=lambda x: x[0].name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             param_grads_list.append(params_grads)
             params = []
             grads = []

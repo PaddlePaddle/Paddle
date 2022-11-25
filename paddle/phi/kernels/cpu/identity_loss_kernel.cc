@@ -31,7 +31,11 @@ void IdentityLossKernel(const Context& dev_ctx,
     case 0:
       // sum
       phi::SumRawKernel<T>(
+<<<<<<< HEAD
           dev_ctx, x, phi::IntArray({0}), false, true, out->dtype(), out);
+=======
+          dev_ctx, x, std::vector<int64_t>{0}, false, true, out->dtype(), out);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       break;
     case 1:
       // mean

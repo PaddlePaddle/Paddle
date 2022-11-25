@@ -23,13 +23,20 @@ import os
 
 
 class TestFeedPersistableVar(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
         batch_size = 4
+<<<<<<< HEAD
         cls.img, cls.label = init_data(
             batch_size, img_shape=[784], label_range=9
         )
+=======
+        cls.img, cls.label = init_data(batch_size,
+                                       img_shape=[784],
+                                       label_range=9)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         cls.feed_dict = {
             'image': cls.img,
             'label': cls.label,
@@ -37,6 +44,7 @@ class TestFeedPersistableVar(unittest.TestCase):
         }
 
     def optimizer(self):
+<<<<<<< HEAD
         learning_rate = fluid.layers.create_global_var(
             name="learning_rate",
             shape=[1],
@@ -44,6 +52,13 @@ class TestFeedPersistableVar(unittest.TestCase):
             dtype='float32',
             persistable=True,
         )
+=======
+        learning_rate = fluid.layers.create_global_var(name="learning_rate",
+                                                       shape=[1],
+                                                       value=1.0,
+                                                       dtype='float32',
+                                                       persistable=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         optimizer = fluid.optimizer.SGD(learning_rate=learning_rate)
         return optimizer
 
@@ -72,6 +87,7 @@ class TestFeedPersistableVar(unittest.TestCase):
         self.check_feed_persistable_var(self.feed_dict)
         self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
 
+<<<<<<< HEAD
         self.feed_dict['learning_rate'] = numpy.array([1.0, 1.0]).astype(
             "float32"
         )
@@ -80,6 +96,14 @@ class TestFeedPersistableVar(unittest.TestCase):
         self.feed_dict['learning_rate'] = numpy.array([1.0, 1.0]).astype(
             "float32"
         )
+=======
+        self.feed_dict['learning_rate'] = numpy.array([1.0,
+                                                       1.0]).astype("float32")
+        self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
+
+        self.feed_dict['learning_rate'] = numpy.array([1.0,
+                                                       1.0]).astype("float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         run = partial(self.check_feed_persistable_var, self.feed_dict)
         self.assertRaises(RuntimeError, run)
 

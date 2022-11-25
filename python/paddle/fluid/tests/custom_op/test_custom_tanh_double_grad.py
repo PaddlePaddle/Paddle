@@ -20,6 +20,13 @@ from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 import paddle.fluid as fluid
+<<<<<<< HEAD
+=======
+import paddle.static as static
+from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension.extension_utils import run_cmd
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
@@ -50,9 +57,16 @@ def custom_tanh_double_grad_dynamic(func, device, dtype, np_x):
     out = func(t)
     out.stop_gradient = False
 
+<<<<<<< HEAD
     dx = paddle.grad(
         outputs=[out], inputs=[t], create_graph=True, retain_graph=True
     )
+=======
+    dx = paddle.grad(outputs=[out],
+                     inputs=[t],
+                     create_graph=True,
+                     retain_graph=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     dx[0].backward()
 
@@ -63,6 +77,7 @@ def custom_tanh_double_grad_dynamic(func, device, dtype, np_x):
 
 
 class TestCustomTanhDoubleGradJit(unittest.TestCase):
+
     def setUp(self):
         paddle.set_device('cpu')
         self.dtypes = ['float32', 'float64']
@@ -76,6 +91,7 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                     custom_ops.custom_tanh, device, dtype, x
                 )
                 pd_out, pd_dx_grad, pd_dout = custom_tanh_double_grad_dynamic(
+<<<<<<< HEAD
                     paddle.tanh, device, dtype, x
                 )
                 np.testing.assert_allclose(
@@ -102,6 +118,21 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                         dout, pd_dout
                     ),
                 )
+=======
+                    paddle.tanh, device, dtype, x)
+                self.assertTrue(
+                    np.allclose(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(
+                        out, pd_out))
+                self.assertTrue(
+                    np.allclose(dx_grad, pd_dx_grad),
+                    "custom op dx grad: {},\n paddle api dx grad: {}".format(
+                        dx_grad, pd_dx_grad))
+                self.assertTrue(
+                    np.allclose(dout, pd_dout),
+                    "custom op out grad: {},\n paddle api out grad: {}".format(
+                        dout, pd_dout))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_func_double_grad_dynamic(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})

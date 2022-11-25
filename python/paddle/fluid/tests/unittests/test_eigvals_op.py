@@ -32,6 +32,7 @@ def np_eigvals(a):
 
 
 class TestEigvalsOp(OpTest):
+
     def setUp(self):
         np.random.seed(0)
         paddle.enable_static()
@@ -57,6 +58,7 @@ class TestEigvalsOp(OpTest):
                 self.dtype
             )
         else:
+<<<<<<< HEAD
             self.input_data = (
                 np.random.random(self.input_dims)
                 + np.random.random(self.input_dims) * 1j
@@ -67,6 +69,16 @@ class TestEigvalsOp(OpTest):
         self.check_output_with_place_customized(
             checker=self.verify_output, place=core.CPUPlace()
         )
+=======
+            self.input_data = (np.random.random(self.input_dims) +
+                               np.random.random(self.input_dims) * 1j).astype(
+                                   self.dtype)
+
+    def test_check_output(self):
+        self.__class__.no_need_check_grad = True
+        self.check_output_with_place_customized(checker=self.verify_output,
+                                                place=core.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def verify_output(self, outs):
         actual_outs = np.sort(np.array(outs[0]))
@@ -84,10 +96,16 @@ class TestEigvalsOp(OpTest):
         )
 
         n_dim = actual_outs.shape[-1]
+<<<<<<< HEAD
         for actual_row, expect_row in zip(
             actual_outs.reshape((-1, n_dim)), expect_outs.reshape((-1, n_dim))
         ):
             is_mapped_index = np.zeros((n_dim,))
+=======
+        for actual_row, expect_row in zip(actual_outs.reshape((-1, n_dim)),
+                                          expect_outs.reshape((-1, n_dim))):
+            is_mapped_index = np.zeros((n_dim, ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             for i in range(n_dim):
                 is_mapped = False
                 for j in range(n_dim):
@@ -117,56 +135,67 @@ class TestEigvalsOp(OpTest):
 
 
 class TestEigvalsOpFloat64(TestEigvalsOp):
+
     def set_dtype(self):
         self.dtype = np.float64
 
 
 class TestEigvalsOpComplex64(TestEigvalsOp):
+
     def set_dtype(self):
         self.dtype = np.complex64
 
 
 class TestEigvalsOpComplex128(TestEigvalsOp):
+
     def set_dtype(self):
         self.dtype = np.complex128
 
 
 class TestEigvalsOpLargeScare(TestEigvalsOp):
+
     def set_input_dims(self):
         self.input_dims = (128, 128)
 
 
 class TestEigvalsOpLargeScareFloat64(TestEigvalsOpLargeScare):
+
     def set_dtype(self):
         self.dtype = np.float64
 
 
 class TestEigvalsOpLargeScareComplex64(TestEigvalsOpLargeScare):
+
     def set_dtype(self):
         self.dtype = np.complex64
 
 
 class TestEigvalsOpLargeScareComplex128(TestEigvalsOpLargeScare):
+
     def set_dtype(self):
         self.dtype = np.complex128
 
 
 class TestEigvalsOpBatch1(TestEigvalsOp):
+
     def set_input_dims(self):
         self.input_dims = (1, 2, 3, 4, 4)
 
 
 class TestEigvalsOpBatch2(TestEigvalsOp):
+
     def set_input_dims(self):
         self.input_dims = (3, 1, 4, 5, 5)
 
 
 class TestEigvalsOpBatch3(TestEigvalsOp):
+
     def set_input_dims(self):
         self.input_dims = (6, 2, 9, 6, 6)
 
 
 class TestEigvalsAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(0)
 
@@ -197,10 +226,16 @@ class TestEigvalsAPI(unittest.TestCase):
                 self.dtype
             )
         else:
+<<<<<<< HEAD
             self.input_data = (
                 np.random.random(self.input_dims)
                 + np.random.random(self.input_dims) * 1j
             ).astype(self.dtype)
+=======
+            self.input_data = (np.random.random(self.input_dims) +
+                               np.random.random(self.input_dims) * 1j).astype(
+                                   self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def verify_output(self, actural_outs, expect_outs):
         actual_outs = np.array(actural_outs)
@@ -218,10 +253,16 @@ class TestEigvalsAPI(unittest.TestCase):
         )
 
         n_dim = actual_outs.shape[-1]
+<<<<<<< HEAD
         for actual_row, expect_row in zip(
             actual_outs.reshape((-1, n_dim)), expect_outs.reshape((-1, n_dim))
         ):
             is_mapped_index = np.zeros((n_dim,))
+=======
+        for actual_row, expect_row in zip(actual_outs.reshape((-1, n_dim)),
+                                          expect_outs.reshape((-1, n_dim))):
+            is_mapped_index = np.zeros((n_dim, ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             for i in range(n_dim):
                 is_mapped = False
                 for j in range(n_dim):
@@ -270,6 +311,7 @@ class TestEigvalsAPI(unittest.TestCase):
 
     def run_static(self, place):
         paddle.enable_static()
+<<<<<<< HEAD
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -292,6 +334,26 @@ class TestEigvalsAPI(unittest.TestCase):
             batch_outs = paddle.linalg.eigvals(
                 batch_input_tensor, name='batch_x'
             )
+=======
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            small_input_tensor = paddle.static.data(name='small_x',
+                                                    shape=self.small_dims,
+                                                    dtype=self.dtype)
+            large_input_tensor = paddle.static.data(name='large_x',
+                                                    shape=self.large_dims,
+                                                    dtype=self.dtype)
+            batch_input_tensor = paddle.static.data(name='batch_x',
+                                                    shape=self.batch_dims,
+                                                    dtype=self.dtype)
+
+            small_outs = paddle.linalg.eigvals(small_input_tensor,
+                                               name='small_x')
+            large_outs = paddle.linalg.eigvals(large_input_tensor,
+                                               name='large_x')
+            batch_outs = paddle.linalg.eigvals(batch_input_tensor,
+                                               name='batch_x')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             exe = paddle.static.Executor(place)
 
@@ -335,16 +397,19 @@ class TestEigvalsAPI(unittest.TestCase):
 
 
 class TestEigvalsAPIFloat64(TestEigvalsAPI):
+
     def set_dtype(self):
         self.dtype = np.float64
 
 
 class TestEigvalsAPIComplex64(TestEigvalsAPI):
+
     def set_dtype(self):
         self.dtype = np.complex64
 
 
 class TestEigvalsAPIComplex128(TestEigvalsAPI):
+
     def set_dtype(self):
         self.dtype = np.complex128
 

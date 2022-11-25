@@ -48,7 +48,11 @@ namespace reader = operators::reader;
 // Check whether the tensor shape matches the VarDesc shape
 // Return the different shape if exists
 static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+<<<<<<< HEAD
     const phi::DenseTensor &tensor,
+=======
+    const framework::LoDTensor &tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const framework::VarDesc &var_desc,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
@@ -356,7 +360,11 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
             auto &tensor_list = result_list[0];
             std::vector<std::shared_ptr<imperative::VarBase>> var_list;
             var_list.reserve(tensor_list.size());
+<<<<<<< HEAD
             auto func = [](phi::DenseTensor &lod_tensor) {
+=======
+            auto func = [](framework::LoDTensor &lod_tensor) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               std::string act_name =
                   imperative::GetCurrentTracer()->GenerateUniqueName(
                       "generated_var");
@@ -366,7 +374,11 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
               new_var->SetDataType(
                   framework::TransToProtoVarType(lod_tensor.dtype()));
               auto *tensor =
+<<<<<<< HEAD
                   new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+=======
+                  new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               *tensor = std::move(lod_tensor);
               return new_var;
             };
@@ -387,7 +399,11 @@ void BindReader(py::module *module) {
   auto &m = *module;
 
   m.def("diff_tensor_shape",
+<<<<<<< HEAD
         [](const phi::DenseTensor &tensor,
+=======
+        [](const framework::LoDTensor &tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
            const framework::VarDesc &var_desc,
            size_t num_places) -> py::object {
           auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
@@ -427,7 +443,11 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::LoDTensorBlockingQueue &self,
+<<<<<<< HEAD
              const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+=======
+             const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())
@@ -445,7 +465,11 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::OrderedMultiDeviceLoDTensorBlockingQueue &self,
+<<<<<<< HEAD
              const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+=======
+             const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())

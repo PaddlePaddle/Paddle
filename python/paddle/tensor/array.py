@@ -63,9 +63,15 @@ def array_length(array):
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
+<<<<<<< HEAD
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]}
     )
+=======
+    helper.append_op(type='lod_array_length',
+                     inputs={'X': [array]},
+                     outputs={'Out': [tmp]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return tmp
 
 
@@ -129,11 +135,20 @@ def array_read(array, i):
     ):
         raise TypeError("array should be tensor array vairable")
     out = helper.create_variable_for_type_inference(dtype=array.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='read_from_array',
         inputs={'X': [array], 'I': [i]},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='read_from_array',
+                     inputs={
+                         'X': [array],
+                         'I': [i]
+                     },
+                     outputs={'Out': [out]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -197,10 +212,16 @@ def array_write(x, i, array=None):
     check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
     if array is not None:
+<<<<<<< HEAD
         if (
             not isinstance(array, Variable)
             or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
         ):
+=======
+        if not isinstance(
+                array, Variable
+        ) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             raise TypeError(
                 "array should be tensor array vairable in array_write Op"
             )
@@ -208,6 +229,7 @@ def array_write(x, i, array=None):
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+<<<<<<< HEAD
             dtype=x.dtype,
         )
     helper.append_op(
@@ -215,6 +237,15 @@ def array_write(x, i, array=None):
         inputs={'X': [x], 'I': [i]},
         outputs={'Out': [array]},
     )
+=======
+            dtype=x.dtype)
+    helper.append_op(type='write_to_array',
+                     inputs={
+                         'X': [x],
+                         'I': [i]
+                     },
+                     outputs={'Out': [array]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return array
 
 
@@ -251,20 +282,30 @@ def create_array(dtype, initialized_list=None):
     if initialized_list is not None:
         if not isinstance(initialized_list, (list, tuple)):
             raise TypeError(
+<<<<<<< HEAD
                 "Require type(initialized_list) should be list/tuple, but received {}".format(
                     type(initialized_list)
                 )
             )
+=======
+                "Require type(initialized_list) should be list/tuple, but received {}"
+                .format(type(initialized_list)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         array = list(initialized_list)
 
     # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
     for val in array:
         if not isinstance(val, Variable):
             raise TypeError(
+<<<<<<< HEAD
                 "All values in `initialized_list` should be Variable, but recevied {}.".format(
                     type(val)
                 )
             )
+=======
+                "All values in `initialized_list` should be Variable, but recevied {}."
+                .format(type(val)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if _non_static_mode():
         return array

@@ -34,3 +34,10 @@ void DistKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(dist, CPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
+<<<<<<< HEAD
+=======
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

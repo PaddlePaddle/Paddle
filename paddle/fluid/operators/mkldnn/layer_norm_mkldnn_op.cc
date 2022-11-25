@@ -20,6 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+<<<<<<< HEAD
 class LayerNormOneDNNHandler
     : public phi::funcs::
           OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
@@ -33,6 +34,20 @@ class LayerNormOneDNNHandler
                          platform::Place cpu_place)
       : phi::funcs::OneDNNHandlerNoCachingT<T,
                                             dnnl::layer_normalization_forward>(
+=======
+class LayerNormMKLDNNHandler
+    : public platform::
+          MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
+ public:
+  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims,
+                         const float& epsilon,
+                         const dnnl::normalization_flags& flags,
+                         const bool& is_test,
+                         const Tensor* x,
+                         const dnnl::engine engine,
+                         platform::Place cpu_place)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             engine, cpu_place) {
     const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                        : dnnl::prop_kind::forward_training;
@@ -40,6 +55,7 @@ class LayerNormOneDNNHandler
         fwd_prop_kind, x->mem_desc(), epsilon, flags);
   }
 
+<<<<<<< HEAD
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
       const phi::DenseTensor* scale,
       const phi::DenseTensor* shift,
@@ -67,6 +83,22 @@ class LayerNormOneDNNHandler
           shift->data<float>(), shift->data<float>() + C, mem_data_handle + C);
       return scaleshift_memory;
     }
+=======
+  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
+                                                        const Tensor* shift) {
+    // OneDNN requires a single piece of memory for scale and shift data
+    const unsigned int C = phi::vectorize(scale->dims())[0];
+
+    auto scaleshift_memory =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
+
+    auto mem_data_handle =
+        reinterpret_cast<float*>(scaleshift_memory->get_data_handle());
+    std::copy(scale->data<float>(), scale->data<float>() + C, mem_data_handle);
+    std::copy(
+        shift->data<float>(), shift->data<float>() + C, mem_data_handle + C);
+    return scaleshift_memory;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
@@ -117,7 +149,11 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
+<<<<<<< HEAD
     LayerNormOneDNNHandler<T> handler(
+=======
+    LayerNormMKLDNNHandler<T> handler(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         src_tz, epsilon, flags, is_test, x, mkldnn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);

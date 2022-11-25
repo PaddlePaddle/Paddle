@@ -33,6 +33,7 @@ rank = 0
 
 
 class TestPrimDistOp(unittest.TestCase):
+
     def setUp(self):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
@@ -46,6 +47,7 @@ class TestPrimDistOp(unittest.TestCase):
     def init_prog(self):
         # block = self.main_program.global_block()
         # block = self.main_program.global_block()
+<<<<<<< HEAD
         self.w = self.layer_help.create_parameter(
             dtype="float", shape=[20], attr=None
         )
@@ -57,10 +59,24 @@ class TestPrimDistOp(unittest.TestCase):
         self.batch_reduced = paddle.static.data(
             name='batch_reduced', shape=[1], dtype='float'
         )
+=======
+        self.w = self.layer_help.create_parameter(dtype="float",
+                                                  shape=[20],
+                                                  attr=None)
+        self.w_grad = paddle.static.data(name='w_grad',
+                                         shape=[20],
+                                         dtype='float')
+        self.tmp1 = paddle.static.data(name='tmp1', shape=[20], dtype='float')
+        self.tmp2 = paddle.static.data(name='tmp2', shape=[20], dtype='float')
+        self.batch_reduced = paddle.static.data(name='batch_reduced',
+                                                shape=[1],
+                                                dtype='float')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.attrs = {}
 
         default_dist_context = get_default_distributed_context()
         _global_process_mesh = auto.ProcessMesh(list(range(nranks)))
+<<<<<<< HEAD
         tensor_dist_attr = set_var_dist_attr(
             default_dist_context,
             self.tmp1,
@@ -89,6 +105,29 @@ class TestPrimDistOp(unittest.TestCase):
             outputs={'Y': self.batch_reduced},
             attrs={"axis": [0]},
         )
+=======
+        tensor_dist_attr = set_var_dist_attr(default_dist_context,
+                                             self.tmp1, [-1],
+                                             _global_process_mesh,
+                                             mark_annotated=True)
+        tensor_dist_attr = set_var_dist_attr(default_dist_context,
+                                             self.tmp1, [-1],
+                                             _global_process_mesh,
+                                             mark_annotated=True)
+
+        op = self.layer_help.append_op(type="add_p",
+                                       inputs={
+                                           'X': self.tmp1,
+                                           'Y': self.w
+                                       },
+                                       outputs={'Z': self.w_grad},
+                                       attrs=self.attrs)
+
+        op = self.layer_help.append_op(type="reduce_p",
+                                       inputs={'X': self.tmp2},
+                                       outputs={'Y': self.batch_reduced},
+                                       attrs={"axis": [0]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_loss_and_grad_allreduce(self):
 

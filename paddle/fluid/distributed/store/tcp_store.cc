@@ -95,6 +95,49 @@ void MasterDaemon::_do_get(SocketType socket) {
   tcputils::send_vector<uint8_t>(socket, value);
 }
 
+<<<<<<< HEAD
+#ifndef _WIN32
+void MasterDaemon::InitControlFd() {
+  PADDLE_ENFORCE_NE(
+      pipe(_control_fd.data()),
+      -1,
+      platform::errors::Fatal("failed to cread control pipe errno:%d", errno));
+}
+void MasterDaemon::CloseControlFd() {
+  for (int fd : _control_fd) {
+    if (fd != -1) {
+      ::close(fd);
+    }
+=======
+void MasterDaemon::_do_stop(SocketType socket) {
+  VLOG(4) << "MasterDaemon::_do_stop " << GetSockName(socket);
+  if (!_has_stop) {
+    _stop_time = std::chrono::system_clock::now();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+  }
+}
+void MasterDaemon::StopByControlFd() {
+  VLOG(4) << ("begin to run StopByControlFd");
+  if (_control_fd[1] != -1) {
+    PADDLE_ENFORCE_NE(::write(_control_fd[1], "\0", 1),
+                      -1,
+                      platform::errors::Fatal(
+                          "failed to write control pipe errno:%d", errno));
+    // close the write end of the pipe
+    ::close(_control_fd[1]);
+    _control_fd[1] = -1;
+  }
+}
+#else
+void MasterDaemon::InitControlFd() {
+  ghStopEvent_ = CreateEvent(NULL, TRUE, FALSE, NULL);
+  PADDLE_ENFORCE(ghStopEvent_,
+                 platform::errors::Fatal("failed to cread control pipe"));
+}
+void MasterDaemon::CloseControlFd() { CloseHandle(ghStopEvent_); }
+void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
+#endif
+
 #ifndef _WIN32
 void MasterDaemon::InitControlFd() {
   PADDLE_ENFORCE_NE(
@@ -122,13 +165,9 @@ void MasterDaemon::StopByControlFd() {
   }
 }
 #else
-void MasterDaemon::InitControlFd() {
-  ghStopEvent_ = CreateEvent(NULL, TRUE, FALSE, NULL);
-  PADDLE_ENFORCE(ghStopEvent_,
-                 platform::errors::Fatal("failed to cread control pipe"));
-}
-void MasterDaemon::CloseControlFd() { CloseHandle(ghStopEvent_); }
-void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
+void MasterDaemon::InitControlFd() {}
+void MasterDaemon::CloseControlFd() {}
+void MasterDaemon::StopByControlFd() {}
 #endif
 
 void MasterDaemon::_do_wait(SocketType socket) {
@@ -177,13 +216,24 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
         case Command::WAIT:
           _do_wait(fds[i].fd);
           break;
+<<<<<<< HEAD
+=======
+        case Command::STOP:
+          _do_stop(fds[i].fd);
+          break;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         default:
           LOG(WARNING) << "Unknown command: " << static_cast<int>(command)
                        << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
+<<<<<<< HEAD
       tcputils::close_socket(fds[i].fd);
       fds.erase(fds.begin() + i);
+=======
+      fds.erase(fds.begin() + i);
+      tcputils::close_socket(fds[i].fd);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #ifdef _WIN32
       _sockets.erase(_sockets.begin() + i - 1);
 #else
@@ -196,6 +246,7 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
 }
 
 void MasterDaemon::run() {
+  VLOG(4) << "begin to run run _stop:" << _stop << " _has_stop:" << _has_stop;
   std::vector<struct pollfd> fds;
 #ifdef _WIN32
   fds.push_back({_listen_socket, POLLIN});
@@ -205,8 +256,28 @@ void MasterDaemon::run() {
       {.fd = _control_fd[0], .events = POLLIN | POLLHUP, .revents = 0});
 #endif
 
+<<<<<<< HEAD
   bool finished = false;
   while (!finished) {
+=======
+  while (!_stop) {
+    auto end_time = std::chrono::system_clock::now();
+    if (_has_stop) {
+      std::chrono::duration<double> diff = end_time - _stop_time;
+      int elapsed_seconds = static_cast<int>(diff.count());
+      PADDLE_ENFORCE_LT(
+          elapsed_seconds,
+          _timeout,
+          platform::errors::Fatal(
+              "%d seconds elapsed after the first worker "
+              "stopped, so we think there may be something wrong and will "
+              "stop the master worker. You can use "
+              "'export FLAGS_stop_check_timeout=3600'"
+              " to change the timeout value in seconds. The default one is 900",
+              elapsed_seconds));
+    }
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     for (size_t i = 0; i < fds.size(); i++) {
       fds[i].revents = 0;
     }
@@ -236,7 +307,11 @@ void MasterDaemon::run() {
       }
       VLOG(0)
           << "receive shutdown event and so quit from MasterDaemon run loop";
+<<<<<<< HEAD
       finished = true;
+=======
+      _stop = true;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       break;
     }
 #endif

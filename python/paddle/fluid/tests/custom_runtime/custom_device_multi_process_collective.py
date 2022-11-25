@@ -14,6 +14,10 @@
 
 import os
 import sys
+<<<<<<< HEAD
+=======
+import time
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def train(prefix):
@@ -27,6 +31,7 @@ def train(prefix):
     device_ids = os.getenv("PADDLE_WORLD_DEVICE_IDS")
     current_device_id = os.getenv("PADDLE_LOCAL_DEVICE_IDS")
 
+<<<<<<< HEAD
     details = "selected_accelerators:{} selected_custom_devices:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{} device_ids:{} device_id:{}".format(
         selected_accelerators,
         selected_custom_devices,
@@ -42,6 +47,14 @@ def train(prefix):
     with open(
         "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
     ) as f:
+=======
+    details = "selected_accelerators:{} selected_custom_devices:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{} device_ids:{} device_id:{}"\
+            .format(selected_accelerators, selected_custom_devices, worker_endpoints, trainers_num, current_endpoint,trainer_id,device_ids, current_device_id)
+
+    print(details)
+    with open("multi_process_{}.check_{}.log".format(prefix, trainer_id),
+              "w") as f:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         f.write(details)
 
 

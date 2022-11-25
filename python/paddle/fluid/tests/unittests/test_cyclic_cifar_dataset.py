@@ -17,6 +17,7 @@ import unittest
 
 
 class TestCifar10(unittest.TestCase):
+
     def test_main(self):
         reader = paddle.dataset.cifar.train10(cycle=False)
         sample_num = 0

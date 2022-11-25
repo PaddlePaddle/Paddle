@@ -22,8 +22,13 @@
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
@@ -31,10 +36,16 @@ namespace phi {
 enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
 #define ALIGN_BYTES 16
 
+<<<<<<< HEAD
 #define CHECK_CASE(i, flags, kernel_name, ...)                 \
   if (i == flags) {                                            \
     kernel_name<T, AccT, i>                                    \
         <<<grid, threads, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
+=======
+#define CHECK_CASE(i, flags, kernel_name, ...)                              \
+  if (i == flags) {                                                         \
+    kernel_name<T, i><<<grid, threads, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
 // 0 for no scale, no bias
@@ -52,7 +63,11 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
   typedef cub::WarpReduce<T> WarpReduce;
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
+<<<<<<< HEAD
   if (cub::LaneId() == 0) phi::CudaAtomicAdd(sum, value);
+=======
+  if (cub::LaneId() == 0) paddle::platform::CudaAtomicAdd(sum, value);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 template <typename T, typename AccT, int VecSize, int Num>
@@ -76,6 +91,7 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
     size += offset;
     if (tid >= offset) {
       if (Num == 1) {
+<<<<<<< HEAD
         AccT x_acc = static_cast<AccT>(x[tid]);
         *out_mean += x_acc;
         *out_var += x_acc * x_acc;
@@ -84,6 +100,13 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
         AccT y_acc = static_cast<AccT>(y[tid]);
         *out_mean += y_acc;
         *out_var += y_acc * x_acc;
+=======
+        *out_mean += x[tid];
+        *out_var += x[tid] * x[tid];
+      } else if (Num == 2) {
+        *out_mean += y[tid];
+        *out_var += y[tid] * x[tid];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       }
     }
     size -= blockDim.x;
@@ -109,6 +132,7 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       if (Num == 1) {
+<<<<<<< HEAD
         AccT ins_x_acc = static_cast<AccT>(ins_x[i]);
         *out_mean += ins_x_acc;
         *out_var += ins_x_acc * ins_x_acc;
@@ -117,6 +141,13 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
         AccT ins_y_acc = static_cast<AccT>(ins_y[i]);
         *out_mean += ins_y_acc;
         *out_var += ins_y_acc * ins_x_acc;
+=======
+        *out_mean += ins_x[i];
+        *out_var += ins_x[i] * ins_x[i];
+      } else if (Num == 2) {
+        *out_mean += ins_y[i];
+        *out_var += ins_y[i] * ins_x[i];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       }
     }
   }
@@ -125,6 +156,7 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
   tid = size - remain + threadIdx.x;
   for (; tid < size; tid += blockDim.x) {
     if (Num == 1) {
+<<<<<<< HEAD
       AccT x_acc = static_cast<AccT>(x[tid]);
       *out_mean += x_acc;
       *out_var += x_acc * x_acc;
@@ -133,6 +165,13 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
       AccT y_acc = static_cast<AccT>(y[tid]);
       *out_mean += y_acc;
       *out_var += y_acc * x_acc;
+=======
+      *out_mean += x[tid];
+      *out_var += x[tid] * x[tid];
+    } else if (Num == 2) {
+      *out_mean += y[tid];
+      *out_var += y[tid] * x[tid];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 }
@@ -147,6 +186,7 @@ __device__ __forceinline__ void ReduceMeanAndVar(
       x_var, kps::AddFunctor<T>());
   __syncthreads();
   if (threadIdx.x == 0) {
+<<<<<<< HEAD
     mean[nc] = x_mean / size;
     var[nc] = x_var / size;
   }
@@ -167,12 +207,35 @@ __global__ void ScalarGetMeanAndVarNCHW(const T* x,
     x_var += val * val;
   }
   ReduceMeanAndVar<AccT>(mean, var, x_mean, x_var, size);
+=======
+    mean[nc] = static_cast<T>(x_mean / size);
+    var[nc] = static_cast<T>(x_var / size);
+  }
+}
+
+template <typename T>
+__global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
+  int i = blockIdx.x;
+  T x_mean = 0, x_var = 0;
+  for (int j = threadIdx.x; j < size; j += blockDim.x) {
+    T val;
+    val = x[i * size + j];
+    x_mean += val;
+    x_var += val * val;
+  }
+  ReduceMeanAndVar<T>(mean, var, x_mean, x_var, size);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 template <typename T, typename AccT, int VecSize>
 __global__ void VectorizedGetMeanAndVarNCHW(const T* x,
+<<<<<<< HEAD
                                             AccT* mean,
                                             AccT* var,
+=======
+                                            T* mean,
+                                            T* var,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                             int size) {
   int i = blockIdx.x;
   AccT x_mean = static_cast<AccT>(0);

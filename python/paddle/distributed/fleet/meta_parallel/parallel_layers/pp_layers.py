@@ -53,7 +53,12 @@ from paddle.incubate.distributed.fleet import recompute_hybrid
 __all__ = []
 
 
+<<<<<<< HEAD
 class LayerDesc:
+=======
+class LayerDesc(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, layer_func, *inputs, **kwargs):
         self.layer_func = layer_func
         self.inputs = inputs
@@ -74,6 +79,7 @@ class LayerDesc:
 
 
 class SharedLayerDesc(LayerDesc):
+<<<<<<< HEAD
     def __init__(
         self,
         key,
@@ -84,11 +90,23 @@ class SharedLayerDesc(LayerDesc):
         **kwargs
     ):
         super().__init__(layer_func, *inputs, **kwargs)
+=======
+
+    def __init__(self,
+                 key,
+                 layer_func,
+                 forward_func=None,
+                 shared_weight_attr='weight',
+                 *inputs,
+                 **kwargs):
+        super(SharedLayerDesc, self).__init__(layer_func, *inputs, **kwargs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.layer_name = key
         self.forward_func = forward_func
         self.shared_weight_attr = shared_weight_attr
 
 
+<<<<<<< HEAD
 class SegmentLayers:
     def __init__(
         self,
@@ -97,6 +115,11 @@ class SegmentLayers:
         method="uniform",
         num_virtual_pipeline_stage=None,
     ):
+=======
+class SegmentLayers(object):
+
+    def __init__(self, layers_desc, num_parts, method="uniform"):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._layers_desc = layers_desc
         self.method = method
         self.num_parts = num_parts
@@ -206,6 +229,7 @@ class PipelineLayerChunk(Layer):
 
 
 class PipelineLayer(Layer):
+<<<<<<< HEAD
     """PipelineLayer
     Args:
         layers(Iterable): A sequence of layers description to define the structure for pipeline.
@@ -296,6 +320,19 @@ class PipelineLayer(Layer):
         num_virtual_pipeline_stages=None,
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 layers,
+                 num_stages=None,
+                 topology=None,
+                 loss_fn=None,
+                 seg_method="uniform",
+                 recompute_interval=0,
+                 recompute_offload=False,
+                 recompute_partition=False):
+        super(PipelineLayer, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
 
@@ -339,10 +376,16 @@ class PipelineLayer(Layer):
             offload = recompute_ctx.get('offload', False)
             partition = recompute_ctx.get('partition', False)
             logger.info(
+<<<<<<< HEAD
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}".format(
                     offload, partition
                 )
             )
+=======
+                "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}"
+                .format(recompute_offload, recompute_partition))
+        _initialize_recompute_setting(recompute_offload, recompute_partition)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
@@ -360,9 +403,13 @@ class PipelineLayer(Layer):
                 raise ValueError(
                     "should provide correct num_stages({}) "
                     "which can be divided by world_size({})".format(
+<<<<<<< HEAD
                         num_stages, world_size
                     )
                 )
+=======
+                        num_stages, world_size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             dp_num = world_size // num_stages
             self._topo = fleet.CommunicateTopology(
                 ["data", "pipe", "model"], [dp_num, num_stages, 1]
@@ -433,9 +480,14 @@ class PipelineLayer(Layer):
             return
 
         layers_desc = self._layers_desc
+<<<<<<< HEAD
         shared_layer_names = set(
             s.layer_name for s in layers_desc if isinstance(s, SharedLayerDesc)
         )
+=======
+        shared_layer_names = set(s.layer_name for s in layers_desc
+                                 if isinstance(s, SharedLayerDesc))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for key in shared_layer_names:
             shared_layers = []
             for idx, layer in enumerate(layers_desc):
@@ -485,11 +537,18 @@ class PipelineLayer(Layer):
     def _synchronize_shared_weights(self):
         for key, comm in self.shared_comm.items():
             with paddle.framework.no_grad():
+<<<<<<< HEAD
                 paddle.distributed.broadcast(
                     getattr(comm['layer'], comm['weight_attr']),
                     src=min(comm['ranks']),
                     group=comm['group'],
                 )
+=======
+                paddle.distributed.broadcast(getattr(comm['layer'],
+                                                     comm['weight_attr']),
+                                             src=min(comm['ranks']),
+                                             group=comm['group'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             for param in comm['layer'].parameters():
                 if self.global_rank != min(comm['ranks']):
@@ -501,9 +560,14 @@ class PipelineLayer(Layer):
             # need use trace_op to allreduce weight
             if in_dygraph_mode():
                 with paddle.framework.no_grad():
+<<<<<<< HEAD
                     paddle.distributed.all_reduce(
                         param.grad, group=comm['group']
                     )
+=======
+                    paddle.distributed.all_reduce(param.grad,
+                                                  group=comm['group'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 with paddle.framework.no_grad():
                     paddle.fluid.framework._dygraph_tracer().trace_op(
@@ -551,6 +615,7 @@ class PipelineLayer(Layer):
 
     def _segment_network(self, seg_method):
         logger.info("start segment network..")
+<<<<<<< HEAD
         seg = SegmentLayers(
             self._layers_desc, num_parts=self._num_stages, method=seg_method
         )
@@ -560,6 +625,15 @@ class PipelineLayer(Layer):
             "segment result:"
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
+=======
+        seg = SegmentLayers(self._layers_desc,
+                            num_parts=self._num_stages,
+                            method=seg_method)
+        self.segment_parts = seg.do_segment()
+
+        logger.info("segment result:" +
+                    ", ".join(str(arg) for arg in self.segment_parts))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self._start_pos = self.segment_parts[self._stage_id]
         self._end_pos = self.segment_parts[self._stage_id + 1]
@@ -644,6 +718,7 @@ class PipelineLayer(Layer):
                         setattr(param, "is_firstly_shared", True)
 
                 if layer.forward_func is None:
+<<<<<<< HEAD
                     run_function.append(self.shared_layers[layer.layer_name])
 
                 else:
@@ -653,6 +728,15 @@ class PipelineLayer(Layer):
                             self.shared_layers[layer.layer_name],
                         )
                     )
+=======
+                    self.run_function.append(
+                        self.shared_layers[layer.layer_name])
+
+                else:
+                    self.run_function.append(
+                        partial(layer.forward_func,
+                                self.shared_layers[layer.layer_name]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             elif isinstance(layer, LayerDesc):
                 model = layer.build_layer()
@@ -667,7 +751,10 @@ class PipelineLayer(Layer):
         return run_function
 
     def forward_function(self, start, end):
+<<<<<<< HEAD
         run_function = self.run_function
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def execute_func(*x):
             if len(x) == 1:
@@ -721,11 +808,16 @@ class PipelineLayer(Layer):
         return input
 
     def _need_recompute(self, funcs, inputs):
+<<<<<<< HEAD
         if not any(
             not input_.stop_gradient
             for input_ in inputs
             if isinstance(input_, paddle.Tensor)
         ):
+=======
+        if not any(input_.stop_gradient == False
+                   for input_ in inputs if isinstance(input_, paddle.Tensor)):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return False
 
         params = [f.parameters() for f in funcs if isinstance(f, Layer)]

@@ -14,6 +14,10 @@
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/convert_utils.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"

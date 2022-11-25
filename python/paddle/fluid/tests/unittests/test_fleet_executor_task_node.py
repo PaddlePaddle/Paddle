@@ -21,6 +21,7 @@ paddle.enable_static()
 
 
 class TestFleetExecutorTaskNode(unittest.TestCase):
+
     def test_task_node(self):
         program = paddle.static.Program()
         task_node_0 = core.TaskNode(program.desc, 0, 1, 1)

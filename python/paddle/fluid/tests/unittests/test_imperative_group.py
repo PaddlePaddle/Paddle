@@ -25,6 +25,7 @@ from paddle.fluid.framework import (
 
 
 class TestDataParallelGroup(unittest.TestCase):
+
     def create_varbase(self, dtype, shape):
         return paddle.rand(shape=shape, dtype=dtype)
 
@@ -117,12 +118,19 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group6(self):
         # multi dtype & limit capability & multi tensor type
         var_list = []
+<<<<<<< HEAD
         var_list.append(
             self.create_varbase(
                 "float32",
                 [1, 50],
             )
         )
+=======
+        var_list.append(self.create_varbase(
+            "float32",
+            [1, 50],
+        ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         var_list.append(self.create_varbase("float64", [1, 25]))
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))

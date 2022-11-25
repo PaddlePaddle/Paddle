@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 import numpy as np
 import numpy.random as random
@@ -28,6 +33,10 @@ np.random.seed(2022)
 
 
 class TestMluIouSimilarityOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "iou_similarity"
         self.set_mlu()
@@ -57,7 +66,11 @@ class TestMluIouSimilarityOp(OpTest):
             self.boxes1_lod = [[1 for _ in range(self.N)]]
             self.inputs = {
                 'X': (self.boxes1, self.boxes1_lod),
+<<<<<<< HEAD
                 'Y': self.boxes2,
+=======
+                'Y': self.boxes2
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
         else:
             self.inputs = {'X': self.boxes1, 'Y': self.boxes2}
@@ -73,9 +86,13 @@ class TestMluIouSimilarityOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
+<<<<<<< HEAD
     def _compute_iou(
         self,
     ):
+=======
+    def _compute_iou(self, ):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for row in range(self.boxes1.shape[0]):
             for col in range(self.boxes2.shape[0]):
                 xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
@@ -105,20 +122,36 @@ class TestMluIouSimilarityOp(OpTest):
 
 
 class TestMluIouSimilarityOpWithLoD(TestMluIouSimilarityOp):
+<<<<<<< HEAD
     def set_init_config(self):
         super().set_init_config()
+=======
+
+    def set_init_config(self):
+        super(TestMluIouSimilarityOpWithLoD, self).set_init_config()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.box_normalized = True
         self.use_lod = True
 
 
 class TestMluIouSimilarityOpWithBoxNormalized(TestMluIouSimilarityOp):
+<<<<<<< HEAD
     def set_init_config(self):
         super().set_init_config()
+=======
+
+    def set_init_config(self):
+        super(TestMluIouSimilarityOpWithBoxNormalized, self).set_init_config()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.box_normalized = True
         self.use_lod = True
 
 
 def TestMluIouSimilarityOpFp16(TestMluIouSimilarityOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_dtype(self):
         self.dtype = np.float16
 

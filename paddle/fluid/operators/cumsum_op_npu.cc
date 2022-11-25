@@ -21,8 +21,13 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 
+<<<<<<< HEAD
 static void CumsumImp(const phi::DenseTensor& input,
                       phi::DenseTensor* output,
+=======
+static void CumsumImp(const Tensor& input,
+                      Tensor* output,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       const framework::NPUAttributeMap& attr_input,
                       const framework::ExecutionContext& ctx) {
   auto stream =

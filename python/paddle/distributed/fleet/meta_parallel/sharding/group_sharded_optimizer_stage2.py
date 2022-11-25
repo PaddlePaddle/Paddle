@@ -143,9 +143,14 @@ class GroupShardedOptimizerStage2(Optimizer):
         except ValueError:
             self._broadcast_order_params = None
 
+<<<<<<< HEAD
         self._group = (
             new_group(_get_global_group().ranks) if group is None else group
         )
+=======
+        self._group = new_group(
+            _get_global_group().ranks) if group is None else group
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # only support to combine stage2 and dp hybrid parallel now.
         self._dp_group = dp_group
@@ -208,6 +213,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
+<<<<<<< HEAD
             dist.broadcast(
                 p, src=self._global_root_rank, group=self._group, sync_op=True
             )
@@ -274,6 +280,12 @@ class GroupShardedOptimizerStage2(Optimizer):
         ranks = self._group.ranks
         for i in range(1, self._number_of_broadcast_groups):
             self._broadcast_groups[i] = new_group(ranks)
+=======
+            broadcast(p,
+                      src=self._global_root_rank,
+                      group=self._group,
+                      use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -348,9 +360,14 @@ class GroupShardedOptimizerStage2(Optimizer):
                     self._dtype_rank_params[param.dtype] = [
                         [] for _ in range(self.world_size)
                     ]
+<<<<<<< HEAD
                 self._dtype_rank_params[param.dtype][
                     self.param2rank[param.name]
                 ].append(param)
+=======
+                self._dtype_rank_params[param.dtype][self.param2rank[
+                    param.name]].append(param)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             # Sort per rank params by size
             for dtype in self._dtype_rank_params.keys():
@@ -562,6 +579,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         """Broadcast the parameters of the current rank to each rank"""
 
         # Exchange all the shards with the other ranks
+<<<<<<< HEAD
         if self._broadcast_overlap:
             self._broadcast_params_overlap_forward()
         else:
@@ -617,3 +635,11 @@ class GroupShardedOptimizerStage2(Optimizer):
                         self._forward_pre_hook_function(tasks)
                     )
                 )
+=======
+        for dtype_per_rank in self.param_storages.values():
+            for dst_rank, internal_storage in dtype_per_rank.items():
+                broadcast(tensor=internal_storage.buffer,
+                          src=self._group.ranks[dst_rank],
+                          group=self._group,
+                          use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

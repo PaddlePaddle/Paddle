@@ -74,20 +74,33 @@ static void CheckDims(const framework::DDim &tensor_dims,
 void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   if (return_merged_) {
     if (data_is_lod_tensor(tensors_[0])) {
+<<<<<<< HEAD
       const auto &tensor_dims =
           PADDLE_GET_CONST(phi::DenseTensor, tensors_[0]).dims();
       for (size_t i = 1; i < tensors_.size(); i++) {
         const auto &ele_dims =
             PADDLE_GET_CONST(phi::DenseTensor, tensors_[i]).dims();
+=======
+      const auto &tensor_dims = PADDLE_GET_CONST(LoDTensor, tensors_[0]).dims();
+      for (size_t i = 1; i < tensors_.size(); i++) {
+        const auto &ele_dims = PADDLE_GET_CONST(LoDTensor, tensors_[i]).dims();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         CheckDims(tensor_dims, ele_dims, offset_);
       }
       std::vector<const phi::DenseTensor *> tensors_ptr;
       tensors_ptr.reserve(tensors_.size());
       for (auto &t : tensors_) {
+<<<<<<< HEAD
         tensors_ptr.emplace_back(&PADDLE_GET_CONST(phi::DenseTensor, t));
       }
       auto &val = PADDLE_GET(FetchList, *data_);
       phi::DenseTensor var;
+=======
+        tensors_ptr.emplace_back(&PADDLE_GET_CONST(LoDTensor, t));
+      }
+      auto &val = PADDLE_GET(FetchList, *data_);
+      LoDTensor var;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       MergeLoDTensor(&var, tensors_ptr, platform::CPUPlace());
       val.at(offset_) = std::move(var);
     } else {
@@ -151,9 +164,15 @@ void FetchOpHandle::RunImpl() {
         platform::errors::NotFound(
             "Cannot find variable %s in execution scope.", var_handle->name()));
 
+<<<<<<< HEAD
     if (var->IsType<phi::DenseTensor>()) {
       auto &t = var->Get<phi::DenseTensor>();
       auto &item = PADDLE_GET(phi::DenseTensor, tensors_[i]);
+=======
+    if (var->IsType<LoDTensor>()) {
+      auto &t = var->Get<framework::LoDTensor>();
+      auto &item = PADDLE_GET(LoDTensor, tensors_[i]);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       TransData(t, &item);
     } else {
       auto &t = var->Get<framework::LoDTensorArray>();

@@ -14,6 +14,10 @@
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/kernels/adagrad_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

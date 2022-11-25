@@ -23,6 +23,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTRoiAlignTest(InferencePassTest):
+
     def setUp(self):
         self.bs = 2
         self.num_rois = 4
@@ -45,9 +46,16 @@ class TRTRoiAlignTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data_shape = [-1, self.channel, self.height, self.width]
             data = fluid.data(name='data', shape=data_shape, dtype='float32')
+<<<<<<< HEAD
             rois = fluid.data(
                 name='rois', shape=[-1, 4], dtype='float32', lod_level=1
             )
+=======
+            rois = fluid.data(name='rois',
+                              shape=[-1, 4],
+                              dtype='float32',
+                              lod_level=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             roi_align_out = fluid.layers.roi_align(data, rois)
             out = fluid.layers.batch_norm(roi_align_out, is_test=True)
 
@@ -87,6 +95,7 @@ class TRTRoiAlignTest(InferencePassTest):
         ]
         min_shape_spec['rois'] = [1, 4]
         max_shape_spec['data'] = [
+<<<<<<< HEAD
             self.bs,
             self.channel,
             self.height * 2,
@@ -98,6 +107,13 @@ class TRTRoiAlignTest(InferencePassTest):
             self.channel,
             self.height,
             self.width,
+=======
+            self.bs, self.channel, self.height * 2, self.width * 2
+        ]
+        max_shape_spec['rois'] = [self.bs * self.num_rois, 4]
+        opt_shape_spec['data'] = [
+            self.bs, self.channel, self.height, self.width
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         opt_shape_spec['rois'] = [self.bs * self.num_rois, 4]
 

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -429,7 +429,11 @@ TEST(AnalysisPredictor, ernie_varlen) {
     run(predictor.get(), &out_data);
     std::vector<float> ref_data{
         0.59814, 0.219882, 0.181978, 0.359796, 0.577414, 0.0627908};
+<<<<<<< HEAD
     float near_tolerance = 4e-3;
+=======
+    float near_tolerance = 1e-3;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     for (size_t i = 0; i < out_data.size(); i++) {
       EXPECT_NEAR(ref_data[i], out_data[i], near_tolerance);
     }

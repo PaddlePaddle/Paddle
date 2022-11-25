@@ -180,6 +180,7 @@ def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
     ws = boxes[:, 2] - boxes[:, 0] + offset
     hs = boxes[:, 3] - boxes[:, 1] + offset
     if pixel_offset:
+<<<<<<< HEAD
         x_ctr = boxes[:, 0] + ws / 2.0
         y_ctr = boxes[:, 1] + hs / 2.0
         keep = np.where(
@@ -188,12 +189,19 @@ def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
             & (x_ctr < im_shape[1])
             & (y_ctr < im_shape[0])
         )[0]
+=======
+        x_ctr = boxes[:, 0] + ws / 2.
+        y_ctr = boxes[:, 1] + hs / 2.
+        keep = np.where((ws >= min_size) & (hs >= min_size)
+                        & (x_ctr < im_shape[1]) & (y_ctr < im_shape[0]))[0]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
 
 
 class TestGenerateProposalsV2Op(OpTest):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -262,6 +270,7 @@ class TestGenerateProposalsV2Op(OpTest):
         ).astype('float32')
 
     def init_test_output(self):
+<<<<<<< HEAD
         (
             self.rpn_rois,
             self.rpn_roi_probs,
@@ -391,6 +400,158 @@ class TestGenerateProposalsV2Op(OpTest):
 #         np.testing.assert_allclose(self.roi_expected, np.array(rois), rtol=1e-5)
 #         np.testing.assert_allclose(self.roi_probs_expected, np.array(roi_probs), rtol=1e-5)
 #         np.testing.assert_allclose(self.rois_num_expected, np.array(rois_num), rtol=1e-5)
+=======
+        self.rpn_rois, self.rpn_roi_probs, self.rois_num = generate_proposals_v2_in_python(
+            self.scores, self.bbox_deltas, self.im_shape, self.anchors,
+            self.variances, self.pre_nms_topN, self.post_nms_topN,
+            self.nms_thresh, self.min_size, self.eta, self.pixel_offset)
+
+
+class TestGenerateProposalsV2OutLodOp(TestGenerateProposalsV2Op):
+
+    def set_data(self):
+        self.init_test_params()
+        self.init_test_input()
+        self.init_test_output()
+        self.inputs = {
+            'Scores': self.scores,
+            'BboxDeltas': self.bbox_deltas,
+            'ImShape': self.im_shape.astype(np.float32),
+            'Anchors': self.anchors,
+            'Variances': self.variances
+        }
+
+        self.attrs = {
+            'pre_nms_topN': self.pre_nms_topN,
+            'post_nms_topN': self.post_nms_topN,
+            'nms_thresh': self.nms_thresh,
+            'min_size': self.min_size,
+            'eta': self.eta,
+            'return_rois_num': True
+        }
+
+        self.outputs = {
+            'RpnRois': (self.rpn_rois[0], [self.rois_num]),
+            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
+            'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
+        }
+
+
+class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
+
+    def init_test_params(self):
+        self.pre_nms_topN = 12000  # train 12000, test 2000
+        self.post_nms_topN = 5000  # train 6000, test 1000
+        self.nms_thresh = 0.7
+        self.min_size = 1000.0
+        self.eta = 1.
+        self.pixel_offset = True
+
+
+class TestGenerateProposalsV2OpNoOffset(TestGenerateProposalsV2Op):
+
+    def init_test_params(self):
+        self.pre_nms_topN = 12000  # train 12000, test 2000
+        self.post_nms_topN = 5000  # train 6000, test 1000
+        self.nms_thresh = 0.7
+        self.min_size = 3.0
+        self.eta = 1.
+        self.pixel_offset = False
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+
+class testGenerateProposalsAPI(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(678)
+        self.scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
+        self.bbox_deltas_np = np.random.rand(2, 12, 4, 4).astype('float32')
+        self.img_size_np = np.array([[8, 8], [6, 6]]).astype('float32')
+        self.anchors_np = np.reshape(np.arange(4 * 4 * 3 * 4),
+                                     [4, 4, 3, 4]).astype('float32')
+        self.variances_np = np.ones((4, 4, 3, 4)).astype('float32')
+
+        self.roi_expected, self.roi_probs_expected, self.rois_num_expected = generate_proposals_v2_in_python(
+            self.scores_np,
+            self.bbox_deltas_np,
+            self.img_size_np,
+            self.anchors_np,
+            self.variances_np,
+            pre_nms_topN=10,
+            post_nms_topN=5,
+            nms_thresh=0.5,
+            min_size=0.1,
+            eta=1.0,
+            pixel_offset=False)
+        self.roi_expected = np.array(self.roi_expected).squeeze(1)
+        self.roi_probs_expected = np.array(self.roi_probs_expected).squeeze(1)
+        self.rois_num_expected = np.array(self.rois_num_expected)
+
+    def test_dynamic(self):
+        paddle.disable_static()
+        scores = paddle.to_tensor(self.scores_np)
+        bbox_deltas = paddle.to_tensor(self.bbox_deltas_np)
+        img_size = paddle.to_tensor(self.img_size_np)
+        anchors = paddle.to_tensor(self.anchors_np)
+        variances = paddle.to_tensor(self.variances_np)
+
+        rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
+            scores,
+            bbox_deltas,
+            img_size,
+            anchors,
+            variances,
+            pre_nms_top_n=10,
+            post_nms_top_n=5,
+            return_rois_num=True)
+        self.assertTrue(np.allclose(self.roi_expected, rois.numpy()))
+        self.assertTrue(np.allclose(self.roi_probs_expected, roi_probs.numpy()))
+        self.assertTrue(np.allclose(self.rois_num_expected, rois_num.numpy()))
+
+    def test_static(self):
+        paddle.enable_static()
+        scores = paddle.static.data(name='scores',
+                                    shape=[2, 3, 4, 4],
+                                    dtype='float32')
+        bbox_deltas = paddle.static.data(name='bbox_deltas',
+                                         shape=[2, 12, 4, 4],
+                                         dtype='float32')
+        img_size = paddle.static.data(name='img_size',
+                                      shape=[2, 2],
+                                      dtype='float32')
+        anchors = paddle.static.data(name='anchors',
+                                     shape=[4, 4, 3, 4],
+                                     dtype='float32')
+        variances = paddle.static.data(name='variances',
+                                       shape=[4, 4, 3, 4],
+                                       dtype='float32')
+        rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
+            scores,
+            bbox_deltas,
+            img_size,
+            anchors,
+            variances,
+            pre_nms_top_n=10,
+            post_nms_top_n=5,
+            return_rois_num=True)
+        exe = paddle.static.Executor()
+        rois, roi_probs, rois_num = exe.run(
+            paddle.static.default_main_program(),
+            feed={
+                'scores': self.scores_np,
+                'bbox_deltas': self.bbox_deltas_np,
+                'img_size': self.img_size_np,
+                'anchors': self.anchors_np,
+                'variances': self.variances_np,
+            },
+            fetch_list=[rois.name, roi_probs.name, rois_num.name],
+            return_numpy=False)
+
+        self.assertTrue(np.allclose(self.roi_expected, np.array(rois)))
+        self.assertTrue(
+            np.allclose(self.roi_probs_expected, np.array(roi_probs)))
+        self.assertTrue(np.allclose(self.rois_num_expected, np.array(rois_num)))
+
 
 if __name__ == '__main__':
     paddle.enable_static()

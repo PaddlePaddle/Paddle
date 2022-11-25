@@ -17,7 +17,10 @@ import unittest
 import warnings
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -25,6 +28,7 @@ from paddle.fluid.framework import Block
 
 
 class PassTest(unittest.TestCase):
+
     @classmethod
     def setUpClass(self):
         self.main_program = fluid.Program()
@@ -195,10 +199,16 @@ class PassTest(unittest.TestCase):
         self.assertTrue(
             self.num_fused_ops == acctual_num_fused_ops,
             "Checking of the number of fused operator < {} > failed. "
+<<<<<<< HEAD
             "Expected: {}, Received: {}".format(
                 self.fused_op_type, self.num_fused_ops, acctual_num_fused_ops
             ),
         )
+=======
+            "Expected: {}, Received: {}".format(self.fused_op_type,
+                                                self.num_fused_ops,
+                                                acctual_num_fused_ops))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def check_program(self, program=None):
         '''

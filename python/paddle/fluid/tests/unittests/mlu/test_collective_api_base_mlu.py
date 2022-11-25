@@ -39,7 +39,12 @@ def DataTypeCast(date_type):
     return np_data_type
 
 
+<<<<<<< HEAD
 class TestCollectiveAPIRunnerBase:
+=======
+class TestCollectiveAPIRunnerBase(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def get_model(self, train_prog, startup_prog, rank, indata=None):
         raise NotImplementedError(
             "get model should be implemented by child class."
@@ -94,6 +99,7 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
@@ -104,6 +110,7 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -147,6 +154,7 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
         tr1_pipe = open("/tmp/tr1_err_%d.log" % os.getpid(), "w")
+<<<<<<< HEAD
         # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
@@ -161,6 +169,18 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1,
         )
+=======
+        #print(tr0_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
+
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -211,8 +231,12 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
+<<<<<<< HEAD
             model_file, required_envs
         )
+=======
+            model_file, required_envs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         np_data_type = DataTypeCast(data_type)
         np.random.seed(pid0)
         input1 = np.random.random((10, 1000)).astype(np_data_type)
@@ -224,12 +248,19 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr1_out[0], need_result)
         elif col_type == "allreduce":
             need_result = input1 + input2
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 tr0_out[0], need_result, rtol=1e-05, atol=1e-05
             )
             np.testing.assert_allclose(
                 tr1_out[0], need_result, rtol=1e-05, atol=1e-05
             )
+=======
+            self.assertTrue(
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         elif col_type == "reduce":
             need_result = input1 + input2
             np.testing.assert_allclose(tr0_out[0], need_result)

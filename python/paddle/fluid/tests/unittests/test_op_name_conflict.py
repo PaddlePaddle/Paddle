@@ -18,6 +18,7 @@ import unittest
 
 
 class TestOpNameConflict(unittest.TestCase):
+
     def test_conflict(self):
         main = fluid.Program()
         startup = fluid.Program()
@@ -58,6 +59,7 @@ class TestOpNameConflict(unittest.TestCase):
                 )
                 exe = fluid.Executor(place)
 
+<<<<<<< HEAD
                 data = fluid.data(
                     name='data', shape=[None, 1, 2, 2], dtype='float32'
                 )
@@ -67,6 +69,18 @@ class TestOpNameConflict(unittest.TestCase):
                 x = fluid.data(
                     name='x', shape=[None, 1], dtype='float32', lod_level=1
                 )
+=======
+                data = fluid.data(name='data',
+                                  shape=[None, 1, 2, 2],
+                                  dtype='float32')
+                tensor = fluid.data(name='tensor',
+                                    shape=[None, 32, 64],
+                                    dtype='float32')
+                x = fluid.data(name='x',
+                               shape=[None, 1],
+                               dtype='float32',
+                               lod_level=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 input_scale = fluid.layers.create_parameter(
                     shape=[1],
@@ -76,6 +90,7 @@ class TestOpNameConflict(unittest.TestCase):
                 input_bias = fluid.layers.create_parameter(
                     shape=[1],
                     dtype="float32",
+<<<<<<< HEAD
                     default_initializer=fluid.initializer.Constant(0.5),
                 )
                 out_affine = fluid.layers.affine_channel(
@@ -84,6 +99,15 @@ class TestOpNameConflict(unittest.TestCase):
                 out_similarity = fluid.layers.similarity_focus(
                     input=data, axis=1, indexes=[0]
                 )
+=======
+                    default_initializer=fluid.initializer.Constant(0.5))
+                out_affine = fluid.layers.affine_channel(data,
+                                                         scale=input_scale,
+                                                         bias=input_bias)
+                out_similarity = fluid.layers.similarity_focus(input=data,
+                                                               axis=1,
+                                                               indexes=[0])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 position_tensor = fluid.layers.add_position_encoding(
                     input=tensor, alpha=1.0, beta=1.0
                 )
@@ -94,6 +118,7 @@ class TestOpNameConflict(unittest.TestCase):
 
                 x_d = fluid.create_lod_tensor(
                     np.array([[1.1], [2.2], [3.3], [4.4]]).astype('float32'),
+<<<<<<< HEAD
                     [[1, 3]],
                     place,
                 )
@@ -112,6 +137,23 @@ class TestOpNameConflict(unittest.TestCase):
                     },
                     return_numpy=False,
                 )
+=======
+                    [[1, 3]], place)
+                outs = exe.run(test_program,
+                               fetch_list=[
+                                   out_affine, out_similarity, position_tensor,
+                                   x_reversed
+                               ],
+                               feed={
+                                   data.name:
+                                   np.ones([1, 1, 2, 2]).astype('float32'),
+                                   tensor.name:
+                                   np.ones([1, 32, 64]).astype('float32'),
+                                   x.name:
+                                   x_d
+                               },
+                               return_numpy=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

@@ -26,6 +26,7 @@ import paddle.fluid.layers as layers
 
 
 class TestScaleOp(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -48,6 +49,7 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpScaleVariable(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -72,6 +74,7 @@ class TestScaleOpScaleVariable(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
+
     def init_dtype_type(self):
         pass
 
@@ -131,7 +134,9 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.scale([10])
 
@@ -143,6 +148,7 @@ class TestScaleRaiseError(unittest.TestCase):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestScaleFp16Op(TestScaleOp):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -154,12 +160,20 @@ class TestScaleFp16Op(TestScaleOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(
                 place, ["X"], "Out", max_relative_error=0.05, check_eager=True
             )
+=======
+            self.check_grad_with_place(place, ["X"],
+                                       "Out",
+                                       max_relative_error=0.05,
+                                       check_eager=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestScaleBF16Op(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -181,6 +195,7 @@ class TestScaleBF16Op(OpTest):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -196,6 +211,7 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -213,11 +229,13 @@ class TestScaleApiStatic(unittest.TestCase):
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -231,6 +249,7 @@ class TestScaleApiDygraph(unittest.TestCase):
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 

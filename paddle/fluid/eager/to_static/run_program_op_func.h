@@ -32,12 +32,17 @@ static void clear_no_grad_edges(
   for (size_t i = 0; i < params.size(); ++i) {
     auto p_grad_name = paddle::framework::GradVarName(params[i].name());
     if (!block_desc->HasVar(p_grad_name)) {
+<<<<<<< HEAD
       VLOG(3) << "clear edge of " << p_grad_name;
+=======
+      VLOG(1) << "clear edge of " << p_grad_name;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
   }
 }
 
+<<<<<<< HEAD
 static void clear_no_grad_edges_with_partial_block(
     const std::vector<paddle::experimental::Tensor>& params,
     const paddle::framework::BlockDesc* forward_block_desc,
@@ -55,6 +60,9 @@ static void clear_no_grad_edges_with_partial_block(
 }
 
 inline void run_program_ad_func(
+=======
+inline void run_program_dygraph_function(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const std::vector<paddle::experimental::Tensor>& x,
     const std::vector<paddle::experimental::Tensor>& params,
     std::vector<paddle::experimental::Tensor*>& out,     // NOLINT
@@ -101,6 +109,9 @@ inline void run_program_ad_func(
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
+    auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
+                                          attrs.at("global_block"));
+    clear_no_grad_edges(params, global_block, grad_node.get(), /*slot id*/ 1);
 
     bool use_interpretorcore =
         PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));

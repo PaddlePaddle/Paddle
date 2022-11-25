@@ -29,9 +29,17 @@ from paddle.fluid.optimizer import MomentumOptimizer
 
 
 class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
+<<<<<<< HEAD
     def check_network_convergence(
         self, use_cuda=True, use_mem_opt=False, iter_num=5
     ):
+=======
+
+    def check_network_convergence(self,
+                                  use_cuda=True,
+                                  use_mem_opt=False,
+                                  iter_num=5):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.seed(100)
         paddle.framework.random._manual_program_seed(100)
         prog = Program()
@@ -63,9 +71,14 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
+<<<<<<< HEAD
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=200
             )
+=======
+            train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                        batch_size=200)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
@@ -96,11 +109,20 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
                     y_data = np.array([x[1] for x in data]).astype("int64")
                     y_data = y_data.reshape((y_data.shape[0], 1))
 
+<<<<<<< HEAD
                     outs = exe.run(
                         train_cp,
                         feed={'x': x_data, 'y': y_data},
                         fetch_list=[avg_loss],
                     )
+=======
+                    outs = exe.run(train_cp,
+                                   feed={
+                                       'x': x_data,
+                                       'y': y_data
+                                   },
+                                   fetch_list=[avg_loss])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     loop += 1
                     ret.append(outs[0])

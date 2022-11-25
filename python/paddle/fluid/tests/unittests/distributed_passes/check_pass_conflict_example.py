@@ -21,6 +21,7 @@ from paddle.distributed.passes import new_pass
 
 
 class CheckPassConflictTest1(PassConflictChecker):
+
     def pass_config(self):
         return [
             new_pass("fuse_all_reduce", {"max_memory_size": 1024 * 1024}),
@@ -32,6 +33,7 @@ class CheckPassConflictTest1(PassConflictChecker):
 
 
 class CheckPassConflictTest2(PassConflictChecker):
+
     def pass_config(self):
         return [
             new_pass("fuse_elewise_add_act"),

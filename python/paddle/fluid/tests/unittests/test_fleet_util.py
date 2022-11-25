@@ -64,6 +64,7 @@ class TestFleetUtil(unittest.TestCase):
         import paddle.distributed.fleet as fleet
 
         class UserDefinedUtil(fleet.UtilBase):
+
             def __init__(self):
                 super().__init__()
 
@@ -178,8 +179,12 @@ class TestFleetUtil(unittest.TestCase):
         results = fleet.util._params_check(conf)
         self.assertTrue(len(results) == 1)
         np.testing.assert_array_almost_equal(
+<<<<<<< HEAD
             results[0], np.array([[3.0590223e-07]], dtype=np.float32)
         )
+=======
+            results[0], np.array([[3.0590223e-07]], dtype=np.float32))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # test feed_var's shape
         conf.dump_program_filename = (
@@ -192,8 +197,12 @@ class TestFleetUtil(unittest.TestCase):
         results = fleet.util._params_check(conf)
         self.assertTrue(len(results) == 1)
         np.testing.assert_array_almost_equal(
+<<<<<<< HEAD
             results[0], np.array([[3.0590223e-07]], dtype=np.float32)
         )
+=======
+            results[0], np.array([[3.0590223e-07]], dtype=np.float32))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # test correct case without feed_vars_filelist
         conf.feed_config.feeded_vars_filelist = None
@@ -233,8 +242,13 @@ class TestFleetUtil(unittest.TestCase):
 
         # test match
         conf.pruned_prog_path = os.path.join(
+<<<<<<< HEAD
             data_dir, os.path.join(self.pruned_dir, "pruned_main_program.pbtxt")
         )
+=======
+            data_dir, os.path.join(self.pruned_dir,
+                                   "pruned_main_program.pbtxt"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             conf.draw = False
         else:
@@ -251,9 +265,14 @@ class TestFleetUtil(unittest.TestCase):
         else:
             data_dir = self.download_files()
             program_path = os.path.join(
+<<<<<<< HEAD
                 data_dir,
                 os.path.join(self.train_dir, "join_main_program.pbtxt"),
             )
+=======
+                data_dir, os.path.join(self.train_dir,
+                                       "join_main_program.pbtxt"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             is_text = True
             program = fleet.util._load_program(program_path, is_text)
             output_dir = os.path.join(data_dir, self.train_dir)

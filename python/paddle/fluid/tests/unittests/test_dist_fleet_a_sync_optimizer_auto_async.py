@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
@@ -45,6 +46,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.fluid.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
+<<<<<<< HEAD
         input_x = paddle.fluid.layers.data(
             name="x",
             shape=[-1, 1],
@@ -52,6 +54,13 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             lod_level=1,
             append_batch_size=False,
         )
+=======
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[-1, 1],
+                                           dtype="int64",
+                                           lod_level=1,
+                                           append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         x_embedding = paddle.fluid.layers.embedding(
             is_distributed=False,
             input=input_x,
@@ -67,9 +76,14 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         fc_1 = paddle.fluid.layers.fc(input=x_embedding, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+<<<<<<< HEAD
         cost = paddle.fluid.layers.cross_entropy(
             input=prediction, label=input_y
         )
+=======
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         avg_cost = paddle.mean(x=cost)
 
         os.environ["FLAGS_LAUNCH_BARRIER"] = "0"

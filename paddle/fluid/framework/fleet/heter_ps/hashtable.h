@@ -42,8 +42,8 @@ limitations under the License. */
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
-
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -127,6 +127,7 @@ class HashTable {
   template <typename StreamType>
   void insert(const KeyType* d_keys,
               size_t len,
+<<<<<<< HEAD
               char* pool,
               size_t feature_value_size,
               size_t start_index,
@@ -138,6 +139,25 @@ class HashTable {
            size_t len,
            StreamType stream);
 
+=======
+              uint64_t* global_num,
+              StreamType stream);
+
+  template <typename StreamType>
+  void insert(const KeyType* d_keys,
+              size_t len,
+              char* pool,
+              size_t feature_value_size,
+              size_t start_index,
+              StreamType stream);
+
+  template <typename StreamType>
+  void get(const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
+           StreamType stream);
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   template <typename StreamType, typename GPUAccessor>
   void get(const KeyType* d_keys,
            char* d_vals,
@@ -152,6 +172,9 @@ class HashTable {
 
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
+
+  template <typename StreamType>
+  void get_keys(KeyType* d_out, uint64_t* global_cursor, StreamType stream);
 
 #if defined(PADDLE_WITH_CUDA)
 
@@ -185,7 +208,7 @@ class HashTable {
 #endif
 
   int size() { return container_->size(); }
-
+  thrust::pair<KeyType, ValType>* data() { return container_->data(); }
   void set_feature_value_size(size_t pull_feature_value_size,
                               size_t push_grad_value_size) {
     pull_feature_value_size_ = pull_feature_value_size;
@@ -194,7 +217,19 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
+<<<<<<< HEAD
   void show_collision(int id) { return container_->print_collision(id); }
+=======
+  int prefetch(const int dev_id, cudaStream_t stream = 0) {
+    return container_->prefetch(dev_id, stream);
+  }
+
+  void clear(cudaStream_t stream = 0) { container_->clear_async(stream); }
+
+  void show_collision(int id) { return container_->print_collision(id); }
+  // infer mode
+  void set_mode(bool infer_mode) { infer_mode_ = infer_mode; }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 
@@ -213,6 +248,7 @@ class HashTable {
   size_t max_mf_dim_ = 8;
   size_t pull_feature_value_size_;
   size_t push_grad_value_size_;
+  bool infer_mode_ = false;
 };
 }  // end namespace framework
 }  // end namespace paddle

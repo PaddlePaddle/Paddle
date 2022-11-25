@@ -242,6 +242,7 @@ void DeformableConvInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+<<<<<<< HEAD
 void EditDistanceInferMeta(const MetaTensor& hyps,
                            const MetaTensor& refs,
                            const MetaTensor& hypslength,
@@ -299,6 +300,24 @@ void HSigmoidLossInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaTensor* pre_out,
                            MetaTensor* w_out);
+=======
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  const MetaTensor& path,
+                                  const MetaTensor& code,
+                                  const MetaTensor& bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 void InterpolateInferMeta(
     const MetaTensor& x,
@@ -495,14 +514,20 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
+<<<<<<< HEAD
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad);
+=======
+                      MetaTensor* warpctcgrad,
+                      MetaTensor* loss);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
                     MetaTensor* out);
 
+<<<<<<< HEAD
 void YoloLossInferMeta(const MetaTensor& x,
                        const MetaTensor& gt_box,
                        const MetaTensor& gt_label,
@@ -517,5 +542,43 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* loss,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
+=======
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes);
+
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   const MetaTensor& eids,
+                                   const MetaTensor& perm_buffer,
+                                   int sample_size,
+                                   bool return_eids,
+                                   bool flag_perm_buffer,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count,
+                                   MetaTensor* out_eids);
+
+void Yolov3LossInferMeta(const MetaTensor& x,
+                         const MetaTensor& gt_box,
+                         const MetaTensor& gt_label,
+                         const MetaTensor& gt_score,
+                         const std::vector<int>& anchors,
+                         const std::vector<int>& anchor_mask,
+                         int class_num,
+                         float ignore_thresh,
+                         int downsample_ratio,
+                         bool use_label_smooth,
+                         float scale_x_y,
+                         MetaTensor* loss,
+                         MetaTensor* objectness_mask,
+                         MetaTensor* gt_match_mask);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 }  // namespace phi

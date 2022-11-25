@@ -52,12 +52,19 @@ def main():
 
                     if not res.wasSuccessful():
                         some_test_failed = True
+<<<<<<< HEAD
                         print(
                             module_name,
                             'failed\n',
                             buffer.getvalue(),
                             file=sys.stderr,
                         )
+=======
+                        print(module_name,
+                              'failed\n',
+                              buffer.getvalue(),
+                              file=sys.stderr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if flag_need_static_mode:
             paddle.disable_static()
 

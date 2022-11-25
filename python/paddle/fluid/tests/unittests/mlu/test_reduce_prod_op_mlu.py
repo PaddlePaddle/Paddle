@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import numpy as np
 import unittest
 import sys
@@ -29,6 +34,10 @@ def raw_reduce_prod(x, dim=[0], keep_dim=False):
 
 
 class TestProdOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
@@ -46,6 +55,10 @@ class TestProdOp(OpTest):
 
 
 class TestProd6DOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
@@ -68,6 +81,10 @@ class TestProd6DOp(OpTest):
 
 
 class TestProd8DOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
@@ -75,9 +92,14 @@ class TestProd8DOp(OpTest):
         self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
+<<<<<<< HEAD
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
                 self.data_type
             )
+=======
+            'X': np.random.random(
+                (2, 5, 3, 2, 2, 3, 4, 2)).astype(self.data_type)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         self.attrs = {'dim': [2, 3, 4]}
         self.outputs = {

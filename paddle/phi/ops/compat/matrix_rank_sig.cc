@@ -28,8 +28,13 @@ KernelSignature MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
                            {"X"},
                            {
                                "tol",
+<<<<<<< HEAD
                                "hermitian",
                                "use_default_tol",
+=======
+                               "use_default_tol",
+                               "hermitian",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                            },
                            {"Out"});
   }

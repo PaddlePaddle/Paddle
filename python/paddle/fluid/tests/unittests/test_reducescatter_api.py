@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 class TestReduceScatterAPI(TestDistBase):
+
     def _setup_config(self):
         pass
 

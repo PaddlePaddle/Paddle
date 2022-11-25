@@ -77,10 +77,14 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                  ldt,
                                                  &lwork,
                                                  gesvdj_params));
+<<<<<<< HEAD
   auto workspace = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+=======
+  auto workspace = paddle::memory::Alloc(dev_ctx, lwork * sizeof(float));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);
@@ -158,10 +162,14 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                  ldt,
                                                  &lwork,
                                                  gesvdj_params));
+<<<<<<< HEAD
   auto workspace = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+=======
+  auto workspace = paddle::memory::Alloc(dev_ctx, lwork * sizeof(double));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);

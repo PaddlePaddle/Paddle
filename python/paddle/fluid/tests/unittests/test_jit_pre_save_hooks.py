@@ -26,7 +26,9 @@ _counter = 0
 
 
 class TestPreSaveHooks(unittest.TestCase):
+
     def test_pre_save_hook_functions(self):
+
         def fake_func(*args, **kwgs):
             global _counter
             _counter += 1

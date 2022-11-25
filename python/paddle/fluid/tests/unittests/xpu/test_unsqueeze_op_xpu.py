@@ -31,6 +31,7 @@ paddle.enable_static()
 
 
 # Correct: General.
+<<<<<<< HEAD
 class XPUTestUnsqueezeOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = "unsqueeze"
@@ -52,11 +53,27 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
             self.dtype = self.in_type
 
         def test_check_output(self):
+=======
+class TestUnsqueezeOp(XPUOpTest):
+
+    def setUp(self):
+        self.init_test_case()
+        self.op_type = "unsqueeze"
+        self.use_xpu = True
+        self.use_mkldnn = False
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.init_attrs()
+        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
+<<<<<<< HEAD
             if self.dtype == np.bool_:
                 return
             else:
@@ -102,6 +119,54 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types("unsqueeze")
 for stype in support_types:
     create_test_class(globals(), XPUTestUnsqueezeOp, stype)
+=======
+            self.check_grad_with_place(place, ['X'], 'Out')
+
+    def init_test_case(self):
+        self.ori_shape = (3, 40)
+        self.axes = (1, 2)
+        self.new_shape = (3, 1, 1, 40)
+
+    def init_attrs(self):
+        self.attrs = {"axes": self.axes}
+
+
+# Correct: Single input index.
+class TestUnsqueezeOp1(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (-1, )
+        self.new_shape = (20, 5, 1)
+
+
+# Correct: Mixed input axis.
+class TestUnsqueezeOp2(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = (20, 5)
+        self.axes = (0, -1)
+        self.new_shape = (1, 20, 5, 1)
+
+
+# Correct: There is duplicated axis.
+class TestUnsqueezeOp3(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = (0, 3, 3)
+        self.new_shape = (1, 10, 2, 1, 1, 5)
+
+
+# Correct: Reversed axes.
+class TestUnsqueezeOp4(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = (3, 1, 1)
+        self.new_shape = (10, 1, 1, 2, 5, 1)
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 if __name__ == "__main__":
     unittest.main()

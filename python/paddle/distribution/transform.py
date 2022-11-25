@@ -26,6 +26,7 @@ from paddle.distribution import (
 )
 
 __all__ = [  # noqa
+<<<<<<< HEAD
     'Transform',
     'AbsTransform',
     'AffineTransform',
@@ -39,6 +40,12 @@ __all__ = [  # noqa
     'StackTransform',
     'StickBreakingTransform',
     'TanhTransform',
+=======
+    'Transform', 'AbsTransform', 'AffineTransform', 'ChainTransform',
+    'ExpTransform', 'IndependentTransform', 'PowerTransform',
+    'ReshapeTransform', 'SigmoidTransform', 'SoftmaxTransform',
+    'StackTransform', 'StickBreakingTransform', 'TanhTransform'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 ]
 
 
@@ -148,8 +155,12 @@ class Transform:
         """
         if isinstance(input, distribution.Distribution):
             return transformed_distribution.TransformedDistribution(
+<<<<<<< HEAD
                 input, [self]
             )
+=======
+                input, [self])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if isinstance(input, Transform):
             return ChainTransform([self, input])
         return self.forward(input)
@@ -211,12 +222,18 @@ class Transform:
         """
         if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
+<<<<<<< HEAD
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}."
             )
         if (
             isinstance(x, paddle.fluid.framework.Variable)
             and x.dim() < self._domain.event_rank
         ):
+=======
+                f"Expected 'y' is a Tensor or Real, but got {type(x)}.")
+        if isinstance(x, paddle.fluid.framework.Variable
+                      ) and x.dim() < self._domain.event_rank:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             raise ValueError(
                 f'The dimensions of x({x.dim()}) should be '
                 f'grater than or equal to {self._domain.event_rank}'
@@ -557,9 +574,14 @@ class ChainTransform(Transform):
         value = 0.0
         event_rank = self._domain.event_rank
         for t in self.transforms:
+<<<<<<< HEAD
             value += self._sum_rightmost(
                 t.forward_log_det_jacobian(x), event_rank - t._domain.event_rank
             )
+=======
+            value += self._sum_rightmost(t.forward_log_det_jacobian(x),
+                                         event_rank - t._domain.event_rank)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             x = t.forward(x)
             event_rank += t._codomain.event_rank - t._domain.event_rank
         return value

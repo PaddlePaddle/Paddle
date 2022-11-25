@@ -67,6 +67,7 @@ def _create_out(var):
     var_desc = var.desc
     varbase = None
     if _in_legacy_dygraph():
+<<<<<<< HEAD
         var_base = core.VarBase(
             var_desc.dtype(),
             var_desc.shape(),
@@ -82,6 +83,13 @@ def _create_out(var):
             var_desc.type(),
             False,
         )
+=======
+        var_base = core.VarBase(var_desc.dtype(), var_desc.shape(),
+                                var_desc.name(), var_desc.type(), False)
+    else:
+        var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
+                                     var_desc.name(), var_desc.type(), False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return var_base
 
 
@@ -100,6 +108,7 @@ def _add_build_strategy_for(input_program, start_op_index, end_op_index):
 
 
 class TestRunProgram(unittest.TestCase):
+
     def test_eager(self):
         paddle.set_device('cpu')
         paddle.enable_static()
@@ -137,6 +146,7 @@ class TestRunProgram(unittest.TestCase):
             out_t = _create_out(out)
 
             scope = core.Scope()
+<<<<<<< HEAD
             attrs = [
                 'global_block',
                 program.desc.block(0),
@@ -174,6 +184,14 @@ class TestRunProgram(unittest.TestCase):
                 None,
                 *attrs
             )
+=======
+            attrs = ('global_block', program.desc.block(0), 'start_op_index', 0,
+                     'end_op_index', main_program.desc.block(0).op_size(),
+                     'is_test', False, 'program_id', _hash_with_id(program))
+
+            _C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
+                               [fake_var], None, *attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             loss = paddle.mean(out_t)
             loss.backward()

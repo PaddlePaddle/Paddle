@@ -52,6 +52,7 @@ def fc_with_inplace_net(use_feed):
 
 
 class TestMNIST(TestParallelExecutorBase):
+
     def _dummy_data(self):
         np.random.seed(5)
         img = np.random.random(size=[32, 784]).astype(np.float32)
@@ -65,6 +66,7 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = self._dummy_data()
         first_loss0, last_loss0, _ = self.check_network_convergence(
             model,
+<<<<<<< HEAD
             feed_dict={"image": img, "label": label},
             use_device=use_device,
             use_ir_memory_optimize=False,
@@ -72,6 +74,20 @@ class TestMNIST(TestParallelExecutorBase):
         first_loss1, last_loss1, _ = self.check_network_convergence(
             model,
             feed_dict={"image": img, "label": label},
+=======
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+            use_device=use_device,
+            use_ir_memory_optimize=False)
+        first_loss1, last_loss1, _ = self.check_network_convergence(
+            model,
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             use_device=use_device,
             use_ir_memory_optimize=True,
         )

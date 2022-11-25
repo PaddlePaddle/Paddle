@@ -13,11 +13,21 @@
 # limitations under the License.
 
 import paddle
+<<<<<<< HEAD
 
 paddle.set_default_dtype("float64")
 import os
 import tempfile
+=======
+
+paddle.set_default_dtype("float64")
+from paddle.fluid.layers import sequence_mask
+
+import os
+import numpy as np
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
+import tempfile
 
 import numpy as np
 from convert import convert_params_for_net
@@ -29,6 +39,7 @@ bidirectional_list = ["bidirectional", "bidirect"]
 
 
 class TestSimpleRNN(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -41,12 +52,25 @@ class TestSimpleRNN(unittest.TestCase):
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
         paddle.disable_static(place)
+<<<<<<< HEAD
         rnn1 = SimpleRNN(
             16, 32, 2, time_major=self.time_major, direction=self.direction
         )
         rnn2 = paddle.nn.SimpleRNN(
             16, 32, 2, time_major=self.time_major, direction=self.direction
         )
+=======
+        rnn1 = SimpleRNN(16,
+                         32,
+                         2,
+                         time_major=self.time_major,
+                         direction=self.direction)
+        rnn2 = paddle.nn.SimpleRNN(16,
+                                   32,
+                                   2,
+                                   time_major=self.time_major,
+                                   direction=self.direction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         convert_params_for_net(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -112,6 +136,7 @@ class TestSimpleRNN(unittest.TestCase):
 
 
 class TestGRU(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -195,6 +220,7 @@ class TestGRU(unittest.TestCase):
 
 
 class TestLSTM(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -207,12 +233,25 @@ class TestLSTM(unittest.TestCase):
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
         paddle.disable_static(place)
+<<<<<<< HEAD
         rnn1 = LSTM(
             16, 32, 2, time_major=self.time_major, direction=self.direction
         )
         rnn2 = paddle.nn.LSTM(
             16, 32, 2, time_major=self.time_major, direction=self.direction
         )
+=======
+        rnn1 = LSTM(16,
+                    32,
+                    2,
+                    time_major=self.time_major,
+                    direction=self.direction)
+        rnn2 = paddle.nn.LSTM(16,
+                              32,
+                              2,
+                              time_major=self.time_major,
+                              direction=self.direction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         convert_params_for_net(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -229,10 +268,16 @@ class TestLSTM(unittest.TestCase):
         prev_c = np.random.randn(2 * self.num_directions, 4, 32)
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
+<<<<<<< HEAD
         y2, (h2, c2) = rnn2(
             paddle.to_tensor(x),
             (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)),
         )
+=======
+        y2, (h2,
+             c2) = rnn2(paddle.to_tensor(x),
+                        (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
@@ -291,6 +336,7 @@ def predict_test_util(place, mode, stop_gradient=True):
     np.random.seed(123)
 
     class Net(paddle.nn.Layer):
+
         def __init__(self):
             super().__init__()
             self.rnn = getattr(paddle.nn, mode)(
@@ -310,9 +356,14 @@ def predict_test_util(place, mode, stop_gradient=True):
     y = y * mask
     loss = paddle.mean(y)
     loss.backward()
+<<<<<<< HEAD
     optimizer = paddle.optimizer.Adam(
         learning_rate=0.1, parameters=rnn.parameters()
     )
+=======
+    optimizer = paddle.optimizer.Adam(learning_rate=0.1,
+                                      parameters=rnn.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     optimizer.step()
     rnn.eval()
     y, _ = rnn(x)
@@ -321,8 +372,12 @@ def predict_test_util(place, mode, stop_gradient=True):
     rnn.train()
 
     rnn = paddle.jit.to_static(
+<<<<<<< HEAD
         rnn, [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)]
     )
+=======
+        rnn, [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     temp_dir = tempfile.TemporaryDirectory()
     save_dirname = os.path.join(temp_dir.name, "./inference/%s_infer" % mode)
 
@@ -333,6 +388,7 @@ def predict_test_util(place, mode, stop_gradient=True):
     new_scope = paddle.static.Scope()
     with paddle.static.scope_guard(new_scope):
         exe = paddle.static.Executor(place)
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
@@ -343,6 +399,13 @@ def predict_test_util(place, mode, stop_gradient=True):
             feed={feed_target_names[0]: x.numpy()},
             fetch_list=fetch_targets,
         )
+=======
+        [inference_program, feed_target_names,
+         fetch_targets] = paddle.static.load_inference_model(save_dirname, exe)
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: x.numpy()},
+                          fetch_list=fetch_targets)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         np.testing.assert_equal(
             y.numpy(), results[0]
         )  # eval results equal predict results

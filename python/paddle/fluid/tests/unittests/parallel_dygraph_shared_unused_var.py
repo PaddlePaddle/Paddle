@@ -25,6 +25,7 @@ paddle.seed(1024)
 
 
 class SimpleNet(fluid.Layer):
+
     def __init__(self):
         # bias is unused parameters, and it share with net_a
         super().__init__()
@@ -41,6 +42,7 @@ batch_num = 1000
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.random.random_sample((10,)).astype('float32')
@@ -50,14 +52,23 @@ def fake_sample_reader():
 
 
 class TestSimpleNet(TestParallelDyGraphRunnerBase):
+
     def get_model(self):
         model = SimpleNet()
+<<<<<<< HEAD
         train_reader = paddle.batch(
             fake_sample_reader(), batch_size=batch_size, drop_last=True
         )
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=model.parameters()
         )
+=======
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):

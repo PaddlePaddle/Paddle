@@ -161,10 +161,17 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
             size, num_true, sampled_labels_data);
 
     if (use_customized_samples) {
+<<<<<<< HEAD
       const phi::DenseTensor* customized_samples =
           context.Input<phi::DenseTensor>("CustomizedSamples");
       const phi::DenseTensor* customized_probabilities =
           context.Input<phi::DenseTensor>("CustomizedProbabilities");
+=======
+      const Tensor* customized_samples =
+          context.Input<Tensor>("CustomizedSamples");
+      const Tensor* customized_probabilities =
+          context.Input<Tensor>("CustomizedProbabilities");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       PADDLE_ENFORCE_EQ(customized_samples,
                         samples,
                         platform::errors::InvalidArgument(

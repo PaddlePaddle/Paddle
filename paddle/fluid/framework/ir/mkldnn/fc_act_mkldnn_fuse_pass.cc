@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -25,7 +29,12 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   auto act_types = phi::funcs::GetSupportedActivations();
+=======
+  std::vector<std::string> act_types = {
+      "gelu", "tanh", "sigmoid", "mish", "hard_swish"};
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -37,8 +46,12 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
   FusePassBase::Init("fc_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
+<<<<<<< HEAD
   patterns::OperatorActivation fc_act_pattern(
       gpd.mutable_pattern(), "fc_" + act_type + "_mkldnn_fuse_pass");
+=======
+  patterns::OperatorActivation fc_act_pattern(gpd.mutable_pattern(), "fc_act");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   fc_act_pattern("fc", act_type);
 
   int found_fc_act_count = 0;
@@ -69,10 +82,16 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
     }
 
     if (act_type == "gelu" && act_op->HasAttr("approximate")) {
+<<<<<<< HEAD
       std::string gelu_act_type =
           PADDLE_GET_CONST(bool, act_op->GetAttr("approximate")) ? "gelu_tanh"
                                                                  : "gelu_erf";
       fc_op->SetAttr("fuse_activation", gelu_act_type);
+=======
+      bool approximate = PADDLE_GET_CONST(bool, act_op->GetAttr("approximate"));
+      std::string type = approximate ? "_tanh" : "_erf";
+      fc_op->SetAttr("activation_type", act_type + type);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     } else {
       fc_op->SetAttr("fuse_activation", act_type);
     }
@@ -87,8 +106,12 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
 
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       found_fc_act_count > 0)
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PrettyLogDetail(
         "---    fused %d fc with %s activation", found_fc_act_count, act_type);
 }

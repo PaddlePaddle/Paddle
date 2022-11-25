@@ -17,15 +17,25 @@ import unittest
 from numpy import linalg as LA
 from op_test import OpTest
 import paddle
+<<<<<<< HEAD
 from paddle import _C_ops, _legacy_C_ops
+=======
+from paddle import _C_ops
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from paddle.framework import in_dygraph_mode
 
 
 def test_squared_l2_norm(x):
     if in_dygraph_mode():
+<<<<<<< HEAD
         return _C_ops.squared_l2_norm(x)
     else:
         return _legacy_C_ops.squared_l2_norm(x)
+=======
+        return _C_ops.final_state_squared_l2_norm(x)
+    else:
+        return _C_ops.squared_l2_norm(x)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestL2LossOp(OpTest):
@@ -45,15 +55,23 @@ class TestL2LossOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
             max_relative_error=self.max_relative_error,
             check_eager=True,
         )
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=self.max_relative_error,
+                        check_eager=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestL2LossDeterministic(unittest.TestCase):
+
     def check_place(self, place):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')

@@ -40,6 +40,7 @@ def sigmoid(x):
 def tanh(x):
     y = -2.0 * x
     y[y > EXP_MAX_INPUT] = EXP_MAX_INPUT
+<<<<<<< HEAD
     return (2.0 / (1.0 + np.exp(y))) - 1.0
 
 
@@ -56,6 +57,23 @@ def lstm_np(
     sequence_length=None,
     forget_bias=1.0,
 ):
+=======
+    return (2. / (1. + np.exp(y))) - 1.
+
+
+def lstm_np(input,
+            init_h,
+            init_c,
+            hidden_size,
+            gate_weight,
+            gate_bias,
+            num_layers=1,
+            batch_first=False,
+            is_bidirect=False,
+            sequence_length=None,
+            forget_bias=1.0):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def step(step_in, pre_hidden, pre_cell, gate_w, gate_b):
         concat_1 = np.concatenate([step_in, pre_hidden], 1)
 
@@ -196,6 +214,7 @@ def lstm_np(
 
 
 class TestBasicLSTMApi(unittest.TestCase):
+
     def setUp(self):
         self.hidden_size = 10
         self.batch_size = 5
@@ -206,6 +225,7 @@ class TestBasicLSTMApi(unittest.TestCase):
         self.forget_bias = 1.0
 
     def test_run(self):
+<<<<<<< HEAD
         x = layers.data(
             name='x',
             shape=[-1, self.batch_size, self.hidden_size],
@@ -214,6 +234,14 @@ class TestBasicLSTMApi(unittest.TestCase):
         sequence_length = layers.data(
             name="sequence_length", shape=[-1], dtype='float32'
         )
+=======
+        x = layers.data(name='x',
+                        shape=[-1, self.batch_size, self.hidden_size],
+                        dtype='float32')
+        sequence_length = layers.data(name="sequence_length",
+                                      shape=[-1],
+                                      dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         rnn_out, last_hidden, last_cell = basic_lstm(
             x,
@@ -248,6 +276,7 @@ class TestBasicLSTMApi(unittest.TestCase):
             gate_b_name = "basic_lstm_layers_" + str(i) + "/BasicLSTMUnit_0.b_0"
 
             gate_w = np.array(
+<<<<<<< HEAD
                 fluid.global_scope().find_var(gate_w_name).get_tensor()
             )
             gate_w = np.random.uniform(-0.1, 0.1, size=gate_w.shape).astype(
@@ -266,12 +295,27 @@ class TestBasicLSTMApi(unittest.TestCase):
             fluid.global_scope().find_var(gate_b_name).get_tensor().set(
                 gate_b, place
             )
+=======
+                fluid.global_scope().find_var(gate_w_name).get_tensor())
+            gate_w = np.random.uniform(-0.1, 0.1,
+                                       size=gate_w.shape).astype('float32')
+            fluid.global_scope().find_var(gate_w_name).get_tensor().set(
+                gate_w, place)
+
+            gate_b = np.array(
+                fluid.global_scope().find_var(gate_b_name).get_tensor())
+            gate_b = np.random.uniform(-0.1, 0.1,
+                                       size=gate_b.shape).astype('float32')
+            fluid.global_scope().find_var(gate_b_name).get_tensor().set(
+                gate_b, place)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             gate_weight.append(gate_w)
             gate_bias.append(gate_b)
 
         if self.is_bidirect:
             for i in range(self.num_layers):
+<<<<<<< HEAD
                 gate_w_name = (
                     "basic_lstm_reverse_layers_"
                     + str(i)
@@ -299,6 +343,24 @@ class TestBasicLSTMApi(unittest.TestCase):
                 gate_b = np.random.uniform(-0.1, 0.1, size=gate_b.shape).astype(
                     'float32'
                 )
+=======
+                gate_w_name = "basic_lstm_reverse_layers_" + str(
+                    i) + "/BasicLSTMUnit_0.w_0"
+                gate_b_name = "basic_lstm_reverse_layers_" + str(
+                    i) + "/BasicLSTMUnit_0.b_0"
+
+                gate_w = np.array(
+                    fluid.global_scope().find_var(gate_w_name).get_tensor())
+                gate_w = np.random.uniform(-0.1, 0.1,
+                                           size=gate_w.shape).astype('float32')
+                fluid.global_scope().find_var(gate_w_name).get_tensor().set(
+                    gate_w, place)
+
+                gate_b = np.array(
+                    fluid.global_scope().find_var(gate_b_name).get_tensor())
+                gate_b = np.random.uniform(-0.1, 0.1,
+                                           size=gate_b.shape).astype('float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 fluid.global_scope().find_var(gate_b_name).get_tensor().set(
                     gate_b, place
                 )
@@ -307,21 +369,35 @@ class TestBasicLSTMApi(unittest.TestCase):
                 gate_bias.append(gate_b)
 
         step_input_np = np.random.uniform(
+<<<<<<< HEAD
             -0.1, 0.1, (self.seq_len, self.batch_size, self.hidden_size)
         ).astype('float32')
+=======
+            -0.1, 0.1,
+            (self.seq_len, self.batch_size, self.hidden_size)).astype('float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         sequence_length_np = np.random.randint(
             self.seq_len // 2, self.seq_len, size=(self.batch_size)
         ).astype('int64')
 
+<<<<<<< HEAD
         out = exe.run(
             feed={'x': step_input_np, 'sequence_length': sequence_length_np},
             fetch_list=[rnn_out, last_hidden, last_cell],
         )
+=======
+        out = exe.run(feed={
+            'x': step_input_np,
+            'sequence_length': sequence_length_np
+        },
+                      fetch_list=[rnn_out, last_hidden, last_cell])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         api_rnn_out = out[0]
         api_last_hidden = out[1]
         api_last_cell = out[2]
 
+<<<<<<< HEAD
         np_out = lstm_np(
             step_input_np,
             None,
@@ -342,6 +418,24 @@ class TestBasicLSTMApi(unittest.TestCase):
         np.testing.assert_allclose(
             api_last_cell, np_out[2], rtol=0.0001, atol=0
         )
+=======
+        np_out = lstm_np(step_input_np,
+                         None,
+                         None,
+                         self.hidden_size,
+                         gate_weight,
+                         gate_bias,
+                         num_layers=self.num_layers,
+                         batch_first=self.batch_first,
+                         is_bidirect=self.is_bidirect,
+                         sequence_length=sequence_length_np)
+
+        self.assertTrue(np.allclose(api_rnn_out, np_out[0], rtol=1e-4, atol=0))
+        self.assertTrue(
+            np.allclose(api_last_hidden, np_out[1], rtol=1e-4, atol=0))
+        self.assertTrue(np.allclose(api_last_cell, np_out[2], rtol=1e-4,
+                                    atol=0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

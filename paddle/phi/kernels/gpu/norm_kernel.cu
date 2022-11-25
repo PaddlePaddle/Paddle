@@ -22,8 +22,13 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+=======
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"

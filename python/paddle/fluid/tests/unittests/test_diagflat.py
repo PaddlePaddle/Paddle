@@ -19,6 +19,7 @@ from paddle.static import Program, program_guard
 
 
 class TestDiagFlatError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -34,6 +35,7 @@ class TestDiagFlatError(unittest.TestCase):
 
 
 class TestDiagFlatAPI(unittest.TestCase):
+
     def setUp(self):
         self.input_np = np.random.random(size=(10, 10)).astype(np.float64)
         self.expected0 = np.diagflat(self.input_np)
@@ -75,10 +77,18 @@ class TestDiagFlatAPI(unittest.TestCase):
         place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
+<<<<<<< HEAD
         res0, res3 = exe.run(
             feed={"input": self.input_np, 'input2': self.input_np2},
             fetch_list=[result0, result3],
         )
+=======
+        res0, res3 = exe.run(feed={
+            "input": self.input_np,
+            'input2': self.input_np2
+        },
+                             fetch_list=[result0, result3])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
         np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)

@@ -22,11 +22,17 @@ paddle.enable_static()
 
 
 class TestRad2degAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_dtype = 'float64'
+<<<<<<< HEAD
         self.x_np = np.array(
             [3.142, -3.142, 6.283, -6.283, 1.570, -1.570]
         ).astype(np.float64)
+=======
+        self.x_np = np.array([3.142, -3.142, 6.283, -6.283, 1.570,
+                              -1.570]).astype(np.float64)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.x_shape = [6]
         self.out_np = np.rad2deg(self.x_np)
 
@@ -37,11 +43,16 @@ class TestRad2degAPI(unittest.TestCase):
             x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
             out = paddle.rad2deg(x)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             exe = fluid.Executor(place)
             res = exe.run(
                 fluid.default_main_program(),
@@ -60,6 +71,7 @@ class TestRad2degAPI(unittest.TestCase):
 
 
 class TestRad2degAPI2(TestRad2degAPI):
+
     def setUp(self):
         self.x_np = np.pi / 2
         self.x_shape = [1]

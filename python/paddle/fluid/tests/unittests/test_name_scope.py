@@ -18,6 +18,7 @@ import paddle
 
 
 class TestNameScope(unittest.TestCase):
+
     def test_name_scope(self):
         with fluid.name_scope("s1"):
             a = fluid.layers.data(name='data', shape=[1], dtype='int32')

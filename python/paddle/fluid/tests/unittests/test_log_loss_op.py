@@ -23,6 +23,7 @@ def sigmoid_array(x):
 
 
 class TestLogLossOp(OpTest):
+
     def setUp(self):
         self.op_type = 'log_loss'
         samples_num = 100
@@ -50,6 +51,7 @@ class TestLogLossOp(OpTest):
 
 
 class TestLogLossOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 

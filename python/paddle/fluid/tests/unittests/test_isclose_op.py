@@ -19,6 +19,7 @@ import paddle
 
 
 class TestIscloseOp(OpTest):
+
     def set_args(self):
         self.input = np.array([10000.0, 1e-07]).astype("float32")
         self.other = np.array([10000.1, 1e-08]).astype("float32")
@@ -39,6 +40,7 @@ class TestIscloseOp(OpTest):
         }
         self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.array(
                 [
                     np.isclose(
@@ -50,6 +52,16 @@ class TestIscloseOp(OpTest):
                     )
                 ]
             )
+=======
+            'Out':
+            np.array([
+                np.isclose(self.inputs['Input'],
+                           self.inputs['Other'],
+                           rtol=self.rtol,
+                           atol=self.atol,
+                           equal_nan=self.equal_nan)
+            ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def test_check_output(self):
@@ -57,7 +69,9 @@ class TestIscloseOp(OpTest):
 
 
 class TestIscloseOpException(TestIscloseOp):
+
     def test_check_output(self):
+
         def test_rtol_num():
             self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
@@ -88,6 +102,7 @@ class TestIscloseOpException(TestIscloseOp):
 
 
 class TestIscloseOpSmallNum(TestIscloseOp):
+
     def set_args(self):
         self.input = np.array([10000.0, 1e-08]).astype("float32")
         self.other = np.array([10000.1, 1e-09]).astype("float32")
@@ -97,6 +112,7 @@ class TestIscloseOpSmallNum(TestIscloseOp):
 
 
 class TestIscloseOpNanFalse(TestIscloseOp):
+
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -106,6 +122,7 @@ class TestIscloseOpNanFalse(TestIscloseOp):
 
 
 class TestIscloseOpNanTrue(TestIscloseOp):
+
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -115,6 +132,7 @@ class TestIscloseOpNanTrue(TestIscloseOp):
 
 
 class TestIscloseStatic(unittest.TestCase):
+
     def test_api_case(self):
         paddle.enable_static()
         x_data = np.random.rand(10, 10)
@@ -130,16 +148,26 @@ class TestIscloseStatic(unittest.TestCase):
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.isclose(x, y)
                 exe = paddle.fluid.Executor(place)
+<<<<<<< HEAD
                 fetches = exe.run(
                     paddle.fluid.default_main_program(),
                     feed={"x": x_data, "y": y_data},
                     fetch_list=[result],
                 )
+=======
+                fetches = exe.run(paddle.fluid.default_main_program(),
+                                  feed={
+                                      "x": x_data,
+                                      "y": y_data
+                                  },
+                                  fetch_list=[result])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 expected_out = np.isclose(x_data, y_data)
                 self.assertTrue((fetches[0] == expected_out).all(), True)
 
 
 class TestIscloseDygraph(unittest.TestCase):
+
     def test_api_case(self):
         places = [paddle.CPUPlace()]
         if paddle.fluid.core.is_compiled_with_cuda():
@@ -157,6 +185,7 @@ class TestIscloseDygraph(unittest.TestCase):
 
 
 class TestIscloseError(unittest.TestCase):
+
     def test_input_dtype(self):
         paddle.enable_static()
 
@@ -202,6 +231,7 @@ class TestIscloseError(unittest.TestCase):
 
 
 class TestIscloseOpFloat32(TestIscloseOp):
+
     def set_args(self):
         self.input = np.array([10.1]).astype("float32")
         self.other = np.array([10]).astype("float32")
@@ -211,6 +241,7 @@ class TestIscloseOpFloat32(TestIscloseOp):
 
 
 class TestIscloseOpFloat64(TestIscloseOp):
+
     def set_args(self):
         self.input = np.array([10.1]).astype("float64")
         self.other = np.array([10]).astype("float64")
@@ -223,6 +254,7 @@ class TestIscloseOpFloat64(TestIscloseOp):
 
 
 class TestIscloseOpLargeDimInput(TestIscloseOp):
+
     def set_args(self):
         self.input = np.array(np.zeros([2048, 1024])).astype("float64")
         self.other = np.array(np.zeros([2048, 1024])).astype("float64")

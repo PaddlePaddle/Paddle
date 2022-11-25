@@ -85,6 +85,7 @@ def python_api(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOp(OpTest):
+
     def initParams(self):
         self.python_api = python_api
         self.op_type = "margin_cross_entropy"
@@ -120,6 +121,7 @@ class TestMarginCrossEntropyOp(OpTest):
         )
         logits = np.matmul(datas, weights)
 
+<<<<<<< HEAD
         labels = np.random.randint(
             0, self.num_class, (self.batch_dim,), dtype="int64"
         )
@@ -133,6 +135,15 @@ class TestMarginCrossEntropyOp(OpTest):
             self.margin3,
             self.scale,
         )
+=======
+        labels = np.random.randint(0,
+                                   self.num_class, (self.batch_dim, ),
+                                   dtype="int64")
+
+        loss, softmax = margin_cross_entropy(logits, labels, self.axis,
+                                             self.margin1, self.margin2,
+                                             self.margin3, self.scale)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.inputs = {"Logits": logits, "Label": labels}
         self.outputs = {
@@ -161,10 +172,12 @@ class TestMarginCrossEntropyOp(OpTest):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
+
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             core.CUDAPlace(0),
             ["Logits"],
@@ -173,12 +186,19 @@ class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
             max_relative_error=5e-2,
             check_eager=True,
         )
+=======
+        self.check_grad_with_place(core.CUDAPlace(0), ["Logits"],
+                                   "Loss",
+                                   numeric_grad_delta=5e-2,
+                                   max_relative_error=5e-2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -188,6 +208,7 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
         )
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             core.CUDAPlace(0),
             ["Logits"],
@@ -196,12 +217,19 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
             max_relative_error=6e-1,
             check_eager=True,
         )
+=======
+        self.check_grad_with_place(core.CUDAPlace(0), ["Logits"],
+                                   "Loss",
+                                   numeric_grad_delta=6e-1,
+                                   max_relative_error=6e-1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpCosFace(TestMarginCrossEntropyOp):
+
     def init_loss_params(self):
         self.margin1 = 1.0
         self.margin2 = 0.0
@@ -213,6 +241,7 @@ class TestMarginCrossEntropyOpCosFace(TestMarginCrossEntropyOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpSphereFace(TestMarginCrossEntropyOp):
+
     def init_loss_params(self):
         self.margin1 = 1.35
         self.margin2 = 0.0
@@ -221,6 +250,7 @@ class TestMarginCrossEntropyOpSphereFace(TestMarginCrossEntropyOp):
 
 
 class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
+
     def test_check_output(self):
         try:
             self.check_output_with_place(
@@ -242,6 +272,7 @@ class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpV2(unittest.TestCase):
+
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
@@ -293,6 +324,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             )
 
             logits_np = np.matmul(datas, weights)
+<<<<<<< HEAD
             labels_np = np.random.randint(
                 0, self.num_class, (self.batch_dim,), dtype="int64"
             )
@@ -316,6 +348,24 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             label = paddle.static.data(
                 name='label', shape=[self.batch_dim], dtype="int64"
             )
+=======
+            labels_np = np.random.randint(0,
+                                          self.num_class, (self.batch_dim, ),
+                                          dtype="int64")
+
+            loss_np, softmax_np = margin_cross_entropy(logits_np, labels_np,
+                                                       self.axis, self.margin1,
+                                                       self.margin2,
+                                                       self.margin3, self.scale,
+                                                       self.reduction)
+
+            logits = paddle.static.data(name='logits',
+                                        shape=[self.batch_dim, self.num_class],
+                                        dtype=self.dtype)
+            label = paddle.static.data(name='label',
+                                       shape=[self.batch_dim],
+                                       dtype="int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             loss, softmax = paddle.nn.functional.margin_cross_entropy(
                 logits,
                 label,
@@ -328,11 +378,21 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             )
 
             exe = paddle.fluid.Executor(place)
+<<<<<<< HEAD
             [loss_res, softmax_res] = exe.run(
                 paddle.fluid.default_main_program(),
                 feed={'logits': logits_np, 'label': labels_np},
                 fetch_list=[loss, softmax],
             )
+=======
+            [loss_res,
+             softmax_res] = exe.run(paddle.fluid.default_main_program(),
+                                    feed={
+                                        'logits': logits_np,
+                                        'label': labels_np
+                                    },
+                                    fetch_list=[loss, softmax])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             np.testing.assert_allclose(loss_res, loss_np)
             np.testing.assert_allclose(softmax_res, softmax_np)
 
@@ -356,6 +416,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             )
 
             logits_np = np.matmul(datas, weights)
+<<<<<<< HEAD
             labels_np = np.random.randint(
                 0, self.num_class, (self.batch_dim,), dtype="int64"
             )
@@ -370,6 +431,17 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
                 self.scale,
                 self.reduction,
             )
+=======
+            labels_np = np.random.randint(0,
+                                          self.num_class, (self.batch_dim, ),
+                                          dtype="int64")
+
+            loss_np, softmax_np = margin_cross_entropy(logits_np, labels_np,
+                                                       self.axis, self.margin1,
+                                                       self.margin2,
+                                                       self.margin3, self.scale,
+                                                       self.reduction)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             logits = paddle.to_tensor(logits_np, dtype=self.dtype)
             labels = paddle.to_tensor(labels_np, dtype="int64")
@@ -395,6 +467,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpV3(TestMarginCrossEntropyOpV2):
+
     def init_reduction(self):
         self.reduction = 'mean'
 
@@ -403,6 +476,7 @@ class TestMarginCrossEntropyOpV3(TestMarginCrossEntropyOpV2):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpV4(TestMarginCrossEntropyOpV2):
+
     def init_reduction(self):
         self.reduction = 'sum'
 
@@ -411,6 +485,7 @@ class TestMarginCrossEntropyOpV4(TestMarginCrossEntropyOpV2):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
+
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
@@ -440,12 +515,20 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
         self.dtype = np.float64
 
     def test_dynamic_errors(self):
+
         def test_dim():
             for place in self.places:
                 with paddle.fluid.dygraph.guard(place):
+<<<<<<< HEAD
                     labels_np = np.random.randint(
                         0, self.num_class, (self.batch_dim, 2), dtype="int64"
                     )
+=======
+                    labels_np = np.random.randint(0,
+                                                  self.num_class,
+                                                  (self.batch_dim, 2),
+                                                  dtype="int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     logits_np = np.random.uniform(
                         -0.99, 0.99, [self.batch_dim, self.num_class]
                     ).astype(self.dtype)
@@ -466,9 +549,15 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
         def test_label_type():
             for place in self.places:
                 with paddle.fluid.dygraph.guard(place):
+<<<<<<< HEAD
                     labels_np = np.random.uniform(
                         0, self.num_class, (self.batch_dim, 1)
                     ).astype(self.dtype)
+=======
+                    labels_np = np.random.uniform(0, self.num_class,
+                                                  (self.batch_dim, 1)).astype(
+                                                      self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     logits_np = np.random.uniform(
                         -0.99, 0.99, [self.batch_dim, self.num_class]
                     ).astype(self.dtype)
@@ -489,9 +578,16 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
         def test_group_value():
             for place in self.places:
                 with paddle.fluid.dygraph.guard(place):
+<<<<<<< HEAD
                     labels_np = np.random.randint(
                         0, self.num_class, (self.batch_dim,), dtype="int64"
                     )
+=======
+                    labels_np = np.random.randint(0,
+                                                  self.num_class,
+                                                  (self.batch_dim, ),
+                                                  dtype="int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     logits_np = np.random.uniform(
                         -0.99, 0.99, [self.batch_dim, self.num_class]
                     ).astype(self.dtype)

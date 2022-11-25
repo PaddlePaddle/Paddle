@@ -79,6 +79,7 @@ def non_cudnn_step(
 
 
 class TestCudnnGRU(unittest.TestCase):
+
     def setUp(self):
         self.input_size = 100
         self.hidden_size = 200
@@ -117,9 +118,14 @@ class TestCudnnGRU(unittest.TestCase):
             named_param_list[weight_ih_name].set_value(weight_ih)
 
             bias_ih = param_list[bias_ih_name].numpy()
+<<<<<<< HEAD
             bias_ih = np.random.uniform(-0.1, 0.1, size=bias_ih.shape).astype(
                 'float64'
             )
+=======
+            bias_ih = np.random.uniform(-0.1, 0.1,
+                                        size=bias_ih.shape).astype('float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             param_list[bias_ih_name].set_value(bias_ih)
             named_param_list[bias_ih_name].set_value(bias_ih)
 
@@ -131,18 +137,30 @@ class TestCudnnGRU(unittest.TestCase):
             named_param_list[weight_hh_name].set_value(weight_hh)
 
             bias_hh = param_list[bias_hh_name].numpy()
+<<<<<<< HEAD
             bias_hh = np.random.uniform(-0.1, 0.1, size=bias_hh.shape).astype(
                 'float64'
             )
+=======
+            bias_hh = np.random.uniform(-0.1, 0.1,
+                                        size=bias_hh.shape).astype('float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             param_list[bias_hh_name].set_value(bias_hh)
             named_param_list[bias_hh_name].set_value(bias_hh)
 
             step_input_np = np.random.uniform(
+<<<<<<< HEAD
                 -0.1, 0.1, (self.batch_size, self.input_size)
             ).astype('float64')
             pre_hidden_np = np.random.uniform(
                 -0.1, 0.1, (self.batch_size, self.hidden_size)
             ).astype('float64')
+=======
+                -0.1, 0.1, (self.batch_size, self.input_size)).astype('float64')
+            pre_hidden_np = np.random.uniform(
+                -0.1, 0.1,
+                (self.batch_size, self.hidden_size)).astype('float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             step_input_var = fluid.dygraph.to_variable(step_input_np)
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
@@ -153,13 +171,20 @@ class TestCudnnGRU(unittest.TestCase):
             step_input_np, pre_hidden_np, weight_ih, bias_ih, weight_hh, bias_hh
         )
 
+<<<<<<< HEAD
         np.testing.assert_allclose(api_out.numpy(), np_out, rtol=1e-05, atol=0)
         np.testing.assert_allclose(
             named_api_out.numpy(), np_out, rtol=1e-05, atol=0
         )
+=======
+        self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
+        self.assertTrue(
+            np.allclose(named_api_out.numpy(), np_out, rtol=1e-5, atol=0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNonCudnnGRU(unittest.TestCase):
+
     def setUp(self):
         self.input_size = 100
         self.hidden_size = 200
@@ -175,6 +200,7 @@ class TestNonCudnnGRU(unittest.TestCase):
         with fluid.dygraph.guard(place):
             param_attr = fluid.ParamAttr(name="param_attr")
             bias_attr = fluid.ParamAttr(name="bias_attr")
+<<<<<<< HEAD
             named_non_cudnn_gru = GRUCell(
                 self.hidden_size,
                 self.input_size,
@@ -185,6 +211,16 @@ class TestNonCudnnGRU(unittest.TestCase):
             non_cudnn_gru = GRUCell(
                 self.hidden_size, self.input_size, use_cudnn_impl=False
             )
+=======
+            named_non_cudnn_gru = GRUCell(self.hidden_size,
+                                          self.input_size,
+                                          param_attr,
+                                          bias_attr,
+                                          use_cudnn_impl=False)
+            non_cudnn_gru = GRUCell(self.hidden_size,
+                                    self.input_size,
+                                    use_cudnn_impl=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             param_list = non_cudnn_gru.state_dict()
             named_param_list = named_non_cudnn_gru.state_dict()
@@ -197,16 +233,26 @@ class TestNonCudnnGRU(unittest.TestCase):
             candidate_b_name = "_candidate_bias"
 
             gate_w = param_list[gate_w_name].numpy()
+<<<<<<< HEAD
             gate_w = np.random.uniform(-0.1, 0.1, size=gate_w.shape).astype(
                 'float64'
             )
+=======
+            gate_w = np.random.uniform(-0.1, 0.1,
+                                       size=gate_w.shape).astype('float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             param_list[gate_w_name].set_value(gate_w)
             named_param_list[gate_w_name].set_value(gate_w)
 
             gate_b = param_list[gate_b_name].numpy()
+<<<<<<< HEAD
             gate_b = np.random.uniform(-0.1, 0.1, size=gate_b.shape).astype(
                 'float64'
             )
+=======
+            gate_b = np.random.uniform(-0.1, 0.1,
+                                       size=gate_b.shape).astype('float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             param_list[gate_b_name].set_value(gate_b)
             named_param_list[gate_b_name].set_value(gate_b)
 
@@ -225,17 +271,25 @@ class TestNonCudnnGRU(unittest.TestCase):
             named_param_list[candidate_b_name].set_value(candidate_b)
 
             step_input_np = np.random.uniform(
+<<<<<<< HEAD
                 -0.1, 0.1, (self.batch_size, self.input_size)
             ).astype('float64')
             pre_hidden_np = np.random.uniform(
                 -0.1, 0.1, (self.batch_size, self.hidden_size)
             ).astype('float64')
+=======
+                -0.1, 0.1, (self.batch_size, self.input_size)).astype('float64')
+            pre_hidden_np = np.random.uniform(
+                -0.1, 0.1,
+                (self.batch_size, self.hidden_size)).astype('float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             step_input_var = fluid.dygraph.to_variable(step_input_np)
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
             api_out = non_cudnn_gru(step_input_var, pre_hidden_var)
             named_api_out = named_non_cudnn_gru(step_input_var, pre_hidden_var)
 
+<<<<<<< HEAD
         np_out = non_cudnn_step(
             step_input_np,
             pre_hidden_np,
@@ -249,6 +303,14 @@ class TestNonCudnnGRU(unittest.TestCase):
         np.testing.assert_allclose(
             named_api_out.numpy(), np_out, rtol=1e-05, atol=0
         )
+=======
+        np_out = non_cudnn_step(step_input_np, pre_hidden_np, gate_w, gate_b,
+                                candidate_w, candidate_b)
+
+        self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
+        self.assertTrue(
+            np.allclose(named_api_out.numpy(), np_out, rtol=1e-5, atol=0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

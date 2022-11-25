@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_XPU
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/beam_search_op.h"
 
@@ -24,4 +22,3 @@ REGISTER_OP_XPU_KERNEL(
     ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, double>,
     ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, int>,
     ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, int64_t>);
-#endif

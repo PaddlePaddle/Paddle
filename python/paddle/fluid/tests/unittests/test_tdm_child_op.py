@@ -52,15 +52,21 @@ def create_tdm_tree():
 
 
 class TestTDMChildOp(OpTest):
+
     def setUp(self):
         self.__class__.op_type = "tdm_child"
         self.config()
         tree_info = create_tdm_tree()
         tree_info_np = np.array(tree_info).astype(self.info_type)
 
+<<<<<<< HEAD
         x_np = np.random.randint(low=0, high=26, size=self.x_shape).astype(
             self.x_type
         )
+=======
+        x_np = np.random.randint(low=0, high=26,
+                                 size=self.x_shape).astype(self.x_type)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         children_res = []
         leaf_mask_res = []
         for batch in x_np:
@@ -100,6 +106,7 @@ class TestTDMChildOp(OpTest):
 
 
 class TestCase1(TestTDMChildOp):
+
     def config(self):
         """check int int64_t"""
         self.x_shape = (10, 20)
@@ -109,6 +116,7 @@ class TestCase1(TestTDMChildOp):
 
 
 class TestCase2(TestTDMChildOp):
+
     def config(self):
         """check int64_t int64_t"""
         self.x_shape = (10, 20)
@@ -118,6 +126,7 @@ class TestCase2(TestTDMChildOp):
 
 
 class TestCase3(TestTDMChildOp):
+
     def config(self):
         """check int64 int32"""
         self.x_shape = (10, 20)
@@ -127,6 +136,7 @@ class TestCase3(TestTDMChildOp):
 
 
 class TestCase4(TestTDMChildOp):
+
     def config(self):
         """check large shape"""
         self.x_shape = (100, 20)
@@ -136,6 +146,7 @@ class TestCase4(TestTDMChildOp):
 
 
 class TestTDMChildShape(unittest.TestCase):
+
     def test_shape(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
         tdm_tree_info = create_tdm_tree()
@@ -145,21 +156,32 @@ class TestTDMChildShape(unittest.TestCase):
             x=x,
             node_nums=26,
             child_nums=2,
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     tree_info_np
                 )
             ),
         )
+=======
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.
+                                       NumpyArrayInitializer(tree_info_np)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place=place)
         exe.run(fluid.default_startup_program())
 
         feed = {
+<<<<<<< HEAD
             'x': np.array(
                 [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]]
             ).astype('int32')
+=======
+            'x':
+            np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11],
+                      [12]]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         exe.run(feed=feed)
 

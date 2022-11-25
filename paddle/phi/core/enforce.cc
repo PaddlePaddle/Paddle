@@ -42,10 +42,14 @@ using Attribute = paddle::variant<paddle::blank,
                                   int64_t,
                                   std::vector<BlockDesc*>,
                                   std::vector<int64_t>,
+<<<<<<< HEAD
                                   std::vector<double>,
                                   VarDesc*,
                                   std::vector<VarDesc*>,
                                   double>;
+=======
+                                  std::vector<double>>;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 namespace imperative {

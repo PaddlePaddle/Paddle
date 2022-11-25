@@ -22,6 +22,7 @@ import paddle.fluid.core as core
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestFusionTransposeFlattenConcationOp(OpTest):
+
     def setUp(self):
         self.init_test_case()
         self.op_type = "fusion_transpose_flatten_concat"
@@ -65,6 +66,7 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestCase1(TestFusionTransposeFlattenConcationOp):
+
     def init_test_case(self):
         self.shapes = [(3, 4, 18, 17), (3, 8, 18, 7), (6, 12, 9, 5)]
         self.trans_axis = (0, 2, 3, 1)
@@ -76,6 +78,7 @@ class TestCase1(TestFusionTransposeFlattenConcationOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestCase2(TestFusionTransposeFlattenConcationOp):
+
     def init_test_case(self):
         self.shapes = [(3, 8, 20, 17), (3, 8, 19, 17), (3, 8, 40, 17)]
         self.trans_axis = (0, 2, 3, 1)
@@ -87,6 +90,7 @@ class TestCase2(TestFusionTransposeFlattenConcationOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestCase3(TestFusionTransposeFlattenConcationOp):
+
     def init_test_case(self):
         self.shapes = [(3, 8, 20, 17), (3, 8, 19, 17), (3, 8, 40, 17)]
         self.trans_axis = (0, 3, 2, 1)
@@ -98,6 +102,7 @@ class TestCase3(TestFusionTransposeFlattenConcationOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestCase4(TestFusionTransposeFlattenConcationOp):
+
     def init_test_case(self):
         self.shapes = [(3, 8, 9, 17), (8, 3, 9, 17), (4, 6, 9, 17)]
         self.trans_axis = (0, 2, 1, 3)
@@ -109,6 +114,7 @@ class TestCase4(TestFusionTransposeFlattenConcationOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestCase5(TestFusionTransposeFlattenConcationOp):
+
     def init_test_case(self):
         self.shapes = [(3, 8, 9, 17, 2), (3, 8, 2, 17, 9), (3, 17, 9, 8, 2)]
         self.trans_axis = (0, 2, 1, 4, 3)

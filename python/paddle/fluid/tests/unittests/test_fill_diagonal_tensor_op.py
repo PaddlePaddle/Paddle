@@ -81,6 +81,7 @@ def fill_gt(x, y, offset, dim1, dim2):
 
 
 class TensorFillDiagTensor_Test(OpTest):
+
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
@@ -107,6 +108,7 @@ class TensorFillDiagTensor_Test(OpTest):
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
+
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
@@ -127,6 +129,7 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 
 
 class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
+
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor

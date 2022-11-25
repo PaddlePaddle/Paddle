@@ -41,14 +41,20 @@ def rand_x(
 ):
     shape = [np.random.randint(min_dim_len, max_dim_len) for i in range(dims)]
     if complex:
+<<<<<<< HEAD
         return np.random.randn(*shape).astype(dtype) + 1.0j * np.random.randn(
             *shape
         ).astype(dtype)
+=======
+        return np.random.randn(
+            *shape).astype(dtype) + 1.j * np.random.randn(*shape).astype(dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         return np.random.randn(*shape).astype(dtype)
 
 
 def place(devices, key='place'):
+
     def decorate(cls):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
@@ -93,6 +99,7 @@ def parameterize(fields, values=None):
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+<<<<<<< HEAD
     [
         ('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
         ('test_x_complex', rand_x(5, complex=True), None, -1, 'backward'),
@@ -115,10 +122,23 @@ def parameterize(fields, values=None):
         ('test_norm_ortho', rand_x(5), None, 3, 'ortho'),
     ],
 )
+=======
+    [('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
+     ('test_x_complex', rand_x(5, complex=True), None, -1, 'backward'),
+     ('test_n_grater_input_length', rand_x(5,
+                                           max_dim_len=5), 11, -1, 'backward'),
+     ('test_n_smaller_than_input_length', rand_x(
+         5, min_dim_len=5, complex=True), 3, -1, 'backward'),
+     ('test_axis_not_last', rand_x(5), None, 3, 'backward'),
+     ('test_norm_forward', rand_x(5), None, 3, 'forward'),
+     ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestFft(unittest.TestCase):
+
     def test_fft(self):
         """Test fft with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.fft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.fft(
@@ -127,11 +147,20 @@ class TestFft(unittest.TestCase):
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
+=======
+            self.assertTrue(
+                np.allclose(scipy.fft.fft(self.x, self.n, self.axis, self.norm),
+                            paddle.fft.fft(paddle.to_tensor(self.x), self.n,
+                                           self.axis, self.norm),
+                            rtol=RTOL.get(str(self.x.dtype)),
+                            atol=ATOL.get(str(self.x.dtype))))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+<<<<<<< HEAD
     [
         ('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
         ('test_x_complex', rand_x(5, complex=True), None, -1, 'backward'),
@@ -154,10 +183,23 @@ class TestFft(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, 3, 'ortho'),
     ],
 )
+=======
+    [('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
+     ('test_x_complex', rand_x(5, complex=True), None, -1, 'backward'),
+     ('test_n_grater_input_length', rand_x(5,
+                                           max_dim_len=5), 11, -1, 'backward'),
+     ('test_n_smaller_than_input_length', rand_x(
+         5, min_dim_len=5, complex=True), 3, -1, 'backward'),
+     ('test_axis_not_last', rand_x(5), None, 3, 'backward'),
+     ('test_norm_forward', rand_x(5), None, 3, 'forward'),
+     ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIfft(unittest.TestCase):
+
     def test_fft(self):
         """Test ifft with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.ifft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ifft(
@@ -166,11 +208,21 @@ class TestIfft(unittest.TestCase):
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
+=======
+            self.assertTrue(
+                np.allclose(scipy.fft.ifft(self.x, self.n, self.axis,
+                                           self.norm),
+                            paddle.fft.ifft(paddle.to_tensor(self.x), self.n,
+                                            self.axis, self.norm),
+                            rtol=RTOL.get(str(self.x.dtype)),
+                            atol=ATOL.get(str(self.x.dtype))))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
         ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
@@ -192,8 +244,16 @@ class TestIfft(unittest.TestCase):
             ValueError,
         ),
     ],
+=======
+    [('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
+     ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
+     ('test_axis_out_of_range', rand_x(1), None, 10, 'backward', ValueError),
+     ('test_axis_with_array', rand_x(1), None, (0, 1), 'backward', ValueError),
+     ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 )
 class TestFftException(unittest.TestCase):
+
     def test_fft(self):
         """Test fft with buoudary condition
         Test case include:
@@ -203,6 +263,7 @@ class TestFftException(unittest.TestCase):
         - norm out of range
         """
         with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
             paddle.fft.fft(
                 paddle.to_tensor(self.x), self.n, self.axis, self.norm
             )
@@ -240,10 +301,31 @@ class TestFftException(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
     ],
 )
+=======
+            paddle.fft.fft(paddle.to_tensor(self.x), self.n, self.axis,
+                           self.norm)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_float64', rand_x(5), None, (0, 1), 'backward'),
+    ('test_x_complex128', rand_x(5, complex=True), None, (0, 1), 'backward'),
+    ('test_n_grater_input_length', rand_x(5, max_dim_len=5), (6, 6),
+     (0, 1), 'backward'),
+    ('test_n_smaller_than_input_length', rand_x(5, min_dim_len=5, complex=True),
+     (4, 4), (0, 1), 'backward'),
+    ('test_axis_random', rand_x(5), None, (1, 2), 'backward'),
+    ('test_axis_none', rand_x(5), None, None, 'backward'),
+    ('test_norm_forward', rand_x(5), None, (0, 1), 'forward'),
+    ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestFft2(unittest.TestCase):
+
     def test_fft2(self):
         """Test fft2 with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.fft2(self.x, self.n, self.axis, self.norm),
                 paddle.fft.fft2(
@@ -252,11 +334,21 @@ class TestFft2(unittest.TestCase):
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
+=======
+            self.assertTrue(
+                np.allclose(scipy.fft.fft2(self.x, self.n, self.axis,
+                                           self.norm),
+                            paddle.fft.fft2(paddle.to_tensor(self.x), self.n,
+                                            self.axis, self.norm),
+                            rtol=RTOL.get(str(self.x.dtype)),
+                            atol=ATOL.get(str(self.x.dtype))))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         (
             'test_x_complex_input',
@@ -304,7 +396,22 @@ class TestFft2(unittest.TestCase):
         ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError),
     ],
 )
+=======
+    [('test_x_complex_input', rand_x(2, complex=True), None,
+      (0, 1), None, ValueError),
+     ('test_x_1dim_tensor', rand_x(1), None, (0, 1), None, ValueError),
+     ('test_n_nagative', rand_x(2), -1, (0, 1), 'backward', ValueError),
+     ('test_n_len_not_equal_axis', rand_x(5, max_dim_len=5), 11,
+      (0, 1), 'backward', ValueError),
+     ('test_n_zero', rand_x(2), (0, 0), (0, 1), 'backward', ValueError),
+     ('test_axis_out_of_range', rand_x(2), None,
+      (0, 1, 2), 'backward', ValueError),
+     ('test_axis_with_array', rand_x(1), None, (0, 1), 'backward', ValueError),
+     ('test_axis_not_sequence', rand_x(5), None, -10, 'backward', ValueError),
+     ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestFft2Exception(unittest.TestCase):
+
     def test_fft2(self):
         """Test fft2 with buoudary condition
         Test case include:
@@ -317,14 +424,20 @@ class TestFft2Exception(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.fft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
+=======
+                paddle.fft.fft2(paddle.to_tensor(self.x), self.n, self.axis,
+                                self.norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+<<<<<<< HEAD
     [
         ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
         ('test_x_complex128', rand_x(5, complex=True), None, None, 'backward'),
@@ -347,10 +460,23 @@ class TestFft2Exception(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, None, 'ortho'),
     ],
 )
+=======
+    [('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
+     ('test_x_complex128', rand_x(5, complex=True), None, None, 'backward'),
+     ('test_n_grater_input_length', rand_x(5, max_dim_len=5), (6, 6),
+      (1, 2), 'backward'),
+     ('test_n_smaller_input_length', rand_x(5, min_dim_len=5, complex=True),
+      (3, 3), (1, 2), 'backward'),
+     ('test_axis_not_default', rand_x(5), None, (1, 2), 'backward'),
+     ('test_norm_forward', rand_x(5), None, None, 'forward'),
+     ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestFftn(unittest.TestCase):
+
     def test_fftn(self):
         """Test fftn with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.fftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.fftn(
@@ -359,11 +485,21 @@ class TestFftn(unittest.TestCase):
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
+=======
+            np.testing.assert_allclose(scipy.fft.fftn(self.x, self.n, self.axis,
+                                                      self.norm),
+                                       paddle.fft.fftn(paddle.to_tensor(self.x),
+                                                       self.n, self.axis,
+                                                       self.norm),
+                                       rtol=RTOL.get(str(self.x.dtype)),
+                                       atol=ATOL.get(str(self.x.dtype)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+<<<<<<< HEAD
     [
         ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
         ('test_x_complex128', rand_x(5, complex=True), None, None, 'backward'),
@@ -386,21 +522,39 @@ class TestFftn(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, None, 'ortho'),
     ],
 )
+=======
+    [('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
+     ('test_x_complex128', rand_x(5, complex=True), None, None, 'backward'),
+     ('test_n_grater_input_length', rand_x(5, max_dim_len=5), (6, 6),
+      (1, 2), 'backward'),
+     ('test_n_smaller_input_length', rand_x(5, min_dim_len=5, complex=True),
+      (3, 3), (1, 2), 'backward'),
+     ('test_axis_not_default', rand_x(5), None, (1, 2), 'backward'),
+     ('test_norm_forward', rand_x(5), None, None, 'forward'),
+     ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIFftn(unittest.TestCase):
+
     def test_ifftn(self):
         """Test ifftn with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ifftn(self.x, self.n, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.ifftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 ),
+=======
+                paddle.fft.ifftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
 
 
 @place(DEVICES)
+<<<<<<< HEAD
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
@@ -450,10 +604,29 @@ class TestIFftn(unittest.TestCase):
         ),
     ],
 )
+=======
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_complex128',
+     (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+         np.complex128), None, -1, "backward"),
+    ('test_n_grater_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), 4, -1, "backward"),
+    ('test_n_smaller_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), 2, -1, "backward"),
+    ('test_axis_not_last', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, 1, "backward"),
+    ('test_norm_forward', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, 1, "forward"),
+    ('test_norm_ortho', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, -1, "ortho"),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestHfft(unittest.TestCase):
+
     def test_hfft(self):
         """Test hfft with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.hfft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.hfft(
@@ -514,21 +687,55 @@ class TestHfft(unittest.TestCase):
         ),
     ],
 )
+=======
+            np.testing.assert_allclose(scipy.fft.hfft(self.x, self.n, self.axis,
+                                                      self.norm),
+                                       paddle.fft.hfft(paddle.to_tensor(self.x),
+                                                       self.n, self.axis,
+                                                       self.norm),
+                                       rtol=1e-5,
+                                       atol=0)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_complex128',
+     (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+         np.complex128), None, -1, "backward"),
+    ('test_n_grater_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), 4, -1, "backward"),
+    ('test_n_smaller_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), 2, -1, "backward"),
+    ('test_axis_not_last', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, -1, "backward"),
+    ('test_norm_forward', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, -1, "forward"),
+    ('test_norm_ortho', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, -1, "ortho"),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIrfft(unittest.TestCase):
+
     def test_irfft(self):
         """Test irfft with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.irfft(self.x, self.n, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.irfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 ),
+=======
+                paddle.fft.irfft(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=1e-5,
                 atol=0,
             )
 
 
 @place(DEVICES)
+<<<<<<< HEAD
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
@@ -578,21 +785,45 @@ class TestIrfft(unittest.TestCase):
         ),
     ],
 )
+=======
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_complex128',
+     (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+         np.complex128), None, None, "backward"),
+    ('test_n_grater_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), [4], None, "backward"),
+    ('test_n_smaller_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), [2], None, "backward"),
+    ('test_axis_not_last', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, None, "backward"),
+    ('test_norm_forward', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, None, "forward"),
+    ('test_norm_ortho', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, None, "ortho"),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIrfftn(unittest.TestCase):
+
     def test_irfftn(self):
         """Test irfftn with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.irfftn(self.x, self.n, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.irfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 ),
+=======
+                paddle.fft.irfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                  self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=1e-5,
                 atol=0,
             )
 
 
 @place(DEVICES)
+<<<<<<< HEAD
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
@@ -642,21 +873,45 @@ class TestIrfftn(unittest.TestCase):
         ),
     ],
 )
+=======
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_complex128',
+     (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+         np.complex128), None, None, "backward"),
+    ('test_n_grater_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), [4], None, "backward"),
+    ('test_n_smaller_than_input_length', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), [2], None, "backward"),
+    ('test_axis_not_last', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, None, "backward"),
+    ('test_norm_forward', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, None, "forward"),
+    ('test_norm_ortho', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), None, None, "ortho"),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestHfftn(unittest.TestCase):
+
     def test_hfftn(self):
         """Test hfftn with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.hfftn(self.x, self.n, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.hfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 ),
+=======
+                paddle.fft.hfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=1e-5,
                 atol=0,
             )
 
 
 @place(DEVICES)
+<<<<<<< HEAD
 @parameterize(
     (TEST_CASE_NAME, 'x', 's', 'axis', 'norm'),
     [
@@ -700,21 +955,46 @@ class TestHfftn(unittest.TestCase):
         ),
     ],
 )
+=======
+@parameterize((TEST_CASE_NAME, 'x', 's', 'axis', 'norm'), [
+    ('test_x_complex128',
+     (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+         np.complex128), None, (-2, -1), "backward"),
+    ('test_with_s', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+     [2, 2], (-2, -1), "backward", ValueError),
+    ('test_axis_not_last',
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None,
+     (-2, -1), "backward"),
+    ('test_norm_forward',
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None,
+     (-2, -1), "forward"),
+    ('test_norm_ortho',
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None,
+     (-2, -1), "ortho"),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestHfft2(unittest.TestCase):
+
     def test_hfft2(self):
         """Test hfft2 with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.hfft2(self.x, self.s, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.hfft2(
                     paddle.to_tensor(self.x), self.s, self.axis, self.norm
                 ),
+=======
+                paddle.fft.hfft2(paddle.to_tensor(self.x), self.s, self.axis,
+                                 self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=1e-5,
                 atol=0,
             )
 
 
 @place(DEVICES)
+<<<<<<< HEAD
 @parameterize(
     (TEST_CASE_NAME, 'x', 's', 'axis', 'norm'),
     [
@@ -757,21 +1037,47 @@ class TestHfft2(unittest.TestCase):
         ),
     ],
 )
+=======
+@parameterize((TEST_CASE_NAME, 'x', 's', 'axis', 'norm'), [
+    ('test_x_complex128',
+     (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+         np.complex128), None, (-2, -1), "backward"),
+    ('test_n_equal_input_length',
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (4, 6),
+     (-2, -1), "backward"),
+    ('test_axis_not_last',
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None,
+     (-2, -1), "backward"),
+    ('test_norm_forward',
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None,
+     (-2, -1), "forward"),
+    ('test_norm_ortho',
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None,
+     (-2, -1), "ortho"),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIrfft2(unittest.TestCase):
+
     def test_irfft2(self):
         """Test irfft2 with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.irfft2(self.x, self.s, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.irfft2(
                     paddle.to_tensor(self.x), self.s, self.axis, self.norm
                 ),
+=======
+                paddle.fft.irfft2(paddle.to_tensor(self.x), self.s, self.axis,
+                                  self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=1e-5,
                 atol=0,
             )
 
 
 @place(DEVICES)
+<<<<<<< HEAD
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
@@ -835,7 +1141,27 @@ class TestIrfft2(unittest.TestCase):
         ),
     ],
 )
+=======
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'), [
+    ('test_bool_input',
+     (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+         np.bool_), None, -1, 'backward', NotImplementedError),
+    ('test_n_nagative', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), -1, -1, 'backward', ValueError),
+    ('test_n_zero', np.random.randn(4, 4) + 1j * np.random.randn(4, 4), 0, -1,
+     'backward', ValueError),
+    ('test_n_type', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+     (1, 2, 3), -1, 'backward', ValueError),
+    ('test_axis_out_of_range', np.random.randn(4) + 1j * np.random.randn(4),
+     None, 10, 'backward', ValueError),
+    ('test_axis_with_array', np.random.randn(4) + 1j * np.random.randn(4), None,
+     (0, 1), 'backward', ValueError),
+    ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
+     1j * np.random.randn(4, 4), None, -1, 'random', ValueError)
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestHfftException(unittest.TestCase):
+
     def test_hfft(self):
         """Test hfft with buoudary condition
         Test case include:
@@ -848,6 +1174,7 @@ class TestHfftException(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.hfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
@@ -907,7 +1234,29 @@ class TestHfftException(unittest.TestCase):
         ),
     ],
 )
+=======
+                paddle.fft.hfft(paddle.to_tensor(self.x), self.n, self.axis,
+                                self.norm)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'), [
+    ('test_n_nagative', np.random.randn(4, 4, 4) +
+     1j * np.random.randn(4, 4, 4), -1, -1, 'backward', ValueError),
+    ('test_n_zero', np.random.randn(4, 4) + 1j * np.random.randn(4, 4), 0, -1,
+     'backward', ValueError),
+    ('test_n_type', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+     (1, 2), -1, 'backward', ValueError),
+    ('test_axis_out_of_range', np.random.randn(4) + 1j * np.random.randn(4),
+     None, 10, 'backward', ValueError),
+    ('test_axis_with_array', np.random.randn(4) + 1j * np.random.randn(4), None,
+     (0, 1), 'backward', ValueError),
+    ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
+     1j * np.random.randn(4, 4), None, None, 'random', ValueError)
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIrfftException(unittest.TestCase):
+
     def test_irfft(self):
         """
         Test irfft with buoudary condition
@@ -920,14 +1269,20 @@ class TestIrfftException(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.irfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
+=======
+                paddle.fft.irfft(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         (
             'test_bool_input',
@@ -997,7 +1352,29 @@ class TestIrfftException(unittest.TestCase):
         ),
     ],
 )
+=======
+    [('test_bool_input',
+      (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+          np.bool_), None, (-2, -1), 'backward', NotImplementedError),
+     ('test_n_nagative',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
+      (-2, -1), 'backward', ValueError),
+     ('test_n_zero', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      (0, 0), (-2, -1), 'backward', ValueError),
+     ('test_n_type', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      3, None, 'backward', ValueError),
+     ('test_n_axis_dim',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (1, 2),
+      (-1), 'backward', ValueError),
+     ('test_axis_out_of_range', np.random.randn(4) + 1j * np.random.randn(4),
+      None, (1, 2), 'backward', ValueError),
+     ('test_axis_type', np.random.randn(4) + 1j * np.random.randn(4), None, -1,
+      'backward', ValueError),
+     ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
+      1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestHfft2Exception(unittest.TestCase):
+
     def test_hfft2(self):
         """
         Test hfft2 with buoudary condition
@@ -1011,14 +1388,20 @@ class TestHfft2Exception(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.hfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
+=======
+                paddle.fft.hfft2(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         (
             'test_n_nagative',
@@ -1086,7 +1469,29 @@ class TestHfft2Exception(unittest.TestCase):
         ),
     ],
 )
+=======
+    [('test_n_nagative',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
+      (-2, -1), 'backward', ValueError),
+     ('test_zero_point',
+      np.random.randn(4, 4, 1) + 1j * np.random.randn(4, 4, 1), None,
+      (-2, -1), "backward", ValueError),
+     ('test_n_zero', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      (0, 0), (-2, -1), 'backward', ValueError),
+     ('test_n_type', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      3, -1, 'backward', ValueError),
+     ('test_n_axis_dim',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (1, 2),
+      (-3, -2, -1), 'backward', ValueError),
+     ('test_axis_out_of_range', np.random.randn(4) + 1j * np.random.randn(4),
+      None, (1, 2), 'backward', ValueError),
+     ('test_axis_type', np.random.randn(4) + 1j * np.random.randn(4), None, 1,
+      'backward', ValueError),
+     ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
+      1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIrfft2Exception(unittest.TestCase):
+
     def test_irfft2(self):
         """
         Test irfft2 with buoudary condition
@@ -1100,14 +1505,20 @@ class TestIrfft2Exception(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.irfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
+=======
+                paddle.fft.irfft2(paddle.to_tensor(self.x), self.n, self.axis,
+                                  self.norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         (
             'test_bool_input',
@@ -1177,7 +1588,29 @@ class TestIrfft2Exception(unittest.TestCase):
         ),
     ],
 )
+=======
+    [('test_bool_input',
+      (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
+          np.bool_), None, (-2, -1), 'backward', NotImplementedError),
+     ('test_n_nagative',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
+      (-2, -1), 'backward', ValueError),
+     ('test_n_zero', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      (0, 0), (-2, -1), 'backward', ValueError),
+     ('test_n_type', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      3, -1, 'backward', ValueError),
+     ('test_n_axis_dim',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (1, 2),
+      (-3, -2, -1), 'backward', ValueError),
+     ('test_axis_out_of_range', np.random.randn(4) + 1j * np.random.randn(4),
+      None, (10, 20), 'backward', ValueError),
+     ('test_axis_type', np.random.randn(4) + 1j * np.random.randn(4), None, 1,
+      'backward', ValueError),
+     ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
+      1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestHfftnException(unittest.TestCase):
+
     def test_hfftn(self):
         """Test hfftn with buoudary condition
         Test case include:
@@ -1190,14 +1623,20 @@ class TestHfftnException(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.hfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
+=======
+                paddle.fft.hfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         (
             'test_n_nagative',
@@ -1257,7 +1696,26 @@ class TestHfftnException(unittest.TestCase):
         ),
     ],
 )
+=======
+    [('test_n_nagative',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
+      (-2, -1), 'backward', ValueError),
+     ('test_n_zero', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      (0, 0), (-2, -1), 'backward', ValueError),
+     ('test_n_type', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
+      3, -1, 'backward', ValueError),
+     ('test_n_axis_dim',
+      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (1, 2),
+      (-3, -2, -1), 'backward', ValueError),
+     ('test_axis_out_of_range', np.random.randn(4) + 1j * np.random.randn(4),
+      None, (10, 20), 'backward', ValueError),
+     ('test_axis_type', np.random.randn(4) + 1j * np.random.randn(4), None, 1,
+      'backward', ValueError),
+     ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
+      1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIrfftnException(unittest.TestCase):
+
     def test_irfftn(self):
         """Test irfftn with buoudary condition
         Test case include:
@@ -1269,6 +1727,7 @@ class TestIrfftnException(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.irfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
@@ -1298,10 +1757,28 @@ class TestIrfftnException(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, 3, 'ortho'),
     ],
 )
+=======
+                paddle.fft.irfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                  self.norm)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+              [('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
+               ('test_n_grater_than_input_length', rand_x(
+                   5, max_dim_len=5), 11, -1, 'backward'),
+               ('test_n_smaller_than_input_length', rand_x(
+                   5, min_dim_len=5), 3, -1, 'backward'),
+               ('test_axis_not_last', rand_x(5), None, 3, 'backward'),
+               ('test_norm_forward', rand_x(5), None, 3, 'forward'),
+               ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestRfft(unittest.TestCase):
+
     def test_rfft(self):
         """Test rfft with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.rfft(self.x, self.n, self.axis, self.norm),
                 paddle.fft.rfft(
@@ -1310,11 +1787,21 @@ class TestRfft(unittest.TestCase):
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
+=======
+            self.assertTrue(
+                np.allclose(scipy.fft.rfft(self.x, self.n, self.axis,
+                                           self.norm),
+                            paddle.fft.rfft(paddle.to_tensor(self.x), self.n,
+                                            self.axis, self.norm),
+                            rtol=RTOL.get(str(self.x.dtype)),
+                            atol=ATOL.get(str(self.x.dtype))))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
         ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
@@ -1336,8 +1823,16 @@ class TestRfft(unittest.TestCase):
             ValueError,
         ),
     ],
+=======
+    [('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
+     ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
+     ('test_axis_out_of_range', rand_x(1), None, 10, 'backward', ValueError),
+     ('test_axis_with_array', rand_x(1), None, (0, 1), 'backward', ValueError),
+     ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 )
 class TestRfftException(unittest.TestCase):
+
     def test_rfft(self):
         """Test rfft with buoudary condition
         Test case include:
@@ -1348,6 +1843,7 @@ class TestRfftException(unittest.TestCase):
         - the dimensions of n and axis are different
         """
         with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
             paddle.fft.rfft(
                 paddle.to_tensor(self.x), self.n, self.axis, self.norm
             )
@@ -1378,10 +1874,30 @@ class TestRfftException(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
     ],
 )
+=======
+            paddle.fft.rfft(paddle.to_tensor(self.x), self.n, self.axis,
+                            self.norm)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_float64', rand_x(5), None, (0, 1), 'backward'),
+    ('test_n_grater_input_length', rand_x(5, max_dim_len=5), (6, 6),
+     (0, 1), 'backward'),
+    ('test_n_smaller_than_input_length', rand_x(5, min_dim_len=5), (4, 4),
+     (0, 1), 'backward'),
+    ('test_axis_random', rand_x(5), None, (1, 2), 'backward'),
+    ('test_axis_none', rand_x(5), None, None, 'backward'),
+    ('test_norm_forward', rand_x(5), None, (0, 1), 'forward'),
+    ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestRfft2(unittest.TestCase):
+
     def test_rfft2(self):
         """Test rfft2 with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.rfft2(self.x, self.n, self.axis, self.norm),
                 paddle.fft.rfft2(
@@ -1434,7 +1950,32 @@ class TestRfft2(unittest.TestCase):
         ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError),
     ],
 )
+=======
+            self.assertTrue(
+                np.allclose(scipy.fft.rfft2(self.x, self.n, self.axis,
+                                            self.norm),
+                            paddle.fft.rfft2(paddle.to_tensor(self.x), self.n,
+                                             self.axis, self.norm),
+                            rtol=RTOL.get(str(self.x.dtype)),
+                            atol=ATOL.get(str(self.x.dtype))))
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'), [
+    ('test_x_complex_input', rand_x(2, complex=True), None,
+     (0, 1), 'backward', RuntimeError),
+    ('test_x_1dim_tensor', rand_x(1), None, (0, 1), 'backward', ValueError),
+    ('test_n_nagative', rand_x(2), -1, (0, 1), 'backward', ValueError),
+    ('test_n_zero', rand_x(2), 0, (0, 1), 'backward', ValueError),
+    ('test_axis_out_of_range', rand_x(2), None,
+     (0, 1, 2), 'backward', ValueError),
+    ('test_axis_with_array', rand_x(1), None, (0, 1), 'backward', ValueError),
+    ('test_axis_not_sequence', rand_x(5), None, -10, 'backward', ValueError),
+    ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestRfft2Exception(unittest.TestCase):
+
     def test_rfft2(self):
         """Test rfft2 with buoudary condition
         Test case include:
@@ -1447,6 +1988,7 @@ class TestRfft2Exception(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.rfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
@@ -1476,10 +2018,29 @@ class TestRfft2Exception(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, None, 'ortho'),
     ],
 )
+=======
+                paddle.fft.rfft2(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
+    ('test_n_grater_input_length', rand_x(5, max_dim_len=5), (6, 6),
+     (1, 2), 'backward'),
+    ('test_n_smaller_input_length', rand_x(5, min_dim_len=5), (3, 3),
+     (1, 2), 'backward'),
+    ('test_axis_not_default', rand_x(5), None, (1, 2), 'backward'),
+    ('test_norm_forward', rand_x(5), None, None, 'forward'),
+    ('test_norm_ortho', rand_x(5), None, None, 'ortho'),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestRfftn(unittest.TestCase):
+
     def test_rfftn(self):
         """Test rfftn with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.rfftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.rfftn(
@@ -1523,7 +2084,29 @@ class TestRfftn(unittest.TestCase):
         ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError),
     ],
 )
+=======
+            self.assertTrue(
+                np.allclose(scipy.fft.rfftn(self.x, self.n, self.axis,
+                                            self.norm),
+                            paddle.fft.rfftn(paddle.to_tensor(self.x), self.n,
+                                             self.axis, self.norm),
+                            rtol=RTOL.get(str(self.x.dtype)),
+                            atol=ATOL.get(str(self.x.dtype))))
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'), [
+    ('test_x_complex', rand_x(
+        4, complex=True), None, None, 'backward', RuntimeError),
+    ('test_n_nagative', rand_x(4), (-1, -1), (1, 2), 'backward', ValueError),
+    ('test_n_not_sequence', rand_x(4), -1, None, 'backward', ValueError),
+    ('test_n_zero', rand_x(4), 0, None, 'backward', ValueError),
+    ('test_axis_out_of_range', rand_x(1), None, [0, 1], 'backward', ValueError),
+    ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError)
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestRfftnException(unittest.TestCase):
+
     def test_rfftn(self):
         """Test rfftn with buoudary condition
         Test case include:
@@ -1534,6 +2117,7 @@ class TestRfftnException(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.rfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
@@ -1563,15 +2147,37 @@ class TestRfftnException(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, 3, 'ortho'),
     ],
 )
+=======
+                paddle.fft.rfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+              [('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
+               ('test_n_grater_than_input_length', rand_x(
+                   5, max_dim_len=5), 11, -1, 'backward'),
+               ('test_n_smaller_than_input_length', rand_x(
+                   5, min_dim_len=5), 3, -1, 'backward'),
+               ('test_axis_not_last', rand_x(5), None, 3, 'backward'),
+               ('test_norm_forward', rand_x(5), None, 3, 'forward'),
+               ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIhfft(unittest.TestCase):
+
     def test_ihfft(self):
         """Test ihfft with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ihfft(self.x, self.n, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.ihfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 ),
+=======
+                paddle.fft.ihfft(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
@@ -1580,6 +2186,7 @@ class TestIhfft(unittest.TestCase):
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
         ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
@@ -1601,8 +2208,16 @@ class TestIhfft(unittest.TestCase):
             ValueError,
         ),
     ],
+=======
+    [('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
+     ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
+     ('test_axis_out_of_range', rand_x(1), None, 10, 'backward', ValueError),
+     ('test_axis_with_array', rand_x(1), None, (0, 1), 'backward', ValueError),
+     ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 )
 class TestIhfftException(unittest.TestCase):
+
     def test_ihfft(self):
         """Test ihfft with buoudary condition
         Test case include:
@@ -1612,6 +2227,7 @@ class TestIhfftException(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.ihfft(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
@@ -1642,15 +2258,39 @@ class TestIhfftException(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
     ],
 )
+=======
+                paddle.fft.ihfft(paddle.to_tensor(self.x), self.n, self.axis,
+                                 self.norm)
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'), [
+    ('test_x_float64', rand_x(5), None, (0, 1), 'backward'),
+    ('test_n_grater_input_length', rand_x(5, max_dim_len=5), (11, 11),
+     (0, 1), 'backward'),
+    ('test_n_smaller_than_input_length', rand_x(5, min_dim_len=5), (1, 1),
+     (0, 1), 'backward'),
+    ('test_axis_random', rand_x(5), None, (1, 2), 'backward'),
+    ('test_axis_none', rand_x(5), None, None, 'backward'),
+    ('test_norm_forward', rand_x(5), None, (0, 1), 'forward'),
+    ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIhfft2(unittest.TestCase):
+
     def test_ihfft2(self):
         """Test ihfft2 with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 scipy.fft.ihfft2(self.x, self.n, self.axis, self.norm),
+<<<<<<< HEAD
                 paddle.fft.ihfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 ),
+=======
+                paddle.fft.ihfft2(paddle.to_tensor(self.x), self.n, self.axis,
+                                  self.norm),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
@@ -1659,6 +2299,7 @@ class TestIhfft2(unittest.TestCase):
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
+<<<<<<< HEAD
     [
         (
             'test_x_complex_input',
@@ -1706,7 +2347,22 @@ class TestIhfft2(unittest.TestCase):
         ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError),
     ],
 )
+=======
+    [('test_x_complex_input', rand_x(2, complex=True), None,
+      (0, 1), None, ValueError),
+     ('test_x_1dim_tensor', rand_x(1), None, (0, 1), None, ValueError),
+     ('test_n_nagative', rand_x(2), -1, (0, 1), 'backward', ValueError),
+     ('test_n_len_not_equal_axis', rand_x(5, max_dim_len=5), 11,
+      (0, 1), 'backward', ValueError),
+     ('test_n_zero', rand_x(2), (0, 0), (0, 1), 'backward', ValueError),
+     ('test_axis_out_of_range', rand_x(2), None,
+      (0, 1, 2), 'backward', ValueError),
+     ('test_axis_with_array', rand_x(1), None, (0, 1), 'backward', ValueError),
+     ('test_axis_not_sequence', rand_x(5), None, -10, 'backward', ValueError),
+     ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIhfft2Exception(unittest.TestCase):
+
     def test_ihfft2(self):
         """Test ihfft2 with buoudary condition
         Test case include:
@@ -1719,14 +2375,20 @@ class TestIhfft2Exception(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.ihfft2(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
+=======
+                paddle.fft.ihfft2(paddle.to_tensor(self.x), self.n, self.axis,
+                                  self.norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+<<<<<<< HEAD
     [
         ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
         (
@@ -1748,10 +2410,22 @@ class TestIhfft2Exception(unittest.TestCase):
         ('test_norm_ortho', rand_x(5), None, None, 'ortho'),
     ],
 )
+=======
+    [('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
+     ('test_n_grater_input_length', rand_x(5, max_dim_len=5), (11, 11),
+      (0, 1), 'backward'),
+     ('test_n_smaller_input_length', rand_x(5, min_dim_len=5), (1, 1),
+      (0, 1), 'backward'),
+     ('test_axis_not_default', rand_x(5), None, (1, 2), 'backward'),
+     ('test_norm_forward', rand_x(5), None, None, 'forward'),
+     ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIhfftn(unittest.TestCase):
+
     def test_ihfftn(self):
         """Test ihfftn with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.ihfftn(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ihfftn(
@@ -1787,7 +2461,28 @@ class TestIhfftn(unittest.TestCase):
         ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError),
     ],
 )
+=======
+            self.assertTrue(
+                np.allclose(scipy.fft.ihfftn(self.x, self.n, self.axis,
+                                             self.norm),
+                            paddle.fft.ihfftn(paddle.to_tensor(self.x), self.n,
+                                              self.axis, self.norm),
+                            rtol=RTOL.get(str(self.x.dtype)),
+                            atol=ATOL.get(str(self.x.dtype))))
+
+
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'), [
+    ('test_x_complex', rand_x(
+        4, complex=True), None, None, 'backward', RuntimeError),
+    ('test_n_nagative', rand_x(4), -1, None, 'backward', ValueError),
+    ('test_n_zero', rand_x(4), 0, None, 'backward', ValueError),
+    ('test_axis_out_of_range', rand_x(1), None, [0, 1], 'backward', ValueError),
+    ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError)
+])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIhfftnException(unittest.TestCase):
+
     def test_ihfftn(self):
         """Test ihfftn with buoudary condition
         Test case include:
@@ -1798,9 +2493,14 @@ class TestIhfftnException(unittest.TestCase):
         """
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
+<<<<<<< HEAD
                 paddle.fft.ihfftn(
                     paddle.to_tensor(self.x), self.n, self.axis, self.norm
                 )
+=======
+                paddle.fft.ihfftn(paddle.to_tensor(self.x), self.n, self.axis,
+                                  self.norm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
@@ -1812,6 +2512,7 @@ class TestIhfftnException(unittest.TestCase):
     ],
 )
 class TestFftFreq(unittest.TestCase):
+
     def test_fftfreq(self):
         """Test fftfreq with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
@@ -1832,6 +2533,7 @@ class TestFftFreq(unittest.TestCase):
     ],
 )
 class TestRfftFreq(unittest.TestCase):
+
     def test_rfftfreq(self):
         """Test rfftfreq with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
@@ -1859,9 +2561,11 @@ class TestRfftFreq(unittest.TestCase):
     ],
 )
 class TestFftShift(unittest.TestCase):
+
     def test_fftshift(self):
         """Test fftshift with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.fftshift(self.x, self.axes),
                 paddle.fft.fftshift(
@@ -1870,11 +2574,20 @@ class TestFftShift(unittest.TestCase):
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
+=======
+            np.testing.assert_allclose(scipy.fft.fftshift(self.x, self.axes),
+                                       paddle.fft.fftshift(
+                                           paddle.to_tensor(self.x),
+                                           self.axes).numpy(),
+                                       rtol=RTOL.get(str(self.x.dtype)),
+                                       atol=ATOL.get(str(self.x.dtype)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes'),
+<<<<<<< HEAD
     [
         ('test_1d', np.random.randn(10), (0,), 'float64'),
         ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
@@ -1887,10 +2600,19 @@ class TestFftShift(unittest.TestCase):
         ),
     ],
 )
+=======
+    [('test_1d', np.random.randn(10), (0, ), 'float64'),
+     ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
+     ('test_2d_with_all_axes', np.random.randn(10, 10), None, 'float64'),
+     ('test_2d_odd_with_all_axes',
+      np.random.randn(5, 5) + 1j * np.random.randn(5, 5), None, 'complex128')])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestIfftShift(unittest.TestCase):
+
     def test_ifftshift(self):
         """Test ifftshift with norm condition"""
         with paddle.fluid.dygraph.guard(self.place):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 scipy.fft.ifftshift(self.x, self.axes),
                 paddle.fft.ifftshift(
@@ -1899,6 +2621,14 @@ class TestIfftShift(unittest.TestCase):
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
             )
+=======
+            np.testing.assert_allclose(scipy.fft.ifftshift(self.x, self.axes),
+                                       paddle.fft.ifftshift(
+                                           paddle.to_tensor(self.x),
+                                           self.axes).numpy(),
+                                       rtol=RTOL.get(str(self.x.dtype)),
+                                       atol=ATOL.get(str(self.x.dtype)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

@@ -61,6 +61,7 @@ class Independent(distribution.Distribution):
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
 
         shape = base.batch_shape + base.event_shape
+<<<<<<< HEAD
         super().__init__(
             batch_shape=shape[
                 : len(base.batch_shape) - reinterpreted_batch_rank
@@ -69,6 +70,13 @@ class Independent(distribution.Distribution):
                 len(base.batch_shape) - reinterpreted_batch_rank :
             ],
         )
+=======
+        super(Independent,
+              self).__init__(batch_shape=shape[:len(base.batch_shape) -
+                                               reinterpreted_batch_rank],
+                             event_shape=shape[len(base.batch_shape) -
+                                               reinterpreted_batch_rank:])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     @property
     def mean(self):
@@ -82,9 +90,14 @@ class Independent(distribution.Distribution):
         return self._base.sample(shape)
 
     def log_prob(self, value):
+<<<<<<< HEAD
         return self._sum_rightmost(
             self._base.log_prob(value), self._reinterpreted_batch_rank
         )
+=======
+        return self._sum_rightmost(self._base.log_prob(value),
+                                   self._reinterpreted_batch_rank)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def prob(self, value):
         return self.log_prob(value).exp()

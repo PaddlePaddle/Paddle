@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
@@ -34,6 +35,10 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
+<<<<<<< HEAD
+=======
+// clang-format off
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace paddle {
 namespace experimental {
@@ -157,8 +162,11 @@ bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
 
+<<<<<<< HEAD
 bool Tensor::is_xpu() const { return paddle::platform::is_xpu_place(place()); }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 bool Tensor::is_custom_device() const {
   return paddle::platform::is_custom_place(place());
 }
@@ -312,8 +320,13 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
+<<<<<<< HEAD
   auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
       GPUPlace(device_id));
+=======
+  auto* gpu_context = DeviceContextPool::Instance()
+    .Get<AllocationType::GPU>(GPUPlace(device_id));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   return gpu_context->stream();
 }
 #endif

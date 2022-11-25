@@ -31,12 +31,19 @@ os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestImperativeQatfuseBN(TestImperativeQat):
+
     def set_vars(self):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'

@@ -35,6 +35,7 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
             - ((np.sqrt(new_accum) - np.sqrt(sq_accum_hit)) / lr) * param_hit
         )
     else:
+<<<<<<< HEAD
         lin_accum_updated = (
             lin_accum_hit
             + grad
@@ -47,6 +48,11 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
             )
             * param_hit
         )
+=======
+        lin_accum_updated = lin_accum_hit + grad - (
+            (np.power(new_accum, -lr_power) - np.power(sq_accum_hit, -lr_power))
+            / lr) * param_hit
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     x = l1 * np.sign(lin_accum_updated) - lin_accum_updated
     if lr_power == -0.5:
@@ -77,6 +83,7 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
 
 
 class TestFTRLOp(OpTest):
+
     def setUp(self):
         self.op_type = "ftrl"
         rows = 102
@@ -118,6 +125,7 @@ class TestFTRLOp(OpTest):
 
 
 class TestSparseFTRLOp(unittest.TestCase):
+
     def setUp(self):
         self.lr_power = -0.5
 
@@ -175,6 +183,7 @@ class TestSparseFTRLOp(unittest.TestCase):
         )
 
         # create and run operator
+<<<<<<< HEAD
         op = Operator(
             "ftrl",
             Param='Param',
@@ -189,6 +198,20 @@ class TestSparseFTRLOp(unittest.TestCase):
             l2=l2,
             lr_power=lr_power,
         )
+=======
+        op = Operator("ftrl",
+                      Param='Param',
+                      Grad='Grad',
+                      ParamOut='Param',
+                      SquaredAccumulator='SquaredAccumulator',
+                      SquaredAccumOut='SquaredAccumulator',
+                      LinearAccumulator='LinearAccumulator',
+                      LinearAccumOut='LinearAccumulator',
+                      LearningRate='LearningRate',
+                      l1=l1,
+                      l2=l2,
+                      lr_power=lr_power)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         op.run(scope, place)
 
@@ -199,6 +222,7 @@ class TestSparseFTRLOp(unittest.TestCase):
 
         for i in range(height):
             for j in range(row_numel):
+<<<<<<< HEAD
                 self.assertAlmostEqual(
                     param_out[i][j], param_array[i][j], places=4
                 )
@@ -208,6 +232,17 @@ class TestSparseFTRLOp(unittest.TestCase):
                 self.assertAlmostEqual(
                     lin_accum_out[i][j], lin_accum_array[i][j], places=4
                 )
+=======
+                self.assertAlmostEqual(param_out[i][j],
+                                       param_array[i][j],
+                                       places=4)
+                self.assertAlmostEqual(sq_accum_out[i][j],
+                                       sq_accum_array[i][j],
+                                       places=4)
+                self.assertAlmostEqual(lin_accum_out[i][j],
+                                       lin_accum_array[i][j],
+                                       places=4)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def init_kernel(self):
         pass
@@ -221,6 +256,7 @@ class TestSparseFTRLOp(unittest.TestCase):
 
 
 class TestSparseFTRLOp2(TestSparseFTRLOp):
+
     def init_kernel(self):
         self.lr_power = -0.6
 

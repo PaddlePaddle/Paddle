@@ -82,10 +82,15 @@ def set_image_backend(backend):
     global _image_backend
     if backend not in ['pil', 'cv2', 'tensor']:
         raise ValueError(
+<<<<<<< HEAD
             "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".format(
                 backend
             )
         )
+=======
+            "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".
+            format(backend))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     _image_backend = backend
 
 
@@ -154,10 +159,15 @@ def image_load(path, backend=None):
         backend = _image_backend
     if backend not in ['pil', 'cv2', 'tensor']:
         raise ValueError(
+<<<<<<< HEAD
             "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".format(
                 backend
             )
         )
+=======
+            "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}".
+            format(backend))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if backend == 'pil':
         return Image.open(path)

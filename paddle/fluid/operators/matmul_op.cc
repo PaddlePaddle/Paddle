@@ -61,6 +61,7 @@ class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &x = GET_DATA_SAFELY(
+<<<<<<< HEAD
         context.Input<phi::DenseTensor>("X"), "Input", "X", "MatMul");
     auto &y = GET_DATA_SAFELY(
         context.Input<phi::DenseTensor>("Y"), "Input", "Y", "MatMul");
@@ -68,6 +69,13 @@ class MatMulKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
     dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+=======
+        context.Input<framework::Tensor>("X"), "Input", "X", "MatMul");
+    auto &y = GET_DATA_SAFELY(
+        context.Input<framework::Tensor>("Y"), "Input", "Y", "MatMul");
+    auto *out = context.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(context.GetPlace());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
@@ -181,9 +189,15 @@ static void ReshapeTensorIntoMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
+<<<<<<< HEAD
 static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor *x,
                                            phi::DenseTensor *y,
                                            phi::DenseTensor *out,
+=======
+static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
+                                           framework::Tensor *y,
+                                           framework::Tensor *out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                            bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
@@ -231,11 +245,19 @@ template <typename DeviceContext, typename T>
 class MatMulGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
+<<<<<<< HEAD
               const phi::DenseTensor &a,
               bool trans_a,
               const phi::DenseTensor &b,
               bool trans_b,
               phi::DenseTensor *out) const {
+=======
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
+              framework::Tensor *out) const {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
@@ -266,6 +288,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
+<<<<<<< HEAD
                      const phi::DenseTensor &a,
                      bool trans_a,
                      bool is_fold_init_dims_a,
@@ -273,6 +296,15 @@ class MatMulGradKernel : public framework::OpKernel<T> {
                      bool trans_b,
                      bool is_fold_init_dims_b,
                      phi::DenseTensor *out) const {
+=======
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
+                     framework::Tensor *out) const {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
                         out->dims().size() == 2;
@@ -360,6 +392,59 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
                         dim));
 
   if (!shape.empty() && !axis.empty()) {
+<<<<<<< HEAD
+=======
+    PADDLE_ENFORCE_GE(
+        shape.size(),
+        2,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_LE(
+        shape.size(),
+        4,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_EQ(
+        shape.size(),
+        axis.size(),
+        platform::errors::InvalidArgument(
+            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
+            "must be equal.",
+            input_name,
+            input_name));
+
+    int num_negative = std::count(shape.begin(), shape.end(), -1);
+    PADDLE_ENFORCE_LE(num_negative,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The max number of -1 in fused_reshape_%s is 1 "
+                          "but received %d.",
+                          input_name,
+                          num_negative));
+
+    auto it_zero = std::find(shape.begin(), shape.end(), 0);
+    if (it_zero != shape.end()) {
+      for (uint64_t i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0) {
+          PADDLE_ENFORCE_LT(i,
+                            dim.size(),
+                            platform::errors::InvalidArgument(
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
+                                "but the index is %d and output dim size is %d",
+                                input_name,
+                                i,
+                                dim.size()));
+          shape[i] = dim.at(i);
+        }
+      }
+    }
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -369,12 +454,21 @@ template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
+<<<<<<< HEAD
               const phi::DenseTensor &a,
               bool trans_a,
               const phi::DenseTensor &b,
               bool trans_b,
               bool flag,
               phi::DenseTensor *out) const {
+=======
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
+              bool flag,
+              framework::Tensor *out) const {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
@@ -403,6 +497,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
+<<<<<<< HEAD
                      const phi::DenseTensor &a,
                      bool trans_a,
                      bool is_fold_init_dims_a,
@@ -411,6 +506,16 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
                      bool is_fold_init_dims_b,
                      bool flag,
                      phi::DenseTensor *out) const {
+=======
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
+                     bool flag,
+                     framework::Tensor *out) const {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
                         out->dims().size() == 2;
@@ -697,13 +802,31 @@ class MatMulOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+<<<<<<< HEAD
+=======
+
+#ifdef PADDLE_WITH_MKLDNN
+    using dnnl::memory;
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
+=======
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -878,6 +1001,18 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+<<<<<<< HEAD
+=======
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

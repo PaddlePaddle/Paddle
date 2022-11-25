@@ -76,10 +76,13 @@ class OperatorSupplementEventNode {
     return op_supplement_event_.dtypes;
   }
   std::string CallStack() { return op_supplement_event_.callstack; }
+<<<<<<< HEAD
   framework::AttributeMap Attributes() {
     return op_supplement_event_.attributes;
   }
   uint64_t OpId() const { return op_supplement_event_.op_id; }
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   uint64_t ProcessId() const { return op_supplement_event_.process_id; }
   uint64_t ThreadId() const { return op_supplement_event_.thread_id; }
 

@@ -19,6 +19,7 @@ from paddle.static import InputSpec
 
 
 class MySub(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -27,6 +28,7 @@ class MySub(paddle.nn.Layer):
 
 
 class NetWithOpAttr(paddle.nn.Layer):
+
     def __init__(self, in_num, out_num):
         super().__init__()
 
@@ -51,6 +53,7 @@ class NetWithOpAttr(paddle.nn.Layer):
 
 
 class CheckOpAttr(unittest.TestCase):
+
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -86,9 +89,14 @@ class CheckOpAttr(unittest.TestCase):
         self.assertEqual(len(net.linear._forward_pre_hooks), 1)
         self.assertEqual(len(net.linear._forward_post_hooks), 1)
         # to_static
+<<<<<<< HEAD
         net = paddle.jit.to_static(
             net, input_spec=[InputSpec.from_tensor(self.x)]
         )
+=======
+        net = paddle.jit.to_static(net,
+                                   input_spec=[InputSpec.from_tensor(self.x)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # assert attrs have be set.
         self.check_op_attrs(net.forward.concrete_program.main_program)
@@ -101,9 +109,15 @@ class CheckOpAttr(unittest.TestCase):
         for cur_block in main_program.blocks:
             ops = cur_block.ops
             for op in ops:
+<<<<<<< HEAD
                 if op.type not in self.infos:
                     continue
                 for attr_name, expect_vals in self.infos[op.type].items():
+=======
+                if op.type not in self.infos: continue
+                for attr_name, expect_vals in six.iteritems(
+                        self.infos[op.type]):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     op_vals = op.desc.attr(attr_name)
                     if not isinstance(expect_vals, list):
                         expect_vals = [expect_vals]
@@ -119,9 +133,14 @@ class CheckOpAttr(unittest.TestCase):
     def test_set_op_attrs_with_sub_block(self):
         net = NetWithOpAttr(self.in_num, self.out_num)
         # set attrs
+<<<<<<< HEAD
         net.linear._set_op_attrs(
             {"int_vals": [0, 0]}
         )  # test overwrite behavior
+=======
+        net.linear._set_op_attrs({"int_vals": [0,
+                                               0]})  # test overwrite behavior
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         net.linear._set_op_attrs(self.fc_attrs)
         net.bn._set_op_attrs(self.bn_attrs)
         net.sub._set_op_attrs(self.sub_attrs)

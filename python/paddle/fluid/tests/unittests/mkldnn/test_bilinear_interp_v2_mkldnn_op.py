@@ -56,12 +56,19 @@ def bilinear_interp_onednn_np(
             input_h1_w0 = input[:, :, h1, w0]
             input_h0_w1 = input[:, :, h0, w1]
             input_h1_w1 = input[:, :, h1, w1]
+<<<<<<< HEAD
             out[:, :, oh, ow] = (
                 input_h0_w0 * (1 - Wh) * (1 - Ww)
                 + input_h1_w0 * Wh * (1 - Ww)
                 + input_h0_w1 * (1 - Wh) * Ww
                 + input_h1_w1 * Wh * Ww
             )
+=======
+            out[:, :, oh,
+                ow] = input_h0_w0 * (1 - Wh) * (1 - Ww) + input_h1_w0 * Wh * (
+                    1 - Ww) + input_h0_w1 * (1 -
+                                             Wh) * Ww + input_h1_w1 * Wh * Ww
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
@@ -70,7 +77,12 @@ def bilinear_interp_onednn_np(
 
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
+<<<<<<< HEAD
 class TestBilinearInterpOneDNNOp(OpTest):
+=======
+class TestBilinearInterpMKLDNNOp(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         pass
 
@@ -158,7 +170,12 @@ class TestBilinearInterpOneDNNOp(OpTest):
         self.check_output(check_dygraph=False)
 
 
+<<<<<<< HEAD
 class TestBilinearInterpOpOneDNNNHWC(TestBilinearInterpOneDNNOp):
+=======
+class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
@@ -167,14 +184,24 @@ class TestBilinearInterpOpOneDNNNHWC(TestBilinearInterpOneDNNOp):
         self.data_layout = 'NHWC'
 
 
+<<<<<<< HEAD
 class TestBilinearNeighborInterpOneDNNCase2(TestBilinearInterpOneDNNOp):
+=======
+class TestBilinearNeighborInterpMKLDNNCase2(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
 
 
+<<<<<<< HEAD
 class TestBilinearNeighborInterpOneDNNCase3(TestBilinearInterpOneDNNOp):
+=======
+class TestBilinearNeighborInterpCase3(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -182,7 +209,12 @@ class TestBilinearNeighborInterpOneDNNCase3(TestBilinearInterpOneDNNOp):
         self.scale = [0.1, 0.05]
 
 
+<<<<<<< HEAD
 class TestBilinearNeighborInterpOneDNNCase4(TestBilinearInterpOneDNNOp):
+=======
+class TestBilinearNeighborInterpCase4(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -191,7 +223,12 @@ class TestBilinearNeighborInterpOneDNNCase4(TestBilinearInterpOneDNNOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
+<<<<<<< HEAD
 class TestBilinearNeighborInterpOneDNNCase5(TestBilinearInterpOneDNNOp):
+=======
+class TestBilinearNeighborInterpCase5(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.input_shape = [1, 1, 9, 6]
         self.out_h = 12
@@ -199,7 +236,12 @@ class TestBilinearNeighborInterpOneDNNCase5(TestBilinearInterpOneDNNOp):
         self.out_size = np.array([13, 13]).astype("int32")
 
 
+<<<<<<< HEAD
 class TestBilinearNeighborInterpOneDNNCase6(TestBilinearInterpOneDNNOp):
+=======
+class TestBilinearNeighborInterpCase6(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -208,7 +250,12 @@ class TestBilinearNeighborInterpOneDNNCase6(TestBilinearInterpOneDNNOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
+<<<<<<< HEAD
 class TestBilinearNeighborInterpOneDNNSame(TestBilinearInterpOneDNNOp):
+=======
+class TestBilinearNeighborInterpSame(TestBilinearInterpMKLDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32

@@ -37,7 +37,33 @@ __activations_noattr__ = [
     'tanh',
 ]
 
+<<<<<<< HEAD
 __unary_func__ = ['abs']
+=======
+__unary_func__ = [
+    'exp',
+    'expm1',
+    'atan',
+    'sqrt',
+    'rsqrt',
+    'abs',
+    'ceil',
+    'floor',
+    'cos',
+    'tan',
+    'acos',
+    'sin',
+    'sinh',
+    'asin',
+    'cosh',
+    'round',
+    'reciprocal',
+    'square',
+    'acosh',
+    'asinh',
+    'atanh',
+]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 __inplace_unary_func__ = [
     'exp_',
@@ -80,8 +106,27 @@ for _OP in set(__inplace_unary_func__):
     globals()[_OP] = _func
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["silu"],
     r"""
+=======
+    globals()["sigmoid"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = F.sigmoid(x)
+        print(out)
+        # [0.40131234 0.450166   0.52497919 0.57444252]
+
+""")
+
+add_sample_code(
+    globals()["silu"], r"""
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 Examples:
     .. code-block:: python
         import paddle
@@ -93,9 +138,16 @@ Examples:
 """,
 )
 
+<<<<<<< HEAD
 add_sample_code(
     globals()["logsigmoid"],
     r"""
+=======
+""")
+
+add_sample_code(
+    globals()["logsigmoid"], r"""
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 Examples:
     .. code-block:: python
         import paddle
@@ -107,9 +159,16 @@ Examples:
 """,
 )
 
+<<<<<<< HEAD
 add_sample_code(
     globals()["tanh"],
     r"""
+=======
+""")
+
+add_sample_code(
+    globals()["exp"], r"""
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 Examples:
     .. code-block:: python
 
@@ -124,8 +183,12 @@ Examples:
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["tanh_shrink"],
     r"""
+=======
+    globals()["expm1"], r"""
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 Examples:
     .. code-block:: python
 
@@ -141,8 +204,12 @@ Examples:
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["abs"],
     r"""
+=======
+    globals()["tanh"], r"""
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 Examples:
     .. code-block:: python
 
@@ -157,8 +224,12 @@ Examples:
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["softplus"],
     r"""
+=======
+    globals()["atan"], r"""
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 Examples:
     .. code-block:: python
 
@@ -174,8 +245,12 @@ Examples:
 )
 
 add_sample_code(
+<<<<<<< HEAD
     globals()["softsign"],
     r"""
+=======
+    globals()["tanh_shrink"], r"""
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 Examples:
     .. code-block:: python
 
@@ -190,6 +265,13 @@ Examples:
 """,
 )
 
+<<<<<<< HEAD
+=======
+add_sample_code(
+    globals()["sqrt"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 def acos(x, name=None):
     """
@@ -202,8 +284,15 @@ def acos(x, name=None):
         x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
+<<<<<<< HEAD
     Returns:
         Tensor. Output of Acos operator, a Tensor with shape same as input.
+=======
+add_sample_code(
+    globals()["rsqrt"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Examples:
         .. code-block:: python
@@ -215,11 +304,18 @@ def acos(x, name=None):
             print(out)
             # [1.98231317 1.77215425 1.47062891 1.26610367]
 
+<<<<<<< HEAD
     """
     if in_dygraph_mode():
         return _C_ops.acos(x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.acos(x)
+=======
+add_sample_code(
+    globals()["abs"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'acos')
     helper = LayerHelper('acos', **locals())
@@ -232,8 +328,15 @@ def acosh(x, name=None):
     """
     Acosh Activation Operator.
 
+<<<<<<< HEAD
     .. math::
        out = acosh(x)
+=======
+add_sample_code(
+    globals()["ceil"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Args:
         x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64 or float16.
@@ -245,7 +348,14 @@ def acosh(x, name=None):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
+=======
+add_sample_code(
+    globals()["floor"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             x = paddle.to_tensor([1., 3., 4., 5.])
             out = paddle.acosh(x)
@@ -264,6 +374,13 @@ def acosh(x, name=None):
     helper.append_op(type='acosh', inputs={"X": x}, outputs={"Out": out})
     return out
 
+<<<<<<< HEAD
+=======
+add_sample_code(
+    globals()["cos"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 def asin(x, name=None):
     """
@@ -276,8 +393,15 @@ def asin(x, name=None):
         x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
+<<<<<<< HEAD
     Returns:
         Tensor. Same shape and dtype as input.
+=======
+add_sample_code(
+    globals()["tan"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Examples:
         .. code-block:: python
@@ -289,11 +413,18 @@ def asin(x, name=None):
             print(out)
             # [-0.41151685 -0.20135792  0.10016742  0.30469265]
 
+<<<<<<< HEAD
     """
     if in_dygraph_mode():
         return _C_ops.asin(x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.asin(x)
+=======
+add_sample_code(
+    globals()["acos"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'asin')
     helper = LayerHelper('asin', **locals())
@@ -306,8 +437,15 @@ def asinh(x, name=None):
     """
     Asinh Activation Operator.
 
+<<<<<<< HEAD
     .. math::
        out = asinh(x)
+=======
+add_sample_code(
+    globals()["sin"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Args:
         x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64 or float16.
@@ -319,7 +457,14 @@ def asinh(x, name=None):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
+=======
+add_sample_code(
+    globals()["asin"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             out = paddle.asinh(x)
@@ -338,6 +483,13 @@ def asinh(x, name=None):
     helper.append_op(type='asinh', inputs={"X": x}, outputs={"Out": out})
     return out
 
+<<<<<<< HEAD
+=======
+add_sample_code(
+    globals()["cosh"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 def atan(x, name=None):
     """
@@ -350,8 +502,15 @@ def atan(x, name=None):
         x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
+<<<<<<< HEAD
     Returns:
         Tensor. Same shape and dtype as input x.
+=======
+add_sample_code(
+    globals()["sinh"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Examples:
         .. code-block:: python
@@ -363,11 +522,18 @@ def atan(x, name=None):
             print(out)
             # [-0.38050638 -0.19739556  0.09966865  0.29145679]
 
+<<<<<<< HEAD
     """
     if in_dygraph_mode():
         return _C_ops.atan(x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.atan(x)
+=======
+add_sample_code(
+    globals()["asinh"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'atan')
     helper = LayerHelper('atan', **locals())
@@ -380,8 +546,15 @@ def atanh(x, name=None):
     """
     Atanh Activation Operator.
 
+<<<<<<< HEAD
     .. math::
        out = atanh(x)
+=======
+add_sample_code(
+    globals()["acosh"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Args:
         x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64 or float16.
@@ -393,7 +566,14 @@ def atanh(x, name=None):
     Examples:
         .. code-block:: python
 
+<<<<<<< HEAD
             import paddle
+=======
+add_sample_code(
+    globals()["atanh"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             out = paddle.atanh(x)
@@ -412,6 +592,13 @@ def atanh(x, name=None):
     helper.append_op(type='atanh', inputs={"X": x}, outputs={"Out": out})
     return out
 
+<<<<<<< HEAD
+=======
+add_sample_code(
+    globals()["round"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 def ceil(x, name=None):
     """
@@ -421,9 +608,16 @@ def ceil(x, name=None):
     .. math::
         out = \\left \\lceil x \\right \\rceil
 
+<<<<<<< HEAD
     Args:
         x (Tensor): Input of Ceil operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+=======
+add_sample_code(
+    globals()["reciprocal"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Returns:
         Tensor. Output of Ceil operator, a Tensor with shape same as input.
@@ -433,10 +627,17 @@ def ceil(x, name=None):
 
             import paddle
 
+<<<<<<< HEAD
             x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             out = paddle.ceil(x)
             print(out)
             # [-0. -0.  1.  1.]
+=======
+add_sample_code(
+    globals()["square"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     """
     if in_dygraph_mode():
@@ -451,6 +652,7 @@ def ceil(x, name=None):
     return out
 
 
+<<<<<<< HEAD
 def cos(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
@@ -466,6 +668,12 @@ def cos(x, name=None):
 
     Returns:
         Tensor. Output of Cos operator, a Tensor with shape same as input.
+=======
+add_sample_code(
+    globals()["softplus"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Examples:
         .. code-block:: python
@@ -477,11 +685,18 @@ def cos(x, name=None):
             print(out)
             # [0.92106099 0.98006658 0.99500417 0.95533649]
 
+<<<<<<< HEAD
     """
     if in_dygraph_mode():
         return _C_ops.cos(x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.cos(x)
+=======
+add_sample_code(
+    globals()["softsign"], r"""
+Examples:
+    .. code-block:: python
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'cos')
     helper = LayerHelper('cos', **locals())

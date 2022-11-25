@@ -40,6 +40,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
     if (input_data_type == framework::proto::VarType::FP64) {
       bn_param_type = framework::proto::VarType::FP64;
     }
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(bn_param_type,
                       framework::TransToProtoVarType(
                           ctx.Input<phi::DenseTensor>("Scale")->dtype()),
@@ -60,6 +61,28 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
                           ctx.Input<phi::DenseTensor>("Variance")->dtype()),
                       platform::errors::InvalidArgument(
                           "Variance input should be of float type"));
+=======
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+        platform::errors::InvalidArgument(
+            "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+        platform::errors::InvalidArgument(
+            "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
+        platform::errors::InvalidArgument(
+            "Mean input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
+        platform::errors::InvalidArgument(
+            "Variance input should be of float type"));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     framework::LibraryType library = framework::LibraryType::kPlain;
     phi::DataLayout layout = phi::DataLayout::kAnyLayout;
@@ -221,8 +244,13 @@ template <typename DeviceContext, typename T>
 class InplaceABNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Output<phi::DenseTensor>("Y");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Y");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_ENFORCE_EQ(x,
                       y,
                       platform::errors::InvalidArgument(
@@ -254,6 +282,7 @@ class InplaceABNKernel : public framework::OpKernel<T> {
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x,
+<<<<<<< HEAD
         *mean,
         *variance,
         *scale,
@@ -264,6 +293,19 @@ class InplaceABNKernel : public framework::OpKernel<T> {
         data_layout,
         use_global_stats,
         trainable_statistics,
+=======
+        *scale,
+        *bias,
+        *mean,
+        *variance,
+        momentum,
+        epsilon,
+        data_layout,
+        is_test,
+        use_global_stats,
+        trainable_statistics,
+        fuse_with_relu,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         y,
         mean_out,
         variance_out,
@@ -281,9 +323,15 @@ template <typename DeviceContext, typename T>
 class InplaceABNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_ENFORCE_EQ(d_x,
                       d_y,
                       platform::errors::InvalidArgument(
@@ -358,6 +406,10 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
         is_test,
         use_global_stats,
         trainable_statistics,
+<<<<<<< HEAD
+=======
+        fuse_with_relu,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         true,
         d_x,
         scale_grad,

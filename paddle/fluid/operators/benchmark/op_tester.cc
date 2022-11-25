@@ -270,7 +270,11 @@ framework::VarDesc *OpTester::Var(const std::string &name) {
 }
 
 template <typename T>
+<<<<<<< HEAD
 void OpTester::SetupTensor(phi::DenseTensor *tensor,
+=======
+void OpTester::SetupTensor(framework::LoDTensor *tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                            const std::vector<int64_t> &shape,
                            T lower,
                            T upper,

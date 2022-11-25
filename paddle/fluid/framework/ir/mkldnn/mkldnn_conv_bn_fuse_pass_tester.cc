@@ -192,7 +192,11 @@ class MKLDNNConvBatchNormPassTest {
     return prog;
   }
 
+<<<<<<< HEAD
   void FillTensorWithRandomData(phi::DenseTensor* tnsr,
+=======
+  void FillTensorWithRandomData(Tensor* tnsr,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                 float lowb,
                                 float upb,
                                 platform::CPUPlace place) {

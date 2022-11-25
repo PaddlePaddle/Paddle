@@ -9,12 +9,18 @@ set(XPU_RT_LIB_NAME "libxpurt.so")
 
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE
+<<<<<<< HEAD
       "https://baidu-kunlun-product.su.bcebos.com/KL-SDK/klsdk-dev")
   set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20221124")
+=======
+      "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev")
+  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20220731")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 else()
   set(XPU_BASE_URL "${XPU_BASE_URL}")
 endif()
 
+<<<<<<< HEAD
 set(XPU_XCCL_BASE_URL
     "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.0")
 
@@ -50,15 +56,83 @@ set(XPU_XRE_URL
 set(XPU_XDNN_URL
     "${XPU_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
+=======
+# ubuntu and centos: use output by XDNN API team
+if(NOT DEFINED XPU_XDNN_BASE_URL)
+  set(XPU_XDNN_BASE_URL_WITHOUT_DATE
+      "https://klx-sdk-release-public.su.bcebos.com/xdnn/dev")
+  set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL_WITHOUT_DATE}/20220731")
+else()
+  set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL}")
+endif()
+
+set(XPU_XCCL_BASE_URL
+    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.0")
+
+if(WITH_AARCH64)
+  set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
+  set(XPU_XDNN_DIR_NAME "xdnn-kylin_aarch64")
+  set(XPU_XCCL_DIR_NAME "xccl-kylin_aarch64")
+  set(XPU_XDNN_URL
+      "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+      CACHE STRING "" FORCE)
+elseif(WITH_SUNWAY)
+  set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-deepin_sw6_64")
+  set(XPU_XCCL_DIR_NAME "xccl-deepin_sw6_64")
+  set(XPU_XDNN_URL
+      "${XPU_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+      CACHE STRING "" FORCE)
+elseif(WITH_BDCENTOS)
+  set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  # ubuntu and centos: use output by XDNN API team
+  set(XPU_XDNN_URL
+      "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+      CACHE STRING "" FORCE)
+elseif(WITH_UBUNTU)
+  set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  # ubuntu and centos: use output by XDNN API team
+  set(XPU_XDNN_URL
+      "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+      CACHE STRING "" FORCE)
+elseif(WITH_CENTOS)
+  set(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  # ubuntu and centos: use output by XDNN API team
+  set(XPU_XDNN_URL
+      "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+      CACHE STRING "" FORCE)
+else()
+  set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  # default: use output by XDNN API team
+  set(XPU_XDNN_URL
+      "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+      CACHE STRING "" FORCE)
+endif()
+
+set(XPU_XRE_URL
+    "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
+    CACHE STRING "" FORCE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 set(XPU_XCCL_URL
     "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_PACK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
     CACHE STRING "" FORCE)
+<<<<<<< HEAD
 set(XPU_CHECK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/check_xpu_dependence.sh"
     CACHE STRING "" FORCE)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
@@ -83,10 +157,16 @@ ExternalProject_Add(
   PREFIX ${SNAPPY_PREFIX_DIR}
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
+<<<<<<< HEAD
     wget ${XPU_CHECK_DEPENCE_URL} && bash check_xpu_dependence.sh
     ${XPU_BASE_URL} ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
     pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
     ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME}
+=======
+    wget ${XPU_PACK_DEPENCE_URL} && bash pack_paddle_depence.sh ${XPU_XRE_URL}
+    ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
+    ${XPU_XCCL_DIR_NAME}
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}

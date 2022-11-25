@@ -27,6 +27,7 @@ import subprocess
 import sys
 
 parser = argparse.ArgumentParser(description=__doc__)
+<<<<<<< HEAD
 parser.add_argument(
     '--git_dir', type=str, default='', help='git repo root directory.'
 )
@@ -45,10 +46,33 @@ parser.add_argument(
 parser.add_argument(
     '--test_target', type=str, default='', help='The test target to evaluate.'
 )
+=======
+parser.add_argument('--git_dir',
+                    type=str,
+                    default='',
+                    help='git repo root directory.')
+parser.add_argument('--build_dir',
+                    type=str,
+                    default='',
+                    help='build directory.')
+parser.add_argument('--good_commit',
+                    type=str,
+                    default='',
+                    help='The old commit known to be good.')
+parser.add_argument('--bad_commit',
+                    type=str,
+                    default='',
+                    help='The new commit known to be bad.')
+parser.add_argument('--test_target',
+                    type=str,
+                    default='',
+                    help='The test target to evaluate.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 parser.add_argument(
     '--bisect_branch',
     type=str,
     default='develop',
+<<<<<<< HEAD
     help='The mainline branch to bisect (feature branch ignored.',
 )
 parser.add_argument(
@@ -63,6 +87,21 @@ parser.add_argument(
 parser.add_argument(
     '--build_parallel', type=int, default=32, help="make parallelism."
 )
+=======
+    help='The mainline branch to bisect (feature branch ignored.')
+parser.add_argument('--log_file',
+                    type=str,
+                    default='',
+                    help='The file use to log outputs.')
+parser.add_argument('--test_times',
+                    type=int,
+                    default=10,
+                    help="Number of times to run the test target.")
+parser.add_argument('--build_parallel',
+                    type=int,
+                    default=32,
+                    help="make parallelism.")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 args = parser.parse_args()
 
 if not args.log_file:
@@ -80,6 +119,7 @@ print_arguments()
 
 # List the commits in mainline branch.
 os.chdir(args.git_dir)
+<<<<<<< HEAD
 ret = subprocess.check_output(
     [
         'git rev-list --first-parent %s...%s'
@@ -87,6 +127,12 @@ ret = subprocess.check_output(
     ],
     shell=True,
 )
+=======
+ret = subprocess.check_output([
+    'git rev-list --first-parent %s...%s' % (args.good_commit, args.bad_commit)
+],
+                              shell=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 sys.stdout.write('commits found:\n%s\n' % ret)
 commits = ret.strip().split('\n')
 os.chdir(args.build_dir)
@@ -97,6 +143,7 @@ last_culprit = ''
 while True:
     # Get to the mainline branch and clean up
     os.chdir(args.git_dir)
+<<<<<<< HEAD
     subprocess.check_output(
         [
             'git checkout %s && git clean -fd && git checkout .'
@@ -104,6 +151,13 @@ while True:
         ],
         shell=True,
     )
+=======
+    subprocess.check_output([
+        'git checkout %s && git clean -fd && git checkout .' %
+        args.bisect_branch
+    ],
+                            shell=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if not commits:
         sys.stdout.write('no commits to bisect\n')

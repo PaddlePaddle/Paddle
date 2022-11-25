@@ -18,6 +18,7 @@
 namespace phi {
 
 KernelSignature UnsqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+<<<<<<< HEAD
   if (ctx.InputSize("AxesTensorList") > 0) {
     VLOG(2) << "unsqueeze2 in AxesTensorList";
     return KernelSignature(
@@ -30,6 +31,35 @@ KernelSignature UnsqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
     VLOG(2) << "unsqueeze2 in axes";
     return KernelSignature(
         "unsqueeze_with_xshape", {"X"}, {"axes"}, {"Out", "XShape"});
+=======
+  if (ctx.HasOutput("XShape")) {
+    if (ctx.InputSize("AxesTensorList") > 0) {
+      VLOG(2) << "unsqueeze2 in AxesTensorList";
+      return KernelSignature("unsqueeze_with_xshape",
+                             {"X"},
+                             {"AxesTensorList"},
+                             {"Out", "XShape"});
+    } else if (ctx.InputSize("AxesTensor") > 0) {
+      VLOG(2) << "unsqueeze2 in AxesTensor";
+      return KernelSignature(
+          "unsqueeze_with_xshape", {"X"}, {"AxesTensor"}, {"Out", "XShape"});
+    } else {
+      VLOG(2) << "unsqueeze2 in axes";
+      return KernelSignature(
+          "unsqueeze_with_xshape", {"X"}, {"axes"}, {"Out", "XShape"});
+    }
+  } else {
+    if (ctx.InputSize("AxesTensorList") > 0) {
+      VLOG(2) << "unsqueeze2 in AxesTensorList";
+      return KernelSignature("unsqueeze", {"X"}, {"AxesTensorList"}, {"Out"});
+    } else if (ctx.InputSize("AxesTensor") > 0) {
+      VLOG(2) << "unsqueeze2 in AxesTensor";
+      return KernelSignature("unsqueeze", {"X"}, {"AxesTensor"}, {"Out"});
+    } else {
+      VLOG(2) << "unsqueeze2 in axes";
+      return KernelSignature("unsqueeze", {"X"}, {"axes"}, {"Out"});
+    }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 }
 

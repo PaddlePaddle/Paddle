@@ -25,6 +25,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # The output has diff between gpu and trt in CI windows
         # if ( and self.trt_param.precision == paddle_infer.PrecisionType.Half):
@@ -32,6 +33,7 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
 
@@ -65,8 +67,13 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 8, 8, 8],
@@ -122,10 +129,12 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
 
@@ -155,8 +164,13 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 8, 8, 8],
@@ -212,10 +226,12 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
 
@@ -245,8 +261,13 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 8, 8, 8],
@@ -302,10 +323,12 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
 
@@ -335,8 +358,13 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 8, 8, 8],
@@ -392,10 +420,12 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1():
             return np.random.random([2, 32]).astype(np.float32)
 
@@ -425,8 +455,13 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 4],
@@ -482,14 +517,17 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1():
             return np.random.random([16, 32, 256]).astype(np.float32)
 
         def generate_input2():
+<<<<<<< HEAD
             return np.array([[[2, 5], [3, 8]], [[0, 2], [0, 3]]]).astype(
                 np.int32
             )
@@ -502,6 +540,22 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
                 "op_attrs": {},
             }
         ]
+=======
+            return np.array([[[2, 5], [3, 8]], [[0, 2], [0,
+                                                         3]]]).astype(np.int32)
+
+        ops_config = [{
+            "op_type": "gather_nd",
+            "op_inputs": {
+                "X": ["input_data"],
+                "Index": ["index_data"]
+            },
+            "op_outputs": {
+                "Out": ["output_data"]
+            },
+            "op_attrs": {}
+        }]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ops = self.generate_op_config(ops_config)
 
         program_config = ProgramConfig(
@@ -517,8 +571,13 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 4, 4],

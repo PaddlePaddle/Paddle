@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class ReluDepthwiseConvNet(nn.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -43,14 +44,21 @@ class ReluDepthwiseConvNet(nn.Layer):
 
 
 class TestFuseReluDepthwiseConvPass(DistPassTestBase):
+
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[3, 224, 224]):
+<<<<<<< HEAD
         image = paddle.static.data(
             shape=[batch_size] + image_shape, dtype='float32', name='image'
         )
+=======
+        image = paddle.static.data(shape=[batch_size] + image_shape,
+                                   dtype='float32',
+                                   name='image')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         model = ReluDepthwiseConvNet()
         pred_out = model(image)

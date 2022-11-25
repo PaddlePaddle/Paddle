@@ -26,10 +26,34 @@ from xpu.get_test_cover_info import (
 )
 
 
+<<<<<<< HEAD
 class XPUTestClipByNormOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'clip_by_norm'
         self.use_dynamic_create_class = False
+=======
+class TestXPUClipByNormOp(XPUOpTest):
+
+    def setUp(self):
+        self.op_type = "clip_by_norm"
+        self.dtype = np.float32
+        self.use_xpu = True
+        self.max_relative_error = 0.006
+        self.initTestCase()
+        input = np.random.random(self.shape).astype("float32")
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.inputs = {
+            'X': input,
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': output}
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     class TestClipByNormOp(XPUOpTest):
         def setUp(self):
@@ -62,16 +86,25 @@ class XPUTestClipByNormOp(XPUOpTestWrapper):
             self.shape = (100,)
             self.max_norm = 1.0
 
+<<<<<<< HEAD
     class TestCase1(TestClipByNormOp):
         def initTestCase(self):
             self.shape = (100,)
             self.max_norm = 1e20
+=======
+class TestCase1(TestXPUClipByNormOp):
+
+    def initTestCase(self):
+        self.shape = (100, )
+        self.max_norm = 1e20
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     class TestCase2(TestClipByNormOp):
         def initTestCase(self):
             self.shape = (16, 16)
             self.max_norm = 0.1
 
+<<<<<<< HEAD
     class TestCase3(TestClipByNormOp):
         def initTestCase(self):
             self.shape = (4, 8, 16)
@@ -81,6 +114,20 @@ class XPUTestClipByNormOp(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('clip_by_norm')
 for stype in support_types:
     create_test_class(globals(), XPUTestClipByNormOp, stype)
+=======
+class TestCase2(TestXPUClipByNormOp):
+
+    def initTestCase(self):
+        self.shape = (16, 16)
+        self.max_norm = 0.1
+
+
+class TestCase3(TestXPUClipByNormOp):
+
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max_norm = 1.0
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

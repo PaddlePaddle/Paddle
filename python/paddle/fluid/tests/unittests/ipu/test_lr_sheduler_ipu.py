@@ -23,6 +23,7 @@ from paddle.optimizer.lr import LRScheduler
 
 
 class LR_New(LRScheduler):
+
     def __init__(self, learning_rate=1e-5, last_epoch=-1, verbose=False):
         super().__init__(learning_rate, last_epoch, verbose)
 
@@ -33,14 +34,25 @@ class LR_New(LRScheduler):
 
 
 class TestConvNet(IPUOpTest):
+
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         image = paddle.static.data(
             name='image', shape=[1, 3, 10, 10], dtype='float32'
         )
         conv1 = paddle.static.nn.conv2d(
             image, num_filters=3, filter_size=3, bias_attr=False
         )
+=======
+        image = paddle.static.data(name='image',
+                                   shape=[1, 3, 10, 10],
+                                   dtype='float32')
+        conv1 = paddle.static.nn.conv2d(image,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         loss = paddle.mean(conv1)
 
         opt = paddle.optimizer.Lamb(learning_rate=LR_New())
@@ -60,8 +72,14 @@ class TestConvNet(IPUOpTest):
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(is_training=True)
             program = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
                 self.main_prog, ipu_strategy=ipu_strategy
             ).compile(self.feed_list, self.fetch_list)
+=======
+                self.main_prog,
+                ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                   self.fetch_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             program = self.main_prog
 

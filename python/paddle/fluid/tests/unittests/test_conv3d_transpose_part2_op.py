@@ -22,6 +22,7 @@ from test_conv3d_transpose_op import TestConv3DTransposeOp
 
 
 class TestWithSymmetricPad_NHWC(TestConv3DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -34,6 +35,7 @@ class TestWithSymmetricPad_NHWC(TestConv3DTransposeOp):
 
 
 class TestWithAsymmetricPad_NHWC(TestConv3DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 0, 1, 0, 1, 2]
         self.stride = [1, 1, 1]
@@ -46,6 +48,7 @@ class TestWithAsymmetricPad_NHWC(TestConv3DTransposeOp):
 
 
 class TestWithGroups_NHWC(TestConv3DTransposeOp):
+
     def init_test_case(self):
         self.check_no_filter = True
         self.pad = [1, 1, 1]
@@ -59,6 +62,7 @@ class TestWithGroups_NHWC(TestConv3DTransposeOp):
 
 
 class TestWithStride_NHWC(TestConv3DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
@@ -71,6 +75,7 @@ class TestWithStride_NHWC(TestConv3DTransposeOp):
 
 
 class TestWithDilation_NHWC(TestConv3DTransposeOp):
+
     def init_test_case(self):
         self.check_no_input = True
         self.pad = [1, 1, 1]
@@ -84,7 +89,9 @@ class TestWithDilation_NHWC(TestConv3DTransposeOp):
 
 
 class TestConv3DTransposeAPI(unittest.TestCase):
+
     def test_case1(self):
+<<<<<<< HEAD
         data1 = fluid.layers.data(
             name='data1', shape=[3, 5, 5, 5], dtype='float32'
         )
@@ -146,6 +153,57 @@ class TestConv3DTransposeAPI(unittest.TestCase):
             padding=[0, 0, 0],
             data_format='NDHWC',
         )
+=======
+        data1 = fluid.layers.data(name='data1',
+                                  shape=[3, 5, 5, 5],
+                                  dtype='float32')
+        data2 = fluid.layers.data(name='data2',
+                                  shape=[5, 5, 5, 3],
+                                  dtype='float32')
+
+        out1 = fluid.layers.conv3d_transpose(input=data1,
+                                             groups=1,
+                                             num_filters=6,
+                                             filter_size=3,
+                                             data_format='NCDHW')
+        out2 = fluid.layers.conv3d_transpose(input=data2,
+                                             groups=1,
+                                             num_filters=6,
+                                             filter_size=3,
+                                             data_format='NDHWC')
+        out3 = fluid.layers.conv3d_transpose(input=data1,
+                                             groups=1,
+                                             num_filters=6,
+                                             filter_size=3,
+                                             padding=[[0, 0], [0, 0], [1, 1],
+                                                      [0, 0], [1, 1]],
+                                             data_format='NCDHW')
+        out4 = fluid.layers.conv3d_transpose(input=data2,
+                                             groups=3,
+                                             num_filters=6,
+                                             filter_size=3,
+                                             padding=[[0, 0], [0, 0], [1, 1],
+                                                      [1, 2], [0, 0]],
+                                             data_format='NDHWC')
+        out5 = fluid.layers.conv3d_transpose(input=data2,
+                                             groups=1,
+                                             num_filters=6,
+                                             filter_size=3,
+                                             padding='SAME',
+                                             data_format='NCDHW')
+        out6 = fluid.layers.conv3d_transpose(input=data2,
+                                             groups=1,
+                                             num_filters=6,
+                                             filter_size=3,
+                                             padding='VALID',
+                                             data_format='NDHWC')
+        out7 = fluid.layers.conv3d_transpose(input=data2,
+                                             groups=1,
+                                             num_filters=6,
+                                             output_size=[7, 7, 7],
+                                             padding=[0, 0, 0],
+                                             data_format='NDHWC')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         data1_np = np.random.random((2, 3, 5, 5, 5)).astype("float32")
         data2_np = np.random.random((2, 5, 5, 5, 3)).astype("float32")
@@ -156,12 +214,22 @@ class TestConv3DTransposeAPI(unittest.TestCase):
             place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         results = exe.run(
             fluid.default_main_program(),
             feed={"data1": data1_np, "data2": data2_np},
             fetch_list=[out1, out2, out3, out4, out5, out6, out7],
             return_numpy=True,
         )
+=======
+        results = exe.run(fluid.default_main_program(),
+                          feed={
+                              "data1": data1_np,
+                              "data2": data2_np
+                          },
+                          fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+                          return_numpy=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertIsNotNone(results[0])
         self.assertIsNotNone(results[1])
         self.assertIsNotNone(results[2])
@@ -172,7 +240,9 @@ class TestConv3DTransposeAPI(unittest.TestCase):
 
 
 class TestConv3DTransposeOpException(unittest.TestCase):
+
     def test_exception(self):
+<<<<<<< HEAD
         data = fluid.layers.data(
             name='data', shape=[3, 5, 5, 5], dtype="float32"
         )
@@ -185,10 +255,23 @@ class TestConv3DTransposeOpException(unittest.TestCase):
                 filter_size=3,
                 data_format="NCDW",
             )
+=======
+        data = fluid.layers.data(name='data',
+                                 shape=[3, 5, 5, 5],
+                                 dtype="float32")
+
+        def attr_data_format():
+            out = fluid.layers.conv2d_transpose(input=data,
+                                                groups=1,
+                                                num_filters=6,
+                                                filter_size=3,
+                                                data_format="NCDW")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.assertRaises(ValueError, attr_data_format)
 
         def attr_padding_str():
+<<<<<<< HEAD
             out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=1,
@@ -196,10 +279,18 @@ class TestConv3DTransposeOpException(unittest.TestCase):
                 filter_size=3,
                 padding='Vald',
             )
+=======
+            out = fluid.layers.conv2d_transpose(input=data,
+                                                groups=1,
+                                                num_filters=6,
+                                                filter_size=3,
+                                                padding='Vald')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.assertRaises(ValueError, attr_padding_str)
 
         def attr_padding_list():
+<<<<<<< HEAD
             out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=1,
@@ -207,10 +298,19 @@ class TestConv3DTransposeOpException(unittest.TestCase):
                 filter_size=3,
                 padding=[[1, 1], [1, 1], [0, 0], [0, 0], [1, 1]],
             )
+=======
+            out = fluid.layers.conv2d_transpose(input=data,
+                                                groups=1,
+                                                num_filters=6,
+                                                filter_size=3,
+                                                padding=[[1, 1], [1, 1], [0, 0],
+                                                         [0, 0], [1, 1]])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.assertRaises(ValueError, attr_padding_list)
 
         def attr_padding_with_data_format():
+<<<<<<< HEAD
             out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=1,
@@ -219,6 +319,15 @@ class TestConv3DTransposeOpException(unittest.TestCase):
                 padding=[[1, 1], [0, 0], [0, 0], [1, 0], [1, 1]],
                 data_format='NDHWC',
             )
+=======
+            out = fluid.layers.conv2d_transpose(input=data,
+                                                groups=1,
+                                                num_filters=6,
+                                                filter_size=3,
+                                                padding=[[1, 1], [0, 0], [0, 0],
+                                                         [1, 0], [1, 1]],
+                                                data_format='NDHWC')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.assertRaises(ValueError, attr_padding_with_data_format)
 

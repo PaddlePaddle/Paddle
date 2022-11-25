@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -59,6 +60,7 @@ class TestBase(IPUOpTest):
         bs = self.ipu_bs if run_ipu else self.cpu_bs
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[bs, 3, 10, 10], dtype='float32'
                 )
@@ -70,6 +72,21 @@ class TestBase(IPUOpTest):
                     conv2 = paddle.static.nn.conv2d(
                         conv1, num_filters=3, filter_size=3, bias_attr=False
                     )
+=======
+                image = paddle.static.data(name='image',
+                                           shape=[bs, 3, 10, 10],
+                                           dtype='float32')
+                with paddle.static.ipu_shard_guard(index=0):
+                    conv1 = paddle.static.nn.conv2d(image,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False)
+                with paddle.static.ipu_shard_guard(index=1):
+                    conv2 = paddle.static.nn.conv2d(conv1,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     # should consider influence of bs
                     loss = paddle.mean(conv2)
 
@@ -131,6 +148,7 @@ class TestBase(IPUOpTest):
 
 
 class TestReplicaInference(TestBase):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -154,6 +172,7 @@ class TestReplicaInference(TestBase):
 
 
 class TestReplicaCollectiveInference(TestBase):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -182,6 +201,7 @@ class TestReplicaCollectiveInference(TestBase):
 
 
 class TestPipelineInference(TestBase):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 2,
@@ -198,13 +218,19 @@ class TestPipelineInference(TestBase):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np_image}
         self.feed_ipu = {
+<<<<<<< HEAD
             "image": np.tile(
                 np_image, [self.ipu_options['batches_per_step'], 1, 1, 1]
             )
+=======
+            "image":
+            np.tile(np_image, [self.ipu_options['batches_per_step'], 1, 1, 1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestTrainBase(TestBase):
+
     def set_training(self):
         self.is_training = True
         self.epoch = 10
@@ -224,6 +250,7 @@ class TestTrainBase(TestBase):
 
 
 class TestReplicaTrain(TestTrainBase):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -256,6 +283,7 @@ class TestReplicaTrain(TestTrainBase):
 
 
 class TestReplicaCollectiveTrain(TestTrainBase):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -293,6 +321,7 @@ class TestReplicaCollectiveTrain(TestTrainBase):
 
 
 class TestPipelineTrain(TestTrainBase):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,
@@ -325,6 +354,7 @@ class TestPipelineTrain(TestTrainBase):
 
 
 class TestAdamTrain(TestTrainBase):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -340,6 +370,7 @@ class TestAdamTrain(TestTrainBase):
 
 
 class TestAdamReplicaTrain(TestReplicaTrain):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -355,6 +386,7 @@ class TestAdamReplicaTrain(TestReplicaTrain):
 
 
 class TestAdamPipelineTrain(TestPipelineTrain):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,
@@ -370,6 +402,7 @@ class TestAdamPipelineTrain(TestPipelineTrain):
 
 
 class TestAdamRecomputationTrain(TestPipelineTrain):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,
@@ -386,6 +419,7 @@ class TestAdamRecomputationTrain(TestPipelineTrain):
 
 
 class TestLambTrain(TestAdamTrain):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -401,6 +435,7 @@ class TestLambTrain(TestAdamTrain):
 
 
 class TestLambReplicaTrain(TestAdamReplicaTrain):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -416,6 +451,7 @@ class TestLambReplicaTrain(TestAdamReplicaTrain):
 
 
 class TestLambPipelineTrain(TestAdamPipelineTrain):
+
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,

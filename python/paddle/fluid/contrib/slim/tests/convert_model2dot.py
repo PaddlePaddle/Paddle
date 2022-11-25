@@ -26,6 +26,7 @@ paddle.enable_static()
 
 def parse_args():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument(
         '--model_path', type=str, default='', help='A path to a model.'
     )
@@ -35,12 +36,27 @@ def parse_args():
         default='',
         help='A path to save the graph.',
     )
+=======
+    parser.add_argument('--model_path',
+                        type=str,
+                        default='',
+                        help='A path to a model.')
+    parser.add_argument('--save_graph_dir',
+                        type=str,
+                        default='',
+                        help='A path to save the graph.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     parser.add_argument(
         '--save_graph_name',
         type=str,
         default='',
+<<<<<<< HEAD
         help='A name to save the graph. Default - name from model path will be used',
     )
+=======
+        help=
+        'A name to save the graph. Default - name from model path will be used')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -58,6 +74,7 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
                 fetch_targets,
             ] = fluid.io.load_inference_model(model_path, exe)
         else:
+<<<<<<< HEAD
             [
                 inference_program,
                 feed_target_names,
@@ -65,6 +82,11 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
             ] = fluid.io.load_inference_model(
                 model_path, exe, 'model', 'params'
             )
+=======
+            [inference_program, feed_target_names, fetch_targets
+             ] = fluid.io.load_inference_model(model_path, exe, 'model',
+                                               'params')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
         if not os.path.exists(save_graph_dir):
             os.makedirs(save_graph_dir)
@@ -73,10 +95,15 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
             save_graph_name = model_name
         graph.draw(save_graph_dir, save_graph_name, graph.all_op_nodes())
         print(
+<<<<<<< HEAD
             "Success! Generated dot and pdf files for {0} model, that can be found at {1} named {2}.\n".format(
                 model_name, save_graph_dir, save_graph_name
             )
         )
+=======
+            "Success! Generated dot and pdf files for {0} model, that can be found at {1} named {2}.\n"
+            .format(model_name, save_graph_dir, save_graph_name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

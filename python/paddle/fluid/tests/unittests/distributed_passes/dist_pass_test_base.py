@@ -59,6 +59,7 @@ def remove_path_if_exists(path):
 
 # NOTE: only support GPU now
 class DistPassTestBase(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
@@ -87,12 +88,23 @@ class DistPassTestBase(unittest.TestCase):
         raise NotImplementedError()
 
     def check_main(self, model=None, gpus=None, **kwargs):
+<<<<<<< HEAD
         pass_rets = self._distributed_launch(
             model=model, apply_pass=True, gpus=gpus, **kwargs
         )
         no_pass_rets = self._distributed_launch(
             model=model, apply_pass=False, gpus=gpus, **kwargs
         )
+=======
+        pass_rets = self._distributed_launch(model=model,
+                                             apply_pass=True,
+                                             gpus=gpus,
+                                             **kwargs)
+        no_pass_rets = self._distributed_launch(model=model,
+                                                apply_pass=False,
+                                                gpus=gpus,
+                                                **kwargs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.check_results(no_pass_rets, pass_rets)
 
     def check_results(self, no_pass_rets, pass_rets):
@@ -105,6 +117,7 @@ class DistPassTestBase(unittest.TestCase):
                 if out_var_no_pass is None:
                     self.assertIsNone(out_var_pass)
                 else:
+<<<<<<< HEAD
                     np.testing.assert_allclose(
                         out_var_no_pass,
                         out_var_pass,
@@ -112,6 +125,14 @@ class DistPassTestBase(unittest.TestCase):
                         atol=self.atol,
                         equal_nan=self.equal_nan,
                     )
+=======
+                    self.assertTrue(
+                        np.allclose(out_var_no_pass,
+                                    out_var_pass,
+                                    rtol=self.rtol,
+                                    atol=self.atol,
+                                    equal_nan=self.equal_nan))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     @classmethod
     def _to_var_names(cls, names_or_vars):
@@ -253,10 +274,15 @@ class DistPassTestBase(unittest.TestCase):
                 dump_file = '{0}/{1}.bin'.format(output_dir, i)
                 self.assertTrue(
                     os.path.exists(dump_file),
+<<<<<<< HEAD
                     "Pass test failed with apply_pass = {}, please view log in {}".format(
                         apply_pass, output_dir
                     ),
                 )
+=======
+                    "Pass test failed with apply_pass = {}, please view log in {}"
+                    .format(apply_pass, output_dir))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 with open(dump_file, "rb") as f:
                     results.append(pickle.load(f))
             return results
@@ -266,6 +292,7 @@ class DistPassTestBase(unittest.TestCase):
 
 
 class PassConflictChecker(DistPassTestBase):
+
     def setUp(self):
         os.environ['DEBUG'] = '1'  # to save the debug directory
         super().setUp()
@@ -283,8 +310,7 @@ class PassConflictChecker(DistPassTestBase):
         auto_pass_manager = PassManager(passes, auto_solve_conflict=True)
         new_passes = auto_pass_manager.passes
         self.assertEqual(
-            len(passes),
-            len(new_passes),
+            len(passes), len(new_passes),
             "After solving conflicts, the left passes are: {}".format(
                 auto_pass_manager.names
             ),
@@ -292,11 +318,17 @@ class PassConflictChecker(DistPassTestBase):
 
         for i, (p1, p2) in enumerate(zip(passes, new_passes)):
             self.assertEqual(
+<<<<<<< HEAD
                 id(p1),
                 id(p2),
                 "After solving conflicts, the {}-th pass is different: {} vs {}".format(
                     i, p1.name, p2.name
                 ),
             )
+=======
+                id(p1), id(p2),
+                "After solving conflicts, the {}-th pass is different: {} vs {}"
+                .format(i, p1.name, p2.name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         auto_pass_manager.apply([main_prog], [startup_prog])

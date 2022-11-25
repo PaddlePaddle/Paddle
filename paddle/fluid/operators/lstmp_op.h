@@ -73,7 +73,11 @@ template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const phi::DenseTensor& src,
                              framework::Vector<size_t> index,
+<<<<<<< HEAD
                              phi::DenseTensor* dst,
+=======
+                             framework::Tensor* dst,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -407,9 +411,15 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
     auto ToBatch = [&batch_gate, &to_batch](const DeviceContext& ctx,
+<<<<<<< HEAD
                                             const phi::DenseTensor& src,
                                             const framework::DDim& dims,
                                             phi::DenseTensor& dst) {
+=======
+                                            const framework::LoDTensor& src,
+                                            const framework::DDim& dims,
+                                            framework::LoDTensor& dst) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());
       to_batch(ctx, src, &dst, false);

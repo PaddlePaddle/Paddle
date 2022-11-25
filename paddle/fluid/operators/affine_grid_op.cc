@@ -12,11 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/affine_grid_op.h"
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include <memory>
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/infershape_utils.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
@@ -28,7 +36,31 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+
+template <typename T>
+struct Linspace<phi::CPUContext, T> {
+  void operator()(T start,
+                  T end,
+                  int count,
+                  bool align_corners,
+                  framework::Tensor* numbers,
+                  const framework::ExecutionContext& ctx) {
+    T* number_data = numbers->mutable_data<T>({count}, platform::CPUPlace());
+    T slice = (end - start) / (T)(count - 1);
+    if (!align_corners) {
+      slice = (end - start) / (T)count;
+      start *= (T)(count - 1) / (T)count;
+    }
+    for (int i = 0; i < count; ++i) {
+      number_data[i] = start + (T)i * slice;
+    }
+  }
+};
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
@@ -71,6 +103,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
               output_shape_dims.size(),
               output_shape_dims));
     } else {
+<<<<<<< HEAD
       PADDLE_ENFORCE_GE(output_shape.size(),
                         4,
                         platform::errors::InvalidArgument(
@@ -119,6 +152,33 @@ class AffineGridOp : public framework::OperatorWithKernel {
                           "But received third dimesion=[%d], dimesions=[%s]",
                           theta_dims[2],
                           theta_dims));
+=======
+      PADDLE_ENFORCE_EQ(
+          output_shape.size(),
+          4,
+          platform::errors::InvalidArgument(
+              "The size of attribute 'output_shape' in AffineGridOp should be "
+              "4. But received output_shape's size=[%d].",
+              output_shape.size()));
+    }
+
+    PADDLE_ENFORCE_EQ(
+        theta_dims[1],
+        2,
+        platform::errors::InvalidArgument(
+            "The second dimesion of input 'theta' in AffineGridOp should be 2. "
+            "But received second dimesion=[%d], dimesions=[%s]",
+            theta_dims[1],
+            theta_dims));
+    PADDLE_ENFORCE_EQ(
+        theta_dims[2],
+        3,
+        platform::errors::InvalidArgument(
+            "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+            "But received third dimesion=[%d], dimesions=[%s]",
+            theta_dims[2],
+            theta_dims));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if (output_shape.size() == 4) {
       // N * H * W * 2
@@ -135,7 +195,12 @@ class AffineGridOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Theta");
+<<<<<<< HEAD
     return framework::OpKernelType(data_type, ctx.GetPlace());
+=======
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), framework::DataLayout::kAnyLayout, library);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 };
 
@@ -245,9 +310,23 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Output"));
     return framework::OpKernelType(data_type, ctx.GetPlace());
+=======
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Output")),
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kAnyLayout,
+                                   library_);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 };
 
@@ -278,7 +357,16 @@ REGISTER_OPERATOR(affine_grid,
                   ops::AffineGridGradMaker<paddle::framework::OpDesc>,
                   ops::AffineGridGradMaker<paddle::imperative::OpBase>);
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
+=======
+REGISTER_OP_CPU_KERNEL(affine_grid,
+                       ops::AffineGridOpKernel<phi::CPUContext, float>,
+                       ops::AffineGridOpKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(affine_grid_grad,
+                       ops::AffineGridGradOpKernel<phi::CPUContext, float>,
+                       ops::AffineGridGradOpKernel<phi::CPUContext, double>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 REGISTER_OP_VERSION(affine_grid)
     .AddCheckpoint(

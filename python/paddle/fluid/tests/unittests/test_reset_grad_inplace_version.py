@@ -22,6 +22,7 @@ paddle.set_device('cpu')
 
 # Test 1
 def clear_grad_test_0(w, a):
+
     @paddle.no_grad()
     def warp(*_):
         assert w.grad is not None
@@ -32,6 +33,7 @@ def clear_grad_test_0(w, a):
 
 
 class TestInplaceAndClearGradient(unittest.TestCase):
+
     def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
@@ -55,12 +57,14 @@ class TestInplaceAndClearGradient(unittest.TestCase):
 
 # Test 2
 class Counter:
+
     def __init__(self):
         self.num_calls = 0
         self.step = 0
 
 
 def clear_grad_test_1(w, c):
+
     @paddle.no_grad()
     def warp(*_):
         assert w.grad is not None
@@ -74,6 +78,7 @@ def clear_grad_test_1(w, c):
 
 
 class TestInplaceClearGradAccumulation(unittest.TestCase):
+
     def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
@@ -103,6 +108,7 @@ class TestInplaceClearGradAccumulation(unittest.TestCase):
 
 
 class TestInplaceClearGradAccumulationAlt(unittest.TestCase):
+
     def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)

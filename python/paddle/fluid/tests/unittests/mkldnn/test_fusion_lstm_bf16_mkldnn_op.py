@@ -28,15 +28,22 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import (
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestFusionLSTMBF16ONEDNNOp(OpTest):
+
     def set_confs(self):
         pass
 
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
+<<<<<<< HEAD
             self.check_output(
                 check_dygraph=False, no_check_set=["Cell"], atol=2e-2
             )
+=======
+            self.check_output(check_dygraph=False,
+                              no_check_set=["Cell"],
+                              atol=2e-2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def setUp(self):
         self.op_type = 'fusion_lstm'
@@ -151,21 +158,25 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
 
 
 class TestFusionLSTMBF16ONEDNNPeepholesOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.use_peepholes = True
 
 
 class TestFusionLSTMBF16ONEDNNInitializedStateOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.has_initial_state = True
 
 
 class TestFusionLSTMBF16ONEDNNReverseOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMBF16ONEDNNBF16WeightsOp(TestFusionLSTMBF16ONEDNNOp):
+
     def set_confs(self):
         self.weights_dtype = 'bf16'
 

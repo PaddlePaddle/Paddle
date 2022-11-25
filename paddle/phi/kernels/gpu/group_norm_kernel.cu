@@ -22,7 +22,11 @@
 
 namespace phi {
 
+<<<<<<< HEAD
 template <typename T, typename AccT>
+=======
+template <typename T>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int N,
                                               int C,
@@ -30,8 +34,13 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int imsize,
                                               int groups,
                                               int group_size,
+<<<<<<< HEAD
                                               AccT* mean,
                                               AccT* var) {
+=======
+                                              T* mean,
+                                              T* var) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -39,6 +48,7 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
   int number = min(group_size, static_cast<int>(C - gid * group_size));
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
+<<<<<<< HEAD
   AccT x_mean = static_cast<AccT>(0);
   AccT x_var = static_cast<AccT>(0);
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
@@ -46,6 +56,14 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
     int hid = imid / W;
     int wid = imid % W;
     val = static_cast<AccT>(x[(bid * H + hid) * W * C + wid * C + ccid]);
+=======
+  T x_mean = 0, x_var = 0;
+  for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
+    T val;
+    int hid = imid / W;
+    int wid = imid % W;
+    val = x[(bid * H + hid) * W * C + wid * C + ccid];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     x_mean += val;
     x_var += val * val;
@@ -56,10 +74,17 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
   CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 }
 
+<<<<<<< HEAD
 template <typename T, typename AccT, int flags>
 __global__ void GroupNormForward(const T* x,
                                  const AccT* mean,
                                  const AccT* var,
+=======
+template <typename T, int flags>
+__global__ void GroupNormForward(const T* x,
+                                 const T* mean,
+                                 const T* var,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                  const T* scale,
                                  const T* bias,
                                  int N,
@@ -68,9 +93,15 @@ __global__ void GroupNormForward(const T* x,
                                  int imsize,
                                  int groups,
                                  int group_size,
+<<<<<<< HEAD
                                  AccT epsilon,
                                  T* y,
                                  AccT* real_var,
+=======
+                                 T epsilon,
+                                 T* y,
+                                 T* real_var,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                  const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
@@ -79,15 +110,23 @@ __global__ void GroupNormForward(const T* x,
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
   auto ng = bid * groups + gid;
+<<<<<<< HEAD
   AccT x_mean = mean[ng];
   AccT x_var = var[ng];
   x_var = x_var - x_mean * x_mean;
 
   AccT var_inv = rsqrt(x_var + epsilon);
+=======
+  T x_mean = mean[ng];
+  T x_var = var[ng];
+  x_var = x_var - x_mean * x_mean;
+  T var_inv = rsqrt(x_var + epsilon);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   if (cid == 0 && threadIdx.x == 0) {
     real_var[ng] = x_var;
   }
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
+<<<<<<< HEAD
     AccT val;
     int hid, wid;
     int index = (bid * C + ccid) * imsize + imid;
@@ -109,6 +148,29 @@ __global__ void GroupNormForward(const T* x,
       y[index] = static_cast<T>(val);
     } else {
       y[(bid * H + hid) * W * C + wid * C + ccid] = static_cast<T>(val);
+=======
+    T val;
+    int hid, wid;
+    int index = (bid * C + ccid) * imsize + imid;
+    if (data_layout == DataLayout::kNCHW) {
+      val = x[index];
+    } else {
+      hid = imid / W;
+      wid = imid % W;
+      val = x[(bid * H + hid) * W * C + wid * C + ccid];
+    }
+    val = (val - x_mean) * var_inv;
+    if (flags & kHasScale) {
+      val *= scale[ccid];
+    }
+    if (flags & kHasBias) {
+      val += bias[ccid];
+    }
+    if (data_layout == DataLayout::kNCHW) {
+      y[index] = val;
+    } else {
+      y[(bid * H + hid) * W * C + wid * C + ccid] = val;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 }
@@ -124,8 +186,13 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+<<<<<<< HEAD
   using AccT = typename kps::details::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
@@ -138,6 +205,7 @@ void GroupNormKernel(const Context& dev_ctx,
                                                   : x_dims[x_dims.size() - 2]);
 
   dev_ctx.template Alloc<T>(y);
+<<<<<<< HEAD
   dev_ctx.template Alloc<AccT>(mean);
   dev_ctx.template Alloc<AccT>(var);
   // temp_var is used to calculate the mean^2
@@ -151,6 +219,19 @@ void GroupNormKernel(const Context& dev_ctx,
   auto* mean_data = mean->data<AccT>();
   auto* var_data = var->data<AccT>();
   auto* temp_var_data = temp_var.data<AccT>();
+=======
+  dev_ctx.template Alloc<T>(mean);
+  dev_ctx.template Alloc<T>(var);
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  DenseTensor temp_var;
+  temp_var.Resize(var->dims());
+  dev_ctx.template Alloc<T>(&temp_var);
+  auto* x_data = x.data<T>();
+  auto* y_data = y->data<T>();
+  auto* mean_data = mean->data<T>();
+  auto* var_data = var->data<T>();
+  auto* temp_var_data = temp_var.data<T>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   const T* scale_data = nullptr;
   if (scale_ptr) scale_data = scale_ptr->data<T>();
@@ -177,6 +258,10 @@ void GroupNormKernel(const Context& dev_ctx,
   dim3 grid(group_size, groups, x_dims[0]);
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::kNCHW) {
+<<<<<<< HEAD
+=======
+    using AccT = typename kps::details::MPTypeTrait<T>::Type;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int size = group_size * imsize;
     const int max_num_threads = 1024;
@@ -189,7 +274,11 @@ void GroupNormKernel(const Context& dev_ctx,
     dim3 grids(x_dims[0] * groups);
     dim3 blocks(block_size_nchw);
     if (size < vec_size * block_size_nchw) {
+<<<<<<< HEAD
       ScalarGetMeanAndVarNCHW<T, AccT><<<grids, blocks, 0, dev_ctx.stream()>>>(
+=======
+      ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           x_data, mean_data, temp_var_data, size);
     } else {
       VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
@@ -197,9 +286,15 @@ void GroupNormKernel(const Context& dev_ctx,
               x_data, mean_data, temp_var_data, size);
     }
   } else {
+<<<<<<< HEAD
     set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));
     set_zero_AccT(dev_ctx, &temp_var, static_cast<AccT>(0));
     GroupNormForwardGetMeanAndVar<T, AccT>
+=======
+    set_zero(dev_ctx, mean, static_cast<T>(0));
+    set_zero(dev_ctx, &temp_var, static_cast<T>(0));
+    GroupNormForwardGetMeanAndVar<T>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
                                                  x_dims[0],
                                                  C,
@@ -225,12 +320,17 @@ void GroupNormKernel(const Context& dev_ctx,
                    imsize,
                    groups,
                    group_size,
+<<<<<<< HEAD
                    static_cast<AccT>(epsilon),
+=======
+                   epsilon,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                    y_data,
                    var_data,
                    data_layout);
 }
 
+<<<<<<< HEAD
 template <typename T, typename AccT>
 void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     gpuStream_t stream,
@@ -343,3 +443,9 @@ PD_REGISTER_KERNEL(group_norm,
                    float,
                    double,
                    phi::dtype::float16) {}
+=======
+}  // namespace phi
+
+PD_REGISTER_KERNEL(
+    group_norm, GPU, ALL_LAYOUT, phi::GroupNormKernel, float, double) {}
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

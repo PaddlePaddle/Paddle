@@ -38,9 +38,12 @@ PyTypeObject *g_blockdesc_pytype = nullptr;
 
 namespace pd = paddle::framework;
 namespace jit = paddle::jit;
+<<<<<<< HEAD
 
 using paddle::distributed::auto_parallel::OperatorDistAttr;
 using paddle::distributed::auto_parallel::TensorDistAttr;
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T>
 static pybind11::bytes SerializeMessage(
@@ -116,6 +119,21 @@ void BindProgramDesc(pybind11::module *m) {
       });
 }
 
+<<<<<<< HEAD
+=======
+void BindProcessMeshDesc(pybind11::module *m) {
+  pybind11::class_<pd::ProcessMeshDesc>(*m, "ProcessMeshDesc", "")
+      .def(pybind11::init<const std::vector<int32_t> &,
+                          const std::vector<int32_t> &,
+                          int32_t>())
+      .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
+      .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
+      .def_property_readonly("topology", &pd::ProcessMeshDesc::Topology)
+      .def_property_readonly("process_group",
+                             &pd::ProcessMeshDesc::ProcessGroup);
+}
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void BindBlockDesc(pybind11::module *m) {
   pybind11::class_<pd::BlockDesc> blockdesc(*m, "BlockDesc", "");
   g_blockdesc_pytype = (PyTypeObject *)blockdesc.ptr();  // NOLINT
@@ -429,6 +447,13 @@ void BindJitProperty(pybind11::module *m) {
           pybind11::return_value_policy::reference)
       .def("size", &jit::Property::Size)
       .def("set_float",
+<<<<<<< HEAD
+=======
+           py::overload_cast<const float &>(&jit::Property::SetFloat),
+           "set float",
+           py::arg("val"))
+      .def("set_float",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
            py::overload_cast<const std::string &, const float &>(
                &jit::Property::SetFloat),
            "set float",
@@ -440,30 +465,68 @@ void BindJitProperty(pybind11::module *m) {
            py::overload_cast<const std::string &>(&jit::Property::GetFloat,
                                                   py::const_))
       .def("set_floats",
+<<<<<<< HEAD
+=======
+           py::overload_cast<const std::vector<float> &>(
+               &jit::Property::SetFloats),
+           "set list of float",
+           py::arg("vals"))
+      .def("set_floats",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
            py::overload_cast<const std::string &, const std::vector<float> &>(
                &jit::Property::SetFloats),
            "set list of float",
            py::arg("name"),
            py::arg("val"))
       .def("set_int",
+<<<<<<< HEAD
+=======
+           py::overload_cast<const int64_t &>(&jit::Property::SetInt64),
+           "set int",
+           py::arg("val"))
+      .def("set_int",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
            py::overload_cast<const std::string &, const int64_t &>(
                &jit::Property::SetInt64),
            "set int",
            py::arg("name"),
            py::arg("val"))
       .def("set_ints",
+<<<<<<< HEAD
+=======
+           py::overload_cast<const std::vector<int64_t> &>(
+               &jit::Property::SetInt64s),
+           "set list of int",
+           py::arg("vals"))
+      .def("set_ints",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
            py::overload_cast<const std::string &, const std::vector<int64_t> &>(
                &jit::Property::SetInt64s),
            "set list of int",
            py::arg("name"),
            py::arg("val"))
       .def("set_string",
+<<<<<<< HEAD
+=======
+           py::overload_cast<const std::string &>(&jit::Property::SetString),
+           "set string",
+           py::arg("val"))
+      .def("set_string",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
            py::overload_cast<const std::string &, const std::string &>(
                &jit::Property::SetString),
            "set string",
            py::arg("name"),
            py::arg("val"))
       .def("set_strings",
+<<<<<<< HEAD
+=======
+           py::overload_cast<const std::vector<std::string> &>(
+               &jit::Property::SetStrings),
+           "set list of string",
+           py::arg("vals"))
+      .def("set_strings",
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
            py::overload_cast<const std::string &,
                              const std::vector<std::string> &>(
                &jit::Property::SetStrings),

@@ -23,6 +23,7 @@ import unittest
 
 
 class Conv3DTestCase(unittest.TestCase):
+<<<<<<< HEAD
     def __init__(
         self,
         methodName='runTest',
@@ -40,6 +41,24 @@ class Conv3DTestCase(unittest.TestCase):
         dtype="float32",
     ):
         super().__init__(methodName)
+=======
+
+    def __init__(self,
+                 methodName='runTest',
+                 batch_size=4,
+                 spartial_shape=(8, 8, 8),
+                 num_channels=6,
+                 num_filters=8,
+                 filter_size=3,
+                 padding=0,
+                 stride=1,
+                 dilation=1,
+                 groups=1,
+                 no_bias=False,
+                 data_format="NCDHW",
+                 dtype="float32"):
+        super(Conv3DTestCase, self).__init__(methodName)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
@@ -61,16 +80,22 @@ class Conv3DTestCase(unittest.TestCase):
                 (self.batch_size,) + self.spartial_shape + (self.num_channels,)
             )
         else:
+<<<<<<< HEAD
             input_shape = (
                 self.batch_size,
                 self.num_channels,
             ) + self.spartial_shape
+=======
+            input_shape = (self.batch_size,
+                           self.num_channels) + self.spartial_shape
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
             filter_size = [self.filter_size] * 3
         else:
             filter_size = self.filter_size
+<<<<<<< HEAD
         self.weight_shape = weight_shape = (
             self.num_filters,
             self.num_channels // self.groups,
@@ -78,6 +103,12 @@ class Conv3DTestCase(unittest.TestCase):
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )
+=======
+        self.weight_shape = weight_shape = (self.num_filters, self.num_channels
+                                            // self.groups) + tuple(filter_size)
+        self.weight = np.random.uniform(-1, 1,
+                                        size=weight_shape).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if not self.no_bias:
             self.bias = np.random.uniform(
                 -1, 1, size=(self.num_filters,)
@@ -101,6 +132,7 @@ class Conv3DTestCase(unittest.TestCase):
                     bias_attr = False
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
+<<<<<<< HEAD
                 y_var = paddle.static.nn.conv3d(
                     x_var,
                     self.num_filters,
@@ -113,6 +145,18 @@ class Conv3DTestCase(unittest.TestCase):
                     bias_attr=bias_attr,
                     data_format=self.data_format,
                 )
+=======
+                y_var = fluid.layers.conv3d(x_var,
+                                            self.num_filters,
+                                            self.filter_size,
+                                            padding=self.padding,
+                                            stride=self.stride,
+                                            dilation=self.dilation,
+                                            groups=self.groups,
+                                            param_attr=weight_attr,
+                                            bias_attr=bias_attr,
+                                            data_format=self.data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         feed_dict = {"input": self.input}
         exe = fluid.Executor(place)
         exe.run(start)
@@ -130,6 +174,7 @@ class Conv3DTestCase(unittest.TestCase):
                     else (-1, self.num_channels, -1, -1, -1)
                 )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
+<<<<<<< HEAD
                 w_var = fluid.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
@@ -146,6 +191,21 @@ class Conv3DTestCase(unittest.TestCase):
                     groups=self.groups,
                     data_format=self.data_format,
                 )
+=======
+                w_var = fluid.data("weight",
+                                   self.weight_shape,
+                                   dtype=self.dtype)
+                b_var = fluid.data("bias", (self.num_filters, ),
+                                   dtype=self.dtype)
+                y_var = F.conv3d(x_var,
+                                 w_var,
+                                 None if self.no_bias else b_var,
+                                 padding=self.padding,
+                                 stride=self.stride,
+                                 dilation=self.dilation,
+                                 groups=self.groups,
+                                 data_format=self.data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -157,6 +217,7 @@ class Conv3DTestCase(unittest.TestCase):
     def paddle_nn_layer(self):
         x_var = paddle.to_tensor(self.input)
         x_var.stop_gradient = False
+<<<<<<< HEAD
         conv = nn.Conv3D(
             self.num_channels,
             self.num_filters,
@@ -167,6 +228,16 @@ class Conv3DTestCase(unittest.TestCase):
             groups=self.groups,
             data_format=self.data_format,
         )
+=======
+        conv = nn.Conv3D(self.num_channels,
+                         self.num_filters,
+                         self.filter_size,
+                         padding=self.padding,
+                         stride=self.stride,
+                         dilation=self.dilation,
+                         groups=self.groups,
+                         data_format=self.data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -186,8 +257,13 @@ class Conv3DTestCase(unittest.TestCase):
                 res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
+<<<<<<< HEAD
         np.testing.assert_allclose(result3, res_eager, rtol=1e-05)
         np.testing.assert_allclose(g1, g2, rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(result3, res_eager))
+        self.assertTrue(np.allclose(g1, g2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def runTest(self):
         place = fluid.CPUPlace()
@@ -199,6 +275,7 @@ class Conv3DTestCase(unittest.TestCase):
 
 
 class Conv3DErrorTestCase(Conv3DTestCase):
+
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -209,6 +286,7 @@ class Conv3DErrorTestCase(Conv3DTestCase):
 def add_cases(suite):
     suite.addTest(Conv3DTestCase(methodName='runTest'))
     suite.addTest(
+<<<<<<< HEAD
         Conv3DTestCase(methodName='runTest', stride=[1, 2, 1], dilation=2)
     )
     suite.addTest(
@@ -252,10 +330,41 @@ def add_cases(suite):
             padding="valid",
         )
     )
+=======
+        Conv3DTestCase(methodName='runTest', stride=[1, 2, 1], dilation=2))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest', stride=2, dilation=(2, 1, 2)))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest', padding="same", no_bias=True))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest',
+                       filter_size=(3, 2, 3),
+                       padding='valid'))
+    suite.addTest(Conv3DTestCase(methodName='runTest', padding=(2, 3, 1)))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest', padding=[1, 2, 2, 1, 2, 3]))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest',
+                       padding=[[0, 0], [0, 0], [1, 2], [2, 1], [2, 2]]))
+    suite.addTest(Conv3DTestCase(methodName='runTest', data_format="NDHWC"))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest',
+                       data_format="NDHWC",
+                       padding=[[0, 0], [1, 1], [3, 3], [2, 2], [0, 0]]))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest', groups=2, padding="valid"))
+    suite.addTest(
+        Conv3DTestCase(methodName='runTest',
+                       num_filters=6,
+                       num_channels=3,
+                       groups=3,
+                       padding="valid"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def add_error_cases(suite):
     suite.addTest(
+<<<<<<< HEAD
         Conv3DErrorTestCase(methodName='runTest', num_channels=5, groups=2)
     )
     suite.addTest(
@@ -263,6 +372,14 @@ def add_error_cases(suite):
             methodName='runTest', num_channels=5, groups=2, padding=[-1, 1, 3]
         )
     )
+=======
+        Conv3DErrorTestCase(methodName='runTest', num_channels=5, groups=2))
+    suite.addTest(
+        Conv3DErrorTestCase(methodName='runTest',
+                            num_channels=5,
+                            groups=2,
+                            padding=[-1, 1, 3]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def load_tests(loader, standard_tests, pattern):

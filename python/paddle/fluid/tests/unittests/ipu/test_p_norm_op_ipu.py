@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -40,9 +47,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         x = paddle.nn.functional.normalize(x, **self.attrs)
         self.fetch_list = [x.name]
 
@@ -58,11 +71,19 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_op_attrs(self):
         self.attrs = {"axis": 1}
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_op_attrs(self):
         self.attrs = {"p": 3.5, "axis": 1, "epsilon": 1e-3}
 

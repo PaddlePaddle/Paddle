@@ -116,7 +116,11 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
     auto ctx_place = ctx.GetPlace();
     if (centers != centers_out) {
       framework::TensorCopy(
+<<<<<<< HEAD
           *static_cast<const phi::DenseTensor *>(centers),
+=======
+          *static_cast<const framework::Tensor *>(centers),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           ctx_place,
           *platform::DeviceContextPool::Instance().Get(ctx_place),
           static_cast<phi::DenseTensor *>(centers_out));

@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestFunctionSpec(unittest.TestCase):
+
     def test_constructor(self):
         foo_spec = FunctionSpec(foo_func)
         args_name = foo_spec.args_name
@@ -50,9 +51,17 @@ class TestFunctionSpec(unittest.TestCase):
         self.assertTrue(len(kwargs) == 0)
 
         # case 2: foo(a=10, b=20, d=4)
+<<<<<<< HEAD
         args, kwargs = foo_spec.unified_args_and_kwargs(
             [], {'a': 10, 'b': 20, 'd': 4}
         )
+=======
+        args, kwargs = foo_spec.unified_args_and_kwargs([], {
+            'a': 10,
+            'b': 20,
+            'd': 4
+        })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertTupleEqual(args, (10, 20, 1, 4))
         self.assertTrue(len(kwargs) == 0)
 

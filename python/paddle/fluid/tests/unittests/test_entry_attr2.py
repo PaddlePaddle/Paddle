@@ -21,12 +21,14 @@ import paddle.fluid as fluid
 
 
 class EntryAttrChecks(unittest.TestCase):
+
     def embedding_layer(self):
         prog = fluid.Program()
         scope = fluid.core.Scope()
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
+<<<<<<< HEAD
                 input = fluid.layers.data(
                     name="dnn_data",
                     shape=[-1, 1],
@@ -34,6 +36,13 @@ class EntryAttrChecks(unittest.TestCase):
                     lod_level=1,
                     append_batch_size=False,
                 )
+=======
+                input = fluid.layers.data(name="dnn_data",
+                                          shape=[-1, 1],
+                                          dtype="int64",
+                                          lod_level=1,
+                                          append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 emb = fluid.layers.embedding(
                     input=input,
                     size=[100, 10],
@@ -55,6 +64,7 @@ class EntryAttrChecks(unittest.TestCase):
 
 
 class TestEntryAttrs(EntryAttrChecks):
+
     def test_embedding_layer(self):
         self.embedding_layer()
 

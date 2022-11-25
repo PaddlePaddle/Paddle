@@ -122,6 +122,17 @@ class CorrelationOp : public framework::OperatorWithKernel {
                           "X and Y shoule have the same datatype"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+<<<<<<< HEAD
+=======
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 template <typename T>

@@ -131,8 +131,11 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
     host_python_node->input_shapes = op_supplement_node->InputShapes();
     host_python_node->dtypes = op_supplement_node->Dtypes();
     host_python_node->callstack = op_supplement_node->CallStack();
+<<<<<<< HEAD
     host_python_node->attributes = op_supplement_node->Attributes();
     host_python_node->op_id = op_supplement_node->OpId();
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
   return host_python_node;
 }

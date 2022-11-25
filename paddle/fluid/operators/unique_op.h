@@ -31,6 +31,7 @@ namespace operators {
 
 template <typename InT>
 struct UniqueOpFunctor {
+<<<<<<< HEAD
   phi::DenseTensor* out_;
   phi::DenseTensor* index_;
   const phi::DenseTensor* in_;
@@ -40,6 +41,17 @@ struct UniqueOpFunctor {
                   phi::DenseTensor* index,
                   const phi::DenseTensor* in,
                   phi::DenseTensor* count = nullptr)
+=======
+  framework::Tensor* out_;
+  framework::Tensor* index_;
+  const framework::Tensor* in_;
+  framework::Tensor* count_;
+
+  UniqueOpFunctor(framework::Tensor* out,
+                  framework::Tensor* index,
+                  const framework::Tensor* in,
+                  framework::Tensor* count = nullptr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       : out_(out), index_(index), in_(in), count_(count) {}
 
   template <typename IndexT>
@@ -137,8 +149,13 @@ static bool Equal(const phi::DenseTensor& a, const phi::DenseTensor& b) {
 
 template <typename InT, typename IndexT>
 static void UniqueFlattendTensor(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                                  const phi::DenseTensor& in,
                                  phi::DenseTensor* out,
+=======
+                                 const framework::Tensor& in,
+                                 framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                  bool return_index,
                                  bool return_inverse,
                                  bool return_counts) {
@@ -232,8 +249,13 @@ static ForwardIt UniqueDimImpl(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename InT, typename IndexT>
 static void UniqueDim(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                       const phi::DenseTensor& in,
                       phi::DenseTensor* out,
+=======
+                      const framework::Tensor& in,
+                      framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       bool return_index,
                       bool return_inverse,
                       bool return_counts,
@@ -292,7 +314,11 @@ static void UniqueDim(const framework::ExecutionContext& context,
   std::vector<IndexT> inverse_vec(sorted_indices_vec.size(), 0);
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
   std::vector<IndexT> indices_vec(sorted_indices_vec.size(), 0);
+<<<<<<< HEAD
   auto last = UniqueDimImpl<std::vector<phi::DenseTensor>::iterator, InT>(
+=======
+  auto last = UniqueDimImpl<std::vector<framework::Tensor>::iterator, InT>(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       context,
       input_unbind.begin(),
       input_unbind.end(),
@@ -344,8 +370,13 @@ struct UniqueFlattendTensorFunctor {
   const bool return_counts_;
 
   UniqueFlattendTensorFunctor(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                               const phi::DenseTensor& in,
                               phi::DenseTensor* out,
+=======
+                              const framework::Tensor& in,
+                              framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                               bool return_index,
                               bool return_inverse,
                               bool return_counts)
@@ -374,8 +405,13 @@ struct UniqueDimFunctor {
   const bool return_counts_;
 
   UniqueDimFunctor(const framework::ExecutionContext& context,
+<<<<<<< HEAD
                    const phi::DenseTensor& in,
                    phi::DenseTensor* out,
+=======
+                   const framework::Tensor& in,
+                   framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                    const int axis,
                    bool return_index,
                    bool return_inverse,

@@ -20,6 +20,7 @@ from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestTensorCopyFrom(unittest.TestCase):
+
     def func_main(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             place = paddle.CPUPlace()
@@ -35,6 +36,7 @@ class TestTensorCopyFrom(unittest.TestCase):
 
 
 class TestUVATensorFromNumpy(unittest.TestCase):
+
     def func_uva_tensor_creation(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             dtype_list = [

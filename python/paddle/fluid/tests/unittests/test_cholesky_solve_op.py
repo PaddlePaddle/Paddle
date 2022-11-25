@@ -39,8 +39,12 @@ def cholesky_solution(X, B, upper=True):
         L = A
         U = A.T
     return scipy.linalg.solve_triangular(
+<<<<<<< HEAD
         U, scipy.linalg.solve_triangular(L, B, lower=True)
     )
+=======
+        U, scipy.linalg.solve_triangular(L, B, lower=True))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 # cholesky_solve implement 2
@@ -114,9 +118,15 @@ class TestCholeskySolveOp(OpTest):
     # get scipy result
     def set_output(self):
         umat = self.inputs['Y']
+<<<<<<< HEAD
         self.output = scipy_cholesky_solution_batch(
             umat, self.inputs['X'], upper=self.upper
         )
+=======
+        self.output = scipy_cholesky_solution_batch(umat,
+                                                    self.inputs['X'],
+                                                    upper=self.upper)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def setUp(self):
         self.op_type = "cholesky_solve"
@@ -159,6 +169,7 @@ class TestCholeskySolveOp3(TestCholeskySolveOp):
 
 # API function test
 class TestCholeskySolveAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(2021)
         self.place = [paddle.CPUPlace()]
@@ -184,6 +195,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
             z2_np = scipy_cholesky_solution(umat, x_np, upper=self.upper)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             fetches = exe.run(
                 fluid.default_main_program(),
                 feed={"x": x_np, "y": umat},
@@ -192,12 +204,24 @@ class TestCholeskySolveAPI(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
     # test in static mode
+=======
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "x": x_np,
+                                  "y": umat
+                              },
+                              fetch_list=[z])
+            self.assertTrue(np.allclose(fetches[0], z_np))
+
+    #test in static mode
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)
 
     # test in dynamic mode
     def test_dygraph(self):
+
         def run(place):
             paddle.disable_static(place)
             x_np = np.random.random([20, 2]).astype(self.dtype)
@@ -217,6 +241,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
 
     # test input with broadcast
     def test_broadcast(self):
+
         def run(place):
             paddle.disable_static()
             x_np = np.random.random([1, 30, 2]).astype(self.dtype)
@@ -237,16 +262,24 @@ class TestCholeskySolveAPI(unittest.TestCase):
 
 # test condition out of bounds
 class TestCholeskySolveOpError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
             y1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x1, y1)
 
             # The data type of input must be float32 or float64.

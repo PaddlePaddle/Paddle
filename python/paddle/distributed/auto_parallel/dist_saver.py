@@ -50,6 +50,7 @@ def _process_path(path):
 
 
 class DistributedSaver:
+
     def __init__(self):
         self._logger = get_logger(logging.INFO)
 
@@ -129,6 +130,7 @@ class DistributedSaver:
                 "path should be of 'dirname/filename' format, but received filename is empty string"
             )
         dirname = os.path.dirname(path)
+<<<<<<< HEAD
 
         # load path.pdparam and path.pdopt
         param_state_dict = _load_state(filename, dirname)
@@ -143,6 +145,38 @@ class DistributedSaver:
             "Load distributed attribute file: {}".format(dist_attr_file_list)
         )
         dist_attr = {}
+=======
+        # load path.pdparam
+        param_file_list = []
+        for param_file in os.listdir(dirname):
+            if check_filename('{}(.*)_dist(.*).pdparams'.format(filename),
+                              param_file):
+                param_file_list.append(os.path.join(dirname, param_file))
+        param_file_list.sort()
+        self._logger.info(
+            "Load distributed attribute file: {}".format(param_file_list))
+        param_dict = {}
+        for param_file in param_file_list:
+            with open(param_file, 'rb') as f:
+                state_dict_info = pickle.load(f, encoding='latin1')
+            for name, value in state_dict_info.items():
+                if name in param_dict:
+                    param_dict[name].append(np.array(value))
+                else:
+                    param_dict[name] = [np.array(value)]
+
+        # load path.pdattr
+        dist_attr_file_list = []
+        for dist_attr_file in os.listdir(dirname):
+            if check_filename('{}(.*)_dist(.*).pdattr'.format(filename),
+                              dist_attr_file):
+                dist_attr_file_list.append(os.path.join(dirname,
+                                                        dist_attr_file))
+        dist_attr_file_list.sort()
+        self._logger.info(
+            "Load distributed attribute file: {}".format(dist_attr_file_list))
+        pre_dist_attr = {}
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for dist_attr_file in dist_attr_file_list:
             with open(dist_attr_file, 'rb') as f:
                 dist_attr_info = pickle.load(f, encoding='latin1')
@@ -206,6 +240,7 @@ class DistributedSaver:
         # NOTE: `paddle.static.save_inference_model` does not support subblock.
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
+<<<<<<< HEAD
         paddle.static.save_inference_model(
             dist_path,
             dist_feed_vars,
@@ -213,6 +248,13 @@ class DistributedSaver:
             exe,
             program=dist_main_prog,
         )
+=======
+        paddle.static.save_inference_model(dist_path,
+                                           dist_feed_vars,
+                                           dist_fetch_vars,
+                                           exe,
+                                           program=dist_main_prog)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _save_rank_mapping(self, dirname):
         path = os.path.join(dirname, 'rank_mapping.csv')

@@ -84,10 +84,19 @@ template <typename T>
 class ConcatGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
     auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
+    auto outs =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto axis = ctx.Attr<int>("axis");
     int split_num = ins.size();
 
@@ -96,7 +105,11 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
                                 "The first input tensor is not initalized."));
 
     if (ctx.HasInput("AxisTensor")) {
+<<<<<<< HEAD
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
+=======
+      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       axis = GetDataFromTensor<int>(axis_tensor)[0];
     }
 

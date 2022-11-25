@@ -170,7 +170,10 @@ C_Status XcclReduce(void *send_buf,
                     size_t count,
                     C_DataType data_type,
                     C_CCLReduceOp op,
+<<<<<<< HEAD
                     size_t root_id,
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     C_CCLComm comm,
                     C_Stream stream) {
   return C_SUCCESS;

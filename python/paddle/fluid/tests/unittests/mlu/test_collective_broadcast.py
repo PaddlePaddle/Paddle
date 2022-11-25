@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestCBroadcastOp(TestDistBase):
+
     def _setup_config(self):
         pass
 

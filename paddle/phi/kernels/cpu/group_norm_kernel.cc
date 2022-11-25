@@ -40,7 +40,12 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+<<<<<<< HEAD
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

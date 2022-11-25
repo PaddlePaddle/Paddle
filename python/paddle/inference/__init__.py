@@ -16,6 +16,7 @@ from ..fluid.inference import Config  # noqa: F401
 from ..fluid.inference import DataType  # noqa: F401
 from ..fluid.inference import PlaceType  # noqa: F401
 from ..fluid.inference import PrecisionType  # noqa: F401
+from ..fluid.inference import BackendType  # noqa: F401
 from ..fluid.inference import Tensor  # noqa: F401
 from ..fluid.inference import Predictor  # noqa: F401
 from ..fluid.inference import create_predictor  # noqa: F401
@@ -28,6 +29,7 @@ from ..fluid.inference import get_num_bytes_of_data_type  # noqa: F401
 from ..fluid.inference import PredictorPool  # noqa: F401
 
 __all__ = [  # noqa
+<<<<<<< HEAD
     'Config',
     'DataType',
     'PlaceType',
@@ -42,4 +44,10 @@ __all__ = [  # noqa
     'get_trt_runtime_version',
     'get_num_bytes_of_data_type',
     'PredictorPool',
+=======
+    'Config', 'DataType', 'PlaceType', 'PrecisionType', 'BackendType', 'Tensor',
+    'Predictor', 'create_predictor', 'get_version', 'get_trt_compile_version',
+    'convert_to_mixed_precision', 'get_trt_runtime_version',
+    'get_num_bytes_of_data_type', 'PredictorPool'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 ]

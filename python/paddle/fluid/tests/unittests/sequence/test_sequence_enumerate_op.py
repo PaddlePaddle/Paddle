@@ -16,6 +16,10 @@ import sys
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("../")
 from op_test import OpTest
@@ -40,6 +44,7 @@ def sequence_enumerate(input_seq, in_lod, win_size, pad_value):
 
 
 class TestSequenceEnumerateOp(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_enumerate"
         self.init_test_case()
@@ -62,6 +67,7 @@ class TestSequenceEnumerateOp(OpTest):
 
 
 class TesSequenceEnumerateOpInt64(TestSequenceEnumerateOp):
+
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
         self.lod = [[9, 4, 11, 6]]
@@ -74,6 +80,7 @@ class TesSequenceEnumerateOpInt64(TestSequenceEnumerateOp):
 
 
 class TestSequenceEnumerateOpLargeWinSize(TestSequenceEnumerateOp):
+
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
         self.lod = [[9, 4, 11, 6]]
@@ -86,6 +93,7 @@ class TestSequenceEnumerateOpLargeWinSize(TestSequenceEnumerateOp):
 
 
 class TestSequenceEnumerateOpMaxWinSize(TestSequenceEnumerateOp):
+
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
         self.lod = [[9, 4, 11, 6]]
@@ -98,6 +106,7 @@ class TestSequenceEnumerateOpMaxWinSize(TestSequenceEnumerateOp):
 
 
 class TestSequenceEnumerateOpLargePadValue(TestSequenceEnumerateOp):
+
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
         self.lod = [[9, 4, 11, 6]]
@@ -110,6 +119,7 @@ class TestSequenceEnumerateOpLargePadValue(TestSequenceEnumerateOp):
 
 
 class TestSequenceEnumerateOpLargePadValueSeqLen0(TestSequenceEnumerateOp):
+
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
         self.lod = [[0, 14, 0, 16, 0]]

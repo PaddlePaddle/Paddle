@@ -65,6 +65,7 @@ struct GeluGradFunctor {
  * the src, mask and dst shape is (rows, cols)
  * the bias shape is (1, cols)
  */
+<<<<<<< HEAD
 template <typename T,
           typename MaskType,
           int VecSize,
@@ -91,6 +92,21 @@ __global__ void FusedDropoutActBias(
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
     const float quant_min_bound = -127.0) {
+=======
+template <typename T, typename MaskType, int VecSize, typename Functor>
+__global__ void FusedDropoutActBias(Functor act,
+                                    const uint64_t seed,
+                                    const uint64_t rows,
+                                    const uint64_t cols,
+                                    const int increment,
+                                    const float dropout_prob,
+                                    const bool is_upscale_in_train,
+                                    const bool is_test,
+                                    const T *__restrict__ src,
+                                    const T *__restrict__ bias,
+                                    T *dst,
+                                    MaskType *mask) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
@@ -108,9 +124,13 @@ __global__ void FusedDropoutActBias(
                                         VecSize,
                                         false,
                                         true,
+<<<<<<< HEAD
                                         Functor,
                                         InType,
                                         OutType>(r,
+=======
+                                        Functor>(r,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                                  i,
                                                  cols,
                                                  &state,
@@ -124,6 +144,7 @@ __global__ void FusedDropoutActBias(
                                                  is_test,
                                                  nullptr,
                                                  nullptr,
+<<<<<<< HEAD
                                                  act,
                                                  quant_last_in_scale,
                                                  dequant_out_scale_data,
@@ -132,6 +153,9 @@ __global__ void FusedDropoutActBias(
                                                  quant_round_type,
                                                  quant_max_bound,
                                                  quant_min_bound);
+=======
+                                                 act);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 }
@@ -182,11 +206,15 @@ __global__ void FusedActBias(Functor act,
 /**
  * @brief dst = dropout(activation(src + bias));
  */
+<<<<<<< HEAD
 template <typename T,
           typename MaskType,
           typename Functor,
           typename InType = T,
           typename OutType = T>
+=======
+template <typename T, typename MaskType, typename Functor>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void LaunchDropoutActBias(Functor act_functor,
                           const uint64_t seed,
                           const uint32_t rows,
@@ -195,6 +223,7 @@ void LaunchDropoutActBias(Functor act_functor,
                           const float dropout_prob,
                           const bool is_upscale_in_train,
                           const bool is_test,
+<<<<<<< HEAD
                           const InType *src,
                           const T *bias,
                           OutType *dst,
@@ -207,6 +236,13 @@ void LaunchDropoutActBias(Functor act_functor,
                           const int quant_round_type = 1,
                           const float quant_max_bound = 127.0,
                           const float quant_min_bound = -127.0) {
+=======
+                          const T *src,
+                          const T *bias,
+                          T *dst,
+                          MaskType *mask_data,
+                          const phi::GPUContext &ctx) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     SetZero<T>(ctx, reinterpret_cast<T *>(dst), rows * cols);
@@ -218,6 +254,7 @@ void LaunchDropoutActBias(Functor act_functor,
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
   if (cols % VecSize == 0) {
+<<<<<<< HEAD
     if (is_test && (dequant_out_scale_data == nullptr)) {
       const int32_t elem_cnt = rows * cols;
       const int32_t pack_num = elem_cnt / VecSize;
@@ -251,6 +288,8 @@ void LaunchDropoutActBias(Functor act_functor,
     }
   } else {
     FusedDropoutActBias<T, MaskType, 1, Functor, InType, OutType>
+=======
+    FusedDropoutActBias<T, MaskType, VecSize, Functor>
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
             act_functor,
             seed,
@@ -263,11 +302,31 @@ void LaunchDropoutActBias(Functor act_functor,
             src,
             bias,
             dst,
+            mask_data);
+  } else {
+    FusedDropoutActBias<T, MaskType, 1, Functor>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            act_functor,
+            seed,
+            rows,
+            cols,
+            increment,
+            dropout_prob,
+            is_upscale_in_train,
+            is_test,
+            src,
+            bias,
+            dst,
+<<<<<<< HEAD
             mask_data,
             quant_last_in_scale,
             dequant_out_scale_data,
             quant_out_scale_offset,
             quant_next_in_scale);
+=======
+            mask_data);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 }
 
@@ -317,6 +376,7 @@ template <typename T,
           int BlockSizeX,
           int BlockSizeY,
           int VecSize,
+<<<<<<< HEAD
           typename Functor,
           int THREADS_PER_CTA = BlockSizeX *BlockSizeY>
 __global__ __launch_bounds__(THREADS_PER_CTA) void FusedDropoutActBiasGrad(
@@ -330,6 +390,19 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void FusedDropoutActBiasGrad(
     const int64_t cols,
     T *dx,
     T *dbias) {
+=======
+          typename Functor>
+__global__ void FusedDropoutActBiasGrad(Functor act_grad,
+                                        const T *dout,
+                                        const MaskType *mask,
+                                        const T *src,
+                                        const T *bias,
+                                        const T factor,
+                                        const int64_t rows,
+                                        const int64_t cols,
+                                        T *dx,
+                                        T *dbias) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   int64_t col_id = blockIdx.x * blockDim.x + threadIdx.x;
 
   using LoadT = phi::AlignedVector<T, VecSize>;

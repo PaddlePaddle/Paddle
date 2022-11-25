@@ -35,8 +35,11 @@ class PADDLE_API CPUContext : public DeviceContext,
   Eigen::DefaultDevice* eigen_device() const;
   const Place& GetPlace() const override;
 
+<<<<<<< HEAD
   static const char* name() { return "CPUContext"; }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.
   // The Set interface is for inference only, DeviceContext will mark the

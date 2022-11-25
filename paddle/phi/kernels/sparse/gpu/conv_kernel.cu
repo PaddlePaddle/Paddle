@@ -22,9 +22,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 #include "glog/logging.h"
 
@@ -123,6 +126,32 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
+<<<<<<< HEAD
+=======
+  // 2. gather
+  phi::DenseTensor in_features =
+      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  phi::DenseTensor out_features =
+      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+  T* in_features_ptr = in_features.data<T>();
+  T* out_features_ptr = out_features.data<T>();
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
+
+  Gather<T, IntT>(dev_ctx,
+                  x.non_zero_elements().data<T>(),
+                  rulebook_ptr,
+                  rulebook_len,
+                  in_channels,
+                  in_features_ptr);
+
+  // 3. call gemm for every werght
+  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+  auto* out_values = out->mutable_non_zero_elements();
+  T* out_values_ptr = out_values->data<T>();
+  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   if (subm) {
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
@@ -142,6 +171,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                       out_index_ptr,
                                       unique_value_ptr);
   }
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
@@ -288,6 +318,45 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_CUTLASS
   }
 #endif
+=======
+
+  const T* kernel_ptr = kernel.data<T>();
+  for (int i = 0; i < kernel_size; i++) {
+    if (h_counter_ptr[i] <= 0) {
+      continue;
+    }
+
+    // call gemm: (n, in_channels) * (in_channels, out_channels)
+    const int M = h_counter_ptr[i];
+    const int K = in_channels;
+    const int N = out_channels;
+    T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
+    const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+    T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
+
+    blas.GEMM(CblasNoTrans,
+              CblasNoTrans,
+              M,
+              N,
+              K,
+              static_cast<T>(1),
+              tmp_in_ptr,
+              tmp_kernel_ptr,
+              static_cast<T>(0),
+              tmp_out_ptr);
+  }
+
+  // 4. scatter
+  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                   out_features_ptr,
+                                   out_index.data<int>(),
+                                   unique_value.data<int>(),
+                                   out->nnz(),
+                                   kernel_size,
+                                   out_channels,
+                                   1,
+                                   out_values_ptr);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 /**
@@ -310,6 +379,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
+<<<<<<< HEAD
   PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
                                  Conv3dCooGPUKernel<T, data_t>(dev_ctx,
                                                                x,
@@ -324,6 +394,23 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                                                rulebook,
                                                                counter);
                                }));
+=======
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "Conv3dCooGPUKernel", ([&] {
+        Conv3dCooGPUKernel<T, data_t>(dev_ctx,
+                                      x,
+                                      kernel,
+                                      paddings,
+                                      dilations,
+                                      strides,
+                                      groups,
+                                      subm,
+                                      key,
+                                      out,
+                                      rulebook,
+                                      counter);
+      }));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 }  // namespace sparse

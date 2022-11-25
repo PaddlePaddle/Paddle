@@ -22,6 +22,7 @@ from ..fluid.profiler import profiler  # noqa: F401
 from ..fluid.profiler import stop_profiler
 from ..fluid.profiler import reset_profiler
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     'Profiler',
     'get_profiler',
@@ -35,6 +36,16 @@ __all__ = [  # noqa
 
 
 class ProfilerOptions:
+=======
+__all__ = [  #noqa
+    'Profiler', 'get_profiler', 'ProfilerOptions', 'cuda_profiler',
+    'start_profiler', 'profiler', 'stop_profiler', 'reset_profiler'
+]
+
+
+class ProfilerOptions(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, options=None):
         self.options = {
             'state': 'All',
@@ -74,7 +85,12 @@ class ProfilerOptions:
 _current_profiler = None
 
 
+<<<<<<< HEAD
 class Profiler:
+=======
+class Profiler(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, enabled=True, options=None):
         if options is not None:
             self.profiler_options = options

@@ -30,11 +30,13 @@ paddle.enable_static()
 
 
 class XPUTestElementwiseDivOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'elementwise_div'
         self.use_dynamic_create_class = False
 
     class ElementwiseDivOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "elementwise_div"
             self.dtype = self.in_type
@@ -64,13 +66,20 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place, ['X', 'Y'], 'Out', max_relative_error=0.05
                 )
+=======
+                self.check_grad_with_place(place, ['X', 'Y'],
+                                           'Out',
+                                           max_relative_error=0.05)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def test_check_grad_ingore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place,
                     ['Y'],
@@ -78,10 +87,17 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
                     max_relative_error=0.05,
                     no_grad_set=set("X"),
                 )
+=======
+                self.check_grad_with_place(place, ['Y'],
+                                           'Out',
+                                           max_relative_error=0.05,
+                                           no_grad_set=set("X"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def test_check_grad_ingore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place,
                     ['X'],
@@ -89,6 +105,12 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
                     max_relative_error=0.05,
                     no_grad_set=set('Y'),
                 )
+=======
+                self.check_grad_with_place(place, ['X'],
+                                           'Out',
+                                           max_relative_error=0.05,
+                                           no_grad_set=set('Y'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def init_dtype(self):
             pass
@@ -113,6 +135,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwiseDivOp_scalar(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [20, 3, 4]).astype(self.dtype),
@@ -121,6 +144,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
 
     class TestElementwiseDivOp_Vector(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
@@ -131,6 +155,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseDivOp_broadcast_0(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [100, 3, 4]).astype(self.dtype),
@@ -145,6 +170,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseDivOp_broadcast_1(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 100, 4]).astype(self.dtype),
@@ -159,6 +185,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseDivOp_broadcast_2(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype(self.dtype),
@@ -172,22 +199,36 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseDivOp_broadcast_3(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
+<<<<<<< HEAD
                 'X': np.random.uniform(0.1, 1, [2, 10, 12, 5]).astype(
                     self.dtype
                 ),
                 'Y': np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype),
+=======
+                'X': np.random.uniform(0.1, 1,
+                                       [2, 10, 12, 5]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
             self.attrs = {'axis': 1}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.divide(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 10, 12, 1)
                 )
+=======
+                'Out':
+                np.divide(self.inputs['X'],
+                          self.inputs['Y'].reshape(1, 10, 12, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseDivOp_broadcast_4(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 3, 50]).astype(self.dtype),
@@ -198,20 +239,28 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseDivOp_broadcast_5(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
+<<<<<<< HEAD
                 'X': np.random.uniform(0.1, 1, [2, 3, 4, 20]).astype(
                     self.dtype
                 ),
                 'Y': np.random.uniform(0.1, 1, [2, 3, 1, 20]).astype(
                     self.dtype
                 ),
+=======
+                'X': np.random.uniform(0.1, 1,
+                                       [2, 3, 4, 20]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [2, 3, 1, 20]).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
             self.outputs = {
                 'Out': np.divide(self.inputs['X'], self.inputs['Y'])
             }
 
     class TestElementwiseDivOp_commonuse_1(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype(self.dtype),
@@ -222,26 +271,40 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseDivOp_commonuse_2(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
+<<<<<<< HEAD
                 'X': np.random.uniform(0.1, 1, [30, 3, 1, 5]).astype(
                     self.dtype
                 ),
                 'Y': np.random.uniform(0.1, 1, [30, 1, 4, 1]).astype(
                     self.dtype
                 ),
+=======
+                'X': np.random.uniform(0.1, 1,
+                                       [30, 3, 1, 5]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1,
+                                       [30, 1, 4, 1]).astype(self.dtype),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
             self.outputs = {
                 'Out': np.divide(self.inputs['X'], self.inputs['Y'])
             }
 
     class TestElementwiseDivOp_xsize_lessthan_ysize(ElementwiseDivOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype),
+<<<<<<< HEAD
                 'Y': np.random.uniform(0.1, 1, [2, 3, 10, 12]).astype(
                     self.dtype
                 ),
+=======
+                'Y': np.random.uniform(0.1, 1,
+                                       [2, 3, 10, 12]).astype(self.dtype),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
             self.attrs = {'axis': 2}
@@ -251,12 +314,20 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseDivBroadcast(unittest.TestCase):
+
         def test_shape_with_batch_sizes(self):
             with fluid.program_guard(fluid.Program()):
+<<<<<<< HEAD
                 x_var = fluid.data(
                     name='x', dtype='float32', shape=[None, 3, None, None]
                 )
                 one = 2.0
+=======
+                x_var = fluid.data(name='x',
+                                   dtype='float32',
+                                   shape=[None, 3, None, None])
+                one = 2.
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 out = one / x_var
                 exe = fluid.Executor(fluid.XPUPlace(0))
                 x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype(

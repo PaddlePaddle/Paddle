@@ -96,7 +96,11 @@ static void CallPythonFunc(py::object *callable,
             out_num));
 
     PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
         py::cast<phi::DenseTensor *>(ret_tuple[0]) == nullptr,
+=======
+        py::cast<framework::LoDTensor *>(ret_tuple[0]) == nullptr,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         true,
         platform::errors::InvalidArgument(
             "Python function has no return values or returns None. In "

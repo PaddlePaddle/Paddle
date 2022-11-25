@@ -135,6 +135,7 @@ class BasicGRUUnit(Layer):
             gate_bias_attr = self._bias_attr
             candidate_bias_attr = self._bias_attr
 
+<<<<<<< HEAD
         self._gate_bias = self.create_parameter(
             attr=gate_bias_attr,
             shape=[2 * self._hiden_size],
@@ -147,6 +148,16 @@ class BasicGRUUnit(Layer):
             dtype=self._dtype,
             is_bias=True,
         )
+=======
+        self._gate_bias = self.create_parameter(attr=gate_bias_attr,
+                                                shape=[2 * self._hiden_size],
+                                                dtype=self._dtype,
+                                                is_bias=True)
+        self._candidate_bias = self.create_parameter(attr=candidate_bias_attr,
+                                                     shape=[self._hiden_size],
+                                                     dtype=self._dtype,
+                                                     is_bias=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
@@ -160,9 +171,14 @@ class BasicGRUUnit(Layer):
 
         r_hidden = r * pre_hidden
 
+<<<<<<< HEAD
         candidate = layers.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
+=======
+        candidate = layers.matmul(layers.concat([input, r_hidden], 1),
+                                  self._candidate_weight)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
@@ -331,10 +347,17 @@ def basic_gru(
     mask = None
     if sequence_length:
         max_seq_len = layers.shape(input)[0]
+<<<<<<< HEAD
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
         mask = paddle.transpose(mask, [1, 0])
+=======
+        mask = layers.sequence_mask(sequence_length,
+                                    maxlen=max_seq_len,
+                                    dtype='float32')
+        mask = layers.transpose(mask, [1, 0])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     direc_num = 1
     if bidirectional:
@@ -358,11 +381,17 @@ def basic_gru(
                 if init_hidden:
                     pre_hidden = rnn.memory(init=init_hidden[i, direc_index])
                 else:
+<<<<<<< HEAD
                     pre_hidden = rnn.memory(
                         batch_ref=rnn_input,
                         shape=[-1, hidden_size],
                         ref_batch_dim_idx=1,
                     )
+=======
+                    pre_hidden = rnn.memory(batch_ref=rnn_input,
+                                            shape=[-1, hidden_size],
+                                            ref_batch_dim_idx=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
@@ -395,25 +424,44 @@ def basic_gru(
             last_hidden_array.append(last_hidden)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
+<<<<<<< HEAD
         last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
+=======
+        last_hidden_output = layers.reshape(last_hidden_output,
+                                            shape=[num_layers, -1, hidden_size])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return rnn_output, last_hidden_output
         # seq_len, batch_size, hidden_size
 
+<<<<<<< HEAD
     fw_rnn_out, fw_last_hidden = get_single_direction_output(
         input, fw_unit_list, mask, direc_index=0
     )
+=======
+    fw_rnn_out, fw_last_hidden = get_single_direction_output(input,
+                                                             fw_unit_list,
+                                                             mask,
+                                                             direc_index=0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if bidirectional:
         bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:
             bw_mask = layers.reverse(mask, axis=[0])
+<<<<<<< HEAD
         bw_rnn_out, bw_last_hidden = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
+=======
+        bw_rnn_out, bw_last_hidden = get_single_direction_output(bw_input,
+                                                                 bw_unit_list,
+                                                                 bw_mask,
+                                                                 direc_index=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
 
@@ -570,6 +618,7 @@ def basic_lstm(
         else:
             layer_bias_attr = bias_attr
         fw_unit_list.append(
+<<<<<<< HEAD
             BasicLSTMUnit(
                 new_name,
                 hidden_size,
@@ -581,6 +630,16 @@ def basic_lstm(
                 dtype=dtype,
             )
         )
+=======
+            BasicLSTMUnit(new_name,
+                          hidden_size,
+                          param_attr=layer_param_attr,
+                          bias_attr=layer_bias_attr,
+                          gate_activation=gate_activation,
+                          activation=activation,
+                          forget_bias=forget_bias,
+                          dtype=dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if bidirectional:
         bw_unit_list = []
 
@@ -597,6 +656,7 @@ def basic_lstm(
             else:
                 layer_bias_attr = param_attr
             bw_unit_list.append(
+<<<<<<< HEAD
                 BasicLSTMUnit(
                     new_name,
                     hidden_size,
@@ -608,6 +668,16 @@ def basic_lstm(
                     dtype=dtype,
                 )
             )
+=======
+                BasicLSTMUnit(new_name,
+                              hidden_size,
+                              param_attr=layer_param_attr,
+                              bias_attr=layer_bias_attr,
+                              gate_activation=gate_activation,
+                              activation=activation,
+                              forget_bias=forget_bias,
+                              dtype=dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if batch_first:
         input = paddle.transpose(input, [1, 0, 2])
@@ -615,9 +685,15 @@ def basic_lstm(
     mask = None
     if sequence_length:
         max_seq_len = layers.shape(input)[0]
+<<<<<<< HEAD
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
+=======
+        mask = layers.sequence_mask(sequence_length,
+                                    maxlen=max_seq_len,
+                                    dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         mask = paddle.transpose(mask, [1, 0])
 
@@ -649,12 +725,19 @@ def basic_lstm(
                     pre_hidden = rnn.memory(init=init_hidden[i, direc_index])
                     pre_cell = rnn.memory(init=init_cell[i, direc_index])
                 else:
+<<<<<<< HEAD
                     pre_hidden = rnn.memory(
                         batch_ref=rnn_input, shape=[-1, hidden_size]
                     )
                     pre_cell = rnn.memory(
                         batch_ref=rnn_input, shape=[-1, hidden_size]
                     )
+=======
+                    pre_hidden = rnn.memory(batch_ref=rnn_input,
+                                            shape=[-1, hidden_size])
+                    pre_cell = rnn.memory(batch_ref=rnn_input,
+                                          shape=[-1, hidden_size])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 new_hidden, new_cell = unit_list[i](
                     step_input, pre_hidden, pre_cell
@@ -702,6 +785,7 @@ def basic_lstm(
             last_cell_array.append(last_cell)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
+<<<<<<< HEAD
         last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
@@ -709,6 +793,13 @@ def basic_lstm(
         last_cell_output = paddle.reshape(
             last_cell_output, shape=[num_layers, -1, hidden_size]
         )
+=======
+        last_hidden_output = layers.reshape(last_hidden_output,
+                                            shape=[num_layers, -1, hidden_size])
+        last_cell_output = layers.concat(last_cell_array, axis=0)
+        last_cell_output = layers.reshape(last_cell_output,
+                                          shape=[num_layers, -1, hidden_size])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return rnn_output, last_hidden_output, last_cell_output
         # seq_len, batch_size, hidden_size
@@ -847,11 +938,19 @@ class BasicLSTMUnit(Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
+<<<<<<< HEAD
         self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
         self._activation = activation or paddle.tanh
         self._forget_bias = layers.fill_constant(
             [1], dtype=dtype, value=forget_bias
         )
+=======
+        self._gate_activation = gate_activation or layers.sigmoid
+        self._activation = activation or layers.tanh
+        self._forget_bias = layers.fill_constant([1],
+                                                 dtype=dtype,
+                                                 value=forget_bias)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._forget_bias.stop_gradient = False
         self._dtype = dtype
 
@@ -865,12 +964,19 @@ class BasicLSTMUnit(Layer):
             dtype=self._dtype,
         )
 
+<<<<<<< HEAD
         self._bias = self.create_parameter(
             attr=self._bias_attr,
             shape=[4 * self._hiden_size],
             dtype=self._dtype,
             is_bias=True,
         )
+=======
+        self._bias = self.create_parameter(attr=self._bias_attr,
+                                           shape=[4 * self._hiden_size],
+                                           dtype=self._dtype,
+                                           is_bias=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)

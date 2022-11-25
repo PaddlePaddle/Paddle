@@ -119,6 +119,7 @@ def simple_img_conv_pool(
                                                         pool_stride=2,
                                                         act="relu")
     """
+<<<<<<< HEAD
     conv_out = layers.conv2d(
         input=input,
         num_filters=num_filters,
@@ -142,6 +143,27 @@ def simple_img_conv_pool(
         global_pooling=global_pooling,
         use_cudnn=use_cudnn,
     )
+=======
+    conv_out = layers.conv2d(input=input,
+                             num_filters=num_filters,
+                             filter_size=filter_size,
+                             stride=conv_stride,
+                             padding=conv_padding,
+                             dilation=conv_dilation,
+                             groups=conv_groups,
+                             param_attr=param_attr,
+                             bias_attr=bias_attr,
+                             act=act,
+                             use_cudnn=use_cudnn)
+
+    pool_out = layers.pool2d(input=conv_out,
+                             pool_size=pool_size,
+                             pool_type=pool_type,
+                             pool_stride=pool_stride,
+                             pool_padding=pool_padding,
+                             global_pooling=global_pooling,
+                             use_cudnn=use_cudnn)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return pool_out
 
 
@@ -242,6 +264,7 @@ def img_conv_group(
         if conv_with_batchnorm[i]:
             local_conv_act = None
 
+<<<<<<< HEAD
         tmp = layers.conv2d(
             input=tmp,
             num_filters=conv_num_filter[i],
@@ -251,6 +274,15 @@ def img_conv_group(
             act=local_conv_act,
             use_cudnn=use_cudnn,
         )
+=======
+        tmp = layers.conv2d(input=tmp,
+                            num_filters=conv_num_filter[i],
+                            filter_size=conv_filter_size[i],
+                            padding=conv_padding[i],
+                            param_attr=param_attr[i],
+                            act=local_conv_act,
+                            use_cudnn=use_cudnn)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if conv_with_batchnorm[i]:
             tmp = layers.batch_norm(input=tmp, act=conv_act)
@@ -258,6 +290,7 @@ def img_conv_group(
             if abs(drop_rate) > 1e-5:
                 tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
 
+<<<<<<< HEAD
     pool_out = layers.pool2d(
         input=tmp,
         pool_size=pool_size,
@@ -265,6 +298,13 @@ def img_conv_group(
         pool_stride=pool_stride,
         use_cudnn=use_cudnn,
     )
+=======
+    pool_out = layers.pool2d(input=tmp,
+                             pool_size=pool_size,
+                             pool_type=pool_type,
+                             pool_stride=pool_stride,
+                             use_cudnn=use_cudnn)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return pool_out
 
 
@@ -332,6 +372,7 @@ def sequence_conv_pool(
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
+<<<<<<< HEAD
     conv_out = layers.sequence_conv(
         input=input,
         num_filters=num_filters,
@@ -340,6 +381,14 @@ def sequence_conv_pool(
         bias_attr=bias_attr,
         act=act,
     )
+=======
+    conv_out = layers.sequence_conv(input=input,
+                                    num_filters=num_filters,
+                                    filter_size=filter_size,
+                                    param_attr=param_attr,
+                                    bias_attr=bias_attr,
+                                    act=act)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
     return pool_out
@@ -484,6 +533,7 @@ def scaled_dot_product_attention(
         raise TypeError(
             "The dtype of keys, values and queries should be the same."
             "But received queries.dtype = %s, "
+<<<<<<< HEAD
             " keys.dtype = %s, values.dtype) = %s."
             % (
                 convert_dtype(queries.dtype),
@@ -491,6 +541,11 @@ def scaled_dot_product_attention(
                 convert_dtype(values.dtype),
             )
         )
+=======
+            " keys.dtype = %s, values.dtype) = %s." %
+            (convert_dtype(queries.dtype), convert_dtype(
+                keys.dtype), convert_dtype(values.dtype)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
@@ -570,10 +625,16 @@ def scaled_dot_product_attention(
         # reshape the 3-D input: [batch_size, max_sequence_length, hidden_dim]
         # into a 4-D output:
         # [batch_size, max_sequence_length, num_heads, hidden_size_per_head].
+<<<<<<< HEAD
         reshaped = paddle.reshape(
             x=x,
             shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads],
         )
+=======
+        reshaped = layers.reshape(x=x,
+                                  shape=list(x.shape[:-1]) +
+                                  [num_heads, hidden_size // num_heads])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # permute the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
@@ -598,6 +659,7 @@ def scaled_dot_product_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
+<<<<<<< HEAD
         trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         return paddle.reshape(
             x=trans_x,
@@ -612,6 +674,15 @@ def scaled_dot_product_attention(
                 )
             ),
         )
+=======
+        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        return layers.reshape(x=trans_x,
+                              shape=list(
+                                  map(int, [
+                                      trans_x.shape[0], trans_x.shape[1],
+                                      trans_x.shape[2] * trans_x.shape[3]
+                                  ])))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     q, k, v = __compute_qkv(queries, keys, values, num_heads)
 
@@ -623,6 +694,7 @@ def scaled_dot_product_attention(
     scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
     product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
+<<<<<<< HEAD
     x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])
     x = paddle.nn.functional.softmax(x)
     weights = paddle.reshape(x=x, shape=product.shape)
@@ -631,5 +703,15 @@ def scaled_dot_product_attention(
         weights = layers.dropout(
             weights, dropout_prob=dropout_rate, is_test=False
         )
+=======
+    weights = layers.reshape(x=layers.reshape(x=product,
+                                              shape=[-1, product.shape[-1]],
+                                              act="softmax"),
+                             shape=product.shape)
+    if dropout_rate:
+        weights = layers.dropout(weights,
+                                 dropout_prob=dropout_rate,
+                                 is_test=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     ctx_multiheads = layers.matmul(weights, v)
     return __combine_heads(ctx_multiheads)

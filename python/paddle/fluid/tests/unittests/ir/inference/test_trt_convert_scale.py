@@ -24,11 +24,17 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertScaleTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+<<<<<<< HEAD
         def generate_input1(attrs: List[Dict[str, Any]], batch, is_int):
+=======
+
+        def generate_input1(attrs: List[Dict[str, Any]], batch):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(
                     np.int32 if is_int else np.float32
@@ -53,6 +59,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
                     for scale in [0.1, -1.0]:
                         for bias in [0.0, 1.2]:
                             for bias_after_scale in [False, True]:
+<<<<<<< HEAD
                                 for is_int in [False, True]:
                                     self.num_input = num_input
                                     self.dims = dims
@@ -118,6 +125,55 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+                                self.num_input = num_input
+                                self.dims = dims
+                                dics = [{
+                                    "scale": scale,
+                                    "bias": bias,
+                                    "bias_after_scale": bias_after_scale
+                                }, {}]
+
+                                dics_intput = [{
+                                    "X": ["scale_input"],
+                                    "ScaleTensor": ["ScaleTensor"],
+                                }, {
+                                    "X": ["scale_input"]
+                                }]
+                                dics_intputs = [{
+                                    "ScaleTensor":
+                                    TensorConfig(data_gen=partial(
+                                        generate_weight1, dics))
+                                }, {}]
+
+                                ops_config = [{
+                                    "op_type":
+                                    "scale",
+                                    "op_inputs":
+                                    dics_intput[num_input],
+                                    "op_outputs": {
+                                        "Out": ["scale_out"]
+                                    },
+                                    "op_attrs":
+                                    dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights=dics_intputs[num_input],
+                                    inputs={
+                                        "scale_input":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, dics, batch))
+                                    },
+                                    outputs=["scale_out"])
+
+                                yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -169,14 +225,22 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if self.num_input == 0:
                 return True

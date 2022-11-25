@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
+import tempfile
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -42,6 +43,7 @@ def get_usr_combined_features():
 
     uid = layers.data(name='user_id', shape=[1], dtype='int64')
 
+<<<<<<< HEAD
     usr_emb = layers.embedding(
         input=uid,
         dtype='float32',
@@ -49,6 +51,13 @@ def get_usr_combined_features():
         param_attr='user_table',
         is_sparse=IS_SPARSE,
     )
+=======
+    usr_emb = layers.embedding(input=uid,
+                               dtype='float32',
+                               size=[USR_DICT_SIZE, 32],
+                               param_attr='user_table',
+                               is_sparse=IS_SPARSE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     usr_fc = layers.fc(input=usr_emb, size=32)
 
@@ -56,36 +65,57 @@ def get_usr_combined_features():
 
     usr_gender_id = layers.data(name='gender_id', shape=[1], dtype='int64')
 
+<<<<<<< HEAD
     usr_gender_emb = layers.embedding(
         input=usr_gender_id,
         size=[USR_GENDER_DICT_SIZE, 16],
         param_attr='gender_table',
         is_sparse=IS_SPARSE,
     )
+=======
+    usr_gender_emb = layers.embedding(input=usr_gender_id,
+                                      size=[USR_GENDER_DICT_SIZE, 16],
+                                      param_attr='gender_table',
+                                      is_sparse=IS_SPARSE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     usr_gender_fc = layers.fc(input=usr_gender_emb, size=16)
 
     USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
     usr_age_id = layers.data(name='age_id', shape=[1], dtype="int64")
 
+<<<<<<< HEAD
     usr_age_emb = layers.embedding(
         input=usr_age_id,
         size=[USR_AGE_DICT_SIZE, 16],
         is_sparse=IS_SPARSE,
         param_attr='age_table',
     )
+=======
+    usr_age_emb = layers.embedding(input=usr_age_id,
+                                   size=[USR_AGE_DICT_SIZE, 16],
+                                   is_sparse=IS_SPARSE,
+                                   param_attr='age_table')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     usr_age_fc = layers.fc(input=usr_age_emb, size=16)
 
     USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
     usr_job_id = layers.data(name='job_id', shape=[1], dtype="int64")
 
+<<<<<<< HEAD
     usr_job_emb = layers.embedding(
         input=usr_job_id,
         size=[USR_JOB_DICT_SIZE, 16],
         param_attr='job_table',
         is_sparse=IS_SPARSE,
     )
+=======
+    usr_job_emb = layers.embedding(input=usr_job_id,
+                                   size=[USR_JOB_DICT_SIZE, 16],
+                                   param_attr='job_table',
+                                   is_sparse=IS_SPARSE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     usr_job_fc = layers.fc(input=usr_job_emb, size=16)
 
@@ -104,6 +134,7 @@ def get_mov_combined_features():
 
     mov_id = layers.data(name='movie_id', shape=[1], dtype='int64')
 
+<<<<<<< HEAD
     mov_emb = layers.embedding(
         input=mov_id,
         dtype='float32',
@@ -111,11 +142,19 @@ def get_mov_combined_features():
         param_attr='movie_table',
         is_sparse=IS_SPARSE,
     )
+=======
+    mov_emb = layers.embedding(input=mov_id,
+                               dtype='float32',
+                               size=[MOV_DICT_SIZE, 32],
+                               param_attr='movie_table',
+                               is_sparse=IS_SPARSE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     mov_fc = layers.fc(input=mov_emb, size=32)
 
     CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
 
+<<<<<<< HEAD
     category_id = layers.data(
         name='category_id', shape=[1], dtype='int64', lod_level=1
     )
@@ -145,6 +184,36 @@ def get_mov_combined_features():
         act="tanh",
         pool_type="sum",
     )
+=======
+    category_id = layers.data(name='category_id',
+                              shape=[1],
+                              dtype='int64',
+                              lod_level=1)
+
+    mov_categories_emb = layers.embedding(input=category_id,
+                                          size=[CATEGORY_DICT_SIZE, 32],
+                                          is_sparse=IS_SPARSE)
+
+    mov_categories_hidden = layers.sequence_pool(input=mov_categories_emb,
+                                                 pool_type="sum")
+
+    MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
+
+    mov_title_id = layers.data(name='movie_title',
+                               shape=[1],
+                               dtype='int64',
+                               lod_level=1)
+
+    mov_title_emb = layers.embedding(input=mov_title_id,
+                                     size=[MOV_TITLE_DICT_SIZE, 32],
+                                     is_sparse=IS_SPARSE)
+
+    mov_title_conv = nets.sequence_conv_pool(input=mov_title_emb,
+                                             num_filters=32,
+                                             filter_size=3,
+                                             act="tanh",
+                                             pool_type="sum")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     concat_embed = layers.concat(
         input=[mov_fc, mov_categories_hidden, mov_title_conv], axis=1
@@ -184,6 +253,7 @@ def train(use_cuda, save_dirname, is_local=True):
 
     exe = Executor(place)
 
+<<<<<<< HEAD
     train_reader = paddle.batch(
         paddle.reader.shuffle(paddle.dataset.movielens.train(), buf_size=8192),
         batch_size=BATCH_SIZE,
@@ -191,6 +261,13 @@ def train(use_cuda, save_dirname, is_local=True):
     test_reader = paddle.batch(
         paddle.dataset.movielens.test(), batch_size=BATCH_SIZE
     )
+=======
+    train_reader = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.movielens.train(), buf_size=8192),
+                                batch_size=BATCH_SIZE)
+    test_reader = paddle.batch(paddle.dataset.movielens.test(),
+                               batch_size=BATCH_SIZE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     feed_order = [
         'user_id',
@@ -238,6 +315,7 @@ def train(use_cuda, save_dirname, is_local=True):
                         # if avg_cost less than 6.0, we think our code is good.
                         if save_dirname is not None:
                             fluid.io.save_inference_model(
+<<<<<<< HEAD
                                 save_dirname,
                                 [
                                     "user_id",
@@ -251,6 +329,12 @@ def train(use_cuda, save_dirname, is_local=True):
                                 [scale_infer],
                                 exe,
                             )
+=======
+                                save_dirname, [
+                                    "user_id", "gender_id", "age_id", "job_id",
+                                    "movie_id", "category_id", "movie_title"
+                                ], [scale_infer], exe)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         return
 
                 if math.isnan(float(out[0])):
@@ -328,6 +412,7 @@ def infer(use_cuda, save_dirname=None):
 
         assert feed_target_names[5] == "category_id"
         category_id = fluid.create_lod_tensor(
+<<<<<<< HEAD
             [np.array([10, 8, 9], dtype='int64')], [[3]], place
         )
 
@@ -337,6 +422,14 @@ def infer(use_cuda, save_dirname=None):
             [[5]],
             place,
         )
+=======
+            [np.array([10, 8, 9], dtype='int64')], [[3]], place)
+
+        assert feed_target_names[6] == "movie_title"
+        movie_title = fluid.create_lod_tensor(
+            [np.array([1069, 4140, 2923, 710, 988], dtype='int64')], [[5]],
+            place)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -363,9 +456,14 @@ def main(use_cuda):
 
     # Directory for saving the inference model
     temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
     save_dirname = os.path.join(
         temp_dir.name, "recommender_system.inference.model"
     )
+=======
+    save_dirname = os.path.join(temp_dir.name,
+                                "recommender_system.inference.model")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     train(use_cuda, save_dirname)
     infer(use_cuda, save_dirname)

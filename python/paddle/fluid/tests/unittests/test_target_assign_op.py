@@ -36,9 +36,15 @@ def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
         ret_ids = set([i for i in range(num_prior)]) - set(ids)
         l = neg_lod[n]
         neg_ids = random.sample(ret_ids, l)
+<<<<<<< HEAD
         neg_indices[offset : offset + neg_lod[n], :] = (
             np.array(neg_ids).astype('int32').reshape(l, 1)
         )
+=======
+        neg_indices[offset:offset +
+                    neg_lod[n], :] = np.array(neg_ids).astype('int32').reshape(
+                        l, 1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         offset += neg_lod[n]
 
     return match_indices, neg_indices
@@ -92,6 +98,7 @@ def target_assign(
 
 
 class TestTargetAssginFloatType(OpTest):
+
     def setUp(self):
         self.op_type = "target_assign"
         num_prior = 120
@@ -103,6 +110,7 @@ class TestTargetAssginFloatType(OpTest):
         num_gt = sum(gt_lod)
 
         encoded_box = np.random.random((num_gt, num_prior, 4)).astype('float32')
+<<<<<<< HEAD
         gt_label = np.random.randint(num_class, size=(num_gt, 1)).astype(
             'int32'
         )
@@ -120,6 +128,17 @@ class TestTargetAssginFloatType(OpTest):
             neg_lod,
             mismatch_value,
         )
+=======
+        gt_label = np.random.randint(num_class,
+                                     size=(num_gt, 1)).astype('int32')
+
+        match_indices, neg_indices = gen_match_and_neg_indices(
+            num_prior, gt_lod, neg_lod)
+
+        out, out_wt, _, _ = target_assign(encoded_box, gt_label, match_indices,
+                                          neg_indices, gt_lod, neg_lod,
+                                          mismatch_value)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # assign regression targets
         x = encoded_box
@@ -138,6 +157,7 @@ class TestTargetAssginFloatType(OpTest):
 
 
 class TestTargetAssginIntType(OpTest):
+
     def setUp(self):
         self.op_type = "target_assign"
         num_prior = 120
@@ -149,6 +169,7 @@ class TestTargetAssginIntType(OpTest):
         num_gt = sum(gt_lod)
 
         encoded_box = np.random.random((num_gt, num_prior, 4)).astype('float32')
+<<<<<<< HEAD
         gt_label = np.random.randint(num_class, size=(num_gt, 1)).astype(
             'int32'
         )
@@ -166,6 +187,17 @@ class TestTargetAssginIntType(OpTest):
             neg_lod,
             mismatch_value,
         )
+=======
+        gt_label = np.random.randint(num_class,
+                                     size=(num_gt, 1)).astype('int32')
+
+        match_indices, neg_indices = gen_match_and_neg_indices(
+            num_prior, gt_lod, neg_lod)
+
+        _, _, out, out_wt, = target_assign(encoded_box, gt_label, match_indices,
+                                           neg_indices, gt_lod, neg_lod,
+                                           mismatch_value)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # assign cassification argets
         x = np.reshape(gt_label, (num_gt, 1, 1))

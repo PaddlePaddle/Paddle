@@ -86,7 +86,11 @@ template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& weights,
+<<<<<<< HEAD
                     const Scalar& minlength,
+=======
+                    int minlength,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     DenseTensor* out) {
   int int_minlength = minlength.to<int>();
   PADDLE_ENFORCE_GE(int_minlength,

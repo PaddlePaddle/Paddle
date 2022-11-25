@@ -22,8 +22,13 @@ template <typename T>
 class ArgMaxMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto axis = static_cast<int>(ctx.Attr<int64_t>("axis"));
     auto dtype = ctx.Attr<int>("dtype");
     const bool& flatten = ctx.Attr<bool>("flatten");
@@ -49,7 +54,11 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
       axis += x_dims.size();
     }
 
+<<<<<<< HEAD
     phi::DenseTensor flatten_x(x->type());
+=======
+    framework::Tensor flatten_x(x->type());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     flatten_x.ShareDataWith(*x);
     if (flatten) {
       flatten_x.Resize(phi::make_ddim({x->numel()}));
@@ -66,7 +75,11 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
     }
     size_t indices_size_inbytes = out_count * sizeof(int32_t);
     auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
+<<<<<<< HEAD
     phi::DenseTensor value_out =
+=======
+    framework::Tensor value_out =
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ctx.AllocateTmpTensor<T, MLUDeviceContext>(out->dims(), dev_ctx);
     MLUCnnlTensorDesc value_out_desc(value_out);
     MLUCnnlTensorDesc input_desc(
@@ -93,7 +106,11 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
                       GetBasePtr(&value_out));
     } else {
       out->template mutable_data<int64_t>(ctx.GetPlace());
+<<<<<<< HEAD
       phi::DenseTensor out_int32 =
+=======
+      framework::Tensor out_int32 =
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           ctx.AllocateTmpTensor<int32_t, MLUDeviceContext>(out->dims(),
                                                            dev_ctx);
       MLUCnnl::Reduce(ctx,

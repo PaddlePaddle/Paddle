@@ -352,16 +352,28 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddAttr<bool>(
         "trans_x",
+<<<<<<< HEAD
         R"DOC((bool, default false), Whether to transpose input tensor X
     or not. The input tensor X coulbe be more than two dimension. When
     set trans_x=true, it would fully reverse X. For instant: X with shpae
+=======
+        R"DOC((bool, default false), Whether to transpose input tensor X 
+    or not. The input tensor X coulbe be more than two dimension. When 
+    set trans_x=true, it would fully reverse X. For instant: X with shpae 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     [d0, d1, d2, d3] -> [d3, d2, d1, d0].)DOC")
         .SetDefault(false);
     AddAttr<bool>(
         "trans_y",
+<<<<<<< HEAD
         R"DOC((bool, default false), Whether to transpose input tensor Y
     or not. The input tensor Y should be two dimension. When
     set trans_y=true, it would transpose Y. For instant: Y with shpae
+=======
+        R"DOC((bool, default false), Whether to transpose input tensor Y 
+    or not. The input tensor Y should be two dimension. When 
+    set trans_y=true, it would transpose Y. For instant: Y with shpae 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     [d0, d1] -> [d1, d0].)DOC")
         .SetDefault(false);
 
@@ -392,13 +404,23 @@ class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     const auto& act_type = this->template Attr<std::string>("activation");
+<<<<<<< HEAD
+=======
+    PADDLE_ENFORCE_EQ(
+        act_type,
+        "none",
+        phi::errors::InvalidArgument("The activation should be none."));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
+<<<<<<< HEAD
     if (act_type != "none") {
       op->SetInput("ReserveSpace", this->Input("ReserveSpace"));
     }
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     op->SetInput("DOut", this->OutputGrad("Out"));
 
     op->SetOutput("DX", this->InputGrad("X"));

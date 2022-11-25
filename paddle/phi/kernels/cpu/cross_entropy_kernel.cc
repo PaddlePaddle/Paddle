@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_kernel.h"
 
+#include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"

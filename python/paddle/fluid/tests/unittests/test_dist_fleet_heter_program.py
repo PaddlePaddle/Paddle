@@ -25,6 +25,7 @@ paddle.enable_static()
 
 
 class TestDistFleetHeterProgram(unittest.TestCase):
+
     def build_role(self):
         environs = {}
         environs[
@@ -65,6 +66,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         return self.strategy
 
     def build_input(self):
+<<<<<<< HEAD
         dense_input = fluid.layers.data(
             name="dense_input", shape=[10], dtype="float32"
         )
@@ -74,6 +76,17 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 name="C" + str(i), shape=[1], lod_level=1, dtype="int64"
             )
             for i in range(1, 27)
+=======
+        dense_input = fluid.layers.data(name="dense_input",
+                                        shape=[10],
+                                        dtype="float32")
+
+        sparse_input_ids = [
+            fluid.layers.data(name="C" + str(i),
+                              shape=[1],
+                              lod_level=1,
+                              dtype="int64") for i in range(1, 27)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
 
         label = fluid.layers.data(name="label", shape=[1], dtype="float32")
@@ -82,6 +95,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         return inputs
 
     def build_net(self, inputs):
+
         def embedding_layer(input):
             return fluid.layers.embedding(
                 input=input,
@@ -89,8 +103,12 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
+<<<<<<< HEAD
                     initializer=fluid.initializer.Uniform(),
                 ),
+=======
+                    initializer=fluid.initializer.Uniform()),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             )
 
         sparse_embed_seq = list(map(embedding_layer, inputs[1:-1]))
@@ -115,6 +133,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 input=fc1,
                 size=400,
                 act="relu",
+<<<<<<< HEAD
                 param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc1.shape[1])
@@ -122,12 +141,18 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 ),
                 name="fc2",
             )
+=======
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                    scale=1 / math.sqrt(fc1.shape[1]))),
+                name="fc2")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         with fluid.device_guard("gpu"):
             fc3 = fluid.layers.fc(
                 input=fc2,
                 size=400,
                 act="relu",
+<<<<<<< HEAD
                 param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc2.shape[1])
@@ -135,17 +160,27 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 ),
                 name="fc3",
             )
+=======
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                    scale=1 / math.sqrt(fc2.shape[1]))),
+                name="fc3")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         with fluid.device_guard("cpu"):
             predict = fluid.layers.fc(
                 input=fc3,
                 size=2,
                 act="softmax",
+<<<<<<< HEAD
                 param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc3.shape[1])
                     )
                 ),
+=======
+                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                    scale=1 / math.sqrt(fc3.shape[1]))),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             )
 
         with fluid.device_guard("gpu"):

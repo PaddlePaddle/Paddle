@@ -47,7 +47,11 @@ class DeformableConvOpConverter : public OpConverter {
     auto* offset_tensor = engine_->GetITensor(offset_name);
     auto* mask_tensor = engine_->GetITensor(mask_name);
     auto* filter_var = scope.FindVar(filter_name);
+<<<<<<< HEAD
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+=======
+    auto* filter_tensor = filter_var->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     const int c_o = filter_tensor->dims()[0];
     const int c_i = filter_tensor->dims()[1];

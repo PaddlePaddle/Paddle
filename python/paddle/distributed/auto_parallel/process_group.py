@@ -21,7 +21,11 @@ from ..collective import _get_global_env
 from ..collective import _new_ring_id
 from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
+=======
+from paddle.fluid.framework import _enable_legacy_dygraph
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def get_all_process_groups():
@@ -61,7 +65,11 @@ def new_process_group(ranks, group_id=None):
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
     # so the created group id should start from the original _new_ring_id()
+<<<<<<< HEAD
     if group_id is None:
+=======
+    if group_id == None:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         group_id = _new_ring_id() + num_groups + 1
 
     new_pg = ProcessGroup(group_id, ranks)
@@ -76,6 +84,7 @@ def new_process_group(ranks, group_id=None):
 # the instantiation process in a more general way. In the future, the process group may
 # handle the communication implementation choice.
 class ProcessGroup:
+
     def __init__(self, group_id, ranks):
         if group_id == 0 and get_process_group(0) is not None:
             assert (
@@ -145,11 +154,16 @@ class ProcessGroup:
                     ring_id
                 )
             else:
+<<<<<<< HEAD
                 assert False, "No CUDA device found"
+=======
+                assert False, ("No CUDA device found")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             paddle.disable_static()
+<<<<<<< HEAD
             paddle.set_device(
                 'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
             )
@@ -163,12 +177,32 @@ class ProcessGroup:
                 tmp, 'use_calc_stream', True, 'ring_id', self.id
             )
             _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
+=======
+            _enable_legacy_dygraph()
+            paddle.set_device('gpu:%d' %
+                              paddle.distributed.ParallelEnv().dev_id)
+            tmp = paddle.to_tensor(
+                [1], dtype="int32") if _non_static_mode() else fill_constant(
+                    [0], dtype="int32", value="1")
+            paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+            paddle.distributed.wait(tmp, group=self)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.enable_static()
 
         self._is_instantiate = True
 
     def is_member(self):
         return True
+<<<<<<< HEAD
+=======
+
+    # def __eq__(self, other):
+    #     if not isinstance(other, ProcessGroup):
+    #         return False
+    #     if self.id != other.id:
+    #         return False
+    #     return True
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def __eq__(self, other):
         if not isinstance(other, ProcessGroup):

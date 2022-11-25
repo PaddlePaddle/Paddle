@@ -28,6 +28,7 @@ from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER
 
 def get_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
+<<<<<<< HEAD
     parser.add_argument(
         '--profile_path',
         type=str,
@@ -60,11 +61,47 @@ def get_argparse():
         default=2,
         help='Num of line need to display in a group.',
     )
+=======
+    parser.add_argument('--profile_path',
+                        type=str,
+                        default='.',
+                        help='Working path that store the monitor data.')
+
+    parser.add_argument('--timeline_path',
+                        type=str,
+                        default='.',
+                        help='Output timeline file name.')
+
+    parser.add_argument('--gpuPerTrainer',
+                        type=int,
+                        default=8,
+                        help='Gpus per trainer.')
+
+    parser.add_argument('--trainerNum',
+                        type=int,
+                        default=4,
+                        help='Num of trainer.')
+
+    parser.add_argument('--groupSize',
+                        type=int,
+                        default=8,
+                        help='Num of trainer in a group.')
+
+    parser.add_argument('--displaySize',
+                        type=int,
+                        default=2,
+                        help='Num of line need to display in a group.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return parser.parse_args()
 
 
+<<<<<<< HEAD
 class CspReporter:
+=======
+class CspReporter(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, args):
         self._args = args
         print(self._args)
@@ -168,12 +205,18 @@ class CspReporter:
         opInfoDict = self._profileFileReader.getOpInfoDict(groupId, gpuId)
 
         traceObj = {}
+<<<<<<< HEAD
         traceObj["traceEvents"] = (
             pipileInfo[str(gpuId)]
             + opInfoDict["traceEvents"]
             + dcgmInfoDict["traceEvents"]
             + netInfo["traceEvents"]
         )
+=======
+        traceObj["traceEvents"] = pipileInfo[str(
+            gpuId)] + opInfoDict["traceEvents"] + dcgmInfoDict[
+                "traceEvents"] + netInfo["traceEvents"]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self._profileFileReader.dumpDict(
             traceObj, "traceFile", groupId, gpuId, False, self._saveFilePath
@@ -182,8 +225,12 @@ class CspReporter:
     def _generateTraceFileByGroup(self, groupId, processNum):
         # first we need to generate pipeline info
         pipileInfo = self._profileFileReader.getPipeLineInfo(
+<<<<<<< HEAD
             groupId, processNum
         )
+=======
+            groupId, processNum)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # second we need to generate dcgm info
         dcgmInfo = self._dcgmFileReader.getDCGMTraceInfo(groupId, processNum)
 
@@ -200,6 +247,7 @@ class CspReporter:
         pidList = []
 
         for gpuId in range(self._gpuPerTrainer):
+<<<<<<< HEAD
             subproc = Process(
                 target=self._generateTraceFileByGroupAndGpuId,
                 args=(
@@ -209,6 +257,15 @@ class CspReporter:
                     gpuId,
                 ),
             )
+=======
+            subproc = Process(target=self._generateTraceFileByGroupAndGpuId,
+                              args=(
+                                  pipileInfo,
+                                  netInfo,
+                                  groupId,
+                                  gpuId,
+                              ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
@@ -229,6 +286,7 @@ class CspReporter:
         processPool = []
         pidList = []
         for groupId in range(self._trainerNum / self._groupSize):
+<<<<<<< HEAD
             subproc = Process(
                 target=self._generateTraceFileByGroup,
                 args=(
@@ -236,6 +294,13 @@ class CspReporter:
                     processNum,
                 ),
             )
+=======
+            subproc = Process(target=self._generateTraceFileByGroup,
+                              args=(
+                                  groupId,
+                                  processNum,
+                              ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)

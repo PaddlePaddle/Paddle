@@ -32,6 +32,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestFolderDatasets(unittest.TestCase):
+
     def setUp(self):
         self.data_dir = tempfile.mkdtemp()
         self.empty_dir = tempfile.mkdtemp()
@@ -82,6 +83,7 @@ class TestFolderDatasets(unittest.TestCase):
         self.func_test_folder()
 
     def func_test_transform(self):
+
         def fake_transform(img):
             return img
 
@@ -116,6 +118,7 @@ class TestFolderDatasets(unittest.TestCase):
 
 
 class TestMNISTTest(unittest.TestCase):
+
     def func_test_main(self):
         transform = T.Transpose()
         mnist = MNIST(mode='test', transform=transform)
@@ -136,6 +139,7 @@ class TestMNISTTest(unittest.TestCase):
 
 
 class TestMNISTTrain(unittest.TestCase):
+
     def func_test_main(self):
         transform = T.Transpose()
         mnist = MNIST(mode='train', transform=transform)
@@ -172,6 +176,7 @@ class TestMNISTTrain(unittest.TestCase):
 
 
 class TestFASHIONMNISTTest(unittest.TestCase):
+
     def func_test_main(self):
         transform = T.Transpose()
         mnist = FashionMNIST(mode='test', transform=transform)
@@ -192,6 +197,7 @@ class TestFASHIONMNISTTest(unittest.TestCase):
 
 
 class TestFASHIONMNISTTrain(unittest.TestCase):
+
     def func_test_main(self):
         transform = T.Transpose()
         mnist = FashionMNIST(mode='train', transform=transform)
@@ -240,6 +246,7 @@ class TestFASHIONMNISTTrain(unittest.TestCase):
 
 
 class TestFlowersTrain(unittest.TestCase):
+
     def func_test_main(self):
         flowers = Flowers(mode='train')
         self.assertTrue(len(flowers) == 6149)
@@ -260,6 +267,7 @@ class TestFlowersTrain(unittest.TestCase):
 
 
 class TestFlowersValid(unittest.TestCase):
+
     def func_test_main(self):
         flowers = Flowers(mode='valid')
         self.assertTrue(len(flowers) == 1020)
@@ -280,6 +288,7 @@ class TestFlowersValid(unittest.TestCase):
 
 
 class TestFlowersTest(unittest.TestCase):
+
     def func_test_main(self):
         flowers = Flowers(mode='test')
         self.assertTrue(len(flowers) == 1020)

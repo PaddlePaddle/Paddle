@@ -87,7 +87,11 @@ static int BuildFusion(Graph* graph,
         embedding_var,
         platform::errors::InvalidArgument(
             "Embedding variable's pointer cannot be nullptr."));
+<<<<<<< HEAD
     const auto& embedding_tensor = embedding_var->Get<phi::DenseTensor>();
+=======
+    const auto& embedding_tensor = embedding_var->Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     const auto& weightx_tensor =
         scope->FindVar(weight_x->Name())->Get<phi::DenseTensor>();

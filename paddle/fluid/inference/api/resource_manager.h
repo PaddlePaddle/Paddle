@@ -23,7 +23,10 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
 #include "paddle/phi/common/place.h"
+<<<<<<< HEAD
 #include "unsupported/Eigen/CXX11/Tensor"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"

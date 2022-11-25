@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import tempfile
+import unittest
+import os
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import json
 import os
 import subprocess
@@ -79,12 +86,21 @@ cluster_json = """
 mapping_josn = """
 [
   {
+<<<<<<< HEAD
     "hostname": "machine1",
     "addr": "127.0.0.1",
     "port": "768",
     "ranks":
       {
         "0": [1],
+=======
+    "hostname": "machine1", 
+    "addr": "127.0.0.1", 
+    "port": "768", 
+    "ranks": 
+      {
+        "0": [1], 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         "1": [0]
       }
   }
@@ -93,6 +109,10 @@ mapping_josn = """
 
 
 class TestAutoParallelReLaunch(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -100,12 +120,19 @@ class TestAutoParallelReLaunch(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_relaunch(self):
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster.json"
         )
         mapping_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_rank_mapping.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
+        mapping_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_rank_mapping.json")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
@@ -116,15 +143,21 @@ class TestAutoParallelReLaunch(unittest.TestCase):
             json.dump(mapping_josn_object, mapping_josn_file)
 
         file_dir = os.path.dirname(os.path.abspath(__file__))
+<<<<<<< HEAD
         launch_model_path = os.path.join(
             file_dir, "auto_parallel_relaunch_model.py"
         )
+=======
+        launch_model_path = os.path.join(file_dir,
+                                         "auto_parallel_relaunch_model.py")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
         else:
             coverage_args = []
 
+<<<<<<< HEAD
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
@@ -142,6 +175,14 @@ class TestAutoParallelReLaunch(unittest.TestCase):
                 launch_model_path,
             ]
         )
+=======
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "paddle.distributed.launch", "--log_dir", self.temp_dir.name,
+            "--cluster_topo_path", cluster_json_path, "--rank_mapping_path",
+            mapping_json_path, "--enable_auto_mapping", "True",
+            launch_model_path
+        ]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         process = subprocess.Popen(cmd)
         process.wait()
         self.assertEqual(process.returncode, 0)

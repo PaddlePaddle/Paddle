@@ -16,9 +16,15 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+=======
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace phi {
 

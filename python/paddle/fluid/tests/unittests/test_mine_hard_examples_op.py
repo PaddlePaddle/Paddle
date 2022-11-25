@@ -18,6 +18,7 @@ from op_test import OpTest
 
 
 class TestMineHardExamplesOp(OpTest):
+
     def set_data(self):
         self.init_test_data()
         self.inputs = {
@@ -54,6 +55,7 @@ class TestMineHardExamplesOp(OpTest):
         self.neg_overlap = 0.5
         self.sample_size = 0
         self.mining_type = "max_negative"
+<<<<<<< HEAD
         self.cls_loss = np.array([[0.1, 0.1, 0.3], [0.3, 0.1, 0.1]]).astype(
             'float64'
         )
@@ -69,6 +71,19 @@ class TestMineHardExamplesOp(OpTest):
         self.match_indices = np.array([[0, -1, -1], [-1, 0, -1]]).astype(
             'int32'
         )
+=======
+        self.cls_loss = np.array([[0.1, 0.1, 0.3], [0.3, 0.1,
+                                                    0.1]]).astype('float64')
+
+        self.loc_loss = np.array([[0.1, 0.2, 0.3], [0.3, 0.4,
+                                                    0.1]]).astype('float64')
+
+        self.match_dis = np.array([[0.2, 0.4, 0.8], [0.1, 0.9,
+                                                     0.3]]).astype('float64')
+
+        self.match_indices = np.array([[0, -1, -1], [-1, 0,
+                                                     -1]]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.updated_match_indices = self.match_indices
 
@@ -77,11 +92,13 @@ class TestMineHardExamplesOp(OpTest):
 
 
 class TestMineHardExamplesOpHardExample(TestMineHardExamplesOp):
+
     def init_test_data(self):
         super().init_test_data()
         self.mining_type = "hard_example"
         self.sample_size = 2
 
+<<<<<<< HEAD
         self.cls_loss = np.array([[0.5, 0.1, 0.3], [0.3, 0.1, 0.1]]).astype(
             'float64'
         )
@@ -93,6 +110,16 @@ class TestMineHardExamplesOpHardExample(TestMineHardExamplesOp):
         self.match_indices = np.array([[0, -1, -1], [-1, 0, -1]]).astype(
             'int32'
         )
+=======
+        self.cls_loss = np.array([[0.5, 0.1, 0.3], [0.3, 0.1,
+                                                    0.1]]).astype('float64')
+
+        self.loc_loss = np.array([[0.2, 0.2, 0.3], [0.3, 0.1,
+                                                    0.2]]).astype('float64')
+
+        self.match_indices = np.array([[0, -1, -1], [-1, 0,
+                                                     -1]]).astype('int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.updated_match_indices = np.array(
             [[0, -1, -1], [-1, -1, -1]]

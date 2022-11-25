@@ -22,6 +22,7 @@ from ..framework import _current_expected_place, _get_paddle_place
 from ..framework import core
 from ..framework import in_dygraph_mode, _non_static_mode
 from ..framework import LayerHelper
+<<<<<<< HEAD
 from ..fluid.data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -30,6 +31,10 @@ from ..fluid.data_feeder import (
 )
 from ..framework import convert_np_dtype_to_dtype_
 
+=======
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 # TODO: define functions to get create a tensor
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -145,6 +150,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_type(stop, 'stop', (int, float), 'linspace')
     if isinstance(num, Variable):
         check_dtype(num.dtype, 'num', ['int32'], 'linspace')
+<<<<<<< HEAD
     check_dtype(
         dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
     )
@@ -155,6 +161,14 @@ def linspace(start, stop, num, dtype=None, name=None):
         (stop_dtype == "int64" or start_dtype == "int64")
         and out_dtype == "int32"
     ):
+=======
+    check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
+                'linspace')
+    if ((stop_dtype == "float64" or start_dtype == "float64")
+            and out_dtype in ["float32", "int32"]) or (
+                (stop_dtype == "int64" or start_dtype == "int64")
+                and out_dtype == "int32"):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         raise ValueError(
             "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
             "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
@@ -164,12 +178,23 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type='linspace',
         inputs={'Start': tensor_start, 'Stop': tensor_stop, 'Num': tensor_num},
         attrs={'dtype': dtype},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='linspace',
+                     inputs={
+                         'Start': tensor_start,
+                         'Stop': tensor_stop,
+                         'Num': tensor_num
+                     },
+                     attrs={'dtype': dtype},
+                     outputs={'Out': [out]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if isinstance(num, int):
         out.desc.set_shape((num,))
     return out
@@ -307,6 +332,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type='logspace',
         inputs={
@@ -318,12 +344,95 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
         attrs={'dtype': dtype},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='logspace',
+                     inputs={
+                         'Start': tensor_start,
+                         'Stop': tensor_stop,
+                         'Num': tensor_num,
+                         'Base': tensor_base
+                     },
+                     attrs={'dtype': dtype},
+                     outputs={'Out': [out]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if isinstance(num, int):
         out.desc.set_shape((num,))
     return out
 
 
+<<<<<<< HEAD
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
+=======
+@dygraph_only
+def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+    r"""
+    Constructs a ``paddle.Tensor`` from ``data`` , 
+    which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
+
+    If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
+    If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    Args:
+        data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
+            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
+        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
+            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
+            'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
+            except for python float number which gets dtype from ``get_default_type`` .
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
+        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
+
+    Returns:
+        Tensor: A Tensor constructed from ``data`` .
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+                
+        type(paddle.to_tensor(1))
+        # <class 'paddle.Tensor'>
+
+        paddle.to_tensor(1)
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        [1])
+
+        x = paddle.to_tensor(1, stop_gradient=False)
+        print(x)
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
+        #        [1])
+
+        paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        [1])        
+
+        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
+        # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
+        #        [[0.10000000, 0.20000000],
+        #         [0.30000001, 0.40000001]])
+
+        type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+        # <class 'paddle.Tensor'>
+
+        paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+        # Tensor(shape=[2, 2], dtype=complex64, place=CPUPlace, stop_gradient=True,
+        #        [[(1+1j), (2+0j)],
+        #         [(3+2j), (4+0j)]])
+    """
+    place = _get_paddle_place(place)
+    if place is None:
+        place = _current_expected_place()
+    elif not isinstance(
+            place,
+        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace,
+         core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
+        raise ValueError(
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
+        )
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if not isinstance(data, np.ndarray):
 
@@ -367,10 +476,15 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         else:
             raise TypeError(
+<<<<<<< HEAD
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor".format(
                     type(data)
                 )
             )
+=======
+                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor"
+                .format(type(data)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if not dtype:
             if data.dtype in [
                 'float16',
@@ -396,6 +510,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
         data = data.astype(convert_dtype(dtype))
 
     if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
+<<<<<<< HEAD
         return core.eager.Tensor(
             value=data,
             place=place,
@@ -546,6 +661,20 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
         with paddle.static.device_guard(place_str):
             return _to_tensor_static(data, dtype, stop_gradient)
+=======
+        return core.eager.Tensor(value=data,
+                                 place=place,
+                                 persistable=False,
+                                 zero_copy=False,
+                                 name=None,
+                                 stop_gradient=stop_gradient)
+    else:
+        return paddle.Tensor(value=data,
+                             place=place,
+                             persistable=False,
+                             zero_copy=False,
+                             stop_gradient=stop_gradient)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def full_like(x, fill_value, dtype=None, name=None):
@@ -561,7 +690,11 @@ def full_like(x, fill_value, dtype=None, name=None):
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
             data type is the same as input.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Returns:
         Tensor: Tensor which is created according to ``x``, ``fill_value`` and ``dtype``.
 
@@ -605,12 +738,22 @@ def full_like(x, fill_value, dtype=None, name=None):
     )
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type='fill_any_like',
         inputs={'X': [x]},
         attrs={'value': fill_value, "dtype": dtype},
         outputs={'Out': [out]},
     )
+=======
+    helper.append_op(type='fill_any_like',
+                     inputs={'X': [x]},
+                     attrs={
+                         'value': fill_value,
+                         "dtype": dtype
+                     },
+                     outputs={'Out': [out]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out.stop_gradient = True
     return out
 
@@ -620,6 +763,7 @@ def ones(shape, dtype=None, name=None):
     Create a Tensor of specified :attr:`shape` and :attr:`dtype` and fill it with 1.
 
     Args:
+<<<<<<< HEAD
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, the elements of it should be integers or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
@@ -627,11 +771,19 @@ def ones(shape, dtype=None, name=None):
             bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
+=======
+        shape (tuple|list|Tensor): Shape of the Tensor to be created, the data type of shape should be int32 or int64.
+        dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
+            bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Returns:
         Tensor: A Tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements are 1.
 
     Examples:
         .. code-block:: python
+          :name: ones-example
 
             import paddle
 
@@ -819,6 +971,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     if _non_static_mode():
         if in_dygraph_mode():
+<<<<<<< HEAD
             out = _C_ops.eye(
                 num_rows, num_columns, dtype, _current_expected_place()
             )
@@ -826,6 +979,13 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
             out = _legacy_C_ops.eye(
                 'dtype', dtype, 'num_rows', num_rows, 'num_columns', num_columns
             )
+=======
+            out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
+                                         _current_expected_place())
+        elif _in_legacy_dygraph():
+            out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows,
+                             'num_columns', num_columns)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     else:
         helper = LayerHelper("eye", **locals())
@@ -836,6 +996,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
             'eye',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
+<<<<<<< HEAD
         helper.append_op(
             type='eye',
             inputs={},
@@ -847,6 +1008,17 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
             },
             stop_gradient=True,
         )
+=======
+        helper.append_op(type='eye',
+                         inputs={},
+                         outputs={'Out': [out]},
+                         attrs={
+                             'num_rows': num_rows,
+                             'num_columns': num_columns,
+                             'dtype': dtype
+                         },
+                         stop_gradient=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     out.stop_gradient = True
     return out
@@ -856,6 +1028,7 @@ def full(shape, fill_value, dtype=None, name=None):
     """
 
     Return a Tensor with the ``fill_value`` which size is same as ``shape``.
+<<<<<<< HEAD
 
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
@@ -863,16 +1036,31 @@ def full(shape, fill_value, dtype=None, name=None):
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
             If ``fill_value`` is an Tensor, it shoule be an 0-D Tensor which represents a scalar.
+=======
+    
+    Args:
+        shape(list|tuple|Tensor): Shape of the Tensor to be created.
+                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                the elements of it should be integers or Tensors with shape [1].
+                If ``shape`` is an Tensor, it should be an 1-D Tensor.
+        fill_value(bool|float|int|Tensor): The constant value
+            used to initialize the Tensor to be created. If ``fill_value`` is an Tensor, it must be an 1-D Tensor.
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created Tensor is `float32`.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Returns:
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
     Examples:
         .. code-block:: python
+           :name: code-example1
 
             import paddle
 
@@ -1012,11 +1200,21 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     )
     helper = LayerHelper('range', **locals())
     out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
+<<<<<<< HEAD
     helper.append_op(
         type='range',
         inputs={'Start': start, 'End': end, 'Step': step},
         outputs={'Out': out},
     )
+=======
+    helper.append_op(type='range',
+                     inputs={
+                         'Start': start,
+                         'End': end,
+                         'Step': step
+                     },
+                     outputs={'Out': out})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out.stop_gradient = True
     if out_shape is not None:
         out.desc.set_shape(out_shape)
@@ -1045,9 +1243,15 @@ def _tril_triu_op(helper):
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
+<<<<<<< HEAD
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False
         )
+=======
+        out = helper.create_variable(name=name,
+                                     dtype=x.dtype,
+                                     persistable=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     helper.append_op(
         type="tril_triu",
@@ -1253,9 +1457,15 @@ def meshgrid(*args, **kwargs):
         helper.create_variable_for_type_inference(dtype=args[i].dtype)
         for i in range(num)
     ]
+<<<<<<< HEAD
     helper.append_op(
         type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out}
     )
+=======
+    helper.append_op(type='meshgrid',
+                     inputs={'X': list(args)},
+                     outputs={'Out': out})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return out
 
@@ -1378,6 +1588,7 @@ def diagflat(x, offset=0, name=None):
     out2 = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     if len(x.shape) == 1:
+<<<<<<< HEAD
         helper.append_op(
             type='diag_v2',
             inputs={'X': x},
@@ -1399,6 +1610,35 @@ def diagflat(x, offset=0, name=None):
             outputs={'Out': out2},
             attrs={'offset': offset, 'padding_value': padding_value},
         )
+=======
+        helper.append_op(type='diag_v2',
+                         inputs={'X': x},
+                         outputs={'Out': out2},
+                         attrs={
+                             'offset': offset,
+                             'padding_value': padding_value
+                         })
+    else:
+        helper.append_op(type='flatten_contiguous_range',
+                         inputs={'X': x},
+                         outputs={
+                             'Out': out1,
+                             'XShape': out1_shape
+                         },
+                         attrs={
+                             'start_axis': 0,
+                             'stop_axis': -1
+                         })
+        out1.stop_gradient = True
+
+        helper.append_op(type='diag_v2',
+                         inputs={'X': out1},
+                         outputs={'Out': out2},
+                         attrs={
+                             'offset': offset,
+                             'padding_value': padding_value
+                         })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out2.stop_gradient = True
     return out2
 
@@ -1422,7 +1662,11 @@ def diag(x, offset=0, padding_value=0, name=None):
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Returns:
         Tensor, a square matrix or a vector. The output data type is the same as input data type.
 
@@ -1497,21 +1741,36 @@ def diag(x, offset=0, padding_value=0, name=None):
             check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
             if len(x.shape) != 1 and len(x.shape) != 2:
                 raise ValueError(
+<<<<<<< HEAD
                     "The dimension of input x must be either 1 or 2, but received {}".format(
                         len(x.shape)
                     )
                 )
+=======
+                    "The dimension of input x must be either 1 or 2, but received {}"
+                    .format(len(x.shape)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             helper = LayerHelper("diag_v2", **locals())
 
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
             helper.append_op(
                 type='diag_v2',
                 inputs={'X': x},
                 outputs={'Out': out},
                 attrs={'offset': offset, 'padding_value': padding_value},
             )
+=======
+            helper.append_op(type='diag_v2',
+                             inputs={'X': x},
+                             outputs={'Out': out},
+                             attrs={
+                                 'offset': offset,
+                                 'padding_value': padding_value
+                             })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             out.stop_gradient = True
             return out
@@ -1530,7 +1789,11 @@ def empty(shape, dtype=None, name=None):
             type of created Tensor use global default dtype (see ``get_default_dtype``
             for details).
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Returns:
         Tensor: Tensor which is created according to ``shape`` and ``dtype``, and is uninitialized.
 
@@ -1596,6 +1859,7 @@ def empty(shape, dtype=None, name=None):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
 
     attrs = {}
+<<<<<<< HEAD
     utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='empty'
     )
@@ -1609,6 +1873,20 @@ def empty(shape, dtype=None, name=None):
         attrs=attrs,
         stop_gradient=True,
     )
+=======
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=shape,
+                                  op_type='empty')
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(type='empty',
+                     inputs=inputs,
+                     outputs={'Out': [out]},
+                     attrs=attrs,
+                     stop_gradient=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out.stop_gradient = True
     return out
 
@@ -1624,7 +1902,11 @@ def empty_like(x, dtype=None, name=None):
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
             data type is the same as input.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Returns:
         Tensor: Tensor which is created according to ``x`` and ``dtype``, and is uninitialized.
 
@@ -1680,6 +1962,7 @@ def empty_like(x, dtype=None, name=None):
     attrs = {}
     attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
     shape = paddle.shape(x)
+<<<<<<< HEAD
     utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
     )
@@ -1691,6 +1974,18 @@ def empty_like(x, dtype=None, name=None):
         attrs=attrs,
         stop_gradient=True,
     )
+=======
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=shape,
+                                  op_type='empty_like')
+
+    helper.append_op(type='empty',
+                     inputs=inputs,
+                     outputs={'Out': [out]},
+                     attrs=attrs,
+                     stop_gradient=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out.stop_gradient = True
     return out
 
@@ -1699,12 +1994,17 @@ def assign(x, output=None):
     """
 
     Copy value of the :attr:`x` to the :attr:`output`.
+<<<<<<< HEAD
 
+=======
+ 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Parameters:
         x (Tensor|np.ndarray|list|tuple|scalar): A Tensor, numpy ndarray, tuple/list of scalar,
             or scalar. Its data type can be float16, float32, float64, int32, int64 or bool. Note: the float64 data will be converted to float32 because of current platform protobuf
             data limitation.
         output (Tensor, optional): A Tensor. If :attr:`output` is None, a new Tensor will be created as :attr:`output`. Default: None.
+<<<<<<< HEAD
 
     Returns:
         Tensor: A Tensor with the same shape, data type and value as :attr:`x`.
@@ -1731,6 +2031,31 @@ def assign(x, output=None):
         (Variable, np.ndarray, list, tuple, float, int, bool),
         'assign',
     )
+=======
+ 
+    Returns:
+        Tensor: A Tensor with the same shape, data type and value as :attr:`x`.
+ 
+    Examples:
+        .. code-block:: python
+          :name: assign-example
+
+          import paddle
+          import numpy as np
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array = np.array([[1, 1],
+                            [3, 4],
+                            [1, 3]]).astype(np.int64)
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+    """
+    input = x
+    helper = LayerHelper('assign', **locals())
+    check_type(input, 'input',
+               (Variable, np.ndarray, list, tuple, float, int, bool), 'assign')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     is_inplace = True if output is not None else False
 
     if np.isscalar(input) and not isinstance(input, str):
@@ -1742,6 +2067,7 @@ def assign(x, output=None):
     # but _non_static_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
+<<<<<<< HEAD
     if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
         if in_dygraph_mode():
             if output is None:
@@ -1752,6 +2078,18 @@ def assign(x, output=None):
             if output is None:
                 output = core.VarBase()
             _legacy_C_ops.assign(input, output)
+=======
+    if isinstance(input, (Variable, core.VarBase)):
+        if in_dygraph_mode():
+            if output is None:
+                output = _C_ops.final_state_assign(input)
+            else:
+                _C_ops.final_state_assign_out_(input, output)
+        elif _in_legacy_dygraph():
+            if output is None:
+                output = core.VarBase()
+            _C_ops.assign(input, output)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             check_dtype(
                 input.dtype,
@@ -1771,11 +2109,18 @@ def assign(x, output=None):
             )
             if output is None:
                 output = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
                     dtype=input.dtype
                 )
             helper.append_op(
                 type='assign', inputs={'X': [input]}, outputs={'Out': [output]}
             )
+=======
+                    dtype=input.dtype)
+            helper.append_op(type='assign',
+                             inputs={'X': [input]},
+                             outputs={'Out': [output]})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
@@ -1836,6 +2181,7 @@ def assign(x, output=None):
                 "received %s." % convert_dtype(dtype)
             )
         if input.size > 1024 * 1024:
+<<<<<<< HEAD
             raise ValueError(
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"
@@ -1876,6 +2222,31 @@ def assign(x, output=None):
                     value_name: values,
                 },
             )
+=======
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+        if in_dygraph_mode():
+            if output is None:
+                output = zeros(list(input.shape), dtype)
+            _C_ops.final_state_assign_value_(output, list(input.shape), dtype,
+                                             values, _current_expected_place())
+        elif _in_legacy_dygraph():
+            if output is None:
+                output = core.VarBase()
+            _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
+                                dtype, value_name, values)
+        else:
+            if output is None:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
+            helper.append_op(type='assign_value',
+                             outputs={'Out': [output]},
+                             attrs={
+                                 'dtype': dtype,
+                                 'shape': list(input.shape),
+                                 value_name: values
+                             })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if is_inplace and _in_legacy_dygraph():
         output._bump_inplace_version()
@@ -1913,7 +2284,11 @@ def clone(x, name=None):
     return x.clone()
 
 
+<<<<<<< HEAD
 # NOTE(zhiqiu): not public
+=======
+#NOTE(zhiqiu): not public
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 def _memcpy(input, place=None, output=None):
     """
 
@@ -1978,12 +2353,19 @@ def _memcpy(input, place=None, output=None):
             dst_place_type = 4
 
     attrs = {'dst_place_type': dst_place_type}
+<<<<<<< HEAD
     helper.append_op(
         type='memcpy',
         inputs={'X': [input]},
         outputs={'Out': [output]},
         attrs=attrs,
     )
+=======
+    helper.append_op(type='memcpy',
+                     inputs={'X': [input]},
+                     outputs={'Out': [output]},
+                     attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return output
 
 
@@ -2014,7 +2396,11 @@ def complex(real, imag, name=None):
             #         [(1+0j), (1+1j), (1+2j)]])
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
         return _C_ops.complex(real, imag)
+=======
+        return _C_ops.final_state_complex(real, imag)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if paddle.in_dynamic_mode():
         return paddle._legacy_C_ops.complex(real, imag)
@@ -2036,20 +2422,35 @@ def complex(real, imag, name=None):
 
 def tril_indices(row, col, offset=0, dtype='int64'):
     """
+<<<<<<< HEAD
     Return the indices of the lower triangular part of the 2-D matrix
     whose row and col is knowed.Indices are ordered based on row and then columns.
     The lower triangular part of the matrix is defined as the elements on
     and below the diagonal.
 
+=======
+    Return the indices of the lower triangular part of the 2-D matrix 
+    whose row and col is knowed.Indices are ordered based on row and then columns. 
+    The lower triangular part of the matrix is defined as the elements on
+    and below the diagonal.
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Args:
         row (int): The input x which is a int number describe the number of row of the matrix.
         col (int): The input x which is a int number describe the number of col of the matrix.
         offset (int, optional): The offset to consider, default value is 0.
 
+<<<<<<< HEAD
             - If offset = 0, all elements on and below the main diagonal are retained.
             - If offset > 0, include just as many diagonals above the main diagonal.
             - If offset < 0, excludes just as many diagonals below the main diagonal.
 
+=======
+            - If offset = 0, all elements on and below the main diagonal are retained.  
+            - If offset > 0, include just as many diagonals above the main diagonal.  
+            - If offset < 0, excludes just as many diagonals below the main diagonal.  
+ 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         dtype (int, optional): the data type of the output tensor, can be int32, int64.
 
     Returns:
@@ -2058,6 +2459,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
 
             import paddle
 
@@ -2065,12 +2467,26 @@ def tril_indices(row, col, offset=0, dtype='int64'):
             data1 = paddle.tril_indices(4,4,0)
             print(data1)
             # [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3],
+=======
+            :name: tril_indices-example
+
+            import paddle
+            
+            # example 1, default offset value
+            data1 = paddle.tril_indices(4,4,0)
+            print(data1)
+            # [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3], 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             #  [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]]
 
             # example 2, positive offset value
             data2 = paddle.tril_indices(4,4,2)
             print(data2)
+<<<<<<< HEAD
             # [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+=======
+            # [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             #  [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]]
 
             # example 3, negative offset value
@@ -2095,6 +2511,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+<<<<<<< HEAD
         out = _C_ops.tril_indices(
             row, col, offset, dtype, _current_expected_place()
         )
@@ -2104,6 +2521,15 @@ def tril_indices(row, col, offset=0, dtype='int64'):
         out = _legacy_C_ops.tril_indices(
             'rows', row, 'cols', col, 'offset', offset, "dtype", dtype
         )
+=======
+        out = _C_ops.final_state_tril_indices(row, col, offset, dtype,
+                                              _current_expected_place())
+        return out
+
+    if _in_legacy_dygraph():
+        out = _C_ops.tril_indices('rows', row, 'cols', col, 'offset', offset,
+                                  "dtype", dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return out
 
     else:
@@ -2111,6 +2537,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
 
+<<<<<<< HEAD
         helper.append_op(
             type='tril_indices',
             inputs={},
@@ -2201,4 +2628,15 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
             outputs={'out': [out]},
             attrs={'row': row, 'col': col, 'offset': offset, 'dtype': dtype},
         )
+=======
+        helper.append_op(type='tril_indices',
+                         inputs={},
+                         outputs={'out': [out]},
+                         attrs={
+                             'rows': row,
+                             'cols': col,
+                             'offset': offset,
+                             'dtype': dtype
+                         })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out

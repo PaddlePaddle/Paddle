@@ -43,6 +43,7 @@ dim_ffn = 4 * hidden
 
 def create_model(data, rank):
     np.random.seed(2021)
+<<<<<<< HEAD
     ln_w = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
     ln_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
     qkv_w = np.random.uniform(
@@ -53,6 +54,16 @@ def create_model(data, rank):
         -1, 1, size=(num_head * dim_head, hidden)
     ).astype(DTYPE)
     linear_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
+=======
+    ln_w = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
+    ln_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
+    qkv_w = np.random.uniform(-1, 1, size=(3, num_head, dim_head,
+                                           hidden)).astype(DTYPE)
+    qkv_b = np.random.uniform(-1, 1, size=(3, num_head, dim_head)).astype(DTYPE)
+    linear_w = np.random.uniform(-1, 1, size=(num_head * dim_head,
+                                              hidden)).astype(DTYPE)
+    linear_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     ffn_ln_w = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
     ffn_ln_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
@@ -143,12 +154,19 @@ def create_model(data, rank):
 
 
 class TestModelParallel(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
+<<<<<<< HEAD
         data_in = fluid.data(
             name='data_in', shape=[batch_size, seq_len, hidden], dtype=DTYPE
         )
+=======
+        data_in = fluid.data(name='data_in',
+                             shape=[batch_size, seq_len, hidden],
+                             dtype=DTYPE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
@@ -169,9 +187,14 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
+<<<<<<< HEAD
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=strategy
             )
+=======
+            dist_opt = fleet.distributed_optimizer(optimizer=opt,
+                                                   strategy=strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 
 #include <memory>
@@ -25,6 +26,12 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
+=======
+#include "paddle/phi/api/ext/dispatch.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace phi {
 
@@ -47,6 +54,7 @@ void GradAddXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 
+<<<<<<< HEAD
 template <typename T, typename Context>
 void AddRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -58,6 +66,8 @@ void AddRawKernel(const Context& dev_ctx,
       dev_ctx, x, y, axis, out, xpu::broadcast_add<XPUType>);
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }  // namespace phi
 
 PD_REGISTER_KERNEL(grad_add,
@@ -66,5 +76,8 @@ PD_REGISTER_KERNEL(grad_add,
                    phi::GradAddXPUKernel,
                    phi::dtype::float16,
                    float) {}
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(
     add_raw, XPU, ALL_LAYOUT, phi::AddRawKernel, phi::dtype::float16, float) {}
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

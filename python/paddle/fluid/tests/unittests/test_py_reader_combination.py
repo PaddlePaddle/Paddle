@@ -19,20 +19,32 @@ import numpy as np
 
 
 class TestPyReaderCombination(unittest.TestCase):
+
     def setUp(self):
         self.n1 = 10
         self.n2 = 20
         self.batch_size = 2
 
     def create_reader(self, batch_num):
+
         def __impl__():
             for _ in range(batch_num):
+<<<<<<< HEAD
                 image = np.random.uniform(
                     low=-1, high=1, size=[batch_num, 784]
                 ).astype('float32')
                 label = np.random.random_integers(
                     low=0, high=9, size=[batch_num, 1]
                 ).astype('int64')
+=======
+                image = np.random.uniform(low=-1, high=1,
+                                          size=[batch_num,
+                                                784]).astype('float32')
+                label = np.random.random_integers(low=0,
+                                                  high=9,
+                                                  size=[batch_num,
+                                                        1]).astype('int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 yield image, label
 
         return __impl__
@@ -54,6 +66,7 @@ class TestPyReaderCombination(unittest.TestCase):
 
     def main_impl(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
             image = fluid.layers.data(
                 name='image', dtype='float32', shape=[784]
             )
@@ -65,6 +78,19 @@ class TestPyReaderCombination(unittest.TestCase):
             py_reader2 = fluid.io.PyReader(
                 feed_list=[image, label], capacity=16, iterable=True
             )
+=======
+            image = fluid.layers.data(name='image',
+                                      dtype='float32',
+                                      shape=[784])
+            label = fluid.layers.data(name='label', dtype='int64', shape=[1])
+
+            py_reader1 = fluid.io.PyReader(feed_list=[image, label],
+                                           capacity=16,
+                                           iterable=True)
+            py_reader2 = fluid.io.PyReader(feed_list=[image, label],
+                                           capacity=16,
+                                           iterable=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             reader1 = paddle.reader.cache(self.create_reader(self.n1))
             reader2 = paddle.reader.cache(self.create_reader(self.n2))
@@ -101,6 +127,7 @@ class TestPyReaderCombination(unittest.TestCase):
 
 
 class TestPyReaderCombination2(TestPyReaderCombination):
+
     def setUp(self):
         self.n1 = 20
         self.n2 = 10
@@ -108,6 +135,7 @@ class TestPyReaderCombination2(TestPyReaderCombination):
 
 
 class TestPyReaderCombination3(TestPyReaderCombination):
+
     def setUp(self):
         self.n1 = 10
         self.n2 = 10

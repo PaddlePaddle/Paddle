@@ -116,6 +116,7 @@ class Container:
         elif self._err:
             self._stderr = self._get_fd(self._err) or sys.stderr
 
+<<<<<<< HEAD
         if not self._log_handler:
             self._log_handler = open(self._out)
             self._log_handler.seek(0, 2)
@@ -129,6 +130,13 @@ class Container:
             shell=self._shell,
         )
 
+=======
+        self._proc = ProcessContext(self._entrypoint,
+                                    env=self._env,
+                                    out=self._stdout,
+                                    err=self._stderr,
+                                    shell=self._shell)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._proc.start()
 
     def terminate(self, force=False):
@@ -162,6 +170,7 @@ class Container:
             return Status.FAILED
 
     def __str__(self):
+<<<<<<< HEAD
         return (
             'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
                 self._rank,
@@ -171,6 +180,15 @@ class Container:
                 self.errfile,
                 self._env,
             )
+=======
+        return 'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
+            self._rank,
+            self.status,
+            self._entrypoint,
+            self.exit_code,
+            self.errfile,
+            self._env,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         )
 
     def logs(self, fn=None, offset=0, whence=1, limit=1000):

@@ -135,12 +135,18 @@ def avx_supported():
             # Enable execute permissions
             PAGE_EXECUTE = ctypes.c_ulong(0x10)
             pfnVirtualProtect = ctypes.windll.kernel32.VirtualProtect
+<<<<<<< HEAD
             res = pfnVirtualProtect(
                 ctypes.c_void_p(address),
                 ONE_PAGE,
                 PAGE_EXECUTE,
                 ctypes.byref(ctypes.c_ulong(0)),
             )
+=======
+            res = pfnVirtualProtect(ctypes.c_void_p(address),
+                                    ONE_PAGE, PAGE_EXECUTE,
+                                    ctypes.byref(ctypes.c_ulong(0)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if not res:
                 raise Exception("Failed VirtualProtect")
 
@@ -168,9 +174,14 @@ def avx_supported():
             # Convert the code_str into a function that returns uint
             func, address = asm_func(code_str)
             retval = func()
+<<<<<<< HEAD
             ctypes.windll.kernel32.VirtualFree(
                 ctypes.c_void_p(address), ctypes.c_size_t(0), ONE_PAGE
             )
+=======
+            ctypes.windll.kernel32.VirtualFree(ctypes.c_void_p(address),
+                                               ctypes.c_size_t(0), ONE_PAGE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         except Exception as e:
             sys.stderr.write(
                 'Failed getting the AVX flag on Windows.\n'
@@ -184,10 +195,17 @@ def avx_supported():
 
 def run_shell_command(cmd):
     import subprocess
+<<<<<<< HEAD
 
     out, err = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
     ).communicate()
+=======
+    out, err = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                shell=True).communicate()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if err:
         return None
     else:

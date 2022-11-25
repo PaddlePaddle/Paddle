@@ -29,11 +29,13 @@ paddle.enable_static()
 
 
 class XPUTestElementwiseMinOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'elementwise_min'
         self.use_dynamic_create_class = False
 
     class TestElementwiseOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "elementwise_min"
             # If x and y have the same value, the min() is not differentiable.
@@ -64,6 +66,7 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
         def test_check_grad_ingore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place,
                     ['Y'],
@@ -71,10 +74,17 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
                     max_relative_error=0.005,
                     no_grad_set=set("X"),
                 )
+=======
+                self.check_grad_with_place(place, ['Y'],
+                                           'Out',
+                                           max_relative_error=0.005,
+                                           no_grad_set=set("X"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def test_check_grad_ingore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place,
                     ['X'],
@@ -82,11 +92,18 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
                     max_relative_error=0.005,
                     no_grad_set=set('Y'),
                 )
+=======
+                self.check_grad_with_place(place, ['X'],
+                                           'Out',
+                                           max_relative_error=0.005,
+                                           no_grad_set=set('Y'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwiseMinOp_scalar(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.random_integers(-5, 5, [10, 3, 4]).astype(self.dtype)
             y = np.array([0.5]).astype(self.dtype)
@@ -96,6 +113,7 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMinOp_Vector(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.random((100,)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -106,6 +124,7 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (100, 3, 2)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -115,12 +134,19 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
             self.attrs = {'axis': 0}
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.minimum(
                     self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
                 )
+=======
+                'Out':
+                np.minimum(self.inputs['X'],
+                           self.inputs['Y'].reshape(100, 1, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -130,12 +156,19 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
             self.attrs = {'axis': 1}
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.minimum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
                 )
+=======
+                'Out':
+                np.minimum(self.inputs['X'],
+                           self.inputs['Y'].reshape(1, 100, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -144,12 +177,19 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
             )
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.minimum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
                 )
+=======
+                'Out':
+                np.minimum(self.inputs['X'],
+                           self.inputs['Y'].reshape(1, 1, 100))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 25, 4, 1)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (25, 4)).astype(self.dtype)
@@ -159,12 +199,19 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
             self.attrs = {'axis': 1}
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.minimum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 25, 4, 1)
                 )
+=======
+                'Out':
+                np.minimum(self.inputs['X'],
+                           self.inputs['Y'].reshape(1, 25, 4, 1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
     class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
+
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 10, 2, 5)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (2, 10, 1, 5)).astype(self.dtype)

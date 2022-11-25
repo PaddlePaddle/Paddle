@@ -20,7 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
  public:
@@ -64,7 +68,11 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto input = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto input = ctx.Input<Tensor>("X");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -140,8 +148,13 @@ class FusedBiasDropoutResidualLnOpMaker
 
     AddComment(R"DOC(
     Add fused bias_dropout_residual_layer_norm op whose logic is as follows:
+<<<<<<< HEAD
     // @input: [batch_size, seq_len, embed_dim]
     // @final_out: [batch_size, seq_len, embed_dim]
+=======
+    // @input: [batch_size, seq_len, embed_dim] 
+    // @final_out: [batch_size, seq_len, embed_dim] 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     y = layer_norm(residual + dropout(bias + x));
     )DOC");
   }
@@ -194,7 +207,11 @@ class FusedBiasDropoutResidualLnGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto input = ctx.Input<phi::DenseTensor>("X");
+=======
+    auto input = ctx.Input<Tensor>("X");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

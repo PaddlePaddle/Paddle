@@ -64,9 +64,13 @@ class XPUContext : public DeviceContext,
 
   void SetL3Cache(int l3_size = 14155776);
 
+<<<<<<< HEAD
   XPUStream stream() const;
 
   static const char* name() { return "XPUContext"; }
+=======
+  void SetXPUStream(XPUStream stream);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
  private:
   struct Impl;

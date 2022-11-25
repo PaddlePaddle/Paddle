@@ -126,6 +126,7 @@ int GetMLUCnnlVersion(int id) {
   return x * 10000 + y * 100 + z;
 }
 
+<<<<<<< HEAD
 int GetMLUOpVersion(int id) {
   CheckDeviceId(id);
   int x, y, z;
@@ -133,6 +134,8 @@ int GetMLUOpVersion(int id) {
   return x * 10000 + y * 100 + z;
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 int GetMLUCurrentDeviceId() {
   int device_id;
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtGetDevice(&device_id));

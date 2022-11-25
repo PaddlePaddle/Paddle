@@ -60,7 +60,11 @@ class SumOpWithKernel : public OperatorWithKernel {
 }  // namespace framework
 }  // namespace paddle
 
+<<<<<<< HEAD
 REGISTER_OP_WITHOUT_GRADIENT(fake_sum,
+=======
+REGISTER_OP_WITHOUT_GRADIENT(sum,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                              paddle::framework::SumOpWithKernel,
                              paddle::framework::SumOpMaker);
 

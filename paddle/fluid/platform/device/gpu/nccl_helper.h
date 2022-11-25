@@ -59,7 +59,11 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclUint8;
   } else if (type == framework::proto::VarType::BOOL) {
     return ncclUint8;
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   } else if (type == framework::proto::VarType::BF16) {
     return ncclBfloat16;
 #endif
@@ -86,7 +90,11 @@ inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
     return ncclInt8;
   } else if (type == experimental::DataType::BOOL) {
     return ncclUint8;
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   } else if (type == experimental::DataType::BFLOAT16) {
     return ncclBfloat16;
 #endif

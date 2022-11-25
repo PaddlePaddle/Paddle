@@ -24,6 +24,7 @@ def arange_wrapper(start, end, step, dtype=None):
 
 
 class TestRangeOp(OpTest):
+
     def setUp(self):
         self.op_type = "range"
         self.init_config()
@@ -34,9 +35,15 @@ class TestRangeOp(OpTest):
         }
 
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
                 self.dtype
             )
+=======
+            'Out':
+            np.arange(self.case[0], self.case[1],
+                      self.case[2]).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def init_config(self):
@@ -49,6 +56,7 @@ class TestRangeOp(OpTest):
 
 
 class TestFloatRangeOpCase0(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.float32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)
@@ -56,6 +64,7 @@ class TestFloatRangeOpCase0(TestRangeOp):
 
 
 class TestInt32RangeOpCase0(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)
@@ -63,6 +72,7 @@ class TestInt32RangeOpCase0(TestRangeOp):
 
 
 class TestInt32RangeOpCase1(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)
@@ -70,6 +80,7 @@ class TestInt32RangeOpCase1(TestRangeOp):
 
 
 class TestInt32RangeOpCase2(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)

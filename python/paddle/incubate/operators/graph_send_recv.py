@@ -124,6 +124,7 @@ def graph_send_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
+<<<<<<< HEAD
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
         out, tmp = _legacy_C_ops.graph_send_recv(
@@ -182,6 +183,61 @@ def graph_send_recv(
         outputs={"Out": out, "Dst_count": dst_count},
         attrs=attrs,
     )
+=======
+    if out_size is None or out_size <= 0:
+        if _in_legacy_dygraph():
+            out, tmp = _C_ops.graph_send_recv(x, src_index, dst_index,
+                                              'pool_type', pool_type.upper())
+            return out
+        if in_dygraph_mode():
+            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
+                                                      pool_type.upper(), 0)
+    else:
+        if _in_legacy_dygraph():
+            out, tmp = _C_ops.graph_send_recv(x, src_index,
+                                              dst_index, 'pool_type',
+                                              pool_type.upper(), 'out_size',
+                                              out_size)
+            return out
+        if in_dygraph_mode():
+            if isinstance(out_size, core.eager.Tensor):
+                if (out_size.size < 1):
+                    raise ValueError(
+                        "out_size should be long type, but received Tensor type."
+                    )
+                out_size = out_size.numpy()[0]
+            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
+                                                      pool_type.upper(),
+                                                      out_size)
+
+    check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
+                             "graph_send_recv")
+    check_variable_and_dtype(src_index, "Src_index", ("int32", "int64"),
+                             "graph_send_recv")
+    check_variable_and_dtype(dst_index, "Dst_index", ("int32", "int64"),
+                             "graph_send_recv")
+
+    helper = LayerHelper("graph_send_recv", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    dst_count = helper.create_variable_for_type_inference(dtype="int32",
+                                                          stop_gradient=True)
+    helper.append_op(type="graph_send_recv",
+                     inputs={
+                         "X": x,
+                         "Src_index": src_index,
+                         "Dst_index": dst_index
+                     },
+                     outputs={
+                         "Out": out,
+                         "Dst_count": dst_count
+                     },
+                     attrs={
+                         "pool_type":
+                         pool_type.upper(),
+                         "out_size":
+                         0 if out_size is None or out_size <= 0 else out_size
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 

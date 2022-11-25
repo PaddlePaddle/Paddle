@@ -33,6 +33,7 @@ from dist_simnet_bow import train_network
 
 
 class DistributeTranspilerConfigTest(unittest.TestCase):
+
     def set_runtime_split_send_recv(self, config, value):
         config.runtime_split_send_recv = value
 
@@ -55,6 +56,7 @@ class DistributeTranspilerConfigTest(unittest.TestCase):
 
 
 class FleetTest(unittest.TestCase):
+
     def testInvalidInputs(self):
         self.assertRaises(Exception, fleet.split_files, "files")
         self.assertRaises(Exception, fleet.init, "pserver")
@@ -67,6 +69,7 @@ class FleetTest(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         pe = fluid.ParallelExecutor(use_cuda=False, loss_name=loss.name)
+<<<<<<< HEAD
         self.assertRaises(
             Exception,
             fleet.save_inference_model,
@@ -111,6 +114,42 @@ class FleetTest(unittest.TestCase):
             dirname='/tmp/',
             main_program=compiled_prog,
         )
+=======
+        self.assertRaises(Exception,
+                          fleet.save_inference_model,
+                          dirname='/tmp/',
+                          feeded_var_names=['X'],
+                          target_vars=[loss],
+                          executor=pe)
+        self.assertRaises(Exception,
+                          fleet.save_inference_model,
+                          dirname='/tmp/',
+                          feeded_var_names=['X'],
+                          target_vars=[loss],
+                          executor="executor")
+        compiled_prog = fluid.compiler.CompiledProgram(
+            fluid.default_main_program())
+        self.assertRaises(Exception,
+                          fleet.save_inference_model,
+                          dirname='/tmp/',
+                          feeded_var_names=['X'],
+                          target_vars=[loss],
+                          executor=exe,
+                          main_program=compiled_prog)
+        self.assertRaises(Exception,
+                          fleet.save_persistables,
+                          executor=pe,
+                          dirname='/tmp/')
+        self.assertRaises(Exception,
+                          fleet.save_persistables,
+                          executor="executor",
+                          dirname='/tmp/')
+        self.assertRaises(Exception,
+                          fleet.save_persistables,
+                          executor=exe,
+                          dirname='/tmp/',
+                          main_program=compiled_prog)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertRaises(Exception, fleet._transpile, "config")
 
     def set_program(self, avg_cost, strategy):
@@ -163,6 +202,7 @@ class FleetTest(unittest.TestCase):
 
 
 class TranspilerOptimizerTest(unittest.TestCase):
+
     def testInvalidInputs(self):
         self.assertRaises(Exception, TranspilerOptimizer, "Adam", None)
         self.assertRaises(
@@ -177,6 +217,7 @@ class TranspilerOptimizerTest(unittest.TestCase):
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
         loss = paddle.mean(hidden)
+<<<<<<< HEAD
         self.assertRaises(
             Exception, transpiler.minimize, loss=loss.name, startup_program=[]
         )
@@ -193,6 +234,23 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
         role = UserDefinedRoleMaker(
             current_id, role, worker_num, server_endpoints
         )
+=======
+        self.assertRaises(Exception,
+                          transpiler.minimize,
+                          loss=loss.name,
+                          startup_program=[])
+
+
+class UserDefinedRoleMakerTest(unittest.TestCase):
+
+    def createRoleMaker(self,
+                        current_id=0,
+                        role=Role.WORKER,
+                        worker_num=1,
+                        server_endpoints=["127.0.0.1:8080"]):
+        role = UserDefinedRoleMaker(current_id, role, worker_num,
+                                    server_endpoints)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def testRoleMaker(self):
         self.createRoleMaker()
@@ -201,6 +259,7 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
             Exception, self.createRoleMaker, server_endpoints=None
         )  # server_endpoints must be as list
         self.assertRaises(
+<<<<<<< HEAD
             Exception, self.createRoleMaker, server_endpoints=[]
         )  # server_endpoints can't be empty
         self.assertRaises(
@@ -215,6 +274,23 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
         self.assertRaises(
             Exception, self.createRoleMaker, current_id="0"
         )  # current_id must be as int
+=======
+            Exception, self.createRoleMaker,
+            server_endpoints=[])  # server_endpoints can't be empty
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          server_endpoints=[
+                              3, []
+                          ])  # element in server_endpoints must be as string
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          server_endpoints=[
+                              "127.0.0.1:8080", "127.0.0.1:8080"
+                          ])  # element in server_endpoints can't be duplicate
+        # test all invalid current_id
+        self.assertRaises(Exception, self.createRoleMaker,
+                          current_id="0")  # current_id must be as int
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertRaises(
             Exception, self.createRoleMaker, current_id=-1
         )  # current_id must be greater than or equal to 0
@@ -226,12 +302,19 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
             server_endpoints=["127.0.0.1:8080"],
         )  # if role is server, current_id must be less than len(server_endpoints)
         # test all invalid worker_num
+<<<<<<< HEAD
         self.assertRaises(
             Exception, self.createRoleMaker, worker_num="1"
         )  # worker_num must be as int
         self.assertRaises(
             Exception, self.createRoleMaker, worker_num=0
         )  # worker_num must be greater than 0
+=======
+        self.assertRaises(Exception, self.createRoleMaker,
+                          worker_num="1")  # worker_num must be as int
+        self.assertRaises(Exception, self.createRoleMaker,
+                          worker_num=0)  # worker_num must be greater than 0
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # test all invalid role
         self.assertRaises(
             Exception, self.createRoleMaker, role=3
@@ -239,9 +322,16 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
 
 
 class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
+<<<<<<< HEAD
     def createRoleMaker(
         self, current_id=0, worker_endpoints=["127.0.0.1:8080"]
     ):
+=======
+
+    def createRoleMaker(self,
+                        current_id=0,
+                        worker_endpoints=["127.0.0.1:8080"]):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         role = UserDefinedCollectiveRoleMaker(current_id, worker_endpoints)
 
     def testRoleMaker(self):
@@ -251,6 +341,7 @@ class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
             Exception, self.createRoleMaker, worker_endpoints=None
         )  # worker_endpoints must be as list
         self.assertRaises(
+<<<<<<< HEAD
             Exception, self.createRoleMaker, worker_endpoints=[]
         )  # worker_endpoints can't be empty
         self.assertRaises(
@@ -265,6 +356,23 @@ class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
         self.assertRaises(
             Exception, self.createRoleMaker, current_id="0"
         )  # current_id must be as int
+=======
+            Exception, self.createRoleMaker,
+            worker_endpoints=[])  # worker_endpoints can't be empty
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          worker_endpoints=[
+                              3, []
+                          ])  # element worker_endpoints must be as string
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          worker_endpoints=[
+                              "127.0.0.1:8080", "127.0.0.1:8080"
+                          ])  # element in worker_endpoints can't be duplicate
+        # test all invalid current_id
+        self.assertRaises(Exception, self.createRoleMaker,
+                          current_id="0")  # current_id must be as int
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertRaises(
             Exception, self.createRoleMaker, current_id=-1
         )  # current_id must be greater than or equal to 0
@@ -272,11 +380,18 @@ class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
             Exception,
             self.createRoleMaker,
             current_id=1,
+<<<<<<< HEAD
             worker_endpoints=["127.0.0.1:8080"],
         )  # current_id must be less than len(worker_endpoints)
+=======
+            worker_endpoints=[
+                "127.0.0.1:8080"
+            ])  # current_id must be less than len(worker_endpoints)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class CollectiveOptimizerTest(unittest.TestCase):
+
     def test_ds_as_None(self):
         optimizer = fluid.optimizer.AdamOptimizer()
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=None)

@@ -27,6 +27,7 @@ from .layer_function_generator import generate_layer_fn
 
 import paddle
 from ..static import Variable
+<<<<<<< HEAD
 from ..framework import (
     core,
     in_dygraph_mode,
@@ -34,6 +35,9 @@ from ..framework import (
     LayerHelper,
     _in_legacy_dygraph,
 )
+=======
+from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper, _in_legacy_dygraph
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from ..fluid.framework import _in_legacy_dygraph
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import (
@@ -46,6 +50,7 @@ from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ..fluid.layers import utils
 
 # TODO: define math functions
+<<<<<<< HEAD
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401
 from .ops import asin  # noqa: F401
@@ -75,6 +80,39 @@ from .ops import sin  # noqa: F401
 from .ops import asinh  # noqa: F401
 from .ops import acosh  # noqa: F401
 from .ops import atanh  # noqa: F401
+=======
+# yapf: disable
+from .ops import abs    # noqa: F401
+from .ops import acos    # noqa: F401
+from .ops import asin    # noqa: F401
+from .ops import ceil    # noqa: F401
+from .ops import ceil_    # noqa: F401
+from .ops import cos    # noqa: F401
+from .ops import tan    # noqa: F401
+from .ops import sinh    # noqa: F401
+from .ops import cosh    # noqa: F401
+from .ops import exp    # noqa: F401
+from .ops import exp_    # noqa: F401
+from .ops import expm1    # noqa: F401
+from .ops import floor    # noqa: F401
+from .ops import floor_    # noqa: F401
+from .ops import reciprocal    # noqa: F401
+from .ops import reciprocal_    # noqa: F401
+from .ops import round    # noqa: F401
+from .ops import round_    # noqa: F401
+from .ops import rsqrt    # noqa: F401
+from .ops import rsqrt_    # noqa: F401
+from .ops import square    # noqa: F401
+from .ops import atan    # noqa: F401
+from .ops import erf    # noqa: F401
+from .ops import sqrt    # noqa: F401
+from .ops import sqrt_    # noqa: F401
+from .ops import sin    # noqa: F401
+from .ops import asinh    # noqa: F401
+from .ops import acosh    # noqa: F401
+from .ops import atanh    # noqa: F401
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 from ..fluid.layers import elementwise_sub
 from paddle import _C_ops, _legacy_C_ops
@@ -592,6 +630,7 @@ def add(x, y, name=None):
     Elementwise Add Operator.
     Add two tensors element-wise
     The equation is:
+<<<<<<< HEAD
 
     ..  math::
 
@@ -636,6 +675,50 @@ def add(x, y, name=None):
 
             import paddle
 
+=======
+
+    ..  math::
+
+        Out=X+Y
+
+        X : a tensor of any dimension.
+        Y: a tensor whose dimensions must be less than or equal to the dimensions of X.
+
+    There are two cases for this operator:
+    1. The shape of Y is the same with X.
+    2. The shape of Y is a continuous subsequence of X.
+    For case 2:
+    1. Broadcast Y to match the shape of X, where axis is the start dimension index for broadcasting Y onto X.
+    2. If axis is -1 (default), axis=rank(X)−rank(Y).
+    3. The trailing dimensions of size 1 for Y will be ignored for the consideration of subsequence, such as shape(Y) = (2, 1) => (2).
+
+        For example:
+
+        ..  code-block:: python
+
+            shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+            shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+
+    Args:
+        x (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        y (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        with_quant_attr (BOOLEAN) – Whether the operator has attributes used by quantization.
+        name (string, optional) – Name of the output. Default is None. It’s used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+        N-dimension tensor. A location into which the result is stored. It’s dimension equals with x
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.to_tensor([1, 5, 2], 'float64')
             z = paddle.add(x, y)
@@ -1616,11 +1699,81 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
     return paddle.sum(int_tensor, axis=axis, keepdim=keepdim, name=name)
 
 
+def count_nonzero(x, axis=None, keepdim=False, name=None):
+    r"""
+    Counts the number of non-zero values in the tensor x along the specified axis.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Results of count operation on the specified axis of input Tensor `x`, it's data type is `'int64'`.
+
+    Examples:
+
+        .. code-block:: python
+            :name: count_nonzero-example
+
+            import paddle
+            # x is a 2-D Tensor:
+            x = paddle.to_tensor([[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]])
+            out1 = paddle.count_nonzero(x)
+            # [3]
+            out2 = paddle.count_nonzero(x, axis=0)
+            # [0, 1, 2]
+            out3 = paddle.count_nonzero(x, axis=0, keepdim=True)
+            # [[0, 1, 2]]
+            out4 = paddle.count_nonzero(x, axis=1)
+            # [2, 1, 0]
+            out5 = paddle.count_nonzero(x, axis=1, keepdim=True)
+            #[[2],
+            # [1],
+            # [0]]
+
+            # y is a 3-D Tensor:
+            y = paddle.to_tensor([[[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]],
+                                  [[0., 2.5, 2.6], [0., 0., 2.4], [2.1, 2.2, 2.3]]])
+            out6 = paddle.count_nonzero(y, axis=[1, 2])
+            # [3, 6]
+            out7 = paddle.count_nonzero(y, axis=[0, 1])
+            # [1, 3, 5]
+    """
+
+
+    if axis is not None:
+        if isinstance(axis, int):
+            axis = [axis]
+        dims = len(x.shape)
+        for i in range(len(axis)):
+            if not isinstance(axis[i], int) or not (axis[i] < dims and axis[i] >= -dims):
+                raise ValueError(
+                    "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+                )
+
+    bool_tensor = paddle.cast(x, 'bool')
+    int_tensor = paddle.cast(bool_tensor, 'int64')
+    return paddle.sum(int_tensor, axis=axis, keepdim=keepdim, name=name)
+
+
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
     Sum one or more Tensor of the input.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     For example:
 
     .. code-block:: text
@@ -1665,7 +1818,7 @@ def add_n(inputs, name=None):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
 
             input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
@@ -1677,7 +1830,14 @@ def add_n(inputs, name=None):
     if in_dygraph_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
+<<<<<<< HEAD
         return _C_ops.add_n(inputs)
+=======
+        for x in inputs:
+            if not x.is_dense():
+                return _C_ops.sum(inputs, 'use_mkldnn', False)
+        return _C_ops.final_state_add_n(inputs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
             inputs = [inputs]
@@ -1925,6 +2085,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     x_shape = x.shape
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
+<<<<<<< HEAD
         raise ValueError(
             "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
@@ -1976,6 +2137,33 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     else:
         if _in_legacy_dygraph():
             out = _legacy_C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+=======
+        raise ValueError("The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(x_shape, y_shape))
+    if x_shape[1] != y_shape[0]:
+        raise ValueError("The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(x_shape, y_shape))
+    if len(input_shape) == 2:
+        if input_shape[0] != x_shape[0]:
+            if input_shape[0] != 1:
+                raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+            if input_shape[1] != y_shape[1] and input_shape[1] != 1:
+                raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+        if input_shape[1] != y_shape[1]:
+            if input_shape[1] != 1:
+                raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+    elif len(input_shape) == 1:
+        if input_shape[0] not in (y_shape[1], 1):
+            raise ValueError("The input's shape: {} is not broadcastable with [x.shape[0], y.shape[1]]: [{},{}]".format(input_shape, x_shape[0], y_shape[1]))
+    else:
+        raise ValueError("The dimention of input should be 2 or 1 but receive input's shape: {}".format(input_shape))
+
+
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_addmm( input, x, y, alpha, beta)
+    else:
+        if _in_legacy_dygraph():
+            out = _C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return out
         else:
             inputs = {'Input': input, "X": x, "Y": y}
@@ -2283,6 +2471,11 @@ def inverse(x, name=None):
 
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
+=======
+        return _C_ops.final_state_inverse(x)
+    elif paddle.in_dynamic_mode():
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return _C_ops.inverse(x)
     elif paddle.in_dynamic_mode():
         return _legacy_C_ops.inverse(x)
@@ -2601,11 +2794,21 @@ def amax(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.amax(x, axis, keepdim)
 
+<<<<<<< HEAD
     reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amax(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
+=======
+    reduce_all, axis = _get_reduce_all_value(axis)
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_amax(x,  axis,  keepdim)
+    if _in_legacy_dygraph():
+        return _C_ops.reduce_amax(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     helper = LayerHelper('amax', **locals())
     check_variable_and_dtype(
@@ -2715,11 +2918,21 @@ def amin(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.amin(x, axis, keepdim)
 
+<<<<<<< HEAD
     reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amin(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
+=======
+    reduce_all, axis = _get_reduce_all_value(axis)
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_amin(x, axis, keepdim)
+    elif _in_legacy_dygraph():
+        return _C_ops.reduce_amin(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     helper = LayerHelper('amin', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amin'
@@ -3276,10 +3489,17 @@ def kron(x, y, name=None):
 
 def cumsum(x, axis=None, dtype=None, name=None):
     """
+<<<<<<< HEAD
     The cumulative sum of the elements along a given axis.
 
     Note:
         The first element of the result is the same as the first element of the input.
+=======
+    The cumulative sum of the elements along a given axis. 
+    
+    **Note**:
+    The first element of the result is the same as the first element of the input. 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
@@ -3344,20 +3564,29 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
 def logcumsumexp(x, axis=None, dtype=None, name=None):
     r"""
+<<<<<<< HEAD
     The logarithm of the cumulative summation of the exponentiation of the elements along a given axis.
+=======
+    The logarithm of the cumulative summation of the exponentiation of the elements along a given axis. 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     For summation index j given by `axis` and other indices i, the result is
 
     .. math::
 
         logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Note:
         The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): The input tensor.
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
+<<<<<<< HEAD
         dtype (str, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3369,6 +3598,19 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
 
             import paddle
 
+=======
+        dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of logcumsumexp operator. 
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             data = paddle.arange(12, dtype='float64')
             data = paddle.reshape(data, (3, 4))
 
@@ -3380,7 +3622,11 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
             # [[ 0.        1.        2.        3.      ]
             #  [ 4.01815   5.01815   6.01815   7.01815 ]
             #  [ 8.018479  9.018479 10.018479 11.018479]]
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             y = paddle.logcumsumexp(data, axis=-1)
             # [[ 0.         1.3132617  2.4076061  3.4401898]
             #  [ 4.         5.3132615  6.407606   7.44019  ]
@@ -3398,6 +3644,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dygraph_mode():
+<<<<<<< HEAD
         if axis is None:
             axis = -1
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
@@ -3421,6 +3668,21 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis, 'flatten': flatten},
     )
+=======
+        if axis is None: axis = -1
+        return _C_ops.final_state_logcumsumexp(x, axis, flatten, False, False)
+    if _in_legacy_dygraph():
+        if axis is None:
+            return _C_ops.logcumsumexp(x, 'flatten', flatten)
+        else:
+            return _C_ops.logcumsumexp(x, 'axis', axis, 'flatten', flatten)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "logcumsumexp")
+
+    helper = LayerHelper('logcumsumexp', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='logcumsumexp', inputs={'X': x}, outputs={'Out': out}, attrs={'axis': axis, 'flatten': flatten})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -3662,6 +3924,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
 
+<<<<<<< HEAD
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.prod(x, axis, keepdim, reduce_all)
@@ -3675,13 +3938,47 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     check_variable_and_dtype(
         x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod'
     )
+=======
+    dim = axis
+    if dim is not None and not isinstance(dim, list):
+        if isinstance(dim, tuple):
+            dim = list(dim)
+        elif isinstance(dim, int):
+            dim = [dim]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".
+                format(type(dim)))
+
+    reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
+    if dim is None or len(dim) == 0:
+        dim = [0]
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_reduce_prod(x, dim, keepdim, reduce_all)
+    if _in_legacy_dygraph():
+        return _C_ops.reduce_prod(
+            x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all)
+
+    helper = LayerHelper('reduce_prod', **locals())
+    check_variable_and_dtype(
+        x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_prod',
         inputs={'X': x},
         outputs={'Out': out},
+<<<<<<< HEAD
         attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
     )
+=======
+        attrs={
+            'dim': dim,
+            'keep_dim': keepdim,
+            'reduce_all': reduce_all
+        })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
@@ -4078,7 +4375,10 @@ def digamma(x, name=None):
     helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
     return out
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 def lgamma(x, name=None):
     r"""
     Calculates the lgamma of the given input tensor, element-wise.
@@ -4105,9 +4405,15 @@ def lgamma(x, name=None):
             # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
         return _C_ops.lgamma(x)
     elif _in_legacy_dygraph():
         return _legacy_C_ops.lgamma(x)
+=======
+        return _C_ops.final_state_lgamma(x)
+    elif _in_legacy_dygraph():
+        return _C_ops.lgamma(x)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lgamma')
     helper = LayerHelper('lgamma', **locals())
@@ -4962,6 +5268,11 @@ def angle(x, name=None):
     """
 
     if in_dygraph_mode():
+<<<<<<< HEAD
+=======
+        return _C_ops.final_state_angle(x)
+    elif paddle.in_dynamic_mode():
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return _C_ops.angle(x)
     elif paddle.in_dynamic_mode():
         return _legacy_C_ops.angle(x)

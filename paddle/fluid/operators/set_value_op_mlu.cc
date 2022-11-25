@@ -26,6 +26,7 @@ template <typename T>
 class SetValueMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
+<<<<<<< HEAD
     auto* in = ctx.Input<phi::DenseTensor>("Input");
     auto* value_tensor = ctx.Input<phi::DenseTensor>("ValueTensor");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
@@ -36,6 +37,16 @@ class SetValueMLUKernel : public framework::OpKernel<T> {
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     auto steps_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StepsTensorList");
+=======
+    auto* in = ctx.Input<Tensor>("Input");
+    auto* value_tensor = ctx.Input<Tensor>("ValueTensor");
+    auto* out = ctx.Output<Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto steps_tensor_list = ctx.MultiInput<Tensor>("StepsTensorList");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto axes = ctx.Attr<std::vector<int64_t>>("axes");
     auto starts = ctx.Attr<std::vector<int64_t>>("starts");
@@ -137,7 +148,11 @@ class SetValueMLUKernel : public framework::OpKernel<T> {
     int64_t stride_step = phi::product(in_dims);
     std::vector<int64_t> index_indices(stride_step);
     std::iota(index_indices.begin(), index_indices.end(), 0);
+<<<<<<< HEAD
     phi::DenseTensor index_temp;
+=======
+    framework::Tensor index_temp;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     in_temp.ShareDataWith(*in);
     val_temp.ShareDataWith(value_temp);
     paddle::framework::TensorFromVector(

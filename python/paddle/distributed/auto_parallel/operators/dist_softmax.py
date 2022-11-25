@@ -20,6 +20,10 @@ from .common import is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
+<<<<<<< HEAD
+=======
+from ..cost import AllreduceSumOpCost, _g_op_cost_factory
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from ..cost import build_comp_desc_from_dist_op, build_dp_costs
 from ..cost import build_comp_costs_from_descs
 from ..cost import SoftmaxOpCost, SoftmaxGradOpCost
@@ -27,6 +31,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class DistributedSoftmax(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -35,6 +40,7 @@ register_distributed_operator_impl_container(DistributedSoftmax("softmax"))
 
 
 class DistributedSoftmaxImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = False
@@ -51,6 +57,7 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
 
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
@@ -58,6 +65,14 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         cost_mapping = build_comp_costs_from_descs(
             SoftmaxOpCost, ctx, processes, desc_mapping, cluster
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mapping = build_comp_costs_from_descs(SoftmaxOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         res_cost = [cost_mapping]
         return res_cost
@@ -65,6 +80,7 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
     def calc_bwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
         res = []
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
@@ -74,16 +90,34 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         cost_mapping = build_comp_costs_from_descs(
             SoftmaxGradOpCost, ctx, processes, desc_mapping, cluster
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        dist_attr = dist_op.dist_attr
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        cost_mapping = build_comp_costs_from_descs(SoftmaxGradOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         res.append(cost_mapping)
 
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
+<<<<<<< HEAD
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(
                     varname, main_block
                 ):
+=======
+        vars = main_block.vars
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and is_parameter_related(
+                        varname, main_block):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
@@ -93,6 +127,7 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
                         var_names = [varname + "@GRAD"]
+<<<<<<< HEAD
                         build_dp_costs(
                             res,
                             dist_op,
@@ -102,6 +137,10 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
                             parallel_axis,
                             cluster,
                         )
+=======
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return res
 

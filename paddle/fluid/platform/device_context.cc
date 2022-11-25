@@ -17,6 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include <set>
+<<<<<<< HEAD
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/generator.h"
@@ -28,10 +29,61 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"
+=======
+
+#include "glog/logging.h"
+#include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/allocator.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
+=======
+    auto* default_dev_ctx = static_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    auto& desired_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
+    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(),
+                                   size,
+                                   phi::Stream(reinterpret_cast<phi::StreamId>(
+                                       desired_dev_ctx.stream())));
+    } else {
+      return allocation::GPUContextAllocatorPool::Instance().Alloc(
+          desired_dev_ctx, size);
+    }
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use CUDA device since it's not compiled with CUDA,"
+        "Please recompile or reinstall Paddle with GPU support."));
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    // TODO(liuyuhui): Consider xpu stream later
+    return Alloc(place, size);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use XPU device since it's not compiled with XPU,"
+        "Please recompile or reinstall Paddle with XPU support."));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #endif
 
 #ifdef PADDLE_WITH_MLU
@@ -73,6 +125,7 @@ DeviceType Place2DeviceType(const platform::Place& place) {
   }
 }
 
+<<<<<<< HEAD
 static DeviceContextPool* pool = nullptr;
 
 DeviceContextPool& DeviceContextPool::Instance() {
@@ -97,6 +150,9 @@ void DeviceContextPool::SetPool(DeviceContextPool* dev_pool) {
   pool = dev_pool;
 }
 
+=======
+DeviceContextPool* DeviceContextPool::pool = nullptr;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 thread_local const std::map<Place,
                             std::shared_future<std::unique_ptr<DeviceContext>>>*
     DeviceContextPool::external_device_contexts_ = nullptr;
@@ -183,9 +239,12 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
   dev_ctx->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                 .GetZeroAllocator(p)
                                 .get());
+<<<<<<< HEAD
   dev_ctx->SetHostZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetZeroAllocator(platform::CPUPlace())
                                     .get());
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   return PtrType(dev_ctx);
 }
 
@@ -408,6 +467,98 @@ const Place& NPUPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
+=======
+class EigenCudaStreamDevice : public Eigen::StreamInterface {
+ public:
+  EigenCudaStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
+    Eigen::initializeDeviceProp();
+  }
+  ~EigenCudaStreamDevice() override {}
+
+  void Reinitialize(const gpuStream_t* cuda_stream, CUDAPlace place) {
+    stream_ = cuda_stream;
+    place_ = place;
+    device_prop_ = &Eigen::m_deviceProperties[place.device];
+  }
+
+  const gpuStream_t& stream() const override { return *stream_; }
+
+#ifdef PADDLE_WITH_HIP
+  const hipDeviceProp_t& deviceProperties() const override {
+#else
+  const cudaDeviceProp& deviceProperties() const override {
+#endif
+    return *device_prop_;
+  }
+
+  void* allocate(size_t num_bytes) const override {
+    if (UNLIKELY(num_bytes == 0)) {
+      return nullptr;
+    }
+    auto buf = memory::Alloc(place_, num_bytes);
+    VLOG(4) << "Eigen allocated at " << buf->ptr() << ", size" << buf->size()
+            << " requested " << num_bytes;
+    void* retv = buf->ptr();
+    {
+      std::lock_guard<std::mutex> lock(mtx_);
+      allocations_.emplace(retv, std::move(buf));
+    }
+    return retv;
+  }
+
+  void deallocate(void* buffer) const override {
+    if (LIKELY(buffer)) {
+      std::lock_guard<std::mutex> lock(mtx_);
+      allocations_.erase(buffer);
+    }
+  }
+
+  void* scratchpad() const override {
+    if (scratch_ == NULL) {
+      scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
+    }
+    return scratch_;
+  }
+
+  unsigned int* semaphore() const override {
+    if (semaphore_ == NULL) {
+      char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
+      semaphore_ = reinterpret_cast<unsigned int*>(scratch);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
+#endif
+    }
+    return semaphore_;
+  }
+
+ private:
+  CUDAPlace place_;
+  const gpuStream_t* stream_;  // not owned;
+#ifdef PADDLE_WITH_HIP
+  const hipDeviceProp_t* device_prop_;
+#else
+  const cudaDeviceProp* device_prop_;  // not owned;
+#endif
+  mutable void* scratch_;
+  mutable unsigned int* semaphore_;
+  mutable std::mutex mtx_;  // to protect allocations_
+  mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
+};
+
+void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) {
+    return;
+  }
+  // reset allocation first before re-allocate to save memory
+  allocation_.reset();
+  allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
+}
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());

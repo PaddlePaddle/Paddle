@@ -51,6 +51,29 @@ This operator is used to scale tensor sliced by axis if its p-norm execeeds maxn
 class RenormGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
+=======
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "AbsGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "AbsGrad");
+
+    auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(dtype, ctx.GetPlace());
+  }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 
 template <typename T>
@@ -71,14 +94,23 @@ class RenormGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(renorm,
                             RenormInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
+=======
+REGISTER_OPERATOR(renorm,
+                  ops::RenormOp,
+                  ops::RenormOpMaker,
+                  ops::RenormGradMaker<paddle::framework::OpDesc>,
+                  ops::RenormGradMaker<paddle::imperative::OpBase>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 DECLARE_INFER_SHAPE_FUNCTOR(renorm_grad,
                             RenormGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(renorm,
                   ops::RenormOp,
                   ops::RenormOpMaker,
@@ -87,3 +119,12 @@ REGISTER_OPERATOR(renorm,
                   RenormInferShapeFunctor)
 
 REGISTER_OPERATOR(renorm_grad, ops::RenormGradOp, RenormGradInferShapeFunctor);
+=======
+REGISTER_OP_CPU_KERNEL(renorm,
+                       ops::CPURenormKernel<float>,
+                       ops::CPURenormKernel<double>);
+
+REGISTER_OP_CPU_KERNEL(renorm_grad,
+                       ops::CPURenormGradKernel<float>,
+                       ops::CPURenormGradKernel<double>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

@@ -708,7 +708,10 @@ class CustomDevice : public DeviceInterface {
                  size_t num,
                  ccl::CCLDataType data_type,
                  ccl::CCLReduceOp reduce_op,
+<<<<<<< HEAD
                  size_t root_id,
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                  const ccl::CCLComm& comm,
                  const stream::Stream& stream) override {
     CHECK_PTR(pimpl_->xccl_reduce);
@@ -718,7 +721,10 @@ class CustomDevice : public DeviceInterface {
                             num,
                             ToXCCLDataType(data_type),
                             ToXCCLReduceOp(reduce_op),
+<<<<<<< HEAD
                             root_id,
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             reinterpret_cast<C_CCLComm>(comm),
                             reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
@@ -820,6 +826,7 @@ class CustomDevice : public DeviceInterface {
                            y));
   }
 
+<<<<<<< HEAD
   // Profiler
   void ProfilerInitialize(paddle::platform::TraceEventCollector* collector,
                           void** user_data) override {
@@ -865,6 +872,8 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
   }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();
@@ -975,6 +984,7 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(xccl_recv, false);
 
   CHECK_INTERFACE(blas_axpby, false);
+<<<<<<< HEAD
 
   CHECK_INTERFACE(profiler_initialize, false);
   CHECK_INTERFACE(profiler_finalize, false);
@@ -982,6 +992,8 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(profiler_start_tracing, false);
   CHECK_INTERFACE(profiler_stop_tracing, false);
   CHECK_INTERFACE(profiler_collect_trace_data, false);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   return true;
 #undef CHECK_INTERFACE
 }

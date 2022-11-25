@@ -18,12 +18,18 @@ import sys
 
 sys.path.append("..")
 import paddle
+<<<<<<< HEAD
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
     XPUOpTestWrapper,
 )
+=======
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
@@ -32,6 +38,7 @@ def random_unique_float(row, k, dtype):
     # create a random float array with 10x length
     arr = np.random.uniform(-10.0, 10.0, int(row * k * 10)).astype(dtype)
     arr = np.unique(arr)
+<<<<<<< HEAD
     assert (
         arr.shape[0] >= row * k
     ), "failed to create enough unique values: %d vs %d" % (
@@ -39,17 +46,31 @@ def random_unique_float(row, k, dtype):
         row * k,
     )
     arr = arr[: row * k]
+=======
+    assert arr.shape[
+        0] >= row * k, "failed to create enough unique values: %d vs %d" % (
+            arr.shape[0], row * k)
+    arr = arr[:row * k]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     np.random.shuffle(arr)
     arr = arr.reshape(row, k)
     return arr
 
 
 class XPUTestTopkOP(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         self.op_name = 'top_k'
         self.use_dynamic_create_class = False
 
     class TestXPUTopkOP(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
@@ -90,24 +111,40 @@ class XPUTestTopkOP(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestTopk1(TestXPUTopkOP):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def set_case(self):
             self.variable_k = True
             self.row = 100
             self.top_k = 1
 
     class TestTopk2(TestXPUTopkOP):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def set_case(self):
             self.variable_k = False
             self.row = 16
             self.top_k = 256
 
     class TestTopk3(TestXPUTopkOP):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def set_case(self):
             self.variable_k = True
             self.row = 10
             self.top_k = 512
 
     class TestTopk4(TestXPUTopkOP):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def set_case(self):
             self.variable_k = False
             self.row = 5

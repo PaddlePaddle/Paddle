@@ -84,8 +84,12 @@ def _fuse_layers(model, layers_list):
     new_layers = _fuse_func(layer_list)
     for i, item in enumerate(layers_list):
         parent_layer, sub_name = utils.find_parent_layer_and_sub_name(
+<<<<<<< HEAD
             model, item
         )
+=======
+            model, item)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         setattr(parent_layer, sub_name, new_layers[i])
 
 
@@ -128,6 +132,7 @@ def _fuse_conv_bn_eval(conv, bn):
     assert not (conv.training or bn.training), "Fusion only for eval!"
     fused_conv = copy.deepcopy(conv)
 
+<<<<<<< HEAD
     fused_weight, fused_bias = _fuse_conv_bn_weights(
         fused_conv.weight,
         fused_conv.bias,
@@ -137,6 +142,12 @@ def _fuse_conv_bn_eval(conv, bn):
         bn.weight,
         bn.bias,
     )
+=======
+    fused_weight, fused_bias = _fuse_conv_bn_weights(fused_conv.weight,
+                                                     fused_conv.bias, bn._mean,
+                                                     bn._variance, bn._epsilon,
+                                                     bn.weight, bn.bias)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     fused_conv.weight.set_value(fused_weight)
     if fused_conv.bias is None:
         fused_conv.bias = paddle.create_parameter(
@@ -181,6 +192,7 @@ def _fuse_linear_bn_eval(linear, bn):
     assert not (linear.training or bn.training), "Fusion only for eval!"
     fused_linear = copy.deepcopy(linear)
 
+<<<<<<< HEAD
     fused_weight, fused_bias = _fuse_linear_bn_weights(
         fused_linear.weight,
         fused_linear.bias,
@@ -190,6 +202,13 @@ def _fuse_linear_bn_eval(linear, bn):
         bn.weight,
         bn.bias,
     )
+=======
+    fused_weight, fused_bias = _fuse_linear_bn_weights(fused_linear.weight,
+                                                       fused_linear.bias,
+                                                       bn._mean, bn._variance,
+                                                       bn._epsilon, bn.weight,
+                                                       bn.bias)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     fused_linear.weight.set_value(fused_weight)
     if fused_linear.bias is None:
         fused_linear.bias = paddle.create_parameter(

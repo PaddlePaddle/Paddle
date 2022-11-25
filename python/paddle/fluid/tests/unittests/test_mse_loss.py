@@ -21,6 +21,7 @@ from paddle.fluid.executor import Executor
 
 
 class TestMseLoss(unittest.TestCase):
+
     def test_mse_loss(self):
         input_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
         label_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
@@ -37,17 +38,28 @@ class TestMseLoss(unittest.TestCase):
         ):
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
+<<<<<<< HEAD
             (result,) = exe.run(
                 fluid.default_main_program(),
                 feed={"input": input_val, "label": label_val},
                 fetch_list=[output],
             )
+=======
+            result = exe.run(fluid.default_main_program(),
+                             feed={
+                                 "input": input_val,
+                                 "label": label_val
+                             },
+                             fetch_list=[output])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestMseInvalidInput(unittest.TestCase):
+
     def test_error(self):
+
         def test_invalid_input():
             input = [256, 3]
             label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
@@ -64,6 +76,7 @@ class TestMseInvalidInput(unittest.TestCase):
 
 
 class TestNNMseLoss(unittest.TestCase):
+
     def test_NNMseLoss_mean(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
@@ -71,6 +84,7 @@ class TestNNMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = fluid.Program()
             startup_prog = fluid.Program()
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if fluid.core.is_compiled_with_cuda()
@@ -83,10 +97,22 @@ class TestNNMseLoss(unittest.TestCase):
                 label = fluid.layers.data(
                     name='label', shape=dim, dtype='float32'
                 )
+=======
+            place = fluid.CUDAPlace(
+                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            with fluid.program_guard(prog, startup_prog):
+                input = fluid.layers.data(name='input',
+                                          shape=dim,
+                                          dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=dim,
+                                          dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mse_loss = paddle.nn.loss.MSELoss()
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 (static_result,) = exe.run(
                     prog,
                     feed={"input": input_np, "label": label_np},
@@ -99,6 +125,19 @@ class TestNNMseLoss(unittest.TestCase):
                     fluid.dygraph.to_variable(input_np),
                     fluid.dygraph.to_variable(label_np),
                 )
+=======
+                static_result = exe.run(prog,
+                                        feed={
+                                            "input": input_np,
+                                            "label": label_np
+                                        },
+                                        fetch_list=[ret])
+
+            with fluid.dygraph.guard():
+                mse_loss = paddle.nn.loss.MSELoss()
+                dy_ret = mse_loss(fluid.dygraph.to_variable(input_np),
+                                  fluid.dygraph.to_variable(label_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 dy_result = dy_ret.numpy()
 
             sub = input_np - label_np
@@ -115,6 +154,7 @@ class TestNNMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = fluid.Program()
             startup_prog = fluid.Program()
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if fluid.core.is_compiled_with_cuda()
@@ -127,10 +167,22 @@ class TestNNMseLoss(unittest.TestCase):
                 label = fluid.layers.data(
                     name='label', shape=dim, dtype='float32'
                 )
+=======
+            place = fluid.CUDAPlace(
+                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            with fluid.program_guard(prog, startup_prog):
+                input = fluid.layers.data(name='input',
+                                          shape=dim,
+                                          dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=dim,
+                                          dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 (static_result,) = exe.run(
                     prog,
                     feed={"input": input_np, "label": label_np},
@@ -143,6 +195,19 @@ class TestNNMseLoss(unittest.TestCase):
                     fluid.dygraph.to_variable(input_np),
                     fluid.dygraph.to_variable(label_np),
                 )
+=======
+                static_result = exe.run(prog,
+                                        feed={
+                                            "input": input_np,
+                                            "label": label_np
+                                        },
+                                        fetch_list=[ret])
+
+            with fluid.dygraph.guard():
+                mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
+                dy_ret = mse_loss(fluid.dygraph.to_variable(input_np),
+                                  fluid.dygraph.to_variable(label_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 dy_result = dy_ret.numpy()
 
             sub = input_np - label_np
@@ -159,6 +224,7 @@ class TestNNMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = fluid.Program()
             startup_prog = fluid.Program()
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if fluid.core.is_compiled_with_cuda()
@@ -171,10 +237,22 @@ class TestNNMseLoss(unittest.TestCase):
                 label = fluid.layers.data(
                     name='label', shape=dim, dtype='float32'
                 )
+=======
+            place = fluid.CUDAPlace(
+                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            with fluid.program_guard(prog, startup_prog):
+                input = fluid.layers.data(name='input',
+                                          shape=dim,
+                                          dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=dim,
+                                          dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mse_loss = paddle.nn.loss.MSELoss(reduction='none')
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 (static_result,) = exe.run(
                     prog,
                     feed={"input": input_np, "label": label_np},
@@ -187,6 +265,19 @@ class TestNNMseLoss(unittest.TestCase):
                     fluid.dygraph.to_variable(input_np),
                     fluid.dygraph.to_variable(label_np),
                 )
+=======
+                static_result = exe.run(prog,
+                                        feed={
+                                            "input": input_np,
+                                            "label": label_np
+                                        },
+                                        fetch_list=[ret])
+
+            with fluid.dygraph.guard():
+                mse_loss = paddle.nn.loss.MSELoss(reduction='none')
+                dy_ret = mse_loss(fluid.dygraph.to_variable(input_np),
+                                  fluid.dygraph.to_variable(label_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 dy_result = dy_ret.numpy()
 
             sub = input_np - label_np
@@ -198,6 +289,7 @@ class TestNNMseLoss(unittest.TestCase):
 
 
 class TestNNFunctionalMseLoss(unittest.TestCase):
+
     def test_NNFunctionalMseLoss_mean(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
@@ -205,6 +297,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
+<<<<<<< HEAD
             place = (
                 paddle.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -217,10 +310,22 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 target = paddle.fluid.data(
                     name='target', shape=dim, dtype='float32'
                 )
+=======
+            place = paddle.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.fluid.data(name='input',
+                                          shape=dim,
+                                          dtype='float32')
+                target = paddle.fluid.data(name='target',
+                                           shape=dim,
+                                           dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'mean')
 
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
+<<<<<<< HEAD
             (static_result,) = exe.run(
                 prog,
                 feed={"input": input_np, "target": target_np},
@@ -231,6 +336,19 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             dy_ret = paddle.nn.functional.mse_loss(
                 paddle.to_tensor(input_np), paddle.to_tensor(target_np), 'mean'
             )
+=======
+            static_result = exe.run(prog,
+                                    feed={
+                                        "input": input_np,
+                                        "target": target_np
+                                    },
+                                    fetch_list=[mse_loss])
+
+            paddle.disable_static()
+            dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
+                                                   paddle.to_tensor(target_np),
+                                                   'mean')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             dy_result = dy_ret.numpy()
 
             sub = input_np - target_np
@@ -247,6 +365,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
+<<<<<<< HEAD
             place = (
                 paddle.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -259,10 +378,22 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 target = paddle.fluid.data(
                     name='target', shape=dim, dtype='float32'
                 )
+=======
+            place = paddle.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.fluid.data(name='input',
+                                          shape=dim,
+                                          dtype='float32')
+                target = paddle.fluid.data(name='target',
+                                           shape=dim,
+                                           dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'sum')
 
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
+<<<<<<< HEAD
                 (static_result,) = exe.run(
                     prog,
                     feed={"input": input_np, "target": target_np},
@@ -273,6 +404,19 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             dy_ret = paddle.nn.functional.mse_loss(
                 paddle.to_tensor(input_np), paddle.to_tensor(target_np), 'sum'
             )
+=======
+                static_result = exe.run(prog,
+                                        feed={
+                                            "input": input_np,
+                                            "target": target_np
+                                        },
+                                        fetch_list=[mse_loss])
+
+            paddle.disable_static()
+            dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
+                                                   paddle.to_tensor(target_np),
+                                                   'sum')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             dy_result = dy_ret.numpy()
 
             sub = input_np - target_np
@@ -289,6 +433,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
+<<<<<<< HEAD
             place = (
                 paddle.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -301,10 +446,22 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 target = paddle.fluid.data(
                     name='target', shape=dim, dtype='float32'
                 )
+=======
+            place = paddle.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.fluid.data(name='input',
+                                          shape=dim,
+                                          dtype='float32')
+                target = paddle.fluid.data(name='target',
+                                           shape=dim,
+                                           dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'none')
 
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
+<<<<<<< HEAD
                 (static_result,) = exe.run(
                     prog,
                     feed={"input": input_np, "target": target_np},
@@ -315,6 +472,19 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             dy_ret = paddle.nn.functional.mse_loss(
                 paddle.to_tensor(input_np), paddle.to_tensor(target_np), 'none'
             )
+=======
+                static_result = exe.run(prog,
+                                        feed={
+                                            "input": input_np,
+                                            "target": target_np
+                                        },
+                                        fetch_list=[mse_loss])
+
+            paddle.disable_static()
+            dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
+                                                   paddle.to_tensor(target_np),
+                                                   'none')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             dy_result = dy_ret.numpy()
 
             sub = input_np - target_np

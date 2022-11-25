@@ -47,11 +47,17 @@ def avg_pool1D_forward_naive(
     if adaptive:
         L_out = ksize[0]
     else:
+<<<<<<< HEAD
         L_out = (
             (L - ksize[0] + 2 * paddings[0] + strides[0] - 1) // strides[0] + 1
             if ceil_mode
             else (L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
         )
+=======
+        L_out = (L - ksize[0] + 2 * paddings[0] + strides[0] -
+                 1) // strides[0] + 1 if ceil_mode else (
+                     L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     out = np.zeros((N, C, L_out))
     for i in range(L_out):
@@ -67,6 +73,7 @@ def avg_pool1D_forward_naive(
             (r_end - r_start) if (exclusive or adaptive) else (ksize[0])
         )
         if data_type == np.int8 or data_type == np.uint8:
+<<<<<<< HEAD
             out[:, :, i] = (
                 np.rint(np.sum(x_masked, axis=(2, 3)) / field_size)
             ).astype(data_type)
@@ -74,10 +81,18 @@ def avg_pool1D_forward_naive(
             out[:, :, i] = (np.sum(x_masked, axis=(2)) / field_size).astype(
                 data_type
             )
+=======
+            out[:, :, i] = (np.rint(np.sum(x_masked, axis=(2, 3)) /
+                                    field_size)).astype(data_type)
+        else:
+            out[:, :,
+                i] = (np.sum(x_masked, axis=(2)) / field_size).astype(data_type)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
 class TestPool1D_API(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -89,9 +104,17 @@ class TestPool1D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
             result = F.adaptive_avg_pool1d(input, output_size=16)
+<<<<<<< HEAD
             result_np = avg_pool1D_forward_naive(
                 input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True
             )
+=======
+            result_np = avg_pool1D_forward_naive(input_np,
+                                                 ksize=[16],
+                                                 strides=[0],
+                                                 paddings=[0],
+                                                 adaptive=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
@@ -101,10 +124,17 @@ class TestPool1D_API(unittest.TestCase):
             result = ada_max_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+<<<<<<< HEAD
             result = paddle.nn.functional.common.interpolate(
                 input, mode="area", size=16
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+=======
+            result = paddle.nn.functional.common.interpolate(input,
+                                                             mode="area",
+                                                             size=16)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def check_adaptive_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -112,9 +142,17 @@ class TestPool1D_API(unittest.TestCase):
             result = F.adaptive_avg_pool1d(input, output_size=16)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
+<<<<<<< HEAD
             result_np = avg_pool1D_forward_naive(
                 input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True
             )
+=======
+            result_np = avg_pool1D_forward_naive(input_np,
+                                                 ksize=[16],
+                                                 strides=[2],
+                                                 paddings=[0],
+                                                 adaptive=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             exe = fluid.Executor(place)
             fetches = exe.run(

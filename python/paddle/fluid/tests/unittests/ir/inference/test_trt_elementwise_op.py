@@ -25,14 +25,24 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data1 = fluid.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
             data2 = fluid.data(
                 name="data2", shape=[-1, 3, 64, 1], dtype="float32"
             )
+=======
+            data1 = fluid.data(name="data1",
+                               shape=[-1, 3, 64, 64],
+                               dtype="float32")
+            data2 = fluid.data(name="data2",
+                               shape=[-1, 3, 64, 1],
+                               dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             eltwise_out = self.append_eltwise(data1, data2)
             out = fluid.layers.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
@@ -62,22 +72,37 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest1(
+<<<<<<< HEAD
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
+=======
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def append_eltwise(self, data1, data2):
         return fluid.layers.elementwise_sub(x=data1, y=data2, axis=0)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest2(
+<<<<<<< HEAD
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
+=======
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def append_eltwise(self, data1, data2):
         return fluid.layers.elementwise_mul(x=data1, y=data2, axis=0)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest3(
+<<<<<<< HEAD
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
+=======
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def append_eltwise(self, data1, data2):
         return fluid.layers.elementwise_div(x=data1, y=data2, axis=0)
 

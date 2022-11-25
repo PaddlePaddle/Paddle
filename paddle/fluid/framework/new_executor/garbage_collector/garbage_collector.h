@@ -15,7 +15,10 @@
 
 #include <queue>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -31,9 +34,16 @@ class InterpreterCoreGarbageCollector {
  public:
   InterpreterCoreGarbageCollector();
   virtual ~InterpreterCoreGarbageCollector() {}
+<<<<<<< HEAD
 
   virtual void Add(Variable* var, const Instruction& instruction) = 0;
 
+=======
+  virtual void Add(Variable* var) = 0;
+  virtual void Add(Variable* var,
+                   platform::DeviceEvent* event,
+                   const platform::DeviceContext* ctx) = 0;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
 
  protected:

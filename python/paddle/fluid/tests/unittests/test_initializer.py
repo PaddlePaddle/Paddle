@@ -43,17 +43,25 @@ def output_hist(out):
 
 
 class TestConstantInitializer(unittest.TestCase):
+
     def test_calculate_gain(self):
         self.assertEqual(paddle.nn.initializer.calculate_gain('sigmoid'), 1)
         self.assertEqual(paddle.nn.initializer.calculate_gain('linear'), 1)
         self.assertEqual(paddle.nn.initializer.calculate_gain('conv2d'), 1)
         self.assertEqual(paddle.nn.initializer.calculate_gain('tanh'), 5.0 / 3)
+<<<<<<< HEAD
         self.assertEqual(
             paddle.nn.initializer.calculate_gain('relu'), math.sqrt(2.0)
         )
         self.assertEqual(
             paddle.nn.initializer.calculate_gain('leaky_relu', 1), 1
         )
+=======
+        self.assertEqual(paddle.nn.initializer.calculate_gain('relu'),
+                         math.sqrt(2.0))
+        self.assertEqual(paddle.nn.initializer.calculate_gain('leaky_relu', 1),
+                         1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertEqual(paddle.nn.initializer.calculate_gain('selu'), 3.0 / 4)
 
     def test_constant_initializer_default_value(self, dtype="float32"):
@@ -108,11 +116,13 @@ class TestConstantInitializer(unittest.TestCase):
 
 
 class TestUniformInitializer(unittest.TestCase):
+
     def test_uniform_initializer_default_value(self, dtype="float32"):
         """Test the uniform initializer with default value"""
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype=dtype,
                 shape=[5, 10],
@@ -120,6 +130,13 @@ class TestUniformInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.UniformInitializer(),
             )
+=======
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.UniformInitializer())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -135,6 +152,7 @@ class TestUniformInitializer(unittest.TestCase):
         program.random_seed = 123
         block = program.global_block()
         for _ in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
@@ -142,6 +160,13 @@ class TestUniformInitializer(unittest.TestCase):
                 name="param1",
                 initializer=initializer.UniformInitializer(),
             )
+=======
+            block.create_parameter(dtype="float32",
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param1",
+                                   initializer=initializer.UniformInitializer())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
@@ -159,6 +184,7 @@ class TestUniformInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype=dtype,
                 shape=[5, 10],
@@ -166,6 +192,14 @@ class TestUniformInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.UniformInitializer(-4.2, 3.1, 123),
             )
+=======
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.UniformInitializer(
+                                       -4.2, 3.1, 123))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -180,6 +214,7 @@ class TestUniformInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for i in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype=dtype,
                 shape=[5, 10],
@@ -187,6 +222,14 @@ class TestUniformInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.UniformInitializer(-4.2, float(i), 123),
             )
+=======
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.UniformInitializer(
+                                       -4.2, float(i), 123))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op0 = block.ops[0]
@@ -215,11 +258,13 @@ class TestUniformInitializer(unittest.TestCase):
 
 
 class TestNormalInitializer(unittest.TestCase):
+
     def test_normal_initializer_default_value(self):
         """Test the normal initializer with default value"""
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
@@ -227,6 +272,13 @@ class TestNormalInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.NormalInitializer(),
             )
+=======
+            block.create_parameter(dtype="float32",
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.NormalInitializer())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -239,6 +291,7 @@ class TestNormalInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype=dtype,
                 shape=[5, 10],
@@ -247,6 +300,15 @@ class TestNormalInitializer(unittest.TestCase):
                 initializer=initializer.NormalInitializer(2.3, 1.9, 123),
             )
         num_ops = 1
+=======
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.NormalInitializer(
+                                       2.3, 1.9, 123))
+        num_ops = 2 if (dtype == "float16" or dtype == "uint16") else 1
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -265,6 +327,7 @@ class TestNormalInitializer(unittest.TestCase):
 
 
 class TestXavierInitializer(unittest.TestCase):
+
     def test_uniform_xavier_initializer(self):
         """Test Xavier initializer with uniform distribution on
         for matrix multiply.
@@ -306,8 +369,12 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(init_op.type, 'uniform_random')
         receptive_field_size = float(15 * 20)
         limit = np.sqrt(
+<<<<<<< HEAD
             6.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size)
         )
+=======
+            6.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
@@ -353,8 +420,12 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(init_op.type, 'gaussian_random')
         receptive_field_size = float(15 * 20)
         std = np.sqrt(
+<<<<<<< HEAD
             2.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size)
         )
+=======
+            2.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
@@ -366,6 +437,7 @@ class TestXavierInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype=dtype,
                 shape=[5, 10],
@@ -380,6 +452,19 @@ class TestXavierInitializer(unittest.TestCase):
             if (dtype == "float16" or (dtype == "uint16" and not uniform))
             else 1
         )
+=======
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.XavierInitializer(
+                                       uniform=uniform,
+                                       fan_in=12,
+                                       fan_out=23,
+                                       seed=134))
+        num_ops = 2 if (dtype == "float16" or
+                        (dtype == "uint16" and not uniform)) else 1
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         if uniform:
@@ -408,6 +493,7 @@ class TestXavierInitializer(unittest.TestCase):
 
 
 class TestMSRAInitializer(unittest.TestCase):
+
     def test_uniform_msra_initializer(self):
         """Test MSRA initializer with uniform distribution on
         for matrix multiply.
@@ -503,6 +589,7 @@ class TestMSRAInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
+<<<<<<< HEAD
             block.create_parameter(
                 dtype=dtype,
                 shape=[5, 10],
@@ -510,6 +597,14 @@ class TestMSRAInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.MSRAInitializer(fan_in=12, seed=134),
             )
+=======
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.MSRAInitializer(
+                                       fan_in=12, seed=134))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -531,6 +626,7 @@ class TestMSRAInitializer(unittest.TestCase):
 
 
 class TestBilinearInitializer(unittest.TestCase):
+
     def test_bilinear_initializer(self, dtype="float32"):
         """Test the bilinear initializer with supplied arguments"""
         program = framework.Program()
@@ -620,6 +716,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
 
 
 class TestNumpyArrayInitializer(unittest.TestCase):
+
     def test_numpy_array_initializer(self, dtype="float32"):
         """Test the numpy array initializer with supplied arguments"""
         import numpy
@@ -654,6 +751,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
 
 
 class TestSetGlobalInitializer(unittest.TestCase):
+
     def test_set_global_weight_initilizer(self):
         """Test Set Global Param initilizer with UniformInitializer"""
         main_prog = framework.Program()
@@ -683,10 +781,16 @@ class TestSetGlobalInitializer(unittest.TestCase):
         """Test Set Global Bias initilizer with NormalInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
+<<<<<<< HEAD
         fluid.set_global_initializer(
             initializer.Uniform(low=-0.5, high=0.5),
             bias_init=initializer.Normal(loc=0.0, scale=2.0),
         )
+=======
+        fluid.set_global_initializer(initializer.Uniform(low=-0.5, high=0.5),
+                                     bias_init=initializer.Normal(loc=0.0,
+                                                                  scale=2.0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of bias in layers.conv2d is ConstantInitializer
@@ -711,6 +815,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
 
 
 class TestUniformInitializerDygraph(unittest.TestCase):
+
     def func_uniform_initializer(self, dtype="float32"):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
@@ -732,7 +837,12 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         hist, prob = output_hist(tensor.numpy())
 
+<<<<<<< HEAD
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
+=======
+        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=1e-3),
+                        "hist: " + str(hist))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         paddle.enable_static()
 
@@ -743,6 +853,7 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
 
 class TestXavierInitializerDygraph(unittest.TestCase):
+
     def func_xvarier_initializer(self, dtype="float32"):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
@@ -752,9 +863,15 @@ class TestXavierInitializerDygraph(unittest.TestCase):
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
 
+<<<<<<< HEAD
         xavier_ = paddle.fluid.initializer.XavierInitializer(
             uniform=False, fan_in=3, fan_out=5
         )
+=======
+        xavier_ = paddle.fluid.initializer.XavierInitializer(uniform=False,
+                                                             fan_in=3,
+                                                             fan_out=5)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         xavier_(tensor)
 
         hist, _ = output_hist(tensor.numpy())
@@ -763,7 +880,12 @@ class TestXavierInitializerDygraph(unittest.TestCase):
             np.random.normal(0, np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16])
         )
 
+<<<<<<< HEAD
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+=======
+        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
+                        "hist: " + str(hist) + " hist2: " + str(hist2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.enable_static()
 
     def test_xavier_initializer(self, dtype="float32"):
@@ -773,6 +895,7 @@ class TestXavierInitializerDygraph(unittest.TestCase):
 
 
 class TestMSRAInitializerDygraph(unittest.TestCase):
+
     def func_msra_initializer(self, dtype="float32"):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
@@ -782,9 +905,14 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
 
+<<<<<<< HEAD
         msra_ = paddle.fluid.initializer.MSRAInitializer(
             uniform=False, fan_in=4
         )
+=======
+        msra_ = paddle.fluid.initializer.MSRAInitializer(uniform=False,
+                                                         fan_in=4)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         msra_(tensor)
 
         hist, _ = output_hist(tensor.numpy())
@@ -793,7 +921,12 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
             np.random.normal(0, np.sqrt(2.0 / (4)), [1024, 1024, 16])
         )
 
+<<<<<<< HEAD
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+=======
+        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
+                        "hist: " + str(hist) + " hist2: " + str(hist2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.enable_static()
 
     def test_msra_initializer(self, dtype="float32"):
@@ -803,6 +936,7 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
 
 
 class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
+
     def func_order(self):
         paddle.set_device('cpu')
         SEED = 123
@@ -811,26 +945,43 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
+<<<<<<< HEAD
             initializer=paddle.nn.initializer.TruncatedNormal(
                 mean=0.0, std=2.0
             ),
         )
+=======
+            initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0,
+                                                              std=2.0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         bias_attr = paddle.framework.ParamAttr(
             name="linear_bias",
             learning_rate=1.0,
             trainable=False,
             regularizer=None,
+<<<<<<< HEAD
             initializer=paddle.nn.initializer.TruncatedNormal(
                 mean=0.0, std=2.0
             ),
         )
+=======
+            initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0,
+                                                              std=2.0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         def run_dynamic_graph():
             paddle.disable_static()
             paddle.seed(SEED)
+<<<<<<< HEAD
             linear = paddle.nn.Linear(
                 1, 1, weight_attr=weight_attr, bias_attr=bias_attr
             )
+=======
+            linear = paddle.nn.Linear(1,
+                                      1,
+                                      weight_attr=weight_attr,
+                                      bias_attr=bias_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return linear.weight.numpy(), linear.bias.numpy()
             paddle.enable_static()
 
@@ -838,6 +989,7 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
             paddle.enable_static()
             exe = paddle.static.Executor(paddle.CPUPlace())
             paddle.seed(SEED)
+<<<<<<< HEAD
             linear = paddle.nn.Linear(
                 1, 1, weight_attr=weight_attr, bias_attr=bias_attr
             )
@@ -845,6 +997,14 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 paddle.static.default_startup_program(),
                 fetch_list=['linear_weight', 'linear_bias'],
             )
+=======
+            linear = paddle.nn.Linear(1,
+                                      1,
+                                      weight_attr=weight_attr,
+                                      bias_attr=bias_attr)
+            res = exe.run(paddle.static.default_startup_program(),
+                          fetch_list=['linear_weight', 'linear_bias'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return res[0], res[1]
 
         dynamic_res = run_dynamic_graph()
@@ -886,9 +1046,15 @@ class TestOrthogonalInitializer1(unittest.TestCase):
 
         paddle.disable_static()
         paddle.seed(2021)
+<<<<<<< HEAD
         linear = paddle.nn.Linear(
             self.in_features, self.out_features, weight_attr=self.weight_attr
         )
+=======
+        linear = paddle.nn.Linear(self.in_features,
+                                  self.out_features,
+                                  weight_attr=self.weight_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         res_dygraph = linear.weight.numpy()
 
         paddle.enable_static()
@@ -896,11 +1062,17 @@ class TestOrthogonalInitializer1(unittest.TestCase):
         start_prog = paddle.static.Program()
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
+<<<<<<< HEAD
             linear = paddle.nn.Linear(
                 self.in_features,
                 self.out_features,
                 weight_attr=self.weight_attr,
             )
+=======
+            linear = paddle.nn.Linear(self.in_features,
+                                      self.out_features,
+                                      weight_attr=self.weight_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             block = start_prog.global_block()
             self.assertEqual(len(block.ops), self.num_ops)
@@ -1003,12 +1175,19 @@ class TestOrthogonalInitializer4(unittest.TestCase):
 
         paddle.disable_static()
         paddle.seed(2021)
+<<<<<<< HEAD
         conv2d = paddle.nn.Conv2D(
             self.in_features,
             self.out_features,
             self.kernel_size,
             weight_attr=self.weight_attr,
         )
+=======
+        conv2d = paddle.nn.Conv2D(self.in_features,
+                                  self.out_features,
+                                  self.kernel_size,
+                                  weight_attr=self.weight_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         res_dygraph = conv2d.weight.numpy()
 
         paddle.enable_static()
@@ -1016,12 +1195,19 @@ class TestOrthogonalInitializer4(unittest.TestCase):
         start_prog = paddle.static.Program()
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
+<<<<<<< HEAD
             conv2d = paddle.nn.Conv2D(
                 self.in_features,
                 self.out_features,
                 self.kernel_size,
                 weight_attr=self.weight_attr,
             )
+=======
+            conv2d = paddle.nn.Conv2D(self.in_features,
+                                      self.out_features,
+                                      self.kernel_size,
+                                      weight_attr=self.weight_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             exe = paddle.static.Executor()
             res_static = exe.run(
                 paddle.static.default_startup_program(),
@@ -1086,6 +1272,7 @@ class TestOrthogonalInitializer6(TestOrthogonalInitializer4):
 
 # initialize Conv1D weight
 class TestDiracInitializer1(unittest.TestCase):
+
     def config(self):
         self.weight_attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Dirac()
@@ -1109,12 +1296,19 @@ class TestDiracInitializer1(unittest.TestCase):
         paddle.set_default_dtype(self.dtype)
 
         paddle.disable_static()
+<<<<<<< HEAD
         conv = self.conv_layer(
             self.in_channels,
             self.out_channels,
             self.kernel_size,
             weight_attr=self.weight_attr,
         )
+=======
+        conv = self.conv_layer(self.in_channels,
+                               self.out_channels,
+                               self.kernel_size,
+                               weight_attr=self.weight_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         weight_dygraph = conv.weight.numpy()
 
         paddle.enable_static()
@@ -1122,12 +1316,19 @@ class TestDiracInitializer1(unittest.TestCase):
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             inp = paddle.rand(self.input_shape)
+<<<<<<< HEAD
             conv = self.conv_layer(
                 self.in_channels,
                 self.out_channels,
                 self.kernel_size,
                 weight_attr=self.weight_attr,
             )
+=======
+            conv = self.conv_layer(self.in_channels,
+                                   self.out_channels,
+                                   self.kernel_size,
+                                   weight_attr=self.weight_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             output = conv(inp)
             block = start_prog.global_block()
@@ -1158,6 +1359,7 @@ class TestDiracInitializer1(unittest.TestCase):
 
 # initialize Conv2D weight
 class TestDiracInitializer2(TestDiracInitializer1):
+
     def config(self):
         self.weight_attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Dirac(groups=1)
@@ -1182,6 +1384,7 @@ class TestDiracInitializer2(TestDiracInitializer1):
 
 # initialize Conv3D weight
 class TestDiracInitializer3(TestDiracInitializer1):
+
     def config(self):
         self.weight_attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Dirac(groups=2)
@@ -1195,6 +1398,7 @@ class TestDiracInitializer3(TestDiracInitializer1):
         self.num_ops = 7
 
     def check_result(self, w_dygraph, w_static, conv_in, conv_out):
+<<<<<<< HEAD
         np.testing.assert_array_equal(w_dygraph, w_static)
         np.testing.assert_array_equal(
             conv_out[:, 0:5, :, :, :], conv_in[:, :, 1:9, 1:9, 1:9]
@@ -1202,6 +1406,15 @@ class TestDiracInitializer3(TestDiracInitializer1):
         np.testing.assert_array_equal(
             conv_out[:, 5:10, :, :, :], conv_in[:, :, 1:9, 1:9, 1:9]
         )
+=======
+        self.assertTrue(np.array_equal(w_dygraph, w_static))
+        self.assertTrue(
+            np.array_equal(conv_out[:, 0:5, :, :, :], conv_in[:, :, 1:9, 1:9,
+                                                              1:9]))
+        self.assertTrue(
+            np.array_equal(conv_out[:, 5:10, :, :, :], conv_in[:, :, 1:9, 1:9,
+                                                               1:9]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_error(self):
         self.config()

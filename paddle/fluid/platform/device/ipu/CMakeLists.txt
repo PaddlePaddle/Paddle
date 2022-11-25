@@ -23,7 +23,11 @@ if(WITH_IPU)
     endforeach()
   endforeach()
 
+<<<<<<< HEAD
   set(IPU_BACKEND_SRC "ipu_strategy.cc" "ipu_compiler.cc" "ipu_executor.cc"
+=======
+  set(IPU_BACKEND_SRC "ipu_strategy.cc" "ipu_executor.cc" "ipu_compiler.cc"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                       "ipu_backend.cc" "ipu_utils.cc")
   set(IPU_INFO_SRC "ipu_info.cc" "ipu_device.cc")
 
@@ -34,6 +38,7 @@ if(WITH_IPU)
   cc_library(
     ipu_backend
     SRCS ${IPU_BACKEND_SRC}
+<<<<<<< HEAD
     DEPS popart-only
          graph
          graph_helper
@@ -48,6 +53,9 @@ if(WITH_IPU)
   target_compile_definitions(ipu_backend
                              PRIVATE optional_CONFIG_SELECT_OPTIONAL=1)
 
+=======
+    DEPS popart-only graph graph_helper popdist popart_canonicalization)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   cc_library(
     ipu_info
     SRCS ${IPU_INFO_SRC}

@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestCumsumOp(unittest.TestCase):
+
     def run_cases(self):
         data_np = np.arange(12).reshape(3, 4)
         data = paddle.to_tensor(data_np)
@@ -100,6 +101,7 @@ class TestCumsumOp(unittest.TestCase):
 
 
 class TestNPUCumSumOp1(OpTest):
+
     def setUp(self):
         self.op_type = "cumsum"
         self.set_npu()
@@ -123,17 +125,24 @@ class TestNPUCumSumOp1(OpTest):
 
 
 class TestNPUCumSumOp2(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': -1, 'reverse': True}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.flip(
                 np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
             )
+=======
+            'Out': np.flip(np.flip(self.inputs['X'], axis=2).cumsum(axis=2),
+                           axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestNPUCumSumOp3(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 1}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
@@ -141,6 +150,7 @@ class TestNPUCumSumOp3(TestNPUCumSumOp1):
 
 
 class TestNPUCumSumOp4(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 0}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
@@ -148,23 +158,27 @@ class TestNPUCumSumOp4(TestNPUCumSumOp1):
 
 
 class TestNPUCumSumOp5(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.inputs = {'X': np.random.random((5, 20)).astype(self.dtype)}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
 
 class TestNPUCumSumOp7(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.inputs = {'X': np.random.random((100)).astype(self.dtype)}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
 
 class TestNPUCumSumExclusive1(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((4, 5, 65)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.concatenate(
                 (
                     np.zeros((4, 5, 1), dtype=self.dtype),
@@ -172,15 +186,23 @@ class TestNPUCumSumExclusive1(TestNPUCumSumOp1):
                 ),
                 axis=2,
             )
+=======
+            'Out':
+            np.concatenate((np.zeros(
+                (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
+                           axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestNPUCumSumExclusive2(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((1, 1, 888)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.concatenate(
                 (
                     np.zeros((1, 1, 1), dtype=self.dtype),
@@ -188,15 +210,23 @@ class TestNPUCumSumExclusive2(TestNPUCumSumOp1):
                 ),
                 axis=2,
             )
+=======
+            'Out':
+            np.concatenate((np.zeros(
+                (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
+                           axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestNPUCumSumExclusive3(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((4, 5, 888)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.concatenate(
                 (
                     np.zeros((4, 5, 1), dtype=self.dtype),
@@ -204,15 +234,23 @@ class TestNPUCumSumExclusive3(TestNPUCumSumOp1):
                 ),
                 axis=2,
             )
+=======
+            'Out':
+            np.concatenate((np.zeros(
+                (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
+                           axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestNPUCumSumExclusive4(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((1, 1, 3049)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.concatenate(
                 (
                     np.zeros((1, 1, 1), dtype=self.dtype),
@@ -220,15 +258,23 @@ class TestNPUCumSumExclusive4(TestNPUCumSumOp1):
                 ),
                 axis=2,
             )
+=======
+            'Out':
+            np.concatenate((np.zeros(
+                (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
+                           axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestNPUCumSumExclusive5(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
         a = np.random.random((4, 5, 3096)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.concatenate(
                 (
                     np.zeros((4, 5, 1), dtype=self.dtype),
@@ -236,16 +282,24 @@ class TestNPUCumSumExclusive5(TestNPUCumSumOp1):
                 ),
                 axis=2,
             )
+=======
+            'Out':
+            np.concatenate((np.zeros(
+                (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
+                           axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestNPUCumSumReverseExclusive(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
         a = np.random.random((4, 5, 6)).astype(self.dtype)
         self.inputs = {'X': a}
         a = np.flip(a, axis=2)
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.concatenate(
                 (
                     np.flip(a[:, :, :-1].cumsum(axis=2), axis=2),
@@ -253,10 +307,18 @@ class TestNPUCumSumReverseExclusive(TestNPUCumSumOp1):
                 ),
                 axis=2,
             )
+=======
+            'Out':
+            np.concatenate(
+                (np.flip(a[:, :, :-1].cumsum(axis=2),
+                         axis=2), np.zeros((4, 5, 1), dtype=self.dtype)),
+                axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestNPUCumSumWithFlatten1(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'flatten': True}
         self.inputs = {'X': np.random.random((5, 6)).astype(self.dtype)}
@@ -264,6 +326,7 @@ class TestNPUCumSumWithFlatten1(TestNPUCumSumOp1):
 
 
 class TestNPUCumSumWithFlatten2(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'flatten': True}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
@@ -272,20 +335,28 @@ class TestNPUCumSumWithFlatten2(TestNPUCumSumOp1):
 
 # ----------------Cumsum Int64----------------
 class TestNPUCumSumOpInt64(TestNPUCumSumOp1):
+
     def init_testcase(self):
         self.attrs = {'axis': -1, 'reverse': True}
         self.inputs = {
             'X': np.random.randint(1, 10000, size=(5, 6, 10)).astype(self.dtype)
         }
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.flip(
                 np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
             )
+=======
+            'Out': np.flip(np.flip(self.inputs['X'], axis=2).cumsum(axis=2),
+                           axis=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 def create_test_int64(parent):
+
     class TestCumSumInt64(parent):
+
         def init_dtype(self):
             self.dtype = np.int64
 

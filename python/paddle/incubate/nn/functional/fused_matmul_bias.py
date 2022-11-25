@@ -15,6 +15,7 @@
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.tensor.linalg import matmul
+<<<<<<< HEAD
 from paddle import _legacy_C_ops
 
 
@@ -37,6 +38,33 @@ def fused_matmul_bias(
 
     Returns:
         Tensor: the output Tensor.
+=======
+from paddle import _C_ops
+
+
+def fused_matmul_bias(x,
+                      y,
+                      bias=None,
+                      transpose_x=False,
+                      transpose_y=False,
+                      name=None):
+    """
+    Applies matrix multiplication of two tensors and then bias addition if provided.
+    This method requires CUDA version >= 11.6. 
+
+    Args:
+        x (Tensor): the first input Tensor to be multiplied.
+        y (Tensor): the second input Tensor to be multiplied. Its rank must be 2.  
+        bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
+            be performed. Otherwise, the bias is added to the matrix multiplication result.  
+        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.    
+        name(str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default. 
+
+    Returns:
+        Tensor: the output Tensor. 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Examples:
         .. code-block:: python
@@ -44,16 +72,25 @@ def fused_matmul_bias(
             # required: gpu
             import paddle
             from paddle.incubate.nn.functional import fused_matmul_bias
+<<<<<<< HEAD
 
             x = paddle.randn([3, 4])
             y = paddle.randn([4, 5])
             bias = paddle.randn([5])
             out = fused_matmul_bias(x, y, bias)
+=======
+            
+            x = paddle.randn([3, 4]) 
+            y = paddle.randn([4, 5])
+            bias = paddle.randn([5])
+            out = fused_matmul_bias(x, y, bias) 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             print(out.shape) # [3, 5]
     """
     if bias is None:
         return matmul(x, y, transpose_x, transpose_y, name)
     if _non_static_mode():
+<<<<<<< HEAD
         return _legacy_C_ops.fused_gemm_epilogue(
             x, y, bias, 'trans_x', transpose_x, 'trans_y', transpose_y
         )
@@ -66,11 +103,30 @@ def fused_matmul_bias(
         outputs={'Out': out},
         attrs={'trans_x': transpose_x, 'trans_y': transpose_y},
     )
+=======
+        return _C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x', transpose_x,
+                                          'trans_y', transpose_y)
+
+    helper = LayerHelper('fused_matmul_bias', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='fused_gemm_epilogue',
+                     inputs={
+                         'X': x,
+                         'Y': y,
+                         'Bias': bias
+                     },
+                     outputs={'Out': out},
+                     attrs={
+                         'trans_x': transpose_x,
+                         'trans_y': transpose_y
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return out
 
 
 def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
     """
+<<<<<<< HEAD
     Fully-connected linear transformation operator. This method requires CUDA version >= 11.6.
 
     Args:
@@ -84,6 +140,21 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
 
     Returns:
         Tensor: the output Tensor.
+=======
+    Fully-connected linear transformation operator. This method requires CUDA version >= 11.6. 
+
+    Args:
+        x (Tensor): the input Tensor to be multiplied.
+        weight (Tensor): the weight Tensor to be multiplied. Its rank must be 2.  
+        bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
+            be performed. Otherwise, the bias is added to the matrix multiplication result.  
+        transpose_weight (bool): Whether to transpose :math:`weight` before multiplication.    
+        name(str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default. 
+
+    Returns:
+        Tensor: the output Tensor. 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Examples:
         .. code-block:: python
@@ -91,11 +162,19 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
             # required: gpu
             import paddle
             from paddle.incubate.nn.functional import fused_linear
+<<<<<<< HEAD
 
             x = paddle.randn([3, 4])
             weight = paddle.randn([4, 5])
             bias = paddle.randn([5])
             out = fused_linear(x, weight, bias)
+=======
+            
+            x = paddle.randn([3, 4]) 
+            weight = paddle.randn([4, 5])
+            bias = paddle.randn([5])
+            out = fused_linear(x, weight, bias) 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             print(out.shape) # [3, 5]
     """
     return fused_matmul_bias(x, weight, bias, False, transpose_weight, name)

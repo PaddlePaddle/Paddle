@@ -35,7 +35,11 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
                               platform::errors::InvalidArgument(
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
+<<<<<<< HEAD
       phi::DenseTensor temp;
+=======
+      framework::Tensor temp;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       paddle::framework::TensorCopySync(
           *max_len_tensor, platform::CPUPlace(), &temp);
       maxlen = *temp.data<int32_t>();

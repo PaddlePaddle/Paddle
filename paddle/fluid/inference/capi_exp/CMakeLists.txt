@@ -31,6 +31,7 @@ cc_library(
   DEPS paddle_inference)
 set_target_properties(paddle_inference_c_shared PROPERTIES OUTPUT_NAME
                                                            paddle_inference_c)
+<<<<<<< HEAD
 
 if(APPLE)
   target_link_libraries(
@@ -43,6 +44,8 @@ if(APPLE)
     cblas)
 endif()
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if(WIN32)
   target_link_libraries(paddle_inference_c_shared shlwapi.lib)
 endif()

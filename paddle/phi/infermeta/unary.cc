@@ -358,6 +358,7 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+<<<<<<< HEAD
 void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 int num_classes,
                                 int num_samples,
@@ -387,6 +388,8 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
   sampled_local_class_center->set_dtype(label.dtype());
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
   PADDLE_ENFORCE_GT(
       max_norm,
@@ -423,6 +426,7 @@ void CumInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+<<<<<<< HEAD
 void CumScalarAxisInferMeta(const MetaTensor& x,
                             const Scalar& axis,
                             bool flatten,
@@ -437,6 +441,13 @@ void CropInferMeta(const MetaTensor& x,
                    const IntArray& offsets,
                    MetaTensor* out,
                    MetaConfig config) {
+=======
+void CropTensorInferMeta(const MetaTensor& x,
+                         const IntArray& shape,
+                         const IntArray& offsets,
+                         MetaTensor* out,
+                         MetaConfig config) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   PADDLE_ENFORCE_NE(
       out,
       nullptr,
@@ -473,6 +484,7 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+<<<<<<< HEAD
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out) {
@@ -494,6 +506,8 @@ void DecodeJpegInferMeta(const MetaTensor& x,
   }
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out) {
   auto x_dims = x.dims();
@@ -775,6 +789,7 @@ void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
   out->set_dtype(out_dtype);
 }
 
+<<<<<<< HEAD
 void EigvalshInferMeta(const MetaTensor& x,
                        const std::string& uplo,
                        bool is_test,
@@ -815,6 +830,8 @@ void EigvalshInferMeta(const MetaTensor& x,
   }
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out) {
@@ -1200,6 +1217,7 @@ void FlipInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+<<<<<<< HEAD
 void FoldInferMeta(const MetaTensor& x,
                    const std::vector<int>& output_sizes,
                    const std::vector<int>& kernel_sizes,
@@ -1405,6 +1423,8 @@ void FoldInferMeta(const MetaTensor& x,
   }
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void FrameInferMeta(const MetaTensor& x,
                     int frame_length,
                     int hop_length,
@@ -2175,6 +2195,7 @@ void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
                         "whose shape must be [N, 4] "
                         "N is the number of boxes "
                         "in last dimension in format [x1, x2, y1, y2]. "));
+<<<<<<< HEAD
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(DataType::INT64);
 }
@@ -2188,6 +2209,10 @@ void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out) {
           "Input(Condition) should have number of dimension at least 1"));
   out->set_dims(phi::make_ddim({-1, rank}));
   out->set_dtype(DataType::INT64);
+=======
+  auto num_boxes = boxes_dim[0];
+  out->set_dims(phi::make_ddim({num_boxes}));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 void NormInferMeta(const MetaTensor& x,
@@ -2208,6 +2233,7 @@ void NormInferMeta(const MetaTensor& x,
   }
 }
 
+<<<<<<< HEAD
 void OneHotRawInferMeta(const MetaTensor& x,
                         const Scalar& depth,
                         DataType dtype,
@@ -2245,6 +2271,8 @@ void OneHotInferMeta(const MetaTensor& x,
   out->set_dtype(phi::DataType::FLOAT32);
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void OverlapAddInferMeta(const MetaTensor& x,
                          int hop_length,
                          int axis,
@@ -3095,6 +3123,7 @@ void ReverseInferMeta(const MetaTensor& x,
 }
 
 void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
+<<<<<<< HEAD
                            const IntArray& axis,
                            std::vector<phi::MetaTensor*> out,
                            MetaConfig config) {
@@ -3104,18 +3133,34 @@ void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
   auto& axis_data = axis.GetData();
   PADDLE_ENFORCE_EQ(
       axis_data.size(),
+=======
+                           const std::vector<int>& axis,
+                           std::vector<phi::MetaTensor*> out) {
+  PADDLE_ENFORCE_EQ(
+      axis.size(),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       1,
       phi::errors::InvalidArgument(
           "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
           "but received %d.",
+<<<<<<< HEAD
           axis_data.size()));
   PADDLE_ENFORCE_EQ(
       axis_data[0],
+=======
+          axis.size()));
+  PADDLE_ENFORCE_EQ(
+      axis[0],
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       0,
       phi::errors::InvalidArgument("The value of axis should be 1 when "
                                    "the Input(X) is LoDTensorArray, "
                                    "but received %d.",
+<<<<<<< HEAD
                                    axis_data[0]));
+=======
+                                   axis[0]));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 void RollInferMeta(const MetaTensor& x,
@@ -3549,9 +3594,14 @@ void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void SqueezeInferMeta(const MetaTensor& x,
+<<<<<<< HEAD
                       const IntArray& axes,
                       MetaTensor* out,
                       MetaConfig config) {
+=======
+                      const std::vector<int>& axes,
+                      MetaTensor* out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   const auto& x_dims = x.dims();
   // Check input tensor dims (<6) Eigen limit.
   PADDLE_ENFORCE_LE(x_dims.size(),
@@ -3585,12 +3635,23 @@ void SqueezeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+<<<<<<< HEAD
 void SqueezeWithXShapeInferMeta(const MetaTensor& x,
                                 const IntArray& axes,
                                 MetaTensor* out,
                                 MetaTensor* xshape,
                                 MetaConfig config) {
   SqueezeInferMeta(x, axes, out, config);
+=======
+  out->set_dtype(x.dtype());
+}
+
+void SqueezeWithXShapeInferMeta(const MetaTensor& x,
+                                const std::vector<int>& axes,
+                                MetaTensor* out,
+                                MetaTensor* xshape) {
+  SqueezeInferMeta(x, axes, out);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   const auto& x_dims = x.dims();
   std::vector<int64_t> xshape_dims(x_dims.size() + 1);
   xshape_dims[0] = 0;
@@ -4370,6 +4431,7 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+<<<<<<< HEAD
 void UniformRandomInplaceInferMeta(const MetaTensor& x,
                                    float min,
                                    float max,
@@ -4407,6 +4469,8 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
@@ -4690,6 +4754,18 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
   auto output_dims = input_dims;
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
+}
+
+void IdentityLossInferMeta(const MetaTensor& x,
+                           int reduction,
+                           MetaTensor* out) {
+  if (reduction == 2) {
+    out->set_dtype(x.dtype());
+    out->set_dims(x.dims());
+  } else {
+    out->set_dims(phi::make_ddim({1}));
+    out->set_dtype(x.dtype());
+  }
 }
 
 }  // namespace phi

@@ -191,6 +191,7 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestSparseAttentionOp(OpTest):
+
     def config(self):
         self.shape = (1, 1, 16, 16)
         self.blocksize = 4
@@ -270,6 +271,7 @@ class TestSparseAttentionOp(OpTest):
 
 
 class TestSparseAttentionOpFp32Test(TestSparseAttentionOp):
+
     def config(self):
         self.shape = (1, 1, 8, 16)
         self.blocksize = 2
@@ -278,6 +280,7 @@ class TestSparseAttentionOpFp32Test(TestSparseAttentionOp):
 
 
 class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
+
     def config(self):
         self.shape = (2, 2, 32, 8)
         self.blocksize = 8
@@ -290,6 +293,7 @@ class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestSparseAttentionAPI(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 1, 8, 4)
@@ -318,18 +322,28 @@ class TestSparseAttentionAPI(unittest.TestCase):
             offset_shape = (batch_size, num_heads, rows + 1)
             columns_shape = (batch_size, num_heads, int(sparse_nnz_num))
 
+<<<<<<< HEAD
             offset = paddle.static.data(
                 name="Offset", shape=offset_shape, dtype="int32"
             )
             columns = paddle.static.data(
                 name="Columns", shape=columns_shape, dtype="int32"
             )
+=======
+            offset = paddle.static.data(name="Offset",
+                                        shape=offset_shape,
+                                        dtype="int32")
+            columns = paddle.static.data(name="Columns",
+                                         shape=columns_shape,
+                                         dtype="int32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             key_padding_mask_shape = (self.shape[0], self.shape[2])
             attn_mask_shape = (self.shape[2], self.shape[2])
             if self.use_mask:
                 key_padding_mask = paddle.static.data(
                     name="KeyPaddingMask",
                     shape=key_padding_mask_shape,
+<<<<<<< HEAD
                     dtype=self.dtype,
                 )
                 attn_mask = paddle.static.data(
@@ -344,22 +358,48 @@ class TestSparseAttentionAPI(unittest.TestCase):
                     key_padding_mask=key_padding_mask,
                     attn_mask=attn_mask,
                 )
+=======
+                    dtype=self.dtype)
+                attn_mask = paddle.static.data(name="AttnMask",
+                                               shape=attn_mask_shape,
+                                               dtype=self.dtype)
+                Out = F.sparse_attention(Q,
+                                         K,
+                                         V,
+                                         offset,
+                                         columns,
+                                         key_padding_mask=key_padding_mask,
+                                         attn_mask=attn_mask)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 Out = F.sparse_attention(Q, K, V, offset, columns)
 
             Q_np = np.random.random(self.shape).astype(self.dtype)
             K_np = np.random.random(self.shape).astype(self.dtype)
             V_np = np.random.random(self.shape).astype(self.dtype)
+<<<<<<< HEAD
             offset_np, columns_np = init_csr_format(
                 self.shape[0], self.shape[1], self.shape[2], self.blocksize
             )
+=======
+            offset_np, columns_np = init_csr_format(self.shape[0],
+                                                    self.shape[1],
+                                                    self.shape[2],
+                                                    self.blocksize)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             offset_np = offset_np.astype('int32')
             columns_np = columns_np.astype('int32')
 
             # init mask tensor
+<<<<<<< HEAD
             key_padding_mask_np = np.random.randint(
                 0, 2, size=key_padding_mask_shape
             )
+=======
+            key_padding_mask_np = np.random.randint(0,
+                                                    2,
+                                                    size=key_padding_mask_shape)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             attn_mask_np = np.random.randint(0, 2, size=attn_mask_shape)
             key_padding_mask_np = init_mask(key_padding_mask_np)
             attn_mask_np = init_mask(attn_mask_np)
@@ -404,9 +444,14 @@ class TestSparseAttentionAPI(unittest.TestCase):
                     Q_np, K_np, V_np, offset_np, columns_np
                 )
 
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 fetches_result[0], expected_result, rtol=1e-05, atol=1e-05
             )
+=======
+            self.assertTrue(
+                np.allclose(fetches_result, expected_result, atol=1e-5))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -436,6 +481,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
         paddle_kp_mask = paddle.to_tensor(key_padding_mask, place=self.place)
         paddle_attn_mask = paddle.to_tensor(attn_mask, place=self.place)
 
+<<<<<<< HEAD
         if self.use_mask:
             paddle_result = F.sparse_attention(
                 paddle_query,
@@ -446,6 +492,16 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 key_padding_mask=paddle_kp_mask,
                 attn_mask=paddle_attn_mask,
             )
+=======
+        if self.use_mask == True:
+            paddle_result = F.sparse_attention(paddle_query,
+                                               paddle_key,
+                                               paddle_value,
+                                               paddle_offset,
+                                               paddle_colunmns,
+                                               key_padding_mask=paddle_kp_mask,
+                                               attn_mask=paddle_attn_mask)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             numpy_result, __, __ = ref_batch_sparse_attention(
                 query,
@@ -467,6 +523,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
             )
 
             numpy_result, __, __ = ref_batch_sparse_attention(
+<<<<<<< HEAD
                 query, key, value, offset, columns
             )
             numpy_result = numpy_result.astype(self.dtype)
@@ -474,9 +531,17 @@ class TestSparseAttentionAPI(unittest.TestCase):
         np.testing.assert_allclose(
             paddle_result.numpy(), numpy_result, rtol=1e-05, atol=1e-05
         )
+=======
+                query, key, value, offset, columns)
+            numpy_result = numpy_result.astype(self.dtype)
+
+        self.assertTrue(
+            np.allclose(paddle_result.numpy(), numpy_result, atol=1e-5))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestSparseAttentionAPITestFloat(TestSparseAttentionAPI):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 2, 8, 4)
@@ -486,6 +551,7 @@ class TestSparseAttentionAPITestFloat(TestSparseAttentionAPI):
 
 
 class TestSparseAttentionAPITestShape1(TestSparseAttentionAPI):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 2, 64, 32)
@@ -495,6 +561,7 @@ class TestSparseAttentionAPITestShape1(TestSparseAttentionAPI):
 
 
 class TestSparseAttentionAPITestShape2(TestSparseAttentionAPI):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 1, 64, 32)
@@ -504,6 +571,7 @@ class TestSparseAttentionAPITestShape2(TestSparseAttentionAPI):
 
 
 class TestSparseAttentionAPITestShape3(TestSparseAttentionAPI):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (4, 4, 128, 32)
@@ -513,6 +581,7 @@ class TestSparseAttentionAPITestShape3(TestSparseAttentionAPI):
 
 
 class TestSparseAttentionAPITestShape4(TestSparseAttentionAPI):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (3, 3, 35, 15)

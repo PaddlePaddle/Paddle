@@ -64,9 +64,14 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
     for i in range(fout_size):
         jac_i = list([] for _ in range(fin_size))
         for j in range(fin_size):
+<<<<<<< HEAD
             jac_i[j] = np.zeros(
                 (_product(ys[i].shape), _product(xs[j].shape)), dtype=np_dtype
             )
+=======
+            jac_i[j] = np.zeros((_product(ys[i].shape), _product(xs[j].shape)),
+                                dtype=np_dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         jacobian[i] = jac_i
 
     for j in range(fin_size):
@@ -111,6 +116,7 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
                     x_pos = orig + delta
                     xs[j] = _set_item(xs[j], q, x_pos)
                     jacobian_pos = _compute_numerical_jacobian(
+<<<<<<< HEAD
                         func, xs, delta, np_dtype
                     )
                     x_neg = orig - delta
@@ -124,6 +130,17 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
                         / delta
                         / 2.0
                     )
+=======
+                        func, xs, delta, np_dtype)
+                    x_neg = orig - delta
+                    xs[j] = _set_item(xs[j], q, x_neg)
+                    jacobian_neg = _compute_numerical_jacobian(
+                        func, xs, delta, np_dtype)
+                    xs[j] = _set_item(xs[j], q, orig)
+                    hessian[i][j][p][q] = (
+                        jacobian_pos[0][i][0][p] -
+                        jacobian_neg[0][i][0][p]) / delta / 2.
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return hessian
 
 
@@ -200,8 +217,12 @@ def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
     mid = len(hessian_res) // 2
     for i in range(mid):
         hessian_result.append(
+<<<<<<< HEAD
             np.stack((hessian_res[i], hessian_res[mid + i]), axis=0)
         )
+=======
+            np.stack((hessian_res[i], hessian_res[mid + i]), axis=0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return hessian_result
 
 
@@ -267,6 +288,7 @@ def unuse(x, y):
 
 
 def nested(x):
+
     def inner(y):
         return x * y
 
@@ -436,6 +458,7 @@ def gen_static_data_and_feed(xs, v, stop_gradient=True):
         static_v = v
 
     return feed, static_xs, static_v
+<<<<<<< HEAD
 
 
 def gen_static_inputs_and_feed(xs, stop_gradient=True):
@@ -452,3 +475,5 @@ def gen_static_inputs_and_feed(xs, stop_gradient=True):
         static_xs.stop_gradient = stop_gradient
         feed.update({'x': xs})
     return feed, static_xs
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

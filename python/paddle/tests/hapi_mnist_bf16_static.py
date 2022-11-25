@@ -37,6 +37,7 @@ set_device('cpu')
 
 def parse_args():
     parser = argparse.ArgumentParser("Lenet BF16 train static script")
+<<<<<<< HEAD
     parser.add_argument(
         '-bf16',
         '--bf16',
@@ -44,11 +45,19 @@ def parse_args():
         default=False,
         help="whether use bf16",
     )
+=======
+    parser.add_argument('-bf16',
+                        '--bf16',
+                        type=ast.literal_eval,
+                        default=False,
+                        help="whether use bf16")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     args = parser.parse_args()
     return args
 
 
 class MnistDataset(MNIST):
+
     def __init__(self, mode, return_label=True):
         super().__init__(mode=mode)
         self.return_label = return_label
@@ -93,6 +102,7 @@ def main(args):
     if args.bf16:
         optim = amp.bf16.decorate_bf16(
             optim,
+<<<<<<< HEAD
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
                 custom_bf16_list={
                     'matmul_v2',
@@ -107,6 +117,12 @@ def main(args):
                 },
             ),
         )
+=======
+            amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(custom_bf16_list={
+                'matmul_v2', 'pool2d', 'relu', 'scale', 'elementwise_add',
+                'reshape2', 'slice', 'reduce_mean', 'conv2d'
+            }, ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # Configuration model
     model.prepare(optim, paddle.nn.CrossEntropyLoss(), Accuracy())
@@ -118,9 +134,15 @@ def main(args):
     model.fit(train_dataset, epochs=2, batch_size=batch_size, verbose=1)
     eval_result = model.evaluate(val_dataset, batch_size=batch_size, verbose=1)
 
+<<<<<<< HEAD
     output = model.predict(
         test_dataset, batch_size=batch_size, stack_outputs=True
     )
+=======
+    output = model.predict(test_dataset,
+                           batch_size=batch_size,
+                           stack_outputs=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     np.testing.assert_equal(output[0].shape[0], len(test_dataset))
 

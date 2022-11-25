@@ -20,6 +20,7 @@ import tempfile
 
 
 class BufferLayers(paddle.nn.Layer):
+
     def __init__(self, out_channel):
         super().__init__()
         self.out_channel = out_channel
@@ -37,6 +38,7 @@ class BufferLayers(paddle.nn.Layer):
 
 
 class SequentialNet(paddle.nn.Layer):
+
     def __init__(self, sub_layer, in_channel, out_channel):
         super().__init__()
         self.layer = paddle.nn.Sequential(
@@ -51,6 +53,7 @@ class SequentialNet(paddle.nn.Layer):
 
 
 class NestSequentialNet(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
         group1 = paddle.nn.Sequential(
@@ -68,6 +71,7 @@ class NestSequentialNet(paddle.nn.Layer):
 
 
 class TestSequential(unittest.TestCase):
+
     def setUp(self):
         paddle.set_device('cpu')
         self.seed = 2021
@@ -93,12 +97,18 @@ class TestSequential(unittest.TestCase):
         out = self.net(x)
         if to_static:
             load_out = self._test_load(self.net, x)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 load_out,
                 out,
                 rtol=1e-05,
                 err_msg='load_out is {}\\st_out is {}'.format(load_out, out),
             )
+=======
+            self.assertTrue(np.allclose(load_out, out),
+                            msg='load_out is {}\st_out is {}'.format(
+                                load_out, out))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return out
 
@@ -106,6 +116,7 @@ class TestSequential(unittest.TestCase):
         paddle.jit.set_code_level(100)
         dy_out = self._run(to_static=False)
         st_out = self._run(to_static=True)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dy_out,
             st_out,
@@ -114,6 +125,11 @@ class TestSequential(unittest.TestCase):
                 dy_out, st_out
             ),
         )
+=======
+        self.assertTrue(np.allclose(dy_out, st_out),
+                        msg='dygraph_res is {}\nstatic_res is {}'.format(
+                            dy_out, st_out))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _test_load(self, net, x):
         paddle.jit.save(net, self.model_path)
@@ -123,6 +139,7 @@ class TestSequential(unittest.TestCase):
 
 
 class TestNestSequential(TestSequential):
+
     def _init_config(self):
         self.net = NestSequentialNet()
         self.model_path = os.path.join(

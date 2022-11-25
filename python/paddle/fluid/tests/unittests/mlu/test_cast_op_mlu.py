@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestCastOpFp32ToFp16(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
@@ -46,6 +47,7 @@ class TestCastOpFp32ToFp16(OpTest):
 
 
 class TestCastOpFp16ToFp32(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float16')}
@@ -76,12 +78,34 @@ class TestCastOpFp32ToFp64(OpTest):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
         self.__class__.no_need_check_grad = True
+<<<<<<< HEAD
+=======
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=1e-3)
+
+
+class TestCastOpFp32ToFp64(OpTest):
+    def setUp(self):
+        ipt = np.random.random(size=[10, 10])
+        self.inputs = {'X': ipt.astype('float32')}
+        self.outputs = {'Out': ipt.astype('float64')}
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'out_dtype': int(core.VarDesc.VarType.FP64)
+        }
+        self.op_type = 'cast'
+        self.place = paddle.device.MLUPlace(0)
+        self.__class__.use_mlu = True
+        self.__class__.no_need_check_grad = True
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
 
 
 class TestCastOpInt32ToInt32(OpTest):
+
     def setUp(self):
         ipt = np.random.randint(1000, size=(10, 10))
         self.inputs = {'X': ipt.astype('int32')}
@@ -99,6 +123,7 @@ class TestCastOpInt32ToInt32(OpTest):
 
 
 class TestCastOpInt32ToFp32(OpTest):
+
     def setUp(self):
         ipt = np.random.randint(1000, size=[10, 10])
         self.inputs = {'X': ipt.astype('int32')}
@@ -116,6 +141,7 @@ class TestCastOpInt32ToFp32(OpTest):
 
 
 class TestCastOpInt16ToFp64(OpTest):
+
     def setUp(self):
         ipt = np.random.randint(1000, size=[10, 10])
         self.inputs = {'X': ipt.astype('int16')}
@@ -133,12 +159,18 @@ class TestCastOpInt16ToFp64(OpTest):
 
 
 class TestCastOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.MLUPlace(0)
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.MLUPlace(0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
 
 

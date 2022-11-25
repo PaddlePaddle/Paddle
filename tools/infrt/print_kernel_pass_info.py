@@ -45,8 +45,12 @@ def get_compat_kernels_info(register):
                 is_macro_defination = False
                 for line in txt:
                     if line.strip().startswith(
+<<<<<<< HEAD
                         "#define"
                     ) and line.strip().endswith("\\"):
+=======
+                            "#define") and line.strip().endswith("\\"):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         is_macro_defination = True
                         continue
                     if is_macro_defination:

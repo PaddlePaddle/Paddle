@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -34,11 +41,19 @@ class TestBase(IPUOpTest):
         data_y = np.random.uniform(size=[4, 5, 6])
         self.feed_fp32 = {
             "in_0": data_x.astype(np.float32),
+<<<<<<< HEAD
             "in_1": data_y.astype(np.float32),
         }
         self.feed_fp16 = {
             "in_0": data_x.astype(np.float16),
             "in_1": data_y.astype(np.float16),
+=======
+            "in_1": data_y.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            "in_0": data_x.astype(np.float16),
+            "in_1": data_y.astype(np.float16)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def set_feed_attr(self):
@@ -51,12 +66,21 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         y = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = paddle.where(x > 1, x, y)
         self.fetch_list = [out.name]
 

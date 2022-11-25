@@ -22,7 +22,11 @@ from dist_pass_test_base import DistPassTestBase
 
 import paddle
 import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 from paddle.distributed.fleet import auto
+=======
+import paddle.distributed.auto_parallel as auto
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
@@ -34,6 +38,7 @@ from auto_parallel_gpt_model import (
 
 
 class AutoPallelPassTestBase(DistPassTestBase):
+
     def setUp(self):
         paddle.enable_static()
         seed = int(os.environ.get('SEED', -1))
@@ -64,12 +69,23 @@ class AutoPallelPassTestBase(DistPassTestBase):
         fleet.init(is_collective=True, strategy=dist_strategy)
 
     def check_main(self, gpus=None, **kwargs):
+<<<<<<< HEAD
         no_pass_rets = self._distributed_launch(
             model=None, apply_pass=False, gpus=gpus, **kwargs
         )
         pass_rets = self._distributed_launch(
             model=None, apply_pass=True, gpus=gpus, **kwargs
         )
+=======
+        no_pass_rets = self._distributed_launch(model=None,
+                                                apply_pass=False,
+                                                gpus=gpus,
+                                                **kwargs)
+        pass_rets = self._distributed_launch(model=None,
+                                             apply_pass=True,
+                                             gpus=gpus,
+                                             **kwargs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.check_results(no_pass_rets, pass_rets)
 
     def _run_gpu_main(self, model, apply_pass, dump_file, **kwargs):
@@ -161,6 +177,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
         else:
             raise ValueError("'get_gpt_model' only support dp and mp.")
 
+<<<<<<< HEAD
         tokens = paddle.static.data(
             name="tokens", shape=[batch_size, sequence_len], dtype='int64'
         )
@@ -178,6 +195,24 @@ class AutoPallelPassTestBase(DistPassTestBase):
         loss_mask = paddle.static.data(
             name="loss_mask", shape=[batch_size, sequence_len], dtype='float32'
         )
+=======
+        tokens = paddle.static.data(name="tokens",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        position_ids = paddle.static.data(name="position_ids",
+                                          shape=[batch_size, sequence_len],
+                                          dtype='int64')
+        attention_mask = paddle.static.data(
+            name="attention_mask",
+            shape=[batch_size, 1, sequence_len, sequence_len],
+            dtype='float32')
+        labels = paddle.static.data(name="labels",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        loss_mask = paddle.static.data(name="loss_mask",
+                                       shape=[batch_size, sequence_len],
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
 
         data_loader = paddle.fluid.io.DataLoader.from_generator(
@@ -186,6 +221,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
         data_loader.set_batch_generator(gen_data, paddle.static.cuda_places())
 
         if modeling._global_parallel_strategy == "dp":
+<<<<<<< HEAD
             auto.shard_tensor(
                 tokens, modeling._global_process_mesh, ["x", None]
             )
@@ -218,11 +254,51 @@ class AutoPallelPassTestBase(DistPassTestBase):
         model = GPTForPretraining(
             gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02
         )
+=======
+            auto.shard_tensor(tokens,
+                              dist_attr={
+                                  "process_mesh": modeling._global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
+        elif modeling._global_parallel_strategy == "pp":
+            auto.shard_tensor(tokens,
+                              dist_attr={
+                                  "process_mesh": modeling.PP_MESH_LIST[0],
+                                  "dims_mapping": [-1, -1]
+                              })
+            auto.shard_tensor(attention_mask,
+                              dist_attr={
+                                  "process_mesh": modeling.PP_MESH_LIST[0],
+                                  "dims_mapping": [-1, -1, -1, -1]
+                              })
+
+        gpt = GPTModel(vocab_size=1000,
+                       hidden_size=64,
+                       num_hidden_layers=2,
+                       num_attention_heads=8,
+                       intermediate_size=256,
+                       hidden_act="gelu",
+                       hidden_dropout_prob=0.0,
+                       attention_probs_dropout_prob=0.0,
+                       max_position_embeddings=1024,
+                       type_vocab_size=1,
+                       initializer_range=0.02,
+                       pad_token_id=0,
+                       eos_token_id=7,
+                       bos_token_id=0,
+                       eol_token_id=3)
+
+        model = GPTForPretraining(gpt,
+                                  vocab_size=1000,
+                                  hidden_size=64,
+                                  initializer_range=0.02)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
 
         clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
+<<<<<<< HEAD
         if kwargs.get('optimizer', None) == "LarsMomentum":
             optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9
@@ -248,3 +324,35 @@ class AutoPallelPassTestBase(DistPassTestBase):
             [loss],
             data_loader,
         )
+=======
+        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                         beta1=0.9,
+                                                         beta2=0.999,
+                                                         epsilon=1e-08,
+                                                         grad_clip=clip)
+        optimizer = fleet.distributed_optimizer(optimizer)
+        startup_program = paddle.static.default_startup_program()
+        _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
+            loss, startup_program)
+
+        def gen_data():
+            np.random.seed(2021)
+            for _ in range(10):
+                tokens = []
+                position_ids = []
+                attention_mask = []
+                labels = []
+                loss_mask = []
+                for _ in range(batch_size):
+                    tokens.append(
+                        np.random.randint(vocab_size, size=sequence_len))
+                    position_ids.append(np.arange(sequence_len))
+                    attention_mask.append([np.tril(np.ones(sequence_len))])
+                    labels.append(
+                        np.random.randint(vocab_size, size=sequence_len))
+                    loss_mask.append(np.ones(sequence_len))
+
+                yield tokens, position_ids, attention_mask, labels, loss_mask
+
+        return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

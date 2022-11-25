@@ -34,11 +34,39 @@ struct ReplaceOp {
 template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
+                              size_t len,
+                              uint64_t* global_num) {
+  ReplaceOp<typename Table::mapped_type> op;
+  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
+
+  __shared__ uint64_t local_num;
+
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (threadIdx.x == 0) {
+    local_num = 0;
+  }
+  __syncthreads();
+
+  if (i < len) {
+    kv.first = keys[i];
+    kv.second = 1;  // fake value
+    auto it = table->insert(kv, op, &local_num);
+    assert(it != table->end() && "error: insert fails: table is full");
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    atomicAdd(global_num, local_num);
+  }
+}
+
+template <typename Table>
+__global__ void insert_kernel(Table* table,
+                              const typename Table::key_type* const keys,
                               const typename Table::mapped_type* const vals,
                               size_t len) {
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
-
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     kv.first = keys[i];
@@ -65,7 +93,7 @@ __global__ void insert_kernel(Table* table,
     uint64_t offset = uint64_t(start_index + i) * feature_value_size;
     kv.second = (Table::mapped_type)(pool + offset);
     auto it = table->insert(kv, op);
-    assert(it != table->end() && "error: insert fails: table is full");
+    PADDLE_ENFORCE(it != table->end(), "error: insert fails: table is full");
   }
 }
 
@@ -84,6 +112,32 @@ __global__ void search_kernel(Table* table,
 }
 
 template <typename Table, typename GPUAccessor>
+<<<<<<< HEAD
+=======
+__global__ void dy_mf_search_kernel_fill(
+    Table* table,
+    const typename Table::key_type* const keys,
+    char* vals,
+    size_t len,
+    size_t pull_feature_value_size,
+    GPUAccessor gpu_accessor) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      uint64_t offset = i * pull_feature_value_size;
+      float* cur = (float*)(vals + offset);
+      float* input = it->second;
+      gpu_accessor.PullValueFill(cur, input);
+    } else {
+      float* cur = (float*)(&vals[i * pull_feature_value_size]);
+      gpu_accessor.PullZeroValue(cur);
+    }
+  }
+}
+
+template <typename Table, typename GPUAccessor>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 __global__ void dy_mf_search_kernel(Table* table,
                                     const typename Table::key_type* const keys,
                                     char* vals,
@@ -99,6 +153,11 @@ __global__ void dy_mf_search_kernel(Table* table,
       float* cur = (float*)(vals + offset);
       float* input = it->second;
       gpu_accessor.PullValueFill(cur, input);
+<<<<<<< HEAD
+=======
+    } else {
+      PADDLE_ENFORCE(false, "warning: pull miss key: %lu", keys[i]);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
   }
 }
@@ -134,8 +193,47 @@ __global__ void dy_mf_update_kernel(Table* table,
       float* cur = (float*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
     } else {
+<<<<<<< HEAD
       printf("warning: push miss key: %lu", keys[i]);
+=======
+      PADDLE_ENFORCE(false, "warning: push miss key: %lu", keys[i]);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
+  }
+}
+
+template <typename Table>
+__global__ void get_keys_kernel(Table* table,
+                                typename Table::key_type* d_out,
+                                uint64_t* global_cursor,
+                                uint64_t unused_key) {
+  extern __shared__ typename Table::key_type local_key[];
+  __shared__ uint64_t local_num;
+  __shared__ uint64_t global_num;
+
+  size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (threadIdx.x == 0) {
+    local_num = 0;
+  }
+  __syncthreads();
+  uint64_t len = table->size();
+  if (idx < len) {
+    typename Table::value_type val = *(table->data() + idx);
+    if (val.first != unused_key) {
+      uint64_t dst = atomicAdd(&local_num, 1);
+      local_key[dst] = val.first;
+    }
+  }
+
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    global_num = atomicAdd(global_cursor, local_num);
+  }
+  __syncthreads();
+
+  if (threadIdx.x < local_num) {
+    d_out[global_num + threadIdx.x] = local_key[threadIdx.x];
   }
 }
 
@@ -194,6 +292,17 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len);
+<<<<<<< HEAD
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType, typename GPUAccessor>
+void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
+                                      char* d_vals,
+                                      size_t len,
+                                      StreamType stream,
+                                      GPUAccessor& fv_accessor) {
+=======
 }
 
 template <typename KeyType, typename ValType>
@@ -207,8 +316,34 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  // infer need zero fill
+  if (infer_mode_) {
+    dy_mf_search_kernel_fill<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+        container_, d_keys, d_vals, len, pull_feature_value_size_, fv_accessor);
+  } else {
+    dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+        container_, d_keys, d_vals, len, pull_feature_value_size_, fv_accessor);
+  }
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
+                                         size_t len,
+                                         uint64_t* global_num,
+                                         StreamType stream) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+<<<<<<< HEAD
   dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len, pull_feature_value_size_, fv_accessor);
+=======
+  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, len, global_num);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 template <typename KeyType, typename ValType>
@@ -227,6 +362,22 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
+<<<<<<< HEAD
+=======
+void HashTable<KeyType, ValType>::get_keys(KeyType* d_out,
+                                           uint64_t* global_cursor,
+                                           StreamType stream) {
+  size_t len = container_->size();
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  KeyType unuse_key = std::numeric_limits<KeyType>::max();
+  size_t shared_mem_size = sizeof(KeyType) * BLOCK_SIZE_;
+  get_keys_kernel<<<grid_size, BLOCK_SIZE_, shared_mem_size, stream>>>(
+      container_, d_out, global_cursor, unuse_key);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          size_t len,
                                          char* pool,
@@ -416,6 +567,7 @@ template void HashTable<unsigned long, int>::insert<cudaStream_t>(
     const unsigned long* d_keys,
     const int* d_vals,
     size_t len,
+<<<<<<< HEAD
     cudaStream_t stream);
 
 template void HashTable<unsigned long, long>::insert<cudaStream_t>(
@@ -424,6 +576,16 @@ template void HashTable<unsigned long, long>::insert<cudaStream_t>(
     size_t len,
     cudaStream_t stream);
 
+=======
+    cudaStream_t stream);
+
+template void HashTable<unsigned long, long>::insert<cudaStream_t>(
+    const unsigned long* d_keys,
+    const long* d_vals,
+    size_t len,
+    cudaStream_t stream);
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 template void HashTable<long, unsigned long>::insert<cudaStream_t>(
     const long* d_keys,
     const unsigned long* d_vals,
@@ -436,12 +598,30 @@ template void HashTable<long, unsigned int>::insert<cudaStream_t>(
     size_t len,
     cudaStream_t stream);
 
+<<<<<<< HEAD
 template void HashTable<unsigned long, unsigned long>::insert<cudaStream_t>(
     const unsigned long* d_keys,
     const unsigned long* d_vals,
     size_t len,
     cudaStream_t stream);
 
+=======
+template void HashTable<unsigned long, unsigned long>::get_keys<cudaStream_t>(
+    unsigned long* d_out, unsigned long* global_cursor, cudaStream_t stream);
+
+template void HashTable<unsigned long, unsigned long>::insert<cudaStream_t>(
+    const unsigned long* d_keys,
+    unsigned long len,
+    uint64_t* global_num,
+    cudaStream_t stream);
+
+template void HashTable<unsigned long, unsigned long>::insert<cudaStream_t>(
+    const unsigned long* d_keys,
+    const unsigned long* d_vals,
+    size_t len,
+    cudaStream_t stream);
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 template void HashTable<unsigned long, float*>::dump_to_cpu<cudaStream_t>(
     int devid, cudaStream_t stream);
 

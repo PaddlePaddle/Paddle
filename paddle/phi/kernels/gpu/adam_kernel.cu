@@ -352,7 +352,11 @@ void MergedAdamKernel(
           param[idx]->numel());
       if (!use_global_beta_pow) {
         // Update with gpu
+<<<<<<< HEAD
         UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
+=======
+        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             beta1_,
             beta2_,
             beta1_pow[idx]->data<MPDType>(),
@@ -386,8 +390,12 @@ PD_REGISTER_KERNEL(merged_adam,
                    phi::MergedAdamKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+=======
+                   phi::dtype::float16) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   // Skip beta1_pow, beta2_pow data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

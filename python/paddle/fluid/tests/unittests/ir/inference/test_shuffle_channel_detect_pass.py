@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TestShuffleChannelDetectPass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -46,6 +47,7 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
         def generate_reshape2_Input():
             return np.random.random(x_shape).astype(np.float32)
 
+<<<<<<< HEAD
         reshape2_op1 = OpConfig(
             "reshape2",
             inputs={
@@ -80,6 +82,36 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             },
             shape=x_shape,
         )
+=======
+        reshape2_op1 = OpConfig("reshape2",
+                                inputs={
+                                    "X": ["reshape2_input1"],
+                                },
+                                outputs={
+                                    "Out": ["reshape2_output1"],
+                                    "XShape": ["reshape2_xshape1"]
+                                },
+                                shape=shape,
+                                input_shape=x_shape)
+        transpose2_op = OpConfig("transpose2",
+                                 inputs={
+                                     "X": ["reshape2_output1"],
+                                 },
+                                 outputs={
+                                     "Out": ["transpose2_output"],
+                                     "XShape": ["transpose2_xshape"]
+                                 },
+                                 axis=axis_v)
+        reshape2_op2 = OpConfig("reshape2",
+                                inputs={
+                                    "X": ["transpose2_output"],
+                                },
+                                outputs={
+                                    "Out": ["reshape2_output2"],
+                                    "XShape": ["reshape2_xshape2"]
+                                },
+                                shape=x_shape)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ops = [reshape2_op1, transpose2_op, reshape2_op2]
 
         program_config = ProgramConfig(

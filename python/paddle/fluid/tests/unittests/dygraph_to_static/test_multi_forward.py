@@ -12,29 +12,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.fluid as fluid
 import unittest
 
 
 class MyLayer(paddle.nn.Layer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         super().__init__()
         self.linear = paddle.nn.Linear(1, 1)
 
+<<<<<<< HEAD
     @paddle.jit.to_static(
         input_spec=[
             paddle.static.InputSpec(shape=[None, None], dtype=paddle.float32)
         ]
     )
+=======
+    @paddle.jit.to_static(input_spec=[
+        paddle.static.InputSpec(shape=[None, None], dtype=paddle.float32)
+    ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def forward(self, x):
         return self.linear(x)
 
 
 class TestBackward(unittest.TestCase):
+<<<<<<< HEAD
     def test_order_0(self):
         """
         loss = 1 * w * 1 + 2 * w * 2
+=======
+
+    def test_order_0(self):
+        """ 
+        loss = 1 * w * 1 + 2 * w * 2 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         delta_w = 5
         """
         model = MyLayer()
@@ -47,8 +69,13 @@ class TestBackward(unittest.TestCase):
         self.assertEqual(model.linear.weight.grad, 5)
 
     def test_order_1(self):
+<<<<<<< HEAD
         """
         loss = 2 * w * 2  + 1 * w * 1
+=======
+        """ 
+        loss = 2 * w * 2  + 1 * w * 1 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         delta_w = 5
         """
         model = MyLayer()

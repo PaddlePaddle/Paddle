@@ -24,6 +24,7 @@ import tempfile
 
 
 def convolutional_neural_network(img):
+<<<<<<< HEAD
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
@@ -41,6 +42,21 @@ def convolutional_neural_network(img):
         pool_stride=2,
         act="relu",
     )
+=======
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                  filter_size=5,
+                                                  num_filters=20,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                  filter_size=5,
+                                                  num_filters=50,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  act="relu")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     return prediction
 
@@ -58,6 +74,7 @@ def static_train_net(img, label):
 
 
 class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.seed = 90
@@ -75,30 +92,47 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             startup_program = fluid.default_startup_program()
             main_program = fluid.default_main_program()
 
+<<<<<<< HEAD
             img = fluid.data(
                 name='img', shape=[None, 1, 28, 28], dtype='float32'
             )
+=======
+            img = fluid.data(name='img',
+                             shape=[None, 1, 28, 28],
+                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
             prediction, avg_loss = static_train_net(img, label)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             exe = fluid.Executor(place)
 
             feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
             exe.run(startup_program)
 
+<<<<<<< HEAD
             train_reader = paddle.batch(
                 paddle.reader.shuffle(
                     paddle.dataset.mnist.train(), buf_size=100
                 ),
                 batch_size=self.batch_size,
             )
+=======
+            train_reader = paddle.batch(paddle.reader.shuffle(
+                paddle.dataset.mnist.train(), buf_size=100),
+                                        batch_size=self.batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             for _ in range(0, self.epoch_num):
                 for batch_id, data in enumerate(train_reader()):
@@ -118,9 +152,15 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                 )
 
             if only_params:
+<<<<<<< HEAD
                 fluid.io.save_params(
                     exe, self.save_dirname, filename=self.params_filename
                 )
+=======
+                fluid.io.save_params(exe,
+                                     self.save_dirname,
+                                     filename=self.params_filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 fluid.io.save_inference_model(
                     self.save_dirname,
@@ -139,8 +179,12 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
     def test_load_default(self):
         self.save_dirname = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "static_mnist.load_state_dict.default"
         )
+=======
+            self.temp_dir.name, "static_mnist.load_state_dict.default")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.model_filename = None
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
@@ -153,8 +197,12 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
     def test_load_with_model_filename(self):
         self.save_dirname = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "static_mnist.load_state_dict.model_filename"
         )
+=======
+            self.temp_dir.name, "static_mnist.load_state_dict.model_filename")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.model_filename = "static_mnist.model"
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
@@ -164,15 +212,24 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         )
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
+<<<<<<< HEAD
         new_load_param_dict = paddle.load(
             self.save_dirname, model_filename=self.model_filename
         )
+=======
+        new_load_param_dict = paddle.load(self.save_dirname,
+                                          model_filename=self.model_filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_param_filename(self):
         self.save_dirname = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "static_mnist.load_state_dict.param_filename"
         )
+=======
+            self.temp_dir.name, "static_mnist.load_state_dict.param_filename")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.model_filename = None
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
@@ -182,16 +239,25 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         )
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
+<<<<<<< HEAD
         new_load_param_dict = paddle.load(
             self.save_dirname, params_filename=self.params_filename
         )
+=======
+        new_load_param_dict = paddle.load(self.save_dirname,
+                                          params_filename=self.params_filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_and_param_filename(self):
         self.save_dirname = os.path.join(
             self.temp_dir.name,
+<<<<<<< HEAD
             "static_mnist.load_state_dict.model_and_param_filename",
         )
+=======
+            "static_mnist.load_state_dict.model_and_param_filename")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.model_filename = "static_mnist.model"
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
@@ -203,17 +269,27 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         )
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
+<<<<<<< HEAD
         new_load_param_dict = paddle.load(
             self.save_dirname,
             params_filename=self.params_filename,
             model_filename=self.model_filename,
         )
+=======
+        new_load_param_dict = paddle.load(self.save_dirname,
+                                          params_filename=self.params_filename,
+                                          model_filename=self.model_filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_state_dict_from_save_params(self):
         self.save_dirname = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "static_mnist.load_state_dict.save_params"
         )
+=======
+            self.temp_dir.name, "static_mnist.load_state_dict.save_params")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.params_filename = None
         orig_param_dict = self.train_and_save_model(True)
 

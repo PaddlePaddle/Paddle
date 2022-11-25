@@ -8,7 +8,13 @@ set(PYTHON_TESTS_DIR
 add_subdirectory(utils)
 add_subdirectory(scripts)
 add_subdirectory(testing)
+<<<<<<< HEAD
 
+=======
+set(PYTHON_TESTS_DIR
+    ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests
+    CACHE INTERNAL "python tests directory")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 add_subdirectory(phi)
 add_subdirectory(infrt)
 add_subdirectory(fluid)

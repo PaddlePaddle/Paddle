@@ -17,7 +17,11 @@ import tempfile
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
+=======
+import tempfile
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 import paddle
 from paddle import nn
@@ -77,6 +81,10 @@ class Net(nn.Layer):
 
 
 class TestDygraphModel(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def tearDown(self):
         self.temp_dir.cleanup()
 
@@ -104,6 +112,7 @@ class TestDygraphModel(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
         self.model_path_template = os.path.join(
+<<<<<<< HEAD
             self.model_save_dir, 'custom_relu_dygaph_model_{}.pdparams'
         )
         self.model_dy2stat_path = os.path.join(
@@ -114,6 +123,16 @@ class TestDygraphModel(unittest.TestCase):
         self.x_spec = paddle.static.InputSpec(
             shape=[None, self.in_dim], dtype='float32', name='x'
         )
+=======
+            self.model_save_dir, 'custom_relu_dygaph_model_{}.pdparams')
+        self.model_dy2stat_path = os.path.join(
+            self.model_save_dir, 'infer_model/custom_relu_model_dy2sta')
+
+        # for dy2stat
+        self.x_spec = paddle.static.InputSpec(shape=[None, self.in_dim],
+                                              dtype='float32',
+                                              name='x')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def func_train_eval(self):
         for device in self.devices:
@@ -211,6 +230,7 @@ class TestDygraphModel(unittest.TestCase):
 
 
 class TestStaticModel(unittest.TestCase):
+
     def setUp(self):
         self.seed = 2021
         self.in_dim = 10
@@ -234,8 +254,12 @@ class TestStaticModel(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
         self.model_path_template = os.path.join(
+<<<<<<< HEAD
             self.model_save_dir, 'custom_relu_static_model_{}_{}'
         )
+=======
+            self.model_save_dir, 'custom_relu_static_model_{}_{}')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         paddle.enable_static()
 
@@ -246,6 +270,7 @@ class TestStaticModel(unittest.TestCase):
     def test_train_eval(self):
         for device in self.devices:
             # for train
+<<<<<<< HEAD
             original_relu_train_out = self.train_model(
                 device, use_custom_op=False
             )
@@ -257,6 +282,18 @@ class TestStaticModel(unittest.TestCase):
             custom_relu_train_pe_out = self.train_model(
                 device, use_custom_op=True, use_pe=True
             )
+=======
+            original_relu_train_out = self.train_model(device,
+                                                       use_custom_op=False)
+            custom_relu_train_out = self.train_model(device, use_custom_op=True)
+            # using PE
+            original_relu_train_pe_out = self.train_model(device,
+                                                          use_custom_op=False,
+                                                          use_pe=True)
+            custom_relu_train_pe_out = self.train_model(device,
+                                                        use_custom_op=True,
+                                                        use_pe=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             np.testing.assert_array_equal(
                 original_relu_train_out, custom_relu_train_out
@@ -266,6 +303,7 @@ class TestStaticModel(unittest.TestCase):
             )
 
             # for eval
+<<<<<<< HEAD
             original_relu_eval_out = self.eval_model(
                 device, use_custom_op=False
             )
@@ -277,6 +315,18 @@ class TestStaticModel(unittest.TestCase):
             custom_relu_eval_pe_out = self.eval_model(
                 device, use_custom_op=True, use_pe=True
             )
+=======
+            original_relu_eval_out = self.eval_model(device,
+                                                     use_custom_op=False)
+            custom_relu_eval_out = self.eval_model(device, use_custom_op=True)
+            # using PE
+            original_relu_eval_pe_out = self.eval_model(device,
+                                                        use_custom_op=False,
+                                                        use_pe=True)
+            custom_relu_eval_pe_out = self.eval_model(device,
+                                                      use_custom_op=True,
+                                                      use_pe=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             np.testing.assert_array_equal(
                 original_relu_eval_out, custom_relu_eval_out
@@ -293,6 +343,7 @@ class TestStaticModel(unittest.TestCase):
         paddle.set_device(device)
 
         with paddle.static.scope_guard(paddle.static.Scope()):
+<<<<<<< HEAD
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -302,6 +353,16 @@ class TestStaticModel(unittest.TestCase):
                 y = paddle.static.data(
                     shape=[None, 1], name='y', dtype='float32'
                 )
+=======
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                x = paddle.static.data(shape=[None, self.in_dim],
+                                       name='x',
+                                       dtype='float32')
+                y = paddle.static.data(shape=[None, 1],
+                                       name='y',
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 net = Net(self.in_dim, self.out_dim, use_custom_op)
                 out = net(x)
@@ -321,8 +382,14 @@ class TestStaticModel(unittest.TestCase):
                         else paddle.static.cuda_places()
                     )
                     main_program = paddle.static.CompiledProgram(
+<<<<<<< HEAD
                         paddle.static.default_main_program()
                     ).with_data_parallel(loss_name=loss.name, places=places)
+=======
+                        paddle.static.default_main_program(
+                        )).with_data_parallel(loss_name=loss.name,
+                                              places=places)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 else:
                     main_program = paddle.static.default_main_program()
 
@@ -330,6 +397,7 @@ class TestStaticModel(unittest.TestCase):
                     x_data = self.datas[batch_id]
                     y_data = self.labels[batch_id]
 
+<<<<<<< HEAD
                     res = exe.run(
                         main_program,
                         feed={'x': x_data, 'y': y_data},
@@ -343,6 +411,19 @@ class TestStaticModel(unittest.TestCase):
                     [out],
                     exe,
                 )
+=======
+                    res = exe.run(main_program,
+                                  feed={
+                                      'x': x_data,
+                                      'y': y_data
+                                  },
+                                  fetch_list=[out])
+
+                # save model
+                paddle.static.save_inference_model(
+                    self.model_path_template.format(use_custom_op, use_pe), [x],
+                    [out], exe)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 return res[0]
 

@@ -25,6 +25,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class Policy(fluid.dygraph.Layer):
+
     def __init__(self, input_size):
         super().__init__()
 
@@ -45,6 +46,7 @@ class Policy(fluid.dygraph.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
+
     def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
@@ -81,9 +83,14 @@ class TestImperativeMnist(unittest.TestCase):
             loss_probs = fluid.layers.elementwise_mul(dy_reward, loss_probs)
             loss = fluid.layers.reduce_sum(loss_probs)
 
+<<<<<<< HEAD
             sgd = SGDOptimizer(
                 learning_rate=1e-3, parameter_list=policy.parameters()
             )
+=======
+            sgd = SGDOptimizer(learning_rate=1e-3,
+                               parameter_list=policy.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             dy_param_init_value = {}
 
@@ -127,6 +134,7 @@ class TestImperativeMnist(unittest.TestCase):
 
             st_sgd = SGDOptimizer(learning_rate=1e-3)
 
+<<<<<<< HEAD
             st_state = fluid.layers.data(
                 name='st_state', shape=[4], dtype='float32'
             )
@@ -136,6 +144,17 @@ class TestImperativeMnist(unittest.TestCase):
             st_mask = fluid.layers.data(
                 name='st_mask', shape=[2], dtype='float32'
             )
+=======
+            st_state = fluid.layers.data(name='st_state',
+                                         shape=[4],
+                                         dtype='float32')
+            st_reward = fluid.layers.data(name='st_reward',
+                                          shape=[1],
+                                          dtype='float32')
+            st_mask = fluid.layers.data(name='st_mask',
+                                        shape=[2],
+                                        dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             st_loss_probs = policy(st_state)
 
@@ -144,8 +163,12 @@ class TestImperativeMnist(unittest.TestCase):
             st_loss_probs = fluid.layers.reduce_sum(st_loss_probs, dim=-1)
 
             st_loss_probs = fluid.layers.elementwise_mul(
+<<<<<<< HEAD
                 st_reward, st_loss_probs
             )
+=======
+                st_reward, st_loss_probs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             st_loss = fluid.layers.reduce_sum(st_loss_probs)
 
             st_sgd.minimize(st_loss)
@@ -167,11 +190,21 @@ class TestImperativeMnist(unittest.TestCase):
             fetch_list = [st_loss.name]
             fetch_list.extend(static_param_name_list)
 
+<<<<<<< HEAD
             out = exe.run(
                 fluid.default_main_program(),
                 feed={"st_state": state, "st_reward": reward, "st_mask": mask},
                 fetch_list=fetch_list,
             )
+=======
+            out = exe.run(fluid.default_main_program(),
+                          feed={
+                              "st_state": state,
+                              "st_reward": reward,
+                              "st_mask": mask
+                          },
+                          fetch_list=fetch_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             static_param_value = {}
             static_out = out[0]

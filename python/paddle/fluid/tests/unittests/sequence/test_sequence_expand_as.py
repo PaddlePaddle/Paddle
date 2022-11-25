@@ -16,6 +16,10 @@ import sys
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("../")
 from op_test import OpTest
@@ -25,6 +29,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestSequenceExpandAs(OpTest):
+
     def setUp(self):
         self.op_type = 'sequence_expand_as'
         self.set_data()
@@ -61,6 +66,7 @@ class TestSequenceExpandAs(OpTest):
 
 
 class TestSequenceExpandAsCase1(TestSequenceExpandAs):
+
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 20]).astype('float64')
         x_lod = [[2, 3]]
@@ -70,6 +76,7 @@ class TestSequenceExpandAsCase1(TestSequenceExpandAs):
 
 
 class TestSequenceExpandAsCase2(TestSequenceExpandAs):
+
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 20]).astype('float64')
         x_lod = [[2, 3]]
@@ -79,6 +86,7 @@ class TestSequenceExpandAsCase2(TestSequenceExpandAs):
 
 
 class TestSequenceExpandAsCase3(TestSequenceExpandAs):
+
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [1, 2, 50]).astype('float64')
         x_lod = [[1]]
@@ -88,6 +96,7 @@ class TestSequenceExpandAsCase3(TestSequenceExpandAs):
 
 
 class TestSequenceExpandAsOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input x must be Variable

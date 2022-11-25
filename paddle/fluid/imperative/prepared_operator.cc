@@ -94,7 +94,11 @@ void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
                 << " var `" << var->Name() << "` to "
                 << framework::DataTypeToString(var->ForwardDataType())
                 << " real var in dynamic graph.";
+<<<<<<< HEAD
         phi::DenseTensor out;
+=======
+        framework::Tensor out;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         framework::TransComplexToReal(
             var->ForwardDataType(), var->DataType(), *tensor, &out);
         SetTensorToVariable(var->Var(), out, var->MutableVar());
@@ -335,8 +339,13 @@ PreparedOp PrepareImpl(
         && !is_xpu_unsupport
 #endif
     ) {
+<<<<<<< HEAD
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
               << " | kernel key: " << phi_kernel_key
+=======
+      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
+              << " | kernel key: " << pt_kernel_key
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               << " | kernel: " << phi_kernel;
 
       if (expected_kernel_key.place_ != place) {
@@ -401,11 +410,19 @@ PreparedOp PrepareImpl(
         return PreparedOp(
             op,
             empty_ctx,
+<<<<<<< HEAD
             framework::TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key),
             arg_map_fn,
             default_kernel_signature,
             std::move(kernel_signature),
             phi_cpu_kernel,
+=======
+            framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
+            arg_map_fn,
+            default_kernel_signature,
+            std::move(kernel_signature),
+            pt_cpu_kernel,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             cpu_ctx);
       }
     }
@@ -600,7 +617,11 @@ static void PreparedOpRunImpl(
     op.Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
+<<<<<<< HEAD
         op.Type(), op.Attrs(), infer_shape_ctx, ctx, op.Id());
+=======
+        op.Type(), op.Attrs(), infer_shape_ctx, ctx);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
   {
@@ -683,7 +704,11 @@ static void PreparedOpRunPtImpl(
 
     PreparePhiData<VarType>(phi_kernel, kernel_signature, ins);
 
+<<<<<<< HEAD
     phi::KernelContext phi_kernel_context;
+=======
+    phi::KernelContext pt_kernel_context;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     BuildDygraphPhiKernelContext<VarType>(kernel_signature,
                                           phi_kernel,
                                           ins,
@@ -691,9 +716,15 @@ static void PreparedOpRunPtImpl(
                                           attrs,
                                           default_attrs,
                                           dev_ctx,
+<<<<<<< HEAD
                                           &phi_kernel_context);
 
     phi_kernel(&phi_kernel_context);
+=======
+                                          &pt_kernel_context);
+
+    phi_kernel(&pt_kernel_context);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
   if (FLAGS_check_nan_inf) {

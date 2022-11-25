@@ -27,8 +27,13 @@ struct OneHotOpFunctor {
   const DeviceContext& ctx_;
   bool allow_out_of_range_;
 
+<<<<<<< HEAD
   OneHotOpFunctor(const phi::DenseTensor* in,
                   phi::DenseTensor* out,
+=======
+  OneHotOpFunctor(const framework::LoDTensor* in,
+                  framework::LoDTensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   int depth,
                   const DeviceContext& ctx,
                   bool allow_out_of_range = false)

@@ -70,7 +70,11 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
       phi::DenseTensor tmp = *x;
+<<<<<<< HEAD
       auto task = pg->Send(tmp, peer, offset, send_numel, /*sync_op*/ true);
+=======
+      auto task = pg->Send_Partial(tmp, peer, offset, send_numel);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       task->Wait();
     } else {
       gpuStream_t stream = nullptr;

@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertSliceTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -42,10 +43,15 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             else:
                 start = attrs[0]["starts"][x]
             if attrs[0]["ends"][x] < 0:
+<<<<<<< HEAD
                 end = (
                     attrs[0]["ends"][x]
                     + inputs['input_data'].shape[attrs[0]["axes"][x]]
                 )
+=======
+                end = attrs[0]["ends"][x] + inputs['input_data'].shape[
+                    attrs[0]["axes"][x]]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 end = attrs[0]["ends"][x]
             start = max(0, start)
@@ -56,11 +62,16 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         for x in attrs[0]["decrease_axis"]:
             if x < 0:
                 return False
+<<<<<<< HEAD
             if out_shape[x] != 1:
+=======
+            if (out_shape[x] != 1):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 return False
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.random.random([6, 6, 64, 64]).astype(np.float32)
 
@@ -95,9 +106,15 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights={},
                                 inputs={
+<<<<<<< HEAD
                                     "input_data": TensorConfig(
                                         data_gen=partial(generate_input1, dics)
                                     )
+=======
+                                    "input_data":
+                                    TensorConfig(
+                                        data_gen=partial(generate_input1, dics))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                 },
                                 outputs=["slice_output_data"],
                             )
@@ -105,8 +122,13 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [8, 8, 64, 64]}
@@ -143,12 +165,19 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-4
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test(self):
         # TODO(inference): fix.

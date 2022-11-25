@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 
 
 class TestUniqueWithCountsOp(OpTest):
+
     def setUp(self):
         self.op_type = "unique_with_counts"
         self.init_config()
@@ -35,11 +36,16 @@ class TestUniqueWithCountsOp(OpTest):
         self.outputs = {
             'Out': np.array([2, 3, 1, 5], dtype='int64'),
             'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
+<<<<<<< HEAD
             'Count': np.array([1, 3, 1, 1], dtype='int32'),
+=======
+            'Count': np.array([1, 3, 1, 1], dtype='int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestOne(TestUniqueWithCountsOp):
+
     def init_config(self):
         self.inputs = {
             'X': np.array([2], dtype='int64'),
@@ -48,11 +54,16 @@ class TestOne(TestUniqueWithCountsOp):
         self.outputs = {
             'Out': np.array([2], dtype='int64'),
             'Index': np.array([0], dtype='int32'),
+<<<<<<< HEAD
             'Count': np.array([1], dtype='int32'),
+=======
+            'Count': np.array([1], dtype='int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
 
 class TestRandom(TestUniqueWithCountsOp):
+
     def init_config(self):
         input_data = np.random.randint(0, 100, (2000,), dtype='int64')
         self.inputs = {'X': input_data}
@@ -78,7 +89,9 @@ class TestRandom(TestUniqueWithCountsOp):
 
 
 class TestUniqueWithCountsRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.unique_with_counts([10])
 
@@ -95,6 +108,7 @@ class TestUniqueWithCountsRaiseError(unittest.TestCase):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestOneGPU(TestUniqueWithCountsOp):
+
     def init_config(self):
         self.inputs = {
             'X': np.array([2], dtype='int64'),
@@ -103,7 +117,11 @@ class TestOneGPU(TestUniqueWithCountsOp):
         self.outputs = {
             'Out': np.array([2], dtype='int64'),
             'Index': np.array([0], dtype='int32'),
+<<<<<<< HEAD
             'Count': np.array([1], dtype='int32'),
+=======
+            'Count': np.array([1], dtype='int32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def test_check_output(self):
@@ -116,6 +134,7 @@ class TestOneGPU(TestUniqueWithCountsOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestRandomGPU(TestUniqueWithCountsOp):
+
     def init_config(self):
         input_data = np.random.randint(0, 100, (2000,), dtype='int64')
         self.inputs = {'X': input_data}

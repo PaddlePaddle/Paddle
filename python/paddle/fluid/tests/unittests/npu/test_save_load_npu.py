@@ -35,78 +35,126 @@ paddle.enable_static()
 
 
 class TestNPUSaveLoadBase(TestSaveLoadBase):
+
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNPUSaveLoadPartial(TestSaveLoadPartial):
+
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNPUSaveLoadSetStateDict(TestSaveLoadSetStateDict):
+
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNPUProgramStatePartial(TestProgramStatePartial):
+
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNPULoadFromOldInterface(TestLoadFromOldInterface):
+
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNPULoadFromOldInterfaceSingleFile(TestLoadFromOldInterfaceSingleFile):
+
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNPUProgramStateOldSave(TestProgramStateOldSave):
+
     def setUp(self):
         self.test_dygraph = False
 
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestNPUProgramStateOldSaveSingleModel(TestProgramStateOldSaveSingleModel):
+
     def set_place(self):
+<<<<<<< HEAD
         return (
             fluid.CPUPlace()
             if not core.is_compiled_with_npu()
             else paddle.NPUPlace(0)
         )
+=======
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

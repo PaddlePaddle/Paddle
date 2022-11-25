@@ -24,6 +24,7 @@ paddle.enable_static()
 
 # ----------------------- Test orig2prim rules ---------------------------- #
 class TestElementWiseAddOrig2Prim(unittest.TestCase):
+
     def setUp(self):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
@@ -53,6 +54,7 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
         self.out_map = {0: self.output['Out']}
 
     def test_op(self):
+<<<<<<< HEAD
         with paddle.static.program_guard(
             self.main_program, self.startup_program
         ):
@@ -62,6 +64,14 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
                 outputs=self.output,
                 attrs=self.attrs,
             )
+=======
+        with paddle.static.program_guard(self.main_program,
+                                         self.startup_program):
+            op = self.layer_help.append_op(type=self.op_type,
+                                           inputs=self.input,
+                                           outputs=self.output,
+                                           attrs=self.attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             prim_out = _orig2prim(op, *self.orig2prim_args)
             all_ops = [op.type for op in self.main_program.block(0).ops]
@@ -73,6 +83,7 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
 
 
 class TestSqrtOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'sqrt'
         X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
@@ -94,6 +105,7 @@ class TestSqrtOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestElementWiseMulOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'elementwise_mul'
         X = paddle.static.data(name='X', shape=[8, 8], dtype='float')
@@ -134,6 +146,7 @@ class TestElementWiseDivOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestMatmulV2Orig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'matmul_v2'
         X = paddle.static.data(name='X', shape=[3, 4], dtype='float')
@@ -153,6 +166,7 @@ class TestMatmulV2Orig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestTanhOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'tanh'
         X = paddle.static.data(name='X', shape=[3, 4], dtype='float')
@@ -173,6 +187,10 @@ class TestTanhOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestSinOrig2Prim(TestElementWiseAddOrig2Prim):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_data(self):
         self.op_type = 'sin'
         X = paddle.static.data(name='X', shape=[3, 4], dtype='float')
@@ -181,6 +199,7 @@ class TestSinOrig2Prim(TestElementWiseAddOrig2Prim):
             'X': X,
         }
         self.output = {
+<<<<<<< HEAD
             'Out': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
@@ -188,11 +207,23 @@ class TestSinOrig2Prim(TestElementWiseAddOrig2Prim):
         self.attrs = {}
 
         self.orig2prim_args = (X,)
+=======
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.all_ops = ['sin', 'sin_p']
         self.out_map = {0: self.output['Out']}
 
 
 class TestCosOrig2Prim(TestElementWiseAddOrig2Prim):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_data(self):
         self.op_type = 'cos'
         X = paddle.static.data(name='X', shape=[3, 4], dtype='float')
@@ -201,6 +232,7 @@ class TestCosOrig2Prim(TestElementWiseAddOrig2Prim):
             'X': X,
         }
         self.output = {
+<<<<<<< HEAD
             'Out': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
@@ -208,11 +240,23 @@ class TestCosOrig2Prim(TestElementWiseAddOrig2Prim):
         self.attrs = {}
 
         self.orig2prim_args = (X,)
+=======
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.all_ops = ['cos', 'cos_p']
         self.out_map = {0: self.output['Out']}
 
 
 class TestExpOrig2Prim(TestElementWiseAddOrig2Prim):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_data(self):
         self.op_type = 'exp'
         X = paddle.static.data(name='X', shape=[3, 4], dtype='float')
@@ -221,6 +265,7 @@ class TestExpOrig2Prim(TestElementWiseAddOrig2Prim):
             'X': X,
         }
         self.output = {
+<<<<<<< HEAD
             'Out': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             )
@@ -228,10 +273,19 @@ class TestExpOrig2Prim(TestElementWiseAddOrig2Prim):
         self.attrs = {}
 
         self.orig2prim_args = (X,)
+=======
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.all_ops = ['exp', 'exp_p']
         self.out_map = {0: self.output['Out']}
 
 
+<<<<<<< HEAD
 class TestErfOrig2Prim(TestElementWiseAddOrig2Prim):
     def init_data(self):
         self.op_type = 'erf'
@@ -292,7 +346,10 @@ class TestLogOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestReshape2Orig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'reshape2'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -301,10 +358,17 @@ class TestReshape2Orig2Prim(TestElementWiseAddOrig2Prim):
             'X': X,
         }
         self.output = {
+<<<<<<< HEAD
             'Out': X,
             'XShape': self.layer_help.create_variable_for_type_inference(
                 dtype=X.dtype
             ),
+=======
+            'Out':
+            X,
+            'XShape':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         self.attrs = {'shape': [6, 5]}
 
@@ -319,6 +383,7 @@ class TestReshape2Orig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestConcatOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'concat'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -343,6 +408,7 @@ class TestConcatOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestSliceOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'slice'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -367,6 +433,7 @@ class TestSliceOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestFillZerosLikeOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'fill_zeros_like'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -427,6 +494,7 @@ class TestFillAnyLikeOrig2Prim2(TestElementWiseAddOrig2Prim):
 
 
 class TestSumOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'sum'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -446,6 +514,7 @@ class TestSumOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestPNormOrig2Prim1(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'p_norm'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -469,6 +538,7 @@ class TestPNormOrig2Prim1(TestElementWiseAddOrig2Prim):
 
 
 class TestPNormOrig2Prim2(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'p_norm'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -498,6 +568,7 @@ class TestPNormOrig2Prim2(TestElementWiseAddOrig2Prim):
 
 
 class TestIndexSelectOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'index_select'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
@@ -512,6 +583,12 @@ class TestIndexSelectOrig2Prim(TestElementWiseAddOrig2Prim):
         self.attrs = {
             'dim': 0,
         }
+<<<<<<< HEAD
+=======
+        self.attrs = {
+            'dim': 0,
+        }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.orig2prim_args = (
             Index,
@@ -522,6 +599,7 @@ class TestIndexSelectOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestElementwiseSubOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'elementwise_sub'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int32')
@@ -536,6 +614,12 @@ class TestElementwiseSubOrig2Prim(TestElementWiseAddOrig2Prim):
         self.attrs = {
             'dim': 0,
         }
+<<<<<<< HEAD
+=======
+        self.attrs = {
+            'dim': 0,
+        }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.orig2prim_args = (
             X,
@@ -546,6 +630,7 @@ class TestElementwiseSubOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestScaleOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'scale'
         X = paddle.static.data(name='X', shape=[10, 7], dtype='int32')
@@ -575,6 +660,7 @@ class TestScaleOrig2Prim(TestElementWiseAddOrig2Prim):
 
 
 class TestAssignOrig2Prim(TestElementWiseAddOrig2Prim):
+
     def init_data(self):
         self.op_type = 'assign'
         X = paddle.static.data(name='X', shape=[10, 7], dtype='int32')

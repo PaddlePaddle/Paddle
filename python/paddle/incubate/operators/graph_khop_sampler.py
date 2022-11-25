@@ -37,7 +37,11 @@ def graph_khop_sampler(
     edges as `row` and `colptr`, so as to covert graph data into a suitable format
     for sampling. And the `input_nodes` means the nodes we need to sample neighbors,
     and `sample_sizes` means the number of neighbors and number of layers we want
+<<<<<<< HEAD
     to sample.
+=======
+    to sample. 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Args:
         row (Tensor): One of the components of the CSC format of the input graph, and
@@ -152,6 +156,7 @@ def graph_khop_sampler(
     sample_index = helper.create_variable_for_type_inference(dtype=row.dtype)
     reindex_nodes = helper.create_variable_for_type_inference(dtype=row.dtype)
     edge_eids = helper.create_variable_for_type_inference(dtype=row.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="graph_khop_sampler",
         inputs={
@@ -169,6 +174,26 @@ def graph_khop_sampler(
         },
         attrs={"sample_sizes": sample_sizes, "return_eids": return_eids},
     )
+=======
+    helper.append_op(type="graph_khop_sampler",
+                     inputs={
+                         "Row": row,
+                         "Eids": sorted_eids,
+                         "Col_Ptr": colptr,
+                         "X": input_nodes
+                     },
+                     outputs={
+                         "Out_Src": edge_src,
+                         "Out_Dst": edge_dst,
+                         "Sample_Index": sample_index,
+                         "Reindex_X": reindex_nodes,
+                         "Out_Eids": edge_eids
+                     },
+                     attrs={
+                         "sample_sizes": sample_sizes,
+                         "return_eids": return_eids
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if return_eids:
         return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
     else:

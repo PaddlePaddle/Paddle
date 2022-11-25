@@ -82,12 +82,22 @@ __all__ = [
     'get_program_persistable_vars',
 ] + reader.__all__
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 
 class _open_buffer:
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+class _open_buffer(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, buffer):
         self.buffer = buffer
 
@@ -96,6 +106,7 @@ class _open_buffer:
 
 
 class _buffer_reader(_open_buffer):
+
     def __init__(self, buffer):
         super().__init__(buffer)
         self.initial_tell = self.buffer.tell()
@@ -107,6 +118,7 @@ class _buffer_reader(_open_buffer):
 
 
 class _buffer_writer(_open_buffer):
+
     def __exit__(self, *args):
         self.buffer.flush()
 
@@ -126,8 +138,12 @@ def _open_file_buffer(path_or_buffer, mode):
             return _buffer_reader(path_or_buffer)
         else:
             raise ValueError(
+<<<<<<< HEAD
                 "Expected 'r' or 'w' in mode but got {}".format(mode)
             )
+=======
+                "Expected 'r' or 'w' in mode but got {}".format(mode))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def _is_memory_buffer(buffer):
@@ -250,6 +266,7 @@ def get_program_persistable_vars(program):
 def _clone_var_in_block_(block, var):
     assert isinstance(var, Variable)
     if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
+<<<<<<< HEAD
         return block.create_var(
             name=var.name,
             shape=var.shape,
@@ -266,6 +283,20 @@ def _clone_var_in_block_(block, var):
             type=var.type,
             persistable=True,
         )
+=======
+        return block.create_var(name=var.name,
+                                shape=var.shape,
+                                dtype=var.dtype,
+                                type=var.type,
+                                lod_level=var.lod_level,
+                                persistable=True)
+    else:
+        return block.create_var(name=var.name,
+                                shape=var.shape,
+                                dtype=var.dtype,
+                                type=var.type,
+                                persistable=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @signature_safe_contextmanager
@@ -386,6 +417,7 @@ def save_vars(
     main_program = _get_valid_program(main_program)
 
     if vars is None:
+<<<<<<< HEAD
         return save_vars(
             executor,
             main_program=main_program,
@@ -393,6 +425,13 @@ def save_vars(
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename,
         )
+=======
+        return save_vars(executor,
+                         main_program=main_program,
+                         dirname=dirname,
+                         vars=list(filter(predicate, main_program.list_vars())),
+                         filename=filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         params_var_name = "saved_params"
         # give warning when there is no var in model
@@ -412,9 +451,14 @@ def save_vars(
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None and save_to_memory is False:
+<<<<<<< HEAD
                 save_file_path = os.path.join(
                     os.path.normpath(dirname), new_var.name
                 )
+=======
+                save_file_path = os.path.join(os.path.normpath(dirname),
+                                              new_var.name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
@@ -433,6 +477,7 @@ def save_vars(
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
+<<<<<<< HEAD
             saved_params = save_block.create_var(
                 type=core.VarDesc.VarType.RAW, name=params_var_name
             )
@@ -446,6 +491,18 @@ def save_vars(
                     'save_to_memory': save_to_memory,
                 },
             )
+=======
+            saved_params = save_block.create_var(type=core.VarDesc.VarType.RAW,
+                                                 name=params_var_name)
+            saved_params.desc.set_persistable(True)
+            save_block.append_op(type='save_combine',
+                                 inputs={'X': save_var_list},
+                                 outputs={'Y': saved_params},
+                                 attrs={
+                                     'file_path': save_path,
+                                     'save_to_memory': save_to_memory
+                                 })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
@@ -522,6 +579,7 @@ def save_params(executor, dirname, main_program=None, filename=None):
             # The parameters weights and bias of the fc layer in the network are going to
             # be saved in different files in the path "./my_paddle_model"
     """
+<<<<<<< HEAD
     return save_vars(
         executor,
         dirname=dirname,
@@ -530,6 +588,14 @@ def save_params(executor, dirname, main_program=None, filename=None):
         predicate=is_parameter,
         filename=filename,
     )
+=======
+    return save_vars(executor,
+                     dirname=dirname,
+                     main_program=main_program,
+                     vars=None,
+                     predicate=is_parameter,
+                     filename=filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def _save_distributed_persistables(executor, dirname, main_program):
@@ -603,6 +669,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
                 tmp = [str(dim) for dim in slice.shape]
                 slice_shapes.append(",".join(tmp))
 
+<<<<<<< HEAD
             block.append_op(
                 type='recv_save',
                 attrs={
@@ -615,6 +682,18 @@ def _save_distributed_persistables(executor, dirname, main_program):
                     "file_path": os.path.join(dirname, origin.name),
                 },
             )
+=======
+            block.append_op(type='recv_save',
+                            attrs={
+                                "trainer_id": 0,
+                                "shape": origin.shape,
+                                "slice_shapes": slice_shapes,
+                                "slice_varnames": slice_varnames,
+                                "remote_varnames": remote_varnames,
+                                "endpoints": endpoints,
+                                "file_path": os.path.join(dirname, origin.name)
+                            })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         executor.run(prog)
 
@@ -637,12 +716,20 @@ def _save_distributed_persistables(executor, dirname, main_program):
         attrs['epmap'] = endpoints
         attrs['dir'] = lookup_table_filename
         attrs['lookup_table'] = distributed_lookup_table
+<<<<<<< HEAD
         block.append_op(
             type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs
         )
+=======
+        block.append_op(type='checkpoint_notify',
+                        inputs={},
+                        outputs={},
+                        attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         executor.run(prog)
 
     def __exclude_vars(exclude_var_names=[]):
+
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
@@ -681,11 +768,19 @@ def _save_distributed_persistables(executor, dirname, main_program):
             exclude_var_names.append(main_program._distributed_lookup_table)
 
     local_vars = list(
+<<<<<<< HEAD
         filter(__exclude_vars(exclude_var_names), main_program.list_vars())
     )
     save_vars(
         executor, main_program=main_program, dirname=dirname, vars=local_vars
     )
+=======
+        filter(__exclude_vars(exclude_var_names), main_program.list_vars()))
+    save_vars(executor,
+              main_program=main_program,
+              dirname=dirname,
+              vars=local_vars)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if main_program._is_chief:
         if remote_params_map:
@@ -758,6 +853,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             # "./my_paddle_model"
     """
     if main_program and main_program._is_distributed:
+<<<<<<< HEAD
         return _save_distributed_persistables(
             executor, dirname=dirname, main_program=main_program
         )
@@ -770,6 +866,18 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             predicate=is_persistable,
             filename=filename,
         )
+=======
+        return _save_distributed_persistables(executor,
+                                              dirname=dirname,
+                                              main_program=main_program)
+    else:
+        return save_vars(executor,
+                         dirname=dirname,
+                         main_program=main_program,
+                         vars=None,
+                         predicate=is_persistable,
+                         filename=filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def load_vars(
@@ -871,6 +979,7 @@ def load_vars(
                 % type(main_program)
             )
 
+<<<<<<< HEAD
         load_vars(
             executor,
             dirname=dirname,
@@ -878,6 +987,13 @@ def load_vars(
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename,
         )
+=======
+        load_vars(executor,
+                  dirname=dirname,
+                  main_program=main_program,
+                  vars=list(filter(predicate, main_program.list_vars())),
+                  filename=filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
@@ -906,8 +1022,12 @@ def load_vars(
 
             if isinstance(each_var, Parameter):
                 orig_para_shape[each_var.name] = tuple(
+<<<<<<< HEAD
                     each_var.desc.get_shape()
                 )
+=======
+                    each_var.desc.get_shape())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             if each_var.type == core.VarDesc.VarType.SELECTED_ROWS:
                 sparse_vars.append(each_var)
@@ -944,9 +1064,13 @@ def load_vars(
             if not os.path.exists(var_path):
                 raise ValueError(
                     "SelectedRows var {} can not find at {}".format(
+<<<<<<< HEAD
                         new_var.name, var_path
                     )
                 )
+=======
+                        new_var.name, var_path))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             if os.path.isfile(var_path):
                 load_block.append_op(
@@ -965,6 +1089,7 @@ def load_vars(
 
                 slices = []
                 for block in blocks:
+<<<<<<< HEAD
                     slice = load_block.create_var(
                         name=block,
                         type=new_var.type,
@@ -988,6 +1113,25 @@ def load_vars(
                     outputs={'Out': new_var},
                     attrs={},
                 )
+=======
+                    slice = load_block.create_var(name=block,
+                                                  type=new_var.type,
+                                                  shape=new_var.shape,
+                                                  dtype=new_var.dtype,
+                                                  persistable=False)
+                    slices.append(slice)
+
+                    file_path = os.path.join(var_path, block, "Param")
+                    load_block.append_op(type='load',
+                                         inputs={},
+                                         outputs={'Out': [slice]},
+                                         attrs={'file_path': file_path})
+
+                load_block.append_op(type='lookup_sparse_table_merge',
+                                     inputs={'X': slices},
+                                     outputs={'Out': new_var},
+                                     attrs={})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if filename is not None:
             load_var_list = []
@@ -997,6 +1141,7 @@ def load_vars(
             if vars_from_memory is False:
                 filename = os.path.join(dirname, filename)
 
+<<<<<<< HEAD
             load_block.append_op(
                 type='load_combine',
                 inputs={},
@@ -1006,6 +1151,15 @@ def load_vars(
                     'model_from_memory': vars_from_memory,
                 },
             )
+=======
+            load_block.append_op(type='load_combine',
+                                 inputs={},
+                                 outputs={"Out": load_var_list},
+                                 attrs={
+                                     'file_path': filename,
+                                     'model_from_memory': vars_from_memory
+                                 })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         executor.run(load_prog)
 
         # check var shape
@@ -1022,10 +1176,15 @@ def load_vars(
             if new_shape != orig_shape:
                 raise RuntimeError(
                     "Variable's shape does not match, the Program requires a parameter with the shape of ({}), "
+<<<<<<< HEAD
                     "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".format(
                         orig_shape, each_var.name, new_shape
                     )
                 )
+=======
+                    "while the loaded parameter (namely [ {} ]) has a shape of  ({})."
+                    .format(orig_shape, each_var.name, new_shape))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @dygraph_not_support
@@ -1082,6 +1241,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
             fluid.io.load_params(executor=exe, dirname=param_path,
                                 main_program=None)
     """
+<<<<<<< HEAD
     load_vars(
         executor,
         dirname=dirname,
@@ -1089,6 +1249,13 @@ def load_params(executor, dirname, main_program=None, filename=None):
         predicate=is_parameter,
         filename=filename,
     )
+=======
+    load_vars(executor,
+              dirname=dirname,
+              main_program=main_program,
+              predicate=is_parameter,
+              filename=filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @dygraph_not_support
@@ -1136,6 +1303,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     """
 
     if main_program and main_program._is_distributed:
+<<<<<<< HEAD
         _load_distributed_persistables(
             executor, dirname=dirname, main_program=main_program
         )
@@ -1147,6 +1315,17 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
             predicate=is_persistable,
             filename=filename,
         )
+=======
+        _load_distributed_persistables(executor,
+                                       dirname=dirname,
+                                       main_program=main_program)
+    else:
+        load_vars(executor,
+                  dirname=dirname,
+                  main_program=main_program,
+                  predicate=is_persistable,
+                  filename=filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def _load_distributed_persistables(executor, dirname, main_program=None):
@@ -1196,6 +1375,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
             offset = param.offset
 
             if is_slice:
+<<<<<<< HEAD
                 slice = load_block.create_var(
                     name=slice_var.name,
                     type=slice_var.type,
@@ -1222,12 +1402,42 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     dtype=origin_var.dtype,
                     persistable=True,
                 )
+=======
+                slice = load_block.create_var(name=slice_var.name,
+                                              type=slice_var.type,
+                                              shape=slice_var.shape,
+                                              dtype=slice_var.dtype,
+                                              persistable=True)
+
+                load_block.append_op(type='load',
+                                     inputs={},
+                                     outputs={'Out': [slice]},
+                                     attrs={
+                                         'file_path':
+                                         os.path.join(dirname, origin_var.name),
+                                         'seek':
+                                         offset,
+                                         'shape':
+                                         slice.shape
+                                     })
+            else:
+                origin = load_block.create_var(name="{}".format(
+                    origin_var.name),
+                                               type=origin_var.type,
+                                               shape=origin_var.shape,
+                                               dtype=origin_var.dtype,
+                                               persistable=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 load_block.append_op(
                     type='load',
                     inputs={},
                     outputs={'Out': [origin]},
+<<<<<<< HEAD
                     attrs={'file_path': os.path.join(dirname, origin_var.name)},
                 )
+=======
+                    attrs={'file_path': os.path.join(dirname, origin_var.name)})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         load_block.append_op(
             type='delete_var',
@@ -1264,17 +1474,24 @@ def prepend_feed_ops(
         return
 
     global_block = inference_program.global_block()
+<<<<<<< HEAD
     feed_var = global_block.create_var(
         name=feed_holder_name,
         type=core.VarDesc.VarType.FEED_MINIBATCH,
         persistable=True,
     )
+=======
+    feed_var = global_block.create_var(name=feed_holder_name,
+                                       type=core.VarDesc.VarType.FEED_MINIBATCH,
+                                       persistable=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     for i, name in enumerate(feed_target_names):
         if not global_block.has_var(name):
             raise ValueError(
                 "The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
                 "Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
+<<<<<<< HEAD
                 "if '{name}' is not involved in the target_vars calculation.".format(
                     i=i, name=name
                 )
@@ -1286,12 +1503,22 @@ def prepend_feed_ops(
             outputs={'Out': [out]},
             attrs={'col': i},
         )
+=======
+                "if '{name}' is not involved in the target_vars calculation.".
+                format(i=i, name=name))
+        out = global_block.var(name)
+        global_block._prepend_op(type='feed',
+                                 inputs={'X': [feed_var]},
+                                 outputs={'Out': [out]},
+                                 attrs={'col': i})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def append_fetch_ops(
     inference_program, fetch_target_names, fetch_holder_name='fetch'
 ):
     global_block = inference_program.global_block()
+<<<<<<< HEAD
     fetch_var = global_block.create_var(
         name=fetch_holder_name,
         type=core.VarDesc.VarType.FETCH_LIST,
@@ -1305,6 +1532,17 @@ def append_fetch_ops(
             outputs={'Out': [fetch_var]},
             attrs={'col': i},
         )
+=======
+    fetch_var = global_block.create_var(name=fetch_holder_name,
+                                        type=core.VarDesc.VarType.FETCH_LIST,
+                                        persistable=True)
+
+    for i, name in enumerate(fetch_target_names):
+        global_block.append_op(type='fetch',
+                               inputs={'X': [name]},
+                               outputs={'Out': [fetch_var]},
+                               attrs={'col': i})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 @static_only
@@ -1415,10 +1653,15 @@ def save_inference_model(
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
     elif export_for_deployment:
+<<<<<<< HEAD
         if not (
             bool(target_vars)
             and all(isinstance(var, Variable) for var in target_vars)
         ):
+=======
+        if not (bool(target_vars)
+                and all(isinstance(var, Variable) for var in target_vars)):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             raise ValueError("'target_vars' should be a list of Variable.")
 
     main_program = _get_valid_program(main_program)
@@ -1501,18 +1744,26 @@ def save_inference_model(
         with open(model_basename, "wb") as f:
             f.write(
                 main_program._remove_training_info(
+<<<<<<< HEAD
                     clip_extra=clip_extra
                 ).desc.serialize_to_string()
             )
+=======
+                    clip_extra=clip_extra).desc.serialize_to_string())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     else:
         # TODO(panyx0718): Save more information so that it can also be used
         # for training and more flexible post-processing.
         with open(model_basename + ".main_program", "wb") as f:
             f.write(
                 main_program._remove_training_info(
+<<<<<<< HEAD
                     clip_extra=clip_extra
                 ).desc.serialize_to_string()
             )
+=======
+                    clip_extra=clip_extra).desc.serialize_to_string())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if program_only:
         warnings.warn(
@@ -1860,10 +2111,16 @@ def _unpack_saved_dict(saved_obj, protocol):
                             part_name = key + "@@." + str(i)
                             unpack_infor[key]["slices"].append(part_name)
                             temp_saved_obj[part_name] = value[
+<<<<<<< HEAD
                                 i
                                 * MAX_NUMBER_OF_ELEMENT : MAX_NUMBER_OF_ELEMENT
                                 * (i + 1)
                             ]
+=======
+                                i *
+                                MAX_NUMBER_OF_ELEMENT:MAX_NUMBER_OF_ELEMENT *
+                                (i + 1)]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if unpack_infor:
         for key, value in unpack_infor.items():
@@ -1883,8 +2140,12 @@ def _pack_loaded_dict(load_obj):
             for key, value in load_obj[unpack_info].items():
                 slices = [load_obj[part] for part in value["slices"]]
                 load_obj[key] = np.concatenate(slices).reshape(
+<<<<<<< HEAD
                     value["OriginShape"]
                 )
+=======
+                    value["OriginShape"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 removes += value["slices"]
             for key in removes:
                 load_obj.pop(key)
@@ -1895,6 +2156,7 @@ def _pack_loaded_dict(load_obj):
 
 @static_only
 def _legacy_save(param_dict, model_path, protocol=2):
+
     def get_tensor(var):
         if isinstance(var, (core.VarBase, core.eager.Tensor)):
             return var.numpy()
@@ -1979,8 +2241,13 @@ def save(program, model_path, protocol=4, **configs):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
+<<<<<<< HEAD
             "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
         )
+=======
+            "Expected 1<'protocol'<5, but received protocol={}".format(
+                protocol))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     dir_name = os.path.dirname(model_path)
     if dir_name and not os.path.exists(dir_name):
@@ -2094,10 +2361,15 @@ def load(program, model_path, executor=None, var_list=None):
         # model file save by fluid.save not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
+<<<<<<< HEAD
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
                 parameter_file_name
             )
         )
+=======
+            "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]"
+            .format(parameter_file_name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if executor is None:
             raise ValueError(
                 "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
@@ -2132,9 +2404,15 @@ def load(program, model_path, executor=None, var_list=None):
                     % (" ".join(list(binary_file_set)))
                 )
             try:
+<<<<<<< HEAD
                 load_vars(
                     executor=executor, dirname=model_path, vars=loaded_var_list
                 )
+=======
+                load_vars(executor=executor,
+                          dirname=model_path,
+                          vars=loaded_var_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             except RuntimeError as e:
                 _logger.error(e)
                 raise e
@@ -2162,12 +2440,19 @@ def load(program, model_path, executor=None, var_list=None):
 
             dir_name, file_name = os.path.split(model_path)
             try:
+<<<<<<< HEAD
                 load_vars(
                     executor=executor,
                     dirname=dir_name,
                     vars=var_list,
                     filename=file_name,
                 )
+=======
+                load_vars(executor=executor,
+                          dirname=dir_name,
+                          vars=var_list,
+                          filename=file_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             except RuntimeError as e:
                 _logger.error(e)
                 raise e
@@ -2303,10 +2588,15 @@ def load_program_state(model_path, var_list=None):
         # model file saved with fluid.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
+<<<<<<< HEAD
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
                 parameter_file_name
             )
         )
+=======
+            "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]"
+            .format(parameter_file_name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         var_name_list = []
         if var_list is None and os.path.isfile(model_path):
@@ -2333,6 +2623,7 @@ def load_program_state(model_path, var_list=None):
                     shape=var.shape,
                     dtype=var.dtype,
                     type=var.type,
+<<<<<<< HEAD
                     lod_level=var.lod_level
                     if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
                     else None,
@@ -2349,6 +2640,22 @@ def load_program_state(model_path, var_list=None):
                         vars=vars,
                         filename=filename,
                     )
+=======
+                    lod_level=var.lod_level if var.desc.type()
+                    == core.VarDesc.VarType.LOD_TENSOR else None,
+                    persistable=True)
+
+            def _load_vars_with_try_catch(exe,
+                                          dirname,
+                                          vars,
+                                          filename,
+                                          raise_error=True):
+                try:
+                    load_vars(executor=exe,
+                              dirname=dirname,
+                              vars=vars,
+                              filename=filename)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     return True
                 except:
                     error_str = (
@@ -2397,19 +2704,30 @@ def load_program_state(model_path, var_list=None):
                         # If a file does not exist, we only warn the user that the
                         # file may be an irrelevant file, but does not throw an error
                         # to ensure that other legal variables can be loaded.
+<<<<<<< HEAD
                         temp_var = load_block.create_var(
                             name=var_name, persistable=True
                         )
                         if _load_vars_with_try_catch(
                             exe, model_path, [temp_var], None, False
                         ):
+=======
+                        temp_var = load_block.create_var(name=var_name,
+                                                         persistable=True)
+                        if _load_vars_with_try_catch(exe, model_path,
+                                                     [temp_var], None, False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             loaded_var_list.append(temp_var)
 
             res_dict = {}
             for var in loaded_var_list:
                 res_dict[var.name] = np.asarray(
+<<<<<<< HEAD
                     paddle.fluid.global_scope().find_var(var.name).get_tensor()
                 )
+=======
+                    paddle.fluid.global_scope().find_var(var.name).get_tensor())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             return res_dict
 
@@ -2535,7 +2853,12 @@ def set_program_state(program, state_dict):
             unused_para_list.append(k)
     if len(unused_para_list) > 0:
         warnings.warn(
+<<<<<<< HEAD
             "This list is not set, Because of Paramerter not found in program. There are: {}".format(
                 " ".join(unused_para_list)
             )
         )
+=======
+            "This list is not set, Because of Paramerter not found in program. There are: {}"
+            .format(" ".join(unused_para_list)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

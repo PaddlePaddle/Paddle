@@ -18,6 +18,7 @@ from op_test import OpTest
 
 
 class TestRandomCropOp(OpTest):
+
     def setUp(self):
         to_crop = np.array(
             [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] * 5
@@ -43,5 +44,36 @@ class TestRandomCropOp(OpTest):
             self.assertIn(True, is_equal)
 
 
+<<<<<<< HEAD
+=======
+class TestRandomCropOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_x_type():
+                input_data = np.random.random(2, 3, 256, 256).astype("float32")
+                fluid.layers.random_crop(input_data)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[None, 3, 256, 256],
+                                       dtype='float16')
+                fluid.layers.random_crop(x2)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+            def test_shape_type():
+                x3 = fluid.layers.data(name='x3',
+                                       shape=[None, 3, 256, 256],
+                                       dtype='float32')
+                fluid.layers.random_crop(x3, shape=1)
+
+            self.assertRaises(TypeError, test_shape_type)
+
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class DemoNet(nn.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -44,15 +45,22 @@ class DemoNet(nn.Layer):
 
 
 class TestInplaceAddtoPass(DistPassTestBase):
+
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0
         paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
+<<<<<<< HEAD
         image = paddle.static.data(
             shape=[batch_size] + image_shape, dtype='float32', name='image'
         )
+=======
+        image = paddle.static.data(shape=[batch_size] + image_shape,
+                                   dtype='float32',
+                                   name='image')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         model = DemoNet()
         pred_out = model(image)

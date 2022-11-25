@@ -276,12 +276,19 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
                    "Input",
                    "Dropout1Out",
                    "FusedFeedForwardGrad");
+<<<<<<< HEAD
     if (!pre_layer_norm) {
       OP_INOUT_CHECK(ctx->HasInput("Dropout2Out"),
                      "Input",
                      "Dropout2Out",
                      "FusedFeedForwardGrad");
     }
+=======
+    OP_INOUT_CHECK(ctx->HasInput("Dropout2Out"),
+                   "Input",
+                   "Dropout2Out",
+                   "FusedFeedForwardGrad");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     OP_INOUT_CHECK(ctx->HasInput("Linear1Weight"),
                    "Input",
                    "Linear1Weight",
@@ -373,9 +380,12 @@ class FusedFeedForwardOpGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
     bool pre_layer_norm = PADDLE_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+<<<<<<< HEAD
     if (!pre_layer_norm) {
       op->SetInput("Dropout2Out", this->Output("Dropout2Out"));
     }
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     if (pre_layer_norm) {

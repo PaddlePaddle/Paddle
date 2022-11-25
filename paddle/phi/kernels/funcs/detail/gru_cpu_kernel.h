@@ -15,6 +15,10 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/eigen.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

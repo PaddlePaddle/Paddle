@@ -22,43 +22,71 @@ TEST(DataTypeTransform, CPUTransform) {
   auto kernel_fp16 =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP16,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kAnyLayout,
+=======
+                                      paddle::framework::DataLayout::kAnyLayout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                       paddle::framework::LibraryType::kPlain);
 
   auto kernel_bf16 =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::BF16,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kAnyLayout,
+=======
+                                      paddle::framework::DataLayout::kAnyLayout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                       paddle::framework::LibraryType::kPlain);
 
   auto kernel_fp32 =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kAnyLayout,
+=======
+                                      paddle::framework::DataLayout::kAnyLayout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                       paddle::framework::LibraryType::kPlain);
 
   auto kernel_fp64 =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP64,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kAnyLayout,
+=======
+                                      paddle::framework::DataLayout::kAnyLayout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                       paddle::framework::LibraryType::kPlain);
 
   auto kernel_int32 =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT32,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kAnyLayout,
+=======
+                                      paddle::framework::DataLayout::kAnyLayout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                       paddle::framework::LibraryType::kPlain);
 
   auto kernel_int64 =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT64,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kAnyLayout,
+=======
+                                      paddle::framework::DataLayout::kAnyLayout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                       paddle::framework::LibraryType::kPlain);
 
   auto kernel_bool =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::BOOL,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kAnyLayout,
+=======
+                                      paddle::framework::DataLayout::kAnyLayout,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                       paddle::framework::LibraryType::kPlain);
 
   // data type transform from float32

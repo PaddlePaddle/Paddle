@@ -51,6 +51,7 @@ bool TestMain(const platform::Place &place,
   framework::Scope scope;
 
   std::vector<InputVars> input_names = {
+<<<<<<< HEAD
       {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()},
       {"x1",
        num_inputs > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
@@ -65,6 +66,22 @@ bool TestMain(const platform::Place &place,
        num_inputs > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
                       : nullptr}};
   auto *y = scope.Var("y")->GetMutable<phi::DenseTensor>();
+=======
+      {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},
+      {"x1",
+       num_inputs > 1 ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
+                      : nullptr},
+      {"x2",
+       num_inputs > 2 ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
+                      : nullptr},
+      {"x3",
+       num_inputs > 3 ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
+                      : nullptr},
+      {"x4",
+       num_inputs > 4 ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
+                      : nullptr}};
+  auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),

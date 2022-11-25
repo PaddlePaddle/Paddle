@@ -32,9 +32,15 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 __all__ = ["FleetUtil", "GPUPSUtil"]
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s %(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s %(levelname)s: %(message)s')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 fleet = None
 
@@ -827,9 +833,16 @@ class FleetUtil:
         suffix_name = "/%s/delta-%s" % (day, pass_id)
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_model %s" % model_path)
+<<<<<<< HEAD
         key_num = fleet.save_cache_model(
             None, model_path, mode=mode, table_id=table_id
         )
+=======
+        key_num = fleet.save_cache_model(None,
+                                         model_path,
+                                         mode=mode,
+                                         table_id=table_id)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.rank0_print("save_cache_model done")
         return key_num
 
@@ -860,9 +873,16 @@ class FleetUtil:
         suffix_name = "/%s/base" % day
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_base_model %s" % model_path)
+<<<<<<< HEAD
         key_num = fleet.save_cache_model(
             None, model_path, mode=2, table_id=table_id
         )
+=======
+        key_num = fleet.save_cache_model(None,
+                                         model_path,
+                                         mode=2,
+                                         table_id=table_id)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.rank0_print("save_cache_base_model done")
         return key_num
 
@@ -911,9 +931,14 @@ class FleetUtil:
                             + "when pull dense"
                         )
                     var_name_list.append(var_name)
+<<<<<<< HEAD
                 fleet._fleet_ptr.pull_dense(
                     scope, int(table.table_id), var_name_list
                 )
+=======
+                fleet._fleet_ptr.pull_dense(scope, int(table.table_id),
+                                            var_name_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         fleet._role_maker._barrier_worker()
 
     def save_paddle_inference_model(
@@ -1090,9 +1115,17 @@ class FleetUtil:
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
+<<<<<<< HEAD
                     fluid.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
                     )
+=======
+                    fluid.io.save_vars(executor,
+                                       "./",
+                                       program,
+                                       vars=vars,
+                                       filename=model_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 else:
                     fluid.io.save_vars(executor, model_name, program, vars=vars)
 
@@ -1515,6 +1548,7 @@ class FleetUtil:
         bucket_error = error_sum / error_count if error_count > 0 else 0.0
 
         return [
+<<<<<<< HEAD
             auc,
             bucket_error,
             mae,
@@ -1524,6 +1558,11 @@ class FleetUtil:
             copc,
             mean_predict_qvalue,
             int(total_ins_num),
+=======
+            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
+            copc, mean_predict_qvalue,
+            int(total_ins_num)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
 
     def print_global_metrics(
@@ -1616,6 +1655,7 @@ class FleetUtil:
             )
             return
 
+<<<<<<< HEAD
         (
             auc,
             bucket_error,
@@ -1654,6 +1694,18 @@ class FleetUtil:
                 total_ins_num,
             )
         )
+=======
+        auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,\
+            mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
+            scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
+            prob_name, q_name, pos_ins_num_name, total_ins_num_name)
+        self.rank0_print(
+            "%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
+            "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
+            "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
+            (print_prefix, auc, bucket_error, mae, rmse, actual_ctr,
+             predicted_ctr, copc, mean_predict_qvalue, total_ins_num))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def program_type_trans(self, prog_dir, prog_fn, is_text):
         return utils.program_type_trans(prog_dir, prog_fn, is_text)
@@ -1744,11 +1796,16 @@ class FleetUtil:
             if self._is_optimizer_op(op):
                 break
             if op.has_attr("op_device"):
+<<<<<<< HEAD
                 cur_attr = (
                     op.attr("op_device")
                     if op.attr("op_device") != ""
                     else type_cpu
                 )
+=======
+                cur_attr = op.attr(
+                    "op_device") if op.attr("op_device") != "" else type_cpu
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 if pre is None or pre != cur_attr:
                     ops_list.append([])
                     type_list.append(cur_attr)
@@ -1838,9 +1895,14 @@ class FleetUtil:
                 send_list[i].extend(list(in_from_pre[i + 1]))
             prog = program.clone()
             if merged_type_list[i] != type_cpu:
+<<<<<<< HEAD
                 prog = prog._prune_with_input(
                     list(in_from_pre[i]), list(send_list[i])
                 )
+=======
+                prog = prog._prune_with_input(list(in_from_pre[i]),
+                                              list(send_list[i]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 program_list.append(prog)
             else:
                 program_list.append(prog)

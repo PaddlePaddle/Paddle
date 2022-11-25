@@ -20,6 +20,7 @@ namespace operators {
 using paddle::platform::MKLDNNDeviceContext;
 
 template <typename T>
+<<<<<<< HEAD
 class LRNOneDNNHandler
     : public phi::funcs::
           OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
@@ -31,6 +32,19 @@ class LRNOneDNNHandler
 
       : phi::funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+=======
+class LRNMKLDNNHandler
+    : public platform::
+          MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
+ public:
+  LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
+                   const dnnl::engine mkldnn_engine,
+                   platform::Place cpu_place,
+                   const Tensor* input)
+
+      : platform::
+            MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mkldnn_engine, cpu_place) {
     const int n = ctx.Attr<int>("n");
     // MKL-DNN implements LRN in a caffe way:
@@ -55,6 +69,7 @@ class LRNOneDNNHandler
         k);
   }
 
+<<<<<<< HEAD
   LRNOneDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
@@ -63,6 +78,16 @@ class LRNOneDNNHandler
                    phi::DenseTensor* in_x_grad)
       : phi::funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+=======
+  LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
+                   const dnnl::engine mkldnn_engine,
+                   platform::Place cpu_place,
+                   const Tensor* in_x,
+                   const Tensor* out_grad,
+                   Tensor* in_x_grad)
+      : platform::
+            MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 mkldnn_engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"),
@@ -182,7 +207,11 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
+<<<<<<< HEAD
     LRNOneDNNHandler<T> handler(
+=======
+    LRNMKLDNNHandler<T> handler(
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ctx, mkldnn_engine, ctx.GetPlace(), in_x, out_grad, in_x_grad);
 
     auto src_memory = handler.AcquireSrcMemory(in_x);

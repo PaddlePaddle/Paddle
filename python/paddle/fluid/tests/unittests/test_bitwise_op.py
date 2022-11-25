@@ -22,18 +22,30 @@ paddle.enable_static()
 
 # ----------------- TEST OP: BitwiseAnd ----------------- #
 class TestBitwiseAnd(OpTest):
+
     def setUp(self):
         self.op_type = "bitwise_and"
         self.init_dtype()
         self.init_shape()
         self.init_bound()
 
+<<<<<<< HEAD
         x = np.random.randint(
             self.low, self.high, self.x_shape, dtype=self.dtype
         )
         y = np.random.randint(
             self.low, self.high, self.y_shape, dtype=self.dtype
         )
+=======
+        x = np.random.randint(self.low,
+                              self.high,
+                              self.x_shape,
+                              dtype=self.dtype)
+        y = np.random.randint(self.low,
+                              self.high,
+                              self.y_shape,
+                              dtype=self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = np.bitwise_and(x, y)
 
         self.inputs = {'X': x, 'Y': y}
@@ -76,6 +88,7 @@ class TestBitwiseAnd_ZeroDim3(TestBitwiseAnd):
 
 
 class TestBitwiseAndUInt8(TestBitwiseAnd):
+
     def init_dtype(self):
         self.dtype = np.uint8
 
@@ -85,6 +98,7 @@ class TestBitwiseAndUInt8(TestBitwiseAnd):
 
 
 class TestBitwiseAndInt8(TestBitwiseAnd):
+
     def init_dtype(self):
         self.dtype = np.int8
 
@@ -94,6 +108,7 @@ class TestBitwiseAndInt8(TestBitwiseAnd):
 
 
 class TestBitwiseAndInt16(TestBitwiseAnd):
+
     def init_dtype(self):
         self.dtype = np.int16
 
@@ -103,6 +118,7 @@ class TestBitwiseAndInt16(TestBitwiseAnd):
 
 
 class TestBitwiseAndInt64(TestBitwiseAnd):
+
     def init_dtype(self):
         self.dtype = np.int64
 
@@ -112,6 +128,7 @@ class TestBitwiseAndInt64(TestBitwiseAnd):
 
 
 class TestBitwiseAndBool(TestBitwiseAnd):
+
     def setUp(self):
         self.op_type = "bitwise_and"
         self.init_shape()
@@ -126,18 +143,30 @@ class TestBitwiseAndBool(TestBitwiseAnd):
 
 # ----------------- TEST OP: BitwiseOr ------------------ #
 class TestBitwiseOr(OpTest):
+
     def setUp(self):
         self.op_type = "bitwise_or"
         self.init_dtype()
         self.init_shape()
         self.init_bound()
 
+<<<<<<< HEAD
         x = np.random.randint(
             self.low, self.high, self.x_shape, dtype=self.dtype
         )
         y = np.random.randint(
             self.low, self.high, self.y_shape, dtype=self.dtype
         )
+=======
+        x = np.random.randint(self.low,
+                              self.high,
+                              self.x_shape,
+                              dtype=self.dtype)
+        y = np.random.randint(self.low,
+                              self.high,
+                              self.y_shape,
+                              dtype=self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = np.bitwise_or(x, y)
 
         self.inputs = {'X': x, 'Y': y}
@@ -180,6 +209,7 @@ class TestBitwiseOr_ZeroDim3(TestBitwiseOr):
 
 
 class TestBitwiseOrUInt8(TestBitwiseOr):
+
     def init_dtype(self):
         self.dtype = np.uint8
 
@@ -189,6 +219,7 @@ class TestBitwiseOrUInt8(TestBitwiseOr):
 
 
 class TestBitwiseOrInt8(TestBitwiseOr):
+
     def init_dtype(self):
         self.dtype = np.int8
 
@@ -198,6 +229,7 @@ class TestBitwiseOrInt8(TestBitwiseOr):
 
 
 class TestBitwiseOrInt16(TestBitwiseOr):
+
     def init_dtype(self):
         self.dtype = np.int16
 
@@ -207,6 +239,7 @@ class TestBitwiseOrInt16(TestBitwiseOr):
 
 
 class TestBitwiseOrInt64(TestBitwiseOr):
+
     def init_dtype(self):
         self.dtype = np.int64
 
@@ -216,6 +249,7 @@ class TestBitwiseOrInt64(TestBitwiseOr):
 
 
 class TestBitwiseOrBool(TestBitwiseOr):
+
     def setUp(self):
         self.op_type = "bitwise_or"
         self.init_shape()
@@ -230,18 +264,30 @@ class TestBitwiseOrBool(TestBitwiseOr):
 
 # ----------------- TEST OP: BitwiseXor ---------------- #
 class TestBitwiseXor(OpTest):
+
     def setUp(self):
         self.op_type = "bitwise_xor"
         self.init_dtype()
         self.init_shape()
         self.init_bound()
 
+<<<<<<< HEAD
         x = np.random.randint(
             self.low, self.high, self.x_shape, dtype=self.dtype
         )
         y = np.random.randint(
             self.low, self.high, self.y_shape, dtype=self.dtype
         )
+=======
+        x = np.random.randint(self.low,
+                              self.high,
+                              self.x_shape,
+                              dtype=self.dtype)
+        y = np.random.randint(self.low,
+                              self.high,
+                              self.y_shape,
+                              dtype=self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = np.bitwise_xor(x, y)
 
         self.inputs = {'X': x, 'Y': y}
@@ -284,6 +330,7 @@ class TestBitwiseXor_ZeroDim3(TestBitwiseXor):
 
 
 class TestBitwiseXorUInt8(TestBitwiseXor):
+
     def init_dtype(self):
         self.dtype = np.uint8
 
@@ -293,6 +340,7 @@ class TestBitwiseXorUInt8(TestBitwiseXor):
 
 
 class TestBitwiseXorInt8(TestBitwiseXor):
+
     def init_dtype(self):
         self.dtype = np.int8
 
@@ -302,6 +350,7 @@ class TestBitwiseXorInt8(TestBitwiseXor):
 
 
 class TestBitwiseXorInt16(TestBitwiseXor):
+
     def init_dtype(self):
         self.dtype = np.int16
 
@@ -311,6 +360,7 @@ class TestBitwiseXorInt16(TestBitwiseXor):
 
 
 class TestBitwiseXorInt64(TestBitwiseXor):
+
     def init_dtype(self):
         self.dtype = np.int64
 
@@ -320,6 +370,7 @@ class TestBitwiseXorInt64(TestBitwiseXor):
 
 
 class TestBitwiseXorBool(TestBitwiseXor):
+
     def setUp(self):
         self.op_type = "bitwise_xor"
         self.init_shape()
@@ -334,15 +385,23 @@ class TestBitwiseXorBool(TestBitwiseXor):
 
 # ---------------  TEST OP: BitwiseNot ----------------- #
 class TestBitwiseNot(OpTest):
+
     def setUp(self):
         self.op_type = "bitwise_not"
         self.init_dtype()
         self.init_shape()
         self.init_bound()
 
+<<<<<<< HEAD
         x = np.random.randint(
             self.low, self.high, self.x_shape, dtype=self.dtype
         )
+=======
+        x = np.random.randint(self.low,
+                              self.high,
+                              self.x_shape,
+                              dtype=self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = np.bitwise_not(x)
 
         self.inputs = {'X': x}
@@ -371,6 +430,7 @@ class TestBitwiseNot_ZeroDim(TestBitwiseNot):
 
 
 class TestBitwiseNotUInt8(TestBitwiseNot):
+
     def init_dtype(self):
         self.dtype = np.uint8
 
@@ -380,6 +440,7 @@ class TestBitwiseNotUInt8(TestBitwiseNot):
 
 
 class TestBitwiseNotInt8(TestBitwiseNot):
+
     def init_dtype(self):
         self.dtype = np.int8
 
@@ -388,6 +449,7 @@ class TestBitwiseNotInt8(TestBitwiseNot):
 
 
 class TestBitwiseNotInt16(TestBitwiseNot):
+
     def init_dtype(self):
         self.dtype = np.int16
 
@@ -396,6 +458,7 @@ class TestBitwiseNotInt16(TestBitwiseNot):
 
 
 class TestBitwiseNotInt64(TestBitwiseNot):
+
     def init_dtype(self):
         self.dtype = np.int64
 
@@ -404,6 +467,7 @@ class TestBitwiseNotInt64(TestBitwiseNot):
 
 
 class TestBitwiseNotBool(TestBitwiseNot):
+
     def setUp(self):
         self.op_type = "bitwise_not"
         self.init_shape()

@@ -63,6 +63,7 @@ class Master:
 
 
 class HTTPMaster(Master):
+
     def lazy_init(self):
         if self.initialized:
             return
@@ -81,8 +82,12 @@ class HTTPMaster(Master):
                         break
                     except Exception as e:
                         self.ctx.logger.warning(
+<<<<<<< HEAD
                             "start master failed {}".format(e)
                         )
+=======
+                            "start master failed {}".format(e))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         time.sleep(0.1)
                         continue
         else:
@@ -175,6 +180,7 @@ class HTTPMaster(Master):
 
 
 class ETCDMaster(Master):
+
     def __init__(self, ctx):
         super().__init__(ctx)
 
@@ -270,9 +276,15 @@ class ETCDMaster(Master):
             self.ctx.logger.debug("Heartbeat done")
             self.client.cancel_watch(beat_watch)
 
+<<<<<<< HEAD
         self.beat_thread = threading.Thread(
             name='heartbeat', target=_heartbeat, daemon=True
         )
+=======
+        self.beat_thread = threading.Thread(name='heartbeat',
+                                            target=_heartbeat,
+                                            daemon=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.beat_thread.start()
 
     def fetch_peer_alive(self):
@@ -324,4 +336,8 @@ class ETCDMaster(Master):
         if hasattr(self, 'beat_thread'):
             self.ctx.status.done()
             # daemon thread
+<<<<<<< HEAD
             # self.beat_thread.join()
+=======
+            #self.beat_thread.join()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

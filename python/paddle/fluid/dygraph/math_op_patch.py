@@ -216,6 +216,7 @@ def monkey_patch_math_varbase():
         return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
 
     # for binary operator such as elementwise, compare
+<<<<<<< HEAD
     def _binary_creator_(
         method_name,
         op_type,
@@ -223,6 +224,14 @@ def monkey_patch_math_varbase():
         scalar_method=None,
         call_final_api=False,
     ):
+=======
+    def _binary_creator_(method_name,
+                         op_type,
+                         reverse=False,
+                         scalar_method=None,
+                         call_final_api=False):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def __impl__(self, other_var):
             # 1. scalar exists cases
             # we need combine the tensor.dtype and scalar.dtype, cast correct object
@@ -245,9 +254,15 @@ def monkey_patch_math_varbase():
                 # so the calculation result here and the calculation result of numpy are
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
+<<<<<<< HEAD
                 if (
                     op_type == "divide" or op_type == "elementwise_div"
                 ) and self.dtype in _supported_int_dtype_:
+=======
+                if (op_type == "final_state_divide"
+                        or op_type == "elementwise_div"
+                    ) and self.dtype in _supported_int_dtype_:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
@@ -270,6 +285,7 @@ def monkey_patch_math_varbase():
                     other_var = paddle.to_tensor(other_var, dtype='complex64')
                 else:
                     if reverse:
+<<<<<<< HEAD
                         other_var = create_tensor(
                             other_var, dtype=lhs_dtype, shape=self.shape
                         )
@@ -278,13 +294,27 @@ def monkey_patch_math_varbase():
                         other_var = create_scalar(
                             value=other_var, dtype=lhs_dtype
                         )
+=======
+                        other_var = create_tensor(other_var,
+                                                  dtype=lhs_dtype,
+                                                  shape=self.shape)
+                    else:
+                        # add fill_op
+                        other_var = create_scalar(value=other_var,
+                                                  dtype=lhs_dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
                 if method_name in _supported_promote_complex_types_ and (
+<<<<<<< HEAD
                     lhs_dtype in _complex_dtypes or rhs_dtype in _complex_dtypes
                 ):
+=======
+                        lhs_dtype in _complex_dtypes
+                        or rhs_dtype in _complex_dtypes):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     # only when lhs_dtype or rhs_dtype is complex type,
                     # the dtype will promote, in other cases, directly
                     # use lhs_dtype, this is consistent will original rule
@@ -303,10 +333,15 @@ def monkey_patch_math_varbase():
                     )
                 else:
                     warnings.warn(
+<<<<<<< HEAD
                         'The dtype of left and right variables are not the same, left dtype is {}, but right dtype is {}, the right dtype will convert to {}'.format(
                             lhs_dtype, rhs_dtype, lhs_dtype
                         )
                     )
+=======
+                        'The dtype of left and right variables are not the same, left dtype is {}, but right dtype is {}, the right dtype will convert to {}'
+                        .format(lhs_dtype, rhs_dtype, lhs_dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     other_var = astype(other_var, lhs_dtype)
 
             if reverse:
@@ -368,6 +403,7 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
+<<<<<<< HEAD
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),
@@ -440,12 +476,103 @@ def monkey_patch_math_varbase():
             '__matmul__',
             _binary_creator_('__matmul__', "matmul_v2", False, None),
         ),
+=======
+        ('__add__',
+         _binary_creator_('__add__', 'final_state_add', False, _scalar_add_,
+                          True)) if framework._in_eager_mode_ else
+        ('__add__',
+         _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
+        ##  a+b == b+a. Do not need to reverse explicitly
+        ('__radd__',
+         _binary_creator_('__radd__', 'final_state_add', False, _scalar_add_,
+                          True)) if framework._in_eager_mode_ else
+        ('__radd__',
+         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
+        ('__sub__',
+         _binary_creator_('__sub__', 'final_state_subtract', False,
+                          _scalar_sub_, True)) if framework._in_eager_mode_ else
+        ('__sub__',
+         _binary_creator_('__sub__', 'elementwise_sub', False, _scalar_sub_)),
+        ('__rsub__',
+         _binary_creator_('__rsub__', 'final_state_subtract', True,
+                          _scalar_rsub_, True))
+        if framework._in_eager_mode_ else
+        ('__rsub__',
+         _binary_creator_('__rsub__', 'elementwise_sub', True, _scalar_rsub_)),
+        ('__mul__',
+         _binary_creator_('__mul__', 'final_state_multiply', False,
+                          _scalar_mul_, True)) if framework._in_eager_mode_ else
+        ('__mul__',
+         _binary_creator_('__mul__', 'elementwise_mul', False, _scalar_mul_)),
+        ## a*b == b*a. Do not need to reverse explicitly
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'final_state_multiply', False,
+                          _scalar_mul_, True)) if framework._in_eager_mode_ else
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__',
+         _binary_creator_('__div__', 'final_state_divide', False, _scalar_div_,
+                          True)) if framework._in_eager_mode_ else
+        ('__div__',
+         _binary_creator_('__div__', 'elementwise_div', False, _scalar_div_)),
+        ('__truediv__',
+         _binary_creator_('__truediv__', 'final_state_divide', False,
+                          _scalar_div_, True)) if framework._in_eager_mode_ else
+        ('__truediv__',
+         _binary_creator_('__truediv__', 'elementwise_div', False,
+                          _scalar_div_)),
+        ('__rdiv__',
+         _binary_creator_('__rdiv__', 'final_state_divide', True, None, True))
+        if framework._in_eager_mode_ else
+        ('__rdiv__',
+         _binary_creator_('__rdiv__', 'elementwise_div', True, None)),
+        ('__rtruediv__',
+         _binary_creator_('rtruediv__', 'final_state_divide', True, None, True))
+        if framework._in_eager_mode_ else
+        ('__rtruediv__',
+         _binary_creator_('rtruediv__', 'elementwise_div', True, None)),
+        ('__pow__',
+         _binary_creator_('__pow__', 'final_state_elementwise_pow', False, None,
+                          True)) if framework._in_eager_mode_ else
+        ('__pow__',
+         _binary_creator_('__pow__', 'elementwise_pow', False, None)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
+                                      None)),
+        ('__floordiv__',
+         _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
+        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
+                                     None)),
+        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
+                                        None)),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ## for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
+<<<<<<< HEAD
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
         ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
+=======
+        ('__ne__',
+         _binary_creator_('__ne__', 'final_state_not_equal', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
+        ('__lt__',
+         _binary_creator_('__lt__', 'final_state_less_than', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
+        ('__le__',
+         _binary_creator_('__le__', 'final_state_less_equal', False, None,
+                          True)) if framework._in_eager_mode_ else
+        ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
+        ('__gt__',
+         _binary_creator_('__gt__', 'final_state_greater_than', False, None,
+                          True)) if framework._in_eager_mode_ else
+        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
+        ('__ge__',
+         _binary_creator_('__ge__', 'final_state_greater_equal', False, None,
+                          True)) if framework._in_eager_mode_ else
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('__array_ufunc__', None),
     ]

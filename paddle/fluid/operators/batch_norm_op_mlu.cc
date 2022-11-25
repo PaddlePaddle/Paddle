@@ -272,10 +272,17 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (use_global_stats) {
+<<<<<<< HEAD
       const auto *running_mean = ctx.Input<phi::DenseTensor>("Mean");
       const auto *running_variance = ctx.Input<phi::DenseTensor>("Variance");
       MLUCnnl::FusedBatchNormGrad(ctx,
                                   false /*is_training*/,
+=======
+      const auto *running_mean = ctx.Input<Tensor>("Mean");
+      const auto *running_variance = ctx.Input<Tensor>("Variance");
+      MLUCnnl::FusedBatchNormGrad(ctx,
+                                  true /*is_training*/,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                   transformed_desc.get(),
                                   GetBasePtr(&transformed_d_y),
                                   transformed_desc.get(),

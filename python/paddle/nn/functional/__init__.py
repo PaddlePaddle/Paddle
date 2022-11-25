@@ -92,7 +92,10 @@ from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
 from .loss import hinge_embedding_loss  # noqa: F401
 from .loss import cosine_embedding_loss  # noqa: F401
+<<<<<<< HEAD
 from .loss import multi_margin_loss
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from .loss import multi_label_soft_margin_loss
 from .loss import triplet_margin_with_distance_loss
 from .loss import triplet_margin_loss
@@ -242,6 +245,9 @@ __all__ = [  # noqa
     'rrelu',
     'triplet_margin_with_distance_loss',
     'triplet_margin_loss',
+<<<<<<< HEAD
     'multi_margin_loss',
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     'soft_margin_loss',
 ]

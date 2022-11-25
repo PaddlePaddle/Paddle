@@ -199,7 +199,12 @@ class DeQuantizer final : public Quanter {
   bool IsNotPermittedName(const std::string& output_name) const override {
     std::unordered_map<std::string, std::vector<std::string>> block_list{
         {"layer_norm",
+<<<<<<< HEAD
          {"Mean", "Variance"}}};  // not used in inference in oneDNN
+=======
+         {"Mean", "Variance"}},     // not used in inference in MKLDNN
+        {"fc", {"ResidualData"}}};  // artifical output, already dequantized
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     std::vector<std::string> blocked_outputs{"XShape"};  // blocklist for any op
     auto op_name = op->Name();

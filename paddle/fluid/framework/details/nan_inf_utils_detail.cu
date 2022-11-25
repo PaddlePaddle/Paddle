@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include <algorithm>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
+#include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
@@ -334,6 +339,11 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
         std::is_same<T, ::paddle::platform::complex<float>>::value ||
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
+<<<<<<< HEAD
+=======
+  int print_num = 3;
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
   int dev_id = tensor_.place().device;
@@ -408,8 +418,11 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
       std::min(static_cast<size_t>(128),
                static_cast<size_t>((tensor_.numel() + threads - 1) / threads));
 #ifdef __HIPCC__
+<<<<<<< HEAD
   int print_num = 3;
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   hipLaunchKernelGGL(CheckNanInfKernel,
                      dim3(blocks),
                      dim3(threads),
@@ -461,7 +474,11 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 template <>
 void tensor_check<phi::GPUContext>(const std::string& op_type,
                                    const std::string& var_name,
+<<<<<<< HEAD
                                    const phi::DenseTensor& tensor,
+=======
+                                   const framework::Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                    const platform::Place& place) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 

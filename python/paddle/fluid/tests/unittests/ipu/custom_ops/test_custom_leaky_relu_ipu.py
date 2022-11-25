@@ -13,11 +13,18 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import sys
 import unittest
 
 import numpy as np
 
+=======
+import unittest
+import sys
+
+import numpy as np
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.optimizer
 import paddle.static
@@ -30,6 +37,7 @@ from op_test_ipu import IPUOpTest, np_dtype_to_fluid_str
 def load_custom_ops():
     # load custom ops
     cur_dir = os.path.dirname(os.path.realpath(__file__))
+<<<<<<< HEAD
     custom_ops = load(
         name="custom_jit_ops",
         sources=[
@@ -38,10 +46,22 @@ def load_custom_ops():
         ],
         extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
     )
+=======
+    custom_ops = load(name="custom_jit_ops",
+                      sources=[
+                          f"{cur_dir}/leaky_relu_cpu.cc",
+                          f"{cur_dir}/leaky_relu_ipu.cc",
+                      ],
+                      extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return custom_ops
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -51,9 +71,14 @@ class TestBase(IPUOpTest):
 
     def set_feed(self):
         self.feed = {
+<<<<<<< HEAD
             "x": np.random.uniform(low=-2, high=2, size=[3, 5]).astype(
                 'float32'
             ),
+=======
+            "x": np.random.uniform(low=-2, high=2, size=[3,
+                                                         5]).astype('float32'),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def set_feed_attr(self):
@@ -77,11 +102,17 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0],
                 )
+=======
+                x = paddle.static.data(name=self.feed_list[0],
+                                       shape=self.feed_shape[0],
+                                       dtype=self.feed_dtype[0])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 # custom op
                 out = custom_ops.custom_leaky_relu(x, **self.attrs)
                 fetch_list = [out.name]
@@ -101,6 +132,7 @@ class TestBase(IPUOpTest):
                 # add name mapping for paddle custom op and popart custom ops
                 # `paddle_op` was defined in leaky_relu_cpu.cc
                 # `popart_op`, `domain` and `version` was defined in leaky_relu_ipu.cc
+<<<<<<< HEAD
                 ipu_strategy.add_custom_op(
                     paddle_op="custom_leaky_relu",
                     popart_op="LeakyRelu",
@@ -111,6 +143,16 @@ class TestBase(IPUOpTest):
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, scope=scope, ipu_strategy=ipu_strategy
                 ).compile(feed_list, fetch_list)
+=======
+                ipu_strategy.add_custom_op(paddle_op="custom_leaky_relu",
+                                           popart_op="LeakyRelu",
+                                           domain='custom.ops',
+                                           version=1)
+
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog, scope=scope,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 program = main_prog
 
@@ -121,9 +163,14 @@ class TestBase(IPUOpTest):
         res0 = self._test_base(False)
         res1 = self._test_base(True)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             res0.flatten(), res1.flatten(), rtol=1e-05, atol=self.atol
         )
+=======
+        self.assertTrue(
+            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.assertTrue(res0.shape == res1.shape)
 

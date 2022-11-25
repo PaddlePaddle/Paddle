@@ -21,6 +21,7 @@ from .datasets import UCIHousing  # noqa: F401
 from .datasets import WMT14  # noqa: F401
 from .datasets import WMT16  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     'Conll05st',
     'Imdb',
@@ -31,4 +32,9 @@ __all__ = [  # noqa
     'WMT16',
     'ViterbiDecoder',
     'viterbi_decode',
+=======
+__all__ = [  #noqa
+    'Conll05st', 'Imdb', 'Imikolov', 'Movielens', 'UCIHousing', 'WMT14',
+    'WMT16', 'ViterbiDecoder', 'viterbi_decode'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 ]

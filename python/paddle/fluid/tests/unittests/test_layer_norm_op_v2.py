@@ -23,6 +23,7 @@ import paddle
 
 
 class TestDygraphLayerNormv2(unittest.TestCase):
+
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
@@ -113,6 +114,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
 
 class TestLayerNormFunction(unittest.TestCase):
+
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
@@ -160,12 +162,19 @@ class TestLayerNormFunction(unittest.TestCase):
             y4 = compute_v4(x)
             np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
+<<<<<<< HEAD
             self.assertRaises(
                 ValueError,
                 paddle.nn.functional.layer_norm,
                 x=x,
                 normalized_shape=1.0,
             )
+=======
+            self.assertRaises(ValueError,
+                              paddle.nn.functional.layer_norm,
+                              x=x,
+                              normalized_shape=1.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

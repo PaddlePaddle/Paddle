@@ -19,7 +19,11 @@ from paddle.fluid.layer_helper import LayerHelper
 import paddle
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+<<<<<<< HEAD
 from paddle import _C_ops, _legacy_C_ops
+=======
+from paddle import _C_ops
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
@@ -162,6 +166,7 @@ class ModelAverage(Optimizer):
 
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         average_window_rate,
@@ -177,6 +182,19 @@ class ModelAverage(Optimizer):
             grad_clip=None,
             name=name,
         )
+=======
+    def __init__(self,
+                 average_window_rate,
+                 parameters=None,
+                 min_average_window=10000,
+                 max_average_window=10000,
+                 name=None):
+        super(ModelAverage, self).__init__(learning_rate=0.0,
+                                           parameters=parameters,
+                                           weight_decay=None,
+                                           grad_clip=None,
+                                           name=name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.helper = LayerHelper(self.__class__.__name__)
         self.average_window = average_window_rate
@@ -212,6 +230,7 @@ class ModelAverage(Optimizer):
             self._add_accumulator('sum_2', param)
             self._add_accumulator('sum_3', param)
             self._add_accumulator('restore', param)
+<<<<<<< HEAD
             self._add_accumulator(
                 'num_accumulates', param, dtype='int64', shape=[1]
             )
@@ -221,6 +240,20 @@ class ModelAverage(Optimizer):
             self._add_accumulator(
                 'num_updates', param, dtype='int64', shape=[1]
             )
+=======
+            self._add_accumulator('num_accumulates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
+            self._add_accumulator('old_num_accumulates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
+            self._add_accumulator('num_updates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -237,6 +270,7 @@ class ModelAverage(Optimizer):
         num_updates = self._get_accumulator('num_updates', param_and_grad[0])
 
         if in_dygraph_mode():
+<<<<<<< HEAD
             _, _, _, _, _, _ = _C_ops.average_accumulates_(
                 param_and_grad[0],
                 sum_1,
@@ -272,6 +306,21 @@ class ModelAverage(Optimizer):
                 'max_average_window',
                 self.max_average_window,
             )
+=======
+            _, _, _, _, _, _ = _C_ops.final_state_average_accumulates_(
+                param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
+                old_num_accumulates, num_updates, self.average_window,
+                self.max_average_window, self.min_average_window)
+            return None
+        elif framework._non_static_mode():
+            _, _, _, _, _, _ = _C_ops.average_accumulates(
+                param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
+                old_num_accumulates, num_updates, sum_1, sum_2, sum_3,
+                num_accumulates, old_num_accumulates, num_updates,
+                'average_window', self.average_window, 'min_average_window',
+                self.min_average_window, 'max_average_window',
+                self.max_average_window)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return None
 
         block = framework.default_main_program().global_block()
@@ -300,6 +349,7 @@ class ModelAverage(Optimizer):
             "out_num_updates": num_updates,
         }
 
+<<<<<<< HEAD
         average_accumulates_op = block.append_op(
             type=self.type,
             inputs=inputs,
@@ -307,6 +357,13 @@ class ModelAverage(Optimizer):
             attrs=attrs,
             stop_gradient=True,
         )
+=======
+        average_accumulates_op = block.append_op(type=self.type,
+                                                 inputs=inputs,
+                                                 outputs=outputs,
+                                                 attrs=attrs,
+                                                 stop_gradient=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return average_accumulates_op
 
@@ -461,9 +518,14 @@ class ModelAverage(Optimizer):
                 total_param = sum_1 + sum_2 + sum_3
                 total_accumulates = num_accumulates + old_num_accumulates
                 total_param = paddle.cast(total_param, dtype='float32')
+<<<<<<< HEAD
                 total_accumulates = paddle.cast(
                     total_accumulates, dtype='float32'
                 )
+=======
+                total_accumulates = paddle.cast(total_accumulates,
+                                                dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 average_param = total_param / total_accumulates
                 paddle.assign(average_param, param)
             try:

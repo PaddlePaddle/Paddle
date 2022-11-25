@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestSplitMergeSelectedVarOps(unittest.TestCase):
+
     def test_forward_backward_list_output(self):
         for branch_num in range(2, 10):
             program = Program()
@@ -49,21 +50,35 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                 mean = paddle.mean(y)
                 append_backward(mean)
 
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else fluid.CPUPlace()
             )
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             exe = Executor(place)
 
             feed_x = np.asarray([1.3, -1.4]).astype(np.float32)
             for i in range(branch_num):
                 feed_mask = np.asarray([i]).astype(np.int32)
+<<<<<<< HEAD
                 ret = exe.run(
                     program,
                     feed={'x': feed_x, 'mask': feed_mask},
                     fetch_list=[y.name, x.grad_name],
                 )
+=======
+                ret = exe.run(program,
+                              feed={
+                                  'x': feed_x,
+                                  'mask': feed_mask
+                              },
+                              fetch_list=[y.name, x.grad_name])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 x_grad = np.asarray([0.5, 0.5]).astype(np.float32)
                 np.testing.assert_allclose(
                     np.asarray(ret[0]), feed_x, rtol=1e-05
@@ -74,6 +89,7 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
 
 
 class TestSelectInputOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             mask = layers.data(name='mask', shape=[1], dtype='int32')
@@ -100,16 +116,26 @@ class TestSelectInputOpError(unittest.TestCase):
 
 
 class TestSelectOutput_Error(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             in1 = layers.data(name='in1', shape=[1], dtype='int32')
+<<<<<<< HEAD
             mask_int32 = layers.data(
                 name='mask_int32', shape=[1], dtype='int32'
             )
             mask_float32 = layers.data(
                 name='mask_float32', shape=[1], dtype='float32'
             )
+=======
+            mask_int32 = layers.data(name='mask_int32',
+                                     shape=[1],
+                                     dtype='int32')
+            mask_float32 = layers.data(name='mask_float32',
+                                       shape=[1],
+                                       dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out1 = layers.data(name='out1', shape=[1], dtype='int32')
 
             # 1. The type of input in select_output must Variable.

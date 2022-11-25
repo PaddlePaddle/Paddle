@@ -251,6 +251,7 @@ class GAstToAst3(GAstToAst):
     if sys.version_info.minor < 9:
 
         def visit_Subscript(self, node):
+
             def adjust_slice(s):
                 if isinstance(s, ast.Slice):
                     return s
@@ -260,8 +261,12 @@ class GAstToAst3(GAstToAst):
             if isinstance(node.slice, gast.Tuple):
                 if any(isinstance(elt, gast.slice) for elt in node.slice.elts):
                     new_slice = ast.ExtSlice(
+<<<<<<< HEAD
                         [adjust_slice(x) for x in self._visit(node.slice.elts)]
                     )
+=======
+                        [adjust_slice(x) for x in self._visit(node.slice.elts)])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 else:
                     value = ast.Tuple(self._visit(node.slice.elts), ast.Load())
                     ast.copy_location(value, node.slice)
@@ -309,9 +314,14 @@ class GAstToAst3(GAstToAst):
         else:
             extra_args = (self._visit(node.type_comment),)
 
+<<<<<<< HEAD
         new_node = ast.arg(
             self._visit(node.id), self._visit(node.annotation), *extra_args
         )
+=======
+        new_node = ast.arg(self._visit(node.id), self._visit(node.annotation),
+                           *extra_args)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return ast.copy_location(new_node, node)
 
     def visit_Name(self, node):
@@ -324,9 +334,14 @@ class GAstToAst3(GAstToAst):
 
     def visit_ExceptHandler(self, node):
         if node.name:
+<<<<<<< HEAD
             new_node = ast.ExceptHandler(
                 self._visit(node.type), node.name.id, self._visit(node.body)
             )
+=======
+            new_node = ast.ExceptHandler(self._visit(node.type), node.name.id,
+                                         self._visit(node.body))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return ast.copy_location(new_node, node)
         else:
             return self.generic_visit(node)

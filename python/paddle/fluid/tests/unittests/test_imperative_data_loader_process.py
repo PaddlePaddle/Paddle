@@ -29,6 +29,7 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def batch_generator_creator(batch_size, batch_num):
+
     def __reader__():
         for _ in range(batch_num):
             batch_image, batch_label = get_random_images_and_labels(
@@ -42,6 +43,7 @@ def batch_generator_creator(batch_size, batch_num):
 # NOTE: coverage CI can't cover child process code, so need these test.
 # Here test child process loop function in main process
 class TestDygraphDataLoaderProcess(unittest.TestCase):
+
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
@@ -59,12 +61,19 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
 
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
+<<<<<<< HEAD
                 capacity=self.batch_num + 1, use_multiprocess=True
             )
             loader.set_batch_generator(
                 batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace(),
             )
+=======
+                capacity=self.batch_num + 1, use_multiprocess=True)
+            loader.set_batch_generator(batch_generator_creator(
+                self.batch_size, self.batch_num),
+                                       places=fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             loader._data_queue = queue.Queue(self.batch_num + 1)
             _reader_process_loop(loader._batch_reader, loader._data_queue)
             # For clean memory mapped files
@@ -74,9 +83,14 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
                 util_queue.put(data)
 
             # Clean up memory mapped files
+<<<<<<< HEAD
             clear_process = multiprocessing.Process(
                 target=__clear_process__, args=(util_queue,)
             )
+=======
+            clear_process = multiprocessing.Process(target=__clear_process__,
+                                                    args=(util_queue, ))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             clear_process.start()
 
     def test_reader_process_loop(self):
@@ -85,7 +99,9 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
         self.func_test_reader_process_loop()
 
     def func_test_reader_process_loop_simple_none(self):
+
         def none_sample_genarator(batch_num):
+
             def __reader__():
                 for _ in range(batch_num):
                     yield None
@@ -94,11 +110,17 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
 
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
+<<<<<<< HEAD
                 capacity=self.batch_num + 1, use_multiprocess=True
             )
             loader.set_batch_generator(
                 none_sample_genarator(self.batch_num), places=fluid.CPUPlace()
             )
+=======
+                capacity=self.batch_num + 1, use_multiprocess=True)
+            loader.set_batch_generator(none_sample_genarator(self.batch_num),
+                                       places=fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             loader._data_queue = queue.Queue(self.batch_num + 1)
             exception = None
             try:

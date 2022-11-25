@@ -111,9 +111,15 @@ template <typename DeviceContext, typename T>
 class PaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& seq_tensor,
                   phi::DenseTensor* pad_tensor,
                   const phi::DenseTensor& pad_value,
+=======
+                  const framework::LoDTensor& seq_tensor,
+                  framework::LoDTensor* pad_tensor,
+                  const framework::LoDTensor& pad_value,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -124,8 +130,13 @@ template <typename DeviceContext, typename T>
 class UnpaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
+=======
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,

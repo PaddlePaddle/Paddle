@@ -71,6 +71,7 @@ def overlap_add(x, hop_length, axis=-1):
 
 
 class TestOverlapAddOp(OpTest):
+
     def setUp(self):
         self.op_type = "overlap_add"
         self.python_api = paddle.signal.overlap_add
@@ -101,6 +102,7 @@ class TestOverlapAddOp(OpTest):
 
 
 class TestCase1(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (3, 50)
         input_type = 'float64'
@@ -112,6 +114,7 @@ class TestCase1(TestOverlapAddOp):
 
 
 class TestCase2(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (2, 40, 5)
         input_type = 'float64'
@@ -123,6 +126,7 @@ class TestCase2(TestOverlapAddOp):
 
 
 class TestCase3(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (5, 40, 2)
         input_type = 'float64'
@@ -134,6 +138,7 @@ class TestCase3(TestOverlapAddOp):
 
 
 class TestCase4(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (3, 5, 12, 8)
         input_type = 'float64'
@@ -145,6 +150,7 @@ class TestCase4(TestOverlapAddOp):
 
 
 class TestCase5(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (8, 12, 5, 3)
         input_type = 'float64'

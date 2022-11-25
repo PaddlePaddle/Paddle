@@ -17,17 +17,23 @@ limitations under the License. */
 #include <queue>
 #include <stack>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
+<<<<<<< HEAD
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
@@ -487,9 +493,12 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
     desc->SetAttr(
         "dtype",
         dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
+<<<<<<< HEAD
     desc->SetAttr(
         "value",
         dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->Coeff());
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
   desc->SetAttr("force_cpu", false);
@@ -733,8 +742,12 @@ static void GetGraphVarDesc(const Graph &graph,
 
 static void GraphToBlock(const Graph &graph,
                          proto::BlockDesc *block,
+<<<<<<< HEAD
                          const SortKind *sort_kind,
                          const size_t graph_idx) {
+=======
+                         const SortKind *sort_kind) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
   if (graph.Has(kGraphToProgramVarsToRemove)) {
@@ -778,7 +791,11 @@ static void GraphToBlock(const Graph &graph,
   }
 
   std::vector<OpDesc> ops;
+<<<<<<< HEAD
   GetGraphOpDesc(nodes, block, &ops, graph, graph_idx);
+=======
+  GetGraphOpDesc(nodes, &ops);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   for (auto &op : ops) {
     RemoveControlDepInputAndOuput(&op);
@@ -840,7 +857,10 @@ void GraphToProgram(const Graph &graph,
     VLOG(8) << "Merge main programs";
     MergePrograms(program, program_descs, /*append=*/false);
   }
+<<<<<<< HEAD
   // handle startup program
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(

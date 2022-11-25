@@ -24,6 +24,7 @@ import math
 
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):
+
     def check_network_convergence(self, use_cuda, build_strategy=None):
         os.environ['CPU_NUM'] = str(4)
         main = fluid.Program()
@@ -70,9 +71,16 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 if math.isnan(float(avg_train_loss_val)):
                     sys.exit("got NaN loss, training failed.")
 
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     train_loss, test_loss, rtol=1e-05, atol=0.01
                 )
+=======
+                self.assertTrue(
+                    np.allclose(train_loss, test_loss,
+                                atol=1e-2), "Train loss: " + str(train_loss) +
+                    "\n Test loss:" + str(test_loss))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()
@@ -80,12 +88,19 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             fluid.BuildStrategy.ReduceStrategy.AllReduce
         )
         if core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_network_convergence(
                 use_cuda=True, build_strategy=build_strategy
             )
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy
         )
+=======
+            self.check_network_convergence(use_cuda=True,
+                                           build_strategy=build_strategy)
+        self.check_network_convergence(use_cuda=False,
+                                       build_strategy=build_strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_parallel_testing_with_new_strategy_gpu(self):
         build_strategy = fluid.BuildStrategy()
@@ -93,6 +108,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             fluid.BuildStrategy.ReduceStrategy.Reduce
         )
         if core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_network_convergence(
                 use_cuda=True, build_strategy=build_strategy
             )
@@ -105,6 +121,16 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy
         )
+=======
+            self.check_network_convergence(use_cuda=True,
+                                           build_strategy=build_strategy)
+
+    def test_parallel_testing_with_new_strategy_cpu(self):
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.check_network_convergence(use_cuda=False,
+                                       build_strategy=build_strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

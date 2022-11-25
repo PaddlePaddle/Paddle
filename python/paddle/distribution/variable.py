@@ -45,11 +45,13 @@ class Variable:
 
 
 class Real(Variable):
+
     def __init__(self, event_rank=0):
         super().__init__(False, event_rank, constraint.real)
 
 
 class Positive(Variable):
+
     def __init__(self, event_rank=0):
         super().__init__(False, event_rank, constraint.positive)
 
@@ -66,24 +68,38 @@ class Independent(Variable):
     def __init__(self, base, reinterpreted_batch_rank):
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
+<<<<<<< HEAD
         super().__init__(
             base.is_discrete, base.event_rank + reinterpreted_batch_rank
         )
+=======
+        super(Independent,
+              self).__init__(base.is_discrete,
+                             base.event_rank + reinterpreted_batch_rank)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def constraint(self, value):
         ret = self._base.constraint(value)
         if ret.dim() < self._reinterpreted_batch_rank:
             raise ValueError(
                 "Input dimensions must be equal or grater than  {}".format(
+<<<<<<< HEAD
                     self._reinterpreted_batch_rank
                 )
             )
         return ret.reshape(
             ret.shape[: ret.dim() - self.reinterpreted_batch_rank] + (-1,)
         ).all(-1)
+=======
+                    self._reinterpreted_batch_rank))
+        return ret.reshape(ret.shape[:ret.dim() -
+                                     self.reinterpreted_batch_rank] +
+                           (-1, )).all(-1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class Stack(Variable):
+
     def __init__(self, vars, axis=0):
         self._vars = vars
         self._axis = axis

@@ -16,13 +16,18 @@ import copy
 from abc import ABC, abstractmethod
 import logging
 
+<<<<<<< HEAD
 from ..utils import get_logger
+=======
+from paddle.distributed.utils import get_logger
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from .trial import TrialStatus
 from .trial import OptimizationTunerTrial as Trial
 
 
 class AlgorithmBase(ABC):
     """
+<<<<<<< HEAD
     An Tuning alogrithm is a class to find out an optimal configuration
     given the selected tuning optimization pass(es) and the arguments to be tuned.
     Different optimization pass(es) will correspond to a different algorithm,
@@ -32,6 +37,16 @@ class AlgorithmBase(ABC):
     search space pruning rules specific for the given optimization scenario.
     """
 
+=======
+    An Tuning alogrithm is a class to find out an optimal configuration 
+    given the selected tuning optimization pass(es) and the arguments to be tuned. 
+    Different optimization pass(es) will correspond to a different algorithm,
+    where different search space **pruning rules** will applied.
+
+    In another word, the key "algorithm" for this class is the 
+    search space pruning rules specific for the given optimization scenario.
+    """
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     _REGISTERED_ALGORITHMS = {}
 
     name = None
@@ -53,9 +68,15 @@ class AlgorithmBase(ABC):
 
     def collect_model_info(self, main_prog, startup_prog):
         """
+<<<<<<< HEAD
         Collect the model static info (from programs) that could be used to
         pruning candidate trials and saving tuning time.For instance,
         model info like number of model parameters and activation memory could be
+=======
+        Collect the model static info (from programs) that could be used to 
+        pruning candidate trials and saving tuning time.For instance, 
+        model info like number of model parameters and activation memory could be 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         used to prune candidated trial and decide the next trial.
         """
         pass
@@ -71,7 +92,11 @@ class AlgorithmBase(ABC):
     @abstractmethod
     def update(self, results):
         """
+<<<<<<< HEAD
         Update the algorthim with the results of last trial. Using this information is used to
+=======
+        Update the algorthim with the results of last trial. Using this information is used to 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         pruning the search space of the future trial.
         """
         pass
@@ -89,6 +114,10 @@ class AlgorithmBase(ABC):
 
 
 def register_algor(name):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def impl(cls):
         AlgorithmBase._register(name, cls)
         cls.name = name
@@ -110,19 +139,31 @@ class ShardingStageAlgorithm(AlgorithmBase):
     # TODO import trial class & copy strategy
     def __init__(self, config):
         super().__init__(config)
+<<<<<<< HEAD
         self._changed_configs = ["sharding"]
+=======
+        self._changed_configs = ["sharding_configs"]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _init_spaces(self):
         self._max_stage = 3
         self._trial_idx = 0
 
+<<<<<<< HEAD
         stage_range = self._config.sharding.to_dict().get("tuning_range", None)
+=======
+        stage_range = self._config.sharding_configs.get("stage_range", None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if stage_range:
             assert set(stage_range).issubset(
                 set([0, 1, 2, 3])
             ), "Sharding Stage should belong into range within 0 - 3 but got {}.".format(
+<<<<<<< HEAD
                 stage_range
             )
+=======
+                stage_range)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             stage_range.sort(reverse=True)
         else:
             stage_range = list(range(self._max_stage + 1)).sort(reverse=True)
@@ -137,8 +178,14 @@ class ShardingStageAlgorithm(AlgorithmBase):
             stage = self._stage_range[self._trial_idx]
 
             new_strategy = copy.deepcopy(self._config.dist_strategy)
+<<<<<<< HEAD
             sharding = new_strategy.sharding
             sharding.stage = stage
+=======
+            config_dict = new_strategy.sharding_configs
+            config_dict["stage"] = stage
+            new_strategy.sharding_configs = config_dict
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             name = "trial-sharding-stage{}".format(stage)
             trial = Trial(new_strategy, name, self.changed_configs)

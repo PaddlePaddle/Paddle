@@ -42,6 +42,7 @@ def parse_args():
         default=0,
         help='Number of the first minibatches to skip in performance statistics.',
     )
+<<<<<<< HEAD
     parser.add_argument(
         '--debug',
         action='store_true',
@@ -50,11 +51,21 @@ def parse_args():
     parser.add_argument(
         '--quant_model', type=str, default='', help='A path to a Quant model.'
     )
+=======
+    parser.add_argument('--debug',
+                        action='store_true',
+                        help='If used, the graph of Quant model is drawn.')
+    parser.add_argument('--quant_model',
+                        type=str,
+                        default='',
+                        help='A path to a Quant model.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
         '--batch_num',
         type=int,
         default=0,
+<<<<<<< HEAD
         help='Number of batches to process. 0 or less means whole dataset. Default: 0.',
     )
     parser.add_argument(
@@ -63,6 +74,15 @@ def parse_args():
         default=0.01,
         help='Accepted accuracy difference threshold.',
     )
+=======
+        help=
+        'Number of batches to process. 0 or less means whole dataset. Default: 0.'
+    )
+    parser.add_argument('--acc_diff_threshold',
+                        type=float,
+                        default=0.01,
+                        help='Accepted accuracy difference threshold.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -74,6 +94,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
     """
 
     def _reader_creator(self, data_file='data.bin'):
+
         def reader():
             with open(data_file, 'rb') as fp:
                 num = fp.read(8)
@@ -127,6 +148,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             name = op_node.name()
             if name in ['depthwise_conv2d']:
                 input_var_node = graph._find_node_by_name(
+<<<<<<< HEAD
                     op_node.inputs, op_node.input("Input")[0]
                 )
                 weight_var_node = graph._find_node_by_name(
@@ -135,6 +157,16 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 output_var_node = graph._find_node_by_name(
                     graph.all_var_nodes(), op_node.output("Output")[0]
                 )
+=======
+                    op_node.inputs,
+                    op_node.input("Input")[0])
+                weight_var_node = graph._find_node_by_name(
+                    op_node.inputs,
+                    op_node.input("Filter")[0])
+                output_var_node = graph._find_node_by_name(
+                    graph.all_var_nodes(),
+                    op_node.output("Output")[0])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 attrs = {
                     name: op_node.op().attr(name)
                     for name in op_node.op().attr_names()
@@ -168,6 +200,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         inference_scope = fluid.executor.global_scope()
         with fluid.scope_guard(inference_scope):
             if os.path.exists(os.path.join(model_path, '__model__')):
+<<<<<<< HEAD
                 [
                     inference_program,
                     feed_target_names,
@@ -181,14 +214,28 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 ] = fluid.io.load_inference_model(
                     model_path, exe, 'model', 'params'
                 )
+=======
+                [inference_program, feed_target_names, fetch_targets
+                 ] = fluid.io.load_inference_model(model_path, exe)
+            else:
+                [inference_program, feed_target_names, fetch_targets
+                 ] = fluid.io.load_inference_model(model_path, exe, 'model',
+                                                   'params')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if self._debug:
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
+<<<<<<< HEAD
             if transform_to_int8:
                 mkldnn_int8_pass = QuantInt8MkldnnPass(
                     _scope=inference_scope, _place=place
                 )
+=======
+            if (transform_to_int8):
+                mkldnn_int8_pass = QuantInt8MkldnnPass(_scope=inference_scope,
+                                                       _place=place)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 graph = mkldnn_int8_pass.apply(graph)
             else:
                 graph = self._prepare_for_fp32_mkldnn(graph)
@@ -223,8 +270,12 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 batch_time = (time.time() - start) * 1000  # in miliseconds
                 outputs.append(out[0])
                 batch_acc1, batch_acc5 = self._get_batch_accuracy(
+<<<<<<< HEAD
                     out[0], labels
                 )
+=======
+                    out[0], labels)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 infer_accs1.append(batch_acc1)
                 infer_accs5.append(batch_acc5)
                 samples = len(data)
@@ -234,6 +285,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 fpses.append(fps)
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
+<<<<<<< HEAD
                 _logger.info(
                     'batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
                     'latency: {3:.4f} ms, fps: {4:.2f}'.format(
@@ -245,6 +297,12 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                         appx,
                     )
                 )
+=======
+                _logger.info('batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
+                             'latency: {3:.4f} ms, fps: {4:.2f}'.format(
+                                 iters, batch_acc1, batch_acc5,
+                                 batch_time / batch_size, fps, appx))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             # Postprocess benchmark data
             batch_latencies = batch_times[skip_batch_num:]
@@ -256,8 +314,12 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
             _logger.info(
+<<<<<<< HEAD
                 'Total inference run time: {:.2f} s'.format(infer_total_time)
             )
+=======
+                'Total inference run time: {:.2f} s'.format(infer_total_time))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
@@ -323,9 +385,14 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
 
         _logger.info('--- Quant FP32 prediction start ---')
+<<<<<<< HEAD
         val_reader = paddle.batch(
             self._reader_creator(data_path), batch_size=batch_size
         )
+=======
+        val_reader = paddle.batch(self._reader_creator(data_path),
+                                  batch_size=batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
             val_reader,
             quant_model_path,
@@ -335,9 +402,14 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             transform_to_int8=False,
         )
         _logger.info('--- Quant INT8 prediction start ---')
+<<<<<<< HEAD
         val_reader = paddle.batch(
             self._reader_creator(data_path), batch_size=batch_size
         )
+=======
+        val_reader = paddle.batch(self._reader_creator(data_path),
+                                  batch_size=batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         int8_output, int8_acc1, int8_acc5, int8_fps, int8_lat = self._predict(
             val_reader,
             quant_model_path,

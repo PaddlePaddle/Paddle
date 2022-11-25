@@ -24,9 +24,14 @@ import shutil
 import tempfile
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "Only test cuda Random Generator"
 )
+=======
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "Only test cuda Random Generator")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class TestGeneratorSeed(unittest.TestCase):
     """
     Test cases for cpu generator seed.
@@ -40,6 +45,7 @@ class TestGeneratorSeed(unittest.TestCase):
         gen.manual_seed(111111111)
         st = paddle.get_cuda_rng_state()
 
+<<<<<<< HEAD
         x = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
@@ -49,6 +55,20 @@ class TestGeneratorSeed(unittest.TestCase):
         x_third = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
+=======
+        x = fluid.layers.uniform_random([2, 10],
+                                        dtype="float32",
+                                        min=0.0,
+                                        max=1.0)
+        x_again = fluid.layers.uniform_random([2, 10],
+                                              dtype="float32",
+                                              min=0.0,
+                                              max=1.0)
+        x_third = fluid.layers.uniform_random([2, 10],
+                                              dtype="float32",
+                                              min=0.0,
+                                              max=1.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         print("x: {}".format(x.numpy()))
         print("x_again: {}".format(x_again.numpy()))
         x = x + x_again + x_third
@@ -56,6 +76,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         paddle.set_cuda_rng_state(st)
 
+<<<<<<< HEAD
         x1 = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
@@ -65,6 +86,20 @@ class TestGeneratorSeed(unittest.TestCase):
         x1_third = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
+=======
+        x1 = fluid.layers.uniform_random([2, 10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+        x1_again = fluid.layers.uniform_random([2, 10],
+                                               dtype="float32",
+                                               min=0.0,
+                                               max=1.0)
+        x1_third = fluid.layers.uniform_random([2, 10],
+                                               dtype="float32",
+                                               min=0.0,
+                                               max=1.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         x1 = x1 + x1_again + x1_third
         y1 = fluid.layers.dropout(x1, 0.5)
         y_np = y.numpy()
@@ -91,8 +126,13 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if core.is_compiled_with_cuda():
             print(">>>>>>> gaussian random dygraph >>>>>>>")
+<<<<<<< HEAD
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x2_np, x3_np, rtol=1e-05)
+=======
+            self.assertTrue(np.allclose(x1_np, x2_np))
+            self.assertTrue(np.allclose(x2_np, x3_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_generator_randint_dygraph(self):
         """Test Generator seed."""
@@ -131,6 +171,7 @@ class TestGeneratorSeed(unittest.TestCase):
             result_1 = fluid.layers.fc(
                 input=x,
                 size=10,
+<<<<<<< HEAD
                 param_attr=fluid.initializer.TruncatedNormal(
                     loc=0.0, scale=2.0
                 ),
@@ -142,6 +183,15 @@ class TestGeneratorSeed(unittest.TestCase):
                     loc=0.0, scale=2.0
                 ),
             )
+=======
+                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
+                                                             scale=2.0))
+            result_2 = fluid.layers.fc(
+                input=x,
+                size=10,
+                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
+                                                             scale=2.0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)

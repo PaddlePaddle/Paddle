@@ -27,6 +27,7 @@ from paddle.fluid.layer_helper import LayerHelper
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
+
     def place(self):
         return core.CPUPlace()
 
@@ -51,6 +52,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         expect_false = core.LoDTensor()
         expect_false.set(expect_false_tensor, self.place())
 
+<<<<<<< HEAD
         self.main(
             tensor=tensor,
             mask=mask,
@@ -58,6 +60,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             expect_false=expect_false,
             expect_out=tensor,
         )
+=======
+        self.main(tensor=tensor,
+                  mask=mask,
+                  expect_true=expect_true,
+                  expect_false=expect_false,
+                  expect_out=tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def split_and_merge_lod_tensor_level_0(self, use_merge_lod_infer=False):
         tensor = core.LoDTensor()
@@ -84,6 +93,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         expect_false.set(expect_false_tensor, self.place())
         expect_false.set_recursive_sequence_lengths(expect_false_lod)
 
+<<<<<<< HEAD
         self.main(
             tensor=tensor,
             mask=mask,
@@ -92,6 +102,14 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             expect_out=tensor,
             use_merge_lod_infer=use_merge_lod_infer,
         )
+=======
+        self.main(tensor=tensor,
+                  mask=mask,
+                  expect_true=expect_true,
+                  expect_false=expect_false,
+                  expect_out=tensor,
+                  use_merge_lod_infer=use_merge_lod_infer)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_split_and_merge_lod_tensor_1(self):
         self.split_and_merge_lod_tensor_level_0()
@@ -131,6 +149,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
                 }
                 helper = LayerHelper('merge_lod_tensor_infer')
                 out = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
                     dtype=out_true.dtype
                 )
                 helper.append_op(
@@ -153,16 +172,45 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
                     x=x,
                     level=level,
                 )
+=======
+                    dtype=out_true.dtype)
+                helper.append_op(type='merge_lod_tensor_infer',
+                                 inputs={
+                                     'X': x,
+                                     'Mask': y,
+                                     'InTrue': out_true,
+                                     'InFalse': out_false
+                                 },
+                                 outputs={'Out': out},
+                                 attrs={'level': level})
+                out.persistable = True
+            else:
+                out = merge_lod_tensor(in_true=out_true,
+                                       in_false=out_false,
+                                       mask=y,
+                                       x=x,
+                                       level=level)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 out.persistable = True
 
         exe = Executor(place)
         scope = core.Scope()
+<<<<<<< HEAD
         exe.run(
             program,
             feed={'x': tensor, 'y': mask},
             scope=scope,
             return_numpy=False,
         )
+=======
+        exe.run(program,
+                feed={
+                    'x': tensor,
+                    'y': mask
+                },
+                scope=scope,
+                return_numpy=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         var_true = scope.find_var(out_true.name).get_tensor()
 
@@ -185,23 +233,43 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
 
 class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
+
     def test_grad(self):
         place = core.CPUPlace()
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             x = layers.data(
                 name='x', shape=[1], dtype='float32', stop_gradient=False
             )
             y = layers.data(
                 name='y', shape=[1], dtype='bool', stop_gradient=False
             )
+=======
+            x = layers.data(name='x',
+                            shape=[1],
+                            dtype='float32',
+                            stop_gradient=False)
+            y = layers.data(name='y',
+                            shape=[1],
+                            dtype='bool',
+                            stop_gradient=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             level = 0
 
             out_true, out_false = split_lod_tensor(input=x, mask=y, level=level)
+<<<<<<< HEAD
             out = merge_lod_tensor(
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level
             )
+=======
+            out = merge_lod_tensor(in_true=out_true,
+                                   in_false=out_false,
+                                   mask=y,
+                                   x=x,
+                                   level=level)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             mean = paddle.mean(out)
 
             append_backward(mean)
@@ -221,6 +289,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
         g_vars = program.global_block().var(x.name + "@GRAD")
         g_out = [
+<<<<<<< HEAD
             item.sum()
             for item in map(
                 np.array,
@@ -232,6 +301,18 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
                     return_numpy=False,
                 ),
             )
+=======
+            item.sum() for item in map(
+                np.array,
+                exe.run(program,
+                        feed={
+                            'x': tensor,
+                            'y': mask
+                        },
+                        fetch_list=[g_vars],
+                        scope=scope,
+                        return_numpy=False))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
 
         g_out_sum = np.array(g_out).sum()
@@ -240,8 +321,10 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
 
 class TestMergeLodTensorOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             input_data = layers.data(
                 name='x', shape=[1], dtype='float32', stop_gradient=False
             )
@@ -264,10 +347,37 @@ class TestMergeLodTensorOpError(unittest.TestCase):
                     mask=y,
                     level=level,
                 )
+=======
+            input_data = layers.data(name='x',
+                                     shape=[1],
+                                     dtype='float32',
+                                     stop_gradient=False)
+            y = layers.data(name='y',
+                            shape=[1],
+                            dtype='bool',
+                            stop_gradient=False)
+            x_true = layers.data(name='x_true',
+                                 shape=[1],
+                                 dtype='float32',
+                                 stop_gradient=False)
+            x_false = layers.data(name='x_false',
+                                  shape=[1],
+                                  dtype='float32',
+                                  stop_gradient=False)
+            level = 0
+
+            def test_x():
+                out = merge_lod_tensor(int_true=x_true,
+                                       in_false=x_false,
+                                       x=set(),
+                                       mask=y,
+                                       level=level)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_x)
 
             def test_mask():
+<<<<<<< HEAD
                 out = merge_lod_tensor(
                     int_true=x_true,
                     in_false=x_false,
@@ -275,10 +385,18 @@ class TestMergeLodTensorOpError(unittest.TestCase):
                     mask=set(),
                     level=level,
                 )
+=======
+                out = merge_lod_tensor(int_true=x_true,
+                                       in_false=x_false,
+                                       x=input_data,
+                                       mask=set(),
+                                       level=level)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_mask)
 
             def test_xtrue():
+<<<<<<< HEAD
                 out = merge_lod_tensor(
                     int_true=set(),
                     in_false=x_false,
@@ -286,10 +404,18 @@ class TestMergeLodTensorOpError(unittest.TestCase):
                     mask=y,
                     level=level,
                 )
+=======
+                out = merge_lod_tensor(int_true=set(),
+                                       in_false=x_false,
+                                       x=input_data,
+                                       mask=y,
+                                       level=level)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_xtrue)
 
             def test_xfalse():
+<<<<<<< HEAD
                 out = merge_lod_tensor(
                     int_true=x_true,
                     in_false=set(),
@@ -297,21 +423,40 @@ class TestMergeLodTensorOpError(unittest.TestCase):
                     mask=y,
                     level=level,
                 )
+=======
+                out = merge_lod_tensor(int_true=x_true,
+                                       in_false=set(),
+                                       x=input_data,
+                                       mask=y,
+                                       level=level)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_xfalse)
 
 
 class TestSplitLodTensorWithError(unittest.TestCase):
+
     def test_error(self):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
+<<<<<<< HEAD
             x = layers.data(
                 name='x', shape=[1], dtype='float32', stop_gradient=False
             )
             y = layers.data(
                 name='y', shape=[1], dtype='bool', stop_gradient=False
             )
+=======
+            x = layers.data(name='x',
+                            shape=[1],
+                            dtype='float32',
+                            stop_gradient=False)
+            y = layers.data(name='y',
+                            shape=[1],
+                            dtype='bool',
+                            stop_gradient=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             level = 0
 
             with self.assertRaises(TypeError):

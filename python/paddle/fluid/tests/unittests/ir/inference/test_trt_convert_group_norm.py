@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -35,6 +36,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input(attrs: List[Dict[str, Any]], batch):
             if attrs[0]['data_layout'] == 'NCHW':
                 return np.random.random([batch, 32, 64, 64]).astype(np.float32)
@@ -70,7 +72,30 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
                                 "op_outputs": {
                                     "Y": ["y_output"],
                                     "Mean": ["mean_output"],
+<<<<<<< HEAD
                                     "Variance": ["variance_output"],
+=======
+                                    "Variance": ["variance_output"]
+                                },
+                                "op_attrs": dics[i]
+                            }]
+                            ops = self.generate_op_config(ops_config)
+
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={
+                                    "scale_weight":
+                                    TensorConfig(
+                                        data_gen=partial(generate_scale)),
+                                    "bias_weight":
+                                    TensorConfig(
+                                        data_gen=partial(generate_bias))
+                                },
+                                inputs={
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input, dics, batch))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                 },
                                 "op_attrs": dics[0],
                             }
@@ -100,8 +125,13 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
                         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16, 16]}
             self.dynamic_shape.max_input_shape = {
@@ -139,8 +169,19 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-2
+=======
+            attrs, True), (1e-5, 1e-5)
+
+    def add_skip_trt_case(self):
+
+        def teller1(program_config, predictor_config):
+            if len(self.dynamic_shape.min_input_shape) != 0:
+                return True
+            return False
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(

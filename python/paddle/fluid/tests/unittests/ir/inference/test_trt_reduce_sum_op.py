@@ -23,14 +23,24 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTReduceSumTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
             reduce_sum = fluid.layers.reduce_sum(
                 data, dim=[2, -1], keep_dim=True
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 10, 192],
+                              dtype="float32")
+            reduce_sum = fluid.layers.reduce_sum(data,
+                                                 dim=[2, -1],
+                                                 keep_dim=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
@@ -42,11 +52,16 @@ class TRTReduceSumTest(InferencePassTest):
         )
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceSumTest.DynamicShapeParam(
+<<<<<<< HEAD
             {'data': [1, 3, 8, 8]},
             {'data': [3, 3, 10, 192]},
             {'data': [3, 3, 10, 192]},
             False,
         )
+=======
+            {'data': [1, 3, 8, 8]}, {'data': [3, 3, 10, 192]},
+            {'data': [3, 3, 10, 192]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -58,11 +73,18 @@ class TRTReduceSumTest(InferencePassTest):
 
 
 class TRTReduceSumAllTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 10, 192],
+                              dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             reduce_sum = fluid.layers.reduce_sum(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_sum, is_test=True)
 
@@ -75,11 +97,16 @@ class TRTReduceSumAllTest(InferencePassTest):
         )
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceSumAllTest.DynamicShapeParam(
+<<<<<<< HEAD
             {'data': [1, 3, 8, 8]},
             {'data': [3, 3, 10, 192]},
             {'data': [3, 3, 10, 192]},
             False,
         )
+=======
+            {'data': [1, 3, 8, 8]}, {'data': [3, 3, 10, 192]},
+            {'data': [3, 3, 10, 192]}, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

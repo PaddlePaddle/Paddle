@@ -37,6 +37,7 @@ def huber_loss_forward(val, delta):
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestHuberLossOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = 'huber_loss'
@@ -85,6 +86,7 @@ class TestHuberLossOp(OpTest):
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['Y'],
@@ -101,31 +103,72 @@ class TestHuberLossOp(OpTest):
             max_relative_error=0.008,
             no_grad_set=set('residual'),
         )
+=======
+        self.check_grad_with_place(self.place, ['Y'],
+                                   'Out',
+                                   max_relative_error=0.008,
+                                   no_grad_set=set("residual"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.008,
+                                   no_grad_set=set('residual'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def TestHuberLossOp1(TestHuberLossOp):
+
     def set_shape(self):
         return 64
 
 
 def TestHuberLossOp2(TestHuberLossOp):
+
     def set_shape(self):
         return (6, 6)
 
 
 def TestHuberLossOp3(TestHuberLossOp):
+
     def set_shape(self):
         return (6, 6, 1)
 
 
 def TestHuberLossOpFP16(TestHuberLossOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
+=======
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestHuberLossOpError(unittest.TestCase):
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input and label must be Variable
+            xw = np.random.random((6, 6)).astype("float32")
+            xr = fluid.data(name='xr', shape=[None, 6], dtype="float32")
+            lw = np.random.random((6, 6)).astype("float32")
+            lr = fluid.data(name='lr', shape=[None, 6], dtype="float32")
+            delta = 1.0
+            self.assertRaises(TypeError, fluid.layers.huber_loss, xr, lw, delta)
+            self.assertRaises(TypeError, fluid.layers.huber_loss, xw, lr, delta)
+
+            # the dtype of input and label must be float32 or float64
+            xw2 = fluid.data(name='xw2', shape=[None, 6], dtype="int32")
+            lw2 = fluid.data(name='lw2', shape=[None, 6], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.huber_loss, xw2, lr,
+                              delta)
+            self.assertRaises(TypeError, fluid.layers.huber_loss, xr, lw2,
+                              delta)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

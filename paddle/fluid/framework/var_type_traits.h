@@ -180,10 +180,15 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
+<<<<<<< HEAD
     phi::DenseTensor,
     phi::SelectedRows,
     phi::SparseCooTensor,
     phi::SparseCsrTensor,
+=======
+    Tensor,
+    phi::SelectedRows,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     std::vector<Scope *>,
     LoDRankTable,
     Strings,
@@ -217,9 +222,13 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
     int,
     float,
+<<<<<<< HEAD
     Vocab,
     std::vector<int>,
     std::vector<float>>;
+=======
+    Vocab>;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");

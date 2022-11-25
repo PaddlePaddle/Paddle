@@ -18,7 +18,10 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import os
 import tempfile
+<<<<<<< HEAD
 import paddle
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestLoadOp(unittest.TestCase):
@@ -43,11 +46,18 @@ class TestLoadOp(unittest.TestCase):
             )
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
+<<<<<<< HEAD
         paddle.distributed.io.save_persistables(
             exe,
             dirname=os.path.join(self.temp_dir.name, "./model"),
             main_program=main_prog,
         )
+=======
+        fluid.io.save_persistables(exe,
+                                   dirname=os.path.join(self.temp_dir.name,
+                                                        "./model"),
+                                   main_program=main_prog)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -57,9 +67,14 @@ class TestLoadOp(unittest.TestCase):
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             var = layers.create_tensor(dtype='float32')
+<<<<<<< HEAD
             layers.load(
                 var, file_path=os.path.join(self.temp_dir.name, './model/w')
             )
+=======
+            layers.load(var,
+                        file_path=os.path.join(self.temp_dir.name, './model/w'))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)

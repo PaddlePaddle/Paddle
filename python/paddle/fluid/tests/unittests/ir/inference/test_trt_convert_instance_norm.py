@@ -26,6 +26,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -37,6 +38,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], shape_input):
             return np.random.random(shape_input).astype(np.float32)
 
@@ -72,6 +74,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={
+<<<<<<< HEAD
                             "bias_data": TensorConfig(
                                 data_gen=partial(
                                     generate_input2, dics, shape_input
@@ -89,6 +92,19 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
                                     generate_input1, dics, shape_input
                                 )
                             )
+=======
+                            "bias_data":
+                            TensorConfig(data_gen=partial(
+                                generate_input2, dics, shape_input)),
+                            "scale_data":
+                            TensorConfig(data_gen=partial(
+                                generate_input2, dics, shape_input))
+                        },
+                        inputs={
+                            "input_data":
+                            TensorConfig(data_gen=partial(
+                                generate_input1, dics, shape_input))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         },
                         outputs=["y_data"],
                     )
@@ -96,8 +112,13 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             if self.in_dim == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 4]}
@@ -151,6 +172,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
@@ -169,6 +191,12 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
             SkipReasons.TRT_NOT_SUPPORT,
             "The output has diff between gpu and trt in Windows.",
         )
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test(self):
         self.add_skip_trt_case()

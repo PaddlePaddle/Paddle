@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -21,6 +22,15 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
+=======
+from __future__ import print_function
+
+from paddle.utils import gast
+
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TensorShapeTransformer(BaseTransformer):

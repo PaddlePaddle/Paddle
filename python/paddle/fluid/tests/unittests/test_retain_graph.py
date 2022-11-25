@@ -24,6 +24,7 @@ paddle.seed(SEED)
 
 
 class Generator(fluid.dygraph.Layer):
+
     def __init__(self):
         super().__init__()
         self.conv1 = paddle.nn.Conv2D(3, 3, 3, padding=1)
@@ -35,6 +36,7 @@ class Generator(fluid.dygraph.Layer):
 
 
 class Discriminator(fluid.dygraph.Layer):
+
     def __init__(self):
         super().__init__()
         self.convd = paddle.nn.Conv2D(6, 3, 1)
@@ -45,6 +47,7 @@ class Discriminator(fluid.dygraph.Layer):
 
 
 class TestRetainGraph(unittest.TestCase):
+<<<<<<< HEAD
     def cal_gradient_penalty(
         self,
         netD,
@@ -55,6 +58,17 @@ class TestRetainGraph(unittest.TestCase):
         constant=1.0,
         lambda_gp=10.0,
     ):
+=======
+
+    def cal_gradient_penalty(self,
+                             netD,
+                             real_data,
+                             fake_data,
+                             edge_data=None,
+                             type='mixed',
+                             constant=1.0,
+                             lambda_gp=10.0):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if lambda_gp > 0.0:
             if type == 'real':
                 interpolatesv = real_data
@@ -78,6 +92,7 @@ class TestRetainGraph(unittest.TestCase):
             fake_AB = paddle.concat((real_data.detach(), interpolatesv), 1)
             disc_interpolates = netD(fake_AB)
 
+<<<<<<< HEAD
             outs = paddle.fluid.layers.fill_constant(
                 disc_interpolates.shape, disc_interpolates.dtype, 1.0
             )
@@ -98,6 +113,23 @@ class TestRetainGraph(unittest.TestCase):
                 )
                 * lambda_gp
             )  # added eps
+=======
+            outs = paddle.fluid.layers.fill_constant(disc_interpolates.shape,
+                                                     disc_interpolates.dtype,
+                                                     1.0)
+            gradients = paddle.grad(outputs=disc_interpolates,
+                                    inputs=fake_AB,
+                                    grad_outputs=outs,
+                                    create_graph=True,
+                                    retain_graph=True,
+                                    only_inputs=True)
+
+            gradients = paddle.reshape(gradients[0], [real_data.shape[0], -1])
+
+            gradient_penalty = paddle.mean(
+                (paddle.norm(gradients + 1e-16, 2, 1) - constant)**
+                2) * lambda_gp  # added eps
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return gradient_penalty, gradients
         else:
             return 0.0, None
@@ -124,12 +156,21 @@ class TestRetainGraph(unittest.TestCase):
         G_pred_fake = d(fake_AB.detach())
 
         false_target = paddle.fluid.layers.fill_constant(
+<<<<<<< HEAD
             G_pred_fake.shape, 'float32', 0.0
         )
 
         G_gradient_penalty, _ = self.cal_gradient_penalty(
             d, realA, fakeB, lambda_gp=10.0
         )
+=======
+            G_pred_fake.shape, 'float32', 0.0)
+
+        G_gradient_penalty, _ = self.cal_gradient_penalty(d,
+                                                          realA,
+                                                          fakeB,
+                                                          lambda_gp=10.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         loss_d = gan_criterion(G_pred_fake, false_target) + G_gradient_penalty
 
         loss_d.backward(retain_graph=need_retain)
@@ -138,12 +179,19 @@ class TestRetainGraph(unittest.TestCase):
         optim_g.clear_gradients()
         fake_AB = paddle.concat((realA, fakeB), 1)
         G_pred_fake = d(fake_AB)
+<<<<<<< HEAD
         true_target = paddle.fluid.layers.fill_constant(
             G_pred_fake.shape, 'float32', 1.0
         )
         loss_g = l1_criterion(fakeB, realB) + gan_criterion(
             G_pred_fake, true_target
         )
+=======
+        true_target = paddle.fluid.layers.fill_constant(G_pred_fake.shape,
+                                                        'float32', 1.0)
+        loss_g = l1_criterion(fakeB, realB) + gan_criterion(
+            G_pred_fake, true_target)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         loss_g.backward()
         optim_g.minimize(loss_g)

@@ -17,12 +17,16 @@
 #include <algorithm>
 #include <atomic>
 #include <string>
+<<<<<<< HEAD
 #include <unordered_map>
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include <vector>
 
 #include "paddle/fluid/jit/property.pb.h"
 
 namespace paddle {
+<<<<<<< HEAD
 namespace framework {
 class Variable;
 }
@@ -30,6 +34,10 @@ namespace jit {
 
 using Variable = paddle::framework::Variable;
 
+=======
+namespace jit {
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class Property {
  public:
   Property() {}
@@ -49,12 +57,16 @@ class Property {
   const proto::PropertyVals *Proto() const { return &property_; }
 
   int Size() const;
+<<<<<<< HEAD
   std::vector<std::string> Names() const;
   std::unordered_map<std::string, std::shared_ptr<Variable>> Values();
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   void SetFloat(const float &f);
   void SetFloat(const std::string &name, const float &f);
 
+<<<<<<< HEAD
   float GetFloat(const std::string &name) const;
   float GetFloat(const int &idx) const;
 
@@ -62,10 +74,18 @@ class Property {
   void SetFloats(const std::string &name, const std::vector<float> &v);
 
   std::vector<float> GetFloats(const std::string &name);
+=======
+  void SetFloats(const std::vector<float> &v);
+  void SetFloats(const std::string &name, const std::vector<float> &v);
+
+  float GetFloat(const std::string &name) const;
+  float GetFloat(const int &idx) const;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
   void SetInt64(const int64_t &i);
   void SetInt64(const std::string &name, const int64_t &i);
 
+<<<<<<< HEAD
   int64_t GetInt64(const std::string &name);
 
   void SetInt64s(const std::vector<int64_t> &v);
@@ -87,17 +107,31 @@ class Property {
 
   void Serialization(const std::string &path);
 
+=======
+  void SetInt64s(const std::vector<int64_t> &v);
+  void SetInt64s(const std::string &name, const std::vector<int64_t> &v);
+
+  void SetString(const std::string &s);
+  void SetString(const std::string &name, const std::string &s);
+
+  void SetStrings(const std::vector<std::string> &v);
+  void SetStrings(const std::string &name, const std::vector<std::string> &v);
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   // The Id() and OriginalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
  private:
+<<<<<<< HEAD
   void DeserializationFromString(const std::string &str);
 
   std::string SerializationToString();
 
  private:
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   proto::PropertyVals property_;
 
   // This thread-safe implementation seems to be redudent since the neural

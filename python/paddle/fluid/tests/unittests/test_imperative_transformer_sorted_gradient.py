@@ -22,7 +22,11 @@ from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid import core
 import numpy as np
+<<<<<<< HEAD
 import paddle.nn.functional as F
+=======
+import six
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 np.set_printoptions(suppress=True)
 
@@ -150,6 +154,7 @@ def position_encoding_init(n_position, d_pos_vec):
     channels = d_pos_vec
     position = np.arange(n_position)
     num_timescales = channels // 2
+<<<<<<< HEAD
     log_timescale_increment = np.log(float(1e4) / float(1)) / (
         num_timescales - 1
     )
@@ -159,6 +164,14 @@ def position_encoding_init(n_position, d_pos_vec):
     scaled_time = np.expand_dims(position, 1) * np.expand_dims(
         inv_timescales, 0
     )
+=======
+    log_timescale_increment = (np.log(float(1e4) / float(1)) /
+                               (num_timescales - 1))
+    inv_timescales = np.exp(
+        np.arange(num_timescales)) * -log_timescale_increment
+    scaled_time = np.expand_dims(position, 1) * np.expand_dims(
+        inv_timescales, 0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     signal = np.concatenate([np.sin(scaled_time), np.cos(scaled_time)], axis=1)
     signal = np.pad(signal, [[0, 0], [0, np.mod(channels, 2)]], 'constant')
     position_enc = signal
@@ -182,13 +195,21 @@ def create_data(is_static=False):
         enc_inputs = [
             to_variable(src_word_np, name='src_word'),
             to_variable(src_pos_np, name='src_pos'),
+<<<<<<< HEAD
             to_variable(src_slf_attn_bias_np, name='src_slf_attn_bias'),
+=======
+            to_variable(src_slf_attn_bias_np, name='src_slf_attn_bias')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         dec_inputs = [
             to_variable(trg_word_np, name='trg_word'),
             to_variable(trg_pos_np, name='trg_pos'),
             to_variable(trg_slf_attn_bias_np, name='trg_slf_attn_bias'),
+<<<<<<< HEAD
             to_variable(trg_src_attn_bias_np, name='trg_src_attn_bias'),
+=======
+            to_variable(trg_src_attn_bias_np, name='trg_src_attn_bias')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         label = to_variable(lbl_word_np, name='lbl_word')
         weight = to_variable(lbl_weight_np, name='lbl_weight')
@@ -221,6 +242,7 @@ def make_all_inputs(input_fields):
     """
     inputs = []
     for input_field in input_fields:
+<<<<<<< HEAD
         input_var = fluid.layers.data(
             name=input_field,
             shape=input_descs[input_field][0],
@@ -230,6 +252,14 @@ def make_all_inputs(input_fields):
             else 0,
             append_batch_size=False,
         )
+=======
+        input_var = fluid.layers.data(name=input_field,
+                                      shape=input_descs[input_field][0],
+                                      dtype=input_descs[input_field][1],
+                                      lod_level=input_descs[input_field][2] if
+                                      len(input_descs[input_field]) == 3 else 0,
+                                      append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         inputs.append(input_var)
     return inputs
 
@@ -254,10 +284,15 @@ input_descs = {
     # encoder.
     # The actual data shape of src_slf_attn_bias is:
     # [batch_size, n_head, max_src_len_in_batch, max_src_len_in_batch]
+<<<<<<< HEAD
     "src_slf_attn_bias": [
         (batch_size, ModelHyperParams.n_head, seq_len, seq_len),
         "float32",
     ],
+=======
+    "src_slf_attn_bias":
+    [(batch_size, ModelHyperParams.n_head, seq_len, seq_len), "float32"],
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     # The actual data shape of trg_word is:
     # [batch_size, max_trg_len_in_batch]
     "trg_word": [
@@ -272,18 +307,28 @@ input_descs = {
     # subsequent words in the decoder.
     # The actual data shape of trg_slf_attn_bias is:
     # [batch_size, n_head, max_trg_len_in_batch, max_trg_len_in_batch]
+<<<<<<< HEAD
     "trg_slf_attn_bias": [
         (batch_size, ModelHyperParams.n_head, seq_len, seq_len),
         "float32",
     ],
+=======
+    "trg_slf_attn_bias":
+    [(batch_size, ModelHyperParams.n_head, seq_len, seq_len), "float32"],
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     # This input is used to remove attention weights on paddings of the source
     # input in the encoder-decoder attention.
     # The actual data shape of trg_src_attn_bias is:
     # [batch_size, n_head, max_trg_len_in_batch, max_src_len_in_batch]
+<<<<<<< HEAD
     "trg_src_attn_bias": [
         (batch_size, ModelHyperParams.n_head, seq_len, seq_len),
         "float32",
     ],
+=======
+    "trg_src_attn_bias":
+    [(batch_size, ModelHyperParams.n_head, seq_len, seq_len), "float32"],
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     # This input is used in independent decoder program for inference.
     # The actual data shape of enc_output is:
     # [batch_size, max_src_len_in_batch, d_model]
@@ -347,6 +392,7 @@ sync = False
 batch_num = 5
 
 np.random.seed(90)
+<<<<<<< HEAD
 src_word_np = (
     np.arange(1, TrainTaskConfig.batch_size * seq_len + 1)
     .reshape([TrainTaskConfig.batch_size, seq_len])
@@ -383,6 +429,37 @@ lbl_word_np = np.random.randint(
 lbl_weight_np = np.random.randn(TrainTaskConfig.batch_size * seq_len, 1).astype(
     'float32'
 )
+=======
+src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
+src_pos_np = np.random.randint(1,
+                               seq_len,
+                               size=(TrainTaskConfig.batch_size, seq_len),
+                               dtype='int64')
+src_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
+                                       ModelHyperParams.n_head, seq_len,
+                                       seq_len).astype('float32')
+
+trg_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
+trg_pos_np = np.random.randint(1,
+                               seq_len,
+                               size=(TrainTaskConfig.batch_size, seq_len),
+                               dtype='int64')
+trg_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
+                                       ModelHyperParams.n_head, seq_len,
+                                       seq_len).astype('float32')
+trg_src_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
+                                       ModelHyperParams.n_head, seq_len,
+                                       seq_len).astype('float32')
+
+lbl_word_np = np.random.randint(1,
+                                ModelHyperParams.src_vocab_size - 1,
+                                size=(TrainTaskConfig.batch_size * seq_len, 1),
+                                dtype='int64')
+lbl_weight_np = np.random.randn(TrainTaskConfig.batch_size * seq_len,
+                                1).astype('float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 pos_inp1 = position_encoding_init(
     ModelHyperParams.max_length, ModelHyperParams.d_model
@@ -393,6 +470,7 @@ pos_inp2 = position_encoding_init(
 
 
 class PrePostProcessLayer(Layer):
+
     def __init__(self, d_model, process_cmd, shape_len=None):
         super().__init__()
         for cmd in process_cmd:
@@ -425,6 +503,7 @@ class PrePostProcessLayer(Layer):
 
 
 class PositionwiseFeedForwardLayer(Layer):
+
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
         self._i2h = Linear(d_hid, d_inner_hid, act="relu")
@@ -434,17 +513,25 @@ class PositionwiseFeedForwardLayer(Layer):
     def forward(self, x):
         hidden = self._i2h(x)
         if self._dropout_rate:
+<<<<<<< HEAD
             hidden = fluid.layers.dropout(
                 hidden,
                 dropout_prob=self._dropout_rate,
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
+=======
+            hidden = fluid.layers.dropout(hidden,
+                                          dropout_prob=self._dropout_rate,
+                                          seed=ModelHyperParams.dropout_seed,
+                                          is_test=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = self._h2o(hidden)
         return out
 
 
 class MultiHeadAttentionLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         d_key,
@@ -457,6 +544,19 @@ class MultiHeadAttentionLayer(Layer):
         static_kv=False,
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 d_key,
+                 d_value,
+                 d_model,
+                 n_head=1,
+                 dropout_rate=0.,
+                 cache=None,
+                 gather_idx=None,
+                 static_kv=False):
+        super(MultiHeadAttentionLayer, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._n_head = n_head
         self._d_key = d_key
         self._d_value = d_value
@@ -492,12 +592,19 @@ class MultiHeadAttentionLayer(Layer):
         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
+<<<<<<< HEAD
         product = fluid.layers.matmul(
             x=transpose_q,
             y=transpose_k,
             transpose_y=True,
             alpha=self._d_model**-0.5,
         )
+=======
+        product = fluid.layers.matmul(x=transpose_q,
+                                      y=transpose_k,
+                                      transpose_y=True,
+                                      alpha=self._d_model**-0.5)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if attn_bias is not None:
             product += attn_bias
         weights = fluid.layers.softmax(product)
@@ -527,6 +634,7 @@ class MultiHeadAttentionLayer(Layer):
 
 
 class EncoderSubLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         n_head,
@@ -542,6 +650,22 @@ class EncoderSubLayer(Layer):
     ):
 
         super().__init__()
+=======
+
+    def __init__(self,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd="n",
+                 postprocess_cmd="da"):
+
+        super(EncoderSubLayer, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._preprocess_cmd = preprocess_cmd
         self._postprocess_cmd = postprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -550,6 +674,7 @@ class EncoderSubLayer(Layer):
             d_model, self._preprocess_cmd, 3
         )
         self._multihead_attention_layer = MultiHeadAttentionLayer(
+<<<<<<< HEAD
             d_key, d_value, d_model, n_head, attention_dropout
         )
         self._postprocess_layer = PrePostProcessLayer(
@@ -564,6 +689,19 @@ class EncoderSubLayer(Layer):
         self._postprocess_layer2 = PrePostProcessLayer(
             d_model, self._postprocess_cmd, None
         )
+=======
+            d_key, d_value, d_model, n_head, attention_dropout)
+        self._postprocess_layer = PrePostProcessLayer(d_model,
+                                                      self._postprocess_cmd,
+                                                      None)
+        self._preprocess_layer2 = PrePostProcessLayer(d_model,
+                                                      self._preprocess_cmd, 3)
+        self._positionwise_feed_forward = PositionwiseFeedForwardLayer(
+            d_inner_hid, d_model, relu_dropout)
+        self._postprocess_layer2 = PrePostProcessLayer(d_model,
+                                                       self._postprocess_cmd,
+                                                       None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(self, enc_input, attn_bias):
         pre_process_multihead = self._preprocess_layer(
@@ -594,6 +732,7 @@ class EncoderSubLayer(Layer):
 
 
 class EncoderLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         n_layer,
@@ -610,6 +749,23 @@ class EncoderLayer(Layer):
     ):
 
         super().__init__()
+=======
+
+    def __init__(self,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd="n",
+                 postprocess_cmd="da"):
+
+        super(EncoderLayer, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -647,6 +803,7 @@ class EncoderLayer(Layer):
 
 
 class PrepareEncoderDecoderLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         src_vocab_size,
@@ -658,10 +815,23 @@ class PrepareEncoderDecoderLayer(Layer):
         pos_enc_param_name=None,
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 src_vocab_size,
+                 src_emb_dim,
+                 src_max_len,
+                 dropout_rate,
+                 is_sparse=False,
+                 word_emb_param_name=None,
+                 pos_enc_param_name=None):
+        super(PrepareEncoderDecoderLayer, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._src_max_len = src_max_len
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
+<<<<<<< HEAD
         self._input_emb = Embedding(
             size=[src_vocab_size, src_emb_dim],
             is_sparse=is_sparse,
@@ -671,6 +841,15 @@ class PrepareEncoderDecoderLayer(Layer):
                 initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
             ),
         )
+=======
+        self._input_emb = Embedding(size=[src_vocab_size, src_emb_dim],
+                                    is_sparse=is_sparse,
+                                    padding_idx=0,
+                                    param_attr=fluid.ParamAttr(
+                                        name=word_emb_param_name,
+                                        initializer=fluid.initializer.Normal(
+                                            0., src_emb_dim**-0.5)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if pos_enc_param_name is pos_enc_param_names[0]:
             pos_inp = pos_inp1
@@ -692,9 +871,14 @@ class PrepareEncoderDecoderLayer(Layer):
 
     def forward(self, src_word, src_pos):
         src_word_emb = self._input_emb(src_word)
+<<<<<<< HEAD
         src_word_emb = fluid.layers.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5
         )
+=======
+        src_word_emb = fluid.layers.scale(x=src_word_emb,
+                                          scale=self._src_emb_dim**0.5)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # # TODO change this to fit dynamic length input
         src_pos_emb = self._pos_emb(src_pos)
         src_pos_emb.stop_gradient = True
@@ -712,6 +896,7 @@ class PrepareEncoderDecoderLayer(Layer):
 
 
 class WrapEncoderLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         src_vocab_size,
@@ -730,6 +915,25 @@ class WrapEncoderLayer(Layer):
         weight_sharing,
         is_sparse=False,
     ):
+=======
+
+    def __init__(self,
+                 src_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 is_sparse=False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         """
         The wrapper assembles together all needed layers for the encoder.
         """
@@ -766,6 +970,7 @@ class WrapEncoderLayer(Layer):
 
 
 class DecoderSubLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         n_head,
@@ -782,6 +987,23 @@ class DecoderSubLayer(Layer):
         gather_idx=None,
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 cache=None,
+                 gather_idx=None):
+        super(DecoderSubLayer, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
         self._prepostprcess_dropout = prepostprocess_dropout
@@ -827,12 +1049,20 @@ class DecoderSubLayer(Layer):
         )
 
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
+<<<<<<< HEAD
         pre_process_rlt = self._pre_process_layer(
             None, dec_input, self._preprocess_cmd, self._prepostprcess_dropout
         )
         slf_attn_output = self._multihead_attention_layer(
             pre_process_rlt, None, None, slf_attn_bias
         )
+=======
+        pre_process_rlt = self._pre_process_layer(None, dec_input,
+                                                  self._preprocess_cmd,
+                                                  self._prepostprcess_dropout)
+        slf_attn_output = self._multihead_attention_layer(
+            pre_process_rlt, None, None, slf_attn_bias)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         slf_attn_output_pp = self._post_process_layer(
             dec_input,
             slf_attn_output,
@@ -846,6 +1076,7 @@ class DecoderSubLayer(Layer):
             self._prepostprcess_dropout,
         )
         enc_attn_output_pp = self._multihead_attention_layer2(
+<<<<<<< HEAD
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias
         )
         enc_attn_output = self._post_process_layer2(
@@ -860,6 +1091,16 @@ class DecoderSubLayer(Layer):
             self._preprocess_cmd,
             self._prepostprcess_dropout,
         )
+=======
+            pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias)
+        enc_attn_output = self._post_process_layer2(slf_attn_output_pp,
+                                                    enc_attn_output_pp,
+                                                    self._postprocess_cmd,
+                                                    self._prepostprcess_dropout)
+        pre_process_rlt3 = self._pre_process_layer3(None, enc_attn_output,
+                                                    self._preprocess_cmd,
+                                                    self._prepostprcess_dropout)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ffd_output = self._positionwise_feed_forward_layer(pre_process_rlt3)
         dec_output = self._post_process_layer3(
             enc_attn_output,
@@ -871,6 +1112,7 @@ class DecoderSubLayer(Layer):
 
 
 class DecoderLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         n_layer,
@@ -891,6 +1133,26 @@ class DecoderLayer(Layer):
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
+=======
+
+    def __init__(self,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 caches=None,
+                 gather_idx=None):
+        super(DecoderLayer, self).__init__()
+        self._pre_process_layer = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                      3)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._decoder_sub_layers = list()
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd
@@ -899,6 +1161,7 @@ class DecoderLayer(Layer):
             self._decoder_sub_layers.append(
                 self.add_sublayer(
                     'dsl_%d' % i,
+<<<<<<< HEAD
                     DecoderSubLayer(
                         n_head,
                         d_key,
@@ -915,14 +1178,34 @@ class DecoderLayer(Layer):
                     ),
                 )
             )
+=======
+                    DecoderSubLayer(n_head,
+                                    d_key,
+                                    d_value,
+                                    d_model,
+                                    d_inner_hid,
+                                    prepostprocess_dropout,
+                                    attention_dropout,
+                                    relu_dropout,
+                                    preprocess_cmd,
+                                    postprocess_cmd,
+                                    cache=None if caches is None else caches[i],
+                                    gather_idx=gather_idx)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def forward(
         self, dec_input, enc_output, dec_slf_attn_bias, dec_enc_attn_bias
     ):
         for i in range(self._n_layer):
+<<<<<<< HEAD
             tmp_dec_output = self._decoder_sub_layers[i](
                 dec_input, enc_output, dec_slf_attn_bias, dec_enc_attn_bias
             )
+=======
+            tmp_dec_output = self._decoder_sub_layers[i](dec_input, enc_output,
+                                                         dec_slf_attn_bias,
+                                                         dec_enc_attn_bias)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             dec_input = tmp_dec_output
 
         dec_output = self._pre_process_layer(
@@ -935,6 +1218,7 @@ class DecoderLayer(Layer):
 
 
 class WrapDecoderLayer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         trg_vocab_size,
@@ -955,6 +1239,27 @@ class WrapDecoderLayer(Layer):
         gather_idx=None,
         is_sparse=False,
     ):
+=======
+
+    def __init__(self,
+                 trg_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 caches=None,
+                 gather_idx=None,
+                 is_sparse=False):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         """
         The wrapper assembles together all needed layers for the encoder.
         """
@@ -967,6 +1272,7 @@ class WrapDecoderLayer(Layer):
             prepostprocess_dropout,
             is_sparse=is_sparse,
             word_emb_param_name=word_emb_param_names[1],
+<<<<<<< HEAD
             pos_enc_param_name=pos_enc_param_names[1],
         )
         self._decoder_layer = DecoderLayer(
@@ -984,6 +1290,22 @@ class WrapDecoderLayer(Layer):
             caches=caches,
             gather_idx=gather_idx,
         )
+=======
+            pos_enc_param_name=pos_enc_param_names[1])
+        self._decoder_layer = DecoderLayer(n_layer,
+                                           n_head,
+                                           d_key,
+                                           d_value,
+                                           d_model,
+                                           d_inner_hid,
+                                           prepostprocess_dropout,
+                                           attention_dropout,
+                                           relu_dropout,
+                                           preprocess_cmd,
+                                           postprocess_cmd,
+                                           caches=caches,
+                                           gather_idx=gather_idx)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self._weight_sharing = weight_sharing
         if not weight_sharing:
             self._fc = Linear(d_model, trg_vocab_size, bias_attr=False)
@@ -1016,6 +1338,7 @@ class WrapDecoderLayer(Layer):
 
 
 class TransFormer(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         src_vocab_size,
@@ -1079,6 +1402,66 @@ class TransFormer(Layer):
             weight_sharing,
             is_sparse=is_sparse,
         )
+=======
+
+    def __init__(self,
+                 src_vocab_size,
+                 trg_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 label_smooth_eps,
+                 use_py_reader=False,
+                 is_test=False,
+                 is_sparse=False):
+        super(TransFormer, self).__init__()
+        self._label_smooth_eps = label_smooth_eps
+        self._trg_vocab_size = trg_vocab_size
+        if weight_sharing:
+            assert src_vocab_size == trg_vocab_size, (
+                "Vocabularies in source and target should be same for weight sharing."
+            )
+        self._wrap_encoder_layer = WrapEncoderLayer(src_vocab_size,
+                                                    max_length,
+                                                    n_layer,
+                                                    n_head,
+                                                    d_key,
+                                                    d_value,
+                                                    d_model,
+                                                    d_inner_hid,
+                                                    prepostprocess_dropout,
+                                                    attention_dropout,
+                                                    relu_dropout,
+                                                    preprocess_cmd,
+                                                    postprocess_cmd,
+                                                    weight_sharing,
+                                                    is_sparse=is_sparse)
+        self._wrap_decoder_layer = WrapDecoderLayer(trg_vocab_size,
+                                                    max_length,
+                                                    n_layer,
+                                                    n_head,
+                                                    d_key,
+                                                    d_value,
+                                                    d_model,
+                                                    d_inner_hid,
+                                                    prepostprocess_dropout,
+                                                    attention_dropout,
+                                                    relu_dropout,
+                                                    preprocess_cmd,
+                                                    postprocess_cmd,
+                                                    weight_sharing,
+                                                    is_sparse=is_sparse)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if weight_sharing:
             self._wrap_decoder_layer._prepare_decoder_layer._input_emb.weight = (
@@ -1089,12 +1472,19 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
+<<<<<<< HEAD
             label_out = F.label_smooth(
                 label=fluid.layers.one_hot(
                     input=label, depth=self._trg_vocab_size
                 ),
                 epsilon=self._label_smooth_eps,
             )
+=======
+            label_out = fluid.layers.label_smooth(
+                label=fluid.layers.one_hot(input=label,
+                                           depth=self._trg_vocab_size),
+                epsilon=self._label_smooth_eps)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         cost = fluid.layers.softmax_with_cross_entropy(
             logits=predict,
@@ -1110,6 +1500,7 @@ class TransFormer(Layer):
 
 
 class TestDygraphTransformerSortGradient(unittest.TestCase):
+
     def test_transformer_sort_gradient(self):
         for is_sparse in [True, False]:
             self.transformer_sort_gradient_float32(is_sparse)
@@ -1122,6 +1513,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             fluid.set_flags({'FLAGS_new_executor_use_inplace': False})
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
+<<<<<<< HEAD
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1143,6 +1535,27 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 is_test=False,
                 is_sparse=is_sparse,
             )
+=======
+            transformer = TransFormer(ModelHyperParams.src_vocab_size,
+                                      ModelHyperParams.trg_vocab_size,
+                                      ModelHyperParams.max_length + 1,
+                                      ModelHyperParams.n_layer,
+                                      ModelHyperParams.n_head,
+                                      ModelHyperParams.d_key,
+                                      ModelHyperParams.d_value,
+                                      ModelHyperParams.d_model,
+                                      ModelHyperParams.d_inner_hid,
+                                      ModelHyperParams.prepostprocess_dropout,
+                                      ModelHyperParams.attention_dropout,
+                                      ModelHyperParams.relu_dropout,
+                                      ModelHyperParams.preprocess_cmd,
+                                      ModelHyperParams.postprocess_cmd,
+                                      ModelHyperParams.weight_sharing,
+                                      TrainTaskConfig.label_smooth_eps,
+                                      use_py_reader=use_py_reader,
+                                      is_test=False,
+                                      is_sparse=is_sparse)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if sync:
                 lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
                     ModelHyperParams.d_model, TrainTaskConfig.warmup_steps
@@ -1233,6 +1646,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
         with new_program_scope():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
+<<<<<<< HEAD
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1259,6 +1673,29 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 if not core.is_compiled_with_cuda()
                 else fluid.CUDAPlace(0)
             )
+=======
+            transformer = TransFormer(ModelHyperParams.src_vocab_size,
+                                      ModelHyperParams.trg_vocab_size,
+                                      ModelHyperParams.max_length + 1,
+                                      ModelHyperParams.n_layer,
+                                      ModelHyperParams.n_head,
+                                      ModelHyperParams.d_key,
+                                      ModelHyperParams.d_value,
+                                      ModelHyperParams.d_model,
+                                      ModelHyperParams.d_inner_hid,
+                                      ModelHyperParams.prepostprocess_dropout,
+                                      ModelHyperParams.attention_dropout,
+                                      ModelHyperParams.relu_dropout,
+                                      ModelHyperParams.preprocess_cmd,
+                                      ModelHyperParams.postprocess_cmd,
+                                      ModelHyperParams.weight_sharing,
+                                      TrainTaskConfig.label_smooth_eps,
+                                      use_py_reader=use_py_reader,
+                                      is_test=False,
+                                      is_sparse=is_sparse)
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             optimizer = fluid.optimizer.SGD(learning_rate=0.003)
 
             data_input_names = (

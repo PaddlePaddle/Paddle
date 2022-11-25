@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 
 import numpy as np
@@ -25,6 +29,10 @@ paddle.enable_static()
 
 
 class TestFloor(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "floor"
         self.place = paddle.device.MLUPlace(0)
@@ -48,6 +56,10 @@ class TestFloor(OpTest):
 
 
 class TestFloorFP16(TestFloor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_dtype(self):
         self.dtype = np.float16
 

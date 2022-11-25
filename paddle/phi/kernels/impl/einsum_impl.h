@@ -673,11 +673,20 @@ DenseTensor TransposeToOutput(const Context& dev_ctx,
     }
   }
   if (is_no_need_transpose(axis)) {
+<<<<<<< HEAD
     return to_trans;
   }
   VLOG(5) << "call TransposeToOutput: with axis: "
           << paddle::string::join_strings(axis, ",");
   return Transpose<T, Context>(dev_ctx, to_trans, axis);
+=======
+    output->ShareBufferWith(to_trans);
+    return;
+  }
+  VLOG(5) << "call TransposeToOutput: with axis: "
+          << paddle::string::join_strings(axis, ",");
+  TransposeKernel<T, Context>(dev_ctx, to_trans, axis, output);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 template <typename T, typename Context>
@@ -688,7 +697,10 @@ void EinsumKernelImpl(const Context& dev_ctx,
                       DenseTensor* out,
                       std::vector<DenseTensor*> cache,
                       bool is_forward = true) {
+<<<<<<< HEAD
   VLOG(5) << "Start EinsumKernelImpl";
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   ValidationCheck(equation);
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
@@ -717,9 +729,59 @@ void EinsumKernelImpl(const Context& dev_ctx,
                       &ellipsis_dims,
                       &broadcast_dims,
                       &output_dims,
+<<<<<<< HEAD
                       &right,
                       &input_strs);
   if (inputs.size() > 2) {
+=======
+                      &right);
+  out->Resize(make_ddim(output_dims));
+  if (inputs.size() == 2) {
+    auto& A = inputs[0];
+    auto& B = inputs[1];
+    // Reduction and Contract Procedure
+    auto after_contraction = PerformContraction<T, Context>(dev_ctx,
+                                                            *A,
+                                                            *B,
+                                                            label2perms,
+                                                            all_labels,
+                                                            labeltype,
+                                                            labelshape,
+                                                            ellipsis_dims,
+                                                            broadcast_dims,
+                                                            cache,
+                                                            !is_forward);
+    TransposeToOutput<T, Context>(dev_ctx,
+                                  after_contraction,
+                                  right,
+                                  all_labels,
+                                  broadcast_dims.size(),
+                                  out);
+    // Reshape Procedure
+  } else if (inputs.size() == 1) {
+    if (cache[0] != nullptr) {  // For compatibility, may be cache is nullptr if
+                                // loading the program from v2.3.0
+      (*cache[0]) = *(inputs[0]);  // ShareBuffer for backward, because backward
+                                   // we can only see cached tensor.
+    }
+    auto reduce_A = PerformReduction<T, Context>(dev_ctx,
+                                                 *inputs[0],
+                                                 label2perms[0],
+                                                 all_labels,
+                                                 ellipsis_dims[0],
+                                                 labeltype);
+    std::vector<char> right_labels;
+    for (auto c : right) right_labels.push_back(c);
+    right_labels = union_labels(right_labels, all_labels);
+    *out = PerformTranspose<T, Context>(dev_ctx,
+                                        reduce_A,
+                                        label2perms[0],
+                                        right_labels,
+                                        broadcast_dims,
+                                        labeltype);
+    out->Resize(make_ddim(output_dims));
+  } else {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_THROW(phi::errors::InvalidArgument(
         "EinsumOp kernel only support len(operands) between (0, 2]. Use "
         "opt_einsum first to convert multi-variable to binary-variable."));
@@ -743,6 +805,25 @@ void EinsumKernelImpl(const Context& dev_ctx,
   *out = PerformUndiagonal<T, Context>(
       dev_ctx, *out, broadcast_dims.size(), right);
   out->Resize(make_ddim(output_dims));
+}
+
+template <typename T, typename Context>
+void EinsumKernelRaw(const Context& dev_ctx,
+                     const std::vector<const DenseTensor*>& inputs,
+                     const std::string& equation,
+                     DenseTensor* out,
+                     std::vector<DenseTensor*> cache,
+                     std::vector<DenseTensor*> xshape) {
+  std::vector<char> tmp;
+  // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
+  // may have nullptr and the cache.size() is not equal to inputs.size(). refer
+  // to BuildPhiKernelContext for details.
+  int diff = inputs.size() - cache.size();
+  for (int i = 0; i < diff; ++i) {
+    cache.push_back(nullptr);
+  }
+  EinsumKernelImpl<T, Context>(
+      dev_ctx, tmp, inputs, equation, out, cache, /*forward=*/true);
 }
 
 template <typename T, typename Context>

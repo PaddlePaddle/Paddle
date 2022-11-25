@@ -24,6 +24,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistSeResneXtNCCL(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reader_alloc = False
@@ -33,15 +34,23 @@ class TestDistSeResneXtNCCL(TestDistBase):
         import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place(
                 "dist_se_resnext.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name,
             )
+=======
+            self.check_with_place("dist_se_resnext.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestDistSeResneXtNCCLMP(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reader_alloc = False
@@ -52,6 +61,7 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place(
                 "dist_se_resnext.py",
                 delta=1e-5,
@@ -59,6 +69,13 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
                 need_envs={"NCCL_P2P_DISABLE": "1"},
                 log_name=flag_name,
             )
+=======
+            self.check_with_place("dist_se_resnext.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  need_envs={"NCCL_P2P_DISABLE": "1"},
+                                  log_name=flag_name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

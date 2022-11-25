@@ -19,6 +19,7 @@ from paddle.framework import core, _apply_pass as _apply_cpp_pass
 
 @register_pass("fuse_elewise_add_act")
 class FuseElementwiseAddActPass(CPPPassWrapper):
+
     def __init__(self):
         super().__init__()
 
@@ -32,6 +33,7 @@ class FuseElementwiseAddActPass(CPPPassWrapper):
 
 @register_pass("fuse_bn_act")
 class FuseBatchNormActPass(CPPPassWrapper):
+
     def __init__(self):
         super().__init__()
 
@@ -45,6 +47,7 @@ class FuseBatchNormActPass(CPPPassWrapper):
 
 @register_pass("fuse_bn_add_act")
 class FuseBatchNormAddActPass(CPPPassWrapper):
+
     def __init__(self):
         super().__init__()
 
@@ -58,6 +61,7 @@ class FuseBatchNormAddActPass(CPPPassWrapper):
 
 @register_pass("fuse_relu_depthwise_conv")
 class FuseReluDepthwiseConvPass(CPPPassWrapper):
+
     def __init__(self):
         super().__init__()
 
@@ -71,6 +75,7 @@ class FuseReluDepthwiseConvPass(CPPPassWrapper):
 
 @register_pass("fuse_optimizer")
 class FuseOptimizerPass(CPPPassWrapper):
+
     def __init__(self):
         super().__init__()
 
@@ -88,6 +93,7 @@ class FuseOptimizerPass(CPPPassWrapper):
 
 @register_pass("inplace_addto_op")
 class InplaceAddtoOpPass(CPPPassWrapper):
+
     def __init__(self):
         super().__init__()
 
@@ -108,6 +114,7 @@ def _set_cinn_op_flag(flag_name, extra_ops):
 
 @register_pass("build_cinn")
 class BuildCINNPass(CPPPassWrapper):
+
     def __init__(self):
         super().__init__()
         self.set_attr("allow_ops", [])

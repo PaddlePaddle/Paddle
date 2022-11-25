@@ -21,6 +21,11 @@ import sys
 
 sys.path.append("..")
 
+<<<<<<< HEAD
+=======
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from xpu.get_test_cover_info import record_op_test
 
 
@@ -28,9 +33,14 @@ def gen_pow2_warmup_op_lr(warmup_steps, total_steps, base_lr, end_lr, place):
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
+<<<<<<< HEAD
         lr = pow2_decay_with_linear_warmup(
             warmup_steps, total_steps, base_lr, end_lr
         )
+=======
+        lr = pow2_decay_with_linear_warmup(warmup_steps, total_steps, base_lr,
+                                           end_lr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         exe = paddle.static.Executor(place)
     with paddle.static.scope_guard(paddle.static.Scope()):
         exe.run(startup)
@@ -40,6 +50,7 @@ def gen_pow2_warmup_op_lr(warmup_steps, total_steps, base_lr, end_lr, place):
 
 
 class Pow2Warmup(LinearWarmup):
+<<<<<<< HEAD
     def __init__(self, warmup_steps, total_steps, base_lr, end_lr):
         assert total_steps > warmup_steps
         lr_sch = PolynomialDecay(
@@ -55,6 +66,20 @@ class Pow2Warmup(LinearWarmup):
             start_lr=0.0,
             end_lr=base_lr,
         )
+=======
+
+    def __init__(self, warmup_steps, total_steps, base_lr, end_lr):
+        assert total_steps > warmup_steps
+        lr_sch = PolynomialDecay(learning_rate=base_lr,
+                                 decay_steps=total_steps - warmup_steps,
+                                 end_lr=end_lr,
+                                 power=2)
+
+        super(Pow2Warmup, self).__init__(learning_rate=lr_sch,
+                                         warmup_steps=warmup_steps,
+                                         start_lr=0.0,
+                                         end_lr=base_lr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def gen_pow2_warmup_py_lr(warmup_steps, total_steps, base_lr, end_lr, place):
@@ -66,6 +91,10 @@ def gen_pow2_warmup_py_lr(warmup_steps, total_steps, base_lr, end_lr, place):
 
 
 class TestPowWarmup(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         paddle.enable_static()
         self.op_type = 'pow2_decay_with_linear_warmup'

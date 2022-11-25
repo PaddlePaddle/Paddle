@@ -46,9 +46,15 @@ class SampleWithProb {
   void operator()(const DeviceContext& context,
                   const Sampler& sampler,
                   const std::size_t num_samples,
+<<<<<<< HEAD
                   const phi::DenseTensor* L,
                   phi::DenseTensor* S,
                   phi::DenseTensor* P) {
+=======
+                  const Tensor* L,
+                  Tensor* S,
+                  Tensor* P) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     // UNDERSTAND: dimension issues
     const auto& lbl_dim = L->dims();
     const int batch_size = lbl_dim[0];
@@ -117,9 +123,15 @@ class GPUSampleWithProb {
                   const int dict_size,
                   const bool uniq,
                   const std::size_t num_samples,
+<<<<<<< HEAD
                   const phi::DenseTensor* L,
                   phi::DenseTensor* S,
                   phi::DenseTensor* P);
+=======
+                  const Tensor* L,
+                  Tensor* S,
+                  Tensor* P);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 };
 #endif
 }  // namespace math

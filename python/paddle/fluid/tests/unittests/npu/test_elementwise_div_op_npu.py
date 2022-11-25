@@ -27,6 +27,7 @@ SEED = 2021
 
 
 class TestElementwiseDiv(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
@@ -72,12 +73,19 @@ class TestElementwiseDiv(OpTest):
         )
 
     def test_check_grad_ingore_y(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X'], 'Out', no_grad_set=set("Y")
         )
+=======
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   no_grad_set=set("Y"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestElementwiseDivFp16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
@@ -108,6 +116,7 @@ class TestElementwiseDivFp16(OpTest):
 
 
 class TestElementwiseDivNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -126,9 +135,15 @@ class TestElementwiseDivNet(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             c = paddle.static.data(name="c", shape=[32, 32], dtype='float32')
             d = paddle.static.data(name="d", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
@@ -183,6 +198,7 @@ class TestElementwiseDivNet(unittest.TestCase):
 
 
 class TestFloatStatus(unittest.TestCase):
+
     def test_overflow(self):
         paddle.disable_static()
         paddle.set_device('npu')

@@ -22,6 +22,7 @@ import random
 
 
 class TestElementwiseModOp(OpTest):
+
     def init_kernel_type(self):
         self.use_mkldnn = False
 
@@ -81,6 +82,7 @@ class TestElementwiseModOp_ZeroDim3(TestElementwiseModOp):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -90,6 +92,7 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -122,13 +125,17 @@ class TestElementwiseModOpFp16(TestElementwiseModOp):
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestRemainderOp(unittest.TestCase):
+<<<<<<< HEAD
     def _executed_api(self, x, y, name=None):
         return paddle.remainder(x, y, name)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):

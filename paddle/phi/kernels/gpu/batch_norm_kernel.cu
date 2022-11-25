@@ -20,9 +20,17 @@
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+=======
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/fluid/operators/norm_utils.cu.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
@@ -33,6 +41,10 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -1003,7 +1015,12 @@ void BatchNormKernel(const Context &ctx,
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
+<<<<<<< HEAD
       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+=======
+      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+      const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
@@ -1162,7 +1179,11 @@ void BatchNormKernel(const Context &ctx,
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
+<<<<<<< HEAD
         // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
+=======
+        // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if (reserve_space == nullptr) {
           reserve_space = &reserve_space_tensor;
         }

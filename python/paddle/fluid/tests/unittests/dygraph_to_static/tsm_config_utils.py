@@ -25,6 +25,7 @@ CONFIG_SECS = [
 
 
 class AttrDict(dict):
+
     def __getattr__(self, key):
         return self[key]
 
@@ -79,8 +80,12 @@ def merge_configs(cfg, sec, args_dict):
 
 def print_configs(cfg, mode):
     logger.info(
+<<<<<<< HEAD
         "---------------- {:>5} Arguments ----------------".format(mode)
     )
+=======
+        "---------------- {:>5} Arguments ----------------".format(mode))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     for sec, sec_items in cfg.items():
         logger.info("{}:".format(sec))
         for k, v in sec_items.items():

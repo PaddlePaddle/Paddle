@@ -126,6 +126,7 @@ class Event:
         else:
             speed_avg = float(self.total_iters) / self.batch_records['total']
 
+<<<<<<< HEAD
         reader_summary = dict(
             max=self.reader_records['max'],
             min=self.reader_records['min'],
@@ -148,6 +149,22 @@ class Event:
             ips_summary=ips_summary,
             reader_ratio=reader_ratio,
         )
+=======
+        reader_summary = dict(max=self.reader_records['max'],
+                              min=self.reader_records['min'],
+                              avg=reader_avg)
+        batch_summary = dict(max=self.batch_records['max'],
+                             min=self.batch_records['min'],
+                             avg=batch_avg)
+        ips_summary = dict(max=self.speed_records['max'],
+                           min=self.speed_records['min'],
+                           avg=speed_avg)
+        reader_ratio = (reader_avg / batch_avg) * 100
+        summary = dict(reader_summary=reader_summary,
+                       batch_summary=batch_summary,
+                       ips_summary=ips_summary,
+                       reader_ratio=reader_ratio)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return summary
 
@@ -231,9 +248,14 @@ class TimerHook(Hook):
 
         """
 
+<<<<<<< HEAD
         if (benchmark.current_event is None) or (
             not benchmark.current_event.need_record
         ):
+=======
+        if (benchmark.current_event is
+                None) or (not benchmark.current_event.need_record):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return
         batch_cost = timeit.default_timer() - self.start_time
         benchmark.current_event.record_batch(batch_cost, benchmark.num_samples)
@@ -286,6 +308,7 @@ class TimerHook(Hook):
         avg_str = '%.5f' % (message_dict['avg'])
         max_str = '%.5f' % (message_dict['max'])
         min_str = '%.5f' % (message_dict['min'])
+<<<<<<< HEAD
         print(
             '|',
             item.center(15),
@@ -300,6 +323,13 @@ class TimerHook(Hook):
 
 
 class TimeAverager:
+=======
+        print('|', item.center(15), '|', avg_str.center(15), '|',
+              max_str.center(15), '|', min_str.center(15), '|')
+
+
+class TimeAverager(object):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     """
     Record the cost of every step and count the average.
     """

@@ -17,11 +17,16 @@ import os
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+<<<<<<< HEAD
+=======
+import paddle.fluid as fluid
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 class TestFleetBase_1(unittest.TestCase):
+
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
@@ -31,17 +36,28 @@ class TestFleetBase_1(unittest.TestCase):
         ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_collective_minimize(self):
+<<<<<<< HEAD
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32'
         )
+=======
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[32],
+                                           dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+<<<<<<< HEAD
         cost = paddle.fluid.layers.cross_entropy(
             input=prediction, label=input_y
         )
+=======
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         avg_cost = paddle.mean(x=cost)
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -53,6 +69,7 @@ class TestFleetBase_1(unittest.TestCase):
 
 
 class TestFleetBase(unittest.TestCase):
+
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
@@ -62,17 +79,28 @@ class TestFleetBase(unittest.TestCase):
         ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_fleet_get_applied_optimizer(self):
+<<<<<<< HEAD
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32'
         )
+=======
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[32],
+                                           dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+<<<<<<< HEAD
         cost = paddle.fluid.layers.cross_entropy(
             input=prediction, label=input_y
         )
+=======
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)

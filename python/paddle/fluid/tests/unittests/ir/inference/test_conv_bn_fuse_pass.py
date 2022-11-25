@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TestConvBnFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -46,6 +47,7 @@ class TestConvBnFusePass(PassAutoScanTest):
         out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dilations = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
@@ -60,6 +62,19 @@ class TestConvBnFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
+        paddings = draw(
+            st.lists(st.integers(min_value=0, max_value=2),
+                     min_size=2,
+                     max_size=2))
+        strides = draw(
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         has_bias = draw(st.booleans())
         use_mkldnn = draw(st.booleans())
         epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
@@ -96,6 +111,7 @@ class TestConvBnFusePass(PassAutoScanTest):
         def generate_bn_Var():
             return np.random.random(var_shape).astype(np.float32)
 
+<<<<<<< HEAD
         conv2d_op = OpConfig(
             "conv2d",
             inputs={
@@ -136,6 +152,44 @@ class TestConvBnFusePass(PassAutoScanTest):
             is_test=True,
         )
         if has_bias:
+=======
+        conv2d_op = OpConfig("conv2d",
+                             inputs={
+                                 "Input": ["conv2d_input"],
+                                 "Filter": ["conv2d_weight"],
+                             },
+                             outputs={"Output": ["conv2d_out"]},
+                             data_format=data_format,
+                             dilations=dilations,
+                             padding_algorithm=padding_algorithm,
+                             groups=groups,
+                             paddings=paddings,
+                             strides=strides,
+                             use_mkldnn=use_mkldnn,
+                             has_bias=has_bias,
+                             is_test=True)
+        bn_op = OpConfig("batch_norm",
+                         inputs={
+                             "X": ["conv2d_out"],
+                             "Scale": ["batch_norm_Scale"],
+                             "Bias": ["batch_norm_Bias"],
+                             "Mean": ["batch_norm_Mean"],
+                             "Variance": ["batch_norm_Variance"],
+                         },
+                         outputs={
+                             "Y": ["batch_norm_Y"],
+                             "MeanOut": ["batch_norm_Mean"],
+                             "VarianceOut": ["batch_norm_Variance"],
+                             "SavedMean": ["batch_norm_SavedMean"],
+                             "SavedVariance": ["batch_norm_SavedVariance"],
+                             "ReserveSpace": ["batch_norm_ReserveSpace"],
+                         },
+                         epsilon=epsilon,
+                         trainable_statistics=False,
+                         data_layout=data_format,
+                         is_test=True)
+        if has_bias == True:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             conv2d_op.inputs["Bias"] = ["conv2d_bias"]
         ops = [conv2d_op, bn_op]
 
@@ -147,6 +201,7 @@ class TestConvBnFusePass(PassAutoScanTest):
                 ),
             },
             weights={
+<<<<<<< HEAD
                 "conv2d_weight": TensorConfig(
                     data_gen=partial(generate_conv2d_Filter)
                 ),
@@ -154,6 +209,18 @@ class TestConvBnFusePass(PassAutoScanTest):
                 "batch_norm_Bias": TensorConfig(data_gen=generate_bn_Bias),
                 "batch_norm_Mean": TensorConfig(data_gen=generate_bn_Mean),
                 "batch_norm_Variance": TensorConfig(data_gen=generate_bn_Var),
+=======
+                "conv2d_weight":
+                TensorConfig(data_gen=partial(generate_conv2d_Filter)),
+                "batch_norm_Scale":
+                TensorConfig(data_gen=generate_bn_Scale),
+                "batch_norm_Bias":
+                TensorConfig(data_gen=generate_bn_Bias),
+                "batch_norm_Mean":
+                TensorConfig(data_gen=generate_bn_Mean),
+                "batch_norm_Variance":
+                TensorConfig(data_gen=generate_bn_Var),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             },
             outputs=["batch_norm_Y"],
         )
@@ -191,6 +258,7 @@ class TestConvBnFusePass(PassAutoScanTest):
                 yield config, ['conv2d_fusion'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
+
         def teller1(program_config, predictor_config):
             if (
                 program_config.ops[0].attrs['data_format'] == "NHWC"
@@ -201,10 +269,15 @@ class TestConvBnFusePass(PassAutoScanTest):
 
         # mkldnn Output has diff with bias!
         def teller2(program_config, predictor_config):
+<<<<<<< HEAD
             return (
                 predictor_config.mkldnn_enabled()
                 and program_config.ops[0].attrs['has_bias']
             )
+=======
+            return predictor_config.mkldnn_enabled(
+            ) and program_config.ops[0].attrs['has_bias'] == True
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         self.add_ignore_check_case(
             teller1,

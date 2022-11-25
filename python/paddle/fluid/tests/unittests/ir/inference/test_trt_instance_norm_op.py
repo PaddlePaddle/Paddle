@@ -26,6 +26,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTInstanceNormTest(InferencePassTest):
+
     def setUp(self):
         self.bs = 4
         self.channel = 4

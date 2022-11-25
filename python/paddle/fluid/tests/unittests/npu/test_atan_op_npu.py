@@ -26,6 +26,7 @@ SEED = 1024
 
 
 class TestAtan(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "atan"
@@ -73,11 +74,13 @@ class TestAtan(OpTest):
 
 
 class TestAtanShape(TestAtan):
+
     def set_attrs(self):
         self.shape = [12, 23, 10]
 
 
 class TestAtanFloat16(TestAtan):
+
     def set_attrs(self):
         self.dtype = np.float16
 

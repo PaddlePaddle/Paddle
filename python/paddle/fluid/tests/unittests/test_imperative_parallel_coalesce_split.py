@@ -28,6 +28,7 @@ from paddle.fluid.dygraph.parallel import (
 
 
 class MyLayer(fluid.Layer):
+
     def __init__(self, name_scope):
         super().__init__(name_scope)
 
@@ -39,6 +40,7 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeParallelCoalesceSplit(unittest.TestCase):
+
     def test_coalesce_split(self):
         with fluid.dygraph.guard():
             test_layer = MyLayer("test_layer")
@@ -49,9 +51,14 @@ class TestImperativeParallelCoalesceSplit(unittest.TestCase):
             vars = []
             vars.append(to_variable(np.random.random([2, 3]).astype("float32")))
             vars.append(to_variable(np.random.random([4, 9]).astype("float32")))
+<<<<<<< HEAD
             vars.append(
                 to_variable(np.random.random([10, 1]).astype("float32"))
             )
+=======
+            vars.append(to_variable(
+                np.random.random([10, 1]).astype("float32")))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             var_groups = OrderedDict()
             var_groups.setdefault(0, vars)
 

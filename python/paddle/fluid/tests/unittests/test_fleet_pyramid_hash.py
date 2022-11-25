@@ -24,6 +24,7 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distribu
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
+
     def test_dist_geo_server_transpiler(self):
         num_voc = 128
         embed_dim = 64

@@ -120,6 +120,7 @@ class DocstringChecker(BaseChecker):
     symbol = "doc-string"
     priority = -1
     msgs = {
+<<<<<<< HEAD
         'W9001': (
             'One line doc string on > 1 lines',
             symbol + "-one-line",
@@ -155,6 +156,27 @@ class DocstringChecker(BaseChecker):
             symbol + "-with-raises",
             'There should be a `Raises` section in comments',
         ),
+=======
+        'W9001': ('One line doc string on > 1 lines', symbol + "-one-line",
+                  'Used when a short doc string is on multiple lines'),
+        'W9002':
+        ('Doc string does not end with "." period', symbol + "-end-with",
+         'Used when a doc string does not end with a period'),
+        'W9003':
+        ('All args with their types must be mentioned in doc string %s',
+         symbol + "-with-all-args",
+         'Used when not all arguments are in the doc string '),
+        'W9005': ('Missing docstring or docstring is too short',
+                  symbol + "-missing", 'Add docstring longer >=10'),
+        'W9006': ('Docstring indent error, use 4 space for indent',
+                  symbol + "-indent-error", 'Use 4 space for indent'),
+        'W9007':
+        ('You should add `Returns` in comments', symbol + "-with-returns",
+         'There should be a `Returns` section in comments'),
+        'W9008':
+        ('You should add `Raises` section in comments', symbol + "-with-raises",
+         'There should be a `Raises` section in comments'),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     options = ()
 
@@ -347,16 +369,24 @@ class DocstringChecker(BaseChecker):
         parsed_args = doc.args
         args_not_documented = set(args) - set(parsed_args)
         if len(args) > 0 and len(parsed_args) <= 0:
+<<<<<<< HEAD
             self.add_message(
                 'W9003',
                 node=node,
                 line=node.fromlineno,
                 args=list(args_not_documented),
             )
+=======
+            self.add_message('W9003',
+                             node=node,
+                             line=node.fromlineno,
+                             args=list(args_not_documented))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return False
 
         for t in args:
             if t not in parsed_args:
+<<<<<<< HEAD
                 self.add_message(
                     'W9003',
                     node=node,
@@ -365,6 +395,14 @@ class DocstringChecker(BaseChecker):
                         t,
                     ],
                 )
+=======
+                self.add_message('W9003',
+                                 node=node,
+                                 line=node.fromlineno,
+                                 args=[
+                                     t,
+                                 ])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 return False
 
         return True

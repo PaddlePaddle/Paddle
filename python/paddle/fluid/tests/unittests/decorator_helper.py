@@ -18,7 +18,9 @@ __all__ = ['many_times', 'prog_scope']
 
 
 def many_times(times):
+
     def __impl__(fn):
+
         def __fn__(*args, **kwargs):
             for _ in range(times):
                 fn(*args, **kwargs)
@@ -29,7 +31,9 @@ def many_times(times):
 
 
 def prog_scope():
+
     def __impl__(fn):
+
         def __fn__(*args, **kwargs):
             prog = fluid.Program()
             startup_prog = fluid.Program()

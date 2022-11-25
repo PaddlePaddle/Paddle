@@ -209,10 +209,15 @@ def summary(net, input_size=None, dtypes=None, input=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
+<<<<<<< HEAD
                         "Expected element in input size greater than zero, but got {}".format(
                             item
                         )
                     )
+=======
+                        "Expected element in input size greater than zero, but got {}"
+                        .format(item))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             new_shape.append(item)
         return tuple(new_shape)
 
@@ -235,6 +240,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
 @no_grad()
 def summary_string(model, input_size=None, dtypes=None, input=None):
+
     def _all_is_numper(items):
         for item in items:
             if not isinstance(item, numbers.Number):
@@ -275,6 +281,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
         return output_shape
 
     def register_hook(layer):
+
         def hook(layer, input, output):
             class_name = str(layer.__class__).split(".")[-1].split("'")[0]
 
@@ -324,11 +331,17 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
             summary[m_key]["nb_params"] = params
 
+<<<<<<< HEAD
         if (
             not isinstance(layer, nn.Sequential)
             and not isinstance(layer, nn.LayerList)
             and (not (layer == model) or depth < 1)
         ):
+=======
+        if (not isinstance(layer, nn.Sequential)
+                and not isinstance(layer, nn.LayerList)
+                and (not (layer == model) or depth < 1)):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             hooks.append(layer.register_forward_post_hook(hook))
         # For rnn, gru and lstm layer
@@ -435,16 +448,25 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             str(summary[layer]["input_shape"]),
             table_width['input_shape_width'],
             str(summary[layer]["output_shape"]),
+<<<<<<< HEAD
             table_width['output_shape_width'],
             "{0:,}".format(summary[layer]["nb_params"]),
             table_width['params_width'],
         )
+=======
+            table_width['output_shape_width'], "{0:,}".format(
+                summary[layer]["nb_params"]), table_width['params_width'])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         total_params += summary[layer]["nb_params"]
 
         try:
             total_output += np.sum(
+<<<<<<< HEAD
                 np.prod(summary[layer]["output_shape"], axis=-1)
             )
+=======
+                np.prod(summary[layer]["output_shape"], axis=-1))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         except:
             for output_shape in summary[layer]["output_shape"]:
                 total_output += np.sum(np.prod(output_shape, axis=-1))

@@ -24,6 +24,7 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertPadTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -40,6 +41,7 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
@@ -47,12 +49,18 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
         for pad_value in [0.0, 1.0, 2.0, -100, 100.0]:
+<<<<<<< HEAD
             for paddings in [
                 [0, 0, 0, 0, 1, 1, 1, 1],
                 [0, 0, 0, 0, 1, 2, 3, 4],
                 [0, 0, 1, 1, 1, 1, 1, 1],
                 [0, 0, 0, 0, -1, -1, 1, 1],
             ]:
+=======
+            for paddings in [[0, 0, 0, 0, 1, 1, 1, 1], [0, 0, 0, 0, 1, 2, 3, 4],
+                             [0, 0, 1, 1, 1, 1, 1, 1],
+                             [0, 0, 0, 0, -1, -1, 1, 1]]:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 dics = [{"pad_value": pad_value, "paddings": paddings}, {}]
 
                 ops_config = [
@@ -79,8 +87,13 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -116,14 +129,22 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-2
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-2
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             for x in range(len(program_config.ops[0].attrs['paddings']) - 4):
                 if program_config.ops[0].attrs['paddings'][x] != 0:

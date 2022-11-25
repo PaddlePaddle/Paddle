@@ -358,8 +358,13 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
         scope,
         platform::errors::InvalidArgument(
             "Scope in QuantDequantFuse pass should not be null."));
+<<<<<<< HEAD
     const phi::DenseTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
+=======
+    const LoDTensor& input_scale_tensor =
+        scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_cpu_place(input_scale_tensor.place()),
         true,
@@ -503,6 +508,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     }
 
     // Convert weight to fp32 range
+<<<<<<< HEAD
     auto* weight_tensor = scope->Var(quantized_op_weight_node->Name())
                               ->GetMutable<phi::DenseTensor>();
     const auto& w_dims = weight_tensor->dims();
@@ -528,6 +534,28 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
           for (int j = 0; j < weight_tensor->numel(); j++) {
             quantized_weight_data[j] *= weight_scale[0];
           }
+=======
+    auto* weight_tensor =
+        scope->Var(quantized_op_weight_node->Name())->GetMutable<LoDTensor>();
+    const auto& w_dims = weight_tensor->dims();
+    float* quantized_weight_data =
+        weight_tensor->mutable_data<float>(platform::CPUPlace());
+    // If quantized op is fc, weight scale size = 1;
+    // If quantized op is conv2d, weight scale size = weight dims[0]
+    // If quantized op is conv2d_transpose, weight scale size = weight dims[1]
+    if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
+        quantized_op_type == "matmul_v2" || quantized_op_type == "fc") {
+      if (dequant_type == "fake_dequantize_max_abs") {
+        PADDLE_ENFORCE_EQ(weight_scale.size(),
+                          1,
+                          platform::errors::InvalidArgument(
+                              "mul/matmul/matmul_v2 op weight dequantized by "
+                              "[fake_dequantize_max_abs] "
+                              "requires weight scale size = 1, but got %d.",
+                              weight_scale.size()));
+        for (int j = 0; j < weight_tensor->numel(); j++) {
+          quantized_weight_data[j] *= weight_scale[0];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
           if (quant_axis == 0) {
@@ -574,7 +602,11 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
         if (quant_axis == 0) {
         } else {
           PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
               quant_axis == 0,
+=======
+              quant_axis == 1,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
               true,
               platform::errors::InvalidArgument(
                   "'quant_axis' of conv2d/depthwise_conv2d op weight "
@@ -585,16 +617,28 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
         }
         PADDLE_ENFORCE_EQ(
             weight_scale.size(),
+<<<<<<< HEAD
             static_cast<size_t>(w_dims[0]),
             platform::errors::InvalidArgument(
                 "conv2d op requires weight scale size = channel size of the "
                 "weight, which is %d, but got %d.",
                 static_cast<size_t>(w_dims[0]),
+=======
+            static_cast<size_t>(w_dims[1]),
+            platform::errors::InvalidArgument(
+                "mul/matmul/matmul_v2 op weight dequantized by "
+                "[fake_channel_wise_dequantize_max_abs] requires weight scale "
+                "size = 2nd dim of mul/matmul/matmul_v2's weight, which is %d, "
+                "but got "
+                "%d.",
+                static_cast<size_t>(w_dims[1]),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
           int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
           quantized_weight_data[j] *= weight_scale[j / inner_size];
         }
+<<<<<<< HEAD
       } else if (quantized_op_type == "conv2d_transpose") {
         PADDLE_ENFORCE_EQ(
             dequant_type,
@@ -630,6 +674,74 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Unsupported quantized op type: %s", quantized_op_type));
+=======
+      }
+    } else if (quantized_op_type == "conv2d" ||
+               quantized_op_type == "depthwise_conv2d") {
+      PADDLE_ENFORCE_EQ(
+          dequant_type,
+          "fake_channel_wise_dequantize_max_abs",
+          platform::errors::InvalidArgument(
+              "conv2d op must be dequantized by "
+              "[fake_channel_wise_dequantize_max_abs], but got %s. "
+              "If you uses PaddleSlim to generate the quantized "
+              "model, please set the 'weight_quantize_type' params as "
+              "'channel_wise_abs_max' and generate the quantized model again.",
+              dequant_type));
+      if (quant_axis == 0) {
+      } else {
+        PADDLE_ENFORCE_EQ(
+            quant_axis == 0,
+            true,
+            platform::errors::InvalidArgument(
+                "'quant_axis' of conv2d/depthwise_conv2d op weight dequantized "
+                "by [fake_channel_wise_dequantize_max_abs]should be 0, but "
+                "the received is %d",
+                quant_axis));
+      }
+      PADDLE_ENFORCE_EQ(
+          weight_scale.size(),
+          static_cast<size_t>(w_dims[0]),
+          platform::errors::InvalidArgument(
+              "conv2d op requires weight scale size = channel size of the "
+              "weight, which is %d, but got %d.",
+              static_cast<size_t>(w_dims[0]),
+              weight_scale.size()));
+      for (int j = 0; j < weight_tensor->numel(); j++) {
+        int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
+        quantized_weight_data[j] *= weight_scale[j / inner_size];
+      }
+    } else if (quantized_op_type == "conv2d_transpose") {
+      PADDLE_ENFORCE_EQ(
+          dequant_type,
+          "fake_channel_wise_dequantize_max_abs",
+          platform::errors::InvalidArgument(
+              "conv2d_transpose must be dequantized by "
+              "[fake_channel_wise_dequantize_max_abs], but got %s",
+              dequant_type));
+      if (quant_axis == 0) {
+      } else {
+        PADDLE_ENFORCE_EQ(
+            quant_axis == 1,
+            true,
+            platform::errors::InvalidArgument(
+                "'quant_axis' of conv2d_transpose op weight dequantized by "
+                "[fake_channel_wise_dequantize_max_abs]should be 1, but "
+                "the received is %d",
+                quant_axis));
+      }
+      PADDLE_ENFORCE_EQ(
+          weight_scale.size(),
+          static_cast<size_t>(w_dims[1]),
+          platform::errors::InvalidArgument(
+              "conv2d_transpose op requires weight scale size = channel size "
+              "of the weight, which is %d, but got %d.",
+              static_cast<size_t>(w_dims[1]),
+              weight_scale.size()));
+      for (int j = 0; j < weight_tensor->numel(); j++) {
+        int inner_size = w_dims[2] * w_dims[3];
+        quantized_weight_data[j] *= weight_scale[(j / inner_size) % w_dims[1]];
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       }
     }
     // create new op_desc

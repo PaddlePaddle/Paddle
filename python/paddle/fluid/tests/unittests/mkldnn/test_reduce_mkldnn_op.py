@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci
+import paddle.fluid as fluid
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
@@ -25,6 +30,7 @@ from paddle.fluid.tests.unittests.op_test import (
 
 
 class TestReduceSumDefaultOneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -37,11 +43,13 @@ class TestReduceSumDefaultOneDNNOp(OpTest):
 
 
 class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
+
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
 
 class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
+
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -53,8 +61,13 @@ class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
 
 
 class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
+<<<<<<< HEAD
     TestReduceDefaultWithGradOneDNNOp
 ):
+=======
+        TestReduceDefaultWithGradOneDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -66,12 +79,14 @@ class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
 
 
 class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
+
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         self.inputs = {'X': np.random.random((2, 5, 3, 2, 2)).astype("float32")}
         self.attrs = {'dim': (2, 3, 4), 'keep_dim': True, 'use_mkldnn': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out': self.inputs['X'].sum(
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
             )
@@ -81,6 +96,17 @@ class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
 class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
     TestReduceDefaultWithGradOneDNNOp
 ):
+=======
+            'Out':
+            self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
+                                 keepdims=self.attrs['keep_dim'])
+        }
+
+
+class TestReduceSum5DReduceAllKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp
+                                               ):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -92,6 +118,7 @@ class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
 
 
 class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
+
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -102,8 +129,13 @@ class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
 
 @OpTestTool.skip_if_not_cpu()
 class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
+<<<<<<< HEAD
     TestReduceDefaultWithGradOneDNNOp
 ):
+=======
+        TestReduceDefaultWithGradOneDNNOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -166,6 +198,7 @@ class TestReduceMin3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
 
 
 class TestReduceMean3DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -177,6 +210,7 @@ class TestReduceMean3DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
 
 
 class TestReduceMean4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True

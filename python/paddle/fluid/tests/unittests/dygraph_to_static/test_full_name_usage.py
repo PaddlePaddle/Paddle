@@ -44,7 +44,12 @@ def decorated_call_decorated(x):
     return jit_decorated_func(x)
 
 
+<<<<<<< HEAD
 class DoubleDecorated:
+=======
+class DoubleDecorated(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     @classmethod
     @declarative
     def double_decorated_func1(self, x):
@@ -57,6 +62,7 @@ class DoubleDecorated:
 
 
 class TestFullNameDecorator(unittest.TestCase):
+
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")
@@ -77,6 +83,7 @@ class TestFullNameDecorator(unittest.TestCase):
 
 
 class TestImportProgramTranslator(unittest.TestCase):
+
     def test_diff_pkg_same_cls(self):
         dygraph_prog_trans = fluid.dygraph.ProgramTranslator()
         dy_to_stat_prog_trans = (

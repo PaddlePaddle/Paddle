@@ -44,6 +44,7 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
 
 
 class TestFrameOp(OpTest):
+
     def setUp(self):
         self.op_type = "frame"
         self.python_api = paddle.signal.frame
@@ -77,6 +78,7 @@ class TestFrameOp(OpTest):
 
 
 class TestCase1(TestFrameOp):
+
     def initTestCase(self):
         input_shape = (150,)
         input_type = 'float64'
@@ -89,6 +91,7 @@ class TestCase1(TestFrameOp):
 
 
 class TestCase2(TestFrameOp):
+
     def initTestCase(self):
         input_shape = (8, 150)
         input_type = 'float64'
@@ -101,6 +104,7 @@ class TestCase2(TestFrameOp):
 
 
 class TestCase3(TestFrameOp):
+
     def initTestCase(self):
         input_shape = (150, 8)
         input_type = 'float64'
@@ -113,6 +117,7 @@ class TestCase3(TestFrameOp):
 
 
 class TestCase4(TestFrameOp):
+
     def initTestCase(self):
         input_shape = (4, 2, 150)
         input_type = 'float64'
@@ -125,6 +130,7 @@ class TestCase4(TestFrameOp):
 
 
 class TestCase5(TestFrameOp):
+
     def initTestCase(self):
         input_shape = (150, 4, 2)
         input_type = 'float64'

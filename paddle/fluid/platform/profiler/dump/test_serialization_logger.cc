@@ -13,13 +13,19 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/type_defs.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 
+<<<<<<< HEAD
 using paddle::framework::AttributeMap;
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 using paddle::platform::CudaRuntimeTraceEventNode;
 using paddle::platform::DeserializationReader;
 using paddle::platform::DeviceTraceEvent;
@@ -84,9 +90,14 @@ TEST(SerializationLoggerTest, dump_case0) {
   input_shapes[std::string("X")].push_back(std::vector<int64_t>{4, 5, 6, 7});
   dtypes[std::string("X")].push_back(std::string("int8"));
   dtypes[std::string("X")].push_back(std::string("float32"));
+<<<<<<< HEAD
   AttributeMap attrs;
   op_supplement_events.push_back(OperatorSupplementEvent(
       11600, "op1", input_shapes, dtypes, "op1()", attrs, 0, 10, 10));
+=======
+  op_supplement_events.push_back(OperatorSupplementEvent(
+      11600, "op1", input_shapes, dtypes, "op1()", 10, 10));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   runtime_events.push_back(RuntimeTraceEvent(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(
@@ -143,7 +154,10 @@ TEST(SerializationLoggerTest, dump_case0) {
                                            5,
                                            MemsetEventInfo()));
   SerializationLogger logger("test_serialization_logger_case0.pb");
+<<<<<<< HEAD
   logger.LogMetaInfo(std::string("1.0.2"), 0);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   NodeTrees tree(host_events,
                  runtime_events,
                  device_events,
@@ -173,7 +187,11 @@ TEST(SerializationLoggerTest, dump_case0) {
     }
   }
   tree.LogMe(&logger);
+<<<<<<< HEAD
   logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
+=======
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 TEST(SerializationLoggerTest, dump_case1) {
@@ -238,7 +256,10 @@ TEST(SerializationLoggerTest, dump_case1) {
                                            5,
                                            MemsetEventInfo()));
   SerializationLogger logger("test_serialization_logger_case1.pb");
+<<<<<<< HEAD
   logger.LogMetaInfo(std::string("1.0.2"), 0);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   NodeTrees tree(host_events,
                  runtime_events,
                  device_events,
@@ -262,7 +283,11 @@ TEST(SerializationLoggerTest, dump_case1) {
     }
   }
   tree.LogMe(&logger);
+<<<<<<< HEAD
   logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
+=======
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 TEST(DeserializationReaderTest, restore_case0) {

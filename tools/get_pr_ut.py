@@ -91,10 +91,15 @@ class PRChecker:
             if code == 0:
                 return True
             print(
+<<<<<<< HEAD
                 'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
                     url, ix, ix * 10, proxy
                 )
             )
+=======
+                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
+                .format(url, ix, ix * 10, proxy))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             time.sleep(ix * 10)
             ix += 1
         return False
@@ -117,10 +122,15 @@ class PRChecker:
             except Exception as e:
                 print(e)
                 print(
+<<<<<<< HEAD
                     'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
                         url, ix, ix * 10, cur_proxy
                     )
                 )
+=======
+                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
+                    .format(url, ix, ix * 10, cur_proxy))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 continue
             else:
                 return True
@@ -141,7 +151,11 @@ class PRChecker:
             for f in files:
                 file_dict[PADDLE_ROOT + f.filename] = f.status
                 file_count += 1
+<<<<<<< HEAD
             if file_count == 30:  # if pr file count = 31, nend to run all case
+=======
+            if file_count == 30:  #if pr file count = 31, nend to run all case
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 break
             page += 1
         print("pr modify files: %s" % file_dict)
@@ -267,11 +281,17 @@ class PRChecker:
         return True
 
     def get_all_count(self):
+<<<<<<< HEAD
         p = subprocess.Popen(
             "cd {}build && ctest -N".format(PADDLE_ROOT),
             shell=True,
             stdout=subprocess.PIPE,
         )
+=======
+        p = subprocess.Popen("cd {}build && ctest -N".format(PADDLE_ROOT),
+                             shell=True,
+                             stdout=subprocess.PIPE)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out, err = p.communicate()
         for line in out.splitlines():
             if 'Total Tests:' in str(line):
@@ -322,7 +342,11 @@ class PRChecker:
         filterFiles = []
         file_list = []
         file_dict = self.get_pr_files()
+<<<<<<< HEAD
         if len(file_dict) == 30:  # if pr file count = 31, nend to run all case
+=======
+        if len(file_dict) == 30:  #if pr file count = 31, nend to run all case
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return ''
         for filename in file_dict:
             if filename.startswith(PADDLE_ROOT + 'python/'):
@@ -440,11 +464,17 @@ class PRChecker:
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
+<<<<<<< HEAD
                         notHitMapFiles.append(f_judge) if file_dict[
                             f
                         ] != 'removed' else print(
                             "remove file not hit mapFiles: %s" % f_judge
                         )
+=======
+                        notHitMapFiles.append(
+                            f_judge) if file_dict[f] != 'removed' else print(
+                                "remove file not hit mapFiles: %s" % f_judge)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 else:
                     if file_dict[f] not in ['removed']:
                         if self.is_only_comment(f):

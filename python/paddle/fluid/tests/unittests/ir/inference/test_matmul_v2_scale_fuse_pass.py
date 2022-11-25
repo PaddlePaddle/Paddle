@@ -44,6 +44,7 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=8), min_size=2, max_size=5
             )
@@ -56,6 +57,16 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
                 max_size=x_shape_rank,
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=5))
+        x_shape_rank = len(x_shape)
+        y_shape = draw(
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=x_shape_rank,
+                     max_size=x_shape_rank))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         y_shape_rank = len(y_shape)
         y_shape[-2] = x_shape[-1]
         for i in range(y_shape_rank - 3, -1, -1):
@@ -72,7 +83,14 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
 
         matmul_v2_op = OpConfig(
             "matmul_v2",
+<<<<<<< HEAD
             inputs={"X": ["matmul_x"], "Y": ["matmul_y"]},
+=======
+            inputs={
+                "X": ["matmul_x"],
+                "Y": ["matmul_y"]
+            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             outputs={"Out": ["matmul_out"]},
             trans_x=transpose_X,
             trans_y=transpose_Y,
@@ -87,7 +105,14 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
         if is_scale_tensor:
             scale_op = OpConfig(
                 "scale",
+<<<<<<< HEAD
                 inputs={"X": ["matmul_out"], "ScaleTensor": ["scale_tensor"]},
+=======
+                inputs={
+                    "X": ["matmul_out"],
+                    "ScaleTensor": ["scale_tensor"]
+                },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 outputs={"Out": ["scale_out"]},
                 scale=scale_value,
                 bias=0.0,

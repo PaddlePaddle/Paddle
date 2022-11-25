@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 from functools import partial
 
@@ -37,17 +38,50 @@ class TestOneDNNPad2DOp(MkldnnAutoScanTest):
                 "paddings": kwargs['paddings'],
             },
         )
+=======
+from auto_scan_test import MkldnnAutoScanTest
+from program_config import TensorConfig, ProgramConfig, OpConfig
+import numpy as np
+from functools import partial
+import unittest
+from hypothesis import given, reproduce_failure
+import hypothesis.strategies as st
+
+
+class TestOneDNNPad2DOp(MkldnnAutoScanTest):
+
+    def sample_program_configs(self, *args, **kwargs):
+
+        def generate_input(*args, **kwargs):
+            return np.random.random(kwargs['in_shape']).astype(np.float32)
+
+        pad3d_op = OpConfig(type="pad2d",
+                            inputs={"X": ["input_data"]},
+                            outputs={"Out": ["output_data"]},
+                            attrs={
+                                "mode": "constant",
+                                "data_format": kwargs['data_format'],
+                                "paddings": kwargs['paddings'],
+                            })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         program_config = ProgramConfig(
             ops=[pad3d_op],
             weights={},
             inputs={
+<<<<<<< HEAD
                 "input_data": TensorConfig(
                     data_gen=partial(generate_input, *args, **kwargs)
                 ),
             },
             outputs=["output_data"],
         )
+=======
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
+            },
+            outputs=["output_data"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         yield program_config
 
@@ -55,6 +89,7 @@ class TestOneDNNPad2DOp(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
+<<<<<<< HEAD
     @given(
         data_format=st.sampled_from(['NCHW', 'NHWC']),
         in_shape=st.sampled_from(
@@ -64,6 +99,13 @@ class TestOneDNNPad2DOp(MkldnnAutoScanTest):
             [[0, 0, 0, 0], [1, 2, 0, 1], [2, 5, 11, 3], [0, 5, 0, 1]]
         ),
     )
+=======
+    @given(data_format=st.sampled_from(['NCHW', 'NHWC']),
+           in_shape=st.sampled_from([[2, 3, 4, 5], [1, 4, 1, 3], [4, 3, 2, 1],
+                                     [1, 1, 1, 1]]),
+           paddings=st.sampled_from([[0, 0, 0, 0], [1, 2, 0, 1], [2, 5, 11, 3],
+                                     [0, 5, 0, 1]]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

@@ -42,19 +42,29 @@ def _check_instance(x, x_name, types=(int, float)):
     if not isinstance(x, types):
         raise ValueError(
             "Excepted {} type for {} but received type: {}. ".format(
+<<<<<<< HEAD
                 types, x_name, type(x)
             )
         )
+=======
+                types, x_name, type(x)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def _check_value_limitation(x, x_name, min_limit=1e-3):
+
     def _check_value(x, x_name, min_limit=1e-3):
         if isinstance(x, int) and min_limit is not None and x < min_limit:
             raise ValueError(
+<<<<<<< HEAD
                 "Excepted the input {} to be greater than {} but received x: {}. ".format(
                     x_name, min_limit, x
                 )
             )
+=======
+                "Excepted the input {} to be greater than {} but received x: {}. "
+                .format(x_name, min_limit, x))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     for ele in x:
         _check_value(ele, x_name)
@@ -133,8 +143,12 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
                 )
             padding_algorithm = "EXPLICIT"
             padding = _exclude_padding_in_batch_and_channel(
+<<<<<<< HEAD
                 padding, channel_last
             )
+=======
+                padding, channel_last)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             if utils._is_symmetric_padding(padding, num_dims):
                 padding = padding[0::2]
         # for padding like [pad_before, pad_after, pad_before, pad_after, ...]
@@ -164,10 +178,15 @@ def _expand_low_nd_padding(padding):
         padding = [0] + padding
     else:
         raise ValueError(
+<<<<<<< HEAD
             "The size of padding's dimmention should be 1 or 2. But got padding={}".format(
                 padding
             )
         )
+=======
+            "The size of padding's dimmention should be 1 or 2. But got padding={}"
+            .format(padding))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return padding
 
 
@@ -238,13 +257,21 @@ def avg_pool1d(
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
     channel_last = _channel_last("NCL", 1)
+<<<<<<< HEAD
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, channel_last=channel_last, ceil_mode=ceil_mode
     )
+=======
+    padding, padding_algorithm = _update_padding_nd(padding,
+                                                    1,
+                                                    channel_last=channel_last,
+                                                    ceil_mode=ceil_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
+<<<<<<< HEAD
     if in_dygraph_mode():
         output = _C_ops.pool2d(
             x,
@@ -287,6 +314,16 @@ def avg_pool1d(
             'data_format',
             data_format,
         )
+=======
+    if in_dynamic_mode():
+        output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', kernel_size,
+                               'global_pooling', False, 'strides', stride,
+                               'paddings', padding, 'padding_algorithm',
+                               padding_algorithm, 'use_cudnn', True,
+                               'ceil_mode', ceil_mode, 'use_mkldnn', False,
+                               'exclusive', exclusive, 'data_format',
+                               data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return squeeze(output, [2])
 
     op_type = 'pool2d'
@@ -294,6 +331,7 @@ def avg_pool1d(
     dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x},
@@ -312,6 +350,24 @@ def avg_pool1d(
             "data_format": data_format,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={"X": x},
+                     outputs={"Out": pool_out},
+                     attrs={
+                         "pooling_type": 'avg',
+                         "ksize": kernel_size,
+                         "global_pooling": False,
+                         "strides": stride,
+                         "paddings": padding,
+                         "padding_algorithm": padding_algorithm,
+                         "use_cudnn": True,
+                         "ceil_mode": ceil_mode,
+                         "use_mkldnn": False,
+                         "exclusive": exclusive,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return squeeze(pool_out, [2])
 
@@ -388,12 +444,20 @@ def avg_pool2d(
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
     channel_last = _channel_last(data_format, 2)
+<<<<<<< HEAD
     padding, padding_algorithm = _update_padding_nd(
         padding, 2, channel_last, ceil_mode=ceil_mode
     )
+=======
+    padding, padding_algorithm = _update_padding_nd(padding,
+                                                    2,
+                                                    channel_last,
+                                                    ceil_mode=ceil_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if _non_static_mode():
         if in_dygraph_mode():
+<<<<<<< HEAD
             output = _C_ops.pool2d(
                 x,
                 kernel_size,
@@ -433,6 +497,20 @@ def avg_pool2d(
                 'data_format',
                 data_format,
             )
+=======
+            output = _C_ops.final_state_pool2d(x, kernel_size, stride, padding,
+                                               ceil_mode, exclusive,
+                                               data_format, 'avg', False, False,
+                                               padding_algorithm)
+        else:
+            output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize',
+                                   kernel_size, 'global_pooling', False,
+                                   'padding_algorithm', padding_algorithm,
+                                   'strides', stride, 'paddings', padding,
+                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
+                                   'use_mkldnn', False, 'exclusive', exclusive,
+                                   'data_format', data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if divisor_override is None:
             return output
         else:
@@ -445,6 +523,7 @@ def avg_pool2d(
     dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x},
@@ -463,6 +542,24 @@ def avg_pool2d(
             "data_format": data_format,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={"X": x},
+                     outputs={"Out": pool_out},
+                     attrs={
+                         "pooling_type": "avg",
+                         "ksize": kernel_size,
+                         "global_pooling": False,
+                         "strides": stride,
+                         "paddings": padding,
+                         "padding_algorithm": padding_algorithm,
+                         "use_cudnn": True,
+                         "ceil_mode": ceil_mode,
+                         "use_mkldnn": False,
+                         "exclusive": exclusive,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if divisor_override is None:
         return pool_out
@@ -539,13 +636,21 @@ def avg_pool3d(
         stride = utils.convert_to_list(stride, 3, 'pool_stride')
 
     channel_last = _channel_last(data_format, 3)
+<<<<<<< HEAD
     padding, padding_algorithm = _update_padding_nd(
         padding, 3, channel_last=channel_last, ceil_mode=ceil_mode
     )
+=======
+    padding, padding_algorithm = _update_padding_nd(padding,
+                                                    3,
+                                                    channel_last=channel_last,
+                                                    ceil_mode=ceil_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
+<<<<<<< HEAD
     if in_dygraph_mode():
         pool_out = _C_ops.pool3d(
             x,
@@ -612,6 +717,52 @@ def avg_pool3d(
                 "data_format": data_format,
             },
         )
+=======
+    if in_dygraph_mode() or _in_legacy_dygraph():
+        if in_dygraph_mode():
+            output = _C_ops.final_state_pool3d(x, kernel_size, stride, padding,
+                                               ceil_mode, exclusive,
+                                               data_format, 'avg', False, False,
+                                               padding_algorithm)
+        if _in_legacy_dygraph():
+            output = _C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize',
+                                   kernel_size, 'strides', stride, 'paddings',
+                                   padding, 'global_pooling', False,
+                                   'padding_algorithm', padding_algorithm,
+                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
+                                   'use_mkldnn', False, 'exclusive', exclusive,
+                                   'data_format', data_format)
+        if divisor_override is None:
+            return output
+        else:
+            _check_instance(divisor_override, "divisor_override")
+            return output * (kernel_size[0] * kernel_size[1] *
+                             kernel_size[2]) / divisor_override
+
+    op_type = "pool3d"
+    helper = LayerHelper(op_type, **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
+    dtype = helper.input_dtype(input_param_name='x')
+    pool_out = helper.create_variable_for_type_inference(dtype)
+    outputs = {"Out": pool_out}
+
+    helper.append_op(type=op_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": 'avg',
+                         "ksize": kernel_size,
+                         "global_pooling": False,
+                         "strides": stride,
+                         "paddings": padding,
+                         "padding_algorithm": padding_algorithm,
+                         "use_cudnn": True,
+                         "ceil_mode": ceil_mode,
+                         "use_mkldnn": False,
+                         "exclusive": exclusive,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if divisor_override is None:
         return pool_out
@@ -685,15 +836,22 @@ def max_pool1d(
     else:
         stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
 
+<<<<<<< HEAD
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, ceil_mode=ceil_mode
     )
+=======
+    padding, padding_algorithm = _update_padding_nd(padding,
+                                                    1,
+                                                    ceil_mode=ceil_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
     if in_dygraph_mode():
         if return_mask:
+<<<<<<< HEAD
             pool_out = _C_ops.max_pool2d_with_index(
                 x, kernel_size, stride, padding, False, False
             )
@@ -716,10 +874,23 @@ def max_pool1d(
                 False,
                 padding_algorithm,
             )
+=======
+            pool_out = _C_ops.final_state_max_pool2d_with_index(
+                x, kernel_size, stride, padding, False, False)
+            return (squeeze(pool_out[0], [2]),
+                    squeeze(pool_out[1], [2])) if return_mask else squeeze(
+                        pool_out[0], [2])
+        else:
+            pool_out = _C_ops.final_state_pool2d(x, kernel_size, stride,
+                                                 padding, ceil_mode, True,
+                                                 data_format, 'max', False,
+                                                 False, padding_algorithm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return squeeze(pool_out, [2])
 
     if _in_legacy_dygraph():
         if return_mask:
+<<<<<<< HEAD
             pool_out = _legacy_C_ops.max_pool2d_with_index(
                 x,
                 'ksize',
@@ -774,6 +945,25 @@ def max_pool1d(
                 'data_format',
                 data_format,
             )
+=======
+            pool_out = _C_ops.max_pool2d_with_index(
+                x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
+                stride, 'paddings', padding, 'padding_algorithm',
+                padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+                'use_mkldnn', False, 'exclusive', True, 'data_format',
+                data_format)
+            return (squeeze(pool_out[0], [2]),
+                    squeeze(pool_out[1], [2])) if return_mask else squeeze(
+                        pool_out[0], [2])
+        else:
+            pool_out = _C_ops.pool2d(x, 'pooling_type', 'max', 'ksize',
+                                     kernel_size, 'global_pooling', False,
+                                     'padding_algorithm', padding_algorithm,
+                                     'strides', stride, 'paddings', padding,
+                                     'use_cudnn', True, 'ceil_mode', ceil_mode,
+                                     'use_mkldnn', False, 'exclusive', True,
+                                     'data_format', data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return squeeze(pool_out, [2])
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
@@ -783,6 +973,7 @@ def max_pool1d(
     mask = helper.create_variable_for_type_inference('int32')
     outputs = {"Out": pool_out, "Mask": mask}
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x},
@@ -801,6 +992,24 @@ def max_pool1d(
             "data_format": data_format,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": 'max',
+                         "ksize": kernel_size,
+                         "global_pooling": False,
+                         "strides": stride,
+                         "paddings": padding,
+                         "padding_algorithm": padding_algorithm,
+                         "use_cudnn": True,
+                         "ceil_mode": ceil_mode,
+                         "use_mkldnn": False,
+                         "exclusive": True,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return (
         (squeeze(pool_out, [2]), squeeze(mask, [2]))
@@ -816,6 +1025,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     input_size = x.shape
     default_size = []
     for d in range(len(kernel_size)):
+<<<<<<< HEAD
         default_size.append(
             (input_size[-len(kernel_size) + d] - 1) * stride[d]
             + kernel_size[d]
@@ -844,11 +1054,27 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
             )
         )
     if not has_static_var:
+=======
+        default_size.append((input_size[-len(kernel_size) + d] - 1) *
+                            stride[d] + kernel_size[d] - 2 * padding[d])
+    if output_size is None:
+        ret = default_size
+    else:
+        if len(output_size) == len(kernel_size) + 2:
+            output_size = output_size[2:]
+        if len(output_size) != len(kernel_size):
+            raise ValueError(
+                "output_size should be a sequence containing "
+                "{} or {} elements, but it has a length of '{}'".format(
+                    len(kernel_size),
+                    len(kernel_size) + 2, len(output_size)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for d in range(len(kernel_size)):
             min_size = default_size[d] - stride[d]
             max_size = default_size[d] + stride[d]
             if not (min_size < output_size[d] < max_size):
                 raise ValueError(
+<<<<<<< HEAD
                     'invalid output_size "{}" (dim {} must be between {} and {})'.format(
                         output_size, d, min_size, max_size
                     )
@@ -867,6 +1093,23 @@ def max_unpool1d(
     output_size=None,
     name=None,
 ):
+=======
+                    'invalid output_size "{}" (dim {} must be between {} and {})'
+                    .format(output_size, d, min_size, max_size))
+
+        ret = output_size
+    return ret
+
+
+def max_unpool1d(x,
+                 indices,
+                 kernel_size,
+                 stride=None,
+                 padding=0,
+                 data_format="NCL",
+                 output_size=None,
+                 name=None):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     r"""
     This API implements max unpooling 1d opereation.
     `max_unpool1d` accepts the output of `max_pool1d` as input,
@@ -973,6 +1216,7 @@ def max_unpool1d(
     dtype = helper.input_dtype(input_param_name="x")
     unpool_out = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x, "Indices": indices},
@@ -985,6 +1229,21 @@ def max_unpool1d(
             "output_size": output_size,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={
+                         "X": x,
+                         "Indices": indices
+                     },
+                     outputs={"Out": unpool_out},
+                     attrs={
+                         "unpooling_type": "max",
+                         "ksize": kernel_size,
+                         "strides": stride,
+                         "paddings": padding,
+                         "output_size": output_size
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return squeeze(unpool_out, [2])
 
 
@@ -1109,6 +1368,7 @@ def max_unpool2d(
     dtype = helper.input_dtype(input_param_name="x")
     unpool_out = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x, "Indices": indices},
@@ -1121,6 +1381,21 @@ def max_unpool2d(
             "output_size": output_size,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={
+                         "X": x,
+                         "Indices": indices
+                     },
+                     outputs={"Out": unpool_out},
+                     attrs={
+                         "unpooling_type": "max",
+                         "ksize": kernel_size,
+                         "strides": stride,
+                         "paddings": padding,
+                         "output_size": output_size
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return unpool_out
 
 
@@ -1243,6 +1518,7 @@ def max_unpool3d(
     dtype = helper.input_dtype(input_param_name="x")
     unpool_out = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x, "Indices": indices},
@@ -1255,6 +1531,21 @@ def max_unpool3d(
             "output_size": output_size,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={
+                         "X": x,
+                         "Indices": indices
+                     },
+                     outputs={"Out": unpool_out},
+                     attrs={
+                         "unpooling_type": "max",
+                         "ksize": kernel_size,
+                         "strides": stride,
+                         "paddings": padding,
+                         "output_size": output_size
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return unpool_out
 
 
@@ -1331,9 +1622,16 @@ def max_pool2d(
 
     channel_last = True if data_format == "NHWC" else False
 
+<<<<<<< HEAD
     padding, padding_algorithm = _update_padding_nd(
         padding, num_dims=2, channel_last=channel_last, ceil_mode=ceil_mode
     )
+=======
+    padding, padding_algorithm = _update_padding_nd(padding,
+                                                    num_dims=2,
+                                                    channel_last=channel_last,
+                                                    ceil_mode=ceil_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if data_format == "NHWC" and return_mask:
         raise ValueError(
@@ -1347,6 +1645,7 @@ def max_pool2d(
             )
             return output if return_mask else output[0]
         else:
+<<<<<<< HEAD
             return _C_ops.pool2d(
                 x,
                 kernel_size,
@@ -1360,6 +1659,12 @@ def max_pool2d(
                 False,
                 padding_algorithm,
             )
+=======
+            return _C_ops.final_state_pool2d(x, kernel_size, stride, padding,
+                                             ceil_mode, True, data_format,
+                                             'max', False, False,
+                                             padding_algorithm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if _in_legacy_dygraph():
         if return_mask:
@@ -1388,6 +1693,7 @@ def max_pool2d(
             )
             return output if return_mask else output[0]
         else:
+<<<<<<< HEAD
             output = _legacy_C_ops.pool2d(
                 x,
                 'pooling_type',
@@ -1413,6 +1719,15 @@ def max_pool2d(
                 'data_format',
                 data_format,
             )
+=======
+            output = _C_ops.pool2d(x, 'pooling_type', 'max', 'ksize',
+                                   kernel_size, 'global_pooling', False,
+                                   'padding_algorithm', padding_algorithm,
+                                   'strides', stride, 'paddings', padding,
+                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
+                                   'use_mkldnn', False, 'exclusive', True,
+                                   'data_format', data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return output
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
@@ -1425,6 +1740,7 @@ def max_pool2d(
     mask = helper.create_variable_for_type_inference("int32")
     outputs = {"Out": pool_out, "Mask": mask}
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x},
@@ -1443,6 +1759,24 @@ def max_pool2d(
             "data_format": data_format,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": 'max',
+                         "ksize": kernel_size,
+                         "global_pooling": False,
+                         "strides": stride,
+                         "paddings": padding,
+                         "padding_algorithm": padding_algorithm,
+                         "use_cudnn": True,
+                         "ceil_mode": ceil_mode,
+                         "use_mkldnn": False,
+                         "exclusive": True,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return (pool_out, mask) if return_mask else pool_out
 
@@ -1521,9 +1855,16 @@ def max_pool3d(
 
     channel_last = _channel_last(data_format, 3)
 
+<<<<<<< HEAD
     padding, padding_algorithm = _update_padding_nd(
         padding, 3, channel_last=channel_last, ceil_mode=ceil_mode
     )
+=======
+    padding, padding_algorithm = _update_padding_nd(padding,
+                                                    3,
+                                                    channel_last=channel_last,
+                                                    ceil_mode=ceil_mode)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if data_format == "NDHWC" and return_mask:
         raise ValueError(
@@ -1537,6 +1878,7 @@ def max_pool3d(
             )
             return output if return_mask else output[0]
         else:
+<<<<<<< HEAD
             return _C_ops.pool3d(
                 x,
                 kernel_size,
@@ -1550,6 +1892,12 @@ def max_pool3d(
                 False,
                 padding_algorithm,
             )
+=======
+            return _C_ops.final_state_pool3d(x, kernel_size, stride, padding,
+                                             ceil_mode, True, data_format,
+                                             'max', False, False,
+                                             padding_algorithm)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if _in_legacy_dygraph():
         if return_mask:
@@ -1580,6 +1928,7 @@ def max_pool3d(
             )
             return output if return_mask else output[0]
         else:
+<<<<<<< HEAD
             output = _legacy_C_ops.pool3d(
                 x,
                 'pooling_type',
@@ -1605,6 +1954,15 @@ def max_pool3d(
                 'data_format',
                 data_format,
             )
+=======
+            output = _C_ops.pool3d(x, 'pooling_type', 'max', 'ksize',
+                                   kernel_size, 'global_pooling', False,
+                                   'padding_algorithm', padding_algorithm,
+                                   'strides', stride, 'paddings', padding,
+                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
+                                   'use_mkldnn', False, 'exclusive', True,
+                                   'data_format', data_format)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             return output
 
     op_type = "max_pool3d_with_index" if return_mask else "pool3d"
@@ -1615,6 +1973,7 @@ def max_pool3d(
     mask = helper.create_variable_for_type_inference('int32')
     outputs = {"Out": pool_out, "Mask": mask}
 
+<<<<<<< HEAD
     helper.append_op(
         type=op_type,
         inputs={"X": x},
@@ -1633,14 +1992,37 @@ def max_pool3d(
             "data_format": data_format,
         },
     )
+=======
+    helper.append_op(type=op_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": 'max',
+                         "ksize": kernel_size,
+                         "global_pooling": False,
+                         "strides": stride,
+                         "paddings": padding,
+                         "padding_algorithm": padding_algorithm,
+                         "use_cudnn": True,
+                         "ceil_mode": ceil_mode,
+                         "use_mkldnn": False,
+                         "exclusive": False,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return (pool_out, mask) if return_mask else pool_out
 
 
 def adaptive_avg_pool1d(x, output_size, name=None):
     """
+<<<<<<< HEAD
     Adaptive average pooling 1d operation on :attr:`x` according to :attr:`output_size`.
 
+=======
+    Adaptive average pooling 1d operation on :attr:`x` according to :attr:`output_size`. 
+    
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     Notes:
         See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
 
@@ -1648,12 +2030,20 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
         output_size (int): The target output size. Its data type must be int.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
     Returns:
         Tensor: The result of 1D adaptive average pooling. Its data type is same as input.
 
     Examples:
         .. code-block:: python
+=======
+    Returns:
+        Tensor: The result of 1D adaptive average pooling. Its data type is same as input.
+    Examples:
+        .. code-block:: python
+          :name: adaptive_avg_pool1d-example
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             # average adaptive pool1d
             # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -1713,6 +2103,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {"Out": pool_out}
+<<<<<<< HEAD
     helper.append_op(
         type=l_type,
         inputs={"X": x},
@@ -1723,6 +2114,16 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             "adaptive": True,
         },
     )
+=======
+    helper.append_op(type=l_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": pool_type,
+                         "ksize": pool_size,
+                         "adaptive": True,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return squeeze(pool_out, [2])
 
@@ -1822,6 +2223,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size = utils._convert_to_tensor_list(output_size)
 
     if in_dygraph_mode():
+<<<<<<< HEAD
         x = x._use_cudnn(False)
         return _C_ops.pool2d(
             x,
@@ -1836,6 +2238,12 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             True,
             "EXPLICIT",
         )
+=======
+        return _C_ops.final_state_pool2d_gpudnn_unused(x, output_size, [1, 1],
+                                                       [0, 0], False, True,
+                                                       data_format, 'avg',
+                                                       False, True, "EXPLICIT")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.pool2d(
@@ -1860,6 +2268,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
     outputs = {"Out": pool_out}
 
+<<<<<<< HEAD
     helper.append_op(
         type=l_type,
         inputs={"X": x},
@@ -1871,6 +2280,17 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             "data_format": data_format,
         },
     )
+=======
+    helper.append_op(type=l_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": "avg",
+                         "ksize": output_size,
+                         "adaptive": True,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return pool_out
 
@@ -2003,6 +2423,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     pool_out = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out}
 
+<<<<<<< HEAD
     helper.append_op(
         type=l_type,
         inputs={"X": x},
@@ -2014,6 +2435,17 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             "data_format": data_format,
         },
     )
+=======
+    helper.append_op(type=l_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": "avg",
+                         "ksize": output_size,
+                         "adaptive": True,
+                         "data_format": data_format,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return pool_out
 
@@ -2074,6 +2506,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
+<<<<<<< HEAD
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, pool_size, [1, 1], [0, 0], False, True
@@ -2092,6 +2525,14 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
             if return_mask
             else squeeze(pool_out[0], [2])
         )
+=======
+    if in_dynamic_mode():
+        pool_out = _C_ops.max_pool2d_with_index(x, 'pooling_type', pool_type,
+                                                'ksize', pool_size, 'adaptive',
+                                                True)
+        return (squeeze(pool_out[0], [2]), squeeze(
+            pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     l_type = 'max_pool2d_with_index'
 
@@ -2102,6 +2543,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     mask = helper.create_variable_for_type_inference('int32')
     outputs = {"Out": pool_out, "Mask": mask}
 
+<<<<<<< HEAD
     helper.append_op(
         type=l_type,
         inputs={"X": x},
@@ -2112,6 +2554,16 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
             "adaptive": True,
         },
     )
+=======
+    helper.append_op(type=l_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": pool_type,
+                         "ksize": pool_size,
+                         "adaptive": True,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return (
         (squeeze(pool_out, [2]), squeeze(mask, [2]))
@@ -2177,6 +2629,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             output_size[0] = in_h
         if output_size[1] is None:
             output_size[1] = in_w
+<<<<<<< HEAD
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, output_size, [1, 1], [0, 0], False, True
@@ -2186,6 +2639,13 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         pool_out = _legacy_C_ops.max_pool2d_with_index(
             x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True
         )
+=======
+
+    if in_dynamic_mode():
+        pool_out = _C_ops.max_pool2d_with_index(x, 'pooling_type', 'max',
+                                                'ksize', output_size,
+                                                'adaptive', True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool2d_with_index'
@@ -2197,6 +2657,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     mask = helper.create_variable_for_type_inference('int32')
     outputs = {"Out": pool_out, "Mask": mask}
 
+<<<<<<< HEAD
     helper.append_op(
         type=l_type,
         inputs={"X": x},
@@ -2208,6 +2669,17 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         },
     )
     # return (pool_out, mask) if return_mask else pool_out
+=======
+    helper.append_op(type=l_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": 'max',
+                         "ksize": output_size,
+                         "adaptive": True,
+                     })
+    #return (pool_out, mask) if return_mask else pool_out
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return pool_out
 
 
@@ -2276,6 +2748,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
             output_size[2] = in_w
 
     if in_dynamic_mode():
+<<<<<<< HEAD
         if in_dygraph_mode():
             # By default, strides is [1,1,1] and paddings is [0, 0, 0]
             pool_out = _C_ops.max_pool3d_with_index(
@@ -2285,6 +2758,11 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
             pool_out = _legacy_C_ops.max_pool3d_with_index(
                 x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True
             )
+=======
+        pool_out = _C_ops.max_pool3d_with_index(x, 'pooling_type', 'max',
+                                                'ksize', output_size,
+                                                'adaptive', True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool3d_with_index'
@@ -2296,6 +2774,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     mask = helper.create_variable_for_type_inference('int32')
     outputs = {"Out": pool_out, "Mask": mask}
 
+<<<<<<< HEAD
     helper.append_op(
         type=l_type,
         inputs={"X": x},
@@ -2306,5 +2785,15 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
             "adaptive": True,
         },
     )
+=======
+    helper.append_op(type=l_type,
+                     inputs={"X": x},
+                     outputs=outputs,
+                     attrs={
+                         "pooling_type": 'max',
+                         "ksize": output_size,
+                         "adaptive": True,
+                     })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return (pool_out, mask) if return_mask else pool_out

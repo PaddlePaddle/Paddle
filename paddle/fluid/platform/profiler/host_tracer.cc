@@ -88,6 +88,7 @@ void ProcessOperatorSupplementEvents(
       collector->AddThreadName(tid, thr_sec.thread_name);
     }
     for (const auto& evt : thr_sec.events) {
+<<<<<<< HEAD
       // get callstack from event
       std::vector<std::string> callstacks;
       const std::vector<std::string>* callstack_ptr = nullptr;
@@ -103,6 +104,8 @@ void ProcessOperatorSupplementEvents(
         result_string << (*it) << std::endl;
       }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       OperatorSupplementEvent event;
       event.timestamp_ns = evt.timestamp_ns;
       event.op_type = evt.op_type;
@@ -127,11 +130,21 @@ void ProcessOperatorSupplementEvents(
         }
       }
 
+<<<<<<< HEAD
       event.input_shapes = input_shapes;
       event.dtypes = dtypes;
       event.callstack = result_string.str();
       event.attributes = evt.attributes;
       event.op_id = evt.op_id;
+=======
+      std::ostringstream result_string;
+      for (auto it = evt.callstack.begin(); it != evt.callstack.end(); it++) {
+        result_string << (*it) << std::endl;
+      }
+      event.input_shapes = input_shapes;
+      event.dtypes = dtypes;
+      event.callstack = result_string.str();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       event.process_id = op_supplement_events.process_id;
       event.thread_id = tid;
       collector->AddOperatorSupplementEvent(std::move(event));

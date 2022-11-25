@@ -30,11 +30,13 @@ paddle.enable_static()
 
 
 class XPUTestTrilTriuOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'tril_triu'
         self.use_dynamic_create_class = False
 
     class TestTrilTriuOp(XPUOpTest):
+
         def setUp(self):
             self.init_dtype()
             self.initTestCase()
@@ -44,9 +46,15 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
             self.op_type = "tril_triu"
             self.place = paddle.XPUPlace(0)
             if self.dtype == np.int32:
+<<<<<<< HEAD
                 self.X = np.arange(
                     1, self.get_Xshape_prod() + 1, dtype=self.dtype
                 ).reshape(self.Xshape)
+=======
+                self.X = np.arange(1,
+                                   self.get_Xshape_prod() + 1,
+                                   dtype=self.dtype).reshape(self.Xshape)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 self.X = np.random.random(self.Xshape).astype(dtype=self.dtype)
             self.inputs = {'X': self.X}
@@ -55,9 +63,15 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
                 'lower': True if self.real_op_type == 'tril' else False,
             }
             self.outputs = {
+<<<<<<< HEAD
                 'Out': self.real_np_op(self.X, self.diagonal)
                 if self.diagonal
                 else self.real_np_op(self.X)
+=======
+                'Out':
+                self.real_np_op(self.X, self.diagonal)
+                if self.diagonal else self.real_np_op(self.X)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
 
         def init_dtype(self):
@@ -96,42 +110,50 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
             self.Xshape = (10, 10)
 
     class TestTrilTriuOp1(TestTrilTriuOp):
+
         def initTestCase(self):
             self.diagonal = -3
             self.Xshape = (5, 5)
 
     class TestTrilTriuOp2(TestTrilTriuOp):
+
         def initTestCase(self):
             self.diagonal = 4
             self.Xshape = (11, 17)
 
     class TestTrilTriuOp3(TestTrilTriuOp):
+
         def initTestCase(self):
             self.diagonal = 10
             self.Xshape = (2, 25, 25)
 
     class TestTrilTriuOp4(TestTrilTriuOp):
+
         def initTestCase(self):
             self.diagonal = -10
             self.Xshape = (1, 2, 33, 11)
 
     class TestTrilTriuOp5(TestTrilTriuOp):
+
         def initTestCase(self):
             self.diagonal = 11
             self.Xshape = (1, 1, 99)
 
     class TestTrilTriuOp6(TestTrilTriuOp):
+
         def initTestCase(self):
             self.diagonal = 5
             self.Xshape = (1, 2, 3, 5, 99)
 
     class TestTrilTriuOp7(TestTrilTriuOp):
+
         def initTestCase(self):
             self.diagonal = -100
             self.Xshape = (2, 2, 3, 4, 5)
 
 
 class TestTrilTriuOpError(unittest.TestCase):
+
     def test_errors1(self):
         paddle.enable_static()
         data = fluid.data(shape=(20, 22), dtype='float32', name="data1")
@@ -142,9 +164,14 @@ class TestTrilTriuOpError(unittest.TestCase):
             ),
         }
         expected = list(errmsg.keys())[0]
+<<<<<<< HEAD
         with self.assertRaisesRegex(
             eval(expected.split(':')[-1]), errmsg[expected]
         ):
+=======
+        with self.assertRaisesRegex(eval(expected.split(':')[-1]),
+                                    errmsg[expected]):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             getattr(tensor, op_type)(x=data, diagonal='2022')
 
     def test_errors2(self):
@@ -157,9 +184,14 @@ class TestTrilTriuOpError(unittest.TestCase):
             ),
         }
         expected = list(errmsg.keys())[0]
+<<<<<<< HEAD
         with self.assertRaisesRegex(
             eval(expected.split(':')[-1]), errmsg[expected]
         ):
+=======
+        with self.assertRaisesRegex(eval(expected.split(':')[-1]),
+                                    errmsg[expected]):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             getattr(tensor, op_type)(x=data, diagonal=[None])
 
 

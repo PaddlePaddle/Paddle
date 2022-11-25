@@ -23,6 +23,7 @@ from paddle import fluid
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
@@ -40,11 +41,16 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         main_prog_op_types = [op.type for op in main_prog_ops]
         startup_prog_op_types = [op.type for op in startup_prog_ops]
 
+<<<<<<< HEAD
         print(
             "=== debug program and ops in func [{}] ===".format(
                 inspect.stack()[1].function
             )
         )
+=======
+        print("=== debug program and ops in func [{}] ===".format(
+            inspect.stack()[1].function))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         print(main_prog)
         print(main_prog_op_types)
         print(startup_prog)
@@ -55,29 +61,47 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             with fluid.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
+<<<<<<< HEAD
                 input_x = paddle.fluid.layers.data(
                     name="x", shape=[32], dtype='float32'
                 )
                 input_y = paddle.fluid.layers.data(
                     name="y", shape=[1], dtype='int64'
                 )
+=======
+                input_x = paddle.fluid.layers.data(name="x",
+                                                   shape=[32],
+                                                   dtype='float32')
+                input_y = paddle.fluid.layers.data(name="y",
+                                                   shape=[1],
+                                                   dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 fc_1 = paddle.fluid.layers.fc(
                     input=input_x, size=64, act='tanh'
                 )
                 fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
+<<<<<<< HEAD
                 prediction = paddle.fluid.layers.fc(
                     input=[fc_2], size=2, act='softmax'
                 )
                 cost = paddle.fluid.layers.cross_entropy(
                     input=prediction, label=input_y
                 )
+=======
+                prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                    size=2,
+                                                    act='softmax')
+                cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                         label=input_y)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 avg_cost = paddle.mean(x=cost)
 
                 strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy
 
     def pp_net(self, main_prog, startup_prog, pp_degree=2):
+
         def fc_block(input_x):
             fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
             fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
@@ -89,24 +113,41 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
                 with fluid.device_guard("gpu:0"):
+<<<<<<< HEAD
                     input_x = paddle.fluid.layers.data(
                         name="x", shape=[32], dtype='float32'
                     )
                     input_y = paddle.fluid.layers.data(
                         name="y", shape=[1], dtype='int64'
                     )
+=======
+                    input_x = paddle.fluid.layers.data(name="x",
+                                                       shape=[32],
+                                                       dtype='float32')
+                    input_y = paddle.fluid.layers.data(name="y",
+                                                       shape=[1],
+                                                       dtype='int64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 for stage_idx in range(pp_degree):
                     with fluid.device_guard("gpu:" + str(stage_idx)):
                         input_x = fc_block(input_x)
 
                 with fluid.device_guard("gpu:" + str(pp_degree - 1)):
+<<<<<<< HEAD
                     prediction = paddle.fluid.layers.fc(
                         input=[input_x], size=2, act='softmax'
                     )
                     cost = paddle.fluid.layers.cross_entropy(
                         input=prediction, label=input_y
                     )
+=======
+                    prediction = paddle.fluid.layers.fc(input=[input_x],
+                                                        size=2,
+                                                        act='softmax')
+                    cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                             label=input_y)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -152,6 +193,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                         grad_clip=grad_clip,
                     )
                 elif name == 'adamw':
+<<<<<<< HEAD
                     optimizer = paddle.optimizer.AdamW(
                         learning_rate=0.01,
                         weight_decay=0.01,
@@ -160,6 +202,13 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 optimizer = fleet.distributed_optimizer(
                     optimizer, strategy=strategy
                 )
+=======
+                    optimizer = paddle.optimizer.AdamW(learning_rate=0.01,
+                                                       weight_decay=0.01,
+                                                       grad_clip=grad_clip)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        strategy=strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 optimizer.minimize(loss)
 
     def set_strategy(self, strategy, name):

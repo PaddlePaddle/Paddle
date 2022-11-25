@@ -44,10 +44,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_k_0(self):
         paddle.enable_static()
@@ -71,10 +76,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_k_2(self):
         paddle.enable_static()
@@ -98,10 +108,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[6, 5, 4], [3, 2, 1]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_k_3(self):
         paddle.enable_static()
@@ -125,10 +140,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_neg_k_1(self):
         paddle.enable_static()
@@ -152,10 +172,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_neg_k_2(self):
         paddle.enable_static()
@@ -179,10 +204,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[6, 5, 4], [3, 2, 1]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_neg_k_3(self):
         paddle.enable_static()
@@ -206,10 +236,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[3, 6], [2, 5], [1, 4]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_static_neg_k_4(self):
         paddle.enable_static()
@@ -233,10 +268,15 @@ class TestRot90_API(unittest.TestCase):
             out_np = np.array(res[0])
             out_ref = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
 
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='rot90 output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='rot90 output is wrong, out =' + str(out_np))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_error_api(self):
         paddle.enable_static()

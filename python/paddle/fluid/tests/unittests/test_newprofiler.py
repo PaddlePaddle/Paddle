@@ -25,23 +25,39 @@ from paddle.io import Dataset, DataLoader
 
 
 class TestProfiler(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def test_profiler(self):
+
         def my_trace_back(prof):
+<<<<<<< HEAD
             path = os.path.join(
                 self.temp_dir.name, './test_profiler_chrometracing'
             )
+=======
+            path = os.path.join(self.temp_dir.name,
+                                './test_profiler_chrometracing')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             profiler.export_chrome_tracing(path)(prof)
             path = os.path.join(self.temp_dir.name, './test_profiler_pb')
             profiler.export_protobuf(path)(prof)
 
         self.temp_dir = tempfile.TemporaryDirectory()
         x_value = np.random.randn(2, 3, 3)
+<<<<<<< HEAD
         x = paddle.to_tensor(
             x_value, stop_gradient=False, place=paddle.CPUPlace()
         )
+=======
+        x = paddle.to_tensor(x_value,
+                             stop_gradient=False,
+                             place=paddle.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         y = x / 2.0
         ones_like_y = paddle.ones_like(y)
         with profiler.Profiler(
@@ -53,14 +69,20 @@ class TestProfiler(unittest.TestCase):
         with profiler.RecordEvent(name='test'):
             y = x / 2.0
 
+<<<<<<< HEAD
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2)
         ) as prof:
+=======
+        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU],
+                               scheduler=(1, 2)) as prof:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertEqual(utils._is_profiler_used, True)
             with profiler.RecordEvent(name='test'):
                 y = x / 2.0
 
         prof = None
+<<<<<<< HEAD
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=profiler.make_scheduler(
@@ -77,6 +99,22 @@ class TestProfiler(unittest.TestCase):
             ),
             on_trace_ready=my_trace_back,
         ) as prof:
+=======
+        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU],
+                               scheduler=profiler.make_scheduler(closed=0,
+                                                                 ready=1,
+                                                                 record=1,
+                                                                 repeat=1),
+                               on_trace_ready=my_trace_back) as prof:
+            y = x / 2.0
+        prof = None
+        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU],
+                               scheduler=profiler.make_scheduler(closed=0,
+                                                                 ready=0,
+                                                                 record=2,
+                                                                 repeat=1),
+                               on_trace_ready=my_trace_back) as prof:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             for i in range(3):
                 y = x / 2.0
                 prof.step()
@@ -120,22 +158,34 @@ class TestProfiler(unittest.TestCase):
                 y = x / 2.0
                 prof.step()
         prof = None
+<<<<<<< HEAD
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=my_sheduler,
             on_trace_ready=my_trace_back,
         ) as prof:
+=======
+        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU],
+                               scheduler=my_sheduler,
+                               on_trace_ready=my_trace_back) as prof:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             for i in range(5):
                 y = x / 2.0
                 prof.step()
         prof = None
+<<<<<<< HEAD
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU], scheduler=my_sheduler1
         ) as prof:
+=======
+        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU],
+                               scheduler=my_sheduler1) as prof:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             for i in range(5):
                 y = x / 2.0
                 prof.step()
         prof = None
+<<<<<<< HEAD
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=profiler.make_scheduler(
@@ -145,6 +195,15 @@ class TestProfiler(unittest.TestCase):
             profile_memory=True,
             record_shapes=True,
         ) as prof:
+=======
+        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU],
+                               scheduler=profiler.make_scheduler(closed=1,
+                                                                 ready=1,
+                                                                 record=2,
+                                                                 repeat=1,
+                                                                 skip_first=1),
+                               on_trace_ready=my_trace_back) as prof:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             for i in range(5):
                 y = x / 2.0
                 paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
@@ -157,12 +216,22 @@ class TestProfiler(unittest.TestCase):
         prof = None
         dataset = RandomDataset(10 * 4)
         simple_net = SimpleNet()
+<<<<<<< HEAD
         opt = paddle.optimizer.SGD(
             learning_rate=1e-3, parameters=simple_net.parameters()
         )
         loader = DataLoader(
             dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=2
         )
+=======
+        opt = paddle.optimizer.SGD(learning_rate=1e-3,
+                                   parameters=simple_net.parameters())
+        loader = DataLoader(dataset,
+                            batch_size=4,
+                            shuffle=True,
+                            drop_last=True,
+                            num_workers=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         prof = profiler.Profiler(on_trace_ready=lambda prof: None)
         prof.start()
         for i, (image, label) in enumerate(loader()):
@@ -179,9 +248,14 @@ class TestProfiler(unittest.TestCase):
         dataset = RandomDataset(10 * 4)
         simple_net = SimpleNet()
         loader = DataLoader(dataset, batch_size=4, shuffle=True, drop_last=True)
+<<<<<<< HEAD
         opt = paddle.optimizer.Adam(
             learning_rate=1e-3, parameters=simple_net.parameters()
         )
+=======
+        opt = paddle.optimizer.Adam(learning_rate=1e-3,
+                                    parameters=simple_net.parameters())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         prof = profiler.Profiler(on_trace_ready=lambda prof: None)
         prof.start()
         for i, (image, label) in enumerate(loader()):
@@ -196,17 +270,25 @@ class TestProfiler(unittest.TestCase):
 
 
 class TestNvprof(unittest.TestCase):
+
     def test_nvprof(self):
         for i in range(10):
             paddle.fluid.profiler._nvprof_range(i, 10, 20)
             x_value = np.random.randn(2, 3, 3)
+<<<<<<< HEAD
             x = paddle.to_tensor(
                 x_value, stop_gradient=False, place=paddle.CPUPlace()
             )
+=======
+            x = paddle.to_tensor(x_value,
+                                 stop_gradient=False,
+                                 place=paddle.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             y = x / 2.0
 
 
 class TestGetProfiler(unittest.TestCase):
+
     def test_getprofiler(self):
         config_content = '''
         {
@@ -232,9 +314,15 @@ class TestGetProfiler(unittest.TestCase):
 
         profiler = profiler.get_profiler(filehandle.name)
         x_value = np.random.randn(2, 3, 3)
+<<<<<<< HEAD
         x = paddle.to_tensor(
             x_value, stop_gradient=False, place=paddle.CPUPlace()
         )
+=======
+        x = paddle.to_tensor(x_value,
+                             stop_gradient=False,
+                             place=paddle.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with profiler:
             for i in range(5):
                 y = x / 2.0
@@ -353,6 +441,7 @@ class TestGetProfiler(unittest.TestCase):
 
 
 class RandomDataset(Dataset):
+
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
@@ -366,6 +455,7 @@ class RandomDataset(Dataset):
 
 
 class SimpleNet(nn.Layer):
+
     def __init__(self):
         super().__init__()
         self.fc = nn.Linear(100, 10)
@@ -375,10 +465,13 @@ class SimpleNet(nn.Layer):
 
 
 class TestTimerOnly(unittest.TestCase):
+
     def test_with_dataloader(self):
+
         def train(step_num_samples=None):
             dataset = RandomDataset(20 * 4)
             simple_net = SimpleNet()
+<<<<<<< HEAD
             opt = paddle.optimizer.SGD(
                 learning_rate=1e-3, parameters=simple_net.parameters()
             )
@@ -389,6 +482,15 @@ class TestTimerOnly(unittest.TestCase):
                 drop_last=True,
                 num_workers=2,
             )
+=======
+            opt = paddle.optimizer.SGD(learning_rate=1e-3,
+                                       parameters=simple_net.parameters())
+            loader = DataLoader(dataset,
+                                batch_size=4,
+                                shuffle=True,
+                                drop_last=True,
+                                num_workers=2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             step_info = ''
             p = profiler.Profiler(timer_only=True)
             p.start()

@@ -52,7 +52,11 @@ class ScopedRNNBase {
               const std::vector<int>& sequence_length,
               size_t* workspace_size,
               size_t* reserve_size,
+<<<<<<< HEAD
               phi::DenseTensor* dropout_state) {
+=======
+              framework::Tensor* dropout_state) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     int numDirections = is_bidirec_ ? 2 : 1;
     cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
 

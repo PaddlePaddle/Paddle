@@ -35,12 +35,19 @@ def remove_file_if_exists(file_name):
         shutil.rmtree(file_name)
 
 
+<<<<<<< HEAD
 def run_test(
     clip_after_allreduce=True,
     max_global_norm=-1.0,
     gradient_merge_steps=1,
     use_master_acc_grad=True,
 ):
+=======
+def run_test(clip_after_allreduce=True,
+             max_global_norm=-1.0,
+             gradient_merge_steps=1,
+             use_master_acc_grad=True):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     temp_dir = tempfile.TemporaryDirectory()
     if not paddle.is_compiled_with_cuda():
         return
@@ -68,8 +75,12 @@ def run_test(
     touch_file_env = 'SUCCESS_TOUCH_FILE'
     touch_file_name = os.path.join(
         temp_dir.name,
+<<<<<<< HEAD
         'distributed_fused_lamb_touch_file_{}'.format(os.getpid()),
     )
+=======
+        'distributed_fused_lamb_touch_file_{}'.format(os.getpid()))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     os.environ[touch_file_env] = touch_file_name
     try:
         assert os.system(cmd) == 0 and os.path.exists(
@@ -80,6 +91,7 @@ def run_test(
 
 
 class TestDistributedFusedLambWithClip(unittest.TestCase):
+
     def test_1(self):
         run_test(clip_after_allreduce=True, max_global_norm=0.01)
 

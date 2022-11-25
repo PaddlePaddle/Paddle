@@ -20,7 +20,10 @@ __all__ = []
 
 class PairwiseDistance(Layer):
     r"""
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     It computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
@@ -39,6 +42,7 @@ class PairwiseDistance(Layer):
             Generally, no setting is required. Default: None.
 
     Shape:
+<<<<<<< HEAD
         - x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
           is the dimension of the data. Available data type is float32, float64.
         - y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
@@ -47,6 +51,16 @@ class PairwiseDistance(Layer):
               depending on whether the input has data shaped as :math:`[N, D]`.
             - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
               depending on whether the input has data shaped as :math:`[N, D]`.
+=======
+        x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
+            is the dimension of the data. Available data type is float32, float64.
+        y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
+        output: The same dtype as input tensor.
+            - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
+                depending on whether the input has data shaped as :math:`[N, D]`.
+            - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
+                depending on whether the input has data shaped as :math:`[N, D]`.
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Examples:
         .. code-block:: python
@@ -69,9 +83,14 @@ class PairwiseDistance(Layer):
 
     def forward(self, x, y):
 
+<<<<<<< HEAD
         return F.pairwise_distance(
             x, y, self.p, self.epsilon, self.keepdim, self.name
         )
+=======
+        return F.pairwise_distance(x, y, self.p, self.epsilon, self.keepdim,
+                                   self.name)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def extra_repr(self):
         main_str = 'p={p}'

@@ -21,7 +21,10 @@ limitations under the License. */
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"

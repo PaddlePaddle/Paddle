@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
@@ -26,6 +27,20 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+=======
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/fluid/operators/norm_utils.cu.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -859,13 +874,18 @@ void BatchNormGradRawKernel(const Context &ctx,
 //         epsilon, saved_mean_data, saved_var_data));
 #else
       // CUDNN only support small batch size
+<<<<<<< HEAD
       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
       const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
+=======
+      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
       if (use_native_kernel) {
+<<<<<<< HEAD
         if (x_dims.size() == 2) {
           dim3 block;
           dim3 grid;
@@ -943,10 +963,21 @@ void BatchNormGradRawKernel(const Context &ctx,
                   transformed_x.template data<T>(),
                   mean_ptr,
                   variance_ptr,
+=======
+        if (compute_format == DataLayout::kNCHW) {
+          BNBackward<T, block, DataLayout::kNCHW>
+              <<<grid2, block, 0, ctx.stream()>>>(
+                  transformed_d_y.template data<T>(),
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  saved_mean_data,
+                  saved_var_data,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   C,
                   N,
                   H * W * D,
                   epsilon,
+<<<<<<< HEAD
                   block_data_ptr,
                   ctx.template Alloc<BatchNormParamType<T>>(d_scale),
                   ctx.template Alloc<BatchNormParamType<T>>(d_bias),
@@ -962,10 +993,24 @@ void BatchNormGradRawKernel(const Context &ctx,
                   d_bias->data<BatchNormParamType<T>>(),
                   mean_ptr,
                   variance_ptr,
+=======
+                  transformed_d_x.template data<T>(),
+                  ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+                  ctx.template Alloc<BatchNormParamType<T>>(d_bias));
+        } else {
+          BNBackward<T, block, DataLayout::kNHWC>
+              <<<grid2, block, 0, ctx.stream()>>>(
+                  transformed_d_y.template data<T>(),
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  saved_mean_data,
+                  saved_var_data,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   C,
                   N,
                   H * W * D,
                   epsilon,
+<<<<<<< HEAD
                   transformed_d_x.template data<T>());
 
         } else {
@@ -1000,6 +1045,11 @@ void BatchNormGradRawKernel(const Context &ctx,
                     ctx.template Alloc<BatchNormParamType<T>>(d_scale),
                     ctx.template Alloc<BatchNormParamType<T>>(d_bias));
           }
+=======
+                  transformed_d_x.template data<T>(),
+                  ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+                  ctx.template Alloc<BatchNormParamType<T>>(d_bias));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
       } else {
 #if CUDNN_VERSION_MIN(7, 4, 1)

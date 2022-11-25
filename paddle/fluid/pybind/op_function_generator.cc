@@ -469,6 +469,22 @@ GenerateOpFunctions(int split_count) {
 
     auto& op_type = op_proto->type();
 
+    op_info_map_need_gen.emplace(pair);
+  }
+
+  int cc_file_api_size = op_info_map_need_gen.size() / split_count;
+  if (op_info_map_need_gen.size() % split_count != 0) {
+    cc_file_api_size++;
+  }
+  int api_index = 0;
+  int file_index = 0;
+
+  for (auto& pair : op_info_map_need_gen) {
+    auto& op_info = pair.second;
+    auto op_proto = op_info.proto_;
+
+    auto& op_type = op_proto->type();
+
     // NOTE(pangyoki): Inplace Strategy.
     // In this case, output will reuse input varbase.
     // Dygraph mode needs to be aligned with the in-place strategy in static

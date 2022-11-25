@@ -55,6 +55,7 @@ ACTIVATION = {
 
 
 def lstm(
+<<<<<<< HEAD
     input,  # T x 4D
     lod,  # 1 x N
     h0=None,  # N x D
@@ -67,6 +68,20 @@ def lstm(
     act_cell=None,
     act_cand=None,
 ):
+=======
+        input,  # T x 4D
+        lod,  # 1 x N
+        h0=None,  # N x D
+        c0=None,  # N x D
+        w_h=None,  # D x 4D
+        w_b=None,  # 1 x 4D
+        w_c=None,  # 1 x 3D
+        is_reverse=False,
+        act_gate=None,
+        act_cell=None,
+        act_cand=None):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def _step(x, w_h, w_c, h_pre, c_pre, act_gate, act_cell, act_cand):
         g = np.dot(h_pre, w_h)  # 1 x 4D
         g = g + x
@@ -131,6 +146,7 @@ def lstm(
 
 
 class LstmUnitTestError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             batch_size = 20
@@ -138,6 +154,7 @@ class LstmUnitTestError(unittest.TestCase):
             dropout_prob = 0.2
             hidden_size = 150
             num_layers = 1
+<<<<<<< HEAD
             input = fluid.data(
                 name='input',
                 shape=[batch_size, seq_len, hidden_size],
@@ -149,6 +166,15 @@ class LstmUnitTestError(unittest.TestCase):
             pre_cell = fill_constant(
                 [num_layers, batch_size, hidden_size], 'float32', 0.0
             )
+=======
+            input = fluid.data(name='input',
+                               shape=[batch_size, seq_len, hidden_size],
+                               dtype='float32')
+            pre_hidden = fill_constant([num_layers, batch_size, hidden_size],
+                                       'float32', 0.0)
+            pre_cell = fill_constant([num_layers, batch_size, hidden_size],
+                                     'float32', 0.0)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             np_input = np.random.uniform(
                 -0.1, 0.1, (batch_size, seq_len, hidden_size)
@@ -200,6 +226,7 @@ class LstmUnitTestError(unittest.TestCase):
             self.assertRaises(TypeError, test_pre_cell_Variable)
 
             def test_input_type():
+<<<<<<< HEAD
                 error_input = fluid.data(
                     name='error_input',
                     shape=[None, hidden_size * 3],
@@ -214,10 +241,19 @@ class LstmUnitTestError(unittest.TestCase):
                     num_layers,
                     dropout_prob=dropout_prob,
                 )
+=======
+                error_input = fluid.data(name='error_input',
+                                         shape=[None, hidden_size * 3],
+                                         dtype='int32')
+                LSTM(error_input, pre_hidden, pre_cell, \
+                    seq_len, hidden_size, num_layers, \
+                    dropout_prob=dropout_prob)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_input_type)
 
             def test_pre_hidden_type():
+<<<<<<< HEAD
                 error_pre_hidden = fluid.data(
                     name='error_pre_hidden',
                     shape=[None, hidden_size],
@@ -232,10 +268,19 @@ class LstmUnitTestError(unittest.TestCase):
                     num_layers,
                     dropout_prob=dropout_prob,
                 )
+=======
+                error_pre_hidden = fluid.data(name='error_pre_hidden',
+                                              shape=[None, hidden_size],
+                                              dtype='int32')
+                LSTM(input, error_pre_hidden, pre_cell, \
+                    seq_len, hidden_size, num_layers, \
+                    dropout_prob=dropout_prob)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_pre_hidden_type)
 
             def test_pre_cell_type():
+<<<<<<< HEAD
                 error_pre_cell = fluid.data(
                     name='error_pre_cell',
                     shape=[None, hidden_size],
@@ -250,11 +295,20 @@ class LstmUnitTestError(unittest.TestCase):
                     num_layers,
                     dropout_prob=dropout_prob,
                 )
+=======
+                error_pre_cell = fluid.data(name='error_pre_cell',
+                                            shape=[None, hidden_size],
+                                            dtype='int32')
+                LSTM(input, pre_hidden, error_pre_cell, \
+                    seq_len, hidden_size, num_layers, \
+                    dropout_prob=dropout_prob)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_pre_cell_type)
 
 
 class TestLstmOp(OpTest):
+
     def set_is_test(self):
         self.is_test = False
 
@@ -337,6 +391,7 @@ class TestLstmOp(OpTest):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -346,24 +401,35 @@ class TestLstmOp(OpTest):
             max_relative_error=5e-4,
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'],
+                        max_relative_error=5e-4,
+                        check_dygraph=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestLstmOpCase1(TestLstmOp):
+
     def set_lod(self):
         self.lod = [[0, 3, 2]]
 
 
 class TestLstmOpCase2(TestLstmOp):
+
     def set_lod(self):
         self.lod = [[0, 3, 0]]
 
 
 class TestLstmOpCase3(TestLstmOp):
+
     def set_lod(self):
         self.lod = [[2, 0, 4]]
 
 
 class TestLstmOpInference(TestLstmOp):
+
     def set_is_test(self):
         self.is_test = True
 
@@ -373,18 +439,26 @@ class TestLstmOpInference(TestLstmOp):
 
 
 class TestLstmOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_Variable():
                 input_data = np.random.random((1, 2048)).astype("float32")
+<<<<<<< HEAD
                 fluid.layers.dynamic_lstm(
                     input=input_data, size=2048, use_peepholes=False
                 )
+=======
+                fluid.layers.dynamic_lstm(input=input_data,
+                                          size=2048,
+                                          use_peepholes=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_h_0():
+<<<<<<< HEAD
                 in_data = fluid.data(
                     name="input", shape=[None, 2048], dtype="float32"
                 )
@@ -393,10 +467,23 @@ class TestLstmOpError(unittest.TestCase):
                 fluid.layers.dynamic_lstm(
                     input=in_data, size=2048, use_peepholes=False, h_0=h, c_0=c
                 )
+=======
+                in_data = fluid.data(name="input",
+                                     shape=[None, 2048],
+                                     dtype="float32")
+                h = fluid.data(name="h", shape=[None, 512], dtype="int32")
+                c = fluid.data(name="c", shape=[None, 512], dtype="float32")
+                fluid.layers.dynamic_lstm(input=in_data,
+                                          size=2048,
+                                          use_peepholes=False,
+                                          h_0=h,
+                                          c_0=c)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_h_0)
 
             def test_c_0():
+<<<<<<< HEAD
                 in_data_ = fluid.data(
                     name="input_", shape=[None, 2048], dtype="float32"
                 )
@@ -409,6 +496,18 @@ class TestLstmOpError(unittest.TestCase):
                     h_0=h_,
                     c_0=c_,
                 )
+=======
+                in_data_ = fluid.data(name="input_",
+                                      shape=[None, 2048],
+                                      dtype="float32")
+                h_ = fluid.data(name="h_", shape=[None, 512], dtype="float32")
+                c_ = fluid.data(name="c_", shape=[None, 512], dtype="int32")
+                fluid.layers.dynamic_lstm(input=in_data_,
+                                          size=2048,
+                                          use_peepholes=False,
+                                          h_0=h_,
+                                          c_0=c_)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             self.assertRaises(TypeError, test_c_0)
 

@@ -12,18 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import unittest
 import paddle
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
+<<<<<<< HEAD
 import paddle.fluid as fluid
 from paddle.fluid.backward import append_backward
 import numpy
+=======
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid.backward import append_backward
+import numpy
+from paddle.fluid import compiler, Program, program_guard
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):
+<<<<<<< HEAD
     def simple_net(self):
         d0 = layers.data(
             "d0", shape=[10], append_batch_size=False, dtype='float32'
@@ -34,6 +48,22 @@ class TestWhileOp(unittest.TestCase):
         d2 = layers.data(
             "d2", shape=[10], append_batch_size=False, dtype='float32'
         )
+=======
+
+    def simple_net(self):
+        d0 = layers.data("d0",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d1 = layers.data("d1",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d2 = layers.data("d2",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
@@ -91,10 +121,19 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
+<<<<<<< HEAD
             outs = exe.run(
                 feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
                 fetch_list=[sum_result],
             )
+=======
+            outs = exe.run(feed={
+                'd0': d[0],
+                'd1': d[1],
+                'd2': d[2]
+            },
+                           fetch_list=[sum_result])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
     def test_simple_net_forward(self):

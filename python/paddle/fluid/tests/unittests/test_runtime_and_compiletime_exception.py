@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 
 
 class TestRunTimeException(unittest.TestCase):
+
     def test_run_time_exception(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -37,6 +38,7 @@ class TestRunTimeException(unittest.TestCase):
 
 
 class TestCompileTimeException(unittest.TestCase):
+
     def test_compile_time_exception(self):
         self.assertRaises(ValueError, self.build_model)
 
@@ -44,9 +46,16 @@ class TestCompileTimeException(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
+<<<<<<< HEAD
             label = fluid.layers.data(
                 name="label", shape=[1], dtype="int64", append_batch_size=False
             )
+=======
+            label = fluid.layers.data(name="label",
+                                      shape=[1],
+                                      dtype="int64",
+                                      append_batch_size=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fluid.layers.one_hot(input=label, depth=100)
 
 

@@ -16,14 +16,18 @@
 
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+<<<<<<< HEAD
 
 DECLARE_bool(cudnn_deterministic);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace phi {
 

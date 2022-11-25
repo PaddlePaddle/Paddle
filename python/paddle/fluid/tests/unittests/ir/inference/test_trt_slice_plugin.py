@@ -24,6 +24,7 @@ from paddle.fluid.core import AnalysisConfig
 
 # normal starts && ends
 class SlicePluginTRTTest(InferencePassTest):
+
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -43,9 +44,16 @@ class SlicePluginTRTTest(InferencePassTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
+<<<<<<< HEAD
             slice_out = fluid.layers.slice(
                 data, axes=axes, starts=starts, ends=ends
             )
+=======
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = fluid.layers.batch_norm(slice_out, is_test=True)
 
         self.feeds = {
@@ -66,6 +74,7 @@ class SlicePluginTRTTest(InferencePassTest):
 
 # negative starts && ends
 class SlicePluginTRTTestNegativeStartsAndEnds(SlicePluginTRTTest):
+
     def setUpSliceParams(self):
         self.params_axes = [2, 3]
         self.params_starts = [-3, -2]
@@ -74,6 +83,7 @@ class SlicePluginTRTTestNegativeStartsAndEnds(SlicePluginTRTTest):
 
 # exceeded bound starts && ends
 class SlicePluginTRTTestStartsAndEndsBoundCheck(SlicePluginTRTTest):
+
     def setUpSliceParams(self):
         self.params_axes = [2, 3]
         self.params_starts = [-5, -2]
@@ -82,6 +92,7 @@ class SlicePluginTRTTestStartsAndEndsBoundCheck(SlicePluginTRTTest):
 
 # fp16
 class SlicePluginTRTTestFp16(SlicePluginTRTTest):
+
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
@@ -90,6 +101,7 @@ class SlicePluginTRTTestFp16(SlicePluginTRTTest):
 
 
 class StaticSlicePluginTRTTestFp16(SlicePluginTRTTest):
+
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False
@@ -98,6 +110,7 @@ class StaticSlicePluginTRTTestFp16(SlicePluginTRTTest):
 
 
 class StaticSlicePluginTRTTestFp32(SlicePluginTRTTest):
+
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False
@@ -106,6 +119,10 @@ class StaticSlicePluginTRTTestFp32(SlicePluginTRTTest):
 
 
 class SlicePluginTRTTestInt32(SlicePluginTRTTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
@@ -114,9 +131,16 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
+<<<<<<< HEAD
             slice_out = fluid.layers.slice(
                 data, axes=axes, starts=starts, ends=ends
             )
+=======
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             cast_out = fluid.layers.cast(slice_out, 'float32')
             out = fluid.layers.batch_norm(cast_out, is_test=True)
 
@@ -127,10 +151,17 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
 
 
 class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
+<<<<<<< HEAD
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False
         )
+=======
+
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.enable_trt = True
 
     def setUp(self):
@@ -141,9 +172,16 @@ class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
+<<<<<<< HEAD
             slice_out = fluid.layers.slice(
                 data, axes=axes, starts=starts, ends=ends
             )
+=======
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             cast_out = fluid.layers.cast(slice_out, 'float32')
             out = fluid.layers.batch_norm(cast_out, is_test=True)
 

@@ -39,7 +39,11 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                       platform::errors::InvalidArgument(
                           "Input 'Offsets' and attribute 'offsets' "
                           "should not be used at the same time for CropOp."));
+<<<<<<< HEAD
     const auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
+=======
+    const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(),
                       1,
                       platform::errors::InvalidArgument(

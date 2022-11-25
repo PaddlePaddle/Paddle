@@ -57,12 +57,30 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+<<<<<<< HEAD
     return framework::OpKernelType(data_type, ctx.device_context());
+=======
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(
+        data_type, ctx.device_context(), layout, library);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const Tensor& tensor,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
@@ -129,7 +147,11 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
                             GaussianRandomInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::GaussianInferMeta));
+=======
+                            PD_INFER_META(phi::GaussianRandomInferMeta));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 REGISTER_OPERATOR(
     gaussian_random,

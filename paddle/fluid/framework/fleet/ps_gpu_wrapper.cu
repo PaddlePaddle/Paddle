@@ -22,12 +22,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 const int CUDA_NUM_THREADS = phi::PADDLE_CUDA_NUM_THREADS;
+=======
+const int CUDA_NUM_THREADS = platform::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #define GET_BLOCK(N) ((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS)
 #define CUDA_BLOCK(N) GET_BLOCK(N), CUDA_NUM_THREADS, 0
 

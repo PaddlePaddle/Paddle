@@ -19,10 +19,14 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+<<<<<<< HEAD
 from test_sum_op import TestReduceOPTensorAxisBase
 import gradient_checker
 from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
+=======
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 np.random.seed(10)
 
@@ -40,6 +44,7 @@ def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
 
 
 class TestMeanOp(OpTest):
+
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
@@ -74,12 +79,14 @@ class TestMeanOp_ZeroDim(OpTest):
 
 
 class TestMeanOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
+<<<<<<< HEAD
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
             )
@@ -87,6 +94,15 @@ class TestMeanOpError(unittest.TestCase):
             input3 = fluid.layers.data(
                 name='input3', shape=[4], dtype="float16"
             )
+=======
+            input2 = fluid.layers.data(name='input2',
+                                       shape=[12, 10],
+                                       dtype="int32")
+            self.assertRaises(TypeError, paddle.mean, input2)
+            input3 = fluid.layers.data(name='input3',
+                                       shape=[4],
+                                       dtype="float16")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fluid.layers.softmax(input3)
 
 
@@ -94,6 +110,7 @@ class TestMeanOpError(unittest.TestCase):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestFP16MeanOp(TestMeanOp):
+
     def init_dtype_type(self):
         self.dtype = np.float16
         self.__class__.no_need_check_grad = True
@@ -120,6 +137,7 @@ class TestFP16MeanOp(TestMeanOp):
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestBF16MeanOp(TestMeanOp):
+
     def init_dtype_type(self):
         self.dtype = np.uint16
 
@@ -149,6 +167,7 @@ def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
 
 
 class TestReduceMeanOp(OpTest):
+
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
@@ -198,6 +217,7 @@ class TestReduceMeanOp(OpTest):
                 return
             with fluid.dygraph.guard(place=place):
                 x = paddle.tensor(self.inputs['X'])
+<<<<<<< HEAD
                 y = paddle.mean(
                     x, axis=self.attrs['dim'], keepdim=self.attrs['keep_dim']
                 )
@@ -209,9 +229,20 @@ class TestReduceMeanOp(OpTest):
                     self.attrs['reduce_all'],
                 )
                 np.testing.assert_array_equal(dx, dx_expected)
+=======
+                y = paddle.mean(x,
+                                axis=self.attrs['dim'],
+                                keepdim=self.attrs['keep_dim'])
+                dx = paddle.grad(y, x)[0].numpy()
+                dx_expected = ref_reduce_mean_grad(self.inputs['X'],
+                                                   self.attrs['dim'],
+                                                   self.dtype)
+                self.assertTrue(np.array_equal(dx, dx_expected))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
+
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
@@ -225,88 +256,104 @@ class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
 
 
 class TestReduceMeanOpFloat32(TestReduceMeanOp):
+
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestReduceMeanOpFloat16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.dtype = 'float16'
 
 
 class TestReduceMeanOpShape1D(TestReduceMeanOp):
+
     def set_attrs(self):
         self.shape = [100]
 
 
 class TestReduceMeanOpShape1DFP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.shape = [100]
         self.dtype = 'float16'
 
 
 class TestReduceMeanOpShape6D(TestReduceMeanOp):
+
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
 
 
 class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
         self.dtype = 'float16'
 
 
 class TestReduceMeanOpAxisAll(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
 
 class TestReduceMeanOpAxisAllFP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
         self.dtype = 'float16'
 
 
 class TestReduceMeanOpAxisTuple(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = (0, 1, 2)
 
 
 class TestReduceMeanOpAxisTupleFP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = (0, 1, 2)
         self.dtype = 'float16'
 
 
 class TestReduceMeanOpAxisNegative(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = [-2, -1]
 
 
 class TestReduceMeanOpAxisNegativeFP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = [-2, -1]
         self.dtype = 'float16'
 
 
 class TestReduceMeanOpKeepdimTrue1(TestReduceMeanOp):
+
     def set_attrs(self):
         self.keepdim = True
 
 
 class TestReduceMeanOpKeepdimTrue1FP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.keepdim = True
         self.dtype = 'float16'
 
 
 class TestReduceMeanOpKeepdimTrue2(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
         self.keepdim = True
 
 
 class TestReduceMeanOpKeepdimTrue2FP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
         self.keepdim = True
@@ -314,11 +361,13 @@ class TestReduceMeanOpKeepdimTrue2FP16(TestReduceMeanOp):
 
 
 class TestReduceMeanOpReduceAllTrue(TestReduceMeanOp):
+
     def set_attrs(self):
         self.reduce_all = True
 
 
 class TestReduceMeanOpReduceAllTrueFP16(TestReduceMeanOp):
+
     def set_attrs(self):
         self.reduce_all = True
         self.dtype = 'float16'
@@ -366,7 +415,12 @@ class TestMeanAPI(unittest.TestCase):
                 if len(axis) == 0:
                     axis = None
             out_ref = np.mean(x, axis, keepdims=keepdim)
+<<<<<<< HEAD
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
+=======
+            self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
+                             True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         test_case(self.x)
         test_case(self.x, [])

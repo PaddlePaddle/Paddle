@@ -20,6 +20,7 @@ from paddle.nn import Embedding, Layer
 
 
 class SimpleNet(Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size,
@@ -30,6 +31,17 @@ class SimpleNet(Layer):
         dtype="float32",
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 hidden_size,
+                 vocab_size,
+                 num_steps=20,
+                 init_scale=0.1,
+                 is_sparse=False,
+                 dtype="float32"):
+        super(SimpleNet, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -39,11 +51,16 @@ class SimpleNet(Layer):
             self.hidden_size,
             sparse=is_sparse,
             weight_attr=paddle.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 )
             ),
         )
+=======
+                initializer=paddle.nn.initializer.Uniform(low=-init_scale,
+                                                          high=init_scale)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.softmax_weight = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
@@ -98,6 +115,7 @@ init_scale = 0.1
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.arange(num_steps).astype('int64')
@@ -108,7 +126,9 @@ def fake_sample_reader():
 
 
 class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
+
     def get_model(self):
+<<<<<<< HEAD
         model = SimpleNet(
             hidden_size=hidden_size,
             vocab_size=vocab_size,
@@ -120,6 +140,17 @@ class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
         train_reader = paddle.batch(
             fake_sample_reader(), batch_size=batch_size, drop_last=True
         )
+=======
+        model = SimpleNet(hidden_size=hidden_size,
+                          vocab_size=vocab_size,
+                          num_steps=num_steps,
+                          init_scale=init_scale,
+                          is_sparse=False)
+
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=model.parameters()

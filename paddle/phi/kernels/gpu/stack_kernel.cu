@@ -88,9 +88,15 @@ void StackKernel(const Context& dev_ctx,
            config.thread_per_block,
            0,
            dev_ctx.stream()>>>(reinterpret_cast<T**>(tmp_x_data->ptr()),
+<<<<<<< HEAD
                                static_cast<int32_t>(x_col),
                                static_cast<int32_t>(x_row),
                                static_cast<int32_t>(out_col),
+=======
+                               x_col,
+                               x_row,
+                               out_col,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                y_data);
   } else {
     StackCUDAKernel<T, int64_t>

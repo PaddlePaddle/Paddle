@@ -29,6 +29,7 @@ LOG_AllTransformer = 100
 
 
 def synchronized(func):
+
     def wrapper(*args, **kwargs):
         with threading.Lock():
             return func(*args, **kwargs)

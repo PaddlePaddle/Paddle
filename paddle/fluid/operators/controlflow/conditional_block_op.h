@@ -50,12 +50,20 @@ class ConditionalOp : public framework::OperatorBase {
         xs.begin(),
         xs.end(),
         retv.begin(),
+<<<<<<< HEAD
         [&scope](const std::string &var_name) -> const phi::DenseTensor * {
+=======
+        [&scope](const std::string &var_name) -> const framework::LoDTensor * {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           auto *var = scope.FindVar(var_name);
           PADDLE_ENFORCE_NOT_NULL(var,
                                   platform::errors::InvalidArgument(
                                       "Cannot find variable %s", var_name));
+<<<<<<< HEAD
           return &var->Get<phi::DenseTensor>();
+=======
+          return &var->Get<framework::LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         });
     return retv;
   }

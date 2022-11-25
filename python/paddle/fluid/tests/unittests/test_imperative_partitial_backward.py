@@ -19,6 +19,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativePartitialBackward(unittest.TestCase):
+
     def func_partitial_backward(self):
         with fluid.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
@@ -38,6 +39,7 @@ class TestImperativePartitialBackward(unittest.TestCase):
                 self.assertIsNone(param._grad_ivar())
 
             optimizer = fluid.optimizer.AdamOptimizer(
+<<<<<<< HEAD
                 parameter_list=(linear1.parameters() + linear2.parameters())
             )
             _, params_grads = optimizer.minimize(loss)
@@ -46,6 +48,13 @@ class TestImperativePartitialBackward(unittest.TestCase):
                 sorted([p.name for p in linear1.parameters()]),
                 sorted([p_g[0].name for p_g in params_grads]),
             )
+=======
+                parameter_list=(linear1.parameters() + linear2.parameters()))
+            _, params_grads = optimizer.minimize(loss)
+
+            self.assertListEqual(sorted([p.name for p in linear1.parameters()]),
+                                 sorted([p_g[0].name for p_g in params_grads]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             linear1.clear_gradients()
             linear2.clear_gradients()

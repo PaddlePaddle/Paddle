@@ -19,7 +19,23 @@
 #include <unordered_map>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+=======
+#include "paddle/phi/core/utils/rw_lock.h"
+
+// When in inference scenario, the scopes will not be written by two threads in
+// a mean time, but a scope may be read by multiple threads concurrently, and
+// the mutex will cause serious performance issue.
+// So the mutex is disabled when `ON_INFER`.
+#ifdef PADDLE_ON_INFERENCE
+#define SCOPE_VARS_READER_LOCK
+#define SCOPE_VARS_WRITER_LOCK
+#else
+#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 namespace paddle {
 namespace framework {
@@ -230,6 +246,7 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     Variable* in_var = in_var_list[i];
     if (!in_var->IsType<phi::DenseTensor>()) return;
     Variable* out_var = out_var_list[i];
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(
         out_var->IsType<phi::DenseTensor>(),
         true,
@@ -239,6 +256,16 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
             out_var_names[i]));
     auto& in_tensor = in_var->Get<phi::DenseTensor>();
     auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+=======
+    PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "The %d-th output of Output(%s) must be LoDTensor.",
+                          i,
+                          out_var_names[i]));
+    auto& in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
     if (in_tensor.layout() != DataLayout::ONEDNN)
@@ -282,7 +309,11 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
   if (!in_var->IsType<phi::DenseTensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
       out_var->IsType<phi::DenseTensor>(),
+=======
+      out_var->IsType<LoDTensor>(),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       true,
       platform::errors::InvalidArgument(
           "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
@@ -613,11 +644,15 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = id;
     vec_meta_info_.emplace_back(0, var_desc);
+<<<<<<< HEAD
     if (local_scope_ != nullptr) {
       var_list_.push_back(local_scope_->FindVar(name));
     } else {
       var_list_.push_back(scope_->FindVar(name));
     }
+=======
+    var_list_.push_back(local_scope_->FindVar(name));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),
@@ -666,6 +701,7 @@ void VariableScope::CheckExist(const std::string& name) const {
       HasVar(name),
       true,
       platform::errors::NotFound("%s not in VariableScope.", name));
+<<<<<<< HEAD
 }
 
 Instruction::Instruction(size_t id,
@@ -708,6 +744,21 @@ void Instruction::RecordEvent(const Place& place) const {
     event_to_record_->event_->Record(&dev_ctx_);
   }
 }
+=======
+}
+
+Instruction::Instruction(size_t id,
+                         OpFuncNode&& op_func_node,
+                         const platform::DeviceContext& dev_ctx)
+    : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
+  PADDLE_ENFORCE_GE(id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "Required id >= 0, but received id = %d", id));
+}
+
+size_t Instruction::Id() const { return id_; }
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 const std::map<std::string, std::vector<int>>& Instruction::Inputs() const {
   return op_func_node_.input_index;

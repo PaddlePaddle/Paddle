@@ -18,6 +18,7 @@ __all__ = []
 
 
 class AMPOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super().__init__(optimizer)
         self.inner_opt = optimizer
@@ -31,12 +32,20 @@ class AMPOptimizer(MetaOptimizerBase):
         ]
         self.meta_optimizers_black_list = ["DGCOptimizer"]
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
         super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(AMPOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _init_wrapped_opt(self):
         if self.wrapped_opt is not None:
@@ -115,9 +124,15 @@ class AMPOptimizer(MetaOptimizerBase):
         return self.wrapped_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
+<<<<<<< HEAD
         return self.wrapped_opt.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
+=======
+        return self.wrapped_opt.apply_optimize(loss,
+                                               startup_program=startup_program,
+                                               params_grads=params_grads)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None

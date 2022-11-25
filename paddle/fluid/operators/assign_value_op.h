@@ -27,7 +27,11 @@ namespace operators {
 template <typename T>
 typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const char* value_name,
+<<<<<<< HEAD
     phi::DenseTensor* out,
+=======
+    framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const framework::ExecutionContext& ctx) {
   // phi::DenseTensore dtype is vector<bool>, it will be converted to
   //  vector<int>.
@@ -49,7 +53,11 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
 template <typename T>
 typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const char* value_name,
+<<<<<<< HEAD
     phi::DenseTensor* out,
+=======
+    framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const framework::ExecutionContext& ctx) {
   auto values = ctx.Attr<std::vector<T>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);

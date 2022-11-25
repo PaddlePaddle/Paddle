@@ -149,6 +149,7 @@ def bilinear_interp_np(
 
 
 class TestBilinearInterpOp(OpTest):
+
     def setUp(self):
         self.python_api = bilinear_interp_test
         self.out_size = None
@@ -181,6 +182,7 @@ class TestBilinearInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
+<<<<<<< HEAD
         output_np = bilinear_interp_np(
             input_np,
             out_h,
@@ -193,6 +195,12 @@ class TestBilinearInterpOp(OpTest):
             self.align_mode,
             self.data_layout,
         )
+=======
+        output_np = bilinear_interp_np(input_np, out_h, out_w, 0, 0,
+                                       self.out_size, self.actual_shape,
+                                       self.align_corners, self.align_mode,
+                                       self.data_layout)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -234,6 +242,7 @@ class TestBilinearInterpOp(OpTest):
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [4, 1, 7, 8]
@@ -245,6 +254,7 @@ class TestBilinearInterpCase1(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase2(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [3, 3, 9, 6]
@@ -256,6 +266,7 @@ class TestBilinearInterpCase2(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase3(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [1, 1, 32, 64]
@@ -267,6 +278,7 @@ class TestBilinearInterpCase3(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase4(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [4, 1, 7, 8]
@@ -279,6 +291,7 @@ class TestBilinearInterpCase4(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase5(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [3, 3, 9, 6]
@@ -291,6 +304,7 @@ class TestBilinearInterpCase5(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase6(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [1, 1, 32, 64]
@@ -303,6 +317,7 @@ class TestBilinearInterpCase6(TestBilinearInterpOp):
 
 
 class TestBilinearInterpCase7(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [1, 1, 32, 64]
@@ -314,6 +329,7 @@ class TestBilinearInterpCase7(TestBilinearInterpOp):
 
 
 class TestBilinearInterpSame(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 32, 64]
@@ -325,6 +341,7 @@ class TestBilinearInterpSame(TestBilinearInterpOp):
 
 
 class TestBilinearInterpActualShape(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [3, 2, 32, 16]
@@ -337,6 +354,7 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
 
 
 class TestBilinearInterpDataLayout(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 5, 5, 3]
@@ -350,15 +368,21 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
 
 
 class TestBilinearInterpOpUint8(OpTest):
+
     def setUp(self):
         self.python_api = bilinear_interp_test
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp_v2"
+<<<<<<< HEAD
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
+=======
+        input_np = np.random.randint(low=0, high=256,
+                                     size=self.input_shape).astype("uint8")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
@@ -422,6 +446,7 @@ class TestBilinearInterpOpUint8(OpTest):
 
 
 class TestBilinearInterpCase1Uint8(TestBilinearInterpOpUint8):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 32, 64]
@@ -433,6 +458,7 @@ class TestBilinearInterpCase1Uint8(TestBilinearInterpOpUint8):
 
 
 class TestBilinearInterpCase2Uint8(TestBilinearInterpOpUint8):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [4, 1, 7, 8]
@@ -445,24 +471,28 @@ class TestBilinearInterpCase2Uint8(TestBilinearInterpOpUint8):
 
 
 class TestBilinearInterpOtherMethod1(TestBilinearInterpOp):
+
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 1
 
 
 class TestBilinearInterpWithMethod2(TestBilinearInterpOp):
+
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 0
 
 
 class TestBilinearInterpWithMethod3(TestBilinearInterpOp):
+
     def set_align_mode(self):
         self.align_corners = True
         self.align_mode = 0
 
 
 class TestBilinearInterpScale1(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 7]
@@ -474,6 +504,7 @@ class TestBilinearInterpScale1(TestBilinearInterpOp):
 
 
 class TestBilinearInterpScale2(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 7]
@@ -485,6 +516,7 @@ class TestBilinearInterpScale2(TestBilinearInterpOp):
 
 
 class TestBilinearInterpScale3(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 7]
@@ -496,6 +528,7 @@ class TestBilinearInterpScale3(TestBilinearInterpOp):
 
 
 class TestBilinearInterpScale4(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 7]
@@ -507,6 +540,7 @@ class TestBilinearInterpScale4(TestBilinearInterpOp):
 
 
 class TestBilinearInterpZero(TestBilinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 7]
@@ -518,6 +552,7 @@ class TestBilinearInterpZero(TestBilinearInterpOp):
 
 
 class TestBilinearInterpOp_attr_tensor(OpTest):
+
     def setUp(self):
         self.python_api = bilinear_interp_test
         self.out_size = None
@@ -600,6 +635,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
 
 # out_size is a 1-D tensor
 class TestBilinearInterp_attr_tensor_Case1(TestBilinearInterpOp_attr_tensor):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [3, 3, 9, 6]
@@ -612,6 +648,7 @@ class TestBilinearInterp_attr_tensor_Case1(TestBilinearInterpOp_attr_tensor):
 
 # scale is a 1-D tensor
 class TestBilinearInterp_attr_tensor_Case2(TestBilinearInterpOp_attr_tensor):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [3, 2, 32, 16]
@@ -625,6 +662,7 @@ class TestBilinearInterp_attr_tensor_Case2(TestBilinearInterpOp_attr_tensor):
 
 # scale is a 1-D tensor
 class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
+
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [3, 2, 32, 16]
@@ -637,22 +675,35 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
 
 
 class TestBilinearInterpOpAPI(unittest.TestCase):
+
     def test_case(self):
         x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 
         dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
         actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
+<<<<<<< HEAD
         scale_tensor = fluid.data(
             name="scale_tensor", shape=[1], dtype="float32"
         )
+=======
+        scale_tensor = fluid.data(name="scale_tensor",
+                                  shape=[1],
+                                  dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
         out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
         out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
+<<<<<<< HEAD
         out4 = fluid.layers.resize_bilinear(
             x, out_shape=[4, 4], actual_shape=actual_size
         )
+=======
+        out4 = fluid.layers.resize_bilinear(x,
+                                            out_shape=[4, 4],
+                                            actual_shape=actual_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
 
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
@@ -680,14 +731,22 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
             return_numpy=True,
         )
 
+<<<<<<< HEAD
         expect_res = bilinear_interp_np(
             x_data, out_h=12, out_w=12, align_corners=True
         )
+=======
+        expect_res = bilinear_interp_np(x_data,
+                                        out_h=12,
+                                        out_w=12,
+                                        align_corners=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for res in results:
             np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
 class TestBilinearInterpOpAPI_dy(unittest.TestCase):
+
     def test_case(self):
         import paddle
 
@@ -698,6 +757,7 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
         with fluid.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             input_x = paddle.to_tensor(input_data)
+<<<<<<< HEAD
             expect_res = bilinear_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
@@ -705,9 +765,21 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
                 x=input_x, size=[12, 12], mode="bilinear", align_corners=False
             )
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+=======
+            expect_res = bilinear_interp_np(input_data,
+                                            out_h=12,
+                                            out_w=12,
+                                            align_corners=False)
+            out = interpolate(x=input_x,
+                              size=[12, 12],
+                              mode="bilinear",
+                              align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
+
     def test_case(self):
         import paddle
 
@@ -720,6 +792,7 @@ class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
             size_np = np.array([12, 12]).astype("int64")
             input_x = paddle.to_tensor(input_data)
             size = paddle.to_tensor(size_np)
+<<<<<<< HEAD
             expect_res = bilinear_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
@@ -727,9 +800,21 @@ class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
                 x=input_x, size=size, mode="bilinear", align_corners=False
             )
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+=======
+            expect_res = bilinear_interp_np(input_data,
+                                            out_h=12,
+                                            out_w=12,
+                                            align_corners=False)
+            out = interpolate(x=input_x,
+                              size=size,
+                              mode="bilinear",
+                              align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
+
     def test_case(self):
         import paddle
 
@@ -742,6 +827,7 @@ class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
             size_1 = np.array([12]).astype("int64")
             input_x = paddle.to_tensor(input_data)
             size = paddle.to_tensor(size_1)
+<<<<<<< HEAD
             expect_res = bilinear_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
@@ -752,9 +838,21 @@ class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
                 align_corners=False,
             )
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+=======
+            expect_res = bilinear_interp_np(input_data,
+                                            out_h=12,
+                                            out_w=12,
+                                            align_corners=False)
+            out = interpolate(x=input_x,
+                              size=[size, size],
+                              mode="bilinear",
+                              align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
+
     def test_case(self):
         import paddle
 
@@ -767,6 +865,7 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
             scale_np = np.array([2, 2]).astype("int64")
             input_x = paddle.to_tensor(input_data)
             scale = paddle.to_tensor(scale_np)
+<<<<<<< HEAD
             expect_res = bilinear_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
@@ -819,6 +918,17 @@ class TestBilinearInterpOpForFloat16(unittest.TestCase):
 
         np.testing.assert_allclose(y_np_1, y_np_2)
         np.testing.assert_allclose(x_g_np_1, x_g_np_2)
+=======
+            expect_res = bilinear_interp_np(input_data,
+                                            out_h=12,
+                                            out_w=12,
+                                            align_corners=False)
+            out = interpolate(x=input_x,
+                              scale_factor=scale,
+                              mode="bilinear",
+                              align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

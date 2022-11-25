@@ -87,3 +87,18 @@ REGISTER_OPERATOR(save,
                   ops::SaveOp,
                   ops::SaveOpProtoMaker,
                   ops::SaveOpVarTypeInference);
+<<<<<<< HEAD
+=======
+
+REGISTER_OP_CPU_KERNEL(
+    save,
+    ops::SaveOpKernel<phi::CPUContext, float>,
+    ops::SaveOpKernel<phi::CPUContext, double>,
+    ops::SaveOpKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::SaveOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SaveOpKernel<phi::CPUContext, int>,
+    ops::SaveOpKernel<phi::CPUContext, uint8_t>,
+    ops::SaveOpKernel<phi::CPUContext, int8_t>,
+    ops::SaveOpKernel<phi::CPUContext, int16_t>,
+    ops::SaveOpKernel<phi::CPUContext, int64_t>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

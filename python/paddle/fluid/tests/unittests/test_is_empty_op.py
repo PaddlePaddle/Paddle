@@ -19,6 +19,7 @@ import paddle
 
 
 class TestEmpty(OpTest):
+
     def setUp(self):
         self.op_type = "is_empty"
         self.inputs = {'X': np.array([1, 2, 3])}
@@ -29,6 +30,7 @@ class TestEmpty(OpTest):
 
 
 class TestNotEmpty(TestEmpty):
+
     def setUp(self):
         self.op_type = "is_empty"
         self.inputs = {'X': np.array([])}
@@ -36,6 +38,7 @@ class TestNotEmpty(TestEmpty):
 
 
 class TestIsEmptyOpError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -51,24 +54,37 @@ class TestIsEmptyOpError(unittest.TestCase):
 
             def test_type():
                 # dtype must be float32, float64, int32, int64
+<<<<<<< HEAD
                 x3 = paddle.static.data(
                     name="x3", shape=[4, 32, 32], dtype="bool"
                 )
+=======
+                x3 = paddle.static.data(name="x3",
+                                        shape=[4, 32, 32],
+                                        dtype="bool")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 res = paddle.is_empty(x=x3)
 
             self.assertRaises(TypeError, test_type)
 
             def test_name_type():
                 # name type must be string.
+<<<<<<< HEAD
                 x4 = paddle.static.data(
                     name="x4", shape=[3, 2], dtype="float32"
                 )
+=======
+                x4 = paddle.static.data(name="x4",
+                                        shape=[3, 2],
+                                        dtype="float32")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 res = paddle.is_empty(x=x4, name=1)
 
             self.assertRaises(TypeError, test_name_type)
 
 
 class TestIsEmptyOpDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         paddle.disable_static()
         input = paddle.rand(shape=[4, 32, 32], dtype='float32')

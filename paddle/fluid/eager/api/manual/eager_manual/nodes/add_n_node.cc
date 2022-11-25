@@ -64,7 +64,12 @@ AddNGradNodeFinal::operator()(
 
   // dygraph function
   for (size_t i = 0; i < returns[0].size(); i++) {
+<<<<<<< HEAD
     returns[0][i] = ::scale_ad_func(out_grad, phi::Scalar(1.0), 0.0, true);
+=======
+    returns[0][i] = ::scale_final_state_dygraph_function(
+        out_grad, phi::Scalar(1.0), 0.0, true);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   }
 
   // Check NaN and Inf id needed

@@ -15,7 +15,11 @@
 import unittest
 
 import os
+<<<<<<< HEAD
 import importlib
+=======
+import six
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import tempfile
 import numpy as np
 import paddle.fluid.core as core
@@ -28,16 +32,26 @@ import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
+<<<<<<< HEAD
 from paddle.fluid.io import (
     save_inference_model,
     load_inference_model,
     save_persistables,
 )
+=======
+from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
+from paddle.fluid.transpiler import memory_optimize
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 class InferModel:
+=======
+class InferModel(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, list):
         self.program = list[0]
         self.feed_var_names = list[1]
@@ -45,6 +59,7 @@ class InferModel:
 
 
 class TestBook(unittest.TestCase):
+
     def test_fit_line_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model")
@@ -70,6 +85,7 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
+<<<<<<< HEAD
         for i in range(100):
             tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5, 2]]).astype(
                 "float32"
@@ -81,6 +97,19 @@ class TestBook(unittest.TestCase):
                 feed={'x': tensor_x, 'y': tensor_y},
                 fetch_list=[avg_cost],
             )
+=======
+        for i in six.moves.xrange(100):
+            tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5,
+                                                          2]]).astype("float32")
+            tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
+
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Separated model and unified model
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
@@ -98,9 +127,18 @@ class TestBook(unittest.TestCase):
         )
         params_str = save_persistables(exe, None, main_program, None)
 
+<<<<<<< HEAD
         expected = exe.run(
             program, feed={'x': tensor_x, 'y': tensor_y}, fetch_list=[avg_cost]
         )[0]
+=======
+        expected = exe.run(program,
+                           feed={
+                               'x': tensor_x,
+                               'y': tensor_y
+                           },
+                           fetch_list=[avg_cost])[0]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         importlib.reload(executor)  # reload to build a new scope
 
@@ -129,6 +167,7 @@ class TestBook(unittest.TestCase):
 
         root_path.cleanup()
 
+<<<<<<< HEAD
         self.assertRaises(
             ValueError,
             fluid.io.load_inference_model,
@@ -137,9 +176,14 @@ class TestBook(unittest.TestCase):
             model_str,
             None,
         )
+=======
+        self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
+                          model_str, None)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestSaveInferenceModel(unittest.TestCase):
+
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model2")
@@ -186,9 +230,14 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe.run(init_program, feed={}, fetch_list=[])
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
+<<<<<<< HEAD
             save_inference_model(
                 MODEL_DIR, ["x", "y"], [avg_cost], exe, program
             )
+=======
+            save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe,
+                                 program)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             root_path.cleanup()
             expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
             self.assertTrue(len(w) > 0)
@@ -196,6 +245,7 @@ class TestSaveInferenceModel(unittest.TestCase):
 
 
 class TestInstance(unittest.TestCase):
+
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model3")
@@ -223,15 +273,21 @@ class TestInstance(unittest.TestCase):
         )
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
+<<<<<<< HEAD
         self.assertRaises(
             TypeError,
             save_inference_model,
             [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog],
         )
+=======
+        self.assertRaises(TypeError, save_inference_model,
+                          [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         root_path.cleanup()
 
 
 class TestSaveInferenceModelNew(unittest.TestCase):
+
     def test_save_and_load_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model5")
@@ -257,6 +313,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in range(3):
             exe.run(
                 program,
@@ -312,6 +369,28 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             'avg_cost',
             exe,
         )
+=======
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+
+        self.assertRaises(ValueError, paddle.static.save_inference_model, None,
+                          ['x', 'y'], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR + "/", [x, y], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, ['x', 'y'], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, 'x', [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, [x, y], ['avg_cost'], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                          MODEL_DIR, [x, y], 'avg_cost', exe)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         model_path = MODEL_DIR + "_isdir.pdmodel"
         os.makedirs(model_path)
@@ -344,12 +423,22 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdiparams"))
 
+<<<<<<< HEAD
         expected = exe.run(
             program, feed={'x': tensor_x, 'y': tensor_y}, fetch_list=[avg_cost]
         )[0]
+=======
+        expected = exe.run(program,
+                           feed={
+                               'x': tensor_x,
+                               'y': tensor_y
+                           },
+                           fetch_list=[avg_cost])[0]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         importlib.reload(executor)  # reload to build a new scope
 
+<<<<<<< HEAD
         self.assertRaises(
             ValueError, paddle.static.load_inference_model, None, exe
         )
@@ -395,6 +484,41 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             },
             fetch_list=model.fetch_vars,
         )
+=======
+        self.assertRaises(ValueError, paddle.static.load_inference_model, None,
+                          exe)
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                          MODEL_DIR + "/", exe)
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                          [MODEL_DIR], exe)
+        self.assertRaises(ValueError,
+                          paddle.static.load_inference_model,
+                          MODEL_DIR,
+                          exe,
+                          pserver_endpoints=None)
+        self.assertRaises(ValueError,
+                          paddle.static.load_inference_model,
+                          MODEL_DIR,
+                          exe,
+                          unsupported_param=None)
+        self.assertRaises((TypeError, ValueError),
+                          paddle.static.load_inference_model,
+                          None,
+                          exe,
+                          model_filename="illegal",
+                          params_filename="illegal")
+
+        model = InferModel(paddle.static.io.load_inference_model(
+            MODEL_DIR, exe))
+        root_path.cleanup()
+
+        outs = exe.run(model.program,
+                       feed={
+                           model.feed_var_names[0]: tensor_x,
+                           model.feed_var_names[1]: tensor_y
+                       },
+                       fetch_list=model.fetch_vars)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         actual = outs[0]
 
         self.assertEqual(model.feed_var_names, ["x", "y"])
@@ -434,12 +558,22 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in range(3):
             exe.run(
                 program,
                 feed={'x': tensor_x, 'y': tensor_y},
                 fetch_list=[avg_cost],
             )
+=======
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # test if return type of serialize_program is bytes
         res1 = paddle.static.io.serialize_program([x, y], [avg_cost])
@@ -481,12 +615,22 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in range(3):
             exe.run(
                 program,
                 feed={'x': tensor_x, 'y': tensor_y},
                 fetch_list=[avg_cost],
             )
+=======
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={
+                        'x': tensor_x,
+                        'y': tensor_y
+                    },
+                    fetch_list=[avg_cost])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # test if return type of serialize_program is bytes
         res = paddle.static.normalize_program(program, [x, y], [avg_cost])
@@ -510,6 +654,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
+
     def test_load_model_not_exist(self):
         place = core.CPUPlace()
         exe = executor.Executor(place)

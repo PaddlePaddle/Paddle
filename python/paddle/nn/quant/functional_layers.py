@@ -19,11 +19,13 @@ __all__ = []
 
 
 class FloatFunctionalLayer(Layer):
+
     def __init__(self):
         super().__init__()
 
 
 class add(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 
@@ -32,6 +34,7 @@ class add(FloatFunctionalLayer):
 
 
 class subtract(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 
@@ -40,6 +43,7 @@ class subtract(FloatFunctionalLayer):
 
 
 class multiply(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 
@@ -48,6 +52,7 @@ class multiply(FloatFunctionalLayer):
 
 
 class divide(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 
@@ -56,6 +61,7 @@ class divide(FloatFunctionalLayer):
 
 
 class reshape(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 
@@ -64,6 +70,7 @@ class reshape(FloatFunctionalLayer):
 
 
 class transpose(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 
@@ -72,6 +79,7 @@ class transpose(FloatFunctionalLayer):
 
 
 class concat(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 
@@ -80,6 +88,7 @@ class concat(FloatFunctionalLayer):
 
 
 class flatten(FloatFunctionalLayer):
+
     def __init__(self):
         super().__init__()
 

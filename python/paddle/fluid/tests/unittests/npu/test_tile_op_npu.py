@@ -29,6 +29,7 @@ np.random.seed(10)
 
 # Situation 1: repeat_times is a list (without tensor)
 class TestTileOpRank1(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -56,36 +57,42 @@ class TestTileOpRank1(OpTest):
 
 # with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
+
     def init_data(self):
         self.ori_shape = [120]
         self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
+
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
 
 
 class TestTileOpRank3_Corner(TestTileOpRank1):
+
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (1, 1, 1)
 
 
 class TestTileOpRank3_Corner2(TestTileOpRank1):
+
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
+
     def init_data(self):
         self.ori_shape = (2, 4, 15)
         self.repeat_times = (2, 1, 4)
 
 
 class TestTileOpRank4(TestTileOpRank1):
+
     def init_data(self):
         self.ori_shape = (2, 4, 5, 7)
         self.repeat_times = (3, 2, 1, 2)
@@ -93,6 +100,7 @@ class TestTileOpRank4(TestTileOpRank1):
 
 # Situation 2: repeat_times is a list (with tensor)
 class TestTileOpRank1_tensor_attr(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -128,6 +136,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
 
 
 class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
+
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [1, 1]
@@ -135,6 +144,7 @@ class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
 
 
 class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
+
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
@@ -143,6 +153,7 @@ class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
 
 # Situation 3: repeat_times is a tensor
 class TestTileOpRank1_tensor(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -172,6 +183,7 @@ class TestTileOpRank1_tensor(OpTest):
 
 
 class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
+
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
@@ -179,6 +191,7 @@ class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
 
 # Situation 4: input x is Integer
 class TestTileOpInteger(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -199,6 +212,7 @@ class TestTileOpInteger(OpTest):
 
 # Situation 5: input x is Integer
 class TestTileOpInt64_t(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -219,6 +233,7 @@ class TestTileOpInt64_t(OpTest):
 
 # Situation 6: input x is Bool
 class TestTileOpBool(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -237,6 +252,7 @@ class TestTileOpBool(OpTest):
 
 # Test python API
 class TestTileAPI(unittest.TestCase):
+
     def test_api(self):
         with fluid.dygraph.guard(paddle.NPUPlace(0)):
             np_x = np.random.random([12, 14]).astype("float32")

@@ -15,13 +15,20 @@
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.set_atol()
         self.set_test_op()
@@ -30,7 +37,11 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
 
     def set_test_op(self):
+<<<<<<< HEAD
         self.op = paddle.abs
+=======
+        self.op = paddle.fluid.layers.abs
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
     def set_data_feed(self):
@@ -44,9 +55,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out = self.op(x, **self.op_attrs)
         self.fetch_list = [out.name]
 
@@ -62,6 +79,10 @@ class TestBase(IPUOpTest):
 
 
 class TestAcos(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     @property
     def fp16_enabled(self):
         return False
@@ -71,137 +92,267 @@ class TestAcos(TestBase):
         self.atol = 1e-6
 
     def set_test_op(self):
+<<<<<<< HEAD
         self.op = paddle.acos
+=======
+        self.op = paddle.fluid.layers.acos
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestAsin(TestAcos):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.asin
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.asin
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestSinh(TestAcos):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.sinh
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.sinh
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestAtan(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.atan
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.atan
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestCeil(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.ceil
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.ceil
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestCos(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.cos
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.cos
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestCosh(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.cosh
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.cosh
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestErf(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.erf
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.erf
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestExp(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.exp
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.exp
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestFloor(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     @property
     def fp16_enabled(self):
         return False
 
     def set_test_op(self):
+<<<<<<< HEAD
         self.op = paddle.floor
+=======
+        self.op = paddle.fluid.layers.floor
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestLog(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.log
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.log
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestReciprocal(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.reciprocal
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reciprocal
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestRelu(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def set_test_op(self):
         self.op = paddle.fluid.layers.relu
         self.op_attrs = {}
 
 
 class TestRound(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.round
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.round
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestSigmoid(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.nn.functional.sigmoid
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.sigmoid
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestSign(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.sign
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.sign
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestSin(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.sin
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.sin
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestSoftplus(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.nn.functional.softplus
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.softplus
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestSoftsign(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.nn.functional.softsign
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.softsign
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestSqrt(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.sqrt
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.sqrt
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestTan(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.tan
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.tan
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 
 class TestTanh(TestBase):
+<<<<<<< HEAD
     def set_test_op(self):
         self.op = paddle.tanh
+=======
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.tanh
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.op_attrs = {}
 
 

@@ -16,7 +16,10 @@
 
 #include <cstdio>
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
@@ -54,6 +57,7 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   event.kernel_info.queued = kernel->queued;
   event.kernel_info.submitted = kernel->submitted;
   event.kernel_info.completed = kernel->completed;
+<<<<<<< HEAD
 
   float blocks_per_sm = 0.0;
   float warps_per_sm = 0.0;
@@ -98,6 +102,12 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   event.kernel_info.warps_per_sm = warps_per_sm;
   event.kernel_info.occupancy = occupancy;
 
+=======
+#ifdef PADDLE_WITH_HIP
+  event.kernel_info.kernelFunc = kernel->kernelFunc;
+  event.kernel_info.launchType = kernel->launchType;
+#endif
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   collector->AddDeviceEvent(std::move(event));
 }
 

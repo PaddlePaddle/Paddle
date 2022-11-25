@@ -40,6 +40,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
             image = fluid.layers.data(
                 name='image', shape=[784], dtype='float32'
             )
@@ -50,6 +51,16 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                 iterable=not use_legacy_py_reader,
                 use_double_buffer=use_double_buffer,
             )
+=======
+            image = fluid.layers.data(name='image',
+                                      shape=[784],
+                                      dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            py_reader = fluid.io.PyReader(feed_list=[image, label],
+                                          capacity=4,
+                                          iterable=not use_legacy_py_reader,
+                                          use_double_buffer=use_double_buffer)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             hidden = image
             for hidden_size in [10, 20, 30]:
                 hidden = fluid.layers.fc(
@@ -61,12 +72,20 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                     ),
                 )
 
+<<<<<<< HEAD
             predict_label = fluid.layers.fc(
                 hidden, size=CLASS_NUM, act='softmax'
             )
             loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label)
             )
+=======
+            predict_label = fluid.layers.fc(hidden,
+                                            size=CLASS_NUM,
+                                            act='softmax')
+            loss = paddle.mean(
+                fluid.layers.cross_entropy(input=predict_label, label=label))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -74,6 +93,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
 
 class TestBase(unittest.TestCase):
+<<<<<<< HEAD
     def run_main(
         self,
         use_legacy_py_reader,
@@ -81,6 +101,11 @@ class TestBase(unittest.TestCase):
         places,
         use_double_buffer,
     ):
+=======
+
+    def run_main(self, use_legacy_py_reader, with_data_parallel, places,
+                 use_double_buffer):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, py_reader, loss = simple_fc_net(
@@ -100,9 +125,14 @@ class TestBase(unittest.TestCase):
 
             prog = fluid.CompiledProgram(main_prog)
             if with_data_parallel:
+<<<<<<< HEAD
                 prog = prog.with_data_parallel(
                     loss_name=loss.name, places=places
                 )
+=======
+                prog = prog.with_data_parallel(loss_name=loss.name,
+                                               places=places)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             step = 0
             step_list = []

@@ -20,16 +20,27 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
+=======
+using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T>
 class Conv2DTransposeMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
     phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     output->mutable_data<T>(ctx.GetPlace());
     std::vector<int> output_padding =
         ctx.Attr<std::vector<int>>("output_padding");
@@ -131,6 +142,7 @@ template <typename T>
 class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
     const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
     const phi::DenseTensor* output_grad =
@@ -139,6 +151,14 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     phi::DenseTensor* filter_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
+=======
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if ((!input_grad) && (!filter_grad)) return;
 
@@ -148,13 +168,22 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
     const int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
+<<<<<<< HEAD
     const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+=======
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_format);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
     auto in_dims_size = in_dims.size();
 
+<<<<<<< HEAD
     const bool channel_last = (data_layout == phi::DataLayout::kNHWC);
+=======
+    const bool channel_last = (data_layout == framework::DataLayout::kNHWC);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     framework::DDim in_data_dims;
     if (channel_last) {
@@ -272,6 +301,7 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
           data_layout_mlu,
           ToCnnlDataType(input_grad_tensor.dtype()));
 
+<<<<<<< HEAD
       MLUCnnl::ConvolutionForward(ctx,
                                   conv_desc.get(),
                                   nullptr /*alpha*/,
@@ -284,6 +314,28 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
                                   GetBasePtr(&trans_filter),
                                   input_grad_desc.get(),
                                   GetBasePtr(&input_grad_tensor));
+=======
+      cnnlDataType_t tensor_dtype = ToCnnlDataType<T>();
+      cnnlDataType_t dt_onchip = ToCnnlDataType<T>();
+      MLUCnnl::Conv2D(ctx,
+                      conv_desc.get(),
+                      tensor_dtype,
+                      dt_onchip,
+                      nullptr /* input_position */,
+                      nullptr /* input_scale */,
+                      nullptr /* input_offset */,
+                      nullptr /* filter_position */,
+                      nullptr /* filter_scale */,
+                      nullptr /* filter_offset */,
+                      output_grad_desc.get(),
+                      GetBasePtr(&output_grad_tensor),
+                      trans_filter_desc.get(),
+                      GetBasePtr(&trans_filter),
+                      nullptr /* bias_desc*/,
+                      nullptr /* bias */,
+                      input_grad_desc.get(),
+                      GetBasePtr(&input_grad_tensor));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       if (!channel_last) {
         // transpose output from NHWC to NCHW
         const std::vector<int> perm_to_nchw = {0, 3, 1, 2};

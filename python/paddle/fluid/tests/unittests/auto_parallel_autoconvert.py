@@ -46,10 +46,19 @@ PP_MESH_1 = None
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 hidden_size=64,
+                 intermediate_size=4 * 64,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         d_model = hidden_size
         dim_feedforward = intermediate_size
         np.random.seed(2021)
@@ -58,16 +67,28 @@ class MLPLayer(nn.Layer):
         weight_attr0 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr0))
         weight_attr1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr1))
         bias_attr = None
+<<<<<<< HEAD
         self.linear0 = nn.Linear(
             d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr
         )
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr1, bias_attr=bias_attr
         )
+=======
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr0,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr1,
+                                 bias_attr=bias_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
         if _global_parallel_strategy == "pp":
+<<<<<<< HEAD
             auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
             auto.shard_tensor(self.linear1.weight, PP_MESH_1, [None, None])
         elif _global_parallel_strategy == "mp":
@@ -84,6 +105,40 @@ class MLPLayer(nn.Layer):
             auto.shard_tensor(
                 self.linear1.weight, _global_process_mesh, [None, None]
             )
+=======
+            auto.shard_tensor(self.linear0.weight,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_0,
+                                  "dims_mapping": [-1, -1]
+                              })
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_1,
+                                  "dims_mapping": [-1, -1]
+                              })
+        elif _global_parallel_strategy == "mp":
+            auto.shard_tensor(self.linear0.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 0]
+                              })
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
+        elif _global_parallel_strategy == "dp":
+            auto.shard_tensor(self.linear0.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, -1]
+                              })
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, -1]
+                              })
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -98,6 +153,7 @@ def mlp_forward(train_program, start_program):
     ), utils.unique_name.guard():
         batch_size = 4
         hidden_size = 64
+<<<<<<< HEAD
         input = static.data(
             name="input", shape=[batch_size, hidden_size], dtype='float32'
         )
@@ -118,6 +174,42 @@ def mlp_forward(train_program, start_program):
             intermediate_size=4 * hidden_size,
             initializer_range=0.02,
         )
+=======
+        input = static.data(name="input",
+                            shape=[batch_size, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
+
+        if _global_parallel_strategy == "pp":
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_0,
+                                  "dims_mapping": [-1, -1]
+                              })
+            auto.shard_tensor(label,
+                              dist_attr={
+                                  "process_mesh": PP_MESH_1,
+                                  "dims_mapping": [-1, -1]
+                              })
+        elif _global_parallel_strategy == "dp":
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
+        elif _global_parallel_strategy == "mp":
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, -1]
+                              })
+
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
@@ -143,6 +235,7 @@ def get_distributed_program():
 
 
 class TestMLPAutoConvert(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2021)
         random.seed(2021)
@@ -177,6 +270,7 @@ class TestMLPAutoConvert(unittest.TestCase):
 
         for step in range(20):
             if step == 10:
+<<<<<<< HEAD
                 save_distributed_checkpoint(
                     dist_main_prog, ".", dist_attr_path="."
                 )
@@ -189,6 +283,18 @@ class TestMLPAutoConvert(unittest.TestCase):
                 },
                 fetch_list=[loss],
             )
+=======
+                save_distributed_checkpoint(dist_main_prog,
+                                            ".",
+                                            dist_attr_path=".")
+
+            res = exe.run(dist_main_prog,
+                          feed={
+                              "input": input[step * 4:(step + 1) * 4, :],
+                              "label": label[step * 4:(step + 1) * 4, :]
+                          },
+                          fetch_list=[loss])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         last_res = res[0]
 
         set_default_distributed_context(None)
@@ -242,6 +348,7 @@ class TestMLPAutoConvert(unittest.TestCase):
 
 
 class TestMLPAutoConvert2(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2021)
         random.seed(2021)
@@ -348,6 +455,7 @@ class TestMLPAutoConvert2(unittest.TestCase):
 
 
 class TestMLPAutoConvertInvalid(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2021)
         random.seed(2021)
@@ -361,6 +469,7 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
         _global_process_mesh = auto.ProcessMesh([0, 1], dim_names=["x"])
         dist_main_prog, _, _ = get_distributed_program()
         with self.assertRaises(TypeError):
+<<<<<<< HEAD
             save_distributed_checkpoint(
                 dist_main_prog, [""], [""], addition_info=[0]
             )
@@ -372,6 +481,16 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
             save_distributed_checkpoint(
                 dist_main_prog, [""], [""], addition_info={"batch": 0.0}
             )
+=======
+            save_distributed_checkpoint(dist_main_prog, [""], [""],
+                                        addition_info=[0])
+        with self.assertRaises(ValueError):
+            save_distributed_checkpoint(dist_main_prog, [""], [""],
+                                        addition_info={"step": 0})
+        with self.assertRaises(ValueError):
+            save_distributed_checkpoint(dist_main_prog, [""], [""],
+                                        addition_info={"batch": 0.0})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with self.assertRaises(ValueError):
             load_checkpoint_into_program(
                 ["./model_state_rank.pdmodel"],
@@ -383,10 +502,15 @@ class TestMLPAutoConvertInvalid(unittest.TestCase):
                 ["./model_state_rank.pdmodel"], ["./dist_attr_rank.pdattr"]
             )
         with self.assertRaises(TypeError):
+<<<<<<< HEAD
             load_distributed_checkpoint(
                 {"0": "./model_state_rank.pdmodel"},
                 {"1": "./dist_attr_rank.pdattr"},
             )
+=======
+            load_distributed_checkpoint({"0": "./model_state_rank.pdmodel"},
+                                        {"1": "./dist_attr_rank.pdattr"})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == "__main__":

@@ -23,14 +23,20 @@ from paddle import _C_ops, _legacy_C_ops
 # in dygraph mode. If static mode is used, the inplace mechanism will not be used, and the static method
 # of the original API will be called.
 def _inplace_apis_in_dygraph_only_(func):
+
     def __impl__(*args, **kwargs):
         if not _non_static_mode():
             origin_api_name = func.__name__[:-1]
             warnings.warn(
+<<<<<<< HEAD
                 "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
                     func.__name__, origin_api_name
                 )
             )
+=======
+                "In static mode, {}() is the same as {}() and does not perform inplace operation."
+                .format(func.__name__, origin_api_name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             origin_func = "{}.{}".format(func.__module__, origin_api_name)
             return eval(origin_func)(*args, **kwargs)
         return func(*args, **kwargs)

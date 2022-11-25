@@ -19,6 +19,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLayerDict(unittest.TestCase):
+
     def func_layer_dict(self):
         layers = OrderedDict(
             [

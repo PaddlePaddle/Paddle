@@ -58,6 +58,7 @@ class KaimingNormal(MSRAInitializer):
     """
 
     def __init__(self, fan_in=None, negative_slope=0.0, nonlinearity='relu'):
+<<<<<<< HEAD
         super().__init__(
             uniform=False,
             fan_in=fan_in,
@@ -65,6 +66,13 @@ class KaimingNormal(MSRAInitializer):
             negative_slope=negative_slope,
             nonlinearity=nonlinearity,
         )
+=======
+        super(KaimingNormal, self).__init__(uniform=False,
+                                            fan_in=fan_in,
+                                            seed=0,
+                                            negative_slope=negative_slope,
+                                            nonlinearity=nonlinearity)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class KaimingUniform(MSRAInitializer):
@@ -106,6 +114,7 @@ class KaimingUniform(MSRAInitializer):
     """
 
     def __init__(self, fan_in=None, negative_slope=0.0, nonlinearity='relu'):
+<<<<<<< HEAD
         super().__init__(
             uniform=True,
             fan_in=fan_in,
@@ -113,3 +122,10 @@ class KaimingUniform(MSRAInitializer):
             negative_slope=negative_slope,
             nonlinearity=nonlinearity,
         )
+=======
+        super(KaimingUniform, self).__init__(uniform=True,
+                                             fan_in=fan_in,
+                                             seed=0,
+                                             negative_slope=negative_slope,
+                                             nonlinearity=nonlinearity)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

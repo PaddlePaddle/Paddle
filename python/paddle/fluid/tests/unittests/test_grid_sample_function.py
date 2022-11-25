@@ -21,6 +21,7 @@ import unittest
 
 
 class GridSampleTestCase(unittest.TestCase):
+<<<<<<< HEAD
     def __init__(
         self,
         methodName='runTest',
@@ -31,6 +32,17 @@ class GridSampleTestCase(unittest.TestCase):
         align_corners=False,
     ):
         super().__init__(methodName)
+=======
+
+    def __init__(self,
+                 methodName='runTest',
+                 x_shape=[2, 2, 3, 3],
+                 grid_shape=[2, 3, 3, 2],
+                 mode="bilinear",
+                 padding_mode="zeros",
+                 align_corners=False):
+        super(GridSampleTestCase, self).__init__(methodName)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.padding_mode = padding_mode
         self.x_shape = x_shape
         self.grid_shape = grid_shape
@@ -50,6 +62,7 @@ class GridSampleTestCase(unittest.TestCase):
             with fluid.program_guard(main, start):
                 x = fluid.data("x", self.x_shape, dtype=self.dtype)
                 grid = fluid.data("grid", self.grid_shape, dtype=self.dtype)
+<<<<<<< HEAD
                 y_var = F.grid_sample(
                     x,
                     grid,
@@ -57,6 +70,13 @@ class GridSampleTestCase(unittest.TestCase):
                     padding_mode=self.padding_mode,
                     align_corners=self.align_corners,
                 )
+=======
+                y_var = F.grid_sample(x,
+                                      grid,
+                                      mode=self.mode,
+                                      padding_mode=self.padding_mode,
+                                      align_corners=self.align_corners)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         feed_dict = {"x": self.x, "grid": self.grid}
         exe = fluid.Executor(place)
         exe.run(start)
@@ -66,6 +86,7 @@ class GridSampleTestCase(unittest.TestCase):
     def dynamic_functional(self):
         x_t = paddle.to_tensor(self.x)
         grid_t = paddle.to_tensor(self.grid)
+<<<<<<< HEAD
         y_t = F.grid_sample(
             x_t,
             grid_t,
@@ -73,6 +94,13 @@ class GridSampleTestCase(unittest.TestCase):
             padding_mode=self.padding_mode,
             align_corners=self.align_corners,
         )
+=======
+        y_t = F.grid_sample(x_t,
+                            grid_t,
+                            mode=self.mode,
+                            padding_mode=self.padding_mode,
+                            align_corners=self.align_corners)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         y_np = y_t.numpy()
         return y_np
 
@@ -92,6 +120,7 @@ class GridSampleTestCase(unittest.TestCase):
 
 
 class GridSampleErrorTestCase(GridSampleTestCase):
+
     def runTest(self):
         place = fluid.CPUPlace()
         with self.assertRaises(ValueError):
@@ -101,6 +130,7 @@ class GridSampleErrorTestCase(GridSampleTestCase):
 def add_cases(suite):
     suite.addTest(GridSampleTestCase(methodName='runTest'))
     suite.addTest(
+<<<<<<< HEAD
         GridSampleTestCase(
             methodName='runTest',
             mode='bilinear',
@@ -116,15 +146,32 @@ def add_cases(suite):
             align_corners=True,
         )
     )
+=======
+        GridSampleTestCase(methodName='runTest',
+                           mode='bilinear',
+                           padding_mode='reflection',
+                           align_corners=True))
+    suite.addTest(
+        GridSampleTestCase(methodName='runTest',
+                           mode='bilinear',
+                           padding_mode='zeros',
+                           align_corners=True))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def add_error_cases(suite):
     suite.addTest(
+<<<<<<< HEAD
         GridSampleErrorTestCase(methodName='runTest', padding_mode="VALID")
     )
     suite.addTest(
         GridSampleErrorTestCase(methodName='runTest', align_corners="VALID")
     )
+=======
+        GridSampleErrorTestCase(methodName='runTest', padding_mode="VALID"))
+    suite.addTest(
+        GridSampleErrorTestCase(methodName='runTest', align_corners="VALID"))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     suite.addTest(GridSampleErrorTestCase(methodName='runTest', mode="VALID"))
 
 
@@ -136,6 +183,7 @@ def load_tests(loader, standard_tests, pattern):
 
 
 class TestGridSampleAPI(unittest.TestCase):
+
     def test_errors(self):
         with self.assertRaises(ValueError):
             x = paddle.randn([1, 1, 3, 3])

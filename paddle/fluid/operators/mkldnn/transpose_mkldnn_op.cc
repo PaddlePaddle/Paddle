@@ -21,8 +21,77 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
 using phi::DataLayout;
+=======
+using Tensor = framework::Tensor;
+using framework::DataLayout;
+
+template <typename T>
+class TransposeMKLDNNHandler {
+ public:
+  TransposeMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+                         std::vector<int>& axis,      // NOLINT
+                         dnnl::engine engine)
+      : dims_(dims),
+        axis_(axis),
+        logical_axis_(dims.size(), 0),
+        engine_(engine) {}
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const MKLDNNMemoryFormat& fmt,
+                                                 void* ptr) {
+    // Make memory descriptor using input format, unless it
+    // cannot be trusted (nchw) then make up memory fmt manually
+    for (size_t i = 0; i < this->logical_axis_.size(); ++i) {
+      this->logical_axis_[i] = i;
+    }
+
+    auto src_md = fmt != MKLDNNMemoryFormat::nchw
+                      ? platform::MKLDNNMemDesc(
+                            dims_, platform::MKLDNNGetDataType<T>(), fmt)
+                      : Axis2MemoryDesc(dims_, logical_axis_);
+    return std::make_shared<dnnl::memory>(src_md, engine_, ptr);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output,
+                                                 platform::Place place) {
+    auto dst_md = Axis2MemoryDesc(dims_, axis_);
+    auto dst_data = output->mutable_data<T>(place, dst_md.get_size());
+    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
+  }
+
+  std::shared_ptr<dnnl::reorder> AcquireTranspose(
+      std::shared_ptr<dnnl::memory> dst_memory_p,
+      std::shared_ptr<dnnl::memory> src_memory_p) {
+    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
+  }
+
+ protected:
+  dnnl::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
+                                     std::vector<int>& axis          // NOLINT
+  ) {
+    size_t ndims = axis.size();
+
+    std::vector<int64_t> strides(ndims);
+    unsigned int total_stride = 1;
+    for (int i = ndims - 1; i >= 0; --i) {
+      strides[axis[i]] = total_stride;
+      total_stride *= nchw_tz[axis[i]];
+    }
+    dnnl::memory::desc mem_d(
+        nchw_tz, platform::MKLDNNGetDataType<T>(), strides);
+
+    return mem_d;
+  }
+
+ private:
+  std::vector<int64_t> dims_;
+  std::vector<int> axis_;
+  std::vector<int> logical_axis_;
+  dnnl::engine engine_;
+};
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
@@ -60,6 +129,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
 
+<<<<<<< HEAD
     auto dst_md =
         dnnl::memory::desc(x_vec_dims,
                            x->mem_desc().data_type(),
@@ -80,6 +150,11 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                                     reorder_src_memory_p);
 
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+=======
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    transpose_p->execute(
+        astream, *transpose_src_memory_p, *transpose_dst_memory_p);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     astream.wait();
 
     platform::SetOutMemDescWithLogicalLayoutFusesSupport(
@@ -160,7 +235,13 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
+<<<<<<< HEAD
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+=======
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    transpose_p->execute(
+        astream, *transpose_src_memory_p, *transpose_dst_memory_p);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     astream.wait();
     dx->set_mem_desc(
         reorder_dst_memory_p->get_desc().permute_axes(transpose_axis));
@@ -172,6 +253,38 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
+=======
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    FP32,
+                                    ops::kTransposeMKLDNNFP32,
+                                    ops::TransposeMKLDNNOpKernel<float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    U8,
+                                    ops::kTransposeMKLDNNINT8,
+                                    ops::TransposeMKLDNNOpKernel<uint8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    S8,
+                                    ops::kTransposeMKLDNNINT8,
+                                    ops::TransposeMKLDNNOpKernel<int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    transpose2,
+    MKLDNN,
+    ::paddle::platform::CPUPlace,
+    BF16,
+    ops::kTransposeMKLDNNFP32,
+    ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 REGISTER_OP_KERNEL(transpose,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
@@ -182,6 +295,7 @@ REGISTER_OP_KERNEL(transpose_grad,
                    ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
 
+<<<<<<< HEAD
 REGISTER_OP_KERNEL(transpose2,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
@@ -189,3 +303,9 @@ REGISTER_OP_KERNEL(transpose2,
                    ops::TransposeMKLDNNOpKernel<uint8_t>,
                    ops::TransposeMKLDNNOpKernel<int8_t>,
                    ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);
+=======
+REGISTER_OP_KERNEL(transpose2_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNGradOpKernel<float>);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

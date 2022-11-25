@@ -37,7 +37,12 @@ train_parameters = {
 }
 
 
+<<<<<<< HEAD
 class SE_ResNeXt:
+=======
+class SE_ResNeXt():
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self, layers=50):
         self.params = train_parameters
         self.layers = layers
@@ -56,6 +61,7 @@ class SE_ResNeXt:
             depth = [3, 4, 6, 3]
             num_filters = [128, 256, 512, 1024]
 
+<<<<<<< HEAD
             conv = self.conv_bn_layer(
                 input=input, num_filters=64, filter_size=7, stride=2, act='relu'
             )
@@ -66,12 +72,25 @@ class SE_ResNeXt:
                 pool_padding=1,
                 pool_type='max',
             )
+=======
+            conv = self.conv_bn_layer(input=input,
+                                      num_filters=64,
+                                      filter_size=7,
+                                      stride=2,
+                                      act='relu')
+            conv = fluid.layers.pool2d(input=conv,
+                                       pool_size=3,
+                                       pool_stride=2,
+                                       pool_padding=1,
+                                       pool_type='max')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
             depth = [3, 4, 23, 3]
             num_filters = [128, 256, 512, 1024]
 
+<<<<<<< HEAD
             conv = self.conv_bn_layer(
                 input=input, num_filters=64, filter_size=7, stride=2, act='relu'
             )
@@ -82,12 +101,25 @@ class SE_ResNeXt:
                 pool_padding=1,
                 pool_type='max',
             )
+=======
+            conv = self.conv_bn_layer(input=input,
+                                      num_filters=64,
+                                      filter_size=7,
+                                      stride=2,
+                                      act='relu')
+            conv = fluid.layers.pool2d(input=conv,
+                                       pool_size=3,
+                                       pool_stride=2,
+                                       pool_padding=1,
+                                       pool_type='max')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
             depth = [3, 8, 36, 3]
             num_filters = [128, 256, 512, 1024]
 
+<<<<<<< HEAD
             conv = self.conv_bn_layer(
                 input=input, num_filters=64, filter_size=3, stride=2, act='relu'
             )
@@ -97,6 +129,23 @@ class SE_ResNeXt:
             conv = self.conv_bn_layer(
                 input=conv, num_filters=128, filter_size=3, stride=1, act='relu'
             )
+=======
+            conv = self.conv_bn_layer(input=input,
+                                      num_filters=64,
+                                      filter_size=3,
+                                      stride=2,
+                                      act='relu')
+            conv = self.conv_bn_layer(input=conv,
+                                      num_filters=64,
+                                      filter_size=3,
+                                      stride=1,
+                                      act='relu')
+            conv = self.conv_bn_layer(input=conv,
+                                      num_filters=128,
+                                      filter_size=3,
+                                      stride=1,
+                                      act='relu')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             conv = fluid.layers.pool2d(
                 input=conv,
                 pool_size=3,
@@ -115,19 +164,31 @@ class SE_ResNeXt:
                     reduction_ratio=reduction_ratio,
                 )
 
+<<<<<<< HEAD
         pool = fluid.layers.pool2d(
             input=conv, pool_size=7, pool_type='avg', global_pooling=True
         )
+=======
+        pool = fluid.layers.pool2d(input=conv,
+                                   pool_size=7,
+                                   pool_type='avg',
+                                   global_pooling=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
         out = fluid.layers.fc(
             input=drop,
             size=class_dim,
             act='softmax',
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
         )
+=======
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.05)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return out
 
     def shortcut(self, input, ch_out, stride):
@@ -138,6 +199,7 @@ class SE_ResNeXt:
         else:
             return input
 
+<<<<<<< HEAD
     def bottleneck_block(
         self, input, num_filters, stride, cardinality, reduction_ratio
     ):
@@ -160,6 +222,27 @@ class SE_ResNeXt:
             num_channels=num_filters * 2,
             reduction_ratio=reduction_ratio,
         )
+=======
+    def bottleneck_block(self, input, num_filters, stride, cardinality,
+                         reduction_ratio):
+        conv0 = self.conv_bn_layer(input=input,
+                                   num_filters=num_filters,
+                                   filter_size=1,
+                                   act='relu')
+        conv1 = self.conv_bn_layer(input=conv0,
+                                   num_filters=num_filters,
+                                   filter_size=3,
+                                   stride=stride,
+                                   groups=cardinality,
+                                   act='relu')
+        conv2 = self.conv_bn_layer(input=conv1,
+                                   num_filters=num_filters * 2,
+                                   filter_size=1,
+                                   act=None)
+        scale = self.squeeze_excitation(input=conv2,
+                                        num_channels=num_filters * 2,
+                                        reduction_ratio=reduction_ratio)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         short = self.shortcut(input, num_filters * 2, stride)
 
@@ -177,6 +260,7 @@ class SE_ResNeXt:
             groups=groups,
             act=None,
             # avoid pserver CPU init differs from GPU
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
@@ -188,34 +272,65 @@ class SE_ResNeXt:
         pool = fluid.layers.pool2d(
             input=input, pool_size=0, pool_type='avg', global_pooling=True
         )
+=======
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.05)),
+            bias_attr=False)
+        return fluid.layers.batch_norm(input=conv, act=act)
+
+    def squeeze_excitation(self, input, num_channels, reduction_ratio):
+        pool = fluid.layers.pool2d(input=input,
+                                   pool_size=0,
+                                   pool_type='avg',
+                                   global_pooling=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
         squeeze = fluid.layers.fc(
             input=pool,
             size=num_channels // reduction_ratio,
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
             act='relu',
         )
+=======
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.05)),
+            act='relu')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
         excitation = fluid.layers.fc(
             input=squeeze,
             size=num_channels,
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
             act='sigmoid',
         )
+=======
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.05)),
+            act='sigmoid')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
         return scale
 
 
 class DistSeResneXt2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, use_dgc=False):
         # Input data
+<<<<<<< HEAD
         image = fluid.layers.data(
             name="data", shape=[3, 224, 224], dtype='float32'
         )
+=======
+        image = fluid.layers.data(name="data",
+                                  shape=[3, 224, 224],
+                                  dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         label = fluid.layers.data(name="int64", shape=[1], dtype='int64')
 
         # Train program
@@ -241,13 +356,19 @@ class DistSeResneXt2x2(TestDistRunnerBase):
 
         if not use_dgc:
             optimizer = fluid.optimizer.Momentum(
+<<<<<<< HEAD
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr
                 ),
+=======
+                learning_rate=fluid.layers.piecewise_decay(boundaries=bd,
+                                                           values=lr),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4),
             )
         else:
+<<<<<<< HEAD
             optimizer = (
                 paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
                     learning_rate=fluid.layers.piecewise_decay(
@@ -267,6 +388,21 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         test_reader = paddle.batch(
             paddle.dataset.flowers.test(use_xmap=False), batch_size=batch_size
         )
+=======
+            optimizer = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=fluid.layers.piecewise_decay(boundaries=bd,
+                                                           values=lr),
+                momentum=0.9,
+                rampup_begin_step=0,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+        optimizer.minimize(avg_cost)
+
+        # Reader
+        train_reader = paddle.batch(paddle.dataset.flowers.test(use_xmap=False),
+                                    batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.flowers.test(use_xmap=False),
+                                   batch_size=batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return test_program, avg_cost, train_reader, test_reader, acc_top1, out
 

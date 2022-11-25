@@ -97,6 +97,7 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   // Set tiles_per_ipu for IPUMODEL
   ipu_strategy_instance_->tiles_per_ipu = 128;
 
+<<<<<<< HEAD
   // Set Cache path
   auto* ipu_cache_path = getenv("IPU_CACHE_PATH");
   if (ipu_cache_path) {
@@ -124,6 +125,8 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
     }
   }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   ipu_backend->SetIpuStrategy(*(ipu_strategy_instance_.get()));
 
   // Get feed_list and fetch list
@@ -170,11 +173,14 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
       pass->Set(
           "feed_list",
           new std::vector<std::string>(feed_list.begin(), feed_list.end()));
+<<<<<<< HEAD
     }
     if (pass_name == "popart_canonicalization_pass") {
       pass->Set("custom_ops",
                 new std::unordered_set<std::string>(custom_op_names.begin(),
                                                     custom_op_names.end()));
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     }
     pass->Apply(graph);
   }

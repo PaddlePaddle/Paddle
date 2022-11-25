@@ -67,12 +67,18 @@ class InternalStorage:
         """
         Move the underlying buffer
         """
+<<<<<<< HEAD
         assert (
             self.buffer is not None
         ), "Cannot move a collapsed bucket, please rebuild it"
         assert (
             dtype == Type.fp32.value or Type.fp16.value
         ), "Conversion type is not supported now"
+=======
+        assert self.buffer is not None, "Cannot move a collapsed bucket, please rebuild it"
+        assert (dtype == Type.fp32.value
+                or Type.fp16.value), "Conversion type is not supported now"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if self._device != device:
             tmp_buffer = (

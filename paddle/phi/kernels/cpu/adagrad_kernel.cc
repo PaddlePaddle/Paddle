@@ -14,6 +14,10 @@
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

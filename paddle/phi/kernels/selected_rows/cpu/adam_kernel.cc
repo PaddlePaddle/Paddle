@@ -18,7 +18,10 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/threadpool.h"
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 

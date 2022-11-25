@@ -116,6 +116,7 @@ class Imdb(Dataset):
                 if bool(pattern.match(tf.name)):
                     # newline and punctuations removal and ad-hoc tokenization.
                     data.append(
+<<<<<<< HEAD
                         tarf.extractfile(tf)
                         .read()
                         .rstrip(b'\n\r')
@@ -123,6 +124,12 @@ class Imdb(Dataset):
                         .lower()
                         .split()
                     )
+=======
+                        tarf.extractfile(tf).read().rstrip(
+                            six.b("\n\r")).translate(
+                                None,
+                                six.b(string.punctuation)).lower().split())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 tf = tarf.next()
 
         return data

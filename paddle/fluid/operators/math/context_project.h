@@ -90,14 +90,22 @@ class ContextProjectFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const LoDTensor& in,
+<<<<<<< HEAD
                   const phi::DenseTensor* padding_data,
+=======
+                  const Tensor* padding_data,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                   bool padding_trainable,
                   const int context_start,
                   const int context_length,
                   const int context_stride,
                   const int up_pad,
                   const int down_pad,
+<<<<<<< HEAD
                   phi::DenseTensor* col) {
+=======
+                  Tensor* col) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto lod_level_0 = in.lod()[0];
 
     phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
@@ -227,8 +235,13 @@ class ContextProjectGradFunctor {
                   const int down_pad,
                   bool pad_grad,
                   bool input_grad,
+<<<<<<< HEAD
                   phi::DenseTensor* padding_data,
                   phi::DenseTensor* col) {
+=======
+                  Tensor* padding_data,
+                  Tensor* col) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto lod_level_0 = in.lod()[0];
 
     phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>

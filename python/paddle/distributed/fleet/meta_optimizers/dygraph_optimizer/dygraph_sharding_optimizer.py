@@ -177,6 +177,7 @@ class DygraphShardingOptimizer:
 
         input_param_names = set([param.name for param in parameters])
         parameters = list(
+<<<<<<< HEAD
             filter(
                 lambda x: x.name in input_param_names,
                 self._rank2params[self._sharding_rank],
@@ -185,6 +186,12 @@ class DygraphShardingOptimizer:
         result = self._inner_optimizer.minimize(
             loss, startup_program, parameters, no_grad_set
         )
+=======
+            filter(lambda x: x.name in input_param_names,
+                   self._rank2params[self._sharding_rank]))
+        result = self._inner_optimizer.minimize(loss, startup_program,
+                                                parameters, no_grad_set)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()

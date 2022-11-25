@@ -26,6 +26,7 @@ SEED = 2021
 
 
 class TestScale(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "scale"
@@ -33,15 +34,25 @@ class TestScale(OpTest):
         self.init_dtype()
 
         self.inputs = {
+<<<<<<< HEAD
             'X': OpTest.np_dtype_to_fluid_dtype(
                 np.random.random((10, 10)).astype(self.dtype)
             )
+=======
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(
+                np.random.random((10, 10)).astype(self.dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         self.attrs = {'scale': -2.3, 'bias': 0, 'bias_after_scale': True}
         self.outputs = {
             'Out': (self.inputs['X'] * self.dtype(self.attrs['scale'])).astype(
+<<<<<<< HEAD
                 self.dtype
             )
+=======
+                self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
 
     def set_npu(self):
@@ -55,21 +66,25 @@ class TestScale(OpTest):
 
 
 class TestFP16Scale(TestScale):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestScaleInt(TestScale):
+
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestScaleInt64(TestScale):
+
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestBiasAfterScale(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "scale"
@@ -77,9 +92,15 @@ class TestBiasAfterScale(OpTest):
         self.init_dtype()
 
         self.inputs = {
+<<<<<<< HEAD
             'X': OpTest.np_dtype_to_fluid_dtype(
                 np.random.random((10, 10)).astype(self.dtype)
             )
+=======
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(
+                np.random.random((10, 10)).astype(self.dtype))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         }
         self.attrs = {'scale': -2.3, 'bias': 0, 'bias_after_scale': False}
         self.outputs = {

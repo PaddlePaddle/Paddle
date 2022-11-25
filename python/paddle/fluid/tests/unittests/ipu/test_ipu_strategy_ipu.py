@@ -21,6 +21,7 @@ paddle.enable_static()
 
 
 class TestIpuStrategy(unittest.TestCase):
+
     def test_set_options(self):
         ipu_strategy = paddle.static.IpuStrategy()
         all_option_names = ipu_strategy._ipu_strategy.get_all_option_names()
@@ -77,10 +78,16 @@ class TestIpuStrategy(unittest.TestCase):
         options['random_seed'] = 1234
         for k, v in options.items():
             ipu_strategy.set_options({k: v})
+<<<<<<< HEAD
             if isinstance(v, list):
                 assert (
                     v.sort() == ipu_strategy.get_option(k).sort()
                 ), f"set {k} to {v} failed "
+=======
+            if (isinstance(v, list)):
+                assert v.sort() == ipu_strategy.get_option(
+                    k).sort(), f"set {k} to {v} failed "
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             else:
                 assert v == ipu_strategy.get_option(
                     k
@@ -88,8 +95,12 @@ class TestIpuStrategy(unittest.TestCase):
 
         # The custom logger need 2 int as inputs
         logger = lambda progress, total: print(
+<<<<<<< HEAD
             f"compile progrss: {progress}/{total}"
         )
+=======
+            f"compile progrss: {progress}/{total}")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ipu_strategy.set_options({'compilation_progress_logger': logger})
 
 

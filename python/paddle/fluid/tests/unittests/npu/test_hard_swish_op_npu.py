@@ -35,6 +35,7 @@ def ref_hard_swish_grad(x, threshold=6.0, scale=6.0, offset=3.0):
 
 
 class TestHardSwishNPU(OpTest):
+
     def setUp(self):
         paddle.enable_static()
 
@@ -51,8 +52,14 @@ class TestHardSwishNPU(OpTest):
         x[np.abs(x + offset) < 0.005] = 0.02
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
         out = (
+<<<<<<< HEAD
             x * (np.minimum(np.maximum(x + offset, 0.0), threshold) / scale)
         ).astype(self.dtype)
+=======
+            x *
+            (np.minimum(np.maximum(x + offset, 0.), threshold) / scale)).astype(
+                self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.x_grad = ref_hard_swish_grad(x, threshold, scale, offset)
 
         self.inputs = {'X': x}
@@ -73,12 +80,19 @@ class TestHardSwishNPU(OpTest):
         # can't satisfy the default precision requirement
         # when compared with numeric_grads, but the results on
         # NPU and CPU are same (verified in TestHardSwishNPUWithCPU)
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X'], 'Out', user_defined_grads=[self.x_grad]
         )
+=======
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   user_defined_grads=[self.x_grad])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestHardSwishNPUFp16(TestHardSwishNPU):
+
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
@@ -88,6 +102,7 @@ class TestHardSwishNPUFp16(TestHardSwishNPU):
 
 # test the result of hard_swish and hard_swish_grad on CPU and NPU
 class TestHardSwishNPUWithCPU(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
 

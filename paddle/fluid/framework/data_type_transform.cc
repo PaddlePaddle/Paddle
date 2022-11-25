@@ -35,8 +35,13 @@ struct CastDataTypeFunctor {
 #if defined(PADDLE_WITH_XPU)
 
 template <typename InType, typename OutType>
+<<<<<<< HEAD
 static void XPUCastData(const phi::DenseTensor& in,
                         phi::DenseTensor* out,
+=======
+static void XPUCastData(const framework::Tensor& in,
+                        framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         const platform::XPUDeviceContext* dev_ctx) {
   using XPUInTDType = typename XPUTypeTrait<InType>::Type;
   using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
@@ -51,8 +56,13 @@ static void XPUCastData(const phi::DenseTensor& in,
 
 template <typename InType>
 static void XPUTransDataType(
+<<<<<<< HEAD
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
+=======
+    const framework::Tensor& in,
+    framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     const paddle::framework::proto::VarType::Type& dst_type,
     const platform::DeviceContext* ctx) {
   auto* context = static_cast<const platform::XPUDeviceContext*>(ctx);
@@ -79,8 +89,13 @@ static void XPUTransDataType(
 
 template <typename InType>
 struct CastDataType {
+<<<<<<< HEAD
   CastDataType(const phi::DenseTensor& in,
                phi::DenseTensor* out,
+=======
+  CastDataType(const framework::Tensor& in,
+               framework::Tensor* out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                const platform::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
   const phi::DenseTensor in_;
@@ -131,8 +146,13 @@ struct CastDataType {
 
 void TransDataType(const OpKernelType& kernel_type_for_var,
                    const OpKernelType& expected_kernel_type,
+<<<<<<< HEAD
                    const phi::DenseTensor& in,
                    phi::DenseTensor* out) {
+=======
+                   const Tensor& in,
+                   Tensor* out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   PADDLE_ENFORCE_EQ(
       framework::TransToProtoVarType(in.dtype()),
       kernel_type_for_var.data_type_,
@@ -223,8 +243,13 @@ void TransDataType(const phi::DenseTensor& in,
 
 void TransComplexToReal(const proto::VarType::Type& dst_type,
                         const proto::VarType::Type& src_type,
+<<<<<<< HEAD
                         const phi::DenseTensor& in,
                         phi::DenseTensor* out) {
+=======
+                        const Tensor& in,
+                        Tensor* out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto& pool = platform::DeviceContextPool::Instance();
   auto* ctx = pool.Get(in.place());
   out->Resize(in.dims());

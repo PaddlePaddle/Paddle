@@ -28,9 +28,12 @@ set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op_xpu PROPERTIES TIMEOUT 900)
 set_tests_properties(test_matmul_op_xpu PROPERTIES TIMEOUT 300)
+<<<<<<< HEAD
 set_tests_properties(test_collective_identity_xpu
                      PROPERTIES LABELS "RUN_TYPE=DIST_KUNLUN")
 set_tests_properties(test_collective_allgather_xpu
                      PROPERTIES LABELS "RUN_TYPE=DIST_KUNLUN")
 set_tests_properties(test_collective_allreduce_xpu
                      PROPERTIES LABELS "RUN_TYPE=DIST_KUNLUN")
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

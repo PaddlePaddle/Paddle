@@ -17,6 +17,7 @@ import paddle.fluid.core as core
 
 
 class TestTF32Switch(unittest.TestCase):
+
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             self.assertTrue(core.get_cudnn_switch())  # default

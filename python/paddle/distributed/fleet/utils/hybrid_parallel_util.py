@@ -52,8 +52,11 @@ def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
     scale = nranks if scale is None else 1.0 / scale
     scale = None if scale == 1.0 else scale
 
+    nranks = paddle.distributed.get_world_size(
+    ) if comm_group is None else comm_group.nranks
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
+<<<<<<< HEAD
         if scale is not None:
             div_factor = paddle.to_tensor(scale, dtype=coalesced_grad.dtype)
             paddle.fluid.framework._dygraph_tracer().trace_op(
@@ -62,6 +65,17 @@ def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
                 outputs={'Out': coalesced_grad},
                 attrs={'axis': -1},
             )
+=======
+        div_factor = paddle.to_tensor(nranks, dtype=coalesced_grad.dtype)
+        paddle.fluid.framework._dygraph_tracer().trace_op(
+            type="elementwise_div",
+            inputs={
+                'X': coalesced_grad,
+                'Y': div_factor
+            },
+            outputs={'Out': coalesced_grad},
+            attrs={'axis': -1})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)
@@ -94,10 +108,18 @@ def _apply_collective_grads_eager(
     scale = 1.0 / nranks if scale is None else scale
     scale = None if scale == 1.0 else scale
 
+<<<<<<< HEAD
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
         if scale is not None:
             coalesced_grad.scale_(scale)
+=======
+    nranks = paddle.distributed.get_world_size(
+    ) if comm_group is None else comm_group.nranks
+    for coalesced_grad, _, _ in coalesced_grads_and_vars:
+        # need to div nranks
+        coalesced_grad.scale_(1.0 / nranks)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)
@@ -109,15 +131,23 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     mp_rank = hcg.get_model_parallel_rank()
 
     shape_gpu = paddle.to_tensor(shape, dtype="int32")
+<<<<<<< HEAD
     paddle.distributed.broadcast(
         shape_gpu, src=src_rank, group=model_parallel_group, sync_op=True
     )
+=======
+    paddle.distributed.broadcast(shape_gpu,
+                                 src=src_rank,
+                                 group=model_parallel_group,
+                                 use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     if mp_rank != 0:
         input_data = paddle.zeros(shape_gpu, dtype=dtype)
     else:
         input_data = data
 
+<<<<<<< HEAD
     paddle.distributed.broadcast(
         input_data, src=src_rank, group=model_parallel_group, sync_op=True
     )
@@ -131,6 +161,12 @@ def _broadcast_data_help(data, shape, dtype, hcg):
             data.value().get_tensor()._share_data_with(
                 input_data.value().get_tensor()
             )
+=======
+    paddle.distributed.broadcast(input_data,
+                                 src=src_rank,
+                                 group=model_parallel_group,
+                                 use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def broadcast_input_data(hcg, *inputs, **kwargs):
@@ -171,14 +207,22 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
 def broadcast_mp_parameters(model, hcg):
     model_parallel_group = hcg.get_model_parallel_group()
     src_rank = hcg.get_model_parallel_group_src_rank()
+<<<<<<< HEAD
     sync_params_buffers(
         model, model_parallel_group, src_rank, is_model_parallel=True
     )
+=======
+    sync_params_buffers(model,
+                        model_parallel_group,
+                        src_rank,
+                        is_model_parallel=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def broadcast_dp_parameters(model, hcg):
     data_parallel_group = hcg.get_data_parallel_group()
     src_rank = hcg.get_data_parallel_group_src_rank()
+<<<<<<< HEAD
     sync_params_buffers(
         model, data_parallel_group, src_rank, is_model_parallel=False
     )
@@ -194,12 +238,25 @@ def fused_allreduce_gradients_with_group(
     )
     with framework.no_grad():
         apply_func(parameter_list, group, bucket_size, scale)
+=======
+    sync_params_buffers(model,
+                        data_parallel_group,
+                        src_rank,
+                        is_model_parallel=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def fused_allreduce_gradients(parameter_list, hcg):
     data_parallel_group = None if hcg is None else hcg.get_data_parallel_group()
     logger.debug("dp start fuse allreduce gradients")
+<<<<<<< HEAD
     fused_allreduce_gradients_with_group(parameter_list, data_parallel_group)
+=======
+    apply_func = _apply_collective_grads_eager if in_dygraph_mode(
+    ) else _apply_collective_grads
+    with framework.no_grad():
+        apply_func(parameter_list, data_parallel_group)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def sharding_reduce_gradients(parameter_list, hcg):
@@ -216,8 +273,12 @@ def sharding_reduce_gradients(parameter_list, hcg):
                     paddle.distributed.all_reduce(
                         param.grad,
                         group=hcg.get_sharding_parallel_group(),
+<<<<<<< HEAD
                         sync_op=True,
                     )
+=======
+                        use_calc_stream=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 elif _in_legacy_dygraph():
                     g_var = param._grad_ivar()
@@ -230,6 +291,7 @@ def sharding_reduce_gradients(parameter_list, hcg):
                         outputs={'Out': g_var},
                         attrs={
                             'ring_id': hcg.get_sharding_parallel_group().id,
+<<<<<<< HEAD
                             'use_calc_stream': True,
                         },
                     )
@@ -244,6 +306,22 @@ def sharding_reduce_gradients(parameter_list, hcg):
                         outputs={'Out': g_var},
                         attrs={'axis': -1},
                     )
+=======
+                            'use_calc_stream': True
+                        })
+
+                    # grad / sharding_rank
+                    div_factor = paddle.to_tensor(sharding_nrank,
+                                                  dtype=g_var.dtype)
+                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                        type="elementwise_div",
+                        inputs={
+                            'X': g_var,
+                            'Y': div_factor
+                        },
+                        outputs={'Out': g_var},
+                        attrs={'axis': -1})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def broadcast_sharding_parameters(model, hcg):
@@ -251,6 +329,13 @@ def broadcast_sharding_parameters(model, hcg):
     logger.debug("sharding start init parameters sync")
     sharding_parallel_group = hcg.get_sharding_parallel_group()
     src_rank = hcg.get_sharding_parallel_group_src_rank()
+<<<<<<< HEAD
     sync_params_buffers(
         model, sharding_parallel_group, src_rank, is_model_parallel=False
     )
+=======
+    sync_params_buffers(model,
+                        sharding_parallel_group,
+                        src_rank,
+                        is_model_parallel=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e

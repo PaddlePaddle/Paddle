@@ -23,6 +23,7 @@ namespace framework {
 namespace ir {
 
 using string::PrettyLogDetail;
+<<<<<<< HEAD
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
@@ -36,6 +37,19 @@ void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   }
 }
 
+=======
+
+void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+  auto act_types = paddle::platform::GetSupportedActivations();
+  std::vector<std::string> conv_types = {"conv2d"};
+
+  for (const auto& conv_type : conv_types)
+    for (auto& act_type : act_types) {
+      FuseConvAct(graph, conv_type, act_type);
+    }
+}
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
                                                const std::string& conv_type,
                                                std::string& act_type) const {
@@ -51,6 +65,11 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
   int found_conv_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+<<<<<<< HEAD
+=======
+    VLOG(4) << "handle " + conv_type + "+" + act_type + " fuse";
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "conv_activation_mkldnn_fuse_pass op compat failed.";
       return;
@@ -64,7 +83,11 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
+<<<<<<< HEAD
     auto attr_map = phi::funcs::GetAttributeMap(act_type);
+=======
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
@@ -89,14 +112,19 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
 
   gpd(graph, handler);
   AddStatis(found_conv_activation_count);
+<<<<<<< HEAD
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       found_conv_activation_count > 0) {
+=======
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     PrettyLogDetail("---    fused %d conv with %s activation",
                     found_conv_activation_count,
                     act_type);
   }
 }
 
+<<<<<<< HEAD
 void ConvActivationMkldnnFusePass::FuseConvConcatAct(
     Graph* graph, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -178,6 +206,8 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
   }
 }
 
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
@@ -372,7 +402,10 @@ REGISTER_PASS_CAPABILITY(conv_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
+<<<<<<< HEAD
             .EQ("concat", 0)
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)

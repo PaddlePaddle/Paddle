@@ -20,6 +20,7 @@ from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
 
 
 class TestPsTrainerPass(PsPassTestBase):
+
     def setUp(self):
         pass
 

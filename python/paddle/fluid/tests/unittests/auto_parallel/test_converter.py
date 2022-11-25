@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import tempfile
+import unittest
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 import os
 import subprocess
 import sys
@@ -22,6 +27,7 @@ from paddle.distributed.auto_parallel.converter import Converter
 
 
 class TestConverter(unittest.TestCase):
+
     def test_converter(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "converter.py")
@@ -32,6 +38,7 @@ class TestConverter(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
@@ -45,6 +52,12 @@ class TestConverter(unittest.TestCase):
                 launch_model_path,
             ]
         )
+=======
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
+            tmp_dir.name, launch_model_path
+        ]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         process = subprocess.Popen(cmd)
         process.wait()

@@ -50,15 +50,22 @@ def run_momentum_op(
         }
 
         param_vars = [
+<<<<<<< HEAD
             helper.create_variable(
                 persistable=True, shape=p.shape, dtype=p.dtype
             )
             for p in params
+=======
+            helper.create_variable(persistable=True,
+                                   shape=p.shape,
+                                   dtype=p.dtype) for p in params
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         grad_vars = [
             helper.create_variable(shape=g.shape, dtype=g.dtype) for g in grads
         ]
         velocity_vars = [
+<<<<<<< HEAD
             helper.create_variable(
                 persistable=True, shape=v.shape, dtype=v.dtype
             )
@@ -69,6 +76,15 @@ def run_momentum_op(
             shape=learning_rate.shape,
             dtype=learning_rate.dtype,
         )
+=======
+            helper.create_variable(persistable=True,
+                                   shape=v.shape,
+                                   dtype=v.dtype) for v in velocitys
+        ]
+        lr_var = helper.create_variable(persistable=True,
+                                        shape=learning_rate.shape,
+                                        dtype=learning_rate.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         feed_dict = OrderedDict()
 
@@ -99,6 +115,7 @@ def run_momentum_op(
 
         if multi_precision:
             master_param_vars = [
+<<<<<<< HEAD
                 helper.create_variable(
                     persistable=True, shape=p.shape, dtype=p.dtype
                 )
@@ -114,6 +131,17 @@ def run_momentum_op(
                     ]
                 )
             )
+=======
+                helper.create_variable(persistable=True,
+                                       shape=p.shape,
+                                       dtype=p.dtype) for p in master_params
+            ]
+            feed_dict.update(
+                OrderedDict([
+                    (mp_var.name, mp_val)
+                    for mp_var, mp_val in zip(master_param_vars, master_params)
+                ]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             # CPUPlace does not use MasterParam
             if isinstance(place, paddle.CUDAPlace):
                 fetch_list = fetch_list + [
@@ -136,9 +164,16 @@ def run_momentum_op(
                 if multi_precision:
                     inputs['MasterParam'] = master_param_vars[i]
                     outputs['MasterParamOut'] = master_param_vars[i]
+<<<<<<< HEAD
                 helper.append_op(
                     type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
                 )
+=======
+                helper.append_op(type=op_type,
+                                 inputs=inputs,
+                                 outputs=outputs,
+                                 attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             inputs = {
                 'Param': param_vars,
@@ -150,9 +185,16 @@ def run_momentum_op(
             if multi_precision:
                 inputs['MasterParam'] = master_param_vars
                 outputs['MasterParamOut'] = master_param_vars
+<<<<<<< HEAD
             helper.append_op(
                 type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
             )
+=======
+            helper.append_op(type=op_type,
+                             inputs=inputs,
+                             outputs=outputs,
+                             attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     exe = paddle.static.Executor(place)
     with paddle.static.scope_guard(paddle.static.Scope()):
@@ -184,15 +226,22 @@ def run_momentum_op2(
         helper = LayerHelper(op_type, **locals())
 
         param_vars = [
+<<<<<<< HEAD
             helper.create_variable(
                 persistable=True, shape=p.shape, dtype=p.dtype
             )
             for p in params
+=======
+            helper.create_variable(persistable=True,
+                                   shape=p.shape,
+                                   dtype=p.dtype) for p in params
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         grad_vars = [
             helper.create_variable(shape=g.shape, dtype=g.dtype) for g in grads
         ]
         velocity_vars = [
+<<<<<<< HEAD
             helper.create_variable(
                 persistable=True, shape=v.shape, dtype=v.dtype
             )
@@ -203,6 +252,15 @@ def run_momentum_op2(
             shape=learning_rate.shape,
             dtype=learning_rate.dtype,
         )
+=======
+            helper.create_variable(persistable=True,
+                                   shape=v.shape,
+                                   dtype=v.dtype) for v in velocitys
+        ]
+        lr_var = helper.create_variable(persistable=True,
+                                        shape=learning_rate.shape,
+                                        dtype=learning_rate.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         feed_dict = OrderedDict()
 
@@ -233,6 +291,7 @@ def run_momentum_op2(
 
         if multi_precision:
             master_param_vars = [
+<<<<<<< HEAD
                 helper.create_variable(
                     persistable=True, shape=p.shape, dtype=p.dtype
                 )
@@ -248,6 +307,17 @@ def run_momentum_op2(
                     ]
                 )
             )
+=======
+                helper.create_variable(persistable=True,
+                                       shape=p.shape,
+                                       dtype=p.dtype) for p in master_params
+            ]
+            feed_dict.update(
+                OrderedDict([
+                    (mp_var.name, mp_val)
+                    for mp_var, mp_val in zip(master_param_vars, master_params)
+                ]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             # CPUPlace does not use MasterParam
             if isinstance(place, paddle.CUDAPlace):
                 fetch_list = fetch_list + [
@@ -278,9 +348,16 @@ def run_momentum_op2(
                     'regularization_method': 'l2_decay',
                     'regularization_coeff': 2.0,
                 }
+<<<<<<< HEAD
                 helper.append_op(
                     type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
                 )
+=======
+                helper.append_op(type=op_type,
+                                 inputs=inputs,
+                                 outputs=outputs,
+                                 attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             inputs = {
                 'Param': param_vars,
@@ -293,6 +370,7 @@ def run_momentum_op2(
                 inputs['MasterParam'] = master_param_vars
                 outputs['MasterParamOut'] = master_param_vars
             attrs = {
+<<<<<<< HEAD
                 'mu': mu,
                 'multi_precision': multi_precision,
                 'rescale_grad': rescale_grad,
@@ -305,6 +383,24 @@ def run_momentum_op2(
             helper.append_op(
                 type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
             )
+=======
+                'mu':
+                mu,
+                'multi_precision':
+                multi_precision,
+                'rescale_grad':
+                rescale_grad,
+                'use_nesterov':
+                use_nesterov,
+                'regularization_method':
+                ['l2_decay' for i in range(len(param_vars))],
+                'regularization_coeff': [2.0 for i in range(len(param_vars))],
+            }
+            helper.append_op(type=op_type,
+                             inputs=inputs,
+                             outputs=outputs,
+                             attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     exe = paddle.static.Executor(place)
     with paddle.static.scope_guard(paddle.static.Scope()):
@@ -313,6 +409,7 @@ def run_momentum_op2(
 
 
 class TestMergedMomentum(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
@@ -349,6 +446,7 @@ class TestMergedMomentum(unittest.TestCase):
         def run_op(use_merged):
             # NPU Momentum Op does not support rescale_grad
             rescale_grad = 1.0
+<<<<<<< HEAD
             return run_momentum_op(
                 params,
                 grads,
@@ -360,6 +458,17 @@ class TestMergedMomentum(unittest.TestCase):
                 rescale_grad=rescale_grad,
                 use_merged=use_merged,
             )
+=======
+            return run_momentum_op(params,
+                                   grads,
+                                   velocitys,
+                                   master_params,
+                                   learning_rate,
+                                   place,
+                                   multi_precision,
+                                   rescale_grad=rescale_grad,
+                                   use_merged=use_merged)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         outs1 = run_op(True)
         outs2 = run_op(False)
@@ -372,6 +481,7 @@ class TestMergedMomentum(unittest.TestCase):
 
 
 class TestMergedMomentum2(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
@@ -408,6 +518,7 @@ class TestMergedMomentum2(unittest.TestCase):
         def run_op(use_nesterov, use_merged):
             # NPU Momentum Op does not support rescale_grad
             rescale_grad = 1.0
+<<<<<<< HEAD
             return run_momentum_op2(
                 params,
                 grads,
@@ -420,6 +531,18 @@ class TestMergedMomentum2(unittest.TestCase):
                 use_merged=use_merged,
                 use_nesterov=use_nesterov,
             )
+=======
+            return run_momentum_op2(params,
+                                    grads,
+                                    velocitys,
+                                    master_params,
+                                    learning_rate,
+                                    place,
+                                    multi_precision,
+                                    rescale_grad=rescale_grad,
+                                    use_merged=use_merged,
+                                    use_nesterov=use_nesterov)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         outs1 = run_op(use_nesterov=True, use_merged=True)
         outs2 = run_op(use_nesterov=True, use_merged=False)

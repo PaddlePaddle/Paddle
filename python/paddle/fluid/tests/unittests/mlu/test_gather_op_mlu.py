@@ -34,6 +34,7 @@ def gather_numpy(x, index, axis):
 
 
 class TestGatherOp(OpTest):
+
     def setUp(self):
         self.op_type = "gather"
         self.place = paddle.MLUPlace(0)
@@ -64,6 +65,7 @@ class TestGatherOp(OpTest):
 
 
 class TestCase1(TestGatherOp):
+
     def config(self):
         """
         For one dimension input
@@ -75,6 +77,7 @@ class TestCase1(TestGatherOp):
 
 
 class TestCase2(TestGatherOp):
+
     def config(self):
         """
         For int64_t index type
@@ -86,6 +89,7 @@ class TestCase2(TestGatherOp):
 
 
 class API_TestDygraphGather(unittest.TestCase):
+
     def test_out1(self):
         paddle.disable_static()
         input_1 = np.array([[1, 2], [3, 4], [5, 6]]).astype('int32')
@@ -123,6 +127,7 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
+
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -132,9 +137,15 @@ class TestGathertError(unittest.TestCase):
             x = paddle.fluid.data(shape=shape, dtype='int8', name='x')
             axis = paddle.fluid.data(shape=[1], dtype='float32', name='axis')
             index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
+<<<<<<< HEAD
             index_float = paddle.fluid.data(
                 shape=shape, dtype='float32', name='index_float'
             )
+=======
+            index_float = paddle.fluid.data(shape=shape,
+                                            dtype='float32',
+                                            name='index_float')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             def test_x_type():
                 paddle.gather(x, index)
@@ -162,9 +173,15 @@ class TestGathertError(unittest.TestCase):
             shape = [8, 9, 6]
             x = fluid.data(shape=shape, dtype='int8', name='x')
             index = fluid.data(shape=shape, dtype='int32', name='mask')
+<<<<<<< HEAD
             index_float = fluid.data(
                 shape=shape, dtype='float32', name='index_float'
             )
+=======
+            index_float = fluid.data(shape=shape,
+                                     dtype='float32',
+                                     name='index_float')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             def test_x_type():
                 paddle.gather(x, index)

@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestXPUUniformRandomOp(TestUniformRandomOp):
+
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
@@ -37,6 +38,7 @@ class TestXPUUniformRandomOp(TestUniformRandomOp):
 
 
 class TestXPUUniformRandomOpSelectedRows(TestUniformRandomOpSelectedRows):
+
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)

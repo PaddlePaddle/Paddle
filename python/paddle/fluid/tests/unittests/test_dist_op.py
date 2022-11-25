@@ -35,6 +35,7 @@ def dist(x, y, p):
 
 
 class TestDistOp(OpTest):
+
     def setUp(self):
         self.op_type = 'dist'
         self.python_api = paddle.dist
@@ -114,15 +115,23 @@ class TestDistOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X", "Y"],
             "Out",
             user_defined_grads=self.gradient,
             check_eager=True,
         )
+=======
+        self.check_grad(["X", "Y"],
+                        "Out",
+                        user_defined_grads=self.gradient,
+                        check_eager=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestDistOpCase1(TestDistOp):
+
     def init_case(self):
         self.x_shape = (3, 5, 5, 6)
         self.y_shape = (5, 5, 6)
@@ -130,6 +139,7 @@ class TestDistOpCase1(TestDistOp):
 
 
 class TestDistOpCase2(TestDistOp):
+
     def init_case(self):
         self.x_shape = (10, 10)
         self.y_shape = (4, 10, 10)
@@ -137,6 +147,7 @@ class TestDistOpCase2(TestDistOp):
 
 
 class TestDistOpCase3(TestDistOp):
+
     def init_case(self):
         self.x_shape = (15, 10)
         self.y_shape = (15, 10)
@@ -144,6 +155,7 @@ class TestDistOpCase3(TestDistOp):
 
 
 class TestDistOpCase4(TestDistOp):
+
     def init_case(self):
         self.x_shape = (2, 3, 4, 5, 8)
         self.y_shape = (3, 1, 5, 8)
@@ -151,6 +163,7 @@ class TestDistOpCase4(TestDistOp):
 
 
 class TestDistOpCase5(TestDistOp):
+
     def init_case(self):
         self.x_shape = (4, 1, 4, 8)
         self.y_shape = (2, 2, 1, 4, 4, 8)
@@ -158,6 +171,7 @@ class TestDistOpCase5(TestDistOp):
 
 
 class TestDistAPI(unittest.TestCase):
+
     def init_data_type(self):
         self.data_type = (
             'float32' if core.is_compiled_with_rocm() else 'float64'
@@ -174,6 +188,7 @@ class TestDistAPI(unittest.TestCase):
             x_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
+<<<<<<< HEAD
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -186,6 +201,18 @@ class TestDistAPI(unittest.TestCase):
                 fetch_list=[result],
             )
             np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
+=======
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            out = exe.run(fluid.default_main_program(),
+                          feed={
+                              'x': x_i,
+                              'y': y_i
+                          },
+                          fetch_list=[result])
+            self.assertTrue(np.allclose(dist(x_i, y_i, p), out[0]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 if __name__ == '__main__':

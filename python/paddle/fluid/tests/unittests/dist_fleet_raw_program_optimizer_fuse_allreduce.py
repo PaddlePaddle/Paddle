@@ -72,6 +72,7 @@ def cnn_model(data):
 
 
 class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, single_device=False):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -84,19 +85,32 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+<<<<<<< HEAD
         batch_acc = fluid.layers.accuracy(
             input=predict, label=label, total=batch_size_tensor
         )
+=======
+        batch_acc = fluid.layers.accuracy(input=predict,
+                                          label=label,
+                                          total=batch_size_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         test_program = fluid.default_main_program().clone(for_test=True)
 
         # Reader
+<<<<<<< HEAD
         train_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
+=======
+        train_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                    batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         optimizer = paddle.fluid.optimizer.Adam(0.01)
         if single_device:
@@ -109,9 +123,14 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
             strategy.fuse_all_reduce_ops = True
             strategy._calc_comm_same_stream = False
             strategy.fuse_grad_size_in_num = 8
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
+=======
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             optimizer.minimize(avg_cost)
 
         return (

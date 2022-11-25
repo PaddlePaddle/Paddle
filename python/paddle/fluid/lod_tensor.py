@@ -72,12 +72,19 @@ def create_lod_tensor(data, recursive_seq_lens, place):
     elif isinstance(data, list):
         # dtype and shape are not important here,
         # we only want to reuse code of DataToLoDTensorConverter
+<<<<<<< HEAD
         converter = DataToLoDTensorConverter(
             place=place,
             lod_level=len(recursive_seq_lens),
             shape=[],
             dtype=core.VarDesc.VarType.FP32,
         )
+=======
+        converter = DataToLoDTensorConverter(place=place,
+                                             lod_level=len(recursive_seq_lens),
+                                             shape=[],
+                                             dtype=core.VarDesc.VarType.FP32)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         new_recursive_seq_lens = []
         for seq in data:
@@ -116,7 +123,11 @@ def create_random_int_lodtensor(
     recursive_seq_lens, base_shape, place, low, high
 ):
     """
+<<<<<<< HEAD
         :api_attr: Static Graph
+=======
+	:api_attr: Static Graph
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     Create a LoDTensor containing random integers.
 

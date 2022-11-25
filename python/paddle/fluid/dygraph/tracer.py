@@ -188,6 +188,7 @@ class Tracer(core.Tracer):
                     if isinstance(returns[i], list):
                         for j in range(len(returns[i])):
                             outputs[retname][j].reconstruct_from_(
+<<<<<<< HEAD
                                 returns[i][j], False
                             )
                     else:
@@ -199,6 +200,16 @@ class Tracer(core.Tracer):
                             outputs[retname].reconstruct_from_(
                                 returns[i], False
                             )
+=======
+                                returns[i][j], False)
+                    else:
+                        if isinstance(outputs[retname], list):
+                            outputs[retname][0].reconstruct_from_(
+                                returns[i], False)
+                        else:
+                            outputs[retname].reconstruct_from_(
+                                returns[i], False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
             key = list(outputs.keys())[0]
@@ -280,8 +291,12 @@ class Tracer(core.Tracer):
                     if isinstance(returns[i], list):
                         for j in range(len(returns[i])):
                             outputs[retname][j].reconstruct_from_(
+<<<<<<< HEAD
                                 returns[i][j], False
                             )
+=======
+                                returns[i][j], False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     else:
                         outputs[retname][0].reconstruct_from_(returns[i], False)
         elif isinstance(returns, list):
@@ -321,6 +336,7 @@ class Tracer(core.Tracer):
                     type, inputs, outputs, attrs, stop_gradient, inplace_map
                 )
         else:
+<<<<<<< HEAD
             self.trace(
                 type,
                 inputs,
@@ -330,6 +346,12 @@ class Tracer(core.Tracer):
                 self._has_grad and not stop_gradient,
                 inplace_map if inplace_map else {},
             )
+=======
+            self.trace(type, inputs, outputs, attrs,
+                       framework._current_expected_place(), self._has_grad
+                       and not stop_gradient,
+                       inplace_map if inplace_map else {})
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def train_mode(self):
         self._train_mode = True

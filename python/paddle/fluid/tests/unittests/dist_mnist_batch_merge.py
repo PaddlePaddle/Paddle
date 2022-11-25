@@ -36,6 +36,7 @@ def test_merge_reader(repeat_batch_size=8):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -48,9 +49,15 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+<<<<<<< HEAD
         batch_acc = fluid.layers.accuracy(
             input=predict, label=label, total=batch_size_tensor
         )
+=======
+        batch_acc = fluid.layers.accuracy(input=predict,
+                                          label=label,
+                                          total=batch_size_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
@@ -58,9 +65,14 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Reader
         train_reader = paddle.batch(test_merge_reader, batch_size=batch_size)
+<<<<<<< HEAD
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
+=======
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         opt.minimize(avg_cost)
         return (
             inference_program,

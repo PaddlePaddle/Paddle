@@ -52,7 +52,10 @@ void ReduceGradKernel(const Context& dev_ctx,
                       bool reduce_all,
                       DenseTensor* x_grad,
                       Functor functor) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   auto* in_x = &x;
   auto* d_out = &out_grad;
   auto* d_x = x_grad;

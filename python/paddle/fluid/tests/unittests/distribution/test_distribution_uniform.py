@@ -27,6 +27,7 @@ np.random.seed(2022)
 
 
 class UniformNumpy(DistributionNumpy):
+
     def __init__(self, low, high):
         self.low = np.array(low)
         self.high = np.array(high)
@@ -55,6 +56,7 @@ class UniformNumpy(DistributionNumpy):
 
 
 class UniformTest(unittest.TestCase):
+
     def setUp(self, use_gpu=False, batch_size=5, dims=6):
         self.use_gpu = use_gpu
         if not use_gpu:
@@ -89,9 +91,15 @@ class UniformTest(unittest.TestCase):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
         sample, entropy, log_prob, probs = fetch_list
@@ -103,12 +111,23 @@ class UniformTest(unittest.TestCase):
         np_p = np_uniform.probs(self.values_np)
 
         np.testing.assert_equal(sample.shape, np_sample.shape)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             entropy, np_entropy, rtol=tolerance, atol=tolerance
         )
         np.testing.assert_allclose(
             log_prob, np_lp, rtol=tolerance, atol=tolerance
         )
+=======
+        np.testing.assert_allclose(entropy,
+                                   np_entropy,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(log_prob,
+                                   np_lp,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
     def test_uniform_distribution_static(self, sample_shape=7, tolerance=1e-6):
@@ -154,6 +173,7 @@ class UniformTest(unittest.TestCase):
 
 
 class UniformTest2(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low ans high are 'int'
         self.low_np = int(np.random.uniform(-2, 1))
@@ -162,6 +182,7 @@ class UniformTest2(UniformTest):
 
 
 class UniformTest3(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # test broadcast: low is float, high is numpy.ndarray with dtype 'float32'.
         self.low_np = np.random.uniform(-2, 1)
@@ -174,12 +195,19 @@ class UniformTest3(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest4(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are numpy.ndarray with dtype 'float32'.
         self.low_np = np.random.randn(batch_size, dims).astype('float32')
@@ -192,12 +220,19 @@ class UniformTest4(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest5(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are numpy.ndarray with dtype 'float64'.
         self.low_np = np.random.randn(batch_size, dims).astype('float64')
@@ -215,12 +250,19 @@ class UniformTest5(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float64'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest6(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are Tensor with dtype 'VarType.FP32'.
         self.low_np = np.random.randn(batch_size, dims).astype('float32')
@@ -236,6 +278,7 @@ class UniformTest6(UniformTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_low = layers.data(
                 name='low', shape=[dims], dtype='float32'
             )
@@ -245,9 +288,21 @@ class UniformTest6(UniformTest):
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_low = layers.data(name='low',
+                                          shape=[dims],
+                                          dtype='float32')
+            self.static_high = layers.data(name='high',
+                                           shape=[dims],
+                                           dtype='float32')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest7(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are Tensor with dtype 'VarType.FP64'.
         self.low_np = np.random.randn(batch_size, dims).astype('float64')
@@ -263,6 +318,7 @@ class UniformTest7(UniformTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_low = layers.data(
                 name='low', shape=[dims], dtype='float64'
             )
@@ -272,9 +328,21 @@ class UniformTest7(UniformTest):
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float64'
             )
+=======
+            self.static_low = layers.data(name='low',
+                                          shape=[dims],
+                                          dtype='float64')
+            self.static_high = layers.data(name='high',
+                                           shape=[dims],
+                                           dtype='float64')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float64')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest8(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are Tensor with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
         self.low_np = np.random.randn(batch_size, dims).astype('float64')
@@ -290,6 +358,7 @@ class UniformTest8(UniformTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_low = layers.data(
                 name='low', shape=[dims], dtype='float64'
             )
@@ -299,9 +368,21 @@ class UniformTest8(UniformTest):
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_low = layers.data(name='low',
+                                          shape=[dims],
+                                          dtype='float64')
+            self.static_high = layers.data(name='high',
+                                           shape=[dims],
+                                           dtype='float64')
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest9(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are numpy.ndarray with dtype 'float32'.
         # high < low.
@@ -315,12 +396,19 @@ class UniformTest9(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest10(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are list.
         self.low_np = (
@@ -337,34 +425,53 @@ class UniformTest10(UniformTest):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTest11(UniformTest):
+
     def init_numpy_data(self, batch_size, dims):
         # low and high are tuple.
         self.low_np = tuple(
             np.random.randn(batch_size, dims).astype('float32').tolist()
         )
         self.high_np = tuple(
+<<<<<<< HEAD
             np.random.uniform(5.0, 15.0, (batch_size, dims))
             .astype('float32')
             .tolist()
         )
+=======
+            np.random.uniform(5.0, 15.0,
+                              (batch_size, dims)).astype('float32').tolist())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
 
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
+<<<<<<< HEAD
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32'
             )
+=======
+            self.static_values = layers.data(name='values',
+                                             shape=[dims],
+                                             dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class UniformTestSample(unittest.TestCase):
+
     def setUp(self):
         self.init_param()
 
@@ -382,6 +489,7 @@ class UniformTestSample(unittest.TestCase):
 
 
 class UniformTestSample2(UniformTestSample):
+
     def init_param(self):
         self.low = -5.0
         self.high = 2.0

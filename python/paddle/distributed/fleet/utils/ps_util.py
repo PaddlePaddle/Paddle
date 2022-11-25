@@ -52,12 +52,19 @@ class DistributedInfer:
             fake_optimizer = paddle.optimizer.SGD()
             strategy = fleet.DistributedStrategy()
             strategy.a_sync = True
+<<<<<<< HEAD
             optimizer = fleet.distributed_optimizer(
                 fake_optimizer, strategy=strategy
             )
             optimizer.minimize(
                 loss, startup_program=self.origin_startup_program
             )
+=======
+            optimizer = fleet.distributed_optimizer(fake_optimizer,
+                                                    strategy=strategy)
+            optimizer.minimize(loss,
+                               startup_program=self.origin_startup_program)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             if fleet.is_server():
                 fleet.init_server(dirname=dirname)
@@ -104,12 +111,19 @@ class DistributedInfer:
                 for v in dense_persist_vars
                 if os.path.isfile(os.path.join(dirname, v[0]))
             ]
+<<<<<<< HEAD
             paddle.static.load_vars(
                 exe,
                 dirname,
                 main_program=self.origin_main_program,
                 vars=need_load_vars,
             )
+=======
+            paddle.static.load_vars(exe,
+                                    dirname,
+                                    main_program=self.origin_main_program,
+                                    vars=need_load_vars)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def get_dist_infer_program(self):
         varname2tables = self._get_sparse_table_map()
@@ -119,6 +133,7 @@ class DistributedInfer:
         return convert_program
 
     def _convert_program(self, main_program, varname2tables):
+
         def distributed_ops_pass(program):
             SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
 
@@ -136,6 +151,7 @@ class DistributedInfer:
                 return pull_sparse_ops
 
             def _pull_sparse_fuse(_program, pull_sparse_ops):
+
                 def dag_check_up_and_reorder(program, inputs, outputs):
                     global_block = program.global_block()
                     min_output_index = len(global_block.ops)
@@ -161,8 +177,12 @@ class DistributedInfer:
                                 if out_var.name in ins:
                                     output_indexes[idx] = 1
                                     min_output_index = min(
+<<<<<<< HEAD
                                         min_output_index, idx
                                     )
+=======
+                                        min_output_index, idx)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     for i in range(len(global_block.ops)):
                         if input_indexes[i] == 1 and output_indexes[i] == 1:
@@ -226,8 +246,12 @@ class DistributedInfer:
                                 )
                                 desc.copy_from(global_block.ops[index].desc)
                                 global_block.desc._remove_op(
+<<<<<<< HEAD
                                     index + 1, index + 2
                                 )
+=======
+                                    index + 1, index + 2)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                                 global_block.ops[index].desc = desc
                                 insert_op = global_block.ops.pop(index)
                                 input_state = input_indexes.pop(index)
@@ -247,10 +271,15 @@ class DistributedInfer:
                             global_block.ops
                         )
                         for i in range(len(global_block.ops)):
+<<<<<<< HEAD
                             assert (
                                 global_block.desc.op(i)
                                 == global_block.ops[i].desc
                             )
+=======
+                            assert global_block.desc.op(
+                                i) == global_block.ops[i].desc
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                 for param, ops in pull_sparse_ops.items():
                     all_ops = program.global_block().ops
@@ -264,10 +293,15 @@ class DistributedInfer:
 
                     if w.name not in varname2tables.keys():
                         raise ValueError(
+<<<<<<< HEAD
                             "can not find variable {}, please check your configuration".format(
                                 w.name
                             )
                         )
+=======
+                            "can not find variable {}, please check your configuration"
+                            .format(w.name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     table_id = varname2tables[w.name]
 
@@ -287,9 +321,14 @@ class DistributedInfer:
                         program.global_block()._remove_op(idx)
 
                     inputs_idxs = [-1] * len(inputs)
+<<<<<<< HEAD
                     outputs_idxs = [len(program.global_block().ops) + 1] * len(
                         outputs
                     )
+=======
+                    outputs_idxs = [len(program.global_block().ops) + 1
+                                    ] * len(outputs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
                     for idx, op in enumerate(program.global_block().ops):
                         for i in range(0, len(op.output_names)):
@@ -297,8 +336,12 @@ class DistributedInfer:
                             for in_id, in_var in enumerate(inputs):
                                 if in_var.name in outs:
                                     inputs_idxs[in_id] = max(
+<<<<<<< HEAD
                                         idx, inputs_idxs[in_id]
                                     )
+=======
+                                        idx, inputs_idxs[in_id])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                         for i in range(0, len(op.input_names)):
                             ins = op.input(op.input_names[i])
                             for out_id, out_var in enumerate(outputs):
@@ -313,7 +356,14 @@ class DistributedInfer:
                         program.global_block()._insert_op(
                             index=distributed_idx,
                             type="distributed_lookup_table",
+<<<<<<< HEAD
                             inputs={"Ids": inputs, 'W': w},
+=======
+                            inputs={
+                                "Ids": inputs,
+                                'W': w
+                            },
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                             outputs={"Outputs": outputs},
                             attrs={
                                 "is_distributed": is_distributed,

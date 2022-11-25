@@ -55,6 +55,7 @@ def convert_params_for_net_static(np_net, paddle_net, place):
 
 def get_params_for_cell(np_cell, num_layers, idx):
     state = np_cell.parameters
+<<<<<<< HEAD
     weight_list = [
         ('{}.weight_{}'.format(num_layers, idx), state['weight_ih']),
         ('{}.weight_{}'.format(num_layers, idx + 1), state['weight_hh']),
@@ -63,6 +64,13 @@ def get_params_for_cell(np_cell, num_layers, idx):
         ('{}.bias_{}'.format(num_layers, idx), state['bias_ih']),
         ('{}.bias_{}'.format(num_layers, idx + 1), state['bias_hh']),
     ]
+=======
+    weight_list = [('{}.weight_{}'.format(num_layers, idx), state['weight_ih']),
+                   ('{}.weight_{}'.format(num_layers,
+                                          idx + 1), state['weight_hh'])]
+    bias_list = [('{}.bias_{}'.format(num_layers, idx), state['bias_ih']),
+                 ('{}.bias_{}'.format(num_layers, idx + 1), state['bias_hh'])]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return weight_list, bias_list
 
 

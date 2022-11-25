@@ -19,7 +19,12 @@
 #include <functional>
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math.h"

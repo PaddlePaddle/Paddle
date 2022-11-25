@@ -46,7 +46,11 @@ class AttnDropoutParam {
                    bool is_upscale_in_train,
                    bool is_fix_seed,
                    int seed_val,
+<<<<<<< HEAD
                    const phi::DenseTensor* seed) {
+=======
+                   const Tensor* seed) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     is_test_ = is_test;
     dropout_implementation_ = dropout_implementation;
     dropout_prob_ = dropout_prob;
@@ -82,6 +86,7 @@ class FMHARef {
 
   ~FMHARef() {}
 
+<<<<<<< HEAD
   void ComputeForward(const phi::DenseTensor& qkv_input_tensor,
                       const phi::DenseTensor* cache_kv_tensor,
                       const phi::DenseTensor* src_mask_tensor,
@@ -94,6 +99,20 @@ class FMHARef {
                       phi::DenseTensor* dropout_out_tensor,
                       phi::DenseTensor* qktv_out_tensor,
                       phi::DenseTensor* fmha_out_tensor) {
+=======
+  void ComputeForward(const Tensor& qkv_input_tensor,
+                      const Tensor* cache_kv_tensor,
+                      const Tensor* src_mask_tensor,
+                      Tensor* transpose_2_out_tensor,
+                      Tensor* cache_kv_out_tensor,
+                      Tensor* qk_out_tensor,
+                      Tensor* src_mask_out_tensor,
+                      Tensor* softmax_out_tensor,
+                      Tensor* dropout_mask_out_tensor,
+                      Tensor* dropout_out_tensor,
+                      Tensor* qktv_out_tensor,
+                      Tensor* fmha_out_tensor) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     // input shape: [bs, seq_len, 3, num_head, head_dim]
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
@@ -138,8 +157,13 @@ class FMHARef {
       float alpha = 1.0 / sqrt(head_dim_);
       auto q_tensor = transpose_2_out_tensor->Slice(0, 1);
       auto functor = phi::funcs::ScaleFunctor<T>(alpha);
+<<<<<<< HEAD
       std::vector<const phi::DenseTensor*> ins = {&q_tensor};
       std::vector<phi::DenseTensor*> outs = {&q_tensor};
+=======
+      std::vector<const framework::Tensor*> ins = {&q_tensor};
+      std::vector<framework::Tensor*> outs = {&q_tensor};
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       phi::funcs::ElementwiseKernel<T>(dev_ctx_, ins, &outs, functor);
     }
 
@@ -216,7 +240,11 @@ class FMHARef {
           dropout_param_.is_upscale_in_train_,
           dropout_param_.is_fix_seed_,
           dropout_param_.seed_val_,
+<<<<<<< HEAD
           static_cast<const phi::DenseTensor&>(*softmax_out_tensor),
+=======
+          static_cast<const Tensor&>(*softmax_out_tensor),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           dropout_param_.seed_,
           dropout_mask_out_tensor,
           dropout_out_tensor,
@@ -258,6 +286,7 @@ class FMHARef {
         dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
+<<<<<<< HEAD
   void ComputeForwardWithoutTranspose(const phi::DenseTensor& qkv_input_tensor,
                                       const phi::DenseTensor* cache_kv_tensor,
                                       const phi::DenseTensor* src_mask_tensor,
@@ -448,6 +477,24 @@ class FMHARef {
                        phi::DenseTensor* transpose_2_out_grad_tensor,
                        phi::DenseTensor* src_mask_grad_tensor,
                        phi::DenseTensor* qkv_input_grad_tensor) {
+=======
+  void ComputeBackward(const Tensor& transpose_2_out_tensor,
+                       const Tensor* src_mask_tensor,
+                       const Tensor& softmax_out_tensor,
+                       const Tensor& dropout_mask_out_tensor,
+                       const Tensor& dropout_out_tensor,
+                       const Tensor& qk_out_tensor,
+                       const Tensor& src_mask_out_tensor,
+                       const Tensor& fmha_out_grad_tensor,
+                       Tensor* qktv_out_grad_tensor,
+                       Tensor* dropout_out_grad_tensor,
+                       Tensor* softmax_out_grad_tensor,
+                       Tensor* src_mask_out_grad_tensor,
+                       Tensor* qk_out_grad_tensor,
+                       Tensor* transpose_2_out_grad_tensor,
+                       Tensor* src_mask_grad_tensor,
+                       Tensor* qkv_input_grad_tensor) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
@@ -559,7 +606,11 @@ class FMHARef {
           false,
           dropout_param_.dropout_prob_,
           dropout_param_.is_upscale_in_train_,
+<<<<<<< HEAD
           static_cast<const phi::DenseTensor&>(*dropout_out_grad_tensor),
+=======
+          static_cast<const Tensor&>(*dropout_out_grad_tensor),
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
           dropout_mask_out_tensor,
           softmax_out_grad_tensor,
           false);

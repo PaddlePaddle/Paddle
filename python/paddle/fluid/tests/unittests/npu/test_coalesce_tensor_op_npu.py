@@ -28,6 +28,7 @@ alignment = 512
 
 
 class TestAllocContinuousSpace(OpTest):
+
     def setUp(self):
         self.__class__.use_npu = True
         self.op_type = "coalesce_tensor"
@@ -85,6 +86,7 @@ class TestAllocContinuousSpace(OpTest):
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+
     def init_attr(self):
         return {
             "copy_data": True,

@@ -19,6 +19,7 @@ __all__ = []
 
 
 class TestVOC(unittest.TestCase):
+
     def check_reader(self, reader):
         sum = 0
         label = 0

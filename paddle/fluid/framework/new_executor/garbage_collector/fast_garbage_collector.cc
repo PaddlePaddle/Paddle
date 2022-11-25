@@ -17,9 +17,18 @@
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 void InterpreterCoreFastGarbageCollector::Add(Variable* var,
                                               const Instruction&) {
   Add(var);
+=======
+void InterpreterCoreFastGarbageCollector::Add(
+    Variable* var,
+    platform::DeviceEvent* event,
+    const platform::DeviceContext* ctx) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not implemented for InterpreterCoreFastGarbageCollector."));
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 void InterpreterCoreFastGarbageCollector::Add(Variable* var) {

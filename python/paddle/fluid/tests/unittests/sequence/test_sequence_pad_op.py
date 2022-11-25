@@ -16,6 +16,10 @@ import sys
 import unittest
 
 import numpy as np
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 sys.path.append("../")
 from op_test import OpTest
@@ -25,6 +29,7 @@ import paddle.fluid.core as core
 
 
 class TestSequencePadOp(OpTest):
+
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
@@ -54,10 +59,16 @@ class TestSequencePadOp(OpTest):
         # do padding
         x_data = self.inputs['X'][0]
         pad_value_data = self.inputs['PadValue']
+<<<<<<< HEAD
         if pad_value_data.shape == (1,):
             pad_value_data = np.broadcast_to(
                 pad_value_data, shape=x_data.shape[1:]
             )
+=======
+        if pad_value_data.shape == (1, ):
+            pad_value_data = np.broadcast_to(pad_value_data,
+                                             shape=x_data.shape[1:])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         padded_sequences = []
         start_idx = 0
         for l in x_len_lod_0:
@@ -87,6 +98,7 @@ class TestSequencePadOp(OpTest):
 
 
 class TestSequencePadOp2(TestSequencePadOp):
+
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
@@ -96,6 +108,7 @@ class TestSequencePadOp2(TestSequencePadOp):
 
 
 class TestSequencePadOp3(TestSequencePadOp):
+
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
@@ -105,6 +118,7 @@ class TestSequencePadOp3(TestSequencePadOp):
 
 
 class TestSequencePadOp4(TestSequencePadOp):
+
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
@@ -114,6 +128,7 @@ class TestSequencePadOp4(TestSequencePadOp):
 
 
 class TestSequencePadOp5(TestSequencePadOp):
+
     def set_attr(self):
         self.x_shape = [12, 2, 5]
         self.x_len_lod = [[2, 3, 4, 3]]
@@ -123,6 +138,7 @@ class TestSequencePadOp5(TestSequencePadOp):
 
 
 class TestSequencePadOp6(TestSequencePadOp):
+
     def set_attr(self):
         self.x_shape = [12, 2, 5]
         self.x_len_lod = [[2, 3, 4, 3]]
@@ -132,6 +148,7 @@ class TestSequencePadOp6(TestSequencePadOp):
 
 
 class TestSequencePadOp7(TestSequencePadOp):
+
     def set_attr(self):
         self.x_shape = [12, 2, 5]
         self.x_len_lod = [[2, 3, 4, 3]]
@@ -141,6 +158,7 @@ class TestSequencePadOp7(TestSequencePadOp):
 
 
 class TestSequencePadOp8(TestSequencePadOp):
+
     def set_attr(self):
         self.x_shape = [12, 2, 5]
         self.x_len_lod = [[0, 8, 0, 4, 0]]
@@ -150,33 +168,55 @@ class TestSequencePadOp8(TestSequencePadOp):
 
 
 class TestSequencePadOpError(unittest.TestCase):
+
     def test_error(self):
+
         def test_x_variable():
             # the input x type must be Variable
             x = np.random.random((2, 4)).astype("float32")
             pad_value = fluid.layers.assign(
+<<<<<<< HEAD
                 input=np.array([0.0], dtype=np.float32)
             )
+=======
+                input=np.array([0.0], dtype=np.float32))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fluid.layers.sequence_pad(x=x, pad_value=pad_value)
 
         self.assertRaises(TypeError, test_x_variable)
 
         def test_pad_value_variable():
+<<<<<<< HEAD
             x1 = fluid.layers.data(
                 name='x1', shape=[10, 5], dtype='float32', lod_level=1
             )
+=======
+            x1 = fluid.layers.data(name='x1',
+                                   shape=[10, 5],
+                                   dtype='float32',
+                                   lod_level=1)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             pad_value1 = np.array([0.0], dtype=np.float32)
             fluid.layers.sequence_pad(x=x1, pad_value=pad_value1)
 
         self.assertRaises(TypeError, test_pad_value_variable)
 
         def test_dtype():
+<<<<<<< HEAD
             x2 = fluid.layers.data(
                 name='x2', shape=[10, 5], dtype='int16', lod_level=1
             )
             pad_value2 = fluid.layers.assign(
                 input=np.array([0.0], dtype=np.int32)
             )
+=======
+            x2 = fluid.layers.data(name='x2',
+                                   shape=[10, 5],
+                                   dtype='int16',
+                                   lod_level=1)
+            pad_value2 = fluid.layers.assign(
+                input=np.array([0.0], dtype=np.int32))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fluid.layers.sequence_pad(x=x2, pad_value=pad_value2)
 
         self.assertRaises(TypeError, test_dtype)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from ...fluid.dygraph.dygraph_to_static.convert_operators import (  # noqa: F401
     cast_bool_if_necessary,
     convert_assert,
@@ -30,5 +31,21 @@ from ...fluid.dygraph.dygraph_to_static.convert_operators import (  # noqa: F401
     indexable,
     convert_attr,
 )
+=======
+from ...fluid.dygraph.dygraph_to_static.convert_operators import cast_bool_if_necessary  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_assert  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_ifelse  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_len  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_and  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_not  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_or  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_pop  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_print  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape_compare  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_dtype  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import unpack_by_structure, indexable  # noqa: F401
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 __all__ = []

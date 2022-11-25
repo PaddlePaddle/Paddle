@@ -40,17 +40,28 @@ import re
 import shutil
 
 
+<<<<<<< HEAD
 class LambConfig:
+=======
+class LambConfig(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         pass
 
 
+<<<<<<< HEAD
 class DistFCConfig:
+=======
+class DistFCConfig(object):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def __init__(self):
         pass
 
 
 class Collective(Fleet):
+
     def __init__(self):
         super().__init__(Mode.COLLECTIVE)
         self._local_ip = 0
@@ -210,6 +221,7 @@ class Collective(Fleet):
 
         m = PaddleModel(executor, main_program)
         c = CheckpointSaver(fs)
+<<<<<<< HEAD
         return c.load_checkpoint(
             path,
             [m, train_status],
@@ -217,6 +229,12 @@ class Collective(Fleet):
             ignore_empty=ignore_empty,
             local_cache_path=local_cache_path,
         )
+=======
+        return c.load_checkpoint(path, [m, train_status],
+                                 trainer_id=trainer_id,
+                                 ignore_empty=ignore_empty,
+                                 local_cache_path=local_cache_path)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 fleet = Collective()
@@ -327,6 +345,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         if strategy.use_local_sgd:
             strategy.mode = "collective"
             strategy.collective_mode = "local_sgd"
+<<<<<<< HEAD
             self._check_condition(
                 "use_local_sgd",
                 use_dgc=main_program._enable_dgc,
@@ -344,15 +363,34 @@ class CollectiveOptimizer(DistributedOptimizer):
             assert (
                 strategy.dist_fc_config is not None
             ), "DistributedStrategy.dist_fc_config should be set"
+=======
+            self._check_condition("use_local_sgd",
+                                  use_dgc=main_program._enable_dgc,
+                                  use_dist_fc=strategy.use_dist_fc,
+                                  use_lamb=main_program._use_lamb)
+
+        if strategy.use_dist_fc:
+            self._check_condition("use_dist_fc",
+                                  use_dgc=main_program._enable_dgc,
+                                  use_local_sgd=strategy.use_local_sgd,
+                                  use_lamb=main_program._use_lamb)
+            assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
             strategy.collective_mode = "grad_allreduce"
+<<<<<<< HEAD
             self._check_condition(
                 "_ut4grad_allreduce",
                 use_dgc=main_program._enable_dgc,
                 use_lamb=main_program._use_lamb,
             )
+=======
+            self._check_condition("_ut4grad_allreduce",
+                                  use_dgc=main_program._enable_dgc,
+                                  use_lamb=main_program._use_lamb)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if (
             self._strategy.collective_mode == "local_sgd"
@@ -394,6 +432,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         )
 
         t = dist_transpiler.DistributeTranspiler(config=config)
+<<<<<<< HEAD
         t.transpile(
             trainer_id=trainer_id,
             trainers=worker_endpoints_env,
@@ -401,6 +440,13 @@ class CollectiveOptimizer(DistributedOptimizer):
             program=main_program,
             current_endpoint=current_endpoint,
         )
+=======
+        t.transpile(trainer_id=trainer_id,
+                    trainers=worker_endpoints_env,
+                    startup_program=startup_program,
+                    program=main_program,
+                    current_endpoint=current_endpoint)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def _get_node_ips_from_endpoints(self, endpoints):
         ss = set()

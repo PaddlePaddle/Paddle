@@ -21,6 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.nn as nn
+<<<<<<< HEAD
 import unittest
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from test_sparse_attention_op import get_cuda_version
@@ -32,6 +33,21 @@ from paddle.fluid import core
     not core.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
 )
 class TestFusedGateAttentionOp(OpTest):
+=======
+from paddle import tensor
+import unittest
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from test_sparse_attention_op import get_cuda_version
+from paddle import _C_ops
+from paddle.fluid.framework import default_main_program
+from paddle.fluid import core
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "Paddle is not compiled with CUDA")
+class TestFusedGateAttentionOp(OpTest):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setUp(self):
         self.__class__.op_type = "fused_gate_attention"
         # use autograd to check grad in this unittest.
@@ -55,6 +71,10 @@ class TestFusedGateAttentionOp(OpTest):
         self.bias_attr = True
 
     def generate_input_data(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def _random(shape):
             if self.dtype == "bfloat16":
                 data = np.random.random(shape).astype("float32")
@@ -64,8 +84,12 @@ class TestFusedGateAttentionOp(OpTest):
 
         np.random.seed(123)
         self.query = _random(
+<<<<<<< HEAD
             (self.batch_size, self.msa_len, self.res_len, self.q_dim)
         )
+=======
+            (self.batch_size, self.msa_len, self.res_len, self.q_dim))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.q_weight = _random((self.q_dim, self.num_heads, self.head_dim))
         self.k_weight = _random((self.kv_dim, self.num_heads, self.head_dim))
         self.v_weight = _random((self.kv_dim, self.num_heads, self.head_dim))
@@ -78,6 +102,7 @@ class TestFusedGateAttentionOp(OpTest):
             self.qkv_weight = np.stack([q_weight_t, k_weight_t, v_weight_t])
         else:
             self.key = _random(
+<<<<<<< HEAD
                 (self.batch_size, self.msa_len, self.m_size, self.kv_dim)
             )
             self.qkv_weight = None
@@ -90,6 +115,17 @@ class TestFusedGateAttentionOp(OpTest):
             self.nonbatched_bias = _random(
                 (self.batch_size, 1, self.num_heads, self.res_len, self.m_size)
             )
+=======
+                (self.batch_size, self.msa_len, self.m_size, self.kv_dim))
+            self.qkv_weight = None
+
+        self.attn_mask = _random(
+            (self.batch_size, self.msa_len, 1, 1, self.m_size))
+
+        if self.bias_attr:
+            self.nonbatched_bias = _random(
+                (self.batch_size, 1, self.num_heads, self.res_len, self.m_size))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         if self.has_gating:
             self.gating_w = _random((self.q_dim, self.num_heads, self.head_dim))
@@ -99,6 +135,7 @@ class TestFusedGateAttentionOp(OpTest):
         self.output_b = _random((self.out_dim))
 
         self.dout = _random(
+<<<<<<< HEAD
             (self.batch_size, self.msa_len, self.res_len, self.q_dim)
         )
 
@@ -110,6 +147,14 @@ class TestFusedGateAttentionOp(OpTest):
             out,
             query.grad,
             None if self.merge_qkv else key.grad,
+=======
+            (self.batch_size, self.msa_len, self.res_len, self.q_dim))
+
+    def collect_outputs(self, query, key, softmax_out, fmha_out, gate_out, out):
+        outputs = [
+            softmax_out, fmha_out, gate_out if self.has_gating else None, out,
+            query.grad, None if self.merge_qkv else key.grad
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         return outputs
 
@@ -117,17 +162,26 @@ class TestFusedGateAttentionOp(OpTest):
         paddle.disable_static(place=paddle.CUDAPlace(0))
 
         query = paddle.to_tensor(self.query, stop_gradient=False)
+<<<<<<< HEAD
         key = (
             query
             if self.merge_qkv
             else paddle.to_tensor(self.key, stop_gradient=False)
         )
+=======
+        key = query if self.merge_qkv else paddle.to_tensor(self.key,
+                                                            stop_gradient=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         q_weight = paddle.to_tensor(self.q_weight, stop_gradient=False)
         k_weight = paddle.to_tensor(self.k_weight, stop_gradient=False)
         v_weight = paddle.to_tensor(self.v_weight, stop_gradient=False)
         src_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
 
+<<<<<<< HEAD
         c = self.head_dim ** (-0.5)
+=======
+        c = self.head_dim**(-0.5)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         # [batch_size, msa_len, res_len, q_dim], [q_dim, num_heads, head_dim]
         #   -> [batch_size, msa_len, res_len, num_heads, head_dim]
         q = paddle.einsum('nbqa,ahc->nbqhc', query, q_weight) * c
@@ -145,9 +199,14 @@ class TestFusedGateAttentionOp(OpTest):
         #   -> [batch_size, msa_len, num_heads, res_len, m_size]
         logits = logits + src_mask
         if self.bias_attr:
+<<<<<<< HEAD
             nonbatched_bias = paddle.to_tensor(
                 self.nonbatched_bias, stop_gradient=False
             )
+=======
+            nonbatched_bias = paddle.to_tensor(self.nonbatched_bias,
+                                               stop_gradient=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             # [batch_size, msa_len, num_heads, res_len, m_size], [batch_size, 1, num_heads, res_len, m_size]
             #   -> [batch_size, msa_len, num_heads, res_len, m_size]
             logits = logits + nonbatched_bias
@@ -169,6 +228,7 @@ class TestFusedGateAttentionOp(OpTest):
             # gate_values = paddle.einsum('nbqc,chv->nbqhv', query,
             #                             gating_w) + gating_b
             gating_w_2d = paddle.reshape(
+<<<<<<< HEAD
                 gating_w, shape=[self.q_dim, self.num_heads * self.head_dim]
             )
             gate_values_4d = paddle.matmul(query, gating_w_2d)
@@ -185,6 +245,16 @@ class TestFusedGateAttentionOp(OpTest):
                 )
                 + gating_b
             )
+=======
+                gating_w, shape=[self.q_dim, self.num_heads * self.head_dim])
+            gate_values_4d = paddle.matmul(query, gating_w_2d)
+            gate_values = paddle.reshape(
+                gate_values_4d,
+                shape=[
+                    self.batch_size, self.msa_len, self.res_len, self.num_heads,
+                    self.head_dim
+                ]) + gating_b
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             gate_values = nn.functional.sigmoid(gate_values)
             gate_out = fmha_out * gate_values
         else:
@@ -201,6 +271,7 @@ class TestFusedGateAttentionOp(OpTest):
             gate_out,
             shape=[
                 self.batch_size * self.msa_len * self.res_len,
+<<<<<<< HEAD
                 self.num_heads * self.head_dim,
             ],
         )
@@ -227,6 +298,22 @@ class TestFusedGateAttentionOp(OpTest):
         return self.collect_outputs(
             query, key, softmax_out, fmha_out, gate_out, out
         )
+=======
+                self.num_heads * self.head_dim
+            ])
+        output_w_2d = paddle.reshape(
+            output_w, shape=[self.num_heads * self.head_dim, self.out_dim])
+        out_2d = paddle.matmul(gate_out_2d, output_w_2d)
+        out = paddle.reshape(
+            out_2d,
+            shape=[self.batch_size, self.msa_len, self.res_len, self.out_dim
+                   ]) + output_b
+
+        paddle.autograd.backward([out], [paddle.to_tensor(self.dout)],
+                                 retain_graph=True)
+        return self.collect_outputs(query, key, softmax_out, fmha_out, gate_out,
+                                    out)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def get_fused_gate_attention_out(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -248,9 +335,14 @@ class TestFusedGateAttentionOp(OpTest):
         src_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
 
         if self.bias_attr:
+<<<<<<< HEAD
             nonbatched_bias = paddle.to_tensor(
                 self.nonbatched_bias, stop_gradient=False
             )
+=======
+            nonbatched_bias = paddle.to_tensor(self.nonbatched_bias,
+                                               stop_gradient=False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             nonbatched_bias = None
         if self.has_gating:
@@ -263,6 +355,7 @@ class TestFusedGateAttentionOp(OpTest):
         output_w = paddle.to_tensor(self.output_w, stop_gradient=False)
         output_b = paddle.to_tensor(self.output_b, stop_gradient=False)
 
+<<<<<<< HEAD
         (
             _,
             _,
@@ -299,6 +392,20 @@ class TestFusedGateAttentionOp(OpTest):
         )
 
     def check(self, ref, out, atol, rtol, check_equal, name):
+=======
+        _, _, _, _, softmax_out, fmha_out, gate_out, out = _C_ops.fused_gate_attention(
+            query, key, q_weight, k_weight, v_weight, qkv_weight,
+            nonbatched_bias, src_mask, gating_w, gating_b, output_w, output_b,
+            'has_gating', self.has_gating, 'merge_qkv', self.merge_qkv)
+
+        paddle.autograd.backward([out], [paddle.to_tensor(self.dout)],
+                                 retain_graph=True)
+        return self.collect_outputs(query, key, softmax_out, fmha_out, gate_out,
+                                    out)
+
+    def check(self, ref, out, atol, rtol, check_equal, name):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         def _convert(value):
             if self.dtype == "bfloat16":
                 return convert_uint16_to_float(value)
@@ -307,14 +414,19 @@ class TestFusedGateAttentionOp(OpTest):
         if check_equal:
             self.assertTrue(
                 np.equal(_convert(ref), _convert(out)).all(),
+<<<<<<< HEAD
                 "Checking < {} > failed!".format(name),
             )
+=======
+                "Checking < {} > failed!".format(name))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         else:
             np.testing.assert_allclose(
                 _convert(ref),
                 _convert(out),
                 atol=atol,
                 rtol=rtol,
+<<<<<<< HEAD
                 err_msg="Checking < {} > failed!".format(name),
             )
 
@@ -326,6 +438,14 @@ class TestFusedGateAttentionOp(OpTest):
             "out",
             "query_grad",
             "key_grad",
+=======
+                err_msg="Checking < {} > failed!".format(name))
+
+    def check_output_and_grad(self, atol, rtol):
+        output_names = [
+            "softmax_out", "fmha_out", "gate_out", "out", "query_grad",
+            "key_grad"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         outputs_ref = self.get_reference_out()
         outputs_fused = self.get_fused_gate_attention_out()
@@ -341,6 +461,7 @@ class TestFusedGateAttentionOp(OpTest):
                 # that in fused ops, check_equal is set to False and we use allclose
                 # to check the correctness.
                 check_equal = False
+<<<<<<< HEAD
                 self.check(
                     ref_res.numpy(),
                     fused_res.numpy(),
@@ -349,18 +470,30 @@ class TestFusedGateAttentionOp(OpTest):
                     check_equal,
                     output_names[i],
                 )
+=======
+                self.check(ref_res.numpy(), fused_res.numpy(), atol, rtol,
+                           check_equal, output_names[i])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def test_output_and_grad(self):
         self.check_output_and_grad(atol=1e-5, rtol=1e-6)
 
 
 class TestMergeQKVLargeBatchSizeCase(TestFusedGateAttentionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def config(self):
         super().config()
         self.batch_size = 2
 
 
 class TestSeparatedQKVCase(TestFusedGateAttentionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def config(self):
         self.dtype = "float32"
         self.has_gating = False
@@ -377,6 +510,10 @@ class TestSeparatedQKVCase(TestFusedGateAttentionOp):
 
 
 class TestMergeQKVNoBiasGatingCase(TestFusedGateAttentionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def config(self):
         super().config()
         self.has_gating = False
@@ -384,6 +521,10 @@ class TestMergeQKVNoBiasGatingCase(TestFusedGateAttentionOp):
 
 
 class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def config(self):
         super().config()
         self.dtype = "float16"
@@ -395,6 +536,10 @@ class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
 
 
 class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def config(self):
         super().config()
         self.batch_size = 2
@@ -402,9 +547,16 @@ class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11000,
+<<<<<<< HEAD
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
+=======
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+)
+class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def config(self):
         super().config()
         self.dtype = "bfloat16"
@@ -414,6 +566,10 @@ class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
 
 
 class TestMergeQKVLargeBatchSizeBF16Case(TestMergeQKVBF16Case):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def config(self):
         super().config()
         self.batch_size = 2

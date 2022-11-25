@@ -39,16 +39,26 @@ def get_vaild_warning_num(warning, w):
 
 
 class TestDeviceGuard(unittest.TestCase):
+
     def test_device_guard(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             data1 = paddle.full(
                 shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32'
             )
             data2 = paddle.full(
                 shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32'
             )
+=======
+            data1 = paddle.full(shape=[1, 3, 8, 8],
+                                fill_value=0.5,
+                                dtype='float32')
+            data2 = paddle.full(shape=[1, 3, 5, 5],
+                                fill_value=0.5,
+                                dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             shape = paddle.shape(data2)
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
@@ -69,12 +79,21 @@ class TestDeviceGuard(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             data1 = paddle.full(
                 shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32'
             )
             data2 = paddle.full(
                 shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32'
             )
+=======
+            data1 = paddle.full(shape=[1, 3, 8, 8],
+                                fill_value=0.5,
+                                dtype='float32')
+            data2 = paddle.full(shape=[1, 3, 5, 5],
+                                fill_value=0.5,
+                                dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             shape = paddle.shape(data2)
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
@@ -95,6 +114,7 @@ class TestDeviceGuard(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             x = paddle.full(
                 shape=[2, 255, 13, 13], fill_value=0.3, dtype='float32'
             )
@@ -105,6 +125,18 @@ class TestDeviceGuard(unittest.TestCase):
             gt_score = paddle.full(
                 shape=[2, 6], fill_value=0.5, dtype='float32'
             )
+=======
+            x = paddle.full(shape=[2, 255, 13, 13],
+                            fill_value=0.3,
+                            dtype='float32')
+            gt_box = paddle.full(shape=[2, 6, 4],
+                                 fill_value=0.5,
+                                 dtype='float32')
+            gt_label = paddle.full(shape=[2, 6], fill_value=1.0, dtype='int32')
+            gt_score = paddle.full(shape=[2, 6],
+                                   fill_value=0.5,
+                                   dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             anchors = [
                 10,
                 13,
@@ -128,6 +160,7 @@ class TestDeviceGuard(unittest.TestCase):
             anchor_mask = [0, 1, 2]
             with paddle.static.device_guard("gpu"):
                 # yolov3_loss only has cpu kernel, so its cpu kernel will be executed
+<<<<<<< HEAD
                 loss = fluid.layers.yolov3_loss(
                     x=x,
                     gt_box=gt_box,
@@ -139,6 +172,17 @@ class TestDeviceGuard(unittest.TestCase):
                     ignore_thresh=0.7,
                     downsample_ratio=32,
                 )
+=======
+                loss = fluid.layers.yolov3_loss(x=x,
+                                                gt_box=gt_box,
+                                                gt_label=gt_label,
+                                                gt_score=gt_score,
+                                                anchors=anchors,
+                                                anchor_mask=anchor_mask,
+                                                class_num=80,
+                                                ignore_thresh=0.7,
+                                                downsample_ratio=32)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         execute(main_program, startup_program)
 
@@ -171,6 +215,7 @@ class TestDeviceGuard(unittest.TestCase):
         execute(main_program, startup_program)
 
     def test_error(self):
+
         def device_attr():
             with paddle.static.device_guard("cpu1"):
                 out = paddle.full(shape=[1], fill_value=0.2, dtype='float32')
@@ -187,12 +232,21 @@ class TestDeviceGuard(unittest.TestCase):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             data1 = paddle.static.data(
                 name="data_1", shape=[4, 2], dtype="float32"
             )
             label = paddle.static.data(
                 name="label", shape=[4, 1], dtype="int64"
             )
+=======
+            data1 = paddle.static.data(name="data_1",
+                                       shape=[4, 2],
+                                       dtype="float32")
+            label = paddle.static.data(name="label",
+                                       shape=[4, 1],
+                                       dtype="int64")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             fc1 = paddle.static.nn.fc(x=data1, size=10)
             fc2 = paddle.static.nn.fc(x=fc1, size=10)
             with paddle.static.device_guard("gpu"):

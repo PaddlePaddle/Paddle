@@ -26,8 +26,12 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\custom_attrs_jit\\custom_attrs_jit.pyd'.format(
+<<<<<<< HEAD
     get_build_directory()
 )
+=======
+    get_build_directory())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -44,6 +48,7 @@ custom_attrs = load(
 
 
 class TestJitCustomAttrs(unittest.TestCase):
+
     def setUp(self):
         paddle.set_device('cpu')
         # prepare test value
@@ -60,6 +65,7 @@ class TestJitCustomAttrs(unittest.TestCase):
     def func_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
+<<<<<<< HEAD
         out = custom_attrs.attr_test(
             x,
             self.bool_attr,
@@ -72,6 +78,13 @@ class TestJitCustomAttrs(unittest.TestCase):
             self.int64_vec_attr,
             self.str_vec_attr,
         )
+=======
+        out = custom_attrs.attr_test(x, self.bool_attr, self.int_attr,
+                                     self.float_attr, self.int64_attr,
+                                     self.str_attr, self.int_vec_attr,
+                                     self.float_vec_attr, self.int64_vec_attr,
+                                     self.str_vec_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out.stop_gradient = False
         out.backward()
 
@@ -85,6 +98,7 @@ class TestJitCustomAttrs(unittest.TestCase):
     def func_const_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
+<<<<<<< HEAD
         out = custom_attrs.const_attr_test(
             x,
             self.bool_attr,
@@ -97,6 +111,14 @@ class TestJitCustomAttrs(unittest.TestCase):
             self.int64_vec_attr,
             self.str_vec_attr,
         )
+=======
+        out = custom_attrs.const_attr_test(x, self.bool_attr, self.int_attr,
+                                           self.float_attr, self.int64_attr,
+                                           self.str_attr, self.int_vec_attr,
+                                           self.float_vec_attr,
+                                           self.int64_vec_attr,
+                                           self.str_vec_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         out.stop_gradient = False
         out.backward()
 

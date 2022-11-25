@@ -15,6 +15,10 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_v2_mkldnn_fuse_pass.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {

@@ -26,6 +26,7 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def sample_generator_creator(batch_size, batch_num):
+
     def __reader__():
         for _ in range(batch_num * batch_size):
             image, label = get_random_images_and_labels([784], [1])
@@ -35,6 +36,7 @@ def sample_generator_creator(batch_size, batch_num):
 
 
 class TestDygraphDataLoader(unittest.TestCase):
+
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
@@ -51,6 +53,7 @@ class TestDygraphDataLoader(unittest.TestCase):
 
     def func_test_single_process_loader(self):
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(
                 capacity=self.capacity, iterable=False, use_multiprocess=False
             )
@@ -59,6 +62,15 @@ class TestDygraphDataLoader(unittest.TestCase):
                 batch_size=self.batch_size,
                 places=fluid.CPUPlace(),
             )
+=======
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        iterable=False,
+                                                        use_multiprocess=False)
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size,
+                                        places=fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.iter_loader_data(loader)
 
     def test_single_process_loader(self):
@@ -68,6 +80,7 @@ class TestDygraphDataLoader(unittest.TestCase):
 
     def func_test_multi_process_loader(self):
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(
                 capacity=self.capacity, use_multiprocess=True
             )
@@ -76,6 +89,14 @@ class TestDygraphDataLoader(unittest.TestCase):
                 batch_size=self.batch_size,
                 places=fluid.CPUPlace(),
             )
+=======
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        use_multiprocess=True)
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size,
+                                        places=fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.iter_loader_data(loader)
 
     def test_multi_process_loader(self):
@@ -86,10 +107,16 @@ class TestDygraphDataLoader(unittest.TestCase):
     def func_test_generator_no_places(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
+<<<<<<< HEAD
             loader.set_sample_generator(
                 sample_generator_creator(self.batch_size, self.batch_num),
                 batch_size=self.batch_size,
             )
+=======
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.iter_loader_data(loader)
 
     def test_generator_no_places(self):
@@ -100,6 +127,7 @@ class TestDygraphDataLoader(unittest.TestCase):
     def func_test_set_pin_memory(self):
         with fluid.dygraph.guard():
             use_pinned_memory(False)
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(
                 capacity=self.capacity, iterable=False, use_multiprocess=False
             )
@@ -108,6 +136,15 @@ class TestDygraphDataLoader(unittest.TestCase):
                 batch_size=self.batch_size,
                 places=fluid.CPUPlace(),
             )
+=======
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                        iterable=False,
+                                                        use_multiprocess=False)
+            loader.set_sample_generator(sample_generator_creator(
+                self.batch_size, self.batch_num),
+                                        batch_size=self.batch_size,
+                                        places=fluid.CPUPlace())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.iter_loader_data(loader)
             use_pinned_memory(True)
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
@@ -19,6 +20,13 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
+=======
+from __future__ import print_function
+
+from paddle.utils import gast
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class EarlyReturnTransformer(BaseTransformer):
@@ -27,10 +35,17 @@ class EarlyReturnTransformer(BaseTransformer):
     """
 
     def __init__(self, wrapper_root):
+<<<<<<< HEAD
         assert isinstance(wrapper_root, AstNodeWrapper), (
             "Type of input node should be AstNodeWrapper, but received %s ."
             % type(wrapper_root)
         )
+=======
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
+            wrapper_root)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.root = wrapper_root.node
 
     def transform(self):
@@ -43,8 +58,12 @@ class EarlyReturnTransformer(BaseTransformer):
         assert isinstance(
             node, gast.If
         ), "Type of input node should be gast.If, but received %s ." % type(
+<<<<<<< HEAD
             node
         )
+=======
+            node)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         for child in node.body:
             if isinstance(child, gast.Return):
                 return True
@@ -65,11 +84,17 @@ class EarlyReturnTransformer(BaseTransformer):
             if isinstance(node, gast.If) and self.is_define_return_in_if(node):
                 destination_nodes = node.orelse
                 # handle stmt like `if/elif/elif`
+<<<<<<< HEAD
                 while (
                     len(destination_nodes) > 0
                     and isinstance(destination_nodes[0], gast.If)
                     and self.is_define_return_in_if(destination_nodes[0])
                 ):
+=======
+                while len(destination_nodes) > 0 and \
+                      isinstance(destination_nodes[0], gast.If) and \
+                      self.is_define_return_in_if(destination_nodes[0]):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     destination_nodes = destination_nodes[0].orelse
 
         return result_nodes

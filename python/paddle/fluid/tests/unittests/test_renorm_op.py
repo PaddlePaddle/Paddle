@@ -22,10 +22,16 @@ paddle.set_device('cpu')
 
 
 class TestRenormAPI(unittest.TestCase):
+
     def input_data(self):
+<<<<<<< HEAD
         self.data_x = np.array(
             [[[2.0, 2, -2], [3, 0.3, 3]], [[2, -8, 2], [3.1, 3.7, 3]]]
         )
+=======
+        self.data_x = np.array([[[2.0, 2, -2], [3, 0.3, 3]],
+                                [[2, -8, 2], [3.1, 3.7, 3]]])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.p = 1.0
         self.dim = 2
         self.max_norm = 2.05
@@ -79,6 +85,7 @@ class TestRenormAPI(unittest.TestCase):
             np.testing.assert_allclose(expected, np.array(y), rtol=1e-05)
             z = paddle.mean(y)
             z.backward(retain_graph=True)
+<<<<<<< HEAD
             expected_grad = np.array(
                 [
                     [[0, 0.01394558, 0.02733333], [0, 0.01394558, 0.00683333]],
@@ -89,6 +96,14 @@ class TestRenormAPI(unittest.TestCase):
                 expected_grad, np.array(x.grad), rtol=1e-05
             )
         # #test exception:
+=======
+            expected_grad = np.array([[[0, 0.01394558, 0.02733333],
+                                       [0, 0.01394558, 0.00683333]],
+                                      [[0, 0.01045918, 0.00683333],
+                                       [0, 0.01394558, 0.00683333]]])
+            self.assertTrue(np.allclose(expected_grad, np.array(x.grad)))
+        #test exception:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         with fluid.dygraph.guard():
             input = [[[2.0, 2, -2], [3, 0.3, 3]], [[2, -8, 2], [3.1, 3.7, 3]]]
             x = paddle.to_tensor(input, stop_gradient=False)

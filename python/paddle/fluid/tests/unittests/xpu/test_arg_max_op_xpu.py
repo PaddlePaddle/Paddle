@@ -30,10 +30,12 @@ paddle.enable_static()
 
 
 class XPUTestArgMax(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'arg_max'
 
     class XPUBaseTestCase(XPUOpTest):
+
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = 1
@@ -54,51 +56,61 @@ class XPUTestArgMax(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestArgMaxCase1(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = -1
 
     class TestArgMaxCase2(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = 0
 
     class TestArgMaxCase3(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = 1
 
     class TestArgMaxCase4(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3, 4, 5)
             self.axis = 2
 
     class TestArgMaxCase5(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = -1
 
     class TestArgMaxCase6(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = 0
 
     class TestArgMaxCase7(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3, 4)
             self.axis = 1
 
     class TestArgMaxCase8(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (1,)
             self.axis = 0
 
     class TestArgMaxCase9(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (2,)
             self.axis = 0
 
     class TestArgMaxCase10(XPUBaseTestCase):
+
         def initTestCase(self):
             self.dims = (3,)
             self.axis = 0
@@ -110,6 +122,7 @@ for stype in support_types:
 
 
 class TestArgMaxAPI(unittest.TestCase):
+
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -121,6 +134,7 @@ class TestArgMaxAPI(unittest.TestCase):
         self.place = [paddle.XPUPlace(0)]
 
     def test_dygraph_api(self):
+
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
@@ -128,9 +142,14 @@ class TestArgMaxAPI(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmax(numpy_input, axis=self.axis)
             paddle_output = paddle.argmax(tensor_input, axis=self.axis)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
+                             True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             paddle.enable_static()
 
         for place in self.place:
@@ -138,6 +157,7 @@ class TestArgMaxAPI(unittest.TestCase):
 
 
 class TestArgMaxAPI_2(unittest.TestCase):
+
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -150,11 +170,13 @@ class TestArgMaxAPI_2(unittest.TestCase):
         self.place = [paddle.XPUPlace(0)]
 
     def test_dygraph_api(self):
+
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
             numpy_input = (np.random.random(self.dims)).astype(self.dtype)
             tensor_input = paddle.to_tensor(numpy_input)
+<<<<<<< HEAD
             numpy_output = np.argmax(numpy_input, axis=self.axis).reshape(
                 1, 4, 5
             )
@@ -164,6 +186,15 @@ class TestArgMaxAPI_2(unittest.TestCase):
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            numpy_output = np.argmax(numpy_input,
+                                     axis=self.axis).reshape(1, 4, 5)
+            paddle_output = paddle.argmax(tensor_input,
+                                          axis=self.axis,
+                                          keepdim=self.keep_dims)
+            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
+                             True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 

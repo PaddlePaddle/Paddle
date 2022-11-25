@@ -18,10 +18,14 @@ from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle
 from paddle import fluid
 from paddle.fluid import core
+<<<<<<< HEAD
 from paddle.fluid.framework import _test_eager_guard
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class ElementwiseDivOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -34,9 +38,14 @@ class ElementwiseDivOp(OpTest):
         out = self.compute_output(x, y).astype(self.val_dtype)
         grad_out = np.ones(out.shape).astype(self.val_dtype)
         grad_x = self.compute_gradient_x(grad_out, y).astype(self.val_dtype)
+<<<<<<< HEAD
         grad_y = self.compute_gradient_y(grad_out, out, y).astype(
             self.val_dtype
         )
+=======
+        grad_y = self.compute_gradient_y(grad_out, out,
+                                         y).astype(self.val_dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         # Convert np.float32 data to np.uint16 for bfloat16 Paddle OP
         if self.dtype == np.uint16:
@@ -67,6 +76,7 @@ class ElementwiseDivOp(OpTest):
 
     def gen_data(self, shape):
         return np.random.uniform(0.1, 1, shape)
+<<<<<<< HEAD
 
     def compute_output(self, x, y):
         return x / y
@@ -201,8 +211,97 @@ class TestElementwiseDivOpBroadcast0(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y.reshape(100, 1, 1), axis=(1, 2))
+=======
+
+    def compute_output(self, x, y):
+        return x / y
+
+    def compute_gradient_x(self, grad_out, y):
+        return grad_out / y
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return -1 * grad_out * out / y
+
+    def test_check_output(self):
+        if self.place is None:
+            self.check_output()
+        else:
+            self.check_output_with_place(self.place)
+
+    def test_check_gradient(self):
+        check_list = []
+        check_list.append({
+            'grad': ['X', 'Y'],
+            'no_grad': None,
+            'val_grad': [self.grad_x, self.grad_y]
+        })
+        check_list.append({
+            'grad': ['Y'],
+            'no_grad': set('X'),
+            'val_grad': [self.grad_y]
+        })
+        check_list.append({
+            'grad': ['X'],
+            'no_grad': set('Y'),
+            'val_grad': [self.grad_x]
+        })
+        for check_option in check_list:
+            check_args = [check_option['grad'], 'Out']
+            check_kwargs = {
+                'no_grad_set': check_option['no_grad'],
+                'user_defined_grads': check_option['val_grad'],
+                'user_defined_grad_outputs': [self.grad_out],
+                'check_dygraph': self.check_dygraph
+            }
+            if self.place is None:
+                self.check_grad(*check_args, **check_kwargs)
+            else:
+                check_args.insert(0, self.place)
+                self.check_grad_with_place(*check_args, **check_kwargs)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda()
+                 or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+                 "core is not compiled with CUDA or not support the bfloat16")
+class TestElementwiseDivOpBF16(ElementwiseDivOp):
+
+    def init_args(self):
+        # In due to output data type inconsistence of bfloat16 paddle op, we disable the dygraph check.
+        self.check_dygraph = False
+        self.place = core.CUDAPlace(0)
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        self.val_dtype = np.float32
+
+    def init_shape(self):
+        self.x_shape = [12, 13]
+        self.y_shape = [12, 13]
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseDivOpScalar(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [20, 3, 4]
+        self.y_shape = [1]
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.array([np.sum(-1 * grad_out * out / y)])
+
+
+class TestElementwiseDivOpVector(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [100]
+        self.y_shape = [100]
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+
+class TestElementwiseDivOpBroadcast0(ElementwiseDivOp):
+
+<<<<<<< HEAD
 class TestElementwiseDivOpBroadcast1(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = [2, 100, 4]
@@ -259,8 +358,67 @@ class TestElementwiseDivOpBroadcast4(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y, axis=(1)).reshape(2, 1, 50)
+=======
+    def init_shape(self):
+        self.x_shape = [100, 3, 4]
+        self.y_shape = [100]
+        self.attrs = {'axis': 0}
+
+    def compute_output(self, x, y):
+        return x / y.reshape(100, 1, 1)
+
+    def compute_gradient_x(self, grad_out, y):
+        return grad_out / y.reshape(100, 1, 1)
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y.reshape(100, 1, 1), axis=(1, 2))
 
 
+class TestElementwiseDivOpBroadcast1(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [2, 100, 4]
+        self.y_shape = [100]
+        self.attrs = {'axis': 1}
+
+    def compute_output(self, x, y):
+        return x / y.reshape(1, 100, 1)
+
+    def compute_gradient_x(self, grad_out, y):
+        return grad_out / y.reshape(1, 100, 1)
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y.reshape(1, 100, 1), axis=(0, 2))
+
+
+class TestElementwiseDivOpBroadcast2(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [2, 3, 100]
+        self.y_shape = [100]
+
+    def compute_output(self, x, y):
+        return x / y.reshape(1, 1, 100)
+
+    def compute_gradient_x(self, grad_out, y):
+        return grad_out / y.reshape(1, 1, 100)
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y.reshape(1, 1, 100), axis=(0, 1))
+
+
+class TestElementwiseDivOpBroadcast3(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [2, 10, 12, 5]
+        self.y_shape = [10, 12]
+        self.attrs = {'axis': 1}
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+
+    def compute_output(self, x, y):
+        return x / y.reshape(1, 10, 12, 1)
+
+<<<<<<< HEAD
 class TestElementwiseDivOpBroadcast5(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = [2, 3, 4, 20]
@@ -277,8 +435,26 @@ class TestElementwiseDivOpCommonuse1(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y, axis=(0, 1)).reshape(1, 1, 100)
+=======
+    def compute_gradient_x(self, grad_out, y):
+        return grad_out / y.reshape(1, 10, 12, 1)
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y.reshape(1, 10, 12, 1),
+                      axis=(0, 3))
 
 
+class TestElementwiseDivOpBroadcast4(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [2, 3, 50]
+        self.y_shape = [2, 1, 50]
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y, axis=(1)).reshape(2, 1, 50)
+
+<<<<<<< HEAD
 class TestElementwiseDivOpCommonuse2(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = [30, 3, 1, 5]
@@ -292,6 +468,44 @@ class TestElementwiseDivOpCommonuse2(ElementwiseDivOp):
 
 
 class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
+=======
+
+class TestElementwiseDivOpBroadcast5(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [2, 3, 4, 20]
+        self.y_shape = [2, 3, 1, 20]
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y, axis=(2)).reshape(2, 3, 1, 20)
+
+
+class TestElementwiseDivOpCommonuse1(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [2, 3, 100]
+        self.y_shape = [1, 1, 100]
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y, axis=(0, 1)).reshape(1, 1, 100)
+
+
+class TestElementwiseDivOpCommonuse2(ElementwiseDivOp):
+
+    def init_shape(self):
+        self.x_shape = [30, 3, 1, 5]
+        self.y_shape = [30, 1, 4, 1]
+
+    def compute_gradient_x(self, grad_out, y):
+        return np.sum(grad_out / y, axis=(2)).reshape(30, 3, 1, 5)
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y, axis=(1, 3)).reshape(30, 1, 4, 1)
+
+
+class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_shape(self):
         self.x_shape = [10, 12]
         self.y_shape = [2, 3, 10, 12]
@@ -302,6 +516,10 @@ class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
 
 
 class TestElementwiseDivOpInt(ElementwiseDivOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def init_dtype(self):
         self.dtype = np.int32
         self.val_dtype = np.int32
@@ -317,18 +535,27 @@ class TestElementwiseDivOpInt(ElementwiseDivOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestElementwiseDivOpFp16(ElementwiseDivOp):
+
     def init_dtype(self):
         self.dtype = np.float16
         self.val_dtype = np.float16
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
+
     def test_shape_with_batch_sizes(self):
         with fluid.program_guard(fluid.Program()):
+<<<<<<< HEAD
             x_var = fluid.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
+=======
+            x_var = fluid.data(name='x',
+                               dtype='float32',
+                               shape=[None, 3, None, None])
+            one = 2.
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             out = one / x_var
             exe = fluid.Executor(fluid.CPUPlace())
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
@@ -337,6 +564,7 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 
 
 class TestDivideOp(unittest.TestCase):
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
@@ -358,6 +586,7 @@ class TestDivideOp(unittest.TestCase):
 
 
 class TestComplexElementwiseDivOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -395,6 +624,7 @@ class TestComplexElementwiseDivOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X', 'Y'],
             'Out',
@@ -419,9 +649,30 @@ class TestComplexElementwiseDivOp(OpTest):
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
         )
+=======
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
+
     def init_input_output(self):
         self.x = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.y = np.random.random((2, 3, 4, 5)).astype(

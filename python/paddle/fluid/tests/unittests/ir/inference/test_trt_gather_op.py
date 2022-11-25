@@ -24,6 +24,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTGatherTest1(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -39,6 +40,7 @@ class TRTGatherTest1(InferencePassTest):
 
         self.enable_trt = True
         self.trt_parameters = TRTGatherTest1.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = TRTGatherTest1.DynamicShapeParam(
@@ -47,6 +49,20 @@ class TRTGatherTest1(InferencePassTest):
             {'data': [32, 128], 'index': [3, 1]},
             False,
         )
+=======
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = TRTGatherTest1.DynamicShapeParam(
+            {
+                'data': [1, 1],
+                'index': [1, 1]
+            }, {
+                'data': [32, 128],
+                'index': [3, 1]
+            }, {
+                'data': [32, 128],
+                'index': [3, 1]
+            }, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def set_params(self):
@@ -63,6 +79,7 @@ class TRTGatherTest1(InferencePassTest):
 
 
 class TRTGatherTest2(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -78,6 +95,7 @@ class TRTGatherTest2(InferencePassTest):
 
         self.enable_trt = True
         self.trt_parameters = TRTGatherTest2.TensorRTParam(
+<<<<<<< HEAD
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False
         )
         self.dynamic_shape_params = TRTGatherTest2.DynamicShapeParam(
@@ -86,6 +104,20 @@ class TRTGatherTest2(InferencePassTest):
             {'data': [64, 32], 'index': [2]},
             False,
         )
+=======
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.dynamic_shape_params = TRTGatherTest2.DynamicShapeParam(
+            {
+                'data': [2, 4],
+                'index': [1]
+            }, {
+                'data': [256, 256],
+                'index': [4]
+            }, {
+                'data': [64, 32],
+                'index': [2]
+            }, False)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.fetch_list = [out]
 
     def set_params(self):

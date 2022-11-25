@@ -22,9 +22,15 @@ using Tensor = phi::DenseTensor;
 
 template <typename T>
 static void Mul(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                 const phi::DenseTensor& X,
                 const phi::DenseTensor& Y,
                 phi::DenseTensor* Out,
+=======
+                const Tensor& X,
+                const Tensor& Y,
+                Tensor* Out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 const float alpha) {
   Out->mutable_data<T>(ctx.GetPlace());
 
@@ -48,9 +54,15 @@ static void Mul(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                      const phi::DenseTensor& X,
                      const phi::DenseTensor& Y,
                      phi::DenseTensor* Out,
+=======
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                      const bool trans_x,
                      const bool trans_y,
                      const float alpha) {
@@ -81,9 +93,15 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void MatMulND(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                      const phi::DenseTensor& X,
                      const phi::DenseTensor& Y,
                      phi::DenseTensor* Out,
+=======
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                      const bool trans_x,
                      const bool trans_y,
                      const float alpha) {
@@ -118,8 +136,13 @@ template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
                        const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& bcast_dims,
+<<<<<<< HEAD
                        const phi::DenseTensor& in,
                        phi::DenseTensor* out) {
+=======
+                       const Tensor& in,
+                       Tensor* out) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   std::vector<int64_t> axes;
   int64_t size = bcast_dims.size();
   int64_t diff = bcast_dims.size() - dims.size();

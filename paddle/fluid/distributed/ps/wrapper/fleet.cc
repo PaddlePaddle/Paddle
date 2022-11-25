@@ -18,6 +18,10 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
@@ -568,8 +572,13 @@ void FleetWrapper::PushSparseFromTensorAsync(
     size_t cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
+<<<<<<< HEAD
       batch_size = static_cast<int>(cur_batch_size);
     } else if (batch_size != static_cast<int>(cur_batch_size)) {
+=======
+      batch_size = int(cur_batch_size);
+    } else if (batch_size != int(cur_batch_size)) {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -744,6 +753,17 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   int32_t err_code = ret.get();
   if (err_code == -1) {
     LOG(ERROR) << "print table stat failed";
+  }
+}
+
+void FleetWrapper::SaveCacheTable(const uint64_t table_id,
+                                  uint16_t pass_id,
+                                  size_t threshold) {
+  auto ret = worker_ptr_->SaveCacheTable(table_id, pass_id, threshold);
+  ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "save cache table stat failed";
   }
 }
 

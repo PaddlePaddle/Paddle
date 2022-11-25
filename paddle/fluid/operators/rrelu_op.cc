@@ -22,6 +22,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using framework::Tensor;
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 class RReluOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

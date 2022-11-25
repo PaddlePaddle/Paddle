@@ -95,6 +95,7 @@ result_var_type4 = {
 
 
 def func_to_test5():
+
     def inner_int_func():
         return 1
 
@@ -182,6 +183,7 @@ result_var_type = [
 
 
 class TestStaticAnalysis(unittest.TestCase):
+
     def _check_wrapper(self, wrapper, node_to_wrapper_map):
         self.assertEqual(node_to_wrapper_map[wrapper.node], wrapper)
         if wrapper.parent is not None:

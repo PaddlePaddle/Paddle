@@ -25,17 +25,29 @@ from save_quant_model import transform_and_save_int8_model
 
 def parse_args():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument(
         '--fp32_model', type=str, default='', help='A path to a FP32 model.'
     )
     parser.add_argument(
         '--quant_model', type=str, default='', help='A path to a quant model.'
     )
+=======
+    parser.add_argument('--fp32_model',
+                        type=str,
+                        default='',
+                        help='A path to a FP32 model.')
+    parser.add_argument('--quant_model',
+                        type=str,
+                        default='',
+                        help='A path to a quant model.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
         '--warmup_iter',
         type=int,
         default=1,
+<<<<<<< HEAD
         help='Number of the first iterations to skip in performance statistics.',
     )
     parser.add_argument(
@@ -47,11 +59,28 @@ def parse_args():
     parser.add_argument(
         '--num_threads', type=int, default=1, help='Number of threads.'
     )
+=======
+        help='Number of the first iterations to skip in performance statistics.'
+    )
+    parser.add_argument('--acc_diff_threshold',
+                        type=float,
+                        default=0.01,
+                        help='Accepted accuracy difference threshold.')
+    parser.add_argument('--num_threads',
+                        type=int,
+                        default=1,
+                        help='Number of threads.')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     parser.add_argument(
         '--mkldnn_cache_capacity',
         type=int,
         default=0,
+<<<<<<< HEAD
         help='Mkldnn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.',
+=======
+        help=
+        'Mkldnn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
@@ -59,6 +88,7 @@ def parse_args():
 
 
 class TestLstmModelPTQ(unittest.TestCase):
+
     def get_warmup_tensor(self, data_path, place):
         data = []
         with open(data_path, 'rb') as in_f:
@@ -72,6 +102,7 @@ class TestLstmModelPTQ(unittest.TestCase):
                 seq_len = (alllen >> 16) & 0xFFFF
 
                 label = in_f.read(4 * label_len)
+<<<<<<< HEAD
                 label = np.frombuffer(label, dtype=np.int32).reshape(
                     [len(label) // 4]
                 )
@@ -79,6 +110,13 @@ class TestLstmModelPTQ(unittest.TestCase):
                 feat = np.frombuffer(feat, dtype=np.float32).reshape(
                     [len(feat) // 4 // 8, 8]
                 )
+=======
+                label = np.frombuffer(label,
+                                      dtype=np.int32).reshape([len(label) // 4])
+                feat = in_f.read(4 * seq_len * 8)
+                feat = np.frombuffer(feat, dtype=np.float32).reshape(
+                    [len(feat) // 4 // 8, 8])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 lod_feat = [feat.shape[0]]
                 minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
 
@@ -217,6 +255,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         warmup_iter = test_case_args.warmup_iter
         acc_diff_threshold = test_case_args.acc_diff_threshold
 
+<<<<<<< HEAD
         (fp32_hx_acc, fp32_ctc_acc, fp32_fps) = self.run_program(
             fp32_model,
             infer_data,
@@ -236,6 +275,17 @@ class TestLstmModelPTQ(unittest.TestCase):
             True,
             True,
         )
+=======
+        (fp32_hx_acc, fp32_ctc_acc,
+         fp32_fps) = self.run_program(fp32_model, infer_data, num_threads,
+                                      mkldnn_cache_capacity, warmup_iter, False,
+                                      False)
+
+        (int8_hx_acc, int8_ctc_acc,
+         int8_fps) = self.run_program(fp32_model, infer_data, num_threads,
+                                      mkldnn_cache_capacity, warmup_iter, True,
+                                      True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         quant_model_save_path = quant_model + "_int8"
         # transform model to quant2
@@ -243,6 +293,7 @@ class TestLstmModelPTQ(unittest.TestCase):
             quant_model, quant_model_save_path, "fusion_lstm,concat"
         )
 
+<<<<<<< HEAD
         (quant_hx_acc, quant_ctc_acc, quant_fps) = self.run_program(
             quant_model_save_path,
             infer_data,
@@ -270,6 +321,21 @@ class TestLstmModelPTQ(unittest.TestCase):
                 quant_fps, quant_hx_acc, quant_ctc_acc
             )
         )
+=======
+        (quant_hx_acc, quant_ctc_acc,
+         quant_fps) = self.run_program(quant_model_save_path, infer_data,
+                                       num_threads, mkldnn_cache_capacity,
+                                       warmup_iter, True, False)
+
+        print("FP32: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+            fp32_fps, fp32_hx_acc, fp32_ctc_acc))
+
+        print("PTQ_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+            int8_fps, int8_hx_acc, int8_ctc_acc))
+
+        print("QUANT2_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+            quant_fps, quant_hx_acc, quant_ctc_acc))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         sys.stdout.flush()
 

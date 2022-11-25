@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+<<<<<<< HEAD
 This script simply removes all grad ops and kernels. You should use this script
+=======
+This script simply removes all grad ops and kernels. You should use this script 
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
 """
 
 import os
+<<<<<<< HEAD
 import re
 import glob
+=======
+import sys
+import re
+import glob
+import io
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 def find_type_files(cur_dir, file_type, file_list=[]):
@@ -52,6 +63,7 @@ def find_kernel(content, pattern):
 
 def prune_phi_kernels():
     tool_dir = os.path.dirname(os.path.abspath(__file__))
+<<<<<<< HEAD
 
     all_op = glob.glob(
         os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cc'), recursive=True
@@ -59,14 +71,32 @@ def prune_phi_kernels():
     all_op += glob.glob(
         os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cu'), recursive=True
     )
+=======
+    if sys.version_info[0] == 3:
+        all_op = glob.glob(os.path.join(tool_dir,
+                                        '../paddle/phi/kernels/**/*.cc'),
+                           recursive=True)
+        all_op += glob.glob(os.path.join(tool_dir,
+                                         '../paddle/phi/kernels/**/*.cu'),
+                            recursive=True)
+    elif sys.version_info[0] == 2:
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/phi/kernels/'), '.cc')
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/phi/kernels/'), '.cu', all_op)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     register_op_count = 0
     for op_file in all_op:
         need_continue = False
         file_blacklist = [
+<<<<<<< HEAD
             "kernels/empty_kernel.cc",
             "/cast_kernel.c",
             "/batch_norm_kernel.c",
+=======
+            "kernels/empty_kernel.cc", "/cast_kernel.c", "/batch_norm_kernel.c"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         ]
         for bname in file_blacklist:
             if op_file.find(bname) >= 0:
@@ -79,9 +109,15 @@ def prune_phi_kernels():
 
         op_name = os.path.split(op_file)[1]
         all_matches = []
+<<<<<<< HEAD
         with open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
             op_pattern = r'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
+=======
+        with io.open(op_file, 'r', encoding='utf-8') as f:
+            content = ''.join(f.readlines())
+            op_pattern = 'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             op, op_count = find_kernel(content, op_pattern)
             register_op_count += op_count
             all_matches.extend(op)
@@ -89,8 +125,13 @@ def prune_phi_kernels():
         for p in all_matches:
             content = content.replace(p, '')
 
+<<<<<<< HEAD
         with open(op_file, 'w', encoding='utf-8') as f:
             f.write(content)
+=======
+        with io.open(op_file, 'w', encoding='utf-8') as f:
+            f.write(u'{}'.format(content))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     print('We erase all grad op and kernel for Paddle-Inference lib.')
     print('%50s%10s' % ('type', 'count'))
@@ -103,14 +144,19 @@ def apply_patches():
     ret = os.system(
         "cd %s && rm -f paddle/fluid/inference/api/tensorrt_predictor.* "
         " && rm -f paddle/fluid/inference/api/paddle_tensorrt_predictor.h "
+<<<<<<< HEAD
         " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path
     )
+=======
+        " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     return ret == 0
 
 
 def append_fluid_kernels():
     op_white_list = ["load", "load_combine"]
 
+<<<<<<< HEAD
     # 1. add to makefile
     file_name = (
         os.path.dirname(os.path.abspath(__file__))
@@ -124,12 +170,23 @@ def append_fluid_kernels():
         )
 
     with open(file_name, 'r', encoding='utf-8') as f:
+=======
+    #1. add to makefile
+    file_name = os.path.dirname(os.path.abspath(__file__)) \
+                  + "/../paddle/fluid/inference/tensorrt/CMakeLists.txt"
+    append_str = "\nfile(APPEND ${pybind_file} \"USE_NO_KERNEL_OP__(tensorrt_engine);\\n\")\n"
+    for op in op_white_list:
+        append_str = append_str + "file(APPEND ${pybind_file} \"USE_OP__(%s);\\n\")\n" % op
+
+    with io.open(file_name, 'r', encoding='utf-8') as f:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         content = ''.join(f.readlines())
 
     location_str = "nv_library(\n  tensorrt_op_teller\n  SRCS op_teller.cc\n  DEPS framework_proto device_context)"
     new_content = content.replace(location_str, location_str + append_str)
 
     if new_content == content:
+<<<<<<< HEAD
         print(
             "ERROR: can not find \"%s\" in file \"%s\""
             % (location_str, file_name)
@@ -153,24 +210,66 @@ def append_fluid_kernels():
 
     for op_file in all_op:
         with open(op_file, 'r', encoding='utf-8') as f:
+=======
+        print("ERROR: can not find \"%s\" in file \"%s\"" %
+              (location_str, file_name))
+        return False
+
+    with io.open(file_name, 'w', encoding='utf-8') as f:
+        f.write(u'{}'.format(new_content))
+
+    #2. add op and kernel register
+    op_white_list.append("tensorrt_engine")
+    tool_dir = os.path.dirname(os.path.abspath(__file__))
+    if sys.version_info[0] == 3:
+        all_op = glob.glob(os.path.join(tool_dir,
+                                        '../paddle/fluid/operators/**/*.cc'),
+                           recursive=True)
+        all_op += glob.glob(os.path.join(tool_dir,
+                                         '../paddle/fluid/operators/**/*.cu'),
+                            recursive=True)
+    elif sys.version_info[0] == 2:
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cu', all_op)
+
+    for op_file in all_op:
+        with io.open(op_file, 'r', encoding='utf-8') as f:
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             content = ''.join(f.readlines())
 
         for op in op_white_list:
             patterns = {
+<<<<<<< HEAD
                 "REGISTER_OPERATOR": r"REGISTER_OPERATOR\(\s*%s\s*," % op,
                 "REGISTER_OP_CPU_KERNEL": r"REGISTER_OP_CPU_KERNEL\(\s*%s\s*,"
                 % op,
                 "REGISTER_OP_CUDA_KERNEL": r"REGISTER_OP_CUDA_KERNEL\(\s*%s\s*,"
                 % op,
+=======
+                "REGISTER_OPERATOR": "REGISTER_OPERATOR\(\s*%s\s*," % op,
+                "REGISTER_OP_CPU_KERNEL":
+                "REGISTER_OP_CPU_KERNEL\(\s*%s\s*," % op,
+                "REGISTER_OP_CUDA_KERNEL":
+                "REGISTER_OP_CUDA_KERNEL\(\s*%s\s*," % op
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             }
             for k, p in patterns.items():
                 matches = re.findall(p, content, flags=re.DOTALL)
                 if len(matches) > 0:
+<<<<<<< HEAD
                     content = content.replace(
                         matches[0], matches[0].replace(k, k + "__")
                     )
                     with open(op_file, 'w', encoding='utf-8') as f:
                         f.write(content)
+=======
+                    content = content.replace(matches[0],
+                                              matches[0].replace(k, k + "__"))
+                    with io.open(op_file, 'w', encoding='utf-8') as f:
+                        f.write(u'{}'.format(content))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return True
 
@@ -178,6 +277,7 @@ def append_fluid_kernels():
 if __name__ == '__main__':
 
     print("================ step 1: apply patches =======================")
+<<<<<<< HEAD
     assert apply_patches()
     print("==============================================================\n")
 
@@ -187,4 +287,15 @@ if __name__ == '__main__':
 
     print("================ step 3:prune phi kernels ====================")
     assert prune_phi_kernels()
+=======
+    assert (apply_patches())
+    print("==============================================================\n")
+
+    print("================ step 2: append fluid op/kernels==============")
+    assert (append_fluid_kernels())
+    print("==============================================================\n")
+
+    print("================ step 3:prune phi kernels ====================")
+    assert (prune_phi_kernels())
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     print("==============================================================\n")

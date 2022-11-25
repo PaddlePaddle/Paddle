@@ -153,11 +153,17 @@ class DownpourServer(Server):
             or table_class == 'DownpourSparseSSDTable'
         ):
             table.enable_sparse_table_cache = strategy.get(
+<<<<<<< HEAD
                 'sparse_enable_cache', True
             )
             table.sparse_table_cache_rate = strategy.get(
                 'sparse_cache_rate', 0.00055
             )
+=======
+                'sparse_enable_cache', True)
+            table.sparse_table_cache_rate = strategy.get(
+                'sparse_cache_rate', 0.00055)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             table.sparse_table_cache_file_num = strategy.get(
                 'sparse_cache_file_num', 16
             )
@@ -172,6 +178,7 @@ class DownpourServer(Server):
             # DownpourUnitAccessor        : for ctr task, has cvm, slot, embedding and sgd info
 
             support_accessor_class = [
+<<<<<<< HEAD
                 'DownpourFeatureValueAccessor',
                 'DownpourCtrAccessor',
                 'DownpourCtrDymfAccessor',
@@ -179,6 +186,12 @@ class DownpourServer(Server):
                 'DownpourCtrDoubleAccessor',
                 'DownpourUnitAccessor',
                 'DownpourDoubleUnitAccessor',
+=======
+                'DownpourFeatureValueAccessor', 'DownpourCtrAccessor',
+                'DownpourCtrDymfAccessor', 'DownpourSparseValueAccessor',
+                'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor',
+                'DownpourDoubleUnitAccessor'
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             ]
             if strategy.get('sparse_accessor_class') is not None:
                 accessor_class = strategy.get('sparse_accessor_class')
@@ -194,12 +207,19 @@ class DownpourServer(Server):
 
             table.accessor.accessor_class = accessor_class
 
+<<<<<<< HEAD
             if (
                 accessor_class == 'DownpourFeatureValueAccessor'
                 or accessor_class == 'DownpourCtrAccessor'
                 or accessor_class == 'DownpourCtrDymfAccessor'
                 or accessor_class == 'DownpourCtrDoubleAccessor'
             ):
+=======
+            if accessor_class == 'DownpourFeatureValueAccessor' \
+                    or accessor_class == 'DownpourCtrAccessor' \
+                    or accessor_class == 'DownpourCtrDymfAccessor' \
+                    or accessor_class == 'DownpourCtrDoubleAccessor':
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 table.accessor.sparse_sgd_param.learning_rate = strategy.get(
                     'sparse_learning_rate', 0.05
                 )
@@ -419,11 +439,17 @@ class DownpourServer(Server):
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = strategy.get('dense_compress_in_save', True)
         table.accessor.accessor_class = strategy.get(
+<<<<<<< HEAD
             'dense_accessor_class', "DownpourDenseValueAccessor"
         )
         table.accessor.dense_sgd_param.name = strategy.get(
             'dense_optimizer', "adam"
         )
+=======
+            'dense_accessor_class', "DownpourDenseValueAccessor")
+        table.accessor.dense_sgd_param.name = strategy.get(
+            'dense_optimizer', "adam")
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         table.accessor.dense_sgd_param.adam.learning_rate = strategy.get(
             'dense_learning_rate', 5e-06
         )
@@ -506,6 +532,7 @@ class DownpourServer(Server):
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = strategy.get('datanorm_compress_in_save', True)
         table.accessor.accessor_class = strategy.get(
+<<<<<<< HEAD
             'datanorm_accessor_class', 'DownpourDenseValueAccessor'
         )
         table.accessor.dense_sgd_param.name = strategy.get(
@@ -514,6 +541,13 @@ class DownpourServer(Server):
         table.accessor.dense_sgd_param.summary.summary_decay_rate = (
             strategy.get('datanorm_decay_rate', 0.999999)
         )
+=======
+            'datanorm_accessor_class', 'DownpourDenseValueAccessor')
+        table.accessor.dense_sgd_param.name = strategy.get(
+            'datanorm_operation', 'summary')
+        table.accessor.dense_sgd_param.summary.summary_decay_rate = strategy.get(
+            'datanorm_decay_rate', 0.999999)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         table.accessor.fea_dim = fea_dim
 
     def add_sparse_optimizer(self, sgd, strategy, prefix):

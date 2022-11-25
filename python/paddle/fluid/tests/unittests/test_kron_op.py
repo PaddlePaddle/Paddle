@@ -23,6 +23,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestKronOp(OpTest):
+
     def setUp(self):
         self.op_type = "kron"
         self.python_api = paddle.kron
@@ -50,6 +51,7 @@ class TestKronOp(OpTest):
 
 
 class TestKronOp2(TestKronOp):
+
     def setUp(self):
         self.op_type = "kron"
         self.python_api = paddle.kron
@@ -62,6 +64,7 @@ class TestKronOp2(TestKronOp):
 
 
 class TestKronOp3(TestKronOp):
+
     def setUp(self):
         self.op_type = "kron"
         self.python_api = paddle.kron
@@ -74,6 +77,7 @@ class TestKronOp3(TestKronOp):
 
 
 class TestKronLayer(unittest.TestCase):
+
     def test_case(self):
         a = np.random.randn(10, 10).astype(np.float64)
         b = np.random.randn(10, 10).astype(np.float64)
@@ -110,6 +114,7 @@ class TestKronLayer(unittest.TestCase):
 
 
 class TestComplexKronOp(OpTest):
+
     def setUp(self):
         self.op_type = "kron"
         self.python_api = paddle.kron
@@ -176,6 +181,7 @@ class TestComplexKronOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X', 'Y'],
             'Out',
@@ -203,9 +209,33 @@ class TestComplexKronOp(OpTest):
             user_defined_grad_outputs=[self.grad_out],
             check_eager=True,
         )
+=======
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestKronOpTypePromotion(TestComplexKronOp):
+
     def init_input_output(self):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(

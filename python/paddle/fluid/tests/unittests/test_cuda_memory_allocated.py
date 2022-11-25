@@ -19,6 +19,7 @@ from paddle.device.cuda import device_count, memory_allocated
 
 
 class TestMemoryAllocated(unittest.TestCase):
+
     def test_memory_allocated(self, device=None):
         if core.is_compiled_with_cuda():
             tensor = paddle.zeros(shape=[256])
@@ -39,11 +40,15 @@ class TestMemoryAllocated(unittest.TestCase):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(),
+<<<<<<< HEAD
                 device_count() + 1,
                 -2,
                 0.5,
                 "gpu1",
                 "npu",
+=======
+                device_count() + 1, -2, 0.5, "gpu1", "npu"
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):

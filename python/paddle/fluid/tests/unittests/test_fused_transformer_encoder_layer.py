@@ -21,6 +21,7 @@ import unittest
 
 
 class TestFusedTransformerEncoderLayer(unittest.TestCase):
+
     def setActivation(self):
         self.activation = 'gelu'
 
@@ -60,8 +61,13 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
     def fused_weight(self, weight, num_head):
         a = paddle.transpose(weight, perm=[1, 0])
         return paddle.reshape(
+<<<<<<< HEAD
             a, shape=[1, num_head, int(a.shape[0] / num_head), a.shape[1]]
         )
+=======
+            a, shape=[1, num_head,
+                      int(a.shape[0] / num_head), a.shape[1]])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     def fused_qkv(self, q, k, v, num_head):
         fq = self.fused_weight(q, num_head)
@@ -88,6 +94,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         ).astype(self.dtype)
 
         if self.has_attn_mask:
+<<<<<<< HEAD
             attn_mask = np.ones(
                 (
                     self.batch_size,
@@ -97,6 +104,11 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
                 ),
                 dtype=self.attn_mask_type,
             )
+=======
+            attn_mask = np.ones((self.batch_size, self.num_heads,
+                                 self.query_length, self.key_length),
+                                dtype=self.attn_mask_type)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             attn_mask_tensor = paddle.to_tensor(attn_mask)
         else:
             attn_mask = None
@@ -104,9 +116,14 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
 
         dout = np.random.random(src.shape).astype(self.dtype)
 
+<<<<<<< HEAD
         base_out = base_encoder(
             paddle.to_tensor(src, stop_gradient=False), attn_mask_tensor
         )
+=======
+        base_out = base_encoder(paddle.to_tensor(src, stop_gradient=False),
+                                attn_mask_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.autograd.backward([base_out], [paddle.to_tensor(dout)], True)
 
         fused_encoder = FusedTransformerEncoderLayer(
@@ -162,6 +179,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         tmp = paddle.concat(x=[q_bias, k_bias, v_bias], axis=0)
         qkv_bias = paddle.reshape(
             tmp,
+<<<<<<< HEAD
             shape=[3, self.num_heads, int(tmp.shape[0] / 3 / self.num_heads)],
         )
         fused_encoder.fused_attn.qkv_bias.set_value(qkv_bias)
@@ -169,6 +187,14 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         fused_out = fused_encoder(
             paddle.to_tensor(src, stop_gradient=False), attn_mask_tensor
         )
+=======
+            shape=[3, self.num_heads,
+                   int(tmp.shape[0] / 3 / self.num_heads)])
+        fused_encoder.fused_attn.qkv_bias.set_value(qkv_bias)
+
+        fused_out = fused_encoder(paddle.to_tensor(src, stop_gradient=False),
+                                  attn_mask_tensor)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         paddle.autograd.backward([fused_out], [paddle.to_tensor(dout)], True)
 
         correct_ffn_str = 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}'.format(
@@ -197,6 +223,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         )
         self.assertTrue(fused_encoder.fused_attn.extra_repr(), correct_attn_str)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             fused_out.numpy(), base_out.numpy(), rtol=self.rtol, atol=self.atol
         )
@@ -206,30 +233,57 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
             rtol=self.rtol,
             atol=self.atol,
         )
+=======
+        np.testing.assert_allclose(fused_out.numpy(),
+                                   base_out.numpy(),
+                                   rtol=self.rtol,
+                                   atol=self.atol)
+        self.assertTrue(
+            np.allclose(fused_out.grad.numpy(),
+                        base_out.grad.numpy(),
+                        rtol=self.rtol,
+                        atol=self.atol))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
 
 class TestFusedTransformerEncoderLayerAct(TestFusedTransformerEncoderLayer):
+
     def setActivation(self):
         self.activation = 'relu'
 
 
 class TestFusedTransformerEncoderLayerPreLayerNorm(
+<<<<<<< HEAD
     TestFusedTransformerEncoderLayer
 ):
+=======
+        TestFusedTransformerEncoderLayer):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setPreLayerNorm(self):
         self.pre_layer_norm = True
 
 
 class TestFusedTransformerEncoderLayerAttnMaskIsNone(
+<<<<<<< HEAD
     TestFusedTransformerEncoderLayer
 ):
+=======
+        TestFusedTransformerEncoderLayer):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setAttnMask(self):
         self.has_attn_mask = False
 
 
 class TestFusedTransformerEncoderLayerPreLnTrueAttnMaskIsNone(
+<<<<<<< HEAD
     TestFusedTransformerEncoderLayer
 ):
+=======
+        TestFusedTransformerEncoderLayer):
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     def setPreLayerNorm(self):
         self.pre_layer_norm = True
 

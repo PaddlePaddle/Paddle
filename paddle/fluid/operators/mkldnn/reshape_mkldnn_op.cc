@@ -30,6 +30,13 @@ enum class ReshapeKernelOpName {
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
+=======
+using paddle::framework::LoDTensor;
+using platform::GetMKLDNNFormat;
+using platform::to_void_cast;
+
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 static std::vector<int> extract_shape(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   std::vector<int> vec_new_shape;
@@ -71,9 +78,19 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x_dims);
 
+<<<<<<< HEAD
     auto x_type = phi::funcs ::ToOneDNNDataType(x->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
         x_vec_dims, x->dtype(), x_type, onednn_engine);
+=======
+    dnnl::memory::data_type x_type =
+        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
+    platform::ReorderMKLDNNHandler reorder_handler(
+        x_vec_dims,
+        framework::TransToProtoVarType(x->dtype()),
+        x_type,
+        onednn_engine);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
@@ -341,9 +358,19 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     auto dout_vec_dims = phi::vectorize(dout->dims());
 
+<<<<<<< HEAD
     auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
         dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
+=======
+    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
+    platform::ReorderMKLDNNHandler reorder_handler(
+        dout_vec_dims,
+        framework::TransToProtoVarType(dout->dtype()),
+        dout_type,
+        onednn_engine);
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));

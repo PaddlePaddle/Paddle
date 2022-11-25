@@ -36,16 +36,23 @@ def random_routing(topk_idx, topk_value, prob, topk=2):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNumberCountAPIFp32(unittest.TestCase):
+
     def setUp(self):
         self.dtype = "float32"
         self.init()
 
     def init(self):
         self.upper_range = 8
+<<<<<<< HEAD
         self.x = np.random.randint(-1, self.upper_range, size=(200, 2)).astype(
             'int64'
         )
         self.prob = np.random.random((self.x.shape[0],)).astype(self.dtype)
+=======
+        self.x = np.random.randint(-1, self.upper_range,
+                                   size=(200, 2)).astype('int64')
+        self.prob = np.random.random((self.x.shape[0], )).astype(self.dtype)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.topk_value = np.random.random(self.x.shape).astype(self.dtype)
         self.out = random_routing(self.x, self.topk_value, self.prob).astype(
             self.dtype
@@ -70,6 +77,7 @@ class TestNumberCountAPIFp32(unittest.TestCase):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
+
     def setUp(self):
         self.dtype = "float16"
         self.init()

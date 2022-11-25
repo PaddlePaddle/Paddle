@@ -80,7 +80,13 @@ void CommonGraphSampler::init(GpuPsGraphTable *g,
 int AllInGpuGraphSampler::run_graph_sampling() { return 0; }
 int AllInGpuGraphSampler::load_from_ssd(std::string path) {
   graph_table->load_edges(path, false);
+<<<<<<< HEAD
   sample_node_ids.clear() sample_node_infos.clear() sample_neighbors.clear();
+=======
+  sample_node_ids.clear();
+  sample_node_infos.clear();
+  sample_neighbors.clear();
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
   sample_res.clear();
   sample_node_ids.resize(gpu_num);
   sample_node_infos.resize(gpu_num);

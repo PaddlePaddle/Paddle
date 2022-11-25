@@ -147,9 +147,14 @@ class Converter:
                 )
             except ValueError as err:
                 raise ValueError(
+<<<<<<< HEAD
                     "Fail to convert tensor '{}'. ".format(str(tensor_name))
                     + str(err)
                 )
+=======
+                    "Fail to convert tensor '{}'. ".format(str(tensor_name)) +
+                    str(err))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         for tensor_name in self._pre_strategy:
             if tensor_name not in self._cur_strategy:
@@ -175,6 +180,7 @@ class Converter:
         if tensor_not_in_pre:
             warnings.warn(
                 "tensors [{}] are not found in last training strategy.".format(
+<<<<<<< HEAD
                     str(tensor_not_in_pre)
                 )
             )
@@ -191,6 +197,18 @@ class Converter:
                     str(tensor_not_in_ckpt)
                 )
             )
+=======
+                    str(tensor_not_in_pre)))
+        if tensor_not_in_cur:
+            warnings.warn(
+                "tensors [{}] are not found in current training strategy.".
+                format(str(tensor_not_in_cur)))
+        if tensor_not_in_ckpt:
+            warnings.warn(
+                "tensors [{}] are found in pre_strategy, but are not found"
+                "in checkpoint files, please check your checkpoint files.".
+                format(str(tensor_not_in_ckpt)))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         return tensors_dict
 
@@ -427,9 +445,15 @@ class Converter:
         """
         sliced_tensor_list = []
         axis = len(complete_tensor.shape) - length
+<<<<<<< HEAD
         sliced_tensor = np.split(
             complete_tensor, partition_index_list[axis], axis=axis
         )
+=======
+        sliced_tensor = np.split(complete_tensor,
+                                 partition_index_list[axis],
+                                 axis=axis)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         if length == 1:
             return sliced_tensor
         for tensor in sliced_tensor:

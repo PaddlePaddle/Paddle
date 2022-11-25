@@ -17,15 +17,28 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import is_parameter_related
+<<<<<<< HEAD
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 from ..cost import Transpose2OpCost, Transpose2GradOpCost
 from ..cost import build_comp_desc_from_dist_op, build_dp_costs
+=======
+from ..utils import is_dim_shard
+from ..utils import is_dim_replicate
+from ..utils import is_valid_list_index
+from ..utils import compute_compatible_dim_mapping
+from ..utils import compute_compatible_dims_mapping
+from ..utils import compute_compatible_and_update_dim_mapping
+from .dist_default import DistributedDefaultImpl0
+from ..cost import AllreduceSumOpCost, Transpose2OpCost, Transpose2GradOpCost
+from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op, build_dp_costs
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from ..cost import build_comp_costs_from_descs
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -36,6 +49,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedTranspose2Impl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = False
@@ -130,6 +144,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
 
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
@@ -138,6 +153,15 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         cost_mapping = build_comp_costs_from_descs(
             Transpose2OpCost, ctx, processes, desc_mapping, cluster
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_descs(Transpose2OpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         res_cost = [cost_mapping]
         return res_cost
@@ -145,26 +169,45 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
     def calc_bwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
         res = []
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.processes
         op_type = dist_op.serial_op.type
+<<<<<<< HEAD
         cost_mapping = build_comp_costs_from_descs(
             Transpose2GradOpCost, ctx, processes, desc_mapping, cluster
         )
+=======
+        cost_mapping = build_comp_costs_from_descs(Transpose2GradOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         res.append(cost_mapping)
 
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
+<<<<<<< HEAD
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(
                     varname, main_block
                 ):
+=======
+        vars = main_block.vars
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and is_parameter_related(
+                        varname, main_block):
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
@@ -174,6 +217,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
                         var_names = [varname + "@GRAD"]
+<<<<<<< HEAD
                         build_dp_costs(
                             res,
                             dist_op,
@@ -183,6 +227,10 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
                             parallel_axis,
                             cluster,
                         )
+=======
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         return res
 
     @staticmethod

@@ -194,8 +194,11 @@ message OperatorSupplementEventProto {
   required dtype_proto dtypes = 6;
   // call stack
   required string callstack = 7;
+<<<<<<< HEAD
 
   required uint64 op_id = 8;
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 }
 
 message CudaRuntimeTraceEventProto {

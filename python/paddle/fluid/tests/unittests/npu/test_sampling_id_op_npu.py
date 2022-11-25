@@ -28,6 +28,7 @@ _set_use_system_allocator(False)
 
 
 class TestSamplingIdShape(unittest.TestCase):
+
     def test_shape(self):
         paddle.enable_static()
         x = fluid.layers.data(name='x', shape=[3], dtype='float32')

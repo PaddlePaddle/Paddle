@@ -6,7 +6,10 @@
 		*phi*;
 		*FLAGS_*;
 		PD_*;
+<<<<<<< HEAD
 		*cinn*;
+=======
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 	local:
 		*;
 };

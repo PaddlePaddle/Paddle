@@ -33,6 +33,7 @@ device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -53,6 +54,28 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+        bias_attr = None
+
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
@@ -80,6 +103,7 @@ def mlp_forward(train_program, start_program):
         input = embedding(input)
         input = paddle.reshape(input, [hidden_size, batch_size])
         input = paddle.transpose(input, perm=[1, 0])
+<<<<<<< HEAD
         matmulinput = static.data(
             name="matmulinput",
             shape=[hidden_size, hidden_size],
@@ -94,6 +118,18 @@ def mlp_forward(train_program, start_program):
             intermediate_size=4 * hidden_size,
             initializer_range=0.02,
         )
+=======
+        matmulinput = static.data(name="matmulinput",
+                                  shape=[hidden_size, hidden_size],
+                                  dtype='float32')
+        input = layers.matmul(x=input, y=matmulinput)
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
@@ -104,12 +140,14 @@ def mlp_forward(train_program, start_program):
 
 
 class TestCompatible(unittest.TestCase):
+
     def test_matmulv2_matmul_2_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
 
+<<<<<<< HEAD
         with static.program_guard(
             program, start_program
         ), utils.unique_name.guard():
@@ -127,6 +165,24 @@ class TestCompatible(unittest.TestCase):
             matmuly4 = static.data(
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32'
             )
+=======
+        with static.program_guard(program,
+                                  start_program), utils.unique_name.guard():
+            matmulx3 = static.data(name="matmulx3",
+                                   shape=[6, 2, 6],
+                                   dtype='float32')
+            matmuly3 = static.data(name="matmuly3",
+                                   shape=[6, 6],
+                                   dtype='float32')
+            output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
+            matmulx4 = static.data(name="matmulx4",
+                                   shape=[6, 6, 2, 6],
+                                   dtype='float32')
+            matmuly4 = static.data(name="matmuly4",
+                                   shape=[6, 6, 6, 6],
+                                   dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
             output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
@@ -270,6 +326,7 @@ class TestCompatible(unittest.TestCase):
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
+<<<<<<< HEAD
         with static.program_guard(
             program, start_program
         ), utils.unique_name.guard():
@@ -287,6 +344,24 @@ class TestCompatible(unittest.TestCase):
             matmuly4 = static.data(
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32'
             )
+=======
+        with static.program_guard(program,
+                                  start_program), utils.unique_name.guard():
+            matmulx3 = static.data(name="matmulx3",
+                                   shape=[6, 2, 6],
+                                   dtype='float32')
+            matmuly3 = static.data(name="matmuly3",
+                                   shape=[6, 6],
+                                   dtype='float32')
+            output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
+            matmulx4 = static.data(name="matmulx4",
+                                   shape=[6, 6, 6, 6],
+                                   dtype='float32')
+            matmuly4 = static.data(name="matmuly4",
+                                   shape=[6, 6, 6, 6],
+                                   dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
             output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops
@@ -408,6 +483,7 @@ class TestCompatible(unittest.TestCase):
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
+<<<<<<< HEAD
         with static.program_guard(
             program, start_program
         ), utils.unique_name.guard():
@@ -425,6 +501,24 @@ class TestCompatible(unittest.TestCase):
             matmuly4 = static.data(
                 name="matmuly4", shape=[6, 6, 6, 6], dtype='float32'
             )
+=======
+        with static.program_guard(program,
+                                  start_program), utils.unique_name.guard():
+            matmulx3 = static.data(name="matmulx3",
+                                   shape=[6, 2, 6],
+                                   dtype='float32')
+            matmuly3 = static.data(name="matmuly3",
+                                   shape=[6, 6],
+                                   dtype='float32')
+            output1 = paddle.matmul(x=matmulx3, y=matmuly3)
+            output_1 = layers.matmul(x=matmulx3, y=matmuly3)
+            matmulx4 = static.data(name="matmulx4",
+                                   shape=[6, 6, 2, 6],
+                                   dtype='float32')
+            matmuly4 = static.data(name="matmuly4",
+                                   shape=[6, 6, 6, 6],
+                                   dtype='float32')
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
             output2 = paddle.matmul(x=matmulx4, y=matmuly4)
             output_2 = layers.matmul(x=matmulx4, y=matmuly4)
         ops = program.global_block().ops

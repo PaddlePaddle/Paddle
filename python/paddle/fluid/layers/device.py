@@ -36,8 +36,14 @@ def get_places(device_count=None, device_type=None):
     if device_type is not None:
         attrs['device_type'] = str(device_type)
 
+<<<<<<< HEAD
     helper.append_op(
         type='get_places', outputs={"Out": [out_places]}, attrs=attrs
     )
+=======
+    helper.append_op(type='get_places',
+                     outputs={"Out": [out_places]},
+                     attrs=attrs)
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
     return out_places

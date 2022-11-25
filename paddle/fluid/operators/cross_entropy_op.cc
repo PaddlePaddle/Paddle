@@ -142,7 +142,11 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
+=======
+  void InferShape(framework::InferShapeContext* ctx) const {
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
     OP_INOUT_CHECK(
         ctx->HasInput("Label"), "Input", "Label", "CrossEntropyGradientOpBase");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),

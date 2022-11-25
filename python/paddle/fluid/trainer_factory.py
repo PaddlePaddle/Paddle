@@ -19,6 +19,7 @@ import logging
 import numpy as np
 from paddle.fluid.log_helper import get_logger
 
+<<<<<<< HEAD
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -39,6 +40,14 @@ from .device_worker import (
     DownpourSGDOPT,
     HeterSection,
 )
+=======
+local_logger = get_logger(__name__,
+                          logging.INFO,
+                          fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, PSGPUTrainer, HeterPipelineTrainer
+from .device_worker import Hogwild, DownpourSGD, DownpourLite, Section, DownpourSGDOPT, HeterSection
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 from .framework import Variable
 from multiprocessing import Process, Manager
 
@@ -91,6 +100,11 @@ class TrainerFactory:
                     and len(opt_info.get("dump_fields_path")) != 0
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
+                if opt_info.get(
+                        "user_define_dump_filename") is not None and len(
+                            opt_info.get("user_define_dump_filename")) != 0:
+                    trainer._set_user_define_dump_filename(
+                        opt_info["user_define_dump_filename"])
                 if opt_info.get("dump_file_num") is not None:
                     trainer._set_dump_file_num(opt_info["dump_file_num"])
                 if opt_info.get("dump_converter") is not None:
@@ -106,18 +120,29 @@ class TrainerFactory:
                     trainer._set_use_ps_gpu(opt_info["use_ps_gpu"])
                 if opt_info.get("is_dump_in_simple_mode") is not None:
                     trainer._set_is_dump_in_simple_mode(
+<<<<<<< HEAD
                         opt_info["is_dump_in_simple_mode"]
                     )
                 if opt_info.get("enable_random_dump") is not None:
                     trainer._set_enable_random_dump(
                         opt_info["enable_random_dump"]
                     )
+=======
+                        opt_info["is_dump_in_simple_mode"])
+                if opt_info.get("enable_random_dump") is not None:
+                    trainer._set_enable_random_dump(
+                        opt_info["enable_random_dump"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 if opt_info.get("dump_interval") is not None:
                     trainer._set_dump_interval(opt_info["dump_interval"])
                 if opt_info.get("random_with_lineid") is not None:
                     trainer._set_random_with_lineid(
+<<<<<<< HEAD
                         opt_info["random_with_lineid"]
                     )
+=======
+                        opt_info["random_with_lineid"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])
@@ -126,6 +151,7 @@ class TrainerFactory:
                     trainer._set_use_cvm(opt_info["use_cvm"])
                 if opt_info.get("no_cvm") is not None:
                     trainer._set_no_cvm(opt_info["no_cvm"])
+<<<<<<< HEAD
                 if (
                     opt_info.get("scale_sparse_gradient_with_batch_size")
                     is not None
@@ -133,18 +159,32 @@ class TrainerFactory:
                     trainer._set_scale_sparse_grad_with_batch_size(
                         opt_info["scale_sparse_gradient_with_batch_size"]
                     )
+=======
+                if opt_info.get(
+                        "scale_sparse_gradient_with_batch_size") is not None:
+                    trainer._set_scale_sparse_grad_with_batch_size(
+                        opt_info["scale_sparse_gradient_with_batch_size"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 if opt_info.get("scale_datanorm") is not None:
                     trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("adjust_ins_weight") is not None:
                     trainer._set_adjust_ins_weight(
+<<<<<<< HEAD
                         opt_info["adjust_ins_weight"]
                     )
+=======
+                        opt_info["adjust_ins_weight"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 if opt_info.get("copy_table") is not None:
                     trainer._set_copy_table_config(opt_info["copy_table"])
                 if opt_info.get("check_nan_var_names") is not None:
                     trainer._set_check_nan_var_names(
+<<<<<<< HEAD
                         opt_info["check_nan_var_names"]
                     )
+=======
+                        opt_info["check_nan_var_names"])
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 if opt_info.get("loss_names") is not None:
                     trainer._set_loss_names(opt_info["loss_names"])
             trainer._set_device_worker(device_worker)
@@ -159,9 +199,14 @@ class FetchHandlerMonitor:
 
     def __init__(self, scope, handler):
         self.fetch_instance = handler
+<<<<<<< HEAD
         self.fetch_thread = threading.Thread(
             target=self.handler_launch_func, args=(scope, self.fetch_instance)
         )
+=======
+        self.fetch_thread = threading.Thread(target=self.handler_launch_func,
+                                             args=(scope, self.fetch_instance))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
         self.running_lock = threading.Lock()
         self.running = False
 
@@ -174,8 +219,12 @@ class FetchHandlerMonitor:
                 var_name_to_key[fetch_instance.var_dict[key].name] = key
             else:
                 local_logger.warning(
+<<<<<<< HEAD
                     "the value of {} is not a Variable".format(key)
                 )
+=======
+                    "the value of {} is not a Variable".format(key))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 var_name_to_key["None.var"] = key
         elapsed_secs = 0
         while True:
@@ -192,12 +241,19 @@ class FetchHandlerMonitor:
                 for key in var_name_to_key:
                     var = scope.find_var(key)
                     fetch_dict[key] = var
+<<<<<<< HEAD
                     if var is None:
                         local_logger.warning(
                             "{} value currently not available".format(
                                 var_name_to_key[key]
                             )
                         )
+=======
+                    if var == None:
+                        local_logger.warning(
+                            "{} value currently not available".format(
+                                var_name_to_key[key]))
+>>>>>>> e170b253fc2cfc81aeb39c17a0fffc8e08311f1e
                 res_dict = {}
                 for key in fetch_dict:
                     user_name = var_name_to_key[key]
