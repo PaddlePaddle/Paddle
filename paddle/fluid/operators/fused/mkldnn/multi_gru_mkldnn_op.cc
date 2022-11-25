@@ -26,7 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::platform::CreateKey;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
@@ -114,7 +113,8 @@ class MultiGRUHandler {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
     memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
-        dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
+        dev_ctx,
+        phi::funcs::CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 

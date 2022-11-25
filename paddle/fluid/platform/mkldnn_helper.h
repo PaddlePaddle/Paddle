@@ -76,47 +76,6 @@ inline std::string ThreadIDasStr(void) {
       std::hash<std::thread::id>()(std::this_thread::get_id()));
 }
 
-template <typename T>
-inline void AppendKey(std::string* key, const T& num) {
-  key->append(std::to_string(num));
-}
-
-template <>
-inline void AppendKey(std::string* key,
-                      const dnnl::memory::format_tag& format) {
-  key->append(std::to_string(static_cast<int>(format)));
-}
-
-template <>
-inline void AppendKey(std::string* key,
-                      const dnnl::memory::data_type& data_type) {
-  key->append(std::to_string(static_cast<int>(data_type)));
-}
-
-template <>
-inline void AppendKey(std::string* key, const dnnl::algorithm& algorithm) {
-  key->append(std::to_string(static_cast<int>(algorithm)));
-}
-
-template <>
-inline void AppendKey(std::string* key,
-                      const dnnl::normalization_flags& flags) {
-  key->append(std::to_string(static_cast<int>(flags)));
-}
-
-inline void AppendKey(std::string* key, const std::string& str) {
-  key->append(str);
-}
-
-inline void AppendKey(std::string* key, const char* str) { key->append(str); }
-
-template <typename T>
-inline void AppendKey(std::string* key, const std::vector<T>& dims) {
-  for (size_t i = 0; i < dims.size(); i++) {
-    AppendKey(key, std::to_string(dims[i]));
-  }
-}
-
 // If MKLDNN build and CPU place then register suffix in DeviceContext
 inline void AttachPointerHashToMKLDNNKey(void* ptr,
                                          const platform::Place& place) {
@@ -142,16 +101,6 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
       OneDNNContext::tls().disable_tid_in_key();
     }
   }
-}
-
-template <typename... ArgTypes>
-inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
-  std::string key;
-  key.reserve(64);
-  using expand_type = int[];
-  expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
-  key += OneDNNContext::tls().get_key_suffix();
-  return key;
 }
 
 inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,

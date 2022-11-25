@@ -419,10 +419,10 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     cache_key.reserve(64);
     cache_key = platform::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx,
-        platform::CreateKey(dev_ctx,
-                            ctx.InputName("Input"),
-                            ctx.InputName("W"),
-                            phi::vectorize(x->dims())));
+        phi::funcs::CreateKey(dev_ctx,
+                              ctx.InputName("Input"),
+                              ctx.InputName("W"),
+                              phi::vectorize(x->dims())));
 
     auto inner_product_cache =
         std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));

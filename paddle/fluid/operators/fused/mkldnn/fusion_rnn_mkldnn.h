@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::platform::CreateKey;
+using phi::funcs::CreateKey;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::RNNReorderType;
 
