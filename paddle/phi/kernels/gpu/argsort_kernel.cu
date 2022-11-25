@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -429,7 +430,7 @@ void ArgsortKernel(const Context &dev_ctx,
   auto size = input.numel();
   T *out_data = dev_ctx.template Alloc<T>(output);
   int64_t *ids_data = dev_ctx.template Alloc<int64_t>(indices);
-  
+
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.
   // Compared to the following 'Special case for full sort', ascending sort is
