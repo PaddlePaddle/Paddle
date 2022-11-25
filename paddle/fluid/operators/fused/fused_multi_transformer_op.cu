@@ -457,8 +457,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step6. ffn matmul1
-      ffn1_cublas_linear.ComputeForward(
-          buf1, ffn1_weights[i], ffn1_biases[i], nullptr, &ffn1_out, "gelu");
+      ffn1_cublas_linear.ComputeForward(buf1,
+                                        ffn1_weights[i],
+                                        ffn1_biases[i],
+                                        nullptr,
+                                        &ffn1_out,
+                                        act_method);
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
