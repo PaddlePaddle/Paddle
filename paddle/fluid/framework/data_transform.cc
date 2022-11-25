@@ -90,7 +90,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
             kernel_type_for_var.data_layout_,
             phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
             in,
-            out,
+            &out,
             expected_kernel_type.place_);
       }
     } else {

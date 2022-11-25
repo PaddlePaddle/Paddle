@@ -22,6 +22,7 @@ namespace operators {
 
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
+using phi::funcs::RNNReorderType;
 
 template <typename T, typename T_out = T>
 class LSTMMKLDNNHandler
@@ -456,13 +457,13 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::NTC_PP);
+                             RNNReorderType::NTC_PP);
     } else {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::TNC_PP);
+                             RNNReorderType::TNC_PP);
     }
   }
 };
