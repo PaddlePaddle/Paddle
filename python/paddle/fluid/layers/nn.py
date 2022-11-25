@@ -14,7 +14,6 @@
 """
 All layers just related to the neural network.
 """
-import os
 import inspect
 import warnings
 
@@ -41,11 +40,10 @@ from ..framework import _current_expected_place
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import (
-    autodoc,
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
+from .tensor import assign, fill_constant
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -70,7 +68,6 @@ __all__ = [
     'cos_sim',
     'conv2d',
     'conv3d',
-    'softmax',
     'pool2d',
     'pool3d',
     'batch_norm',
@@ -205,7 +202,7 @@ def _get_reduce_dim(dim, input):
         else:
             raise TypeError(
                 "The type of dim must be int, list, tuple or range, but received {}".format(
-                    type(axis)
+                    type(dim)
                 )
             )
     if dim is None:
@@ -739,7 +736,7 @@ def _pull_gpups_sparse(
         size(int|list of int): The embedding size parameter of each input, which indicates the size of
             each embedding vector respectively.
         dtype(str): The dtype refers to the data type of output tensor. Only supports
-	    float32 now.
+        float32 now.
 
     Returns:
         Variable|list of Variable: The tensor variable storing the embeddings of the \
@@ -802,7 +799,7 @@ def _pull_box_sparse(
         size(int): The embedding size parameter, which indicates the size of
             each embedding vector respectively.
         dtype(str): The dtype refers to the data type of output tensor. Only supports
-	    float32 now.
+        float32 now.
 
     Returns:
         Variable|list of Variable: The tensor variable storing the embeddings of the \
@@ -2052,7 +2049,7 @@ def pool2d(
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
             pool_padding = [0, 0]
-            if ceil_mode != False:
+            if ceil_mode is not False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True."
@@ -2306,7 +2303,7 @@ def pool3d(
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
             pool_padding = [0, 0, 0]
-            if ceil_mode != False:
+            if ceil_mode is not False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
                     "Received ceil_mode: True."
@@ -2427,14 +2424,14 @@ def batch_norm(
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized
-	     with Xavier. Default: None.
+         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+         If the Initializer of the param_attr is not set, the parameter is initialized
+         with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
-	     Default: None.
+         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+         If the Initializer of the bias_attr is not set, the bias is initialized zero.
+         Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
              will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
              The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -2992,16 +2989,16 @@ def instance_norm(
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized
-	     with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+         If the Initializer of the param_attr is not set, the parameter is initialized
+         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
              Default: None.
         bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
+         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+         If the Initializer of the bias_attr is not set, the bias is initialized zero.
              If the bias_attr is set to False, instance_norm will not create bias_attr.
-	     Default: None.
+         Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -3045,7 +3042,7 @@ def instance_norm(
 
     param_shape = [channel_num]
 
-    if param_attr != False and bias_attr != False:
+    if param_attr is not False and bias_attr is not False:
         # create parameter
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3072,7 +3069,7 @@ def instance_norm(
     instance_norm_out = helper.create_variable_for_type_inference(dtype)
 
     inputs = {"X": input}
-    if param_attr != False and bias_attr != False:
+    if param_attr is not False and bias_attr is not False:
         inputs["Scale"] = scale
         inputs["Bias"] = bias
 
@@ -7599,12 +7596,12 @@ def mean_iou(input, label, num_classes):
         num_classes (int32): The possible number of labels.
 
     Returns:
-	Three Tensors.
+    Three Tensors.
 
         - mean_iou(Tensor) : A 1-D Tensor representing the mean intersection-over-union with shape [1]. \
-			    Data type is float32.
+                Data type is float32.
         - out_wrong(Tensor) : A 1-D Tensor with shape [num_classes]. Data type is int32. \
-			     The wrong numbers of each class.
+                 The wrong numbers of each class.
         - out_correct(Tensor): A 1-D  Tensor with shape [num_classes]. Data type is int32. The correct numbers of each class.
 
 
@@ -8391,7 +8388,7 @@ def expand(x, expand_times, name=None):
         'expand',
     )
     check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient is True:
         raise ValueError(
             "expand op bool date type must set the stop_gradient to be False"
         )
@@ -8861,7 +8858,7 @@ def sum(x):
             exe.run(fluid.default_main_program())
 
             # The printed result is:
-            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
+            # 1570701754    the sum of input0 and input1:     The place is:CPUPlace
             # Tensor[sum_0.tmp_0]
             #    shape: [2,3,]
             #    dtype: l
@@ -11617,7 +11614,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         fwd_in_out = set(fwd_in_out)
         backward_skip_vars = set()
         for v in skip_vars_in_backward_input:
-            if not v.name in fwd_in_out:
+            if  v.name not in fwd_in_out:
                 raise ValueError(
                     'Variable {} is not found in forward inputs and outputs'.format(
                         v.name
@@ -12369,7 +12366,7 @@ def deformable_roi_pooling(
         )
 
     input_channels = input.shape[1]
-    if position_sensitive == False:
+    if position_sensitive is False:
         output_channels = input_channels
     else:
         output_channels = input_channels / pooled_height / pooled_width
@@ -12567,11 +12564,11 @@ def mish(x, threshold=20, name=None):
 
     .. math::
 
-	out = \\begin{cases}
-		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
-		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
-		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
-	      \\end{cases}
+    out = \\begin{cases}
+        x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
+        x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
+        x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
+          \\end{cases}
 
     Args:
         x (Variable): Input feature, multi-dimensional Tensor. The data type
