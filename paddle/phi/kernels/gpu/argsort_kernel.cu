@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,14 +107,14 @@ static __global__ void FillIndexAndSegmentKernel(int2 *data,
 
 template <typename KT, typename VT>
 static void RadixSortPairs(const phi::GPUContext &ctx,
-                               const KT *keys_in,
-                               const VT *values_in,
-                               KT *keys_out,
-                               VT *values_out,
-                               int64_t n,
-                               bool descending = false,
-                               int64_t begin_bit = 0,
-                               int64_t end_bit = sizeof(KT) * 8) {
+                           const KT *keys_in,
+                           const VT *values_in,
+                           KT *keys_out,
+                           VT *values_out,
+                           int64_t n,
+                           bool descending = false,
+                           int64_t begin_bit = 0,
+                           int64_t end_bit = sizeof(KT) * 8) {
   if (keys_out == nullptr) {
     DenseTensor key_out_owner;
     key_out_owner.Resize({n});
@@ -199,14 +200,14 @@ static __global__ void SortPostprocessKernel(const T *in,
 }
 
 template <typename T>
-inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
-                                         const T *const self_ptr,
-                                         T *const values_ptr,
-                                         int64_t *const indices_ptr
-                                         const int64_t nsegments,
-                                         const int64_t nsort,
-                                         const int64_t n,
-                                         const bool descending) {
+inline void SegmentedSortPairsByFullSort(
+    const phi::GPUContext &ctx,
+    const T *const self_ptr,
+    T *const values_ptr,
+    int64_t *const indices_ptr const int64_t nsegments,
+    const int64_t nsort,
+    const int64_t n,
+    const bool descending) {
   int64_t segment_bits = std::max<int64_t>(
       1L, static_cast<int64_t>(std::ceil(std::log2(nsegments))));
 
@@ -250,7 +251,8 @@ inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
       self_ptr, values_ptr, indices_ptr, i_s_ptr, nsegments, nsort);
 }
 
-// The method is called when # of the rows of the input is less than or equal to 4
+// The method is called when # of the rows of the input is less than or equal to
+// 4
 template <typename T, typename IndexType>
 void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
                             const DenseTensor *input,
