@@ -1242,9 +1242,4 @@ cc_test(
   SRCS phi_utils_test.cc
   DEPS phi_utils)
 
-cc_library(fluid_convert_utils DEPS data_type)
-
-cc_test(
-  convert_utils_test
-  SRCS convert_utils_test.cc
-  DEPS fluid_convert_utils)
+cc_test(convert_utils_test SRCS convert_utils_test.cc)

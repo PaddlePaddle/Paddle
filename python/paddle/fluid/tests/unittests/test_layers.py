@@ -3731,7 +3731,9 @@ class TestBook(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            loss = paddle.nn.functional.kl_div(
+                input=x, label=target, reduction='batchmean'
+            )
             return loss
 
     def make_temporal_shift(self):
@@ -3740,14 +3742,6 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
             out = layers.temporal_shift(x, seg_num=2, shift_ratio=0.2)
-            return out
-
-    def make_shuffle_channel(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.shuffle_channel(x, group=4)
             return out
 
     def make_fsp_matrix(self):
@@ -3773,7 +3767,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.mse_loss(input=x, label=y)
+            out = paddle.nn.functional.mse_loss(input=x, label=y)
             return out
 
     def make_square_error_cost(self):
