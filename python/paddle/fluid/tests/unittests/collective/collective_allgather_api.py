@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import os
+import pickle
 import sys
+
+import test_collective_api_base as test_base
+
 import paddle
 import paddle.fluid as fluid
-import pickle
 import paddle.fluid.layers as layers
-import test_collective_api_base as test_base
 
 paddle.enable_static()
 

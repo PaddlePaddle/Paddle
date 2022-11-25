@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid.optimizer import Momentum, LarsMomentumOptimizer
+from paddle.fluid.optimizer import Momentum
+from paddle.fluid.optimizer import LarsMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 

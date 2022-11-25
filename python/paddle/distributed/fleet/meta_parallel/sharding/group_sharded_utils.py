@@ -68,7 +68,7 @@ class GroupShardedClipGrad:
                 merge_grad = layers.get_tensor_from_selected_rows(
                     layers.merge_selected_rows(g)
                 )
-            square = layers.square(merge_grad)
+            square = paddle.square(merge_grad)
             sum_square = layers.reduce_sum(square)
 
             if p.dtype == paddle.float16:
@@ -130,10 +130,10 @@ class GroupShardedClipGrad:
         if paddle.device.get_device() == "cpu":
             global_norm_var = global_norm_var.cuda(dev_id)
 
-        with device_guard(dev_id, "gpu"):
+        with device_guard(dev_id, self._device.split(":")[0]):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
@@ -170,8 +170,8 @@ def device_guard(dev_id=0, device="cpu"):
     origin_device = paddle.device.get_device()
     if device == "cpu":
         paddle.set_device(device)
-    elif device == "gpu":
-        paddle.set_device("gpu:{}".format(dev_id))
+    elif device in ["gpu", "xpu", "npu"]:
+        paddle.set_device("{}:{}".format(device, dev_id))
     try:
         yield
     finally:
@@ -251,3 +251,20 @@ def GroupShardedScaler(scaler):
 
     scaler._unscale = MethodType(unscale_method, scaler)
     return scaler
+
+
+def cvt_to_device(x, dev_id, blocking=True):
+    """
+    Copy data in x from cpu memory to supported device
+    """
+    if paddle.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(dev_id)
+    elif paddle.is_compiled_with_npu():
+        place = paddle.NPUPlace(dev_id)
+    elif paddle.is_compiled_with_xpu():
+        place = paddle.XPUPlace(dev_id)
+    else:
+        raise EnvironmentError(
+            "Only supported compiled paddle with gpu/rocm, npu and xpu , but current verison is compiled with cpu."
+        )
+    return x._copy_to(place, blocking)

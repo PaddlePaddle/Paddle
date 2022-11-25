@@ -13,19 +13,16 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-import numpy as np
+from collections.abc import Sequence
 from itertools import product
-import paddle
 
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 from paddle.fluid.framework import _test_eager_guard
-
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
 
 
 def _product(t):

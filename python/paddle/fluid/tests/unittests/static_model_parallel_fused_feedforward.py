@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
 import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 from paddle.incubate.nn import FusedFeedForward
 
 paddle.enable_static()
