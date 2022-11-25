@@ -197,7 +197,7 @@ def custom_write_stub(resource, pyfile):
         """
     ).lstrip()
 
-    # Parse registerring op information
+    # Parse registering op information
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.so_path
 
@@ -250,7 +250,7 @@ class CustomOpInfo:
 
     def last(self):
         """
-        Return the lastest insert custom op info.
+        Return the last inserted custom op info.
         """
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))
