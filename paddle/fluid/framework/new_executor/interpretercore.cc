@@ -543,36 +543,6 @@ void InterpreterCore::BuildOperatorDependences() {
       ++dependecy_count_[next_instr_id];
     }
   }
-
-  // add event for the input var of jit program, since there are async copied
-  // from gpu_pinned place to gpu place on compute stream.
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
-      auto& inst = vec_instruction_[i];
-      if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
-          platform::is_gpu_place(place_)) {
-        for (auto& item : inst.Inputs()) {
-          for (auto var_id : item.second) {
-            auto name = var_scope_.GetNameById(var_id);
-            if (JitInputVars().count(name)) {
-              auto& events = stream_analyzer_.EventMap();
-              if (events.count(var_id) == 0) {
-                auto device_event = std::make_shared<platform::DeviceEvent>(
-                    place_, platform::GenerateDeviceEventFlag());
-                events.emplace(var_id, std::move(device_event));
-              }
-              // Add events for next_instr.inputs
-              inst.AddInputEvent(var_id,
-                                 events.at(var_id),
-                                 stream_analyzer_.GetWaiterType(inst));
-              VLOG(4) << "Add input event for input: " << name << " of "
-                      << inst.OpBase()->Type();
-            }
-          }
-        }
-      }
-    }
-  }
 }
 
 // At the end of each step, the holder of phi::DenseTensor in LoDTensorArray is
@@ -608,6 +578,30 @@ void InterpreterCore::Convert(
   BuildOperatorDependences();
 
   stream_analyzer_.ConstructEvents(dependency_builder_, &vec_instruction_);
+
+  // add event for the input var of jit program, since there are async copied
+  // from gpu_pinned place to gpu place on compute stream.
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      auto& inst = vec_instruction_[i];
+      if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
+          platform::is_gpu_place(place_)) {
+        for (auto& item : inst.Inputs()) {
+          for (auto var_id : item.second) {
+            auto name = var_scope_.GetNameById(var_id);
+            if (JitInputVars().count(name)) {
+              auto device_event = std::make_shared<platform::DeviceEvent>(
+                  place_, platform::GenerateDeviceEventFlag());
+              VLOG(4) << "Add input event for input: " << name << " of "
+                      << inst.OpBase()->Type();
+              inst.AddEventToWait(
+                  i, device_event, stream_analyzer_.GetWaiterType(inst));
+            }
+          }
+        }
+      }
+    }
+  }
 
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
@@ -888,12 +882,11 @@ void InterpreterCore::ExecuteInstructionList(
           platform::DeviceContextPool::Instance();
       auto* default_dev_ctx = pool.Get(place_);
       if (vec_instr.at(i).OpBase()->Type() == interpreter::kMemcpyD2H) {
-        for (auto& event : vec_instr.at(i).InputEvents()) {
+        for (auto& event : vec_instr.at(i).EventsToWait()) {
           platform::RecordEvent record(
               "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
-          VLOG(3) << "Record event on default stream in jit_input_var: "
-                  << event.var_id_ << " "
-                  << var_scope_.GetNameById(event.var_id_);
+          VLOG(3) << "Record event on default stream in jit_input_var at op: "
+                  << vec_instr.at(i).OpBase()->Type();
           event.event_->Record(default_dev_ctx);
         }
       }
