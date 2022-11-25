@@ -65,6 +65,10 @@ filter_fluid=`git diff --name-only upstream/develop |  grep "py$" | grep "^pytho
 filter_fluid+=" `git diff --name-only upstream/develop | grep "py$" | grep -v "^python/paddle/fluid"| grep "^python/paddle"`"
 has_fluid=`git diff -U0 upstream/$BRANCH -- $filter_fluid | grep '^\+' | grep -v '^++' | grep -E "(fluid\.)|(paddle\.fluid)"`
 if [ "${has_fluid} != "" ]; then
+    for fluid in "${has_fluid}";
+    do
+        echo "${fluid}"
+    done
     echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for the usage of fluid api.\n"
     echo_line="${echo_line} and one TPM approval for the usage of fluid api: \n"
     echo_line="${echo_line} jzhang533/ZhangJun, momozi1996/MoYan, dingjiaweiww/DingJiaWei, Ligoml/LiMengLiu for general function.\n"
