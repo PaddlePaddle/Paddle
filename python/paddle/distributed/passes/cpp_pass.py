@@ -72,7 +72,7 @@ class FuseReluDepthwiseConvPass(CPPPassWrapper):
 @register_pass("fuse_gemm_epilogue")
 class FuseGemmEpiloguePass(CPPPassWrapper):
     def __init__(self):
-        super(FuseGemmEpiloguePass, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
