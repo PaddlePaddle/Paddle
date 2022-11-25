@@ -130,8 +130,8 @@ class TestDynamicRNN(unittest.TestCase):
 
             logits = fluid.layers.fc(input=last, size=1, act=None)
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
-            loss = paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label
+            loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+                logit=logits, label=label
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-4)
@@ -175,8 +175,8 @@ class TestDynamicRNN(unittest.TestCase):
             logits = fluid.layers.fc(input=last, size=1, act=None)
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
-            loss = paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label
+            loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+                logit=logits, label=label
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.Adam(1e-3)
@@ -246,8 +246,8 @@ class TestDynamicRNN(unittest.TestCase):
 
             last = drnn0()
             logits = fluid.layers.fc(input=last, size=1, act=None)
-            loss = paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label
+            loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+                logit=logits, label=label
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-3)
@@ -313,8 +313,8 @@ class TestDynamicRNN(unittest.TestCase):
 
             last = drnn0()
             logits = fluid.layers.fc(input=last, size=1, act=None)
-            loss = paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
-                x=logits, label=label
+            loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+                logit=logits, label=label
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-3)

@@ -380,9 +380,7 @@ def loss_cls(cls, label, cfg):
     cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
         fluid.layers.reduce_sum(
-            paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
-                cls, label
-            )
+            paddle.nn.functional.binary_cross_entropy_with_logits(cls, label)
         )
         / cfg.batch_size
     )
