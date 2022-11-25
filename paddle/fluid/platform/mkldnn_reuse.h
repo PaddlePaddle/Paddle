@@ -194,6 +194,7 @@ static void SetInMemDescWithLogicalLayoutFusesSupport(
     in->Resize(phi::make_ddim(in_md.dims()));
   }
 }
+
 template <typename XT, typename YT, typename OT>
 class MatMulV2MKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
