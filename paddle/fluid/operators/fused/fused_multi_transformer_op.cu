@@ -32,8 +32,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
     const std::string act_method = ctx.Attr<std::string>("act_method");
-    printf("Here is cublas fused mlp. \n");
-    printf("Act method is: %s \n", act_method.c_str());
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -550,7 +548,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
     const std::string act_method = ctx.Attr<std::string>("act_method");
-    printf("Act method is: %s \n", act_method.c_str());
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -582,15 +579,14 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
     // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we
-    set
-        // compute_bias as false.
-        auto qkv_compute = AttnMatMul<T>(dev_ctx,
-                                         false,
-                                         trans_qkvw,
-                                         bsz_seq,
-                                         output_size,
-                                         input_size,
-                                         /*compute_bias=*/false);
+    // set compute_bias as false.
+    auto qkv_compute = AttnMatMul<T>(dev_ctx,
+                                     false,
+                                     trans_qkvw,
+                                     bsz_seq,
+                                     output_size,
+                                     input_size,
+                                     /*compute_bias=*/false);
 
     Tensor qkv_out;
     qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});

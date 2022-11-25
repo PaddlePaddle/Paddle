@@ -101,7 +101,6 @@ class TestFusedMultiTransformerOp(OpTest):
 
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
-        print("========== Here init activation is: ", self.act_method)
         self.activation = getattr(F, self.act_method)
 
     def config(self):
@@ -124,8 +123,7 @@ class TestFusedMultiTransformerOp(OpTest):
 
         self.training = False
 
-        # self.layers = 4
-        self.layers = 1
+        self.layers = 4
 
         self.batch_size = 8
         self.query_length = 128
@@ -667,7 +665,6 @@ class TestFusedMultiTransformerOp(OpTest):
             ffn_ln_scales_attr.append(self.ln_w_attr)
             ffn_ln_biases_attr.append(self.ln_b_attr)
 
-        print("Here is Multi transformer, its activation is: ", self.act_method)
         transformer = FusedMultiTransformer(
             self.embed_dim,
             self.num_heads,
@@ -803,137 +800,135 @@ class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
         self.layers = 3  # odd layers
 
 
-# class TestFusedMultiTransformerOpActReluFp16(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.x_type = np.float16
-#         # self.act_method = "relu".
-#         # self.act_method = "gelu"
-#         # self.layers = 3  # odd layers
-#         self.layers = 1  # odd layers
+class TestFusedMultiTransformerOpActReluFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.act_method = "relu"
+        self.layers = 3  # odd layers
 
 
-# class TestFusedMultiTransformerOpCacheKV(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.query_length = 1
-#         self.key_length, self.value_length = 1, 1
-#         self.layers = 3  # odd layers
+class TestFusedMultiTransformerOpCacheKV(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 3  # odd layers
 
 
-# class TestFusedMultiTransformerOpCacheKVFp16(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.query_length = 1
-#         self.key_length, self.value_length = 1, 1
-#         self.x_type = np.float16
+class TestFusedMultiTransformerOpCacheKVFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
 
 
-# class TestFusedMultiTransformerOpGenCacheKV(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.gen_cache_kv = True
+class TestFusedMultiTransformerOpGenCacheKV(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
 
 
-# class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.gen_cache_kv = True
-#         self.x_type = np.float16
-#         self.layers = 3  # odd layers
+class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
 
 
-# class TestFusedMultiTransformerOpPostLayerNormFp16(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.x_type = np.float16
-#         self.layers = 3  # odd layers
-#         self.pre_layer_norm = False
+class TestFusedMultiTransformerOpPostLayerNormFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-# class TestFusedMultiTransformerOpCacheKVPostLayerNorm(
-#     TestFusedMultiTransformerOp
-# ):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.query_length = 1
-#         self.key_length, self.value_length = 1, 1
-#         self.layers = 3  # odd layers
-#         self.pre_layer_norm = False
+class TestFusedMultiTransformerOpCacheKVPostLayerNorm(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-# class TestFusedMultiTransformerOpCacheKVPostLayerNormFp16(
-#     TestFusedMultiTransformerOp
-# ):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.query_length = 1
-#         self.key_length, self.value_length = 1, 1
-#         self.x_type = np.float16
-#         self.pre_layer_norm = False
+class TestFusedMultiTransformerOpCacheKVPostLayerNormFp16(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.pre_layer_norm = False
 
 
-# class TestFusedMultiTransformerOpGenCacheKVPostLayerNorm(
-#     TestFusedMultiTransformerOp
-# ):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.gen_cache_kv = True
-#         self.pre_layer_norm = False
+class TestFusedMultiTransformerOpGenCacheKVPostLayerNorm(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.pre_layer_norm = False
 
 
-# class TestFusedMultiTransformerOpGenCacheKVPostLayerNormFp16(
-#     TestFusedMultiTransformerOp
-# ):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.gen_cache_kv = True
-#         self.x_type = np.float16
-#         self.layers = 3  # odd layers
-#         self.pre_layer_norm = False
+class TestFusedMultiTransformerOpGenCacheKVPostLayerNormFp16(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-# class TestFusedMultiTransformerOpPreCache(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_pre_cache = True
-#         self.x_type = np.float16
+class TestFusedMultiTransformerOpPreCache(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_pre_cache = True
+        self.x_type = np.float16
 
 
-# class TestFusedMultiTransformerOpPreCacheStatic(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_pre_cache = True
-#         self.has_attn_mask = False
-#         self.x_type = np.float32
-#         self.weight_attr = paddle.ParamAttr(
-#             initializer=paddle.fluid.initializer.Constant(0.0)
-#         )
-#         self.bias_attr = paddle.ParamAttr(
-#             initializer=paddle.fluid.initializer.Constant(0.0005)
-#         )
-#         self.ln_w_attr = paddle.ParamAttr(
-#             initializer=paddle.fluid.initializer.Constant(1.0)
-#         )
-#         self.ln_b_attr = paddle.ParamAttr(
-#             initializer=paddle.fluid.initializer.Constant(0.0)
-#         )
+class TestFusedMultiTransformerOpPreCacheStatic(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_pre_cache = True
+        self.has_attn_mask = False
+        self.x_type = np.float32
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.fluid.initializer.Constant(0.0)
+        )
+        self.bias_attr = paddle.ParamAttr(
+            initializer=paddle.fluid.initializer.Constant(0.0005)
+        )
+        self.ln_w_attr = paddle.ParamAttr(
+            initializer=paddle.fluid.initializer.Constant(1.0)
+        )
+        self.ln_b_attr = paddle.ParamAttr(
+            initializer=paddle.fluid.initializer.Constant(0.0)
+        )
 
-#     def test_fused_multi_transformer_op(self):
-#         final_out_ref = self.GetBaselineOut()
-#         final_out = self.GetFusedMultiTransformerOutStatic()
+    def test_fused_multi_transformer_op(self):
+        final_out_ref = self.GetBaselineOut()
+        final_out = self.GetFusedMultiTransformerOutStatic()
 
-#         np.testing.assert_allclose(
-#             final_out_ref, final_out, rtol=self.rtol, atol=self.atol
-#         )
+        np.testing.assert_allclose(
+            final_out_ref, final_out, rtol=self.rtol, atol=self.atol
+        )
 
 
 if __name__ == "__main__":
