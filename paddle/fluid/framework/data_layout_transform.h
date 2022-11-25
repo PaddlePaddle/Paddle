@@ -60,8 +60,6 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const phi::DenseTensor& in,
                                phi::DenseTensor* out);
 
-void* GetDataFromTensor(const phi::DenseTensor& tensor, OneDNNDataType type);
-
 #endif
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);

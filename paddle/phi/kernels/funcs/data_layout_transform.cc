@@ -48,7 +48,7 @@ void* GetDataFromTensor(const DenseTensor& tensor,
     case dnnl::memory::data_type::bf16:
       return to_void_cast(tensor.data<dtype::bfloat16>());
     default:
-      PADDLE_THROW(errors::InvalidArgument("Wrong mkldnn type provided."));
+      PADDLE_THROW(errors::InvalidArgument("Wrong oneDNN type provided."));
   }
 }
 

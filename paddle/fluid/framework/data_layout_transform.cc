@@ -95,26 +95,6 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
 #ifdef PADDLE_WITH_MKLDNN
 using dnnl::memory;
 
-void* GetDataFromTensor(const phi::DenseTensor& tensor,
-                        dnnl::memory::data_type type) {
-  switch (type) {
-    case dnnl::memory::data_type::f32:
-      return phi::funcs::to_void_cast(tensor.data<float>());
-    case dnnl::memory::data_type::s8:
-      return phi::funcs::to_void_cast(tensor.data<int8_t>());
-    case dnnl::memory::data_type::u8:
-      return phi::funcs::to_void_cast(tensor.data<unsigned char>());
-    case dnnl::memory::data_type::s32:
-      return phi::funcs::to_void_cast(tensor.data<int32_t>());
-    case dnnl::memory::data_type::bf16:
-      return phi::funcs::to_void_cast(
-          tensor.data<paddle::platform::bfloat16>());
-    default:
-      PADDLE_THROW(
-          platform::errors::InvalidArgument("Wrong mkldnn type provided."));
-  }
-}
-
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const phi::DenseTensor& in,
