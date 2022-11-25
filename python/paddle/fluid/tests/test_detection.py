@@ -563,18 +563,6 @@ class TestYoloDetection(unittest.TestCase):
             self.assertIsNotNone(scores)
 
 
-class TestBoxClip(unittest.TestCase):
-    def test_box_clip(self):
-        program = Program()
-        with program_guard(program):
-            input_box = layers.data(
-                name='input_box', shape=[7, 4], dtype='float32', lod_level=1
-            )
-            im_info = layers.data(name='im_info', shape=[3], dtype='float32')
-            out = layers.box_clip(input_box, im_info)
-            self.assertIsNotNone(out)
-
-
 class TestMulticlassNMS(unittest.TestCase):
     def test_multiclass_nms(self):
         program = Program()

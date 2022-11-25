@@ -53,7 +53,6 @@ __all__ = [
     'polygon_box_transform',
     'yolov3_loss',
     'yolo_box',
-    'box_clip',
     'multiclass_nms',
     'locality_aware_nms',
     'matrix_nms',
@@ -2290,70 +2289,6 @@ def multi_box_head(
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
-
-
-def box_clip(input, im_info, name=None):
-    """
-
-    Clip the box into the size given by im_info
-    For each input box, The formula is given as follows:
-
-    .. code-block:: text
-
-        xmin = max(min(xmin, im_w - 1), 0)
-        ymin = max(min(ymin, im_h - 1), 0)
-        xmax = max(min(xmax, im_w - 1), 0)
-        ymax = max(min(ymax, im_h - 1), 0)
-
-    where im_w and im_h are computed from im_info:
-
-    .. code-block:: text
-
-        im_h = round(height / scale)
-        im_w = round(weight / scale)
-
-    Args:
-        input(Variable): The input Tensor with shape :math:`[N_1, N_2, ..., N_k, 4]`,
-            the last dimension is 4 and data type is float32 or float64.
-        im_info(Variable): The 2-D Tensor with shape [N, 3] with layout
-            (height, width, scale) representing the information of image.
-            Height and width are the input sizes and scale is the ratio of network input
-            size and original size. The data type is float32 or float64.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Variable:
-
-        output(Variable): The clipped tensor with data type float32 or float64.
-        The shape is same as input.
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            boxes = fluid.data(
-                name='boxes', shape=[None, 8, 4], dtype='float32', lod_level=1)
-            im_info = fluid.data(name='im_info', shape=[-1 ,3])
-            out = fluid.layers.box_clip(
-                input=boxes, im_info=im_info)
-    """
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'box_clip')
-    check_variable_and_dtype(
-        im_info, 'im_info', ['float32', 'float64'], 'box_clip'
-    )
-
-    helper = LayerHelper("box_clip", **locals())
-    output = helper.create_variable_for_type_inference(dtype=input.dtype)
-    inputs = {"Input": input, "ImInfo": im_info}
-    helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
-
-    return output
 
 
 def retinanet_detection_output(
