@@ -75,27 +75,5 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.new_shape = (36, 16)
 
 
-class TestFlatten2OpError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_data = np.random.random((3, 2, 4, 5)).astype("float64")
-
-        def test_Variable():
-            # the input type must be Variable
-            paddle.flatten(input_data, 1, -1)
-
-        self.assertRaises(TypeError, test_Variable)
-
-        def test_type():
-            # dtype must be float32, float64, int8, int32, int64, uint8.
-            x2 = fluid.layers.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16'
-            )
-            paddle.flatten(x2, 1, -1)
-            
-
-        self.assertRaises(TypeError, test_type)
-
-
 if __name__ == "__main__":
     unittest.main()

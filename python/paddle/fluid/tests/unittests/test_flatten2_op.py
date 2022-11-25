@@ -14,8 +14,6 @@
 
 import unittest
 import numpy as np
-import paddle.fluid as fluid
-import paddle
 from op_test import OpTest
 
 
@@ -66,18 +64,6 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4
         self.new_shape = (36, 16)
-
-
-class TestFlatten2OpError(unittest.TestCase):
-    def test_errors(self):
-        def test_type():
-            # dtype must be float32, float64, int8, int32, int64, uint8.
-            x2 = fluid.layers.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16'
-            )
-            paddle.flatten(x2, 1, -1)
-
-        self.assertRaises(TypeError, test_type)
 
 
 if __name__ == "__main__":
