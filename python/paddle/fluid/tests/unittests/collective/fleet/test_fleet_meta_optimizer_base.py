@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
-from paddle import fluid
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import (
     MetaOptimizerBase,
 )

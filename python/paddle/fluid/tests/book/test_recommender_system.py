@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import math
-import sys
 import os
+import sys
+import tempfile
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
-import tempfile
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 

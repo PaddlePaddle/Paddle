@@ -14,11 +14,11 @@
 
 import unittest
 
-import numpy as np
-import paddle
-
 import config
+import numpy as np
 import utils
+
+import paddle
 
 
 @utils.place(config.DEVICES)

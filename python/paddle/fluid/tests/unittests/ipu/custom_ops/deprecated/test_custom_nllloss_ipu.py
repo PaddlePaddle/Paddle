@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import os
-import unittest
 import sys
+import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.utils.cpp_extension import load

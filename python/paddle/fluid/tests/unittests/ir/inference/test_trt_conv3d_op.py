@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTSubgraphPassConv3dTest(InferencePassTest):
@@ -29,7 +31,7 @@ class TensorRTSubgraphPassConv3dTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 6, 32, 32], dtype="float32"
             )
-            conv_out = fluid.layers.conv3d(
+            conv_out = paddle.static.nn.conv3d(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
@@ -113,7 +115,7 @@ class DynamicShapeTensorRTSubgraphPassConv3dTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 6, -1, -1, -1], dtype="float32"
             )
-            conv_out = fluid.layers.conv3d(
+            conv_out = paddle.static.nn.conv3d(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,

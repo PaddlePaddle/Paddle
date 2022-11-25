@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-
 import re
 import sys
+
+import numpy as np
 from spectral_op_np import (
     fft_c2c,
-    fft_r2c,
-    fft_c2r,
     fft_c2c_backward,
-    fft_r2c_backward,
+    fft_c2r,
     fft_c2r_backward,
+    fft_r2c,
+    fft_r2c_backward,
 )
+
+import paddle
 from paddle import _C_ops
 
 sys.path.append("../")
