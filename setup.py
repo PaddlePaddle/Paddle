@@ -588,7 +588,7 @@ def build_steps():
                     "CUDA_ARCH_NAME",
                     "CUDA_ARCH_BIN",
                     "PYTHON_INCLUDE_DIR",
-                    # "PYTHON_LIBRARIES",
+                    "PYTHON_LIBRARIES",
                     "PY_VERSION",
                     "CUB_PATH",
                     "NEW_RELEASE_PYPI",
@@ -615,6 +615,7 @@ def build_steps():
                 if (
                     option_key == 'PYTHON_EXECUTABLE'
                     or option_key == 'PYTHON_LIBRARY'
+                    or option_key == 'PYTHON_LIBRARIES'
                 ):
                     key = option_key + ":FILEPATH"
                     print(key)
