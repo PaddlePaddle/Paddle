@@ -752,16 +752,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     const phi::DDim ffn1_input_shape({bsz_seq, dim_embed});
     ffn1_cublas_linear.Setup(ffn1_input_shape, ffn1_weight_dim, false, false);
 
-    // auto ffn1_cublas_linear = CublasFusedMLP<T>(dev_ctx);
-    // const phi::DDim ffn1_input_shape({bsz_seq, dim_embed});
-    // // printf("FFN1 input shape is: %ld, %ld \n", bsz_seq, dim_embed);
-
-    // printf("bsz_seq: %ld, dim_embed: %ld, dim_ffn: %ld \n", bsz_seq,
-    // dim_embed, dim_ffn);
-
-    // ffn1_cublas_linear.Setup(
-    //     ffn1_input_shape, ffn1_weight_dim, false, false);
-
     Tensor ffn1_out;
     ffn1_out.Resize({{bsz_seq, dim_ffn}});
     auto *ffn1_out_data =
@@ -782,10 +772,14 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
-    auto ffn2_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_embed, dim_ffn, false);
+    // auto ffn2_linear_compute = AttnMatMul<T>(
+    //     dev_ctx, false, false, bsz_seq, dim_embed, dim_ffn, false);
 
-    // 9. ffn2 residual bias
+    auto ffn2_linear_bias_residual = CublasFusedMLP<T>(dev_ctx);
+    ffn2_linear_bias_residual.Setup(
+        ffn1_out.dims(), ffn2_weights[0]->dims(), false, false);
+
+    // 9. ffn2 Layernorm
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
         dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
@@ -1023,45 +1017,26 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step6. ffn matmul1
-      // ffn1_linear_compute.ComputeForward(
-      //     ffn1_weights[i], buf1, nullptr, &ffn1_out, nullptr);
-
-      ffn1_cublas_linear.Compute(
-          buf1, ffn1_weights[i], nullptr, nullptr, &ffn1_out, "none");
-
-      // printf("Buf 1 weight \n");
-      // for(int i = 0; i < buf1->dims().size(); i++){
-      //   printf("shape is: %ld \n", buf1->dims()[i]);
-      // }
-      // printf("=========");
-      // ffn1_cublas_linear.ComputeForward(
-      //   buf1, ffn1_weights[i], nullptr, nullptr, &ffn1_out, "none"
-      // );
+      ffn1_cublas_linear.ComputeForward(
+          buf1, ffn1_weights[i], ffn1_biases[i], nullptr, &ffn1_out, "gelu");
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
 #endif
 
-      // step7. act bias
-      // TODO(wangxi): remove dropout mask in inference
-      fused_act_dropout_helper.DropoutActBias(dev_ctx,
-                                              ffn1_out_data,
-                                              ffn1_biases[i]->data<T>(),
-                                              act_method,
-                                              ffn1_dropout_out_data,
-                                              ffn1_dropout_mask_data);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step7";
-#endif
-
-      // step8. ffn matmul2
       if (pre_layer_norm) {
-        ffn2_linear_compute.ComputeForward(
-            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf1, nullptr);
+        ffn2_linear_bias_residual.ComputeForward(&ffn1_out,
+                                                 ffn2_weights[i],
+                                                 ffn2_biases[i],
+                                                 &bias_dropout_residual_out,
+                                                 buf1,
+                                                 "none");
+
       } else {
-        ffn2_linear_compute.ComputeForward(
-            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf0, nullptr);
+        ffn2_linear_bias_residual.ComputeForward(
+            &ffn1_out, ffn2_weights[i], ffn2_biases[i], buf1, buf0, "none");
       }
+
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.0";
 #endif
@@ -1077,47 +1052,29 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
       // step9. residual bias
       if (pre_layer_norm) {
-        // TODO(wangxi): remove dropout mask in inference
         if (i < layers - 1) {
           auto *ln_scale_data = ln_scales[i + 1]->data<U>();
           auto *ln_bias_data = ln_biases[i + 1]->data<U>();
-          ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
-              dev_ctx,
-              buf1->data<T>(),
-              bias_dropout_residual_out_data,
-              ffn2_biases[i]->data<T>(),
-              ln_scale_data,
-              ln_bias_data,
-              buf1->data<T>(),
-              dropout_mask_out_data,
-              buf0->data<T>(),
-              ln_mean_data,
-              ln_var_data);
-        } else {
-          ffn2_fused_dropout_helper.ResidualDropoutBias(
-              dev_ctx,
-              buf1->data<T>(),
-              bias_dropout_residual_out_data,
-              ffn2_biases[i]->data<T>(),
-              buf1->data<T>(),
-              dropout_mask_out_data);
+          ffn2_fused_dropout_helper.LayerNorm(dev_ctx,
+                                              buf1->data<T>(),
+                                              ln_scale_data,
+                                              ln_bias_data,
+                                              buf0->data<T>(),
+                                              ln_mean_data,
+                                              ln_var_data);
         }
       } else {
         auto *ln_scale_data = ffn_ln_scales[i]->data<U>();
         auto *ln_bias_data = ffn_ln_biases[i]->data<U>();
-        ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
-            dev_ctx,
-            buf0->data<T>(),
-            buf1->data<T>(),
-            ffn2_biases[i]->data<T>(),
-            ln_scale_data,
-            ln_bias_data,
-            buf0->data<T>(),
-            dropout_mask_out_data,
-            buf1->data<T>(),
-            ln_mean_data,
-            ln_var_data);
+        ffn2_fused_dropout_helper.LayerNorm(dev_ctx,
+                                            buf0->data<T>(),
+                                            ln_scale_data,
+                                            ln_bias_data,
+                                            buf1->data<T>(),
+                                            ln_mean_data,
+                                            ln_var_data);
       }
+
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step9";
 #endif

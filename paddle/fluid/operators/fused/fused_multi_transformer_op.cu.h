@@ -1517,12 +1517,12 @@ class CublasFusedMLP {
     SetCublasMatrixLayout_(out_desc_, false, M, N);
   }
 
-  void Compute(const phi::DenseTensor *x,
-               const phi::DenseTensor *weight,
-               const phi::DenseTensor *bias,
-               phi::DenseTensor *residual,
-               phi::DenseTensor *output,
-               const std::string &activation) {
+  void ComputeForward(const phi::DenseTensor *x,
+                      const phi::DenseTensor *weight,
+                      const phi::DenseTensor *bias,
+                      phi::DenseTensor *residual,
+                      phi::DenseTensor *output,
+                      const std::string &activation) {
     T *out_data = output->data<T>();
 
     const bool add_residual = (residual == nullptr) ? false : true;
