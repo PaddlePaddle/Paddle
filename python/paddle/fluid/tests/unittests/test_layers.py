@@ -3736,14 +3736,6 @@ class TestBook(LayerTest):
             )
             return loss
 
-    def make_shuffle_channel(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.shuffle_channel(x, group=4)
-            return out
-
     def make_fsp_matrix(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
