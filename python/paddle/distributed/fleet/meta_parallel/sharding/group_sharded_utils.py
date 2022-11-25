@@ -170,10 +170,8 @@ def device_guard(dev_id=0, device="cpu"):
     origin_device = paddle.device.get_device()
     if device == "cpu":
         paddle.set_device(device)
-    elif device == "gpu":
-        paddle.set_device("gpu:{}".format(dev_id))
-    elif device == "xpu":
-        paddle.set_device("xpu:{}".format(dev_id))
+    elif device in ["gpu", "xpu", "npu"]:
+        paddle.set_device("{}:{}".format(device, dev_id))
     try:
         yield
     finally:
@@ -253,3 +251,20 @@ def GroupShardedScaler(scaler):
 
     scaler._unscale = MethodType(unscale_method, scaler)
     return scaler
+
+
+def cvt_to_device(x, dev_id, blocking=True):
+    """
+    Copy data in x from cpu memory to supported device
+    """
+    if paddle.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(dev_id)
+    elif paddle.is_compiled_with_npu():
+        place = paddle.NPUPlace(dev_id)
+    elif paddle.is_compiled_with_xpu():
+        place = paddle.XPUPlace(dev_id)
+    else:
+        raise EnvironmentError(
+            "Only supported compiled paddle with gpu/rocm, npu and xpu , but current verison is compiled with cpu."
+        )
+    return x._copy_to(place, blocking)
