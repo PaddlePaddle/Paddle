@@ -20,8 +20,8 @@
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 #include "paddle/fluid/operators/fused_token_prune_op.cu.h"
@@ -38,8 +38,11 @@ __global__ void ElementwiseMask(const T* a,
                                 int num_elements) {
   auto tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= num_elements) return;
-  const T zero = 0;
-  res[tid] = b[tid] >= zero ? a[tid] : zero;
+  if (b[tid] >= 0) {
+    res[tid] = a[tid];
+  } else {
+    res[tid] = 0;
+  }
 }
 
 template <typename T>
@@ -134,17 +137,17 @@ __global__ void ReduceSum2<half>(
 
   for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
     if (tid < offset) {
-      res_half[tid] += res_half[tid + offset];
+      res_half[tid] = res_half[tid] + res_half[tid + offset];
     }
     __syncthreads();
     if (offset % 2 == 1 && tid == offset - 2) {
-      res_half[tid] += res_half[tid + 1];
+      res_half[tid] = res_half[tid] + res_half[tid + 1];
     }
     __syncthreads();
   }
 
   if (tid == 0) {
-    phi::fastAtomicAdd<platform::float16>(
+    platform::fastAtomicAdd<platform::float16>(
         reinterpret_cast<platform::float16*>(dst),
         static_cast<size_t>(batch * max_seq_len + col),
         static_cast<size_t>(bsz * max_seq_len),
