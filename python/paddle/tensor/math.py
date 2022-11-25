@@ -1314,7 +1314,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     dtype_flag = False
     if dtype is not None:
@@ -1323,6 +1322,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
+
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     if _in_legacy_dygraph():
         if dtype_flag:
@@ -2393,9 +2394,9 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_max(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2495,10 +2496,10 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_min(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2608,10 +2609,10 @@ def amax(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amax(x, axis, keepdim)
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amax(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2722,11 +2723,11 @@ def amin(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amin(x, axis, keepdim)
-    elif _in_legacy_dygraph():
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
+    if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amin(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
@@ -3871,11 +3872,10 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.all(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_all(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -3948,11 +3948,10 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.any(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_any(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all

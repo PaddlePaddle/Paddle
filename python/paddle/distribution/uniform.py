@@ -15,6 +15,7 @@
 import numpy as np
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
+from paddle.tensor import random
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import (
     _non_static_mode,
@@ -172,7 +173,7 @@ class Uniform(distribution.Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.dtype, 0.0
             )
-            uniform_random_tmp = nn.uniform_random_batch_size_like(
+            uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
                 dtype=self.dtype,
