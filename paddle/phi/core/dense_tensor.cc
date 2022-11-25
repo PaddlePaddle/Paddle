@@ -53,8 +53,7 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
-  storage_properties_ =
-      std::move(CopyStorageProperties(other.storage_properties_));
+  storage_properties_ = CopyStorageProperties(other.storage_properties_);
   inplace_version_counter_ = other.inplace_version_counter_;
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -65,8 +64,7 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
   holder_ = other.holder_;
-  storage_properties_ =
-      std::move(CopyStorageProperties(other.storage_properties_));
+  storage_properties_ = CopyStorageProperties(other.storage_properties_);
   inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;

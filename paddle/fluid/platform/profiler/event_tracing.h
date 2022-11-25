@@ -97,7 +97,6 @@ class RecordEvent {
                          const std::string& attr);
 
   bool is_enabled_{false};
-  bool is_pushed_{false};
   // Event name
   std::string* name_{nullptr};
   const char* shallow_copy_name_{nullptr};
@@ -108,7 +107,6 @@ class RecordEvent {
   EventRole role_{EventRole::kOrdinary};
   TracerEventType type_{TracerEventType::UserDefined};
   std::string* attr_{nullptr};
-  bool finished_{false};
 };
 
 }  // namespace platform

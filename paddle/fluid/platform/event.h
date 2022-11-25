@@ -74,7 +74,6 @@ class Event {
   uint64_t thread_id_;
   EventRole role_{};
   int64_t cpu_ns_;
-  bool visited_status_{false};
   std::string attr_;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUPTI

@@ -106,7 +106,6 @@ std::string GetGlobalDeviceType(size_t device_type_id) {
   return global_registered_device_type[device_type_id];
 }
 
-constexpr static int kAllocationTypeBitLength = 8;
 constexpr static int kDeviceTypeIDBitLength = 8;
 constexpr static int kDeviceIDBitLength = 8;
 

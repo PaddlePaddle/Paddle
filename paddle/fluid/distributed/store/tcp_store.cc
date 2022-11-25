@@ -37,7 +37,7 @@ std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
 }
 
 MasterDaemon::MasterDaemon(SocketType socket, int nranks, int timeout)
-    : _listen_socket(socket), _nranks(nranks), _timeout(timeout) {
+    : _listen_socket(socket) {
   InitControlFd();
   _background_thread = std::thread{&MasterDaemon::run, this};
 }

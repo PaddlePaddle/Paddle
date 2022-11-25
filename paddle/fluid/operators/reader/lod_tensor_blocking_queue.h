@@ -191,10 +191,8 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
   std::vector<std::shared_ptr<LoDTensorBlockingQueue>> queues_;
   mutable uint64_t data_index_{0};
 
-  size_t dev_cnt_{0};
   const size_t capacity_;
   const bool speed_test_mode_;
-  bool is_closed_{false};
 
   std::vector<std::function<void()>> reset_methods_;
   mutable std::mutex reset_mutex_;

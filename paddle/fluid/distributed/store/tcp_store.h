@@ -64,8 +64,6 @@ class MasterDaemon {
   std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
-  int _nranks = -1;
-  int _timeout = 0;
 
   void InitControlFd();
   void CloseControlFd();
