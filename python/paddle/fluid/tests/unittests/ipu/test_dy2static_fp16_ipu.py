@@ -16,6 +16,7 @@ import tempfile
 import unittest
 
 import numpy as np
+
 import paddle
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
 
