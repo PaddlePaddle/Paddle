@@ -101,6 +101,7 @@ __all__ = [
     'pad',
     'roi_pool',
     'roi_align',
+    'image_resize',
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
