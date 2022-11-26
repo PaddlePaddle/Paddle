@@ -28,11 +28,11 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = paddle::platform::DataLayout;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 template <typename T>
 using ScalingParamType =
-    typename paddle::platform::CudnnDataType<T>::ScalingParamType;
+    typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
 
 enum class ConvKind { kForward = 1, kBackwardData = 2, kBackwardFilter = 3 };
 

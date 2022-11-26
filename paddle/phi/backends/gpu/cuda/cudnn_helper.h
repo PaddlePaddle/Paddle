@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,8 +28,9 @@ limitations under the License. */
 
 DECLARE_bool(cudnn_deterministic);
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace backends {
+namespace gpu {
 
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
@@ -659,5 +660,6 @@ class ScopedCTCLossDescriptor {
 };
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi

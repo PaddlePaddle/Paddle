@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 TEST(MIOpenHelper, ScopedTensorDescriptor) {
-  using paddle::platform::DataLayout;
-  using paddle::platform::ScopedTensorDescriptor;
+  using phi::backends::gpu::DataLayout;
+  using phi::backends::gpu::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -67,7 +67,7 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
 }
 
 TEST(MIOpenHelper, ScopedConvolutionDescriptor) {
-  using paddle::platform::ScopedConvolutionDescriptor;
+  using phi::backends::gpu::ScopedConvolutionDescriptor;
 
   ScopedConvolutionDescriptor conv_desc;
   std::vector<int> src_pads = {2, 2, 2};

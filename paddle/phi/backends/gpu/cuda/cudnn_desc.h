@@ -23,8 +23,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -277,23 +277,19 @@ class ConvolutionDescriptor {
         phi::dynload::cudnnSetConvolutionGroupCount(desc, groups));
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnSetConvolutionMathType(
-            desc, CUDNN_DEFAULT_MATH));
+        phi::dynload::cudnnSetConvolutionMathType(desc, CUDNN_DEFAULT_MATH));
     if (dtype == CUDNN_DATA_HALF) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnSetConvolutionMathType(
-              desc, CUDNN_TENSOR_OP_MATH));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetConvolutionMathType(
+          desc, CUDNN_TENSOR_OP_MATH));
 #if CUDA_VERSION >= 11000
 #if CUDNN_VERSION_MIN(8, 1, 0)
     } else if (dtype == CUDNN_DATA_BFLOAT16) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnSetConvolutionMathType(
-              desc, CUDNN_TENSOR_OP_MATH));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetConvolutionMathType(
+          desc, CUDNN_TENSOR_OP_MATH));
 #endif  // CUDNN_VERSION_MIN(8,1,0)
     } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnSetConvolutionMathType(desc,
-                                                              CUDNN_FMA_MATH));
+          phi::dynload::cudnnSetConvolutionMathType(desc, CUDNN_FMA_MATH));
 #endif  // CUDA_VERSION >= 11000
     }
 #endif

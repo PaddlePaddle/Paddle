@@ -27,7 +27,7 @@
 namespace phi {
 
 using ScopedSpatialTransformerDescriptor =
-    paddle::platform::ScopedSpatialTransformerDescriptor;
+    phi::backends::gpu::ScopedSpatialTransformerDescriptor;
 
 template <typename T, typename Context>
 void AffineGridCudnnKernel(const Context& dev_ctx,

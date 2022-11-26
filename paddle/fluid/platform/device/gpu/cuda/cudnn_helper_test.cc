@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 TEST(CudnnHelper, ScopedTensorDescriptor) {
-  using paddle::platform::DataLayout;
-  using paddle::platform::ScopedTensorDescriptor;
+  using phi::backends::gpu::DataLayout;
+  using phi::backends::gpu::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -65,8 +65,8 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedFilterDescriptor) {
-  using paddle::platform::DataLayout;
-  using paddle::platform::ScopedFilterDescriptor;
+  using phi::backends::gpu::DataLayout;
+  using phi::backends::gpu::ScopedFilterDescriptor;
 
   ScopedFilterDescriptor filter_desc;
   std::vector<int> shape = {2, 3, 3};
@@ -101,7 +101,7 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedConvolutionDescriptor) {
-  using paddle::platform::ScopedConvolutionDescriptor;
+  using phi::backends::gpu::ScopedConvolutionDescriptor;
 
   ScopedConvolutionDescriptor conv_desc;
   std::vector<int> src_pads = {2, 2, 2};
@@ -134,8 +134,8 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedPoolingDescriptor) {
-  using paddle::platform::PoolingMode;
-  using paddle::platform::ScopedPoolingDescriptor;
+  using phi::backends::gpu::PoolingMode;
+  using phi::backends::gpu::ScopedPoolingDescriptor;
 
   ScopedPoolingDescriptor pool_desc;
   std::vector<int> src_kernel = {2, 2, 5};
