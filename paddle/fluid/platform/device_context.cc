@@ -224,7 +224,7 @@ void EmplaceDeviceContexts(
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext>(
+      EmplaceDeviceContext<phi::OneDNNContext>(
           place_to_device_context,
           p,
           disable_setting_default_stream_for_allocator);
