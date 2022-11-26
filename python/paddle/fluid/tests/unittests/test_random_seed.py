@@ -371,43 +371,6 @@ class TestGeneratorSeed(unittest.TestCase):
                 np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
-    def test_generator_randperm_static_1(self):
-
-        fluid.disable_dygraph()
-
-        paddle.seed(123123143)
-
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
-            # example 1:
-            # attr shape is a list which doesn't contain tensor Variable.
-            x = fluid.layers.uniform_random(shape=[10, 10])
-            result_1 = paddle.sampling_id(x)
-            result_2 = paddle.sampling_id(x)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(startup_program)
-            out1 = exe.run(
-                train_program, feed={}, fetch_list=[result_1, result_2]
-            )
-
-            paddle.seed(123123143)
-            out2 = exe.run(
-                train_program, feed={}, fetch_list=[result_1, result_2]
-            )
-
-            out1_res1 = np.array(out1[0])
-            out1_res2 = np.array(out1[1])
-            out2_res1 = np.array(out2[0])
-            out2_res2 = np.array(out2[1])
-
-            if not core.is_compiled_with_cuda():
-                print(">>>>>>> sampling id static >>>>>>>")
-                np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
-                np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
-                self.assertTrue(not np.allclose(out1_res2, out1_res1))
-
     def test_gen_TruncatedNormal_initializer(self):
         fluid.disable_dygraph()
 
