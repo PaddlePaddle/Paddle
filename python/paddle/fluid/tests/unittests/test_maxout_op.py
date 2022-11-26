@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from op_test import OpTest
@@ -121,7 +120,6 @@ class TestMaxoutAPI(unittest.TestCase):
         out3_ref = maxout_forward_naive(self.x_np, self.groups, -1)
         np.testing.assert_allclose(out3_ref, out3.numpy(), rtol=1e-05)
         paddle.enable_static()
-
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

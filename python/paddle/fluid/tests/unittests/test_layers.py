@@ -3227,7 +3227,6 @@ class TestBook(LayerTest):
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
 
-
     def make_get_places(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
