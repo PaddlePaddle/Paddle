@@ -14,15 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#ifdef PADDLE_WITH_HIP
-#include "paddle/phi/backends/gpu/rocm/miopen_desc.h"
-#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
-#else  // CUDA
-#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
-#endif
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {
