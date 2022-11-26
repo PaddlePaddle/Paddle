@@ -22,9 +22,9 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
