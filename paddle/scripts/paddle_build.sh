@@ -598,7 +598,7 @@ function cmake_gen_and_build() {
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
-function get_build_time_file() {
+get_build_time_file() {
     python ${PADDLE_ROOT}/tools/analysis_build_time.py
     cat ${PADDLE_ROOT}/tools/buildTime.txt
     today=$(date "+%Y-%m-%d")
@@ -3778,6 +3778,7 @@ function main() {
         ;;
       cicheck_py37)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        pwd
         echo "in cichek_py37:"
         echo "which python:"
         which python
