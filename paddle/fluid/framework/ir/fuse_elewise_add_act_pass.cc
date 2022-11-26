@@ -243,7 +243,7 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(0) << "handle ActFuseElewiseAddGrad1 fuse";
+    VLOG(4) << "handle ActFuseElewiseAddGrad1 fuse";
 
     GET_IR_NODE_FROM_SUBGRAPH(
         ele_add_grad_op, ele_add_grad_op, act_elewise_add_grad_pattern);

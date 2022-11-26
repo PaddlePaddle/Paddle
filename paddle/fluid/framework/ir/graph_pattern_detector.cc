@@ -125,7 +125,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
       // return false;
     }
   }
-  VLOG(0) << pdnodes2nodes_.size() << " nodes marked";
+  VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
 
   return !pdnodes2nodes_.empty();
 }
@@ -1623,7 +1623,7 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
 PDNode *patterns::ActElewiseAddInplaceGrad::operator()(
     paddle::framework::ir::PDNode *d_out_var,
     std::unordered_set<std::string> act_types) {
-  VLOG(0) << "ActElewiseAddInplaceGrad::operator";
+  VLOG(4) << "ActElewiseAddInplaceGrad::operator";
 
   auto *ele_add_grad_op = pattern->NewNode(ele_add_grad_op_repr())
                               ->assert_is_op("elementwise_add_grad");
