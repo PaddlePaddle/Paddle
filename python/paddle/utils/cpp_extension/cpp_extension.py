@@ -711,7 +711,7 @@ class BuildExtension(build_ext):
         so_path = os.path.abspath(outputs[0])
         so_name = os.path.basename(so_path)
 
-        for extension in self.extensions:
+        for i, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
             if not self.contain_cuda_file:
                 self.contain_cuda_file = any([is_cuda_file(s) for s in sources])
