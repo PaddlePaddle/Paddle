@@ -130,7 +130,6 @@ __all__ = [
     'clip_by_norm',
     'mean',
     'mul',
-    'space_to_depth',
     'affine_channel',
     'similarity_focus',
     'hash',
@@ -8718,113 +8717,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     helper.append_op(
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
-    )
-    return out
-
-
-def space_to_depth(x, blocksize, name=None):
-    r"""
-
-    Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
-
-    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of \
-        theinput LoDtensor where values from the height and width dimensions are moved to the channel \
-        dimension.
-    The attr blocksize indicates the input block size.
-
-    space_to_depth will reorganize the elements of input with shape[batch, channel, height, width] \
-        according to blocksize to construct output with shape \
-        [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]:
-
-    - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
-    - The Y, X coordinates within each block of the input become the high order component of the output channel index
-    - channel should be divisible by square of blocksize
-    - height, width should be divsible by blocksize
-
-    This OP is useful for resizing the activations between convolutions \
-        (but keeping all data)
-
-    .. code-block:: text
-
-        Given the input x with the shape [1, 1, 4, 4]:
-        x.data = [[[[1,   2,  5,  6],
-                    [3,   4,  7,  8],
-                    [9,  10, 13, 14],
-                    [11, 12, 15, 16]]]]
-        blocksize = 2
-
-        then get the output with the shape [1, 4, 2, 2]:
-        out.data = [[[[1,   2],  [3,  4]],
-                     [[5,   6],  [7,  8]],
-                     [[9,  10], [11, 12]],
-                     [[13, 14], [15, 16]]]]
-
-    Args:
-        x (Variable): The input, which should be 4 dims Tensor or LodTensor, with the shape \
-            [batch, channel, height, width]
-        blocksize (int): The blocksize to select the element on each feature map should be > 2
-        name(str, optional): For detailed information, please refer \
-            to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default.
-
-    Returns:
-            Tensor, The output, which should be 4 dims Tensor or LodTensor, with the shape \
-            [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import numpy as np
-            import paddle
-
-            paddle.enable_static()
-            data = fluid.data(
-                name='data', shape=[1, 4, 2, 2], dtype='float32')
-            space_to_depthed = fluid.layers.space_to_depth(
-                x=data, blocksize=2)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
-
-            print(data_np)
-            #array([[[[ 0.,  1.], [ 2.,  3.]],
-            #        [[ 4.,  5.], [ 6.,  7.]],
-            #        [[ 8.,  9.], [10., 11.]],
-            #        [[12., 13.], [14., 15.]]]], dtype=float32)
-
-            out_main = exe.run(fluid.default_main_program(),
-                        feed={'data': data_np},
-                        fetch_list=[space_to_depthed])
-
-            print(out_main)
-            #[array([[[[ 0.]], [[ 4.]], [[ 1.]], [[ 5.]],
-            #         [[ 8.]], [[12.]], [[ 9.]], [[13.]],
-            #         [[ 2.]], [[ 6.]], [[ 3.]], [[ 7.]],
-            #         [[10.]], [[14.]], [[11.]], [[15.]]]], dtype=float32)]
-
-    """
-
-    helper = LayerHelper("space_to_depth", **locals())
-
-    if not (isinstance(blocksize, int)):
-        raise ValueError("blocksize must be a python Int")
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'space_to_depth',
-    )
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="space_to_depth",
-        inputs={"X": x},
-        attrs={"blocksize": blocksize},
-        outputs={"Out": out},
     )
     return out
 
