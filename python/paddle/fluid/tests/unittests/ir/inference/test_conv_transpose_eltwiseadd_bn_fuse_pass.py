@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import copy as cp
 
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import IgnoreReasons, PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):

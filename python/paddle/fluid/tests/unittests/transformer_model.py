@@ -121,7 +121,7 @@ def multi_head_attention(
 
         # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -133,7 +133,7 @@ def multi_head_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         # FIXME(guosheng): Decouple the program desc with batch_size.
         return paddle.reshape(
             x=trans_x,
@@ -161,7 +161,7 @@ def multi_head_attention(
             sum_out = layers.reduce_sum(exp_out, dim=-1, keep_dim=False)
             return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
 
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         weights = __softmax(layers.elementwise_add(x=product, y=attn_bias))
         if dropout_rate:

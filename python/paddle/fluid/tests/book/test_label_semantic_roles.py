@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import contextlib
-import numpy as np
 import os
+import tempfile
 import time
 import unittest
-import tempfile
+
+import numpy as np
 
 import paddle
 import paddle.dataset.conll05 as conll05
