@@ -213,7 +213,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 
     if (execution_config_.used_for_jit && (sync_op_num_ == 0) &&
         FLAGS_new_executor_support_trace_mode) {
-      VLOG(0) << "Tracing Instruction List";
+      VLOG(4) << "Tracing Instruction List";
       TraceInstructionList(vec_instruction_);
     } else {
       ExecuteInstructionList(vec_instruction_);
@@ -282,7 +282,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 
     if (execution_config_.used_for_jit && (sync_op_num_ == 0) &&
         FLAGS_new_executor_support_trace_mode) {
-      VLOG(0) << "Tracing Instruction List";
+      VLOG(4) << "Tracing Instruction List";
       TraceInstructionList(vec_instruction_);
     } else {
       ExecuteInstructionList(vec_instruction_);
@@ -1309,7 +1309,7 @@ void InterpreterCore::UpdateSyncOpNum() {
     }
   }
   sync_op_num_ = sync_op_num;
-  VLOG(0) << "Update sync op num, sync op num is: " << sync_op_num_;
+  VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
 }
 
 // Note(zhangbo):
