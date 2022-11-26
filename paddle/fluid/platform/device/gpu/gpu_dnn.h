@@ -16,6 +16,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 namespace paddle {
 namespace platform {
 
@@ -38,3 +40,5 @@ using ScopedActivationDescriptor =
 
 }  // namespace platform
 }  // namespace paddle
+
+#endif
