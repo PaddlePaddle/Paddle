@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 # This is the special test case with weight including batch dimension
 # I don't want to mess up the code written by others, so I wrote a class specifically
-
-
 class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
@@ -33,107 +33,68 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for shape in [[32], [32, 64], [2, 32, 16], [1, 32, 16, 32]]:
-            for op_type in [
-                "less_than",
-                "greater_than",
-            ]:
-                for axis in [-1]:
-                    self.dims = len(shape)
-                    dics = [
-                        {"axis": axis},
-                        {"in_dtype": 0, "out_dtype": 5},
-                    ]
-                    ops_config = [
-                        {
-                            "op_type": op_type,
-                            "op_inputs": {
-                                "X": ["input_data1"],
-                                "Y": ["input_data2"],
+        def generate_weight():
+            return np.random.randn(1, 32, 1, 1).astype(np.float32)
+
+        for batch in [1]:
+            for shape in [[batch, 32, 16, 32]]:
+                for op_type in ["less_than", "greater_than"]:
+                    for axis in [-1]:
+                        self.dims = len(shape)
+                        dics = [
+                            {"axis": axis},
+                            {"in_dtype": 0, "out_dtype": 5},
+                        ]
+                        ops_config = [
+                            {
+                                "op_type": op_type,
+                                "op_inputs": {
+                                    "X": ["input_data"],
+                                    "Y": ["weight"],
+                                },
+                                "op_outputs": {"Out": ["cast_output_data0"]},
+                                "op_attrs": dics[0],
                             },
-                            "op_outputs": {"Out": ["cast_input"]},
-                            "op_attrs": dics[0],
-                        },
-                        {
-                            "op_type": "cast",
-                            "op_inputs": {"X": ["cast_input"]},
-                            "op_outputs": {"Out": ["output_data"]},
-                            "op_attrs": dics[1],
-                        },
-                    ]
-                    ops = self.generate_op_config(ops_config)
+                            {
+                                "op_type": "cast",
+                                "op_inputs": {"X": ["cast_output_data0"]},
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[1],
+                            },
+                        ]
+                        ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data1": TensorConfig(
-                                data_gen=partial(generate_input, shape)
-                            ),
-                            "input_data2": TensorConfig(
-                                data_gen=partial(generate_input, shape)
-                            ),
-                        },
-                        outputs=["output_data"],
-                    )
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={
+                                "weight": TensorConfig(
+                                    data_gen=partial(generate_weight)
+                                )
+                            },
+                            inputs={
+                                "input_data": TensorConfig(
+                                    data_gen=partial(generate_input, shape)
+                                ),
+                            },
+                            outputs=["output_data"],
+                        )
 
-                    yield program_config
+                        yield program_config
 
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
+            # The input.dims[1] must be equal to the weight's length.
+            if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
-                    "input_data1": [32],
-                    "input_data2": [32],
+                    "input_data": [1, 32, 16, 32]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [32],
-                    "input_data2": [32],
+                    "input_data": [1, 32, 16, 32]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [32],
-                    "input_data2": [32],
-                }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data1": [32, 64],
-                    "input_data2": [32, 64],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data1": [32, 64],
-                    "input_data2": [32, 64],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [32, 64],
-                    "input_data2": [32, 64],
-                }
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data1": [2, 32, 16],
-                    "input_data2": [2, 32, 16],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data1": [2, 32, 16],
-                    "input_data2": [2, 32, 16],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 32, 16],
-                    "input_data2": [2, 32, 16],
-                }
-            elif self.dims == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data1": [1, 32, 16, 32],
-                    "input_data2": [1, 32, 16, 32],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data1": [1, 32, 16, 32],
-                    "input_data2": [1, 32, 16, 32],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [1, 32, 16, 32],
-                    "input_data2": [1, 32, 16, 32],
+                    "input_data": [1, 32, 16, 32]
                 }
 
         def clear_dynamic_shape():
@@ -147,8 +108,8 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
                 ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8400
                 or not dynamic_shape
             ):
-                return 0, 5
-            return 1, 3
+                return 0, 4
+            return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
