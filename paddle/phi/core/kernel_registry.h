@@ -327,13 +327,14 @@ struct KernelRegistrar {
                        KernelFn kernel_fn,
                        void* variadic_kernel_fn) {
     std::string kernel_name(kernel_name_cstr);
-    KernelKey kernel_key(
-        paddle::experimental::StringToBackend(backend_cstr), layout, dtype);
+    Backend backend = paddle::experimental::StringToBackend(backend_cstr);
+    KernelKey kernel_key(backend, layout, dtype);
     Kernel kernel(kernel_fn, variadic_kernel_fn);
     args_parse_fn(kernel_key, kernel.mutable_args_def());
     args_def_fn(kernel_key, &kernel);
     if (reg_type == RegType::INNER) {
       KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
+      KernelFactory::Instance().InsertKernelBackend(kernel_name, backend);
     } else {
       CustomKernelMap::Instance().RegisterCustomKernel(
           kernel_name, kernel_key, kernel);

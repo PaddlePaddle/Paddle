@@ -20,6 +20,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/phi/api/lib/backend_set.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
@@ -251,11 +252,22 @@ using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
 
 using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
 
+using BackendSet = paddle::experimental::BackendSet;
+using KernelBsMap = paddle::flat_hash_map<std::string, BackendSet>;
+
 struct KernelResult {
   KernelResult(const Kernel& kernel, bool fallback_cpu)
       : kernel(kernel), has_fallback_cpu(fallback_cpu) {}
 
   const Kernel& kernel;
+  bool has_fallback_cpu = false;
+};
+
+struct BackendResult {
+  BackendResult(const Backend& backend, bool fallback_cpu)
+      : backend(backend), has_fallback_cpu(fallback_cpu) {}
+
+  const Backend& backend;
   bool has_fallback_cpu = false;
 };
 
@@ -270,6 +282,11 @@ class KernelFactory {
   static KernelFactory& Instance();
 
   KernelNameMap& kernels() { return kernels_; }
+
+  KernelBsMap& kernel_bs() { return kernel_bs_; }
+
+  void InsertKernelBackend(const std::string& kernel_name,
+                           const Backend& backend);
 
   bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
@@ -291,6 +308,7 @@ class KernelFactory {
   KernelFactory() = default;
 
   KernelNameMap kernels_;
+  KernelBsMap kernel_bs_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
