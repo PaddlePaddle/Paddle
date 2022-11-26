@@ -130,7 +130,6 @@ __all__ = [
     'clip_by_norm',
     'mean',
     'mul',
-    'maxout',
     'space_to_depth',
     'affine_channel',
     'similarity_focus',
@@ -8721,43 +8720,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
     )
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.maxout")
-@templatedoc()
-def maxout(x, groups, name=None, axis=1):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        groups(int): ${groups_comment}
-        axis(int, optional): ${axis_comment}
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Variable: ${out_comment}
-
-    Raises:
-        ValueError: If `axis` is not 1, -1 or 3.
-        ValueError: If the number of input channels can not be divisible by `groups`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            input = fluid.data(
-                name='data',
-                shape=[None, 256, 32, 32],
-                dtype='float32')
-            out = fluid.layers.maxout(input, groups=2)
-    """
-    return paddle.nn.functional.maxout(**locals())
 
 
 def space_to_depth(x, blocksize, name=None):
