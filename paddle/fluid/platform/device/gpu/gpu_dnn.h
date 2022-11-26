@@ -38,5 +38,3 @@ using ScopedActivationDescriptor =
 
 }  // namespace platform
 }  // namespace paddle
-
-#endif
