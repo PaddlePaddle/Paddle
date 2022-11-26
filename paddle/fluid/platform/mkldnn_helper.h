@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 using phi::OneDNNContext;
 #endif
 namespace platform {
