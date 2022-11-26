@@ -2190,6 +2190,20 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 #endif
 
+    if (op_type == "less_than" || op_type == "greater_than") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3)
+          << "less_than and greater_than is not supported when TensorRT < 8.4";
+      return false;
+#else
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the less_than and greater_than does not support "
+                   "static shape yet";
+        return false;
+      }
+#endif
+    }
+
     if (op_type == "equal") {
 #if !IS_TRT_VERSION_GE(8000)
       VLOG(3) << "compare is not supported when TensorRT < 8.0";
@@ -2327,6 +2341,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "less_than",
+      "greater_than",
       "equal",
       "dropout",
       "fill_any_like",
@@ -2454,6 +2470,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "less_than",
+      "greater_than",
       "equal",
       "dropout",
       "fill_any_like",
