@@ -67,6 +67,10 @@ class InterpreterCore {
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
+  const std::set<std::string>& JitInputVars() const;
+
+  void SetJitInputVars(const std::set<std::string>& jit_input_vars);
+
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);
@@ -154,6 +158,8 @@ class InterpreterCore {
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
+
+  // for jit
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
