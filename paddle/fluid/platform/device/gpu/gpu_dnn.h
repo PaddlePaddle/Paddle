@@ -31,7 +31,8 @@ namespace platform {
 
 using DataLayout = phi::backends::gpu::DataLayout;
 using PoolingMode = phi::backends::gpu::PoolingMode;
-using CudnnDataType = phi::backends::gpu::CudnnDataType;
+template <typename T>
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
 using ScopedRNNTensorDescriptor = phi::backends::gpu::ScopedRNNTensorDescriptor;
 using ScopedDropoutDescriptor = phi::backends::gpu::ScopedDropoutDescriptor;
