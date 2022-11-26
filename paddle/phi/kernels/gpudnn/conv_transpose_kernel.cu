@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"

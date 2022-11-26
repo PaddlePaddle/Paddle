@@ -23,9 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
