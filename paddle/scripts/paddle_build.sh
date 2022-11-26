@@ -555,6 +555,8 @@ EOF
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    echo "---------"
+    ls -l ${PADDLE_ROOT}/build
 #     cat <<EOF
 #     ============================================
 #     Building in /paddle/build ...
@@ -580,15 +582,15 @@ function cmake_gen_and_build() {
     echo "which python:"
     which python
     pip3.7 list
-    echo "pwd:"
-    pwd
-    echo "pwd ls:"
-    ls -l 
-    cd /workspace/Paddle/build && ls -l
-    cd ${PADDLE_ROOT}/build/dist && ls -l
-    cd  /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/ && ls -l
-    echo "ls 2:"
-    ll ${PADDLE_ROOT}/build/python/paddle/libs
+    # echo "pwd:"
+    # pwd
+    # echo "pwd ls:"
+    # ls -l 
+    # cd /workspace/Paddle/build && ls -l
+    # cd ${PADDLE_ROOT}/build/dist && ls -l
+    # cd  /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/ && ls -l
+    # echo "ls 2:"
+    # ll ${PADDLE_ROOT}/build/python/paddle/libs
     build $2
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
@@ -873,9 +875,12 @@ EOF
 
 function run_linux_cpu_test() {
     mkdir -p ${PADDLE_ROOT}/build
+    echo "PADDLE_ROOT:${PADDLE_ROOT}"
     cd ${PADDLE_ROOT}/build
+    echo "which pip:"
     pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+
+    #pip install ${PADDLE_ROOT}/build/python/dist/*whl
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
@@ -3773,6 +3778,10 @@ function main() {
         ;;
       cicheck_py37)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        echo "in cichek_py37:"
+        echo "which python:"
+        which python
+        python ${PADDLE_ROOT}/test_ljd.py
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
