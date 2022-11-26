@@ -111,7 +111,6 @@ __all__ = [
     'shape',
     'clip',
     'clip_by_norm',
-    'mean',
     'mul',
     'hash',
     'grid_sampler',
@@ -6414,6 +6413,252 @@ def clip_by_norm(x, max_norm, name=None):
             input = paddle.to_tensor([[2.0, 2.0], [2.0, 2.0]], dtype='float32')
             reward = fluid.layers.clip_by_norm(x=input, max_norm=1.0)
             # [[0.5, 0.5], [0.5, 0.5]]
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.clip_by_norm(x, max_norm)
+    if _non_static_mode():
+        return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
+
+    helper = LayerHelper("clip_by_norm", **locals())
+    check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
+    check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
+
+    if name is None:
+        name = unique_name.generate_with_ignorable_key(
+            ".".join([helper.name, 'tmp'])
+        )
+
+    out = helper.create_variable(
+        type=x.type, name=name, dtype=x.dtype, persistable=False
+    )
+
+    helper.append_op(
+        type="clip_by_norm",
+        inputs={"X": x},
+        attrs={"max_norm": max_norm},
+        outputs={"Out": out},
+    )
+
+    return out
+
+
+@templatedoc()
+def merge_selected_rows(x, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            b = fluid.default_main_program().global_block()
+            var = b.create_var(
+                name="X", dtype="float32", persistable=True,
+                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            y = fluid.layers.merge_selected_rows(var)
+    """
+    if in_dygraph_mode():
+        return _C_ops.merge_selected_rows(x)
+
+    if _non_static_mode():
+        return _legacy_C_ops.merge_selected_rows(x)
+
+    helper = LayerHelper("merge_selected_rows", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="merge_selected_rows",
+        inputs={"X": x},
+        attrs={},
+        outputs={"Out": out},
+    )
+    return out
+
+
+def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
+    """
+    Mul Operator.
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    The equation is:
+
+    ..  math::
+        Out = x * y
+
+    Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $x$.
+
+    Args:
+        x (Variable): The first input Tensor/LoDTensor of mul_op.
+        y (Variable): The second input Tensor/LoDTensor of mul_op.
+        x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1.
+        y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. Default is 1.
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
+
+    Examples:
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
+            dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
+            output = fluid.layers.mul(dataX, dataY,
+                                      x_num_col_dims = 1,
+                                      y_num_col_dims = 1)
+
+
+    """
+    if _non_static_mode():
+        return _legacy_C_ops.mul(
+            x,
+            y,
+            'x_num_col_dims',
+            x_num_col_dims,
+            'y_num_col_dims',
+            y_num_col_dims,
+        )
+
+    inputs = {"X": [x], "Y": [y]}
+    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
+    helper = LayerHelper("mul", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
+    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
+    )
+    return out
+
+
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.maxout")
+@templatedoc()
+def maxout(x, groups, name=None, axis=1):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        groups(int): ${groups_comment}
+        axis(int, optional): ${axis_comment}
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+
+    Returns:
+        Variable: ${out_comment}
+
+    Raises:
+        ValueError: If `axis` is not 1, -1 or 3.
+        ValueError: If the number of input channels can not be divisible by `groups`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+
+            input = fluid.data(
+                name='data',
+                shape=[None, 256, 32, 32],
+                dtype='float32')
+            out = fluid.layers.maxout(input, groups=2)
+    """
+    return paddle.nn.functional.maxout(**locals())
+
+
+def space_to_depth(x, blocksize, name=None):
+    r"""
+
+    Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
+
+    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of \
+        theinput LoDtensor where values from the height and width dimensions are moved to the channel \
+        dimension.
+    The attr blocksize indicates the input block size.
+
+    space_to_depth will reorganize the elements of input with shape[batch, channel, height, width] \
+        according to blocksize to construct output with shape \
+        [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]:
+
+    - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
+    - The Y, X coordinates within each block of the input become the high order component of the output channel index
+    - channel should be divisible by square of blocksize
+    - height, width should be divsible by blocksize
+
+    This OP is useful for resizing the activations between convolutions \
+        (but keeping all data)
+
+    .. code-block:: text
+
+        Given the input x with the shape [1, 1, 4, 4]:
+        x.data = [[[[1,   2,  5,  6],
+                    [3,   4,  7,  8],
+                    [9,  10, 13, 14],
+                    [11, 12, 15, 16]]]]
+        blocksize = 2
+
+        then get the output with the shape [1, 4, 2, 2]:
+        out.data = [[[[1,   2],  [3,  4]],
+                     [[5,   6],  [7,  8]],
+                     [[9,  10], [11, 12]],
+                     [[13, 14], [15, 16]]]]
+
+    Args:
+        x (Variable): The input, which should be 4 dims Tensor or LodTensor, with the shape \
+            [batch, channel, height, width]
+        blocksize (int): The blocksize to select the element on each feature map should be > 2
+        name(str, optional): For detailed information, please refer \
+            to :ref:`api_guide_Name`. Usually name is no need to set and \
+            None by default.
+
+    Returns:
+            Tensor, The output, which should be 4 dims Tensor or LodTensor, with the shape \
+            [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import numpy as np
+            import paddle
+
+            paddle.enable_static()
+            data = fluid.data(
+                name='data', shape=[1, 4, 2, 2], dtype='float32')
+            space_to_depthed = fluid.layers.space_to_depth(
+                x=data, blocksize=2)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
+
+            print(data_np)
+            #array([[[[ 0.,  1.], [ 2.,  3.]],
+            #        [[ 4.,  5.], [ 6.,  7.]],
+            #        [[ 8.,  9.], [10., 11.]],
+            #        [[12., 13.], [14., 15.]]]], dtype=float32)
+
+            out_main = exe.run(fluid.default_main_program(),
+                        feed={'data': data_np},
+                        fetch_list=[space_to_depthed])
+
+            print(out_main)
+            #[array([[[[ 0.]], [[ 4.]], [[ 1.]], [[ 5.]],
+            #         [[ 8.]], [[12.]], [[ 9.]], [[13.]],
+            #         [[ 2.]], [[ 6.]], [[ 3.]], [[ 7.]],
+            #         [[10.]], [[14.]], [[11.]], [[15.]]]], dtype=float32)]
+
     """
 
     if in_dygraph_mode():

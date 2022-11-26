@@ -66,7 +66,7 @@ class TestPSPassWithBow(unittest.TestCase):
                 ),
                 loss_op2,
             )
-            avg_cost = fluid.layers.mean(loss_op3)
+            avg_cost = paddle.mean(loss_op3)
             return avg_cost
 
         is_distributed = False
