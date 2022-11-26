@@ -79,17 +79,17 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",      "relu6", "sigmoid",
-        "elu",       "selu",  "softsign",
-        "softplus",  "stanh", "thresholded_relu",
-        "exp",       "log",   "sqrt",
-        "abs",       "sin",   "cos",
-        "tan",       "tanh",  "sinh",
-        "cosh",      "asin",  "acos",
-        "atan",      "asinh", "atanh",
-        "ceil",      "floor", "erf",
-        "silu",      "celu",  "tanh_shrink",
-        "logsigmoid"};
+        "relu",        "relu6",     "sigmoid",
+        "elu",         "selu",      "softsign",
+        "softplus",    "stanh",     "thresholded_relu",
+        "exp",         "log",       "sqrt",
+        "abs",         "sin",       "cos",
+        "tan",         "tanh",      "sinh",
+        "cosh",        "asin",      "acos",
+        "atan",        "asinh",     "atanh",
+        "ceil",        "floor",     "erf",
+        "reciprocal",  "silu",      "celu",
+        "tanh_shrink", "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -413,15 +413,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (layout_str != "NCHW") {
         VLOG(3) << "Group norm trt plugin only support NCHW layout, but got "
                 << layout_str;
-        return false;
-      }
-      auto* block = desc.Block();
-      if (block == nullptr) return false;
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto dtype = x_var_desc->GetDataType();
-      if (dtype != 5) {
-        VLOG(3) << "Group norm trt plugin only support float32";
         return false;
       }
     }
@@ -2324,6 +2315,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "reciprocal",
       "erf",
       "softmax",
       "sigmoid",
@@ -2453,6 +2445,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "reciprocal",
       "erf",
       "softmax",
       "sigmoid",
