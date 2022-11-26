@@ -938,18 +938,7 @@ void InterpreterCore::ExecuteInstructionList(
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
-      if (vec_instr.at(i).OpBase()->Type() == interpreter::kMemcpyD2H) {
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
-        auto* default_dev_ctx = pool.Get(place_);
-        for (auto& event : vec_instr.at(i).EventsToWait()) {
-          platform::RecordEvent record(
-              "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
-          VLOG(3) << "Record event on default stream in jit_input_var at op: "
-                  << vec_instr.at(i).OpBase()->Type();
-          event.event_->Record(default_dev_ctx);
-        }
-      }
+      RecordMemcpyD2H(vec_instr.at(i));
       async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
                                  [this, i] { RunInstructionAsync(i); });
     }
@@ -1265,6 +1254,13 @@ void InterpreterCore::TraceInstructionList(
 
   exception_holder_.Clear();
 
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i));
+    }
+  }
+
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
     auto instr_id = trace_execute_order_[idx];
     auto& instr_node = vec_instruction_.at(instr_id);
@@ -1286,6 +1282,21 @@ void InterpreterCore::TraceInstructionList(
             "main_thread_blocker_.Clear() return -1, clear failed"));
     VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
+  }
+}
+
+void InterpreterCore::RecordMemcpyD2H(const Instruction& instr_node) {
+  // NOTE(zhiqiu): hot fix for jit input var
+  if (instr_node.OpBase()->Type() == interpreter::kMemcpyD2H) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* default_dev_ctx = pool.Get(place_);
+    for (auto& event : instr_node.EventsToWait()) {
+      platform::RecordEvent record(
+          "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+      VLOG(3) << "Record event on default stream in jit_input_var at op: "
+              << instr_node.OpBase()->Type();
+      event.event_->Record(default_dev_ctx);
+    }
   }
 }
 

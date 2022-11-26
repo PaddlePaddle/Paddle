@@ -107,6 +107,8 @@ class InterpreterCore {
                const std::vector<phi::DenseTensor>& feed_tensors,
                bool prepare_feed);
 
+  void RecordMemcpyD2H(const Instruction& instr_node);
+
   // gc
   void RecordStreamForGC(const Instruction& instr);
   void CheckGC(const Instruction& instr);
