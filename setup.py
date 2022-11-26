@@ -87,10 +87,11 @@ cmake_and_make, only_cmake, rerun_cmake, filter_args_list = filter_setup_args(
 def parse_input_command(input_parameters):
     dist = Distribution()
     # get script name :setup.py
-    dist.script_name = os.path.basename(input_parameters[0])
+    sys.argv = input_parameters
+    dist.script_name = os.path.basename(sys.argv[0])
     print("Start executing %s" % dist.script_name)
     # get args of setup.py
-    dist.script_args = input_parameters[1:]
+    dist.script_args = sys.argv[1:]
     print("args of setup.py:%s" % dist.script_args)
     try:
         dist.parse_command_line()
@@ -1330,7 +1331,7 @@ def main():
     )
     write_distributed_training_mode_py(
         filename=paddle_binary_dir
-        + 'python/paddle/fluid/incubate/fleet/parameter_server/version.py'
+        + '/python/paddle/fluid/incubate/fleet/parameter_server/version.py'
     )
 
     (
