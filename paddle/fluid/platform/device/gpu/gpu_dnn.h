@@ -19,8 +19,8 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/miopen_desc.h"
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#include "paddle/phi/backends/gpu/rocm/miopen_desc.h"
 #else  // CUDA
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
