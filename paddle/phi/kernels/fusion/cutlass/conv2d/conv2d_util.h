@@ -20,15 +20,18 @@
 namespace phi {
 namespace fusion {
 
+typedef enum {
+  CONV2D_BIAS,
+  CONV2D_BIAS_RELU,
+  CONV2D_BIAS_ADD_RELU,
+  CONV2D_BIAS_SILU
+} OpType;
+
 // This two functions calculate diff of cutlass output and baseline output
 // We recommend use conv2d_diff_gpu bacause gpu is more fast than cpu
 // return value is the max diff between cutlass and baseline
-float conv2d_diff_cpu(COMMON_CONV_PARAMS,
-                      const half* residual,
-                      std::string op_name);
-float conv2d_diff_gpu(COMMON_CONV_PARAMS,
-                      const half* residual,
-                      std::string op_name);
+float conv2d_diff_cpu(COMMON_CONV_PARAMS, const half* residual, OpType op_type);
+float conv2d_diff_gpu(COMMON_CONV_PARAMS, const half* residual, OpType op_type);
 
 }  // namespace fusion
 }  // namespace phi

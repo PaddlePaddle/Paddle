@@ -151,49 +151,52 @@ template cutlass::Status cutlass_nhwc_conv2d_bias_add_relu<
     cutlass::gemm::GemmShape<256, 128, 32>,
     cutlass::gemm::GemmShape<64, 64, 32>>(CONV_RESIDUAL_PARAMS);
 
-#define N 13
-cutlass::Status (*cutlass_conv2d_bias_add_relu_all_func[N])(const half *,
-                                                            const half *,
-                                                            const half *,
-                                                            const half *,
-                                                            half *,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int,
-                                                            int) = {
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 64, 32>,
-                                      cutlass::gemm::GemmShape<32, 32, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 64, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 32, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 32, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 64, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 128, 32>,
-                                      cutlass::gemm::GemmShape<32, 64, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 128, 64>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 256, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 64, 32>,
-                                      cutlass::gemm::GemmShape<64, 32, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 128, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 256, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<256, 64, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-    cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<256, 128, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>};
+std::vector<std::function<cutlass::Status(const half *,
+                                          const half *,
+                                          const half *,
+                                          const half *,
+                                          half *,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int)>>
+    cutlass_conv2d_bias_add_relu_all_func = {
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 64, 32>,
+                                          cutlass::gemm::GemmShape<32, 32, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 64, 64>,
+                                          cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 32, 64>,
+                                          cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 32, 64>,
+                                          cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 64, 64>,
+                                          cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 128, 32>,
+                                          cutlass::gemm::GemmShape<32, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 128, 64>,
+                                          cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<64, 256, 32>,
+                                          cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<128, 64, 32>,
+                                          cutlass::gemm::GemmShape<64, 32, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<
+            cutlass::gemm::GemmShape<128, 128, 32>,
+            cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<
+            cutlass::gemm::GemmShape<128, 256, 32>,
+            cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<256, 64, 32>,
+                                          cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_add_relu<
+            cutlass::gemm::GemmShape<256, 128, 32>,
+            cutlass::gemm::GemmShape<64, 64, 32>>};
 std::map<std::vector<int>, int> map_problem_conv2d_bias_add_relu;
 
 void cutlass_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
@@ -208,11 +211,11 @@ void cutlass_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
 
   std::vector<int> blacklist = {6};
   float min_time = 100000.f;
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < cutlass_conv2d_bias_add_relu_all_func.size(); i++) {
     if (std::find(blacklist.begin(), blacklist.end(), i) != blacklist.end())
       continue;
     auto func = cutlass_conv2d_bias_add_relu_all_func[i];
-    for (int i = 0; i < WARMUP; i++) {
+    for (int ii = 0; ii < WARMUP; ii++) {
       func(CONV_RESIDUAL_ARGS);
     }
 
@@ -220,7 +223,7 @@ void cutlass_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
     cudaEventCreate(&beg);
     cudaEventCreate(&end);
     cudaEventRecord(beg);
-    for (int i = 0; i < REPEAT; i++) {
+    for (int ii = 0; ii < REPEAT; ii++) {
       func(CONV_RESIDUAL_ARGS);
     }
 
@@ -235,7 +238,7 @@ void cutlass_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
 
     // debug code
     std::cout << conv2d_diff_gpu(
-                     COMMON_CONV_ARGS, residual, "conv2d_bias_add_relu")
+                     COMMON_CONV_ARGS, residual, CONV2D_BIAS_ADD_RELU)
               << std::endl;
   }
 }

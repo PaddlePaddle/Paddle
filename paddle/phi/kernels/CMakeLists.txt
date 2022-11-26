@@ -103,9 +103,11 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
-  "fusion/gpu/*.cu"
-  "fusion/cutlass/conv2d/*.cu"
-  "fusion/cutlass/*.cu")
+  "fusion/gpu/*.cu")
+if(WITH_CUTLASS)
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+  list(APPEND kernel_cu ${cutlass_cu})
+endif()
 
 if(WITH_MKLDNN)
   file(

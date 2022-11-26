@@ -53,7 +53,7 @@ void naive_conv_cpu(const half *input,
                     int stride_h,
                     int stride_w,
                     const half *residual,
-                    std::string op_name) {
+                    OpType op_type) {
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
   struct logical_struct input_shape {
@@ -97,11 +97,11 @@ void naive_conv_cpu(const half *input,
             }
           }
           sum += __half2float(*(bias + oc_i));
-          if (op_name == "conv2d_bias") {
+          if (op_type == CONV2D_BIAS) {
             *out_ptr = sum;
-          } else if (op_name == "conv2d_bias_relu") {
+          } else if (op_type == CONV2D_BIAS_RELU) {
             *out_ptr = sum > 0 ? sum : 0.f;
-          } else if (op_name == "conv2d_bias_add_relu") {
+          } else if (op_type == CONV2D_BIAS_ADD_RELU) {
             sum += __half2float(*(residual + nhwc(output_shape, output_index)));
             *out_ptr = sum > 0 ? sum : 0.f;
           }
@@ -123,7 +123,7 @@ float diff(const half *c, const float *c_baseline, int n) {
 
 float conv2d_diff_cpu(COMMON_CONV_PARAMS,
                       const half *residual,
-                      std::string op_name) {
+                      OpType op_type) {
   // debug code
   half *cpu_input, *cpu_weight, *cpu_bias;
   float *cpu_output;
@@ -168,7 +168,7 @@ float conv2d_diff_cpu(COMMON_CONV_PARAMS,
                  stride_h,
                  stride_w,
                  residual,
-                 op_name);
+                 op_type);
   float max_diff = diff(output_from_cutlass, cpu_output, output_size);
   free(cpu_output);
   free(cpu_input);
@@ -202,7 +202,7 @@ __global__ void naive_conv2d_kernel(const half *input,
                                     int oh,
                                     int ow,
                                     const half *residual,
-                                    int op_type) {
+                                    OpType op_type) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx >= batch * oc * oh * ow) return;
   int batch_i = idx / (oc * oh * ow);
@@ -242,17 +242,13 @@ __global__ void naive_conv2d_kernel(const half *input,
   }
   sum += __half2float(*(bias + oc_i));
   float x = sum;
-  if (op_type == 0) {
-    // conv2d_bias
+  if (op_type == CONV2D_BIAS) {
     *out_ptr = x;
-  } else if (op_type == 1) {
-    // conv2d_bias_relu
+  } else if (op_type == CONV2D_BIAS_RELU) {
     *out_ptr = x > 0 ? x : 0;
-  } else if (op_type == 2) {
-    // conv2d_bias_silu
+  } else if (op_type == CONV2D_BIAS_SILU) {
     *out_ptr = x * (1.f / (1 + exp(-x)));
-  } else if (op_type == 3) {
-    // conv2d_bias_add_relu
+  } else if (op_type == CONV2D_BIAS_ADD_RELU) {
     x += __half2float(*(residual + gpu_nhwc(output_shape, output_index)));
     *out_ptr = x > 0 ? x : 0;
   }
@@ -260,18 +256,7 @@ __global__ void naive_conv2d_kernel(const half *input,
 
 float conv2d_diff_gpu(COMMON_CONV_PARAMS,
                       const half *residual,
-                      std::string op_name) {
-  int op_type = 0;
-  if (op_name == "conv2d_bias") {
-    op_type = 0;
-  } else if (op_name == "conv2d_bias_relu") {
-    op_type = 1;
-  } else if (op_name == "conv2d_bias_silu") {
-    op_type = 2;
-  } else if (op_name == "conv2d_bias_add_relu") {
-    op_type = 3;
-  }
-
+                      OpType op_type) {
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
 

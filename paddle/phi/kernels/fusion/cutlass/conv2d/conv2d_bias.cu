@@ -143,40 +143,41 @@ template cutlass::Status cutlass_nhwc_conv2d_bias<
     cutlass::gemm::GemmShape<128, 64, 32>,
     cutlass::gemm::GemmShape<64, 32, 32>>(COMMON_CONV_PARAMS);
 
-#define N 9
-cutlass::Status (*cutlass_conv2d_bias_all_func[N])(const half *,
-                                                   const half *,
-                                                   const half *,
-                                                   half *,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int,
-                                                   int) = {
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 64, 64>,
-                             cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 32, 64>,
-                             cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<128, 32, 64>,
-                             cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<128, 64, 64>,
-                             cutlass::gemm::GemmShape<32, 32, 64>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 64, 32>,
-                             cutlass::gemm::GemmShape<32, 32, 32>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 128, 32>,
-                             cutlass::gemm::GemmShape<32, 64, 32>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 128, 64>,
-                             cutlass::gemm::GemmShape<64, 64, 32>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 256, 32>,
-                             cutlass::gemm::GemmShape<64, 64, 32>>,
-    cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<128, 64, 32>,
-                             cutlass::gemm::GemmShape<64, 32, 32>>};
+std::vector<std::function<cutlass::Status(const half *,
+                                          const half *,
+                                          const half *,
+                                          half *,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int,
+                                          int)>>
+    cutlass_conv2d_bias_all_func = {
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 64, 64>,
+                                 cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 32, 64>,
+                                 cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<128, 32, 64>,
+                                 cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<128, 64, 64>,
+                                 cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 64, 32>,
+                                 cutlass::gemm::GemmShape<32, 32, 32>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 128, 32>,
+                                 cutlass::gemm::GemmShape<32, 64, 32>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 128, 64>,
+                                 cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<64, 256, 32>,
+                                 cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias<cutlass::gemm::GemmShape<128, 64, 32>,
+                                 cutlass::gemm::GemmShape<64, 32, 32>>};
+
 std::map<std::vector<int>, int> map_problem_conv2d_bias;
 
 void cutlass_conv2d_bias(COMMON_CONV_PARAMS) {
@@ -190,7 +191,7 @@ void cutlass_conv2d_bias(COMMON_CONV_PARAMS) {
   }
 
   float min_time = 100000.f;
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < cutlass_conv2d_bias_all_func.size(); i++) {
     auto func = cutlass_conv2d_bias_all_func[i];
     for (int ii = 0; ii < WARMUP; ii++) {
       func(COMMON_CONV_ARGS);
@@ -213,7 +214,7 @@ void cutlass_conv2d_bias(COMMON_CONV_PARAMS) {
       map_problem_conv2d_bias[problem_size] = i;
     }
     // debug code
-    std::cout << conv2d_diff_gpu(COMMON_CONV_ARGS, nullptr, "conv2d_bias")
+    std::cout << conv2d_diff_gpu(COMMON_CONV_ARGS, nullptr, CONV2D_BIAS)
               << std::endl;
   }
 }
