@@ -96,10 +96,10 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
 template <typename HandleT, typename DataT>
 struct ConvArgsBase {
   HandleT handle;
-  paddle::platform::TensorDescriptor idesc;
-  paddle::platform::TensorDescriptor odesc;
-  paddle::platform::FilterDescriptor wdesc;
-  paddle::platform::ConvolutionDescriptor cdesc;
+  phi::backends::gpu::TensorDescriptor idesc;
+  phi::backends::gpu::TensorDescriptor odesc;
+  phi::backends::gpu::FilterDescriptor wdesc;
+  phi::backends::gpu::ConvolutionDescriptor cdesc;
 
   const phi::DenseTensor* x = nullptr;
   const phi::DenseTensor* w = nullptr;

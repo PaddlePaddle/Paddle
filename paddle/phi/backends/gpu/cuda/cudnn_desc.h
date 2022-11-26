@@ -23,16 +23,14 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace platform {
+namespace backends {
+namespace gpu {
 
 template <typename T>
 inline std::vector<T> TransformDimOrder(const std::vector<T>& dims) {
@@ -91,7 +89,7 @@ class ActivationDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnDestroyActivationDescriptor(t));
         t = nullptr;
       }
@@ -99,17 +97,14 @@ class ActivationDescriptor {
   };
   ActivationDescriptor() {
     T* raw_ptr;
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnCreateActivationDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   template <typename T>
   void set(cudnnActivationMode_t mode, const T& coef) {
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnSetActivationDescriptor(desc_.get(),
-                                                   mode,
-                                                   CUDNN_NOT_PROPAGATE_NAN,
-                                                   static_cast<double>(coef)));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetActivationDescriptor(
+        desc_.get(), mode, CUDNN_NOT_PROPAGATE_NAN, static_cast<double>(coef)));
   }
 
   T* desc() { return desc_.get(); }
@@ -125,7 +120,7 @@ class TensorDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnDestroyTensorDescriptor(t));
         t = nullptr;
       }
@@ -133,7 +128,7 @@ class TensorDescriptor {
   };
   TensorDescriptor() {
     T* raw_ptr;
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnCreateTensorDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
@@ -150,13 +145,12 @@ class TensorDescriptor {
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnSetTensorNdDescriptor(
-            desc_.get(),
-            ToCudnnDataType(tensor.dtype()),
-            dims_with_group.size(),
-            dims_with_group.data(),
-            strides.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+        desc_.get(),
+        ToCudnnDataType(tensor.dtype()),
+        dims_with_group.size(),
+        dims_with_group.data(),
+        strides.data()));
   }
 
   void set(const std::vector<int>& dims,
@@ -168,7 +162,7 @@ class TensorDescriptor {
     } else {
       transformed_dims = dims;
     }
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnSetTensorNdDescriptorEx(desc_.get(),
                                                    format,
                                                    dtype,
@@ -192,7 +186,7 @@ class FilterDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnDestroyFilterDescriptor(t));
         t = nullptr;
       }
@@ -200,7 +194,7 @@ class FilterDescriptor {
   };
   FilterDescriptor() {
     T* raw_ptr;
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnCreateFilterDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
@@ -220,7 +214,7 @@ class FilterDescriptor {
     if (groups > 1) {
       transformed_dims[1] = transformed_dims[1] / groups;
     }
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnSetFilterNdDescriptor(desc_.get(),
                                                  dtype,
                                                  format,
@@ -246,7 +240,7 @@ class ConvolutionDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnDestroyConvolutionDescriptor(t));
         t = nullptr;
       }
@@ -254,7 +248,7 @@ class ConvolutionDescriptor {
   };
   ConvolutionDescriptor() {
     T* raw_ptr;
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnCreateConvolutionDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
@@ -271,7 +265,7 @@ class ConvolutionDescriptor {
     cudnnDataType_t compute_type =
         (dtype == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     T* desc = desc_.get();
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnSetConvolutionNdDescriptor(desc,
                                                       pads.size(),
                                                       pads.data(),
@@ -280,25 +274,25 @@ class ConvolutionDescriptor {
                                                       CUDNN_CROSS_CORRELATION,
                                                       compute_type));
 #if CUDNN_VERSION_MIN(7, 0, 1)
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::phi::dynload::cudnnSetConvolutionGroupCount(desc, groups));
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::phi::dynload::cudnnSetConvolutionMathType(
             desc, CUDNN_DEFAULT_MATH));
     if (dtype == CUDNN_DATA_HALF) {
-      phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::phi::dynload::cudnnSetConvolutionMathType(
               desc, CUDNN_TENSOR_OP_MATH));
 #if CUDA_VERSION >= 11000
 #if CUDNN_VERSION_MIN(8, 1, 0)
     } else if (dtype == CUDNN_DATA_BFLOAT16) {
-      phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::phi::dynload::cudnnSetConvolutionMathType(
               desc, CUDNN_TENSOR_OP_MATH));
 #endif  // CUDNN_VERSION_MIN(8,1,0)
     } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
-      phi::enforce::PADDLE_ENFORCE_GPU_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::phi::dynload::cudnnSetConvolutionMathType(desc,
                                                               CUDNN_FMA_MATH));
 #endif  // CUDA_VERSION >= 11000
@@ -313,5 +307,6 @@ class ConvolutionDescriptor {
   std::unique_ptr<T, Deleter> desc_;
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi

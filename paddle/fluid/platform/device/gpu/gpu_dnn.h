@@ -20,8 +20,8 @@
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_desc.h"
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
 #else  // CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_desc.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #endif
 
 #endif

@@ -734,7 +734,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
   static void SetConvMathType(
       const phi::GPUContext& ctx,
       cudnnDataType_t dtype,
-      const paddle::platform::ConvolutionDescriptor& cdesc) {
+      const phi::backends::gpu::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     if (ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetConvolutionMathType(
