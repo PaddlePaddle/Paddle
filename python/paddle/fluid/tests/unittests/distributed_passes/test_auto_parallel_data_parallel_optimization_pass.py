@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import random
-import numpy as np
-
+import sys
 import unittest
+
+import numpy as np
+from auto_parallel_pass_test_base import AutoPallelPassTestBase
+
 import paddle
 import paddle.distributed.fleet as fleet
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
 from paddle.distributed.passes import PassContext, new_pass
-from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 sys.path.append("..")
 

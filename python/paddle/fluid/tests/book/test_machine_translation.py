@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import contextlib
+import os
+import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as pd
 from paddle.fluid.executor import Executor
-import unittest
-import os
 
 paddle.enable_static()
 

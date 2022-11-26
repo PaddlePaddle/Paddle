@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
+import unittest
+
+import numpy as np
+from dist_pass_test_base import DistPassTestBase
+
 import paddle
 import paddle.distributed.fleet as fleet
-import numpy as np
 import paddle.nn as nn
-from paddle.distributed.passes import new_pass, PassManager
-import unittest
-from dist_pass_test_base import DistPassTestBase
+from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
 

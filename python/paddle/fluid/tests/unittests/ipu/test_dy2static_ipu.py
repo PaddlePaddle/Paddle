@@ -238,7 +238,7 @@ class TestWithoutIdentityLoss2(TestBase):
 
 class TestWithoutIdentityLoss3(TestBase):
     def set_op_attrs(self):
-        self.loss_op = partial(paddle.fluid.layers.kldiv_loss, reduction="none")
+        self.loss_op = partial(paddle.nn.functional.kl_div, reduction="none")
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
