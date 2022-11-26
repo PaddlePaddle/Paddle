@@ -59,7 +59,6 @@ inline std::vector<T> TransformDimOrder(const std::vector<T>& dims) {
   return transformed_dims;
 }
 
-template <>
 inline cudnnDataType_t ToCudnnDataType(const phi::DataType& t) {
   cudnnDataType_t type = CUDNN_DATA_FLOAT;
   switch (t) {
@@ -275,25 +274,25 @@ class ConvolutionDescriptor {
                                                       compute_type));
 #if CUDNN_VERSION_MIN(7, 0, 1)
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::phi::dynload::cudnnSetConvolutionGroupCount(desc, groups));
+        phi::dynload::cudnnSetConvolutionGroupCount(desc, groups));
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::phi::dynload::cudnnSetConvolutionMathType(
+        phi::dynload::cudnnSetConvolutionMathType(
             desc, CUDNN_DEFAULT_MATH));
     if (dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::phi::dynload::cudnnSetConvolutionMathType(
+          phi::dynload::cudnnSetConvolutionMathType(
               desc, CUDNN_TENSOR_OP_MATH));
 #if CUDA_VERSION >= 11000
 #if CUDNN_VERSION_MIN(8, 1, 0)
     } else if (dtype == CUDNN_DATA_BFLOAT16) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::phi::dynload::cudnnSetConvolutionMathType(
+          phi::dynload::cudnnSetConvolutionMathType(
               desc, CUDNN_TENSOR_OP_MATH));
 #endif  // CUDNN_VERSION_MIN(8,1,0)
     } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::phi::dynload::cudnnSetConvolutionMathType(desc,
+          phi::dynload::cudnnSetConvolutionMathType(desc,
                                                               CUDNN_FMA_MATH));
 #endif  // CUDA_VERSION >= 11000
     }
