@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/fluid/memory/stats.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP

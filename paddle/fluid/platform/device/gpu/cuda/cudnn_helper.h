@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
@@ -345,7 +347,7 @@ class ScopedDropoutDescriptor {
   }
 
   inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
-                                             const platform::Place& place,
+                                             const phi::Place& place,
                                              bool initialized,
                                              float dropout_prob_,
                                              phi::DenseTensor* dropout_state_,
