@@ -67,6 +67,10 @@ class InterpreterCore {
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
+  const std::set<std::string>& JitInputVars() const;
+
+  void SetJitInputVars(const std::set<std::string>& jit_input_vars);
+
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);

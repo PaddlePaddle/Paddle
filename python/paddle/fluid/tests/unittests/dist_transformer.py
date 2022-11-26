@@ -12,23 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import time
-import os
 import functools
+import glob
+import os
+import random
+import tarfile
 import time
 from functools import partial
 from os.path import expanduser
-import glob
-import random
-import tarfile
+
+import numpy as np
+from test_dist_base import RUN_STEP, TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
 import paddle.nn.functional as F
-import paddle
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -1174,7 +1173,7 @@ def multi_head_attention(
         """
         Scaled Dot-Product Attention
         """
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
@@ -1306,7 +1305,7 @@ def prepare_encoder(
             ),
         )
 
-    src_word_emb = layers.scale(x=src_word_emb, scale=src_emb_dim**0.5)
+    src_word_emb = paddle.scale(x=src_word_emb, scale=src_emb_dim**0.5)
     src_pos_enc = layers.embedding(
         src_pos,
         size=[src_max_len, src_emb_dim],
