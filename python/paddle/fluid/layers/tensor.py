@@ -65,7 +65,6 @@ __all__ = [
     'has_inf',
     'linspace',
     'zeros_like',
-    'ones_like',
     'diag',
     'triu',
 ]
@@ -1753,52 +1752,6 @@ def diag(diagonal):
     )
 
     out.stop_gradient = True
-    return out
-
-
-def ones_like(x, out=None):
-    """
-    **ones_like**
-
-    This function creates a ones tensor which has identical shape and dtype
-    with `x`.
-
-    Args:
-        x(Variable): The input tensor which specifies shape and dtype.
-        out(Variable): The output tensor.
-
-    Returns:
-        out(Variable): The tensor variable storing the output.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
-          data = fluid.layers.ones_like(x) # [1.0, 1.0, 1.0]
-
-    """
-    check_variable_and_dtype(
-        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'ones_like'
-    )
-
-    helper = LayerHelper("ones_like", **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        check_variable_and_dtype(
-            out,
-            "out",
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
-            'ones_like',
-        )
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [x]},
-        attrs={'value': 1.0},
-        outputs={'Out': [out]},
-    )
     return out
 
 
