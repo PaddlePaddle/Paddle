@@ -142,11 +142,13 @@ class BaseTransform:
     Base class of all transforms used in computer vision.
 
     calling logic:
-
-        if keys is None:
-            _get_params -> _apply_image()
-        else:
-            _get_params -> _apply_*() for * in keys
+    
+        ..code-block:: test
+        
+            if keys is None:
+                _get_params -> _apply_image()
+            else:
+                _get_params -> _apply_*() for * in keys
 
     If you want to implement a self-defined transform method for image,
     rewrite _apply_* method in subclass.
@@ -159,16 +161,13 @@ class BaseTransform:
             if your input is (image, boxes), then the keys should be ("image", "boxes").
 
             Current available strings & data type are describe below:
-
-            - "image": input image, with shape of (H, W, C).
-            - "coords": coordinates, with shape of (N, 2).
-            - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,
-
-                       the 1st "xy" represents top left point of a box,
-                       the 2nd "xy" represents right bottom point.
-
-            - "mask": map used for segmentation, with shape of (H, W, 1)
-
+                - "image": input image, with shape of (H, W, C).
+                - "coords": coordinates, with shape of (N, 2).
+                - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,
+                    the 1st "xy" represents top left point of a box,
+                    the 2nd "xy" represents right bottom point.
+                - "mask": map used for segmentation, with shape of (H, W, 1)
+                
             You can also customize your data types only if you implement the corresponding
             _apply_*() methods, otherwise ``NotImplementedError`` will be raised.
 
