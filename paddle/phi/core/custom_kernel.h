@@ -44,6 +44,7 @@ class CustomKernelMap {
   DISABLE_COPY_AND_ASSIGN(CustomKernelMap);
 
   KernelNameMap kernels_;
+  KernelBsMap kernel_bs_;
 };
 
 }  // namespace phi

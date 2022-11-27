@@ -33,6 +33,14 @@ void CustomKernelMap::RegisterCustomKernel(const std::string& name,
                         name,
                         key));
   kernels_[name][key] = kernel;
+  // Register {kernel_name: BackendSet}
+  auto iter = kernel_bs_.find(name);
+  if (iter == kernel_bs_.end()) {
+    kernel_bs_[name] = paddle::experimental::BackendSet(key.backend());
+  } else {
+    iter->second =
+        iter->second | paddle::experimental::BackendSet(key.backend());
+  }
 }
 
 void CustomKernelMap::RegisterCustomKernels() {
@@ -43,6 +51,7 @@ void CustomKernelMap::RegisterCustomKernels() {
     return;
   }
   auto& kernels = KernelFactory::Instance().kernels();
+  auto& kernel_bs = KernelFactory::Instance().kernel_bs();
   for (auto& pair : kernels_) {
     if (kernels.find(pair.first) == kernels.cend()) {
       if (std::find(gpu_exclusive_kernels.cbegin(),
@@ -67,7 +76,11 @@ void CustomKernelMap::RegisterCustomKernels() {
               info_pair.first));
 
       kernels[pair.first][info_pair.first] = info_pair.second;
-
+      if (kernel_bs.find(pair.first) != kernel_bs.end()) {
+        kernel_bs[pair.first] = kernel_bs[pair.first] | kernel_bs_[pair.first];
+      } else {
+        kernel_bs[pair.first] = kernel_bs_[pair.first];
+      }
       VLOG(3) << "Successed in registering kernel [" << pair.first << ":"
               << info_pair.first
               << "] to Paddle. It will be used like native ones.";
