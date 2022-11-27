@@ -31,9 +31,9 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
   int nd;
   std::vector<int> dims(4);
   std::vector<int> strides(4);
-  paddle::platform::dynload::miopenGetTensorDescriptor(
+  phi::dynload::miopenGetTensorDescriptor(
       desc, &type, dims.data(), strides.data());
-  paddle::platform::dynload::miopenGetTensorDescriptorSize(desc, &nd);
+  phi::dynload::miopenGetTensorDescriptorSize(desc, &nd);
 
   EXPECT_EQ(nd, 4);
   for (size_t i = 0; i < dims.size(); ++i) {
@@ -51,9 +51,9 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
 
   std::vector<int> dims_5d(5);
   std::vector<int> strides_5d(5);
-  paddle::platform::dynload::miopenGetTensorDescriptor(
+  phi::dynload::miopenGetTensorDescriptor(
       desc_5d, &type, dims_5d.data(), strides_5d.data());
-  paddle::platform::dynload::miopenGetTensorDescriptorSize(desc_5d, &nd);
+  phi::dynload::miopenGetTensorDescriptorSize(desc_5d, &nd);
 
   EXPECT_EQ(nd, 5);
   for (size_t i = 0; i < dims_5d.size(); ++i) {
@@ -80,7 +80,7 @@ TEST(MIOpenHelper, ScopedConvolutionDescriptor) {
   std::vector<int> pads(3);
   std::vector<int> strides(3);
   std::vector<int> dilations(3);
-  paddle::platform::dynload::miopenGetConvolutionNdDescriptor(
+  phi::dynload::miopenGetConvolutionNdDescriptor(
       desc, 3, &nd, pads.data(), strides.data(), dilations.data(), &mode);
 
   EXPECT_EQ(nd, 3);

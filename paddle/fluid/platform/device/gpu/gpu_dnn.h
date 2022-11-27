@@ -26,17 +26,21 @@ using PoolingMode = phi::backends::gpu::PoolingMode;
 template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
-using ScopedRNNTensorDescriptor = phi::backends::gpu::ScopedRNNTensorDescriptor;
 using ScopedDropoutDescriptor = phi::backends::gpu::ScopedDropoutDescriptor;
 using ScopedRNNDescriptor = phi::backends::gpu::ScopedRNNDescriptor;
 using ScopedFilterDescriptor = phi::backends::gpu::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor =
     phi::backends::gpu::ScopedConvolutionDescriptor;
 using ScopedPoolingDescriptor = phi::backends::gpu::ScopedPoolingDescriptor;
-using ScopedSpatialTransformerDescriptor =
-    phi::backends::gpu::ScopedSpatialTransformerDescriptor;
 using ScopedActivationDescriptor =
     phi::backends::gpu::ScopedActivationDescriptor;
+
+if defined (PADDLE_WITH_CUDA)
+  using ScopedRNNTensorDescriptor =
+      phi::backends::gpu::ScopedRNNTensorDescriptor;
+using ScopedSpatialTransformerDescriptor =
+    phi::backends::gpu::ScopedSpatialTransformerDescriptor;
+#endif
 
 }  // namespace platform
 }  // namespace paddle

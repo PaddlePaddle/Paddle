@@ -31,7 +31,7 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
   int nd;
   std::vector<int> dims(4);
   std::vector<int> strides(4);
-  paddle::platform::dynload::cudnnGetTensorNdDescriptor(
+  phi::dynload::cudnnGetTensorNdDescriptor(
       desc, 4, &type, &nd, dims.data(), strides.data());
 
   EXPECT_EQ(nd, 4);
@@ -50,7 +50,7 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 
   std::vector<int> dims_5d(5);
   std::vector<int> strides_5d(5);
-  paddle::platform::dynload::cudnnGetTensorNdDescriptor(
+  phi::dynload::cudnnGetTensorNdDescriptor(
       desc_5d, 5, &type, &nd, dims_5d.data(), strides_5d.data());
 
   EXPECT_EQ(nd, 5);
@@ -76,7 +76,7 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   int nd;
   cudnnTensorFormat_t format;
   std::vector<int> kernel(3);
-  paddle::platform::dynload::cudnnGetFilterNdDescriptor(
+  phi::dynload::cudnnGetFilterNdDescriptor(
       desc, 3, &type, &format, &nd, kernel.data());
 
   EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
@@ -90,7 +90,7 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   auto desc_4d = filter_desc.descriptor<float>(DataLayout::kNCDHW, shape_4d);
 
   std::vector<int> kernel_4d(4);
-  paddle::platform::dynload::cudnnGetFilterNdDescriptor(
+  phi::dynload::cudnnGetFilterNdDescriptor(
       desc_4d, 4, &type, &format, &nd, kernel_4d.data());
 
   EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
@@ -115,14 +115,14 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
   std::vector<int> pads(3);
   std::vector<int> strides(3);
   std::vector<int> dilations(3);
-  paddle::platform::dynload::cudnnGetConvolutionNdDescriptor(desc,
-                                                             3,
-                                                             &nd,
-                                                             pads.data(),
-                                                             strides.data(),
-                                                             dilations.data(),
-                                                             &mode,
-                                                             &type);
+  phi::dynload::cudnnGetConvolutionNdDescriptor(desc,
+                                                3,
+                                                &nd,
+                                                pads.data(),
+                                                strides.data(),
+                                                dilations.data(),
+                                                &mode,
+                                                &type);
 
   EXPECT_EQ(nd, 3);
   for (size_t i = 0; i < src_pads.size(); ++i) {
@@ -150,7 +150,7 @@ TEST(CudnnHelper, ScopedPoolingDescriptor) {
   std::vector<int> kernel(3);
   std::vector<int> pads(3);
   std::vector<int> strides(3);
-  paddle::platform::dynload::cudnnGetPoolingNdDescriptor(
+  phi::dynload::cudnnGetPoolingNdDescriptor(
       desc, 3, &mode, &nan_t, &nd, kernel.data(), pads.data(), strides.data());
 
   EXPECT_EQ(nd, 3);

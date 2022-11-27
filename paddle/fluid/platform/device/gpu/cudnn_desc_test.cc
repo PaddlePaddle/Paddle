@@ -19,7 +19,7 @@
 namespace paddle {
 namespace platform {
 
-TEST(phi::backends::gpu::TensorDescriptor, Empty) {
+TEST(TensorDescriptor, Empty) {
   phi::backends::gpu::ActivationDescriptor a;
   phi::backends::gpu::TensorDescriptor t;
   phi::backends::gpu::TensorDescriptor t1;
@@ -30,10 +30,10 @@ TEST(phi::backends::gpu::TensorDescriptor, Empty) {
       new phi::backends::gpu::TensorDescriptor());
 }
 
-TEST(phi::backends::gpu::TensorDescriptor, Normal) {
+TEST(TensorDescriptor, Normal) {
   phi::DenseTensor tt;
   tt.Resize({2, 3, 4});
-  tt.mutable_data<float>(platform::CPUPlace());
+  tt.mutable_data<float>(phi::CPUPlace());
 
   phi::backends::gpu::TensorDescriptor desc;
   desc.set(tt);

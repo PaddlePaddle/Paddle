@@ -251,9 +251,8 @@ class ConvolutionDescriptor {
         const_cast<int*>(strides.data()),
         const_cast<int*>(dilations.data()),
         miopenConvolution));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::phi::dynload::miopenSetConvolutionGroupCount(
-            (miopenConvolutionDescriptor_t)desc_.get(), groups));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetConvolutionGroupCount(
+        (miopenConvolutionDescriptor_t)desc_.get(), groups));
   }
 
  private:

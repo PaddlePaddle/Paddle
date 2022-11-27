@@ -128,7 +128,7 @@ template <typename T>
 class CudnnDataType;
 
 template <>
-class CudnnDataType<float16> {
+class CudnnDataType<phi::dtype::float16> {
  public:
   static const miopenDataType_t type = miopenHalf;
   // The scaling param type is float for HALF and FLOAT tensors
@@ -145,7 +145,7 @@ class CudnnDataType<float16> {
 };
 
 template <>
-class CudnnDataType<bfloat16> {
+class CudnnDataType<phi::dtype::bfloat16> {
  public:
   static const miopenDataType_t type = miopenBFloat16;
   // The scaling param type is float for HALF and FLOAT tensors
