@@ -158,7 +158,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       padding_data_g->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, padding_data_g, static_cast<T>(0));
 
-      LoDTensor* input = const_cast<LoDTensor*>(in);
+      phi::DenseTensor* input = const_cast<phi::DenseTensor*>(in);
       seq_project_grad_functor(dev_ctx,
                                *input,
                                padding_trainable,
@@ -178,7 +178,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, filter_g, static_cast<T>(0));
 
       Tensor filter_grad = *filter_g;
-      LoDTensor out_grad = *out_g;
+      phi::DenseTensor out_grad = *out_g;
 
       const phi::DenseTensor* padding_data = nullptr;
       if (padding_trainable) {
