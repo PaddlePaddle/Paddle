@@ -193,11 +193,13 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     return true;
   };
 
-  cudaDeviceProp props;
-  cudaGetDeviceProperties(&props, 0);
-  if (props.major == 7 && props.minor == 5) {
-    std::cout << "sm75" << std::endl;
-  }
+  // # ifdef 0
+  //   cudaDeviceProp props;
+  //   cudaGetDeviceProperties(&props, 0);
+  //   if (props.major == 7 && props.minor == 5) {
+  //     std::cout << "sm75" << std::endl;
+  //   }
+  // #endif
 
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
