@@ -103,7 +103,6 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceMeanOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import (
     ReduceMeanGradOpCost,
 )
-from paddle.distributed.auto_parallel.cost.comp_op_cost import SamplingIdOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import ScaleOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SliceOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxOpCost
@@ -381,11 +380,6 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.memory >= 0)
 
         op_cost = ReduceMeanGradOpCost(cluster=cluster)
-        self.assertTrue(op_cost.flops >= 0)
-        self.assertTrue(op_cost.time >= 0)
-        self.assertTrue(op_cost.memory >= 0)
-
-        op_cost = SamplingIdOpCost(cluster=cluster)
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)
