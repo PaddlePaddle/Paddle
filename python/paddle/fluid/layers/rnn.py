@@ -595,9 +595,9 @@ def _rnn_dynamic_graph(
         mask = paddle.transpose(mask, [1, 0])
 
     if is_reverse:
-        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
+        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
         mask = (
-            tensor.reverse(mask, axis=[0])
+            paddle.reverse(mask, axis=[0])
             if sequence_length is not None
             else None
         )
@@ -626,7 +626,7 @@ def _rnn_dynamic_graph(
 
     if is_reverse:
         final_outputs = map_structure(
-            lambda x: tensor.reverse(x, axis=time_step_index), final_outputs
+            lambda x: paddle.reverse(x, axis=time_step_index), final_outputs
         )
 
     final_states = new_states
@@ -681,8 +681,8 @@ def _rnn_static_graph(
         )
         mask = paddle.transpose(mask, [1, 0])
     if is_reverse:
-        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
-        mask = tensor.reverse(mask, axis=[0]) if sequence_length else None
+        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
+        mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
     # StaticRNN
     rnn = control_flow.StaticRNN()
@@ -711,7 +711,7 @@ def _rnn_static_graph(
 
     if is_reverse:
         final_outputs = map_structure(
-            lambda x: tensor.reverse(x, axis=[0]), final_outputs
+            lambda x: paddle.reverse(x, axis=[0]), final_outputs
         )
 
     if not time_major:

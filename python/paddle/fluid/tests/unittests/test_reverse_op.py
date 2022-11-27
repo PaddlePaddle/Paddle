@@ -35,7 +35,7 @@ class TestReverseOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = "reverse"
-        self.python_api = fluid.layers.reverse
+        self.python_api = paddle.reverse
         self.inputs = {"X": self.x}
         self.attrs = {'axis': self.axis}
         out = self.x
@@ -109,7 +109,7 @@ class TestCase4(unittest.TestCase):
             label = fluid.layers.data(
                 name="label", shape=[1, 1, 1, 1, 1, 1, 1, 1], dtype="int64"
             )
-            rev = fluid.layers.reverse(label, axis=[-1, -2])
+            rev = paddle.reverse(label, axis=[-1, -2])
 
         def _run_program():
             x = np.random.random(size=(10, 1, 1, 1, 1, 1, 1)).astype('int64')
@@ -146,7 +146,7 @@ class TestReverseLoDTensorArray(unittest.TestCase):
                 idx = fluid.layers.array_length(tensor_array)
                 fluid.layers.array_write(inputs[i], idx, tensor_array)
 
-            reverse_array = fluid.layers.reverse(tensor_array, axis=axis)
+            reverse_array = paddle.reverse(tensor_array, axis=axis)
             output, _ = fluid.layers.tensor_array_to_tensor(reverse_array)
             loss = fluid.layers.reduce_sum(output)
             fluid.backward.append_backward(loss)
@@ -241,7 +241,7 @@ class TestReverseAxisTensor(UnittestBase):
     def call_func(self, x):
         # axes is a Variable
         axes = paddle.assign([0, 2])
-        out = paddle.fluid.layers.reverse(x, axes)
+        out = paddle.paddle.reverse(x, axes)
         return out
 
 
@@ -255,7 +255,7 @@ class TestReverseAxisListTensor(TestReverseAxisTensor):
     def call_func(self, x):
         # axes is a List[Variable]
         axes = [paddle.assign([0]), paddle.assign([2])]
-        out = paddle.fluid.layers.reverse(x, axes)
+        out = paddle.paddle.reverse(x, axes)
 
         # check attrs
         axis_attrs = (
@@ -271,7 +271,7 @@ class TestReverseAxisListTensor(TestReverseAxisTensor):
 
 class TestReverseDoubleGradCheck(unittest.TestCase):
     def reverse_wrapper(self, x):
-        return fluid.layers.reverse(x[0], [0, 1])
+        return paddle.reverse(x[0], [0, 1])
 
     @prog_scope()
     def func(self, place):
@@ -281,7 +281,7 @@ class TestReverseDoubleGradCheck(unittest.TestCase):
 
         data = layers.data('data', [3, 4], False, dtype)
         data.persistable = True
-        out = fluid.layers.reverse(data, [0, 1])
+        out = paddle.reverse(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
         gradient_checker.double_grad_check(
@@ -303,7 +303,7 @@ class TestReverseDoubleGradCheck(unittest.TestCase):
 
 class TestReverseTripleGradCheck(unittest.TestCase):
     def reverse_wrapper(self, x):
-        return fluid.layers.reverse(x[0], [0, 1])
+        return paddle.reverse(x[0], [0, 1])
 
     @prog_scope()
     def func(self, place):
@@ -313,7 +313,7 @@ class TestReverseTripleGradCheck(unittest.TestCase):
 
         data = layers.data('data', [2, 3], False, dtype)
         data.persistable = True
-        out = fluid.layers.reverse(data, [0, 1])
+        out = paddle.reverse(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
         gradient_checker.triple_grad_check(

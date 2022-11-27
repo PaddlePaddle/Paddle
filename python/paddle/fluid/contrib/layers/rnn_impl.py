@@ -407,15 +407,15 @@ def basic_gru(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
@@ -718,15 +718,15 @@ def basic_lstm(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden, bw_last_cell = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)

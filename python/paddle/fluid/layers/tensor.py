@@ -61,7 +61,6 @@ __all__ = [
     'argmax',
     'argsort',
     'zeros',
-    'reverse',
     'has_inf',
     'linspace',
     'diag',
@@ -1351,87 +1350,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
     return fill_constant(value=0.0, **locals())
-
-
-def reverse(x, axis):
-    """
-        :alias_main: paddle.reverse
-        :alias: paddle.reverse,paddle.tensor.reverse,paddle.tensor.manipulation.reverse
-        :old_api: paddle.fluid.layers.reverse
-
-    The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
-
-    .. code-block:: text
-
-        Case 1:
-
-            Given a LoDTensor:
-                x = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
-                axis = [0, 1]
-
-            Then:
-                output = [[8, 7, 6], [5, 4, 3], [2, 1, 0]]
-
-        Case 2:
-
-            Given a LoDTensorArray:
-                x = {[[0, 1], [2, 3]],
-                     [[4, 5, 6]],
-                     [[7],[8], [9]]}
-                axis = 0
-
-            Then:
-                output = {[[7],[8], [9]],
-                          [[4, 5, 6]],
-                          [[0, 1], [2, 3]]}
-
-    Parameters:
-        x (Variable): A tensor or LoDTensorArray to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
-                      If input is a LoDTensorArray, returns a new reversed LoDTensorArray without changing the internal order of each inner tensor.
-        axis (int|tuple|list): A dimension or a set of dimensions of :attr:`x` to reverse. Must be
-            in the range [-rank( :attr:`x` ), rank( :attr:`x` )). If it is a tuple or a list, reversing
-            will be apply on each axis in the tuple or list. If input is a LoDTensorArray, the value of axis shall be 0, or a
-            list [0] or tuple (0, ) with shape [1].
-
-    Returns:
-        Variable: The reversed tensor with the same shape and data type as :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-          data = fluid.layers.assign(np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype='float32')) # [[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]]
-          result1 = fluid.layers.reverse(data, 0) # [[6., 7., 8.], [3., 4., 5.], [0., 1., 2.]]
-          result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
-
-          # example of LoDTensorArray
-          data1 = fluid.layers.assign(np.array([[0, 1, 2]], dtype='float32'))
-          data2 = fluid.layers.assign(np.array([[3, 4, 5]], dtype='float32'))
-          tensor_array = fluid.layers.create_array(dtype='float32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-          fluid.layers.array_write(data1, i, tensor_array)
-          fluid.layers.array_write(data2, i+1, tensor_array)
-
-          reversed_tensor_array = fluid.layers.reverse(tensor_array, 0) # {[[3, 4, 5]], [[0, 1, 2]]}
-    """
-    check_variable_and_dtype(
-        x, 'x', ('float32', 'float64', 'int32', 'int64', 'uint8'), 'reverse'
-    )
-    check_type(axis, 'axis', (int, tuple, list, Variable), 'reverse')
-    if isinstance(axis, int):
-        axis = [axis]
-    if in_dygraph_mode():
-        return _C_ops.reverse(x, axis)
-    helper = LayerHelper("reverse", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reverse',
-        inputs={'X': x},
-        outputs={'Out': [out]},
-        attrs={'axis': axis},
-    )
-    return out
 
 
 def has_inf(x):
