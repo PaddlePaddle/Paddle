@@ -35,9 +35,8 @@ using ScopedPoolingDescriptor = phi::backends::gpu::ScopedPoolingDescriptor;
 using ScopedActivationDescriptor =
     phi::backends::gpu::ScopedActivationDescriptor;
 
-if defined (PADDLE_WITH_CUDA)
-  using ScopedRNNTensorDescriptor =
-      phi::backends::gpu::ScopedRNNTensorDescriptor;
+#if defined(PADDLE_WITH_CUDA)
+using ScopedRNNTensorDescriptor = phi::backends::gpu::ScopedRNNTensorDescriptor;
 using ScopedSpatialTransformerDescriptor =
     phi::backends::gpu::ScopedSpatialTransformerDescriptor;
 #endif
