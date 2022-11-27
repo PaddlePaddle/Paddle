@@ -189,7 +189,7 @@ def _get_reduce_dim(dim, input):
         else:
             raise TypeError(
                 "The type of dim must be int, list, tuple or range, but received {}".format(
-                    type(axis)
+                    type(dim)
                 )
             )
     if dim is None:
