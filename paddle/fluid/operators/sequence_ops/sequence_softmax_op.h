@@ -20,13 +20,13 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
+
 
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxFunctor {
   void operator()(
       const DeviceContext &ctx,
-      const LoDTensor &x,
+      const phi::DenseTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       LoDTensor *out);
 };
@@ -34,8 +34,8 @@ struct SequenceSoftmaxFunctor {
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxGradFunctor {
   void operator()(const DeviceContext &ctx,
-                  const LoDTensor &dout,
-                  const LoDTensor &out,
+                  const phi::DenseTensor &dout,
+                  const phi::DenseTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx);
 };
@@ -43,7 +43,7 @@ struct SequenceSoftmaxGradFunctor {
 template <typename T>
 struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const LoDTensor &x,
+                  const phi::DenseTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
     size_t height = ref_lod.size() - 1;
@@ -65,8 +65,8 @@ struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
 template <typename T>
 struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
-                  const LoDTensor &dout,
-                  const LoDTensor &out,
+                  const phi::DenseTensor &dout,
+                  const phi::DenseTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
     size_t height = ref_lod.size() - 1;
@@ -139,9 +139,9 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *out = ctx.Input<LoDTensor>("Out");
-    auto *out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *x = ctx.Input<LoDTensor>("X");
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (!x_grad) {
       return;
     }
