@@ -652,6 +652,18 @@
   outputs :
     out : Out
 
+- op : kthvalue
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+
+- op : label_smooth
+  inputs :
+    {label : X, prior_dist : PriorDist}
+  outputs :
+    out : Out
+
 - op : layer_norm
   backward : layer_norm_grad
   extra :
@@ -742,6 +754,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
+- op : masked_select
+  inputs :
+    {x : X, mask : Mask}
+  outputs :
+    out : Y
+
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad)
   extra :
@@ -755,6 +773,12 @@
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
 
+- op : matrix_power
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
   extra :
@@ -766,6 +790,12 @@
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : maxout
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : mish
   backward : mish_grad
