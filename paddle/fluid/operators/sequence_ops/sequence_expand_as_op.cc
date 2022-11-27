@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
+
 
 class SequenceExpandAsOp : public framework::OperatorWithKernel {
  public:
