@@ -100,7 +100,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
         y_lod.empty(),
         false,
         platform::errors::InvalidArgument(
-            "Input(Y) Tensor of SequenceExpandOp does not contain "
+            "Input(Y) phi::DenseTensor of SequenceExpandOp does not contain "
             "LoD information."));
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
