@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/custom/enforce_custom.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/enforce_custom.h"
 
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/backends/device_base.h"
