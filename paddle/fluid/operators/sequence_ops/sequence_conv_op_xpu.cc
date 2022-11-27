@@ -39,7 +39,7 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in->lod().empty(),
         false,
-        platform::errors::InvalidArgument("Input(X) Tensor of SequenceConvOp "
+        platform::errors::InvalidArgument("Input(X) phi::DenseTensor of SequenceConvOp "
                                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
@@ -174,7 +174,7 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in->lod().empty(),
         false,
-        platform::errors::InvalidArgument("Input(X) Tensor of SequenceConvOp "
+        platform::errors::InvalidArgument("Input(X) phi::DenseTensor of SequenceConvOp "
                                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
