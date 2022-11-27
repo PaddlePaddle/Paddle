@@ -2331,7 +2331,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
             if self.softmax_temperature is not None
             else outputs
         )
-        probs = nn.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
         # not pass to probs, since sampling_id op does not have corresponding
         # grad op and thus can not pass.
