@@ -208,7 +208,7 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
-            true = fluid.layers.ones(shape=[1], dtype="float32")
+            true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
             hidden1.stop_gradient = True
 
@@ -249,7 +249,7 @@ class TestCloneWithRaise(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
-            true = fluid.layers.ones(shape=[1], dtype="float32")
+            true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
             hidden1.stop_gradient = True
 

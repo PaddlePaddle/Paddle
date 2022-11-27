@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
@@ -70,8 +71,8 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         pass
 
     def calc_add_out(self, place=None, parallel=None):
-        x = fluid.layers.ones(shape=[3, 3], dtype='float32')
-        y = fluid.layers.ones(shape=[3, 3], dtype='float32')
+        x = paddle.ones(shape=[3, 3], dtype='float32')
+        y = paddle.ones(shape=[3, 3], dtype='float32')
         out = fluid.layers.elementwise_add(x=x, y=y)
         program = fluid.default_main_program()
         if parallel:
@@ -83,8 +84,8 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         return out
 
     def calc_sub_out(self, place=None, parallel=None):
-        x = fluid.layers.ones(shape=[2, 2], dtype='float32')
-        y = fluid.layers.ones(shape=[2, 2], dtype='float32')
+        x = paddle.ones(shape=[2, 2], dtype='float32')
+        y = paddle.ones(shape=[2, 2], dtype='float32')
         out = fluid.layers.elementwise_sub(x=x, y=y)
         program = fluid.default_main_program()
         if parallel:

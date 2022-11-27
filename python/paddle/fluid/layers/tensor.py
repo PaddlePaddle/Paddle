@@ -60,7 +60,6 @@ __all__ = [
     'argmin',
     'argmax',
     'argsort',
-    'ones',
     'zeros',
     'reverse',
     'has_inf',
@@ -1323,35 +1322,6 @@ def argsort(input, axis=-1, descending=False, name=None):
         attrs={'axis': axis, 'descending': descending},
     )
     return out, ids
-
-
-def ones(shape, dtype, force_cpu=False):
-    """
-    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
-    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
-
-    Parameters:
-        shape(tuple|list|Tensor): Shape of output Tensor, the data type of shape is int32 or int64.
-        dtype (np.dtype|str): Data type of output Tensor, it supports
-            bool, float16, float32, float64, int32 and int64.
-        force_cpu (bool, optional): Whether force to store the output Tensor in CPU memory.
-            If :attr:`force_cpu` is False, the output Tensor will be stored in running device memory.
-            Default: False.
-
-    Returns:
-        Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data0 = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
-
-          # shape is a Tensor
-          shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
-          data1 = fluid.layers.ones(shape=shape, dtype='int32') #[[1, 1], [1, 1]]
-    """
-    return fill_constant(value=1.0, **locals())
 
 
 def zeros(shape, dtype, force_cpu=False, name=None):
