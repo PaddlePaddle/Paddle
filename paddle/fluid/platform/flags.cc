@@ -279,9 +279,10 @@ PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
  *       layer specification. Once you change the layer specifications
  *       (such as batch size, feature map size), it will search again.
  */
+// haha
 PADDLE_DEFINE_EXPORTED_bool(
     cudnn_exhaustive_search,
-    true,
+    False,
     "Whether enable exhaustive search for cuDNN convolution or "
     "not, default is False.");
 
