@@ -61,7 +61,6 @@ __all__ = [
     'argmax',
     'argsort',
     'zeros',
-    'has_inf',
     'linspace',
     'diag',
     'triu',
@@ -1350,35 +1349,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
     return fill_constant(value=0.0, **locals())
-
-
-def has_inf(x):
-    """
-    Test if any of x contains an infinity number
-
-    Args:
-       x (Tensor): The Tensor to be checked.
-
-    Returns:
-       Tensor: The tensor storing the output, only a bool value, indicating that whether there is infinity number in x or not.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          data = paddle.randn(shape=[4, 32, 32], dtype="float32")
-          res = paddle.fluid.layers.has_inf(data)
-          # [False]
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.isinf(x)
-
-    check_type(x, 'x', (Variable), 'has_inf')
-    helper = LayerHelper("isinf", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
-    return out
 
 
 def linspace(start, stop, num, dtype=None, name=None):
