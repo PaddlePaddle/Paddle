@@ -153,12 +153,13 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::InvalidArgument(
                                 "RecurrentOp finds var %s is NULL", iname));
-    PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "RecurrentOp only accepts LoDTensor as input but "
-                          "input var %s is not LoDTensor",
-                          iname));
+    PADDLE_ENFORCE_EQ(
+        var->IsType<phi::DenseTensor>(),
+        true,
+        platform::errors::InvalidArgument(
+            "RecurrentOp only accepts phi::DenseTensor as input but "
+            "input var %s is not phi::DenseTensor",
+            iname));
     auto &dim = var->Get<phi::DenseTensor>().dims();
     if (seq_len == -1) {
       seq_len = dim[0];

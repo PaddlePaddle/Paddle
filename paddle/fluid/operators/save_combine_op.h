@@ -72,13 +72,14 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           inp_vars[i],
           platform::errors::InvalidArgument("Cannot find variable %s to save.",
                                             inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<phi::DenseTensor>() ||
-                            inp_vars[i]->IsType<framework::Vocab>(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "SaveCombine operator only supports saving "
-                            "LoDTensor or Vocab variable, %s has wrong type.",
-                            inp_var_names[i]));
+      PADDLE_ENFORCE_EQ(
+          inp_vars[i]->IsType<phi::DenseTensor>() ||
+              inp_vars[i]->IsType<framework::Vocab>(),
+          true,
+          platform::errors::InvalidArgument(
+              "SaveCombine operator only supports saving "
+              "phi::DenseTensor or Vocab variable, %s has wrong type.",
+              inp_var_names[i]));
 
       if (inp_vars[i]->IsType<phi::DenseTensor>()) {
         auto &tensor = inp_vars[i]->Get<phi::DenseTensor>();

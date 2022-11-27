@@ -64,7 +64,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
       SaveSelectedRows(ctx, place, input_var, filename);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Save operator only supports saving LoDTensor and SelectedRows "
+          "Save operator only supports saving phi::DenseTensor and "
+          "SelectedRows "
           "variable, %s has wrong type",
           iname));
     }

@@ -71,7 +71,9 @@ class SelectOutputOp : public framework::OperatorBase {
 class SelectOutputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input LoDTensor or LoDTensorArray or SelectedRows.");
+    AddInput(
+        "X",
+        "The input phi::DenseTensor or phi::DenseTensorArray or SelectedRows.");
     AddInput("Mask", "Tensor with numel 1 specifying which branch to output");
     AddOutput("Out",
               "The output can contains multiple variables. The output of "

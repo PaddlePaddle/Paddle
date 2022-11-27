@@ -37,7 +37,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         table_var->IsType<phi::DenseTensor>(),
         true,
-        platform::errors::InvalidArgument("npu only accept LoDTensor"));
+        platform::errors::InvalidArgument("npu only accept phi::DenseTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
     int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");

@@ -128,11 +128,12 @@ class SumOp : public framework::OperatorWithKernel {
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "A Varaible list. The shape and data type of the list elements"
-             "should be consistent. Variable can be multi-dimensional Tensor"
-             "or LoDTensor, and data types can be: float32, float64, int32, "
-             "int64.")
+    AddInput(
+        "X",
+        "A Varaible list. The shape and data type of the list elements"
+        "should be consistent. Variable can be multi-dimensional Tensor"
+        "or phi::DenseTensor, and data types can be: float32, float64, int32, "
+        "int64.")
         .AsDuplicable();
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
@@ -145,8 +146,9 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16"});
-    AddComment(R"DOC(This OP is used to sum one or more Tensor or LoDTensor
-                    of the input. If the input is LoDTensor, the output only
+    AddComment(
+        R"DOC(This OP is used to sum one or more Tensor or phi::DenseTensor
+                    of the input. If the input is phi::DenseTensor, the output only
                     shares LoD information with the first input.)DOC");
   }
 };

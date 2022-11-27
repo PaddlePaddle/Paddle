@@ -35,13 +35,14 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
                           "but the received is %s",
                           ctx->Inputs("X").front(),
                           ctx->GetInputsVarType("X").front()));
-    PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                          "The output Out(%s)'s type should be LoDTensor, "
-                          "but the received is %s",
-                          ctx->Outputs("Out").front(),
-                          ctx->GetOutputsVarType("Out").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetOutputsVarType("Out").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The output Out(%s)'s type should be phi::DenseTensor, "
+            "but the received is %s",
+            ctx->Outputs("Out").front(),
+            ctx->GetOutputsVarType("Out").front()));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
@@ -72,7 +73,7 @@ class GetTensorFromSelectedRowsOpProtoMaker
  public:
   void Make() override {
     AddInput("X", "The input type is SelectedRows.");
-    AddOutput("Out", "The output type is LoDTensor.");
+    AddOutput("Out", "The output type is phi::DenseTensor.");
     AddComment(
         R"DOC(
 GetTensorFromSelectedRows Operator
