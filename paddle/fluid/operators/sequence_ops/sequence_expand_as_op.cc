@@ -49,8 +49,8 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
       framework::Variable* y_var =
           PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
-      auto& x_dim = x_var->Get<LoDTensor>().dims();
-      auto& y_lod = y_var->Get<LoDTensor>().lod();
+      auto& x_dim = x_var->Get<phi::DenseTensor>().dims();
+      auto& y_lod = y_var->Get<phi::DenseTensor>().lod();
 
       PADDLE_ENFORCE_EQ(y_lod.size(),
                         1,
