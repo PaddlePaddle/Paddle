@@ -52,11 +52,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             false,
                             "Use new executor in control flow op");
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_support_trace_mode,
-    true,
-    "Support trace mode for new executor. If support trace mode, only new "
-    "executor used for jit and sync op num is 0 will execute in trace mode.");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -211,8 +206,7 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (execution_config_.used_for_jit && (sync_op_num_ == 0) &&
-        FLAGS_new_executor_support_trace_mode) {
+    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
       VLOG(4) << "Tracing Instruction List";
       TraceInstructionList(vec_instruction_);
     } else {
@@ -280,8 +274,7 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (execution_config_.used_for_jit && (sync_op_num_ == 0) &&
-        FLAGS_new_executor_support_trace_mode) {
+    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
       VLOG(4) << "Tracing Instruction List";
       TraceInstructionList(vec_instruction_);
     } else {
