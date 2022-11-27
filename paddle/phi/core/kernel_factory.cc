@@ -17,7 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
 #include "paddle/phi/core/compat/op_utils.h"
