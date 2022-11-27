@@ -106,7 +106,6 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'gather_nd',
-    'random_crop',
     'relu',
     'log',
     'crop_tensor',
@@ -114,7 +113,6 @@ __all__ = [
     'flatten',
     'unique',
     'unique_with_counts',
-    'scale',
     'elementwise_add',
     'elementwise_div',
     'elementwise_sub',
@@ -128,7 +126,6 @@ __all__ = [
     'shape',
     'size',
     'logical_and',
-    'logical_or',
     'clip',
     'clip_by_norm',
     'mean',
@@ -6463,63 +6460,6 @@ def gather_nd(input, index, name=None):
     return output
 
 
-@templatedoc()
-def random_crop(x, shape, seed=None):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        shape(${shape_type}): ${shape_comment}
-        seed(int|${seed_type}|None): ${seed_comment} By default, the seed will
-            get from `random.randint(-65536, 65535)`.
-
-    Returns:
-        ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            img = fluid.data("img", [None, 3, 256, 256])
-            # cropped_img is [-1, 3, 224, 224]
-            cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
-
-            # cropped_img2 shape: [-1, 2, 224, 224]
-            # cropped_img2 = fluid.layers.random_crop(img, shape=[2, 224, 224])
-
-            # cropped_img3 shape: [-1, 3, 128, 224]
-            # cropped_img3 = fluid.layers.random_crop(img, shape=[128, 224])
-
-    """
-    helper = LayerHelper("random_crop", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32'], 'random_crop'
-    )
-    check_type(shape, 'shape', (list, Variable), 'random_crop')
-    dtype = x.dtype
-    out = helper.create_variable_for_type_inference(dtype)
-    if seed is None:
-        seed = np.random.randint(-65536, 65536)
-    op_attrs = {"shape": shape}
-    if isinstance(seed, int):
-        op_attrs["startup_seed"] = seed
-        seed = helper.create_variable(
-            name=unique_name.generate("random_crop_seed"),
-            dtype="int64",
-            persistable=True,
-        )
-    elif not isinstance(seed, Variable):
-        raise ValueError("'seed' must be a Variable or an int.")
-    helper.append_op(
-        type="random_crop",
-        inputs={"X": x, "Seed": seed},
-        outputs={"Out": out, "SeedOut": seed},
-        attrs=op_attrs,
-    )
-    return out
-
-
 def log(x, name=None):
     r"""
     Calculates the natural log of the given input tensor, element-wise.
@@ -7983,103 +7923,6 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
-    """
-
-    Putting scale and bias to the input Tensor as following:
-
-    ``bias_after_scale`` is True:
-
-    .. math::
-                            Out=scale*X+bias
-
-    ``bias_after_scale`` is False:
-
-    .. math::
-                            Out=scale*(X+bias)
-
-    Args:
-        x(Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
-        bias(float): The bias to be put on the input.
-        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
-        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tensor: Output tensor of scale operator, with shape and data type same as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            # scale as a float32 number
-            import paddle
-
-            data = paddle.randn(shape=[2,3], dtype='float32')
-            res = paddle.scale(data, scale=2.0, bias=1.0)
-
-        .. code-block:: python
-
-            # scale with parameter scale as a Tensor
-            import paddle
-
-            data = paddle.randn(shape=[2, 3], dtype='float32')
-            factor = paddle.to_tensor([2], dtype='float32')
-            res = paddle.scale(data, scale=factor, bias=1.0)
-
-    """
-
-    if in_dygraph_mode():
-        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
-    if _non_static_mode():
-        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        out = _legacy_C_ops.scale(
-            x,
-            'scale',
-            float(_scale),
-            'bias',
-            float(bias),
-            'bias_after_scale',
-            bias_after_scale,
-        )
-        return dygraph_utils._append_activation_in_dygraph(out)
-
-    check_variable_and_dtype(
-        x,
-        "x",
-        [
-            'float16',
-            'uint16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-        ],
-        "scale",
-    )
-    inputs = {'X': [x]}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = [scale]
-    else:
-        attrs['scale'] = float(scale)
-    helper = LayerHelper('scale', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-    return helper.append_activation(out)
-
-
 def elementwise_add(x, y, axis=-1, act=None, name=None):
     """
 
@@ -8630,48 +8473,6 @@ def logical_and(x, y, out=None, name=None):
 
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
-def logical_or(x, y, out=None, name=None):
-    """
-
-    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = x || y
-
-    .. note::
-        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            x_data = np.array([True, False], dtype=np.bool_).reshape(2, 1)
-            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape(2, 2)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
-            res = paddle.logical_or(x, y)
-            print(res) # [[ True  True] [ True False]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_or(x, y)
-    return _logical_op(
-        op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
     )
 
 
