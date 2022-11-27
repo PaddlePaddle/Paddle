@@ -749,34 +749,23 @@ def rotate(
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST
             according the backend. when use pil backend, support method are as following:
-            
             - "nearest": Image.NEAREST,
-            
             - "bilinear": Image.BILINEAR,
-            
             - "bicubic": Image.BICUBIC
             when use cv2 backend, support method are as following:
-            
             - "nearest": cv2.INTER_NEAREST,
-            
             - "bilinear": cv2.INTER_LINEAR,
-            
             - "bicubic": cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
-        
             If true, expands the output image to make it large enough to hold the entire rotated image.
-            
             If false or omitted, make the output image the same size as the input image.
-            
             Note that the expand flag assumes rotation around the center and no translation.
         center (2-list|2-tuple, optional): Optional center of rotation.
-        
             Origin is the upper left corner.
-            
             Default is the center of the image.
         fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively. Default value is 0.
-
+            
 
     Returns:
         PIL.Image or np.array: Rotated image.
