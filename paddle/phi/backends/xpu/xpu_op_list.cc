@@ -11,6 +11,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 
+#include <glog/logging.h>
 #include <mutex>
 #include <string>
 #include <unordered_set>
