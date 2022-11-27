@@ -42,7 +42,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in->lod().empty(),
         false,
-        platform::errors::InvalidArgument("Input(X) Tensor of SequenceConvOp "
+        platform::errors::InvalidArgument("Input(X) phi::DenseTensor of SequenceConvOp "
                                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
@@ -63,7 +63,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     framework::DDim col_shape = {in->dims()[0],
                                  context_length * sequence_width};
-    Tensor col;
+    phi::DenseTensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
     // Because if padding_trainable is false, padding data should be zeros.
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
@@ -124,7 +124,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
-    Tensor col;
+    phi::DenseTensor col;
 
     if (in_g || filter_g || (padding_trainable && padding_data_g)) {
       col.mutable_data<T>(col_shape, context.GetPlace());
@@ -177,7 +177,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       filter_g->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_g, static_cast<T>(0));
 
-      Tensor filter_grad = *filter_g;
+      phi::DenseTensor filter_grad = *filter_g;
       phi::DenseTensor out_grad = *out_g;
 
       const phi::DenseTensor* padding_data = nullptr;
