@@ -56,22 +56,14 @@ void naive_conv_cpu(const half *input,
                     OpType op_type) {
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  struct logical_struct input_shape {
-    batch, ic, ih, iw
-  };
-  struct logical_struct output_shape {
-    batch, oc, oh, ow
-  };
-  struct logical_struct weight_shape {
-    oc, ic, kh, kw
-  };
+  struct logical_struct input_shape = {batch, ic, ih, iw};
+  struct logical_struct output_shape = {batch, oc, oh, ow};
+  struct logical_struct weight_shape = {oc, ic, kh, kw};
   for (int bs_i = 0; bs_i < batch; bs_i++) {
     for (int oc_i = 0; oc_i < oc; oc_i++) {
       for (int oh_i = 0; oh_i < oh; oh_i++) {
         for (int ow_i = 0; ow_i < ow; ow_i++) {
-          struct logical_struct output_index {
-            bs_i, oc_i, oh_i, ow_i
-          };
+          struct logical_struct output_index = {bs_i, oc_i, oh_i, ow_i};
           float *out_ptr = output + nhwc(output_shape, output_index);
           float sum = 0.f;
 
@@ -83,12 +75,8 @@ void naive_conv_cpu(const half *input,
               if (iw_i < 0 || iw_i >= iw) continue;
 
               for (int ic_i = 0; ic_i < ic; ic_i++) {
-                struct logical_struct input_index {
-                  bs_i, ic_i, ih_i, iw_i
-                };
-                struct logical_struct weight_index {
-                  oc_i, ic_i, kh_i, kw_i
-                };
+                struct logical_struct input_index = {bs_i, ic_i, ih_i, iw_i};
+                struct logical_struct weight_index = {oc_i, ic_i, kh_i, kw_i};
                 const half *in_ptr = input + nhwc(input_shape, input_index);
                 const half *weight_ptr =
                     weight + nhwc(weight_shape, weight_index);
@@ -216,9 +204,7 @@ __global__ void naive_conv2d_kernel(const half *input,
   int oc_i = n_i;
 
   struct logical_struct weight_shape = {oc, ic, kh, kw};
-  struct logical_struct input_shape {
-    batch, ic, ih, iw
-  };
+  struct logical_struct input_shape = {batch, ic, ih, iw};
   int out_offset = m_i * N + n_i;
   float *out_ptr = output + out_offset;
   float sum = 0.f;
@@ -228,9 +214,7 @@ __global__ void naive_conv2d_kernel(const half *input,
     int kh_i = (k_i % (kh * kw)) / kw;
     int kw_i = (k_i % (kh * kw)) % kw;
 
-    struct logical_struct weight_index {
-      oc_i, ic_i, kh_i, kw_i
-    };
+    struct logical_struct weight_index = {oc_i, ic_i, kh_i, kw_i};
 
     int ih_i = oh_i * stride_h - pad_h + kh_i;
     int iw_i = ow_i * stride_w - pad_w + kw_i;
@@ -238,9 +222,7 @@ __global__ void naive_conv2d_kernel(const half *input,
     if (ih_i < 0 || ih_i >= ih) continue;
     if (iw_i < 0 || iw_i >= iw) continue;
 
-    struct logical_struct input_index {
-      batch_i, ic_i, ih_i, iw_i
-    };
+    struct logical_struct input_index = {batch_i, ic_i, ih_i, iw_i};
     const half *weight_ptr = weight + gpu_nhwc(weight_shape, weight_index);
     const half *in_ptr = input + gpu_nhwc(input_shape, input_index);
     sum += __half2float(*in_ptr) * __half2float(*weight_ptr);
