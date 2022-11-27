@@ -32,7 +32,7 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
         in->lod().empty(),
         false,
         platform::errors::InvalidArgument(
-            "Input(X) Tensor of SequenceEnumerateOp does not contain "
+            "Input(X) phi::DenseTensor of SequenceEnumerateOp does not contain "
             "LoD information."));
 
     auto in_dims = in->dims();
