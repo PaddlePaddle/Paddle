@@ -142,14 +142,17 @@ class BaseTransform:
     Base class of all transforms used in computer vision.
 
     calling logic:
-
+    
+    Examples:
+    
         ..code-block:: test
 
             if keys is None:
                 _get_params -> _apply_image()
             else:
                 _get_params -> _apply_*() for * in keys
-
+    """
+    
     If you want to implement a self-defined transform method for image,
     rewrite _apply_* method in subclass.
 
@@ -163,9 +166,8 @@ class BaseTransform:
             Current available strings & data type are describe below:
                 - "image": input image, with shape of (H, W, C).
                 - "coords": coordinates, with shape of (N, 2).
-                - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,
-                    the 1st "xy" represents top left point of a box,
-                    the 2nd "xy" represents right bottom point.
+                - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,the 1st "xy" represents 
+                top left point of a box, the 2nd "xy" represents right bottom point.
                 - "mask": map used for segmentation, with shape of (H, W, 1)
 
             You can also customize your data types only if you implement the corresponding
@@ -959,14 +961,17 @@ class ColorJitter(BaseTransform):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
-        brightness (float): How much to jitter brightness.
-            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers.
-        contrast (float): How much to jitter contrast.
-            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers.
-        saturation (float): How much to jitter saturation.
-            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers.
-        hue (float): How much to jitter hue.
-            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
+        brightness (float, optional): How much to jitter brightness.
+            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. 
+            Should be non negative numbers. Default: 0. 
+        contrast (float, optional): How much to jitter contrast.
+            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. 
+            Should be non negative numbers. Default: 0.
+        saturation (float, optional): How much to jitter saturation.
+            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. 
+            Should be non negative numbers. Default: 0.
+        hue (float, optional): How much to jitter hue.
+            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5. Default: 0.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
