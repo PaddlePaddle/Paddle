@@ -24,6 +24,8 @@
 			*paddle_infer::services::PredictorPool*;
 
 			*paddle::experimental*;
+
+			*paddle::framework::details*;
 		};
 
 		*Pass*;
