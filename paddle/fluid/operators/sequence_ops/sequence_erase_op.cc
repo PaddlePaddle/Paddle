@@ -29,13 +29,13 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
                    platform::errors::InvalidArgument(
-                       "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
+                       "Input(X) of SequenceEraseOp should be a 2-D phi::DenseTensor "
                        "with the 2nd dimension equal to 1,"
                        "but received size %d with the 2nd dimension %d.",
                        x_dims.size(),
                        x_dims[1]));
     ctx->SetOutputDim("Out", x_dims);
-    // The output LoDTensor's lod_level should be input X's lod_level.
+    // The output phi::DenseTensor's lod_level should be input X's lod_level.
     // For compile-time, we call SetLoDLevel to set output's lod_level.
     // For runtime, output LoDTensor's lod is determined by input X's lod and
     // the level specified by input RandTable.
@@ -52,10 +52,10 @@ class SequenceEraseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(2-D LoDTensor with the 2nd dim. equal to 1) "
-             "Input LoDTensor of SequenceEraseOp.");
+             "Input phi::DenseTensor of SequenceEraseOp.");
     AddOutput("Out",
               "(2-D LoDTensor with the 2nd dim. equal to 1) "
-              "Output LoDTensor of SequenceEraseOp.");
+              "Output phi::DenseTensor of SequenceEraseOp.");
     AddAttr<std::vector<int>>("tokens",
                               "(vector<int>) Tokens need to be erased from "
                               "input sequences.");
@@ -64,7 +64,7 @@ Sequence Erase Operator.
 
 Sequence erase operator erases tokens specified by Attr(tokens) from the input
 sequences Input(X), and outputs the remaining data and modifies the LoD
-information at the same time. For example, given a 2-D LoDTensor
+information at the same time. For example, given a 2-D phi::DenseTensor
 
     X = [[2, 2, 6, 1, 3, 9, 6, 1, 0, 1]]^T
 
