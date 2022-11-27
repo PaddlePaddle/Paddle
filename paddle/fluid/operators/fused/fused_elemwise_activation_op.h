@@ -664,12 +664,6 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
         in_y,
         nullptr,
         platform::errors::InvalidArgument("Input(Y) should not be nullptr."));
-    // auto in_out = ctx.Input<phi::DenseTensor>("Out");
-    // PADDLE_ENFORCE_NE(
-    //     in_out,
-    //     nullptr,
-    //     platform::errors::InvalidArgument("Input(Out) should not be
-    //     nullptr."));
     phi::DenseTensor *in_out =
         const_cast<phi::DenseTensor *>(ctx.Input<phi::DenseTensor>("Out"));
 
