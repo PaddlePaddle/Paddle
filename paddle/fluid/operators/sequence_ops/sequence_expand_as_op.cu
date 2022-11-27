@@ -69,7 +69,7 @@ template <typename T>
 struct SequenceExpandAsFunctor<phi::GPUContext, T> {
   void operator()(
       const phi::GPUContext &context,
-      const LoDTensor &x,
+      const phi::DenseTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out) {
     int height = x.dims()[0];
