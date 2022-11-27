@@ -1335,7 +1335,7 @@ class BeamSearchDecoder(Decoder):
         next_lengths = next_lengths + tensor.cast(
             paddle.logical_not(next_finished), beam_state.lengths.dtype
         )
-        next_finished = control_flow.logical_or(
+        next_finished = paddle.logical_or(
             next_finished,
             control_flow.equal(token_indices, self.end_token_tensor),
         )
@@ -1499,7 +1499,7 @@ def _dynamic_decode_imperative(
             # beams would be reordered and the finished status of each
             # entry might change. Otherwise, perform logical OR which
             # would not change the already finished.
-            next_finished = control_flow.logical_or(next_finished, finished)
+            next_finished = paddle.logical_or(next_finished, finished)
             # To confirm states.finished/finished be consistent with
             # next_finished.
             tensor.assign(next_finished, finished)
@@ -1662,9 +1662,7 @@ def _dynamic_decode_declarative(
             # be reordered and the finished status of each entry might change.
             # Otherwise, perform logical OR which would not change the already
             # finished.
-            next_finished = control_flow.logical_or(
-                next_finished, global_finished
-            )
+            next_finished = paddle.logical_or(next_finished, global_finished)
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
                 tensor.cast(

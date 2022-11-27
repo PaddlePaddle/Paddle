@@ -14,6 +14,7 @@
 
 import paddle
 import paddle.fluid as fluid
+from paddle.tensor import random
 import numpy as np
 import unittest
 from paddle import _legacy_C_ops
@@ -310,9 +311,7 @@ class Generator(fluid.dygraph.Layer):
     def forward(self, input, label_trg):
         shape = input.shape
         label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
-        label_trg_e = fluid.layers.expand(
-            x=label_trg_e, expand_times=[1, 1, shape[2], shape[3]]
-        )
+        label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
         input1 = fluid.layers.concat([input, label_trg_e], 1)
 
@@ -404,7 +403,7 @@ def calc_gradients(outputs, inputs, no_grad_set):
 def gradient_penalty(f, real, fake, no_grad_set, cfg):
     def _interpolate(a, b):
         shape = [a.shape[0]]
-        alpha = fluid.layers.uniform_random_batch_size_like(
+        alpha = random.uniform_random_batch_size_like(
             input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed
         )
 

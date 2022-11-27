@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.utils as utils
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto

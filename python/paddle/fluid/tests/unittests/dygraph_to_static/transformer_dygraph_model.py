@@ -342,7 +342,7 @@ class WrapEncoder(Layer):
 
     def forward(self, src_word, src_pos, src_slf_attn_bias):
         word_emb = self.word_embedder(src_word)
-        word_emb = layers.scale(x=word_emb, scale=self.emb_dim**0.5)
+        word_emb = paddle.scale(x=word_emb, scale=self.emb_dim**0.5)
         pos_enc = self.pos_encoder(src_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
@@ -546,7 +546,7 @@ class WrapDecoder(Layer):
         caches=None,
     ):
         word_emb = self.word_embedder(trg_word)
-        word_emb = layers.scale(x=word_emb, scale=self.emb_dim**0.5)
+        word_emb = paddle.scale(x=word_emb, scale=self.emb_dim**0.5)
         pos_enc = self.pos_encoder(trg_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
@@ -701,9 +701,9 @@ class Transformer(Layer):
             tensor = paddle.reshape(
                 tensor, [tensor.shape[0], 1] + list(tensor.shape[1:])
             )
-            tile_dims = [1] * len(tensor.shape)
+            tile_dims = [-1] * len(tensor.shape)
             tile_dims[1] = beam_size
-            return layers.expand(tensor, tile_dims)
+            return paddle.expand(tensor, tile_dims)
 
         def merge_batch_beams(tensor):
             var_dim_in_state = 2  # count in beam dim
@@ -757,8 +757,9 @@ class Transformer(Layer):
         def mask_probs(probs, finished, noend_mask_tensor):
             finished = layers.cast(finished, dtype=probs.dtype)
             probs = layers.elementwise_mul(
-                layers.expand(
-                    layers.unsqueeze(finished, [2]), [1, 1, self.trg_vocab_size]
+                paddle.expand(
+                    layers.unsqueeze(finished, [2]),
+                    [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
                 axis=-1,
@@ -785,11 +786,11 @@ class Transformer(Layer):
         noend_array = [-inf] * self.trg_vocab_size
         noend_array[eos_id] = 0
         noend_mask_tensor = to_variable(np.array(noend_array, dtype="float32"))
-        batch_pos = layers.expand(
+        batch_pos = paddle.expand(
             layers.unsqueeze(
                 to_variable(np.arange(0, batch_size, 1, dtype="int64")), [1]
             ),
-            [1, beam_size],
+            [-1, beam_size],
         )
         predict_ids = []
         parent_ids = []
@@ -869,7 +870,7 @@ class Transformer(Layer):
             )
             log_probs = gather(log_probs, topk_indices, batch_pos)
             finished = gather(finished, beam_indices, batch_pos)
-            finished = layers.logical_or(
+            finished = paddle.logical_or(
                 finished, layers.equal(token_indices, end_token_tensor)
             )
             trg_word = paddle.reshape(token_indices, [-1, 1])
