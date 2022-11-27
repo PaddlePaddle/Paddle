@@ -765,7 +765,6 @@ def rotate(
             Default is the center of the image.
         fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively. Default value is 0.
-            
 
     Returns:
         PIL.Image or np.array: Rotated image.
