@@ -203,7 +203,7 @@ void Communicator::RpcSendDense(const CommContext &ctx,
   uint32_t pos = 0;
   for (size_t i = 0; i < var_names.size(); ++i) {
     const phi::DenseTensor tensor =
-      scope.FindVar(var_names[i])->Get<phi::DenseTensor>();
+        scope.FindVar(var_names[i])->Get<phi::DenseTensor>();
     size_t count = static_cast<size_t>(tensor.numel());
     const float *g = tensor.data<float>();
     CHECK(pos + count <= dense_data->size())
