@@ -236,13 +236,10 @@ void StreamAnalyzer::AnalyseAllEventInfo(
         event_info) const {
   for (size_t cur_instr_id = 0; cur_instr_id < instructions.size();
        ++cur_instr_id) {
-    const Instruction& cur_instr = instructions[cur_instr_id];
-    const std::vector<std::vector<size_t>>& next_instr_list =
-        run_type_info[cur_instr_id];
+    const std::vector<size_t>& next_instr_ids =
+        run_type_info[cur_instr_id][DownstreamRunType::kEventRun];
     std::set<size_t> waiter_instr_ids;
 
-    std::vector<size_t> next_instr_ids =
-        next_instr_list[DownstreamRunType::kEventRun];
     for (size_t next_instr_id : next_instr_ids) {
       AnalyseEventInfoForTwoInstructions(instructions,
                                          run_type_info,
@@ -252,8 +249,9 @@ void StreamAnalyzer::AnalyseAllEventInfo(
     }
 
     for (size_t waiter_instr_id : waiter_instr_ids) {
-      (*event_info)[&(cur_instr.DeviceContext())][waiter_instr_id].insert(
-          cur_instr_id);
+      (*event_info)[&(instructions[cur_instr_id].DeviceContext())]
+                   [waiter_instr_id]
+                       .insert(cur_instr_id);
     }
   }
 }
