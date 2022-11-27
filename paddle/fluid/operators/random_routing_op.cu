@@ -29,7 +29,6 @@ static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
-using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <typename T>
@@ -54,10 +53,10 @@ template <typename T>
 class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto topk_idx = context.Input<LoDTensor>("TopK_Idx");
-    auto topk_value = context.Input<LoDTensor>("TopK_Value");
-    auto prob = context.Input<LoDTensor>("Prob");
-    auto out = context.Output<LoDTensor>("Out");
+    auto topk_idx = context.Input<phi::DenseTensor>("TopK_Idx");
+    auto topk_value = context.Input<phi::DenseTensor>("TopK_Value");
+    auto prob = context.Input<phi::DenseTensor>("Prob");
+    auto out = context.Output<phi::DenseTensor>("Out");
 
     auto place = context.GetPlace();
     const auto& dev_ctx = context.template device_context<phi::GPUContext>();

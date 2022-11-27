@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -33,9 +32,9 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the input feature map, and "
              "W is the width.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
@@ -95,13 +94,13 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
             "given as [(x1, y1, x2, y2), ...]"));
     PADDLE_ENFORCE_EQ(
         rois_dims[1],
         4,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
             "given as [(x1, y1, x2, y2), ...]"));
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");

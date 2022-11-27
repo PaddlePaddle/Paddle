@@ -60,13 +60,12 @@ struct OneHotOpCUDAFunctor {
   }
 };
 
-using LoDTensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class OneHotCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     int depth = -1;
     if (context.HasInput("depth_tensor")) {

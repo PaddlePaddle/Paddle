@@ -29,7 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 using platform::Transform;
 
@@ -107,7 +106,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<LoDTensor>("Input");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* weight = ctx.Input<phi::DenseTensor>("Weight");
     auto* proj_weight = ctx.Input<phi::DenseTensor>("ProjWeight");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
@@ -118,11 +117,11 @@ class LSTMPKernel : public framework::OpKernel<T> {
     auto proj_clip = static_cast<T>(ctx.Attr<float>("proj_clip"));
     auto cell_clip = static_cast<T>(ctx.Attr<float>("cell_clip"));
 
-    auto* batch_gate = ctx.Output<LoDTensor>("BatchGate");
+    auto* batch_gate = ctx.Output<phi::DenseTensor>("BatchGate");
     batch_gate->mutable_data<T>(ctx.GetPlace());
-    auto* proj_out = ctx.Output<LoDTensor>("Projection");
+    auto* proj_out = ctx.Output<phi::DenseTensor>("Projection");
     proj_out->mutable_data<T>(ctx.GetPlace());
-    auto* cell_out = ctx.Output<LoDTensor>("Cell");
+    auto* cell_out = ctx.Output<phi::DenseTensor>("Cell");
     cell_out->mutable_data<T>(ctx.GetPlace());
 
     bool is_reverse = ctx.Attr<bool>("is_reverse");
@@ -172,10 +171,10 @@ class LSTMPKernel : public framework::OpKernel<T> {
     }
 
     // Use the local variable as here.
-    LoDTensor batch_proj, batch_cell;
-    auto* batch_cell_pre_act = ctx.Output<LoDTensor>("BatchCellPreAct");
+    phi::DenseTensor batch_proj, batch_cell;
+    auto* batch_cell_pre_act = ctx.Output<phi::DenseTensor>("BatchCellPreAct");
     batch_cell_pre_act->mutable_data<T>(dims, ctx.GetPlace());
-    auto* batch_hidden = ctx.Output<LoDTensor>("BatchHidden");
+    auto* batch_hidden = ctx.Output<phi::DenseTensor>("BatchHidden");
     batch_hidden->mutable_data<T>(dims, ctx.GetPlace());    // T x D
     batch_proj.mutable_data<T>(proj_dims, ctx.GetPlace());  // T x P
     batch_cell.mutable_data<T>(dims, ctx.GetPlace());       // T x D
@@ -272,11 +271,11 @@ class LSTMPKernel : public framework::OpKernel<T> {
 
     phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_proj.set_lod(batch_gate->lod());
-    // restore the output hidden in LoDTensor from the batch hidden
+    // restore the output hidden in phi::DenseTensor from the batch hidden
     to_seq(device_ctx, batch_proj, proj_out);
 
     batch_cell.set_lod(batch_gate->lod());
-    // restore the output cell state in LoDTensor from the batch cell
+    // restore the output cell state in phi::DenseTensor from the batch cell
     to_seq(device_ctx, batch_cell, cell_out);
   }
 };
@@ -310,20 +309,20 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     auto* proj_weight = ctx.Input<phi::DenseTensor>("ProjWeight");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto* proj_out = ctx.Input<LoDTensor>("Projection");
-    auto* cell_out = ctx.Input<LoDTensor>("Cell");
+    auto* proj_out = ctx.Input<phi::DenseTensor>("Projection");
+    auto* cell_out = ctx.Input<phi::DenseTensor>("Cell");
 
     auto proj_clip = static_cast<T>(ctx.Attr<float>("proj_clip"));
     auto cell_clip = static_cast<T>(ctx.Attr<float>("cell_clip"));
 
-    auto* batch_gate = ctx.Input<LoDTensor>("BatchGate");
-    auto* batch_cell_pre_act = ctx.Input<LoDTensor>("BatchCellPreAct");
-    auto* batch_hidden = ctx.Input<LoDTensor>("BatchHidden");
+    auto* batch_gate = ctx.Input<phi::DenseTensor>("BatchGate");
+    auto* batch_cell_pre_act = ctx.Input<phi::DenseTensor>("BatchCellPreAct");
+    auto* batch_hidden = ctx.Input<phi::DenseTensor>("BatchHidden");
 
     auto* projection_g =
-        ctx.Input<LoDTensor>(framework::GradVarName("Projection"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Projection"));
 
-    auto* in_g = ctx.Output<LoDTensor>(framework::GradVarName("Input"));
+    auto* in_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     auto* weight_g =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
     auto* proj_weight_g =
@@ -415,13 +414,13 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       to_batch(ctx, src, &dst, false);
     };
 
-    LoDTensor batch_hidden_g, batch_proj, batch_proj_g, batch_cell;
+    phi::DenseTensor batch_hidden_g, batch_proj, batch_proj_g, batch_cell;
     batch_hidden_g.mutable_data<T>(out_dims, ctx.GetPlace());
     ToBatch(device_ctx, *proj_out, proj_dims, batch_proj);        // T x P
     ToBatch(device_ctx, *projection_g, proj_dims, batch_proj_g);  // T x P
     ToBatch(device_ctx, *cell_out, out_dims, batch_cell);         // T x D
 
-    LoDTensor batch_cell_g, batch_gate_g;
+    phi::DenseTensor batch_cell_g, batch_gate_g;
     batch_cell_g.mutable_data<T>(out_dims, ctx.GetPlace());
     // TODO(qingqing) support the case output cell has gradient.
     // to_batch(device_ctx, *cell_g, batch_cell_g, false);

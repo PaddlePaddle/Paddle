@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 void CvmComputeKernel(const bool use_cvm,
@@ -61,14 +60,14 @@ template <typename T>
 class CVMOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<LoDTensor>("X");
+    const auto* x = context.Input<phi::DenseTensor>("X");
     const T* x_data = x->data<T>();
 
     auto batch_size = x->dims()[0];
     auto item_size = x->numel() / batch_size;
     auto use_cvm = context.Attr<bool>("use_cvm");
 
-    auto* y = context.Output<LoDTensor>("Y");
+    auto* y = context.Output<phi::DenseTensor>("Y");
     T* y_data = y->mutable_data<T>(context.GetPlace());
 
     // for Input X do not have Lod Information.
@@ -102,7 +101,7 @@ template <typename T>
 class CVMGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dx = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
     const phi::DenseTensor* cvm = context.Input<phi::DenseTensor>("CVM");

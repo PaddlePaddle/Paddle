@@ -27,7 +27,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 inline int Im2SeqOutputSize(
     int input_size, int filter_size, int padding_0, int padding_1, int stride) {
@@ -41,7 +40,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const phi::DenseTensor* in = ctx.Input<phi::DenseTensor>("X");
-    LoDTensor* out = ctx.Output<LoDTensor>("Out");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
