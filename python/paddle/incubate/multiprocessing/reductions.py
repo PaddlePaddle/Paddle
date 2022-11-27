@@ -34,14 +34,6 @@ def _supported_check():
 
         return False
 
-    if not sys.version_info >= (3, 4):
-        warnings.warn(
-            "Use `paddle.multiprocessing` to share paddle tensor "
-            "requires python version greater than 3.4 ."
-            " `paddle.multiprocessing` will not take any effect !!!"
-        )
-        return False
-
     return True
 
 

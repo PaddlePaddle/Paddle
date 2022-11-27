@@ -21,7 +21,7 @@ import sys
 
 print("Testing SSL certificate checking for Python:", sys.version)
 
-if sys.version_info[:2] < (2, 7) or sys.version_info[:2] < (3, 4):
+if sys.version_info[:2] < (2, 7):
     print("This version never checks SSL certs; skipping tests")
     sys.exit(0)
 
