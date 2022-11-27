@@ -36,11 +36,11 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(2-D LoDTensor with the 2nd dimension equal to 1) "
-             "Input LoDTensor of SequenceEnumerate operator.");
+             "(2-D phi::DenseTensor with the 2nd dimension equal to 1) "
+             "Input phi::DenseTensor of SequenceEnumerate operator.");
     AddOutput("Out",
-              "(2-D LoDTensor with the 2nd dimension equal to win_size) "
-              "Output LoDTensor of SequenceEnumerate operator.");
+              "(2-D phi::DenseTensor with the 2nd dimension equal to win_size) "
+              "Output phi::DenseTensor of SequenceEnumerate operator.");
     AddAttr<int>("win_size", "(int) The enumerate sequence window size.")
         .AddCustomChecker([](const int& win_size) {
           PADDLE_ENFORCE_GE(win_size,
