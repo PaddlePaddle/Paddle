@@ -64,7 +64,6 @@ __all__ = [
     'reverse',
     'has_inf',
     'linspace',
-    'zeros_like',
     'diag',
     'triu',
 ]
@@ -1650,55 +1649,6 @@ def linspace(start, stop, num, dtype=None, name=None):
     )
     if isinstance(num, int):
         out.desc.set_shape((num,))
-    return out
-
-
-def zeros_like(x, out=None):
-    """
-    This OP creates a zeros tensor which has identical shape and dtype
-    with `x`.
-
-    Args:
-        x(Variable): The input tensor which specifies shape and dtype, the
-            input data dtype could be bool, float32, float64, int32, int64.
-        out(Variable, optional): If is :attr:`None` , the op will create the
-            variable as output, the data type and shape of this variable will
-            be same as input :attr:`x`. If is a tensor, the data type and shape
-            need to be same as input :attr:`x`. The default value is :attr:`None` .
-
-    Returns:
-        Variable: The N-D tensor, the element in tensor is related to input
-            data type, if the input data type is bool, the output value is
-            False, otherwise is zero. The output shape is the same as the input.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = fluid.data(name='x', dtype='float32', shape=[3])
-          data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
-
-    """
-    check_variable_and_dtype(
-        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'zeros_like'
-    )
-    helper = LayerHelper("zeros_like", **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        check_variable_and_dtype(
-            out,
-            "out",
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
-            'zeros_like',
-        )
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [x]},
-        attrs={'value': 0, "dtype": x.dtype},
-        outputs={'Out': [out]},
-    )
-    out.stop_gradient = True
     return out
 
 

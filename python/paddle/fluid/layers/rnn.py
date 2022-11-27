@@ -1252,7 +1252,7 @@ class BeamSearchDecoder(Decoder):
             value=False,
             force_cpu=True,
         )
-        init_lengths = tensor.zeros_like(init_inputs)
+        init_lengths = paddle.zeros_like(init_inputs)
         init_inputs = (
             self.embedding_fn(init_inputs) if self.embedding_fn else init_inputs
         )
@@ -1483,7 +1483,7 @@ def _dynamic_decode_imperative(
         initial_finished,
     )
     cond = paddle.logical_not((nn.reduce_all(initial_finished)))
-    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     outputs = None
 
     step_idx = 0
@@ -1597,7 +1597,7 @@ def _dynamic_decode_declarative(
         )
     while_op = control_flow.While(cond, is_test=is_test)
 
-    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     sequence_lengths.stop_gradient = True
 
     if is_test:
