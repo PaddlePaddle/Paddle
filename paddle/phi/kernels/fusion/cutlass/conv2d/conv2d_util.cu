@@ -203,43 +203,49 @@ __global__ void naive_conv2d_kernel(const half *input,
                                     int ow,
                                     const half *residual,
                                     OpType op_type) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx >= batch * oc * oh * ow) return;
-  int batch_i = idx / (oc * oh * ow);
-  int remain = idx % (oc * oh * ow);
-  int oc_i = remain / (oh * ow);
-  remain = idx % (oh * ow);
-  int oh_i = remain / ow;
-  int ow_i = remain % ow;
+  int M = batch * oh * ow;
+  int N = oc;
+  int K = ic * kh * kw;
+  int m_i = threadIdx.x + blockIdx.x * blockDim.x;
+  int n_i = threadIdx.y + blockIdx.y * blockDim.y;
+  if (m_i >= M || n_i >= N) return;
+
+  int batch_i = m_i / (oh * ow);
+  int oh_i = (m_i % (oh * ow)) / ow;
+  int ow_i = (m_i % (oh * ow)) % ow;
+  int oc_i = n_i;
+
+  struct logical_struct weight_shape = {oc, ic, kh, kw};
   struct logical_struct input_shape {
     batch, ic, ih, iw
   };
-  struct logical_struct output_shape = {batch, oc, oh, ow};
-  struct logical_struct output_index = {batch_i, oc_i, oh_i, ow_i};
-  struct logical_struct weight_shape = {oc, ic, kh, kw};
-  float *out_ptr = output + gpu_nhwc(output_shape, output_index);
+  int out_offset = m_i * N + n_i;
+  float *out_ptr = output + out_offset;
   float sum = 0.f;
 
-  for (int kh_i = 0; kh_i < kh; kh_i++) {
-    for (int kw_i = 0; kw_i < kw; kw_i++) {
-      int ih_i = oh_i * stride_h - pad_h + kh_i;
-      int iw_i = ow_i * stride_w - pad_w + kw_i;
-      if (ih_i < 0 || ih_i >= ih) continue;
-      if (iw_i < 0 || iw_i >= iw) continue;
+  for (int k_i = 0; k_i < K; k_i++) {
+    int ic_i = k_i / (kh * kw);
+    int kh_i = (k_i % (kh * kw)) / kw;
+    int kw_i = (k_i % (kh * kw)) % kw;
 
-      for (int ic_i = 0; ic_i < ic; ic_i++) {
-        struct logical_struct input_index {
-          batch_i, ic_i, ih_i, iw_i
-        };
-        struct logical_struct weight_index {
-          oc_i, ic_i, kh_i, kw_i
-        };
-        const half *in_ptr = input + gpu_nhwc(input_shape, input_index);
-        const half *weight_ptr = weight + gpu_nhwc(weight_shape, weight_index);
-        sum += __half2float(*in_ptr) * __half2float(*weight_ptr);
-      }
-    }
+    struct logical_struct weight_index {
+      oc_i, ic_i, kh_i, kw_i
+    };
+
+    int ih_i = oh_i * stride_h - pad_h + kh_i;
+    int iw_i = ow_i * stride_w - pad_w + kw_i;
+
+    if (ih_i < 0 || ih_i >= ih) continue;
+    if (iw_i < 0 || iw_i >= iw) continue;
+
+    struct logical_struct input_index {
+      batch_i, ic_i, ih_i, iw_i
+    };
+    const half *weight_ptr = weight + gpu_nhwc(weight_shape, weight_index);
+    const half *in_ptr = input + gpu_nhwc(input_shape, input_index);
+    sum += __half2float(*in_ptr) * __half2float(*weight_ptr);
   }
+
   sum += __half2float(*(bias + oc_i));
   float x = sum;
   if (op_type == CONV2D_BIAS) {
@@ -249,7 +255,7 @@ __global__ void naive_conv2d_kernel(const half *input,
   } else if (op_type == CONV2D_BIAS_SILU) {
     *out_ptr = x * (1.f / (1 + exp(-x)));
   } else if (op_type == CONV2D_BIAS_ADD_RELU) {
-    x += __half2float(*(residual + gpu_nhwc(output_shape, output_index)));
+    x += __half2float(*(residual + out_offset));
     *out_ptr = x > 0 ? x : 0;
   }
 }
@@ -259,10 +265,13 @@ float conv2d_diff_gpu(COMMON_CONV_PARAMS,
                       OpType op_type) {
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
+  int M = batch * oh * ow;
+  int N = oc;
 
-  int onhwc = batch * oh * ow * oc;
-  uint3 grid = {onhwc / 256 + 1, 1, 1};
-  uint3 block = {256, 1, 1};
+  constexpr int blockM = 16;
+  constexpr int blockN = 16;
+  uint3 grid = {(M + blockM - 1) / blockM, (N + blockN - 1) / blockN, 1};
+  uint3 block = {blockM, blockN, 1};
 
   int output_size = batch * oc * oh * ow;
   half *output_from_cutlass =
