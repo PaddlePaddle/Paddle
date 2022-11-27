@@ -31,7 +31,7 @@ class GatherNdOpConverter : public OpConverter {
 
     // AddGatherV2 is supported by the trt version of 8.2.
 #if IS_TRT_VERSION_GE(8200)
-    VLOG(3) << "convert a fluid gather_nd op to tensorrt gather_nd layer";
+    VLOG(3) << "convert gather_nd op to tensorrt gather_nd layer";
 
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, GatherV2, *input, *index, nvinfer1::GatherMode::kND);
