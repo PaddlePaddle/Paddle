@@ -73,8 +73,8 @@ bool small_test() {
   vector_to_gpu(input_length_gpu, lengths, stream);
 
   size_t gpu_alloc_bytes;
-  throw_on_error(get_workspace_size(T, U, B, true, &gpu_alloc_bytes),
-                 "Error: get_workspace_size in small_test");
+  throw_on_error(get_rnnt_workspace_size(T, U, B, true, &gpu_alloc_bytes),
+                 "Error: get_rnnt_workspace_size in small_test");
 
   void* rnnt_gpu_workspace;
   cudaMalloc(&rnnt_gpu_workspace, gpu_alloc_bytes);
@@ -176,8 +176,9 @@ bool options_test() {
   vector_to_gpu(input_length_gpu, lengths, stream);
 
   size_t gpu_alloc_bytes;
-  throw_on_error(get_workspace_size(T, L, minibatch, true, &gpu_alloc_bytes),
-                 "Error: get_workspace_size in options_test");
+  throw_on_error(
+      get_rnnt_workspace_size(T, L, minibatch, true, &gpu_alloc_bytes),
+      "Error: get_rnnt_workspace_size in options_test");
 
   void* rnnt_gpu_workspace;
   cudaMalloc(&rnnt_gpu_workspace, gpu_alloc_bytes);
@@ -282,8 +283,9 @@ bool inf_test() {
   vector_to_gpu(input_length_gpu, sizes, stream);
 
   size_t gpu_alloc_bytes;
-  throw_on_error(get_workspace_size(T, L, minibatch, true, &gpu_alloc_bytes),
-                 "Error: get_workspace_size in inf_test");
+  throw_on_error(
+      get_rnnt_workspace_size(T, L, minibatch, true, &gpu_alloc_bytes),
+      "Error: get_rnnt_workspace_size in inf_test");
 
   void* rnnt_gpu_workspace;
   cudaMalloc(&rnnt_gpu_workspace, gpu_alloc_bytes);
@@ -420,8 +422,9 @@ bool grad_check(int T,
   options.num_threads = 1;
 
   size_t gpu_alloc_bytes;
-  throw_on_error(get_workspace_size(T, L, sizes.size(), true, &gpu_alloc_bytes),
-                 "Error: get_workspace_size in grad_check");
+  throw_on_error(
+      get_rnnt_workspace_size(T, L, sizes.size(), true, &gpu_alloc_bytes),
+      "Error: get_rnnt_workspace_size in grad_check");
 
   void* rnnt_gpu_workspace;
   cudaMalloc(&rnnt_gpu_workspace, gpu_alloc_bytes);

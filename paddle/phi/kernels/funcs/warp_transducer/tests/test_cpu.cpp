@@ -52,8 +52,8 @@ bool small_test() {
   options.num_threads = 1;
 
   size_t cpu_alloc_bytes;
-  throw_on_error(get_workspace_size(T, U, B, false, &cpu_alloc_bytes),
-                 "Error: get_workspace_size in small_test");
+  throw_on_error(get_rnnt_workspace_size(T, U, B, false, &cpu_alloc_bytes),
+                 "Error: get_rnnt_workspace_size in small_test");
 
   void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
@@ -135,8 +135,9 @@ bool options_test() {
   options.batch_first = true;
 
   size_t cpu_alloc_bytes;
-  throw_on_error(get_workspace_size(T, L, minibatch, false, &cpu_alloc_bytes),
-                 "Error: get_workspace_size in options_test");
+  throw_on_error(
+      get_rnnt_workspace_size(T, L, minibatch, false, &cpu_alloc_bytes),
+      "Error: get_rnnt_workspace_size in options_test");
 
   void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
@@ -216,8 +217,9 @@ bool inf_test() {
   options.batch_first = true;
 
   size_t cpu_alloc_bytes;
-  throw_on_error(get_workspace_size(T, L, minibatch, false, &cpu_alloc_bytes),
-                 "Error: get_workspace_size in inf_test");
+  throw_on_error(
+      get_rnnt_workspace_size(T, L, minibatch, false, &cpu_alloc_bytes),
+      "Error: get_rnnt_workspace_size in inf_test");
 
   void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
@@ -323,8 +325,8 @@ bool grad_check(int T,
 
   size_t cpu_alloc_bytes;
   throw_on_error(
-      get_workspace_size(T, L, sizes.size(), false, &cpu_alloc_bytes),
-      "Error: get_workspace_size in grad_check");
+      get_rnnt_workspace_size(T, L, sizes.size(), false, &cpu_alloc_bytes),
+      "Error: get_rnnt_workspace_size in grad_check");
 
   void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 

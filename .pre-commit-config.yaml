@@ -53,9 +53,7 @@ repos:
         exclude: |
             (?x)^(
                 paddle/utils/.*|
-                paddle/phi/kernels/funcs/warp_transducer/include/.*|
-                paddle/phi/kernels/funcs/warp_transducer/src/.*|
-                paddle/phi/kernels/funcs/warp_transducer/tests/.*
+                paddle/phi/kernels/funcs/warp_transducer/.*
             )$
 # For Python files
 -   repo: https://github.com/psf/black.git
