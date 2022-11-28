@@ -74,13 +74,16 @@ def save_dygraph(state_dict, model_path):
 
             import paddle
 
-            emb = paddle.nn.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
 
             state_dict = emb.state_dict()
             paddle.utils.save_dygraph( state_dict, "paddle_dy")
+            scheduler = paddle.optimizer.lr.NoamDecay(
+                d_model=0.01, warmup_steps=100, verbose=True)
 
-            adam = paddle.optimizer.Adam(learning_rate = paddle.nn.layers.noam_decay( 100, 10000),
-                                         parameter_list = emb.parameters() )
+            adam = paddle.optimizer.Adam(
+                learning_rate=scheduler,
+                parameters=emb.parameters())
 
             state_dict = adam.state_dict()
             paddle.utils.save_dygraph( state_dict, "paddle_dy")
