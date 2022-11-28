@@ -204,7 +204,7 @@ function(external_lite_libs alias path)
 endfunction()
 
 external_lite_libs(
-  lite_full_static
+  lite_full_shared
   ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
 )
 
