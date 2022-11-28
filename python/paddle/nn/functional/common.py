@@ -223,15 +223,6 @@ def reshape(x, shape, name=None):
     act = None
     inplace = False
 
-    def _contain_var(list_or_tuple):
-        """
-        Check whether list or tuple contains variable.
-        """
-        for item in list_or_tuple:
-            if isinstance(item, Variable):
-                return True
-        return False
-
     if in_dygraph_mode():
         tmp_tensor_type = core.eager.Tensor
         # TODO(zhiqiu): enable inplace in dygraph mode.
