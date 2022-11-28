@@ -103,7 +103,7 @@ endif()
 
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel backward_infermeta sparse_backward_infermeta)
 
-register_operators(EXCLUDES py_layer_op py_func_op warpctc_op warprnnt_op dgc_op load_combine_op lstm_op run_program_op eye_op quantize_linear_op
+register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op quantize_linear_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc run_program_op_npu.cc DEPS executor_cache ${OP_HEADER_DEPS})
@@ -115,14 +115,11 @@ op_library(load_combine_op DEPS string_array)
 if (WITH_GPU OR WITH_ROCM)
     if(WITH_ROCM)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc)
-        # op_library(warprnnt_op SRCS warprnnt_op.cc)
     # warpctc_op needs cudnn 7 above
     elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc)
-        op_library(warprnnt_op SRCS warprnnt_op.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-        op_library(warprnnt_op)
     endif()
     op_library(sync_batch_norm_op)
     if ((NOT WIN32) AND (NOT WITH_ROCM) AND (NOT PADDLE_WITH_ARM) AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.3) )
@@ -130,7 +127,6 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-    op_library(warprnnt_op)
 endif()
 
 if (WITH_ASCEND_CL)
