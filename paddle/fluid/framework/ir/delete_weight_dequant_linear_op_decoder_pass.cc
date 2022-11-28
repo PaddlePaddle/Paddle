@@ -308,12 +308,24 @@ void DeleteWeightDequantLinearOpDecoderPass::ApplyImpl(ir::Graph* graph) const {
     auto* weight_scale_tensor =
         scope->GetVar(weight_dequantize_linear_op_scale->Name())
             ->GetMutable<phi::DenseTensor>();
-    float* weight_scale_data =
-        weight_scale_tensor->mutable_data<float>(platform::CPUPlace());
-
     auto weight_scale_nums = weight_scale_tensor->numel();
-    for (int i = 0; i < weight_scale_nums; i++) {
-      weight_scale.push_back(weight_scale_data[i]);
+
+    if (weight_scale_tensor->dtype() ==
+        paddle::experimental::DataType::FLOAT32) {
+      float* weight_scale_data = weight_scale_tensor->data<float>();
+      for (int i = 0; i < weight_scale_nums; i++) {
+        weight_scale.push_back(weight_scale_data[i]);
+      }
+    } else if (weight_scale_tensor->dtype() ==
+               paddle::experimental::DataType::FLOAT16) {
+      phi::dtype::float16* weight_scale_data =
+          weight_scale_tensor->data<phi::dtype::float16>();
+      for (int i = 0; i < weight_scale_nums; i++) {
+        weight_scale.push_back(static_cast<float>(weight_scale_data[i]));
+      }
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "%d is not supported.", weight_scale_tensor->dtype()));
     }
 
     int quant_axis = PADDLE_GET_CONST(

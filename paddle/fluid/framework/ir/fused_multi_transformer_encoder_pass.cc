@@ -1503,15 +1503,15 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
           PADDLE_GET_CONST(float, ffn_matmul_1_op->GetAttr("weight_scale"));
 
       auto qkv_out_scales = std::vector<float>(
-          3 * dim_embed, (qkv_weight_scale * qkv_in_scale) / (127.0f * 127.0f));
+          3 * dim_embed, (qkv_weight_scale / 127.0f) * (qkv_in_scale / 127.0f));
       auto out_out_scales = std::vector<float>(
           dim_embed,
-          (out_weight_scale * out_linear_in_scale) / (127.0f * 127.0f));
+          (out_weight_scale / 127.0f) * (out_linear_in_scale / 127.0f));
       auto ffn0_out_scales = std::vector<float>(
           4 * dim_embed,
-          (ffn0_weight_scale * ffn0_in_scale) / (127.0f * 127.0f));
+          (ffn0_weight_scale / 127.0f) * (ffn0_in_scale / 127.0f));
       auto ffn1_out_scales = std::vector<float>(
-          dim_embed, (ffn1_weight_scale * ffn1_in_scale) / (127.0f * 127.0f));
+          dim_embed, (ffn1_weight_scale / 127.0f) * (ffn1_in_scale / 127.0f));
 
       // Inverse input scale
       qkv_in_scale = 1.0f / qkv_in_scale;
@@ -1529,9 +1529,9 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
 
       // Set Quant Bound and round type
-      fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
-      fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
-      fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
 
       auto qkv_out_scale_var = scope->Var(matmul0_w->Name() + "_out_scale");
       auto out_out_scale_var =
@@ -2354,15 +2354,15 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
           PADDLE_GET_CONST(float, ffn_matmul_1_op->GetAttr("weight_scale"));
 
       auto qkv_out_scales = std::vector<float>(
-          3 * dim_embed, (qkv_weight_scale * qkv_in_scale) / (127.0f * 127.0f));
+          3 * dim_embed, (qkv_weight_scale / 127.0f) * (qkv_in_scale / 127.0f));
       auto out_out_scales = std::vector<float>(
           dim_embed,
-          (out_weight_scale * out_linear_in_scale) / (127.0f * 127.0f));
+          (out_weight_scale / 127.0f) * (out_linear_in_scale / 127.0f));
       auto ffn0_out_scales = std::vector<float>(
           4 * dim_embed,
-          (ffn0_weight_scale * ffn0_in_scale) / (127.0f * 127.0f));
+          (ffn0_weight_scale / 127.0f) * (ffn0_in_scale / 127.0f));
       auto ffn1_out_scales = std::vector<float>(
-          dim_embed, (ffn1_weight_scale * ffn1_in_scale) / (127.0f * 127.0f));
+          dim_embed, (ffn1_weight_scale / 127.0f) * (ffn1_in_scale / 127.0f));
 
       // Inverse input scale
       qkv_in_scale = 1.0f / qkv_in_scale;
@@ -2380,9 +2380,9 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
 
       // Set Quant Bound and round type
-      fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
-      fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
-      fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
 
       auto qkv_out_scale_var = scope->Var(matmul0_w->Name() + "_out_scale");
       auto out_out_scale_var =
@@ -2997,6 +2997,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* ffn_layer_norm_bias,
                           Node* ffn_layer_norm_mean,
                           Node* ffn_layer_norm_variance,
+                          Node* ffn_c_identity,
                           Node* ffn_matmul0,
                           Node* ffn_matmul0_w,
                           Node* ffn_matmul1,
@@ -3137,16 +3138,27 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     // Quantization attribute/Input
     if (enable_int8) {
       // Set input scale
-      std::string qkv_input_name = matmul0_op->Input("X")[0];
+      //   std::string qkv_input_name = matmul0_op->Input("X")[0];
+      std::string matmul_input_scale_suffix = c_identity_op->Input("X")[0];
       auto qkv_in_scale = PADDLE_GET_CONST(
-          float, matmul0_op->GetAttr("Input_scale_" + qkv_input_name));
+          //   float, matmul0_op->GetAttr("Input_scale_" + qkv_input_name));
+          float,
+          c_identity_op->GetAttr("Input_scale_" + matmul_input_scale_suffix));
+
       std::string out_linear_input_name = matmul_linear_op->Input("X")[0];
       auto out_linear_in_scale = PADDLE_GET_CONST(
           float,
           matmul_linear_op->GetAttr("Input_scale_" + out_linear_input_name));
-      std::string ffn0_input_name = ffn_matmul_0_op->Input("X")[0];
+
+      //   std::string ffn0_input_name = ffn_matmul_0_op->Input("X")[0];
+      auto* ffn_c_identity_op = ffn_c_identity->Op();
+      std::string ffn_input_scale_suffix = ffn_c_identity_op->Input("X")[0];
       auto ffn0_in_scale = PADDLE_GET_CONST(
-          float, ffn_matmul_0_op->GetAttr("Input_scale_" + ffn0_input_name));
+          //   float, ffn_matmul_0_op->GetAttr("Input_scale_" +
+          //   ffn0_input_name));
+          float,
+          ffn_c_identity_op->GetAttr("Input_scale_" + ffn_input_scale_suffix));
+
       std::string ffn1_input_name = ffn_matmul_1_op->Input("X")[0];
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
@@ -3162,15 +3174,15 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
           PADDLE_GET_CONST(float, ffn_matmul_1_op->GetAttr("weight_scale"));
 
       auto qkv_out_scales = std::vector<float>(
-          3 * dim_embed, (qkv_weight_scale * qkv_in_scale) / (127.0f * 127.0f));
+          3 * dim_embed, (qkv_weight_scale / 127.0f) * (qkv_in_scale / 127.0f));
       auto out_out_scales = std::vector<float>(
           dim_embed,
-          (out_weight_scale * out_linear_in_scale) / (127.0f * 127.0f));
+          (out_weight_scale / 127.0f) * (out_linear_in_scale / 127.0f));
       auto ffn0_out_scales = std::vector<float>(
           4 * dim_embed,
-          (ffn0_weight_scale * ffn0_in_scale) / (127.0f * 127.0f));
+          (ffn0_weight_scale / 127.0f) * (ffn0_in_scale / 127.0f));
       auto ffn1_out_scales = std::vector<float>(
-          dim_embed, (ffn1_weight_scale * ffn1_in_scale) / (127.0f * 127.0f));
+          dim_embed, (ffn1_weight_scale / 127.0f) * (ffn1_in_scale / 127.0f));
 
       // Inverse input scale
       qkv_in_scale = 1.0f / qkv_in_scale;
@@ -3188,9 +3200,9 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
 
       // Set Quant Bound and round type
-      fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
-      fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
-      fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
+      //   fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
 
       VLOG(0) << "create " << matmul0_w->Name() + "_out_scale ";
 
@@ -3553,6 +3565,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  ffn_layer_norm_bias,
                  ffn_layer_norm_mean,
                  ffn_layer_norm_variance,
+                 ffn_c_identity,
                  ffn_matmul0,
                  ffn_matmul0_w,
                  ffn_matmul1,
