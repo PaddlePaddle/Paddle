@@ -87,7 +87,7 @@ class TensorRTSubgraphPassSigmoidTest(TensorRTSubgraphPassActivationTest):
 
 class TensorRTSubgraphPassHardSwishTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.hard_swish(x)
+        return paddle.nn.functional.hardswish(x)
 
 
 class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
@@ -99,7 +99,7 @@ class TensorRTSubgraphPassHardSwishPluginTest(
     TensorRTSubgraphPassActivationTest
 ):
     def append_act(self, x):
-        return fluid.layers.hard_swish(x, threshold=4.0, scale=8.0)
+        return paddle.nn.functional.hardswish(x)
 
 
 class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):

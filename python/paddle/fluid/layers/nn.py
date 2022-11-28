@@ -146,7 +146,6 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
-    'hard_swish',
     'mish',
     'gather_tree',
     'uniform_random',
@@ -9981,76 +9980,6 @@ def unique_with_counts(x, dtype='int32'):
     )
 
     return out, index, count
-
-
-@templatedoc()
-def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
-    r"""
-    This operator implements the hard_swish activation function.
-    Hard_swish is proposed in MobileNetV3, and performs better in computational stability and efficiency compared to swish function.
-    For more details please refer to: https://arxiv.org/pdf/1905.02244.pdf
-
-    The formula is as follows:
-
-    .. math::
-
-        out = \\frac{x * (min(max(0, x+offset), threshold))}{scale}
-
-    In the above equation:
-
-    ``threshold`` and ``scale`` should be positive, ``offset`` can be positive or negative. It is recommended to use default parameters.
-
-    Args:
-        x (Variable): Input feature, multi-dimensional Tensor. The data type should be float32 or float64.
-        threshold (float, optional): The threshold in Relu function. Default: 6.0
-        scale (float, optional): The scale factor. Default: 6.0
-        offset (float, optional): The offset factor. Default: 3.0
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: The output tensor with the same shape and data type as input.
-
-
-    Examples:
-
-    .. code-block:: python
-
-        import paddle.fluid as fluid
-        import paddle
-        import numpy as np
-        paddle.enable_static()
-
-        DATATYPE='float32'
-
-        x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
-
-        x = fluid.data(name="x", shape=[None,1,4], dtype=DATATYPE)
-        y = fluid.layers.hard_swish(x)
-
-        place = fluid.CPUPlace()
-        #place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
-        print(out)  # [[0.66666667, 1.66666667,3., 4.]]
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.hard_swish(
-            x, 'threshold', threshold, 'scale', scale, 'offset', offset
-        )
-
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'hard_swish'
-    )
-
-    helper = LayerHelper('hard_swish', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='hard_swish',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'threshold': threshold, 'scale': scale, 'offset': offset},
-    )
-    return out
 
 
 @templatedoc()
