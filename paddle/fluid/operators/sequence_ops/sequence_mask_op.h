@@ -28,8 +28,7 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-using Tensor = phi::DenseTensor;
+
 
 template <typename Tx, typename Ty>
 struct SequenceMaskForRangeFunctor {
@@ -51,7 +50,7 @@ struct SequenceMaskForRangeFunctor {
 template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
   SequenceMaskFunctor(
-      const DeviceContext &ctx, const Tx *x, Tensor *y, int limits, int maxlen)
+      const DeviceContext &ctx, const Tx *x, phi::DenseTensor *y, int limits, int maxlen)
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
 
   template <typename Ty>
@@ -64,14 +63,14 @@ struct SequenceMaskFunctor {
  private:
   const DeviceContext &ctx_;
   const Tx *x_;
-  Tensor *y_;
+  phi::DenseTensor *y_;
   int limits_;
   int maxlen_;
 };
 
 template <typename DeviceContext, typename Tx>
 class SequenceMaskKernel : public framework::OpKernel<Tx> {
-  using Tensor = phi::DenseTensor;
+  
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

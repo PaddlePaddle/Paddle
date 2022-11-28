@@ -59,7 +59,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
             pad_value_dims == time_step_dims,
         true,
         platform::errors::InvalidArgument(
-            "The SequencePadOp Input(PadValue) must be a scalar or a tensor "
+            "The SequencePadOp Input(PadValue) must be a scalar or a phi::DenseTensor "
             "whose shape equals to time steps in sequences"));
 
     int out_dim_0 = -1;
@@ -69,7 +69,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
       // run time
       framework::Variable* x_var =
           PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
-      const auto& x_lod = x_var->Get<LoDTensor>().lod();
+      const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
       PADDLE_ENFORCE_EQ(x_lod.empty(),
                         false,
                         platform::errors::NotFound(
@@ -86,9 +86,9 @@ class SequencePadOp : public framework::OperatorWithKernel {
                         static_cast<int64_t>(x_lod_0.back()),
                         platform::errors::InvalidArgument(
                             "The SequencePadOp Input(X)'s lod info mismatches "
-                            "the actual tensor shape. The 1st dimension of "
+                            "the actual phi::DenseTensor shape. The 1st dimension of "
                             "Input(X)'s lod info is %d, the 1st dimension of "
-                            "actual tensor shape is %d",
+                            "actual phi::DenseTensor shape is %d",
                             x_dims[0],
                             static_cast<int64_t>(x_lod_0.back())));
 
@@ -145,19 +145,19 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) Input variable which "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Input variable which "
              "should contain lod information.");
     AddInput("PadValue",
-             "(LoDTensor), this Tensor holds values that will be fill into "
-             "padded steps. It can be a scalar or a tensor whose shape equals "
+             "(phi::DenseTensor), this phi::DenseTensor holds values that will be fill into "
+             "padded steps. It can be a scalar or a phi::DenseTensor whose shape equals "
              "to time steps in sequences. If it's a scalar, it will be "
              "automatically broadcasted to the shape of time step.");
     AddOutput(
         "Out",
-        "(LoDTensor) The output vairable, which contains padded sequences.");
+        "(phi::DenseTensor) The output vairable, which contains padded sequences.");
     AddOutput(
         "Length",
-        "(LoDTensor) The output vairable, which contains the actual length of "
+        "(phi::DenseTensor) The output vairable, which contains the actual length of "
         "sequences before padding.");
     AddAttr<int>(
         "padded_length",
@@ -179,41 +179,41 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
 
       Case 1:
 
-      Given a 1-level LoDTensor input(X):
+      Given a 1-level phi::DenseTensor input(X):
           X.lod = [[0, 2,       5]]
           X.data = [a, b, c, d, e]
       and Input(PadValue):
           PadValue.data = [0]
       and attribite 'padded_length' = 4,
-      then we get LoDTensor:
+      then we get phi::DenseTensor:
           Out.data = [[a, b, 0, 0],
                       [c, d, e, 0]]
           Length.data = [2, 3]
 
       Case 2:
 
-      Given a 1-level LoDTensor input(X):
+      Given a 1-level phi::DenseTensor input(X):
           X.lod = [[0,               2,                           5]]
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [0]
       and attribite 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
-      then we get LoDTensor:
+      then we get phi::DenseTensor:
           Out.data = [[[a1, a2], [b1, b2], [0, 0]],
                       [[c1, c2], [d1, d2], [e1, e2]]]
           Length.data = [2, 3]
 
       Case 3:
 
-      Given a 1-level LoDTensor input(X):
+      Given a 1-level phi::DenseTensor input(X):
           X.lod = [[0,               2,                           5]]
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [p1, p2]
       and attribite 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
-      then we get LoDTensor:
+      then we get phi::DenseTensor:
           Out.data = [[[a1, a2], [b1, b2], [p1, p2]],
                       [[c1, c2], [d1, d2], [e1, e2]]]
           Length.data = [2, 3]

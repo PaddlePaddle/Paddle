@@ -47,23 +47,23 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const phi::DenseTensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+        expected_kernel_type.data_type_, phi::DenseTensor.place(), phi::DenseTensor.layout());
   }
 };
 
 class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input tensor of sequence_mask op.");
+    AddInput("X", "The input phi::DenseTensor of sequence_mask op.");
     AddOutput("Y", "The output mask of sequence_mask op.");
     AddInput("MaxLenTensor",
-             "Max length tensor"
+             "Max length phi::DenseTensor"
              "have higher priority than maxlen attribute")
         .AsDispensable();
     AddAttr<int>("maxlen",
@@ -82,7 +82,7 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
 SequenceMask Operator
 
 This operator outputs a Mask according to Input(X) and Attr(maxlen).
-Supposing Input(X) is a Tensor with shape [d_1, d_2, ..., d_n], the
+Supposing Input(X) is a phi::DenseTensor with shape [d_1, d_2, ..., d_n], the
 Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
 
 Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n))
