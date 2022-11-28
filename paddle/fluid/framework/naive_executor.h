@@ -67,9 +67,7 @@ class NaiveExecutor {
 
   Scope* GetScope() { return scope_; }
 
-#ifdef PADDLE_WITH_TENSORRT
   void ResetTrtOps(int num);
-#endif
 
   void RegisterOutputHook(const HookFunc& hookfunc);
 
