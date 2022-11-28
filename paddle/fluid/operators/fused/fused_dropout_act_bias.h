@@ -296,9 +296,6 @@ void LaunchDropoutActBias(Functor act_functor,
                                                        quant_last_in_scale,
                                                        dequant_out_scale_data,
                                                        quant_next_in_scale);
-      // FusedActBias<T, VecSize, Functor, InType, OutType>
-      //     <<<grid_size, block_size, 0, ctx.stream()>>>(
-      //         act_functor, elem_cnt, cols, src, bias, dst);
     } else {
       FusedDropoutActBias<T, MaskType, VecSize, Functor, InType, OutType>
           <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(

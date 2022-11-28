@@ -109,7 +109,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len
       int time_step_value = time_step->data<int>()[0];
-      VLOG(1) << "time_step " << time_step_value;
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
                         platform::errors::PreconditionNotMet(
@@ -274,7 +273,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < layers; ++i) {
       // step1. layer_norm
-      VLOG(1) << i;
       if (i == 0 && pre_layer_norm) {
         auto *ln_scale_data = ln_scales[i]->data<U>();
         auto *ln_bias_data = ln_biases[i]->data<U>();
@@ -503,7 +501,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       // step6. ffn matmul1
 
       if (pre_layer_norm) {
-        VLOG(0) << "cpp ffn1 int input: " << input_workspace;
         ffn1_linear_compute.ComputeForwardINT8ToINT8(
             ffn1_weights[i],
             &input_workspace,
@@ -511,7 +508,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             &output_workspace,
             nullptr,
             cublaslt_workspace.data<int8_t>());
-        VLOG(0) << "cpp ffn1 int output: " << output_workspace;
       } else {
         ffn1_linear_compute.ComputeForward(ffn1_weights[i],
                                            buf1,
@@ -561,7 +557,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
-        VLOG(0) << "cpp ffn2 int input: " << input_workspace;
         ffn2_linear_compute.ComputeForwardINT8ToINT8(
             ffn2_weights[i],
             &input_workspace,
@@ -569,7 +564,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             &output_workspace,
             nullptr,
             cublaslt_workspace.data<int8_t>());
-        VLOG(0) << "cpp ffn2 int output: " << output_workspace;
       } else {
         ffn2_linear_compute.ComputeForward(ffn2_weights[i],
                                            &ffn1_dropout_out,

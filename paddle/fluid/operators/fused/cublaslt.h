@@ -115,7 +115,6 @@ class CublasLtHelper {
             "information"));
 
 #if CUDA_VERSION >= 11020
-    VLOG(1) << m_ << " " << k_ << " " << n_;
 
     int algoId = 21;
     int swizzle = 0;
@@ -132,7 +131,6 @@ class CublasLtHelper {
 
     std::tuple<int, int, int> key(m_, k_, n_);
     if (AlgoParamCache.count(key) != 0) {
-      VLOG(1) << "Hit!";
       auto value = AlgoParamCache.at(key);
       algoId = value.algoId;
       swizzle = value.swizzle;
@@ -180,13 +178,7 @@ class CublasLtHelper {
 #endif
 #endif
   }
-  ~CublasLtHelper() {
-    // if (handle_) dyl::cublasLtDestroy(handle_);
-    // if (matmul_desc_) dyl::cublasLtMatmulDescDestroy(matmul_desc_);
-    // if (A_desc_) dyl::cublasLtMatrixLayoutDestroy(A_desc_);
-    // if (B_desc_) dyl::cublasLtMatrixLayoutDestroy(B_desc_);
-    // if (C_desc_) dyl::cublasLtMatrixLayoutDestroy(C_desc_);
-  }
+  ~CublasLtHelper() {}
 
   void GEMM(int8_t* A_dev,
             const int8_t* B_dev,

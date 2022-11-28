@@ -339,16 +339,13 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
             # quant ln1_out
             ln1_out = self.fake_quant(ln1_out, self.qkv_in_scales[i])
-            print("qkv int input: ", ln1_out)
 
             q = paddle.nn.functional.linear(ln1_out, self.q_weight_tensor)
-            print("q int output: ", q)
             # de quant
             q = paddle.cast(
                 paddle.cast(q, 'float32') * self.qkv_out_scales[i],
                 self.x_type,
             )
-            print("q float output: ", q)
 
             q = q + self.q_proj_bias_tensor
             q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
@@ -441,16 +438,13 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             self.out_linear_in_scales.append(1 / max_v)
             self.out_linear_out_scales.append(max_v / (127.0 * 127.0))
 
-            print("outlinear float input: ", out_linear_in)
             out_linear_in = self.fake_quant(
                 out_linear_in, self.out_linear_in_scales[i]
             )
-            print("outlinear int input: ", out_linear_in)
 
             out = paddle.nn.functional.linear(
                 out_linear_in, self.out_weight_tensor
             )
-            print("outlinear int output: ", out)
 
             out = paddle.cast(
                 paddle.cast(out, 'float32') * self.out_linear_out_scales[i],
@@ -476,11 +470,9 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             self.ffn1_out_scales.append(max_v / (127.0 * 127.0))
             ffn_ln_out = self.fake_quant(ffn_ln_out, self.ffn1_in_scales[i])
 
-            print("py ffn1 int input: ", ffn_ln_out)
             ffn1_out = paddle.nn.functional.linear(
                 ffn_ln_out, self.ffn1_weight_tensor
             )
-            print("py ffn1 int output: ", ffn1_out)
 
             ffn1_out = paddle.cast(
                 paddle.cast(ffn1_out, 'float32') * self.ffn1_out_scales[i],
@@ -491,16 +483,13 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             ffn1_out = self.dropout(self.activation(ffn1_out))
 
             max_v = paddle.max(paddle.abs(paddle.cast(ffn1_out, 'float32')))[0]
-            # self.ffn2_in_scales.append(127.0 / max_v)
             self.ffn2_in_scales.append(1 / max_v)
             self.ffn2_out_scales.append(max_v / (127.0 * 127.0))
             ffn1_out = self.fake_quant(ffn1_out, self.ffn2_in_scales[i])
 
-            print("py ffn1 int input: ", ffn1_out)
             ffn2_out = paddle.nn.functional.linear(
                 ffn1_out, self.ffn2_weight_tensor
             )
-            print("py ffn1 int output: ", ffn2_out)
 
             ffn2_out = paddle.cast(
                 paddle.cast(ffn2_out, 'float32') * self.ffn2_out_scales[i],
@@ -509,8 +498,6 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             ffn2_out = ffn2_out + self.ffn2_proj_bias_tensor
 
             residual_out = attn_out + self.dropout(ffn2_out)
-            # print("residual ", attn_out)
-            # print("residual_out ", residual_out)
             final_out = residual_out
             if not self.pre_layer_norm:
                 final_out = self.ffn_norm(residual_out)

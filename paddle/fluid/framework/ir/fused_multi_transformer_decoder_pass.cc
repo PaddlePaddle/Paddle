@@ -1091,9 +1091,9 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
 
   bool enable_int8 = graph->Get<bool>("enable_int8");
   if (enable_int8) {
-    VLOG(0) << "encoder with int8";
+    VLOG(3) << "FusedMultiTransformerDecoderPass with int8";
   } else {
-    VLOG(0) << "encoder with fp";
+    VLOG(3) << "FusedMultiTransformerDecoderPass with fp";
   }
 
   // Create pattern.
@@ -1230,20 +1230,12 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
 
       fused_multi_transformer_op_desc.SetAttr("qkv_in_scale",
                                               std::vector<float>{qkv_in_scale});
-      // VLOG(0) << "qkv_in_scale"  << qkv_in_scale;
       fused_multi_transformer_op_desc.SetAttr(
           "out_linear_in_scale", std::vector<float>{out_linear_in_scale});
-      // VLOG(0) << "out_linear_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn1_in_scale", std::vector<float>{ffn0_in_scale});
-      // VLOG(0) << "ffn1_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
-      // VLOG(0) << "ffn2_in_scale";
-
-      //   fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
-      //   fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
-      //   fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
 
       fused_multi_transformer_op_desc.SetInput(
           "QKVOutScale", {matmul0_w->Name() + "_out_scale"});
@@ -1829,9 +1821,9 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
 
   bool enable_int8 = graph->Get<bool>("enable_int8");
   if (enable_int8) {
-    VLOG(0) << "encoder with int8";
+    VLOG(3) << "FusedMultiTransformerDecoderFuseQKVPass with int8";
   } else {
-    VLOG(0) << "encoder with fp";
+    VLOG(3) << "FusedMultiTransformerDecoderFuseQKVPass with fp";
   }
 
   // Create pattern.
@@ -1960,26 +1952,14 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
       ffn0_in_scale = 1.0f / ffn0_in_scale;
       ffn1_in_scale = 1.0f / ffn1_in_scale;
 
-      //   if (layer_idx != 0) {
-      //     qkv_in_scale *= 3;
-      //   }
-
       fused_multi_transformer_op_desc.SetAttr("qkv_in_scale",
                                               std::vector<float>{qkv_in_scale});
-      // VLOG(0) << "qkv_in_scale"  << qkv_in_scale;
       fused_multi_transformer_op_desc.SetAttr(
           "out_linear_in_scale", std::vector<float>{out_linear_in_scale});
-      // VLOG(0) << "out_linear_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn1_in_scale", std::vector<float>{ffn0_in_scale});
-      // VLOG(0) << "ffn1_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
-      // VLOG(0) << "ffn2_in_scale";
-
-      //   fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
-      //   fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
-      //   fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
 
       fused_multi_transformer_op_desc.SetInput(
           "QKVOutScale", {matmul0_w->Name() + "_out_scale"});
@@ -2536,9 +2516,9 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
 
   bool enable_int8 = graph->Get<bool>("enable_int8");
   if (enable_int8) {
-    VLOG(0) << "encoder with int8";
+    VLOG(3) << "MultiDevicesFusedMultiTransformerDecoderFuseQKVPass with int8";
   } else {
-    VLOG(0) << "encoder with fp";
+    VLOG(3) << "MultiDevicesFusedMultiTransformerDecoderFuseQKVPass with fp";
   }
 
   // Create pattern.
@@ -2653,11 +2633,8 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                                             c_identity_op->GetAttr("ring_id"));
 
     if (enable_int8) {
-      // Set input scale
-      //   std::string qkv_input_name = matmul0_op->Input("X")[0];
       std::string matmul_input_scale_suffix = c_identity_op->Input("X")[0];
       auto qkv_in_scale = PADDLE_GET_CONST(
-          //   float, matmul0_op->GetAttr("Input_scale_" + qkv_input_name));
           float,
           c_identity_op->GetAttr("Input_scale_" + matmul_input_scale_suffix));
 
@@ -2666,12 +2643,9 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
           float,
           matmul_linear_op->GetAttr("Input_scale_" + out_linear_input_name));
 
-      //   std::string ffn0_input_name = ffn_matmul_0_op->Input("X")[0];
       auto* ffn_c_identity_op = ffn_c_identity->Op();
       std::string ffn_input_scale_suffix = ffn_c_identity_op->Input("X")[0];
       auto ffn0_in_scale = PADDLE_GET_CONST(
-          //   float, ffn_matmul_0_op->GetAttr("Input_scale_" +
-          //   ffn0_input_name));
           float,
           ffn_c_identity_op->GetAttr("Input_scale_" + ffn_input_scale_suffix));
 
@@ -2687,19 +2661,12 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
 
       fused_multi_transformer_op_desc.SetAttr("qkv_in_scale",
                                               std::vector<float>{qkv_in_scale});
-      // VLOG(0) << "qkv_in_scale"  << qkv_in_scale;
       fused_multi_transformer_op_desc.SetAttr(
           "out_linear_in_scale", std::vector<float>{out_linear_in_scale});
-      // VLOG(0) << "out_linear_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn1_in_scale", std::vector<float>{ffn0_in_scale});
-      // VLOG(0) << "ffn1_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
-
-      //   fused_multi_transformer_op_desc.SetAttr("quant_max_bound", 127.0f);
-      //   fused_multi_transformer_op_desc.SetAttr("quant_min_bound", -128.0f);
-      //   fused_multi_transformer_op_desc.SetAttr("quant_round_type", 0);
 
       fused_multi_transformer_op_desc.SetInput(
           "QKVOutScale", {matmul0_w->Name() + "_out_scale"});
