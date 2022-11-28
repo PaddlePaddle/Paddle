@@ -287,7 +287,7 @@ def sequence_conv_pool(
     and :ref:`api_fluid_layers_sequence_pool` .
 
     Args:
-        input (Variable): 2-D LoDTensor, the input of sequence_conv,
+        input (Tensor): 2-D LoDTensor, the input of sequence_conv,
             which supports variable-time length input sequence.
             The underlying of input is a matrix with shape
             (T, N), where T is the total time steps in this mini-batch and N is
@@ -311,7 +311,7 @@ def sequence_conv_pool(
         It is a 2-D Tensor, with the same data type as :attr:`input`
 
     Return Type:
-        Variable
+        Tensor
 
     Examples:
         .. code-block:: python
@@ -332,7 +332,7 @@ def sequence_conv_pool(
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
-    conv_out = layers.sequence_conv(
+    conv_out = paddle.static.nn.sequence_lod.sequence_conv(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
