@@ -19,7 +19,7 @@
 
 namespace phi {
 
-static void SetInMemDescWithSqueeze2FuseSupport(
+void SetInMemDescWithSqueeze2FuseSupport(
     const std::vector<int> fused_squeeze2_axes,
     DenseTensor* in,
     const dnnl::memory::desc& in_md) {
@@ -72,7 +72,7 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::CPU,
       true,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
@@ -107,7 +107,7 @@ void TransposeKernel(const Context& dev_ctx,
   }
   dst_md =
       dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
-  auto dst_data = dev_ctx.template Alloc(out, x.type(), dst_md.get_size());
+  auto dst_data = dev_ctx.template Alloc<T>(out);
   auto reorder_dst_memory_p =
       std::make_shared<dnnl::memory>(dst_md, dev_ctx.GetEngine(), dst_data);
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
