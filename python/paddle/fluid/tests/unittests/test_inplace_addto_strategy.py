@@ -69,7 +69,7 @@ def create_program(data_format="NCHW"):
         )
         y = conv(x) + x
 
-        loss = fluid.layers.reduce_sum(y)
+        loss = paddle.sum(y)
 
         sgd = fluid.optimizer.SGD(learning_rate=0.01)
         sgd.minimize(loss)

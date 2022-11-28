@@ -75,7 +75,6 @@ __all__ = [
     'batch_norm',
     'instance_norm',
     'data_norm',
-    'reduce_sum',
     'reduce_mean',
     'reduce_all',
     'reduce_any',
@@ -102,35 +101,27 @@ __all__ = [
     'roi_pool',
     'roi_align',
     'image_resize',
-    'image_resize_short',
-    'resize_linear',
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
     'gather_nd',
-    'random_crop',
     'relu',
     'log',
     'crop_tensor',
     'flatten',
     'unique',
     'unique_with_counts',
-    'scale',
     'elementwise_add',
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
     'gaussian_random_batch_size_like',
     'sum',
     'slice',
-    'strided_slice',
     'shape',
     'size',
-    'logical_and',
-    'logical_or',
     'clip',
     'clip_by_norm',
     'mean',
@@ -146,7 +137,6 @@ __all__ = [
     'bilinear_tensor_product',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
-    'shuffle_channel',
     'temporal_shift',
     'py_func',
     'psroi_pool',
@@ -5844,144 +5834,6 @@ def image_resize(
     return out
 
 
-@templatedoc(op_type="linear_interp")
-def resize_linear(
-    input,
-    out_shape=None,
-    scale=None,
-    name=None,
-    actual_shape=None,
-    align_corners=True,
-    align_mode=1,
-    data_format='NCW',
-):
-    """
-    This op resizes the input by performing linear interpolation based on given
-    output shape which specified by actual_shape, out_shape and scale
-    in priority order.
-
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in
-    the future and only use :attr:`out_shape` instead.
-
-    Align_corners and align_mode are optional parameters,the calculation
-    method of interpolation can be selected by them.
-
-    Example:
-
-    .. code-block:: text
-
-        For scale:
-
-            if align_corners = True && out_size > 1 :
-
-              scale_factor = (in_size-1.0)/(out_size-1.0)
-
-            else:
-
-              scale_factor = float(in_size/out_size)
-
-        Linear interpolation:
-
-          if:
-              align_corners = False , align_mode = 0
-
-              input : (N,C,W_in)
-              output: (N,C,W_out) where:
-
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-
-          else:
-
-              input : (N,C,W_in)
-              output: (N,C,W_out) where:
-              W_out = W_{in} * scale_{factor}
-
-    Parameters:
-        input(Variable): 3-D Tensor(NCW), its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
-        out_shape(list|tuple|Variable|None): Output shape of resize linear
-            layer, the shape is (out_w,). Default: None. If a list, each
-            element can be an integer or a Tensor Variable with shape: [1]. If a
-            Tensor Variable, its dimension size should be 1.
-        scale(float|Variable|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale`.
-             Default: None.
-        actual_shape(Variable): An optional input to specify output shape
-                                dynamically. If provided, image resize
-                                according to this given shape rather than
-                                :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the
-                                highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output
-                                shape dynamically, because :attr:`actual_shape`
-                                will be deprecated. When using actual_shape to
-                                specify output shape, one of :attr:`out_shape`
-                                and :attr:`scale` should also be set, otherwise
-                                errors would be occurred in graph constructing stage.
-                                Default: None
-        align_corners(bool): ${align_corners_comment}
-        align_mode(bool): ${align_mode_comment}
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCW"`, `"NWC"`.
-            The default is `"NCW"`. When it is `"NCW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_width]`.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: 3-D tensor(NCW or NWC).
-
-    Examples:
-        .. code-block:: python
-
-            #declarative mode
-            import paddle.fluid as fluid
-            import numpy as np
-            input = fluid.data(name="input", shape=[None,3,100])
-
-            output = fluid.layers.resize_linear(input=input,out_shape=[50,])
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-
-            input_data = np.random.rand(1,3,100).astype("float32")
-
-            output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data},
-                fetch_list=[output],
-                return_numpy=True)
-
-            print(output_data[0].shape)
-
-            # (1, 3, 50)
-
-            #imperative mode
-            import paddle.fluid.dygraph as dg
-
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                output = fluid.layers.resize_linear(input=input, out_shape=[50,])
-                print(output.shape)
-
-                # [1L, 3L, 50L]
-
-    """
-
-    return image_resize(
-        input,
-        out_shape,
-        scale,
-        name,
-        'LINEAR',
-        actual_shape,
-        align_corners,
-        align_mode,
-        data_format,
-    )
-
-
 @templatedoc(op_type="bilinear_interp")
 def resize_bilinear(
     input,
@@ -6506,46 +6358,6 @@ def resize_nearest(
     )
 
 
-def image_resize_short(input, out_short_len, resample='BILINEAR'):
-    """
-    This op resizes a batch of images. The short edge of input images will be
-    resized to the given 'out_short_len'. The long edge of input images
-    will be resized proportionately to make images' length-width ratio
-    constant.
-
-    Parameters:
-        input (Variable): 4-D tensor(NCHW), The input tensor of image resize layer.
-        out_short_len(int): The length of output images' short edge.
-        resample (str): resample method, default: BILINEAR.
-
-    Returns:
-        Variable: 4-D tensor(NCHW).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            input = fluid.data(name="input", shape=[None,3,6,9], dtype="float32")
-            out = fluid.layers.image_resize_short(input, out_short_len=3)
-    """
-    in_shape = input.shape
-    if len(in_shape) != 4:
-        raise ValueError(
-            "The rank of input must be 4 (num_batches, channels, in_h, in_w)."
-        )
-    hw = in_shape[2:4]
-    short_idx = hw.index(min(hw))
-    long_idx = 1 - short_idx
-    out_shape = list(hw)
-    out_shape[short_idx] = out_short_len
-    out_shape[long_idx] = int(
-        float(out_shape[long_idx])
-        * (float(out_short_len) / float(hw[short_idx]))
-        + 0.5
-    )
-    return image_resize(input=input, out_shape=out_shape, resample=resample)
-
-
 @deprecated(since="2.0.0", update_to="paddle.gather_nd")
 def gather_nd(input, index, name=None):
     """
@@ -6642,63 +6454,6 @@ def gather_nd(input, index, name=None):
         outputs={"Out": output},
     )
     return output
-
-
-@templatedoc()
-def random_crop(x, shape, seed=None):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        shape(${shape_type}): ${shape_comment}
-        seed(int|${seed_type}|None): ${seed_comment} By default, the seed will
-            get from `random.randint(-65536, 65535)`.
-
-    Returns:
-        ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            img = fluid.data("img", [None, 3, 256, 256])
-            # cropped_img is [-1, 3, 224, 224]
-            cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
-
-            # cropped_img2 shape: [-1, 2, 224, 224]
-            # cropped_img2 = fluid.layers.random_crop(img, shape=[2, 224, 224])
-
-            # cropped_img3 shape: [-1, 3, 128, 224]
-            # cropped_img3 = fluid.layers.random_crop(img, shape=[128, 224])
-
-    """
-    helper = LayerHelper("random_crop", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32'], 'random_crop'
-    )
-    check_type(shape, 'shape', (list, Variable), 'random_crop')
-    dtype = x.dtype
-    out = helper.create_variable_for_type_inference(dtype)
-    if seed is None:
-        seed = np.random.randint(-65536, 65536)
-    op_attrs = {"shape": shape}
-    if isinstance(seed, int):
-        op_attrs["startup_seed"] = seed
-        seed = helper.create_variable(
-            name=unique_name.generate("random_crop_seed"),
-            dtype="int64",
-            persistable=True,
-        )
-    elif not isinstance(seed, Variable):
-        raise ValueError("'seed' must be a Variable or an int.")
-    helper.append_op(
-        type="random_crop",
-        inputs={"X": x, "Seed": seed},
-        outputs={"Out": out, "SeedOut": seed},
-        attrs=op_attrs,
-    )
-    return out
 
 
 def log(x, name=None):
@@ -7073,115 +6828,6 @@ def flatten(x, axis=1, name=None):
 
 
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-
-
-@deprecated(since='1.8.0', update_to="paddle.uniform")
-@templatedoc()
-def uniform_random_batch_size_like(
-    input,
-    shape,
-    dtype='float32',
-    input_dim_idx=0,
-    output_dim_idx=0,
-    min=-1.0,
-    max=1.0,
-    seed=0,
-):
-    """
-    This OP initializes a variable with random values sampled from a
-    uniform distribution in the range [min, max). The input_dim_idx used to get the input dimension value which will be used to resize the output dimension.
-
-    .. code-block:: text
-
-        *Case 1:
-
-            Given:
-                input =[[0.946741  , 0.1357001 , 0.38086128]]    # input.shape=[1,3]
-                shape=[2,4]
-
-            result.shape[output_dim_idx] = input.shape[input_dim_idx],
-            output_dim_idx = 0,
-            input_dim_idx = 0,
-            result.shape[0] = input.shape[0],
-            then:
-                result=[[ 0.3443427 , -0.23056602,  0.3477049 ,  0.06139076]]    # result.shape=[1,4]
-
-       *Case 2:
-
-           Given:
-               input =[[0.946741  , 0.1357001 , 0.38086128]]     # input.shape=[1,3]
-               shape=[2,4]
-               input_dim_idx=1
-               output_dim_idx=1
-
-           result.shape[output_dim_idx] = input.shape[input_dim_idx],
-           output_dim_idx = 1,
-           input_dim_idx = 1,
-           result.shape[1] = input.shape[1],
-           then:
-               result=[[-0.23133647, -0.84195036,  0.21441269],
-                       [-0.08774924,  0.25605237, -0.09403259]]    # result.shape=[2,3]
-    Args:
-        input (Variable): A Tensor. Supported data types: float32, float64.
-        shape (tuple|list): A python list or python tuple. The shape of the output Tensor, the data type is int.
-        input_dim_idx (int, optional): An index used to get the input dimension value which will be used to resize the output dimension. Default  0.
-        output_dim_idx (int, optional): An index used to indicate the specific dimension that will be replaced by corresponding input dimension value. Default 0.
-        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
-        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
-        seed (int, optional):  Random seed used for generating samples. 0 means use a seed generated by the system.Note that if seed is not 0, this operator will always generate the same random numbers every time.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
-    Returns:
-        Variable: A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            # example 1:
-            input = fluid.data(name="input", shape=[1, 3], dtype='float32')
-            out_1 = fluid.layers.uniform_random_batch_size_like(input, [2, 4]) # out_1.shape=[1, 4]
-
-            # example 2:
-            out_2 = fluid.layers.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # out_2.shape=[2, 3]
-
-
-    """
-    check_variable_and_dtype(
-        input,
-        'Input',
-        ("float32", 'float64', "uint16"),
-        'uniform_random_batch_size_like',
-    )
-    check_type(shape, 'shape', (list, tuple), 'uniform_random_batch_size_like')
-    check_dtype(
-        dtype,
-        'dtype',
-        ('float32', 'float64', "uint16"),
-        'uniform_random_batch_size_like',
-    )
-
-    helper = LayerHelper('uniform_random_batch_size_like', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='uniform_random_batch_size_like',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'min': min,
-            'max': max,
-            'seed': seed,
-            'dtype': c_dtype,
-        },
-    )
-
-    return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.normal")
@@ -7776,227 +7422,6 @@ def slice(input, axes, starts, ends):
     return out
 
 
-@deprecated(since='2.0.0', update_to="paddle.strided_slice")
-def strided_slice(input, axes, starts, ends, strides):
-    """
-    :alias_main: paddle.strided_slice
-        :alias: paddle.strided_slice,paddle.tensor.strided_slice,paddle.tensor.manipulation.strided_slice
-        :old_api: paddle.fluid.layers.strided_slice
-
-    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
-    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
-    end dimension for each axis in the list of axes and Slice uses this information
-    to slice the input data tensor. If a negative value is passed to
-    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
-    axis :math:`i-1` th(here 0 is the initial position). The ``strides`` represents steps of
-    slicing and if the ``strides`` is negative, slice operation is in the opposite direction.
-    If the value passed to ``starts`` or ``ends`` is greater than n
-    (the number of elements in this dimension), it represents n.
-    For slicing to the end of a dimension with unknown size, it is recommended
-    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` , ``ends`` and ``strides``.
-    Following examples will explain how strided_slice works:
-
-    .. code-block:: text
-
-        Case1:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [1, 0]
-                ends = [2, 3]
-                strides = [1, 1]
-            Then:
-                result = [ [5, 6, 7], ]
-
-        Case2:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [0, 1]
-                ends = [2, 0]
-                strides = [1, -1]
-            Then:
-                result = [ [8, 7, 6], ]
-
-        Case3:
-            Given:
-                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
-                axes = [0, 1]
-                starts = [0, 1]
-                ends = [-1, 1000]
-                strides = [1, 3]
-            Then:
-                result = [ [2], ]
-    Args:
-        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
-        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
-                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
-        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
-                It represents starting indices of corresponding axis in ``axes``.
-        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
-                It represents ending indices of corresponding axis in ``axes``.
-        strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .
-                It represents slice step of corresponding axis in ``axes``.
-
-    Returns:
-        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``input``. The data type is same as ``input``.
-
-    Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Variable.
-        TypeError: The type of ``ends`` must be list, tuple or Variable.
-        TypeError: The type of ``strides`` must be list, tuple or Variable.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-
-            paddle.enable_static()
-            input = fluid.data(
-                name="input", shape=[3, 4, 5, 6], dtype='float32')
-
-            # example 1:
-            # attr starts is a list which doesn't contain tensor Variable.
-            axes = [0, 1, 2]
-            starts = [-3, 0, 2]
-            ends = [3, 2, 4]
-            strides_1 = [1, 1, 1]
-            strides_2 = [1, 1, 2]
-            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides_1)
-            # sliced_1 is input[:, 0:3:1, 0:2:1, 2:4:1].
-
-
-            # example 2:
-            # attr starts is a list which contain tensor Variable.
-            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
-            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
-            # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
-    """
-    if in_dygraph_mode():
-        return _C_ops.strided_slice(input, axes, starts, ends, strides)
-
-    helper = LayerHelper('strided_slice', **locals())
-
-    check_variable_and_dtype(
-        input,
-        'input',
-        ['bool', 'float32', 'float64', 'int32', 'int64'],
-        'strided_slice',
-    )
-    check_type(axes, 'axes', (list, tuple), 'strided_slice')
-    check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
-    check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
-    check_type(strides, 'strides', (list, tuple, Variable), 'strided_slice')
-
-    def check_list_elements_dtype(list_input, input_name):
-        if isinstance(list_input, Variable):
-            check_dtype(
-                list_input.dtype, input_name, ['int32'], 'strided_slice'
-            )
-        else:
-            for i, var in enumerate(list_input):
-                var_name = input_name + '[' + str(i) + ']'
-                if isinstance(var, Variable):
-                    check_dtype(var.dtype, var_name, ['int32'], 'strided_slice')
-
-    check_list_elements_dtype(axes, 'axes')
-    check_list_elements_dtype(starts, 'starts')
-    check_list_elements_dtype(ends, 'ends')
-    check_list_elements_dtype(strides, 'strides')
-
-    def get_new_list_tensor(old_list):
-        new_list_tensor = []
-        for dim in old_list:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_list_tensor.append(dim)
-            else:
-                assert isinstance(dim, int)
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_list_tensor.append(temp_out)
-        return new_list_tensor
-
-    inputs = {'Input': input}
-    attrs = {'axes': axes}
-    infer_flags = list(1 for i in range(len(axes)))
-
-    if _non_static_mode():
-        inputs = {'Input': input}
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'strides': strides,
-            'infer_flags': infer_flags,
-        }
-    else:
-        # starts
-        if isinstance(starts, Variable):
-            starts.stop_gradient = True
-            inputs['StartsTensor'] = starts
-        elif isinstance(starts, (list, tuple)):
-            attrs['starts'] = []
-            if utils._contain_var(starts):
-                inputs['StartsTensorList'] = get_new_list_tensor(starts)
-                for i, dim in enumerate(starts):
-                    if isinstance(dim, Variable):
-                        attrs['starts'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['starts'].append(dim)
-            else:
-                attrs['starts'] = starts
-
-        # ends
-        if isinstance(ends, Variable):
-            ends.stop_gradient = True
-            inputs['EndsTensor'] = ends
-        elif isinstance(ends, (list, tuple)):
-            attrs['ends'] = []
-            if utils._contain_var(ends):
-                inputs['EndsTensorList'] = get_new_list_tensor(ends)
-                for i, dim in enumerate(ends):
-                    if isinstance(dim, Variable):
-                        attrs['ends'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['ends'].append(dim)
-            else:
-                attrs['ends'] = ends
-
-        # strides
-        if isinstance(strides, Variable):
-            strides.stop_gradient = True
-            inputs['StridesTensor'] = strides
-        elif isinstance(strides, (list, tuple)):
-            attrs['strides'] = []
-            if utils._contain_var(strides):
-                inputs['StridesTensorList'] = get_new_list_tensor(strides)
-                for i, dim in enumerate(strides):
-                    if isinstance(dim, Variable):
-                        attrs['strides'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['strides'].append(dim)
-            else:
-                attrs['strides'] = strides
-        attrs['infer_flags'] = infer_flags
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('input')
-    )
-    helper.append_op(
-        type='strided_slice', inputs=inputs, attrs=attrs, outputs={'Out': out}
-    )
-
-    return out
-
-
 def shape(input):
     """
     :alias_main: paddle.shape
@@ -8163,103 +7588,6 @@ def _elementwise_op(helper):
         inputs={'X': x, 'Y': y},
         outputs={'Out': out},
         attrs={'axis': axis, 'use_mkldnn': use_mkldnn},
-    )
-    return helper.append_activation(out)
-
-
-def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
-    """
-
-    Putting scale and bias to the input Tensor as following:
-
-    ``bias_after_scale`` is True:
-
-    .. math::
-                            Out=scale*X+bias
-
-    ``bias_after_scale`` is False:
-
-    .. math::
-                            Out=scale*(X+bias)
-
-    Args:
-        x(Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
-        bias(float): The bias to be put on the input.
-        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
-        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tensor: Output tensor of scale operator, with shape and data type same as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            # scale as a float32 number
-            import paddle
-
-            data = paddle.randn(shape=[2,3], dtype='float32')
-            res = paddle.scale(data, scale=2.0, bias=1.0)
-
-        .. code-block:: python
-
-            # scale with parameter scale as a Tensor
-            import paddle
-
-            data = paddle.randn(shape=[2, 3], dtype='float32')
-            factor = paddle.to_tensor([2], dtype='float32')
-            res = paddle.scale(data, scale=factor, bias=1.0)
-
-    """
-
-    if in_dygraph_mode():
-        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
-    if _non_static_mode():
-        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        out = _legacy_C_ops.scale(
-            x,
-            'scale',
-            float(_scale),
-            'bias',
-            float(bias),
-            'bias_after_scale',
-            bias_after_scale,
-        )
-        return dygraph_utils._append_activation_in_dygraph(out)
-
-    check_variable_and_dtype(
-        x,
-        "x",
-        [
-            'float16',
-            'uint16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-        ],
-        "scale",
-    )
-    inputs = {'X': [x]}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = [scale]
-    else:
-        attrs['scale'] = float(scale)
-    helper = LayerHelper('scale', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
     return helper.append_activation(out)
 
@@ -8775,88 +8103,6 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
 
     return out
-
-
-def logical_and(x, y, out=None, name=None):
-    r"""
-
-    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = x \&\& y
-
-    .. note::
-        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([True])
-            y = paddle.to_tensor([True, False, True, False])
-            res = paddle.logical_and(x, y)
-            print(res) # [True False True False]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_and(x, y)
-
-    return _logical_op(
-        op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
-def logical_or(x, y, out=None, name=None):
-    """
-
-    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = x || y
-
-    .. note::
-        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            x_data = np.array([True, False], dtype=np.bool_).reshape(2, 1)
-            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape(2, 2)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
-            res = paddle.logical_or(x, y)
-            print(res) # [[ True  True] [ True False]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_or(x, y)
-    return _logical_op(
-        op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
-    )
 
 
 @templatedoc()
@@ -9848,81 +9094,6 @@ def get_tensor_from_selected_rows(x, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={},
-    )
-    return out
-
-
-def shuffle_channel(x, group, name=None):
-    """
-    This operator shuffles the channels of input x.
-    It divide the input channels in each group into :attr:`group` subgroups,
-    and obtain a new order by selecting element from every subgroup one by one.
-
-    Please refer to the paper
-    https://arxiv.org/pdf/1707.01083.pdf
-
-    .. code-block:: text
-
-        Given a 4-D tensor input with the shape (N, C, H, W):
-            input.shape = (1, 4, 2, 2)
-            input.data =[[[[0.1, 0.2],
-                           [0.2, 0.3]],
-
-                          [[0.3, 0.4],
-                           [0.4, 0.5]],
-
-                          [[0.5, 0.6],
-                           [0.6, 0.7]],
-
-                          [[0.7, 0.8],
-                           [0.8, 0.9]]]]
-            Given group: 2
-            then we get a 4-D tensor out with the same shape of input:
-            out.shape = (1, 4, 2, 2)
-            out.data = [[[[0.1, 0.2],
-                          [0.2, 0.3]],
-
-                         [[0.5, 0.6],
-                          [0.6, 0.7]],
-
-                         [[0.3, 0.4],
-                          [0.4, 0.5]],
-
-                         [[0.7, 0.8],
-                          [0.8, 0.9]]]]
-
-    Args:
-        x(Variable): The input tensor variable. It should be a 4-D tensor with shape [N, C, H, W]
-        group(int): Indicating the counts of subgroups, It should divide the number of channels.
-
-    Returns:
-        out(Variable): the channels shuffling result is a tensor variable with the
-        same shape and same type as the input.
-
-    Raises:
-        ValueError: If group is not an int type variable.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
-            out = fluid.layers.shuffle_channel(x=input, group=2)
-    """
-    helper = LayerHelper("shuffle_channel", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    if not isinstance(group, int):
-        raise TypeError("group must be int type")
-
-    helper.append_op(
-        type="shuffle_channel",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"group": group},
     )
     return out
 

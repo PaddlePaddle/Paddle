@@ -117,8 +117,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
-      var_scope_(scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -311,6 +311,22 @@ void InterpreterCore::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
   execution_config_.skip_gc_vars = skip_gc_vars;
 }
 
+void InterpreterCore::SetJitInputVars(
+    const std::set<std::string>& jit_input_vars) {
+  PADDLE_ENFORCE_EQ(
+      execution_config_.jit_input_vars.empty(),
+      true,
+      platform::errors::PreconditionNotMet(
+          "execution_config_.jit_input_vars can only be initialized once, now "
+          "execution_config_.jit_input_vars is "
+          "not empty, do not call SetJitInputVars method repeatedly."));
+  execution_config_.jit_input_vars = jit_input_vars;
+}
+
+const std::set<std::string>& InterpreterCore::JitInputVars() const {
+  return execution_config_.jit_input_vars;
+}
+
 const VariableScope* InterpreterCore::GetVariableScope() const {
   return &var_scope_;
 }
@@ -488,20 +504,43 @@ void InterpreterCore::BuildInplace() {
 }
 
 void InterpreterCore::BuildOperatorDependences() {
-  // analysis the dependences between ops, set the dependecy_count_ and Call
-  // Schedule
-  auto op_nums = vec_instruction_.size();
-  dependecy_count_.resize(op_nums);
-  auto op2downstream = dependency_builder_.Build(
+  // analysis the dependences between ops, add next_instr_list to each instr,
+  // and set the dependecy_count_
+  size_t instr_num = vec_instruction_.size();
+  dependecy_count_.resize(instr_num);
+  auto downstream_map = dependency_builder_.Build(
       vec_instruction_,
       /*is_sequential_run=*/FLAGS_new_executor_sequential_run);
-  for (size_t op = 0; op < vec_instruction_.size(); ++op) {
-    auto op_list = op2downstream[op];
-    std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
-    stream_analyzer_.Schedule(downsteam_vector, &vec_instruction_, op);
 
-    for (auto inst_id : op_list) {
-      dependecy_count_[inst_id]++;
+  for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
+    Instruction& cur_instr = vec_instruction_[instr_id];
+    const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
+
+    if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+      for (size_t next_instr_id : next_instr_ids) {
+        if (vec_instruction_[next_instr_id].KernelType() ==
+            OpFuncType::kGpuAsync) {
+          cur_instr.AddNextInstrInSameThread(next_instr_id);
+        } else {
+          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+        }
+      }
+    } else {
+      bool has_instr_in_same_thread = false;
+      for (size_t next_instr_id : next_instr_ids) {
+        if (!has_instr_in_same_thread &&
+            vec_instruction_[next_instr_id].KernelType() !=
+                OpFuncType::kGpuAsync) {
+          cur_instr.AddNextInstrInSameThread(next_instr_id);
+          has_instr_in_same_thread = true;
+        } else {
+          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+        }
+      }
+    }
+
+    for (size_t next_instr_id : next_instr_ids) {
+      ++dependecy_count_[next_instr_id];
     }
   }
 }
@@ -537,6 +576,32 @@ void InterpreterCore::Convert(
   }
 
   BuildOperatorDependences();
+
+  stream_analyzer_.ConstructEvents(dependency_builder_, &vec_instruction_);
+
+  // add event for the input var of jit program, since there are async copied
+  // from gpu_pinned place to gpu place on compute stream.
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      auto& inst = vec_instruction_[i];
+      if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
+          platform::is_gpu_place(place_)) {
+        for (auto& item : inst.Inputs()) {
+          for (auto var_id : item.second) {
+            auto name = var_scope_.GetNameById(var_id);
+            if (JitInputVars().count(name)) {
+              auto device_event = std::make_shared<platform::DeviceEvent>(
+                  place_, platform::GenerateDeviceEventFlag());
+              VLOG(4) << "Add input event for input: " << name << " of "
+                      << inst.OpBase()->Type();
+              inst.AddEventToWait(
+                  i, device_event, stream_analyzer_.GetWaiterType(inst));
+            }
+          }
+        }
+      }
+    }
+  }
 
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
@@ -635,7 +700,7 @@ void InterpreterCore::Convert(
   BuildSkipShareLoDInfo();
 
   bool inplaced = false;
-  for (auto inst : vec_instruction_) {
+  for (const Instruction& inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
         inst.OpBase()->Type() == "share_data") {
       VLOG(4) << "Already inplaced, skip inplace now.";
@@ -717,7 +782,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       platform::RecordOpInfoSupplement(op->Type(),
                                        op->Attrs(),
                                        *(instr_node.InnerInferShapeContext()),
-                                       *(instr_node.InnerRuntimeContext()));
+                                       *(instr_node.InnerRuntimeContext()),
+                                       op->Id());
     }
   }
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
@@ -812,6 +878,19 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      if (vec_instr.at(i).OpBase()->Type() == interpreter::kMemcpyD2H) {
+        platform::DeviceContextPool& pool =
+            platform::DeviceContextPool::Instance();
+        auto* default_dev_ctx = pool.Get(place_);
+        for (auto& event : vec_instr.at(i).EventsToWait()) {
+          platform::RecordEvent record(
+              "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+          VLOG(3) << "Record event on default stream in jit_input_var at op: "
+                  << vec_instr.at(i).OpBase()->Type();
+          event.event_->Record(default_dev_ctx);
+        }
+      }
       async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
                                  [this, i] { RunInstructionAsync(i); });
     }
@@ -843,7 +922,6 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::deque<size_t>* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
-  auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
@@ -851,66 +929,21 @@ void InterpreterCore::RunNextInstructions(
     return deps_[next_id]->CheckAndDecrease();
   };
 
-  if (instr.KernelType() == OpFuncType::kQueueAsync) {
-    // move all sync_ops into other threads
-    for (size_t next_id : next_instr.SyncRunIds()) {
-      if (IsReady(next_id)) {
-        async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
-            [this, next_id]() { RunInstructionAsync(next_id); });
-      }
+  for (size_t next_instr_id : instr.NextInstrsInDifferenceThread()) {
+    if (IsReady(next_instr_id)) {
+      async_work_queue_->AddTask(
+          vec_instruction_[next_instr_id].KernelType(),
+          [this, next_instr_id]() { RunInstructionAsync(next_instr_id); });
     }
-    // keep all async_ops running in current thread
-    for (size_t next_id : next_instr.DirectRunIds()) {
-      if (IsReady(next_id)) {
-        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
-          reserved_next_ops->push_back(next_id);
-        } else {
-          reserved_next_ops->push_front(next_id);
-        }
-      }
-    }
-    for (size_t next_id : next_instr.EventRunIds()) {
-      if (IsReady(next_id)) {
-        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
-          reserved_next_ops->push_back(next_id);
-        } else {
-          reserved_next_ops->push_front(next_id);
-        }
-      }
-    }
-  } else {
-    // move async_ops into async_thread
-    for (auto next_id : next_instr.EventRunIds()) {
-      if (IsReady(next_id)) {
-        async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
-            [this, next_id] { RunInstructionAsync(next_id); });
-      }
-    }
+  }
 
-    std::vector<size_t> direct_run_ops = next_instr.SyncRunIds();
-    direct_run_ops.insert(direct_run_ops.end(),
-                          next_instr.DirectRunIds().begin(),
-                          next_instr.DirectRunIds().end());
-
-    int64_t first_op = -1;
-    for (auto next_id : direct_run_ops) {
-      if (IsReady(next_id)) {
-        // only keep one sync op running in current thread
-        if (first_op == -1 &&
-            vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
-          first_op = next_id;
-          continue;
-        }
-        // move rest ops into other threads
-        async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
-            [this, next_id] { RunInstructionAsync(next_id); });
+  for (size_t next_instr_id : instr.NextInstrsInSameThread()) {
+    if (IsReady(next_instr_id)) {
+      if (vec_instruction_[next_instr_id].GetPriority() == Priority::kLowest) {
+        reserved_next_ops->push_back(next_instr_id);
+      } else {
+        reserved_next_ops->push_front(next_instr_id);
       }
-    }
-    if (first_op != -1) {
-      reserved_next_ops->push_front(first_op);
     }
   }
 }
@@ -924,9 +957,11 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
             << " name:" << instr_node.OpBase()->Type() << " type:"
-            << (instr_node.KernelType() == OpFuncType::kQueueSync
-                    ? "kQueueSync"
-                    : "kQueueAsync")
+            << (instr_node.KernelType() == OpFuncType::kCpuSync
+                    ? "kCpuSync"
+                    : (instr_node.KernelType() == OpFuncType::kGpuSync
+                           ? "kGpuSync"
+                           : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
 
     auto* op = instr_node.OpBase();
@@ -934,7 +969,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
         op->Type(), platform::TracerEventType::Operator, 1);
 
     try {
-      interpreter::WaitEvent(instr_node, place_);
+      instr_node.WaitEvent(place_);
 
       if (!instr_node.IsArtificial()) {
         RunInstruction(instr_node);
@@ -942,7 +977,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
         interpreter::LogDeviceMemoryStats(place_);
       }
 
-      interpreter::RecordEvent(instr_node, place_);
+      instr_node.RecordEvent(place_);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -984,7 +1019,7 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
   if (!IsInterpretercoreFastGCEnabled() ||
-      instr.KernelType() != OpFuncType::kQueueAsync) {
+      instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
   platform::RecordEvent record(
