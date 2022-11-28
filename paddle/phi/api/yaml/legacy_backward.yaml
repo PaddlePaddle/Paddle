@@ -1918,18 +1918,6 @@
   optional : logits_length
   no_need_buffer : logits
 
-- backward_op : warprnnt_grad
-  forward : warprnnt (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, float fastemit_lambda, int num_threads) -> Tensor(loss), Tensor(warprnntgrad)
-  args : (Tensor logits, Tensor logits_length, Tensor warprnntgrad, Tensor loss_grad, int blank, float fastemit_lambda, int num_threads)
-  output : Tensor(logits_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [logits]
-  kernel :
-    func : warprnnt_grad
-  optional : logits_length
-  no_need_buffer : logits
-
 - backward_op : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor condition, Tensor x, Tensor y, Tensor out_grad)

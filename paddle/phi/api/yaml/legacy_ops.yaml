@@ -2415,17 +2415,6 @@
   intermediate: warpctcgrad
   backward : warpctc_grad
 
-- op : warprnnt
-  args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, float fastemit_lambda, int num_threads)
-  output :  Tensor(loss), Tensor(warprnntgrad)
-  infer_meta :
-    func : WarprnntInferMeta
-  kernel :
-    func : warprnnt
-    data_type: logits
-  intermediate: warprnntgrad
-  backward : warprnnt_grad
-
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
   output : Tensor
