@@ -182,7 +182,7 @@ class TestDygraphTripleGrad(TestCase):
         numel = z_np.size
         z.stop_gradient = False
 
-        out = fluid.layers.sigmoid(paddle.matmul(x, y) + z)
+        out = paddle.nn.functional.sigmoid(paddle.matmul(x, y) + z)
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)
@@ -278,7 +278,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         numel = z_np.size
         z.stop_gradient = False
 
-        out = fluid.layers.sigmoid(paddle.matmul(x, y) + z)
+        out = paddle.nn.functional.sigmoid(paddle.matmul(x, y) + z)
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)

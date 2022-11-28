@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
 import multiprocessing
-from contextlib import closing
 import socket
+import time
+import unittest
+from contextlib import closing
 
 import paddle
 import paddle.fluid as fluid

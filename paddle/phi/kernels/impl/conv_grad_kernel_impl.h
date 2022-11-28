@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
 namespace phi {
 
@@ -147,10 +147,8 @@ void ConvGradKernel(const Context& dev_ctx,
     if (is_expand) {
       set_zero(dev_ctx, &transformed_input_grad, static_cast<T>(0));
     }
-    paddle::operators::math::Col2VolFunctor<Context, T> col2vol;
-    paddle::operators::math::
-        Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-            col2im;
+    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
+    phi::funcs::Col2VolFunctor<Context, T> col2vol;
 
     for (int i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
@@ -203,10 +201,8 @@ void ConvGradKernel(const Context& dev_ctx,
     Tensor filter_grad_ = *filter_grad;
     filter_grad_.Resize(filter_matrix_shape);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-    paddle::operators::math::
-        Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-            im2col;
-    paddle::operators::math::Vol2ColFunctor<Context, T> vol2col;
+    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+    phi::funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
           transformed_output_grad.Slice(i, i + 1).Resize(output_matrix_shape);
@@ -381,10 +377,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     if (is_expand) {
       set_zero(dev_ctx, &transformed_dX, static_cast<T>(0));
     }
-    paddle::operators::math::Col2VolFunctor<Context, T> col2vol;
-    paddle::operators::math::
-        Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-            col2im;
+    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
+    phi::funcs::Col2VolFunctor<Context, T> col2vol;
 
     for (int i = 0; i < batch_size; i++) {
       DenseTensor dy_batch =
@@ -428,10 +422,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, dW, static_cast<T>(0));
     DenseTensor dW_arr = *dW;
     dW_arr.Resize(filter_matrix_shape);
-    paddle::operators::math::
-        Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-            im2col;
-    paddle::operators::math::Vol2ColFunctor<Context, T> vol2col;
+    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+    phi::funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor dy_batch =
           transformed_dY.Slice(i, i + 1).Resize(output_matrix_shape);
@@ -477,10 +469,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     }
 
     set_zero(dev_ctx, &transformed_ddY, static_cast<T>(0));
-    paddle::operators::math::
-        Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-            im2col;
-    paddle::operators::math::Vol2ColFunctor<Context, T> vol2col;
+    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+    phi::funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor ddy_batch =
           transformed_ddY.Slice(i, i + 1).Resize(output_matrix_shape);

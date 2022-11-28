@@ -46,6 +46,7 @@ from .. import functional as F
 from paddle import _C_ops, _legacy_C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
+from paddle.device import get_all_custom_device_type
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
@@ -318,6 +319,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 class GroupNorm(Layer):
     """
+
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -338,7 +340,7 @@ class GroupNorm(Layer):
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: Tensor with shape: (batch, num_features, *).
+        - x: Tensor with shape: attr:`(batch, num_features, *)`.
         - output: The same shape as input x.
 
     Returns:
@@ -681,6 +683,26 @@ class _BatchNormBase(Layer):
             shape=param_shape,
         )
         self._variance.stop_gradient = True
+
+        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        if 'npu' in get_all_custom_device_type():
+            with no_grad():
+                weight_trans = _C_ops.npu_identity(
+                    self.weight, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                bias_trans = _C_ops.npu_identity(
+                    self.bias, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                mean_trans = _C_ops.npu_identity(
+                    self._mean, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                var_trans = _C_ops.npu_identity(
+                    self._variance, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                weight_trans._share_underline_tensor_to(self.weight)
+                bias_trans._share_underline_tensor_to(self.bias)
+                mean_trans._share_underline_tensor_to(self._mean)
+                var_trans._share_underline_tensor_to(self._variance)
 
         self._data_format = data_format
         self._in_place = False
@@ -1041,6 +1063,7 @@ class BatchNorm3D(_BatchNormBase):
 
 class SyncBatchNorm(_BatchNormBase):
     r"""
+
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can
     be used as a normalizer function for other operations, such as conv2d and fully connected
@@ -1086,9 +1109,9 @@ class SyncBatchNorm(_BatchNormBase):
     - :math:`\beta` : trainable shift parameter vector
 
     Note:
-        If you want to use container to pack your model and has ``SyncBatchNorm`` in the
-        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of
-        ``list`` to pack the model.
+        If you want to use container to pack your model and has :ref:`api_paddle_nn_SyncBatchNorm` in the
+        evaluation phase, please use :ref:`api_paddle_nn_LayerList` or :ref:`api_paddle_nn_Sequential` instead of
+        :ref:`api_paddle_hub_list` to pack the model.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -1106,29 +1129,30 @@ class SyncBatchNorm(_BatchNormBase):
              have trainable bias parameter. Default: None.
 
     Shapes:
-        input: Tensor that the dimension from 2 to 5.
-        output: Tensor with the same shape as input.
+        - input: Tensor that the dimension from 2 to 5.
+        - output: Tensor with the same shape as input.
 
     Examples:
         .. code-block:: python
 
-          # required: gpu
+            # required: gpu
 
-          import paddle
-          import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+            x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
-          if paddle.is_compiled_with_cuda():
-              sync_batch_norm = nn.SyncBatchNorm(2)
-              hidden1 = sync_batch_norm(x)
-              print(hidden1)
-              # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-              #        [[[[ 0.26824948,  1.09363246],
-              #           [ 0.26824948, -1.63013160]],
+            if paddle.is_compiled_with_cuda():
+                sync_batch_norm = nn.SyncBatchNorm(2)
+                hidden1 = sync_batch_norm(x)
+                print(hidden1)
+                # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                #        [[[[ 0.26824948,  1.09363246],
+                #           [ 0.26824948, -1.63013160]],
 
-              #          [[ 0.80956620, -0.66528702],
-              #           [-1.27446556,  1.13018656]]]])
+                #          [[ 0.80956620, -0.66528702],
+                #           [-1.27446556,  1.13018656]]]])
+
     """
 
     def __init__(
@@ -1277,8 +1301,8 @@ class SyncBatchNorm(_BatchNormBase):
             The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
 
         Examples:
-
             .. code-block:: python
+
                 import paddle
                 import paddle.nn as nn
 

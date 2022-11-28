@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -50,7 +51,7 @@ class TestBase(IPUOpTest):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         add = paddle.fluid.layers.elementwise_add(x, x)
-        out = paddle.fluid.layers.reshape(add, **self.attrs)
+        out = paddle.reshape(add, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

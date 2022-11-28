@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
 from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
@@ -104,7 +105,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
 
-                y_var = fluid.layers.conv2d_transpose(
+                y_var = paddle.static.nn.conv2d_transpose(
                     x_var,
                     self.num_filters,
                     filter_size=self.filter_size,
