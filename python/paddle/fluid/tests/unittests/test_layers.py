@@ -3536,7 +3536,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.mish(input, name='mish')
+            out = paddle.nn.functional.mish(input, name='mish')
             return out
 
     def make_cross_entropy(self):

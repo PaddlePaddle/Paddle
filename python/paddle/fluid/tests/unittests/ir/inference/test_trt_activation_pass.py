@@ -165,7 +165,7 @@ class TensorRTSubgraphPassMishTest(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassMishFp16SerializeTest(
@@ -178,7 +178,7 @@ class TensorRTSubgraphPassMishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
@@ -199,7 +199,7 @@ class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassPreluAllTest(TensorRTSubgraphPassActivationTest):

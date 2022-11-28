@@ -3414,7 +3414,7 @@ def ref_mish(x, threshold=20.0):
 class TestMish(TestActivation):
     def setUp(self):
         self.op_type = "mish"
-        self.python_api = paddle.fluid.layers.nn.mish
+        self.python_api = paddle.nn.functional.mish
         self.init_dtype()
         self.init_shape()
 
@@ -3480,7 +3480,7 @@ class TestMishAPI(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.mish(x)
+            out = paddle.nn.functional.mish(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_mish(self.x_np)

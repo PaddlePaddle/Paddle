@@ -146,7 +146,6 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
-    'mish',
     'gather_tree',
     'uniform_random',
     'unbind',
@@ -9980,90 +9979,6 @@ def unique_with_counts(x, dtype='int32'):
     )
 
     return out, index, count
-
-
-@templatedoc()
-def mish(x, threshold=20, name=None):
-    r"""
-    This operator implements the mish activation function.
-    Refer to `Mish: A Self Regularized Non-Monotonic Neural
-    Activation Function <https://arxiv.org/abs/1908.08681>`_
-
-
-    The formula is as follows if :attr:`threshold` is :code:`None` or negative:
-
-    .. math::
-
-        out = x * \\tanh(\\ln(1 + e^{x}))
-
-    The formula is as follows if :attr:`threshold` is set as positive value:
-
-    .. math::
-
-	out = \\begin{cases}
-		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
-		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
-		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
-	      \\end{cases}
-
-    Args:
-        x (Variable): Input feature, multi-dimensional Tensor. The data type
-                      should be float16, float32 or float64.
-        threshold (float|None): threshold for softplus in Mish operator.
-                Approximate value of softplus will be used if absolute value
-                of input is greater than :attr:threshold and :attr:threshold
-                is set as positive value. For none or negative threshold,
-                approximate value is not used. Default 20.
-        name (str, optional): The default value is None. Normally there is no
-                need for user to set this property. For more information, please
-                refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: The output tensor with the same shape and data type as input.
-
-
-    Examples:
-
-    .. code-block:: python
-
-        import paddle.fluid as fluid
-        import numpy as np
-
-        DATATYPE='float32'
-
-        x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
-
-        x = fluid.data(name="x", shape=[None,1,4], dtype=DATATYPE)
-        y = fluid.layers.mish(x)
-
-        place = fluid.CPUPlace()
-        # place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
-        print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.mish(x, threshold)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.mish(x, 'threshold', threshold)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
-    check_type(threshold, 'threshold', (float, int), 'mish')
-    assert (
-        threshold > 0
-    ), "threshold of mish should be greater than 0, " "but got {}".format(
-        threshold
-    )
-
-    helper = LayerHelper('mish', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='mish',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'threshold': threshold},
-    )
-    return out
 
 
 def gather_tree(ids, parents):
