@@ -115,7 +115,7 @@ class LayerHelperBase:
             )
 
     def _create_weight_normalize(self, attr, shape, dtype):
-        from .layers import elementwise_mul, elementwise_div
+        from .layers import elementwise_mul
 
         # Remove these ops when LayerHelper and layers support indicating
         # program and block.
@@ -266,7 +266,7 @@ class LayerHelperBase:
             norm = __norm_except_dim(
                 v, dim=dim, block=self.main_program.current_block()
             )
-            scale = elementwise_div(
+            scale = paddle.divide(
                 x=g, y=norm
             )  # The shapes of g and norm are the same.
             # Currently, elementwise_mul only support broadcast when the shape

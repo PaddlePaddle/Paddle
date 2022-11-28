@@ -23,9 +23,6 @@ from paddle.fluid.framework import (
     _in_legacy_dygraph,
 )
 from paddle.fluid.layers import (
-    elementwise_add,
-    elementwise_div,
-    elementwise_sub,
     nn,
     tensor,
 )
@@ -183,7 +180,7 @@ class Uniform(distribution.Distribution):
             output = uniform_random_tmp_reshape * (
                 zero_tmp_reshape + self.high - self.low
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
@@ -193,7 +190,7 @@ class Uniform(distribution.Distribution):
                 tensor.zeros(output_shape, dtype=self.dtype)
                 + (self.high - self.low)
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return paddle.reshape(output, shape, name=name)
             else:
@@ -234,7 +231,7 @@ class Uniform(distribution.Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
+        return paddle.subtract(
             nn.log(lb * ub), nn.log(self.high - self.low), name=name
         )
 
@@ -272,7 +269,7 @@ class Uniform(distribution.Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_div((lb * ub), (self.high - self.low), name=name)
+        return paddle.divide((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
         r"""Shannon entropy in nats.
