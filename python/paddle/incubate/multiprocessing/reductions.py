@@ -18,7 +18,6 @@ import paddle
 # TODO: check serializing named tensor
 # TODO: check influence on autograd
 import sys
-import warnings
 import copy
 import threading
 from multiprocessing.util import register_after_fork
