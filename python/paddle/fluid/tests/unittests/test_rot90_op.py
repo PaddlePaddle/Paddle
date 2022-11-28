@@ -241,14 +241,14 @@ class TestRot90_API(unittest.TestCase):
     def test_error_api(self):
         paddle.enable_static()
 
-        ## dims error
+        # dims error
         def run1():
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.rot90(input, k=1, axes=[0])
 
         self.assertRaises(ValueError, run1)
 
-        ## input dims error
+        # input dims error
         def run2():
             input = fluid.data(name='input', dtype='float32', shape=[2])
             output = paddle.rot90(input, k=1, axes=[0, 1])

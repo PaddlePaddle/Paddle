@@ -71,7 +71,7 @@ class CollectiveController(Controller):
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
                 "PADDLE_NNODES": "{}".format(len(ips)),
-                ## compatible env
+                # compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": job_endpoints[i + rank_offset],
                 "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
@@ -157,7 +157,7 @@ class CollectiveController(Controller):
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
                 "PADDLE_NNODES": "{}".format(self.job.replicas),
-                ## compatible env
+                # compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
                 "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),

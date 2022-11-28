@@ -14,15 +14,15 @@
 
 #include "paddle/phi/kernels/bincount_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -36,12 +36,11 @@ __global__ void KernelBincount(const InputT* input,
                                OutT* output) {
   if (!has_weights) {
     for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&output[input[i]], 1L);
+      phi::CudaAtomicAdd(&output[input[i]], 1L);
     }
   } else {
     for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&output[input[i]],
-                                      static_cast<OutT>(weights[i]));
+      phi::CudaAtomicAdd(&output[input[i]], static_cast<OutT>(weights[i]));
     }
   }
 }

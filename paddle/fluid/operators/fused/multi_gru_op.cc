@@ -143,16 +143,17 @@ framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.GetPlace(),
-      phi::DataLayout::kMKLDNN,
+      phi::DataLayout::ONEDNN,
       framework::LibraryType::kMKLDNN);
 }
 
 void MultiGRUOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is an LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput(
+      "X",
+      "(phi::DenseTensor) the input is an LodTensor, which support "
+      "variable-time length input sequence. The underlying tensor in "
+      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
+      "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("WeightX",
            "(MultiTensor) The FC weight with shape (M x 3D),"
            "where M is the dim size of x, D is the hidden size. ")
@@ -176,7 +177,7 @@ void MultiGRUOpMaker::Make() {
       "Only used with MKL-DNN INT8.")
       .AsDuplicable()
       .AsDispensable();
-  AddOutput("Hidden", "(LoDTensor) (T x D) Same as GRUOp");
+  AddOutput("Hidden", "(phi::DenseTensor) (T x D) Same as GRUOp");
   AddAttr<std::string>("activation",
                        "(string, default tanh) "
                        "The activation type used for output candidate {h}_t.")

@@ -14,13 +14,13 @@
 
 import unittest
 
+import config
 import numpy as np
+import parameterize
+
 import paddle
 from paddle.distribution import Categorical, Normal, Uniform
 from paddle.fluid import layers
-
-import config
-import parameterize
 
 paddle.enable_static()
 

@@ -213,7 +213,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
                 ),
                 is_sparse=is_sparse,
             )
-            y = fluid.layers.reduce_sum(emb, dim=-1)
+            y = paddle.sum(emb, axis=-1)
 
             loss = fluid.layers.square_error_cost(input=y, label=y_)
             loss = paddle.mean(loss)

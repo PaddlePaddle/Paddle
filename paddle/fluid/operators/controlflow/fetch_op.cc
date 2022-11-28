@@ -29,7 +29,7 @@ static void DataCopy(const phi::DenseTensor &src_item,
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
-    if (src_item.layout() == phi::DataLayout::kMKLDNN) {
+    if (src_item.layout() == phi::DataLayout::ONEDNN) {
       phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
@@ -143,12 +143,14 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(phi::DenseTensor) The resulted phi::DenseTensor which is "
+             "expected to return "
              "to users.");
     AddOutput(
         "Out",
-        "(vector<LoDTensor>|unordered_map<string, int32_t>) A fetching list"
-        " of LoDTensor|unordered_map<string, int32_t> which may have "
+        "(vector<phi::DenseTensor>|unordered_map<string, int32_t>) A fetching "
+        "list"
+        " of phi::DenseTensor|unordered_map<string, int32_t> which may have "
         "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddComment(R"DOC(
