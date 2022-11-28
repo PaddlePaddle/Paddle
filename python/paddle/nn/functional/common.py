@@ -258,29 +258,6 @@ def reshape(x, shape, name=None):
             )
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
-    else:
-        if _in_legacy_dygraph():
-            tmp_tensor_type = Variable
-            if inplace:
-                warnings.warn(
-                    "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-                )
-            if isinstance(shape, (list, tuple)):
-                shape = [
-                    item.numpy().item(0) if isinstance(item, Variable) else item
-                    for item in shape
-                ]
-                out, _ = _legacy_C_ops.reshape2(x, None, 'shape', shape)
-            elif isinstance(shape, tmp_tensor_type):
-                shape.stop_gradient = True
-                out, _ = _legacy_C_ops.reshape2(x, shape)
-            else:
-                raise ValueError(
-                    "shape must be an instance of `list`, `tuple` or `Variable`,"
-                    " got '{}.'".format(type(shape))
-                )
-
-            return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
         x,
