@@ -109,7 +109,6 @@ __all__ = [
     'log',
     'crop_tensor',
     'prelu',
-    'flatten',
     'unique',
     'unique_with_counts',
     'elementwise_add',
@@ -118,7 +117,6 @@ __all__ = [
     'elementwise_mul',
     'gaussian_random',
     'sampling_id',
-    'gaussian_random_batch_size_like',
     'sum',
     'shape',
     'size',
@@ -6841,98 +6839,6 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     return out
 
 
-def flatten(x, axis=1, name=None):
-    r"""
-    **Flatten op**
-
-    Flatten the input tensor into a 2D matrix.
-
-    For Example:
-
-    .. code-block:: text
-
-        Case 1:
-
-          Given
-            X.shape = (3, 100, 100, 4)
-
-          and
-            axis = 2
-
-          We get:
-            Out.shape = (3 * 100, 4 * 100)
-
-        Case 2:
-
-          Given
-            X.shape = (3, 100, 100, 4)
-
-          and
-            axis = 0
-
-          We get:
-            Out.shape = (1, 3 * 100 * 100 * 4)
-
-    Args:
-        x (Variable): A tensor of rank >= axis. A tensor with type float32,
-                      float64, int8, int32, int64, uint8.
-        axis (int): Indicate up to which input dimensions (exclusive) should
-                    be flattened to the outer dimension of the output.
-                    The value for axis must be in the range [0, R], where R
-                    is the rank of the input tensor. Default: 1.
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-
-    Returns:
-        Variable: A 2D tensor with the contents of the input tensor, with input \
-                  dimensions up to axis flattened to the outer dimension of \
-                  the output and remaining input dimensions flattened into the \
-                  inner dimension of the output. A Tensor with type same as input x.
-
-    Raises:
-        ValueError: If x is not a variable.
-        ValueError: If axis is not in range [0, rank(x)].
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
-            # x shape is [4, 4, 3]
-            out = fluid.layers.flatten(x=x, axis=2)
-            # out shape is [16, 3]
-    """
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
-        'flatten',
-    )
-    if _non_static_mode():
-        return _legacy_C_ops.flatten2(x, 'axis', axis)[0]
-
-    helper = LayerHelper('flatten', **locals())
-
-    if not (isinstance(x, Variable)):
-        raise ValueError("The input x should be a Variable")
-
-    if not (isinstance(axis, int)) or axis > len(x.shape) or axis < 0:
-        raise ValueError("The axis should be a int, and in range [0, rank(x)]")
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='flatten2',
-        inputs={"X": x},
-        outputs={'Out': out, 'XShape': x_shape},
-        attrs={"axis": axis},
-    )
-    return out
-
-
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -7116,86 +7022,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'min': min, 'max': max, 'seed': seed},
-    )
-
-    return out
-
-
-@deprecated(since='1.8.0', update_to="paddle.normal")
-@templatedoc()
-def gaussian_random_batch_size_like(
-    input,
-    shape,
-    input_dim_idx=0,
-    output_dim_idx=0,
-    mean=0.0,
-    std=1.0,
-    seed=0,
-    dtype='float32',
-):
-    """
-    ${comment}
-
-    Args:
-        input (Variable): ${input_comment}
-        shape (tuple|list): ${shape_comment}
-        input_dim_idx (int): ${input_dim_idx_comment}
-        output_dim_idx (int): ${output_dim_idx_comment}
-        mean (float): ${mean_comment}
-        std (float): ${std_comment}
-        seed (int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data, float32 or float_64.
-
-    Returns:
-        out (Variable): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            input = fluid.data(name="input", shape=[13, 11], dtype='float32')
-
-            out = fluid.layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0)
-    """
-
-    helper = LayerHelper('gaussian_random_batch_size_like', **locals())
-    check_type(
-        input,
-        'input',
-        (Variable),
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    check_type(
-        shape,
-        'shape',
-        (list, tuple),
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    check_dtype(
-        dtype,
-        'dtype',
-        ['float16', 'float32', 'int'],
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    out = helper.create_variable_for_type_inference(dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='gaussian_random_batch_size_like',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'mean': mean,
-            'std': std,
-            'seed': seed,
-            'dtype': c_dtype,
-        },
     )
 
     return out
