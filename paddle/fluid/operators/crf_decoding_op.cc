@@ -40,14 +40,14 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "The data type is the same as Input(Emission).");
     AddInput(
         "Label",
-        "(Tensor/phi::DenseTensor). The ground truth with shape "
+        "(phi::DenseTensor). The ground truth with shape "
         "[N x 1] (for phi::DenseTensor) or [B x S] (for Tensor). This input is "
         "optional. See more details in the operator's comments. The data type "
         "is int64.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
-        "(Tensor/phi::DenseTensor). The decoding results. What to "
+        "(phi::DenseTensor). The decoding results. What to "
         "return changes depending on whether the Input(Label) (the ground "
         "truth) is given. See more details in the operator's comment. "
         "The data type is int64.");
