@@ -359,7 +359,7 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
                 bias_attr=False,
                 act=None,
             )
-            o = fluid.layers.elementwise_add(x=hidden, y=mem)
+            o = paddle.add(x=hidden, y=mem)
             rnn.update_memory(mem, o)
             rnn.output(o)
 

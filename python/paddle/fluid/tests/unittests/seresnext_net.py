@@ -121,7 +121,7 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
 
     short = shortcut(input, num_filters * 2, stride)
 
-    return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+    return paddle.nn.functional.relu(paddle.add(x=short, y=scale))
 
 
 img_shape = [3, 224, 224]
