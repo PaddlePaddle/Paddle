@@ -46,11 +46,11 @@ ExternalProject_Add(
     && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
     ${ROCKSDB_INSTALL_DIR}/
   BUILD_IN_SOURCE 1
-  BYPRODUCTS ${ROCKSDB_LIBRARIES})
-
-add_dependencies(extern_rocksdb snappy)
+  BUILD_BYPRODUCTS ${ROCKSDB_LIBRARIES})
 
 add_library(rocksdb STATIC IMPORTED GLOBAL)
+
+add_dependencies(extern_rocksdb snappy)
 set_property(TARGET rocksdb PROPERTY IMPORTED_LOCATION ${ROCKSDB_LIBRARIES})
 add_dependencies(rocksdb extern_rocksdb)
 
