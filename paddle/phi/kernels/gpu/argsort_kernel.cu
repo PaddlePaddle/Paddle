@@ -177,9 +177,9 @@ static void RadixSortKeys(const phi::GPUContext &ctx,
 
 template <typename T>
 static __global__ void SortPostprocessKernel(const T *in,
+                                             const int2 *i_s_ptr,
                                              T *out,
                                              int64_t *index,
-                                             const int2 *i_s_ptr,
                                              int nsegments,
                                              int nsort) {
   CUDA_KERNEL_LOOP(i, nsegments * nsort) {
@@ -247,7 +247,7 @@ inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
                          segment_bits);
 
   SortPostprocessKernel<<<grid, block, 0, cu_stream>>>(
-      self_ptr, values_ptr, indices_ptr, i_s_ptr, nsegments, nsort);
+      self_ptr, i_s_ptr, indices_ptr, values_ptr, nsegments, nsort);
 }
 
 // The method is called when # of the rows of the input is less than or equal to
