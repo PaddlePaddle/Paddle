@@ -26,7 +26,6 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static import error
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
@@ -59,7 +58,8 @@ from paddle.fluid.dygraph.dygraph_to_static.function_spec import (
     get_buffers,
     get_parameters,
 )
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+from .ast_transformer import DygraphToStaticAst
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
@@ -334,7 +334,7 @@ class StaticFunction:
     def train(self):
         if (
             isinstance(self._class_instance, layers.Layer)
-            and self._class_instance.training == False
+            and self._class_instance.training is False
         ):
             raise RuntimeError(
                 "Failed to switch train mode. {} is a Layer's method, "
@@ -347,7 +347,7 @@ class StaticFunction:
     def eval(self):
         if (
             isinstance(self._class_instance, layers.Layer)
-            and self._class_instance.training == True
+            and self._class_instance.training is True
         ):
             raise RuntimeError(
                 "Failed to switch eval mode. {} is a Layer's method, "
