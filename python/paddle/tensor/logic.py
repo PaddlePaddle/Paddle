@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from .layer_function_generator import templatedoc
-from ..static import Variable
-
 # TODO: define logic functions of a tensor
+
+import paddle
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import _in_eager_mode_
+from ..static import Variable
+from .layer_function_generator import templatedoc
 
 if _in_eager_mode_:
     Tensor = paddle.fluid.framework.core.eager.Tensor
 else:
     from ..framework import VarBase as Tensor
 
-from ..framework import in_dygraph_mode
-from ..framework import LayerHelper
-from ..fluid.framework import _in_legacy_dygraph
-
-# TODO: define logic functions of a tensor
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.creation import full
+
+from ..fluid.framework import _in_legacy_dygraph
+from ..framework import LayerHelper, in_dygraph_mode
 
 __all__ = []
 
