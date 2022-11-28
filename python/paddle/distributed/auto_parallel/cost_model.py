@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import queue
 import copy
+import queue
 from enum import Enum
 
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.fluid import core
 
 SUCC = 0  # successor
 PRED = 1  # predecessor

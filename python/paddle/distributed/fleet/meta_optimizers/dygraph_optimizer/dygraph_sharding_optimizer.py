@@ -18,6 +18,7 @@ from functools import reduce
 
 import paddle
 from paddle import framework
+
 from ...utils.log_util import logger
 
 

@@ -13,15 +13,16 @@
 
 import paddle
 from paddle.fluid.optimizer import PipelineOptimizer as PO
-from .meta_optimizer_base import MetaOptimizerBase
+
 from .common import (
-    CollectiveHelper,
     OP_ROLE_KEY,
     OP_ROLE_VAR_KEY,
+    CollectiveHelper,
     OpRole,
     is_backward_op,
     is_loss_grad_op,
 )
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 

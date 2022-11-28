@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.utils import unique_name
-from paddle.framework import ParamAttr
-from paddle.nn.initializer import Constant
-from paddle.nn import Layer
-from paddle.autograd import PyLayer
 import math
+
+import paddle
+from paddle.autograd import PyLayer
+from paddle.framework import ParamAttr
+from paddle.nn import Layer
+from paddle.nn.initializer import Constant
+from paddle.utils import unique_name
 
 
 def round(x):

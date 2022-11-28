@@ -18,23 +18,23 @@ import signal
 import sys
 import warnings
 
-from paddle.distributed.utils.launch_utils import (
-    _print_arguments,
-    _prepare_trainer_env,
-    get_host_name_ip,
-)
+from paddle.device import get_device
 from paddle.distributed.cloud_utils import (
-    get_cluster_and_pod,
     _get_trainers_num,
+    get_cluster_and_pod,
 )
-from paddle.distributed.fleet.launch import get_cluster_from_args
 from paddle.distributed.fleet.cloud_utils import use_paddlecloud
+from paddle.distributed.fleet.launch import get_cluster_from_args
 from paddle.distributed.fleet.launch_utils import (
     DeviceMode,
-    check_backend,
     block_windows_and_macos,
+    check_backend,
 )
-from paddle.device import get_device
+from paddle.distributed.utils.launch_utils import (
+    _prepare_trainer_env,
+    _print_arguments,
+    get_host_name_ip,
+)
 
 # deprecated module import
 from paddle.fluid import core

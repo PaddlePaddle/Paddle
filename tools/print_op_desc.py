@@ -42,9 +42,10 @@ Usage:
     python print_op_desc.py > op_desc.spec
 """
 
+import json
+
 import paddle.fluid.framework as framework
 from paddle.fluid import core
-import json
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"

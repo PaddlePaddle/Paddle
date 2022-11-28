@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
-
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
-    BaseTransformer,
-)
+from paddle.utils import gast
 
 
 class AssertTransformer(BaseTransformer):

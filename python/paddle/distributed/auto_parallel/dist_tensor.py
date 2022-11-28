@@ -16,9 +16,10 @@ import copy
 import inspect
 
 import paddle
-from paddle.fluid.framework import Parameter, Block, Variable
+from paddle.fluid.framework import Block, Parameter, Variable
+
 from .dist_attribute import TensorDistributedAttribute
-from .utils import _linear_idx2coordinate, __no_shape_var_type__
+from .utils import __no_shape_var_type__, _linear_idx2coordinate
 
 
 class DistributedTensor:

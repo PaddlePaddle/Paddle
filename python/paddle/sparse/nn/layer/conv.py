@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import numpy as np
-from .. import functional as F
-from paddle.nn import Layer
-from paddle.nn.initializer import Normal
-from paddle.nn.functional.conv import _update_padding_nd
+
 from paddle.fluid.layers import utils
+from paddle.nn import Layer
+from paddle.nn.functional.conv import _update_padding_nd
+from paddle.nn.initializer import Normal
+
+from .. import functional as F
 
 __all__ = []
 

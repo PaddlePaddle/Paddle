@@ -14,16 +14,16 @@
 
 import contextlib
 from enum import Enum
-import numpy as np
 from types import MethodType
+
+import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid import layers
+from paddle.fluid import core, layers
+from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
-from paddle.fluid.dygraph import base as imperative_base
 
 
 class Taskflow:

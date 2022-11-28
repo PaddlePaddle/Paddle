@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from .. import Layer
 from collections.abc import Iterable, Mapping
-from ...fluid.framework import Parameter
+
 from ...fluid.dygraph.base import param_guard
+from ...fluid.framework import Parameter
+from .. import Layer
 
 __all__ = []
 

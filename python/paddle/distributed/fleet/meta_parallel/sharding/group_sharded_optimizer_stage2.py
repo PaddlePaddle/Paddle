@@ -24,26 +24,22 @@
 
 import logging
 import warnings
-
 from collections import OrderedDict
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed import ParallelMode, fleet
 from paddle.fluid import core
-from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed import fleet, ParallelMode
+from paddle.optimizer import Optimizer
 
 HybridParallelClipGrad = (
     fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer.HybridParallelClipGrad
 )
-from paddle.distributed.collective import (
-    _get_global_group,
-    new_group,
-)
+from paddle.distributed.collective import _get_global_group, new_group
 
-from .group_sharded_storage import ParamStorage, GradStorage
-from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
+from .group_sharded_storage import GradStorage, ParamStorage
+from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
 alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}

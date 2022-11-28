@@ -14,6 +14,7 @@
 
 import difflib
 import sys
+
 import count_api_without_core_ops
 
 with open(sys.argv[1], 'r') as f:

@@ -20,15 +20,16 @@
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
 import numpy as np
+
 import paddle
 import paddle.nn as nn
-from paddle.distributed.utils.moe_utils import global_scatter, global_gather
-
 from paddle.autograd import PyLayer
-from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
-from .utils import count_by_gate
+from paddle.distributed.utils.moe_utils import global_gather, global_scatter
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
+
+from .gate import BaseGate, GShardGate, NaiveGate, SwitchGate
+from .utils import count_by_gate
 
 
 def _local_scatter(inp, pos):

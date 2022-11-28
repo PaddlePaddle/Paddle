@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
-import operator
 import functools
-import paddle
+import operator
+import os
 from collections import deque
-from .graph import Graph
+
+import paddle
+
 from .cluster import DeviceType
+from .graph import Graph
 from .process_group import get_process_group
 
 

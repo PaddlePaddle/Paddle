@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from http.server import HTTPServer
 import http.server as SimpleHTTPServer
-
-from multiprocessing import Process
-
-import threading
 import json
+import threading
+from http.server import HTTPServer
+from multiprocessing import Process
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):

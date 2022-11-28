@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from ...layers.mpu.random import RNGStatesTracker  # noqa: F401
-from ...layers.mpu.random import get_rng_state_tracker  # noqa: F401
-from ...layers.mpu.random import model_parallel_random_seed  # noqa: F401
 from ...layers.mpu.random import determinate_seed  # noqa: F401
 from ...layers.mpu.random import dropout  # noqa: F401
+from ...layers.mpu.random import get_rng_state_tracker  # noqa: F401
+from ...layers.mpu.random import model_parallel_random_seed  # noqa: F401
 
 __all__ = []

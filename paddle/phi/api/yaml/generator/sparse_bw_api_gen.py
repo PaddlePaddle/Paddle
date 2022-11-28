@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
-from sparse_api_gen import SparseAPI
+import yaml
 from backward_api_gen import BackwardAPI
+from sparse_api_gen import SparseAPI
 
 
 class SparseBackwardAPI(SparseAPI, BackwardAPI):

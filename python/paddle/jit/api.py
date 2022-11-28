@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import os
 import pickle
+import threading
 import warnings
 from collections import OrderedDict
-import inspect
-import threading
-from typing import Text, Tuple, Any, List
+from typing import Any, List, Text, Tuple
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -29,49 +29,48 @@ from paddle.fluid.compiler import (
     ExecutionStrategy,
 )
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
-    ConversionOptions,
     CONVERSION_OPTIONS,
+    ConversionOptions,
 )
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
     set_code_level,
     set_verbosity,
 )
-from paddle.jit.dy2static.program_translator import (
-    ProgramTranslator,
-    StaticFunction,
-    unwrap_decorators,
-)
 from paddle.fluid.dygraph.io import (
-    TranslatedLayer,
     INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
     INFER_PARAMS_INFO_SUFFIX,
+    INFER_PARAMS_SUFFIX,
     INFER_PROPERTY_SUFFIX,
+    TranslatedLayer,
 )
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
+    EagerParamBase,
     ParamBase,
+    Parameter,
     Program,
     Variable,
-    Parameter,
-    EagerParamBase,
-)
-from paddle.fluid.framework import (
     _current_expected_place,
     _dygraph_guard,
     _dygraph_tracer,
+    _non_static_mode,
+    dygraph_only,
 )
-from paddle.fluid.framework import dygraph_only, _non_static_mode
+from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.jit.dy2static.program_translator import (
+    ProgramTranslator,
+    StaticFunction,
+    unwrap_decorators,
+)
 
 __all__ = [
     'TracedLayer',

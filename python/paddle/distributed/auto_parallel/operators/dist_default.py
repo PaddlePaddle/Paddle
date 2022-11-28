@@ -12,21 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import gradient_synchronization
-from .common import register_distributed_operator_impl, is_parameter_related
-from ..utils import is_prim_op
-from ..utils import compute_compatible_dim_mapping
-from ..utils import set_dist_op_desc_original_id
-from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
+from ..cost import (
+    _g_op_cost_factory,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..dist_attribute import OperatorDistributedAttribute
 from ..process_group import new_process_group
-from ..utils import _get_comm_group, _get_corresponding_rank
-from ..cost import _g_op_cost_factory
-from ..cost import build_comp_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    compute_compatible_dim_mapping,
+    is_prim_op,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    gradient_synchronization,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 __op_not_need_param_init__ = ["while", "cond"]
 

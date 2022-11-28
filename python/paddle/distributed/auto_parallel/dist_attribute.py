@@ -13,7 +13,9 @@
 # limitations under the License
 
 import copy
+
 from paddle.fluid.framework import Variable
+
 from .process_mesh import ProcessMesh
 
 _g_tensor_dist_attr_field_keys = [

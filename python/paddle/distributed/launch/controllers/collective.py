@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .controller import Controller, ControleMode
-from ..context.device import DeviceType
-
 import json
+
+from ..context.device import DeviceType
+from .controller import ControleMode, Controller
 
 
 class CollectiveController(Controller):

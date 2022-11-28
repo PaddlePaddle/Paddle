@@ -14,12 +14,13 @@
 
 import io
 import tarfile
+
 import numpy as np
 from PIL import Image
 
 import paddle
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 

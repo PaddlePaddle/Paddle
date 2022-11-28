@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .utils import _value_and_gradient
 import paddle
+
+from .utils import _value_and_gradient
 
 
 def cubic_interpolation_(x1, f1, g1, x2, f2, g2):

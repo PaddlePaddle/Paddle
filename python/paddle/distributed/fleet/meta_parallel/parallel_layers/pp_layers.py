@@ -38,17 +38,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE
 
-import math
-import re
 import glob
+import math
 import os
+import re
 from functools import partial
 
 import paddle
 from paddle.fluid.dygraph.layers import Layer
-from ...utils.log_util import logger, layer_to_str
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
+
+from ...utils.log_util import layer_to_str, logger
 
 __all__ = []
 

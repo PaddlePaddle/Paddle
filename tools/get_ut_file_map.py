@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import sys
-import json
 
 
 def get_all_paddle_file(rootPath):

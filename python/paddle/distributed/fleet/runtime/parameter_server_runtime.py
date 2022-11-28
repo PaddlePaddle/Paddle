@@ -17,14 +17,13 @@ import warnings
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, Variable
 from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.fluid.framework import Variable
 
-from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
+from .runtime_base import RuntimeBase
 
 __all__ = []
 
@@ -233,14 +232,13 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+            GeoStrategy,
+            SyncStrategy,
+        )
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
             _get_lr_ops,
             _has_global_step,
-        )
-
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
-            SyncStrategy,
-            GeoStrategy,
         )
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()

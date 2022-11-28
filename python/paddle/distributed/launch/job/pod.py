@@ -14,12 +14,11 @@
 
 from __future__ import annotations
 
-from .container import Container
-
-from .status import Status
-
 import random
 import time
+
+from .container import Container
+from .status import Status
 
 
 class PodSepc:

@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import warnings
 
-import os
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program
 from paddle.fluid.parallel_executor import ParallelExecutor
-from .runtime_base import RuntimeBase
+
 from ..base.private_helper_function import wait_server_ready
+from .runtime_base import RuntimeBase
 
 __all__ = []
 
@@ -37,8 +38,6 @@ PSERVER_SAVE_SUFFIX = ".shard"
 def parse_table_class(varname, o_main_program):
     from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
         is_distributed_sparse_op,
-    )
-    from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
         is_sparse_op,
     )
 
@@ -250,8 +249,6 @@ class CommonAccessor:
     def parse_entry(self, varname, o_main_program):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
             is_distributed_sparse_op,
-        )
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
             is_sparse_op,
         )
 

@@ -15,10 +15,11 @@
 decorator to deprecate a function or class
 """
 
-import warnings
 import functools
-import paddle
 import sys
+import warnings
+
+import paddle
 
 __all__ = []
 

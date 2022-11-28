@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
+import paddle
 from paddle.fluid import framework, layers, unique_name
+from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
-import paddle
-from paddle.fluid.dygraph import base as imperative_base
+from paddle.optimizer import Optimizer
 
 __all__ = []
 

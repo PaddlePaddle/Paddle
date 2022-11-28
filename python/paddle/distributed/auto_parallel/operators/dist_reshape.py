@@ -12,19 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl, is_parameter_related
-from ..utils import is_dim_shard
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..utils import set_dist_op_desc_original_id
-from .dist_default import DistributedDefaultImpl0
-from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_descs
-from ..cost import Reshape2OpCost
-from ..cost import Reshape2GradOpCost
-from ..cost import build_dp_costs
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    Reshape2GradOpCost,
+    Reshape2OpCost,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..utils import (
+    compute_compatible_and_update_dim_mapping,
+    is_dim_shard,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedReshape2(DistributedOperatorImplContainer):

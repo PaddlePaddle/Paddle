@@ -13,22 +13,23 @@
 # limitations under the License
 
 import copy
+
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
 )
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.fluid import core
+from paddle.fluid.framework import Parameter, Program
+
 from .dist_attribute import OperatorDistributedAttribute
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 from .utils import (
+    __no_shape_var_type__,
     is_backward_op,
     is_forward_op,
     is_loss_op,
     is_optimize_op,
-    __no_shape_var_type__,
 )
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue"]

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
 import signal
+import sys
 
+from paddle.distributed.launch.job.container import Container
 from paddle.distributed.launch.job.job import Job
 from paddle.distributed.launch.job.pod import Pod
-from paddle.distributed.launch.job.container import Container
 
 from .master import Master
 from .watcher import Watcher

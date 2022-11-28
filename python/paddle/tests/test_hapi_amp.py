@@ -16,19 +16,18 @@ import os
 
 os.environ['FLAGS_cudnn_deterministic'] = '1'
 
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
 
 import paddle
-from paddle import fluid
-
-from paddle import Model
-from paddle.static import InputSpec
-from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.vision.models import LeNet
-from paddle.vision.datasets import MNIST
 import paddle.vision.transforms as T
+from paddle import Model, fluid
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
+from paddle.vision.datasets import MNIST
+from paddle.vision.models import LeNet
 
 
 @unittest.skipIf(

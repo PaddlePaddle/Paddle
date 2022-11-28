@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.framework import _apply_pass as _apply_cpp_pass
+from paddle.framework import core
 from paddle.static import Executor
-from .pass_base import PassType, CPPPassWrapper, register_pass
-from paddle.framework import core, _apply_pass as _apply_cpp_pass
+
+from .pass_base import CPPPassWrapper, PassType, register_pass
 
 
 @register_pass("fuse_elewise_add_act")

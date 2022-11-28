@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 from paddle.utils.lazy_import import try_import
 
 

@@ -19,8 +19,8 @@ import hashlib
 import random
 import time
 
-from .storable import Storable
 from .recorder import MetricsRecorder
+from .storable import Storable
 from .tunable_space import TunableSpace
 
 

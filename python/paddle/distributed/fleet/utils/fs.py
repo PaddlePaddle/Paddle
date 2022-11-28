@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import multiprocessing
-
-import re
-import time
 import abc
-from paddle.fluid import core
-from .log_util import logger
 import functools
-
+import multiprocessing
+import os
+import re
 import shutil
+import time
+
+from paddle.fluid import core
+
+from .log_util import logger
 
 __all__ = []
 

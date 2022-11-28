@@ -13,15 +13,16 @@
 # limitations under the License.
 """ For the PR that only modified the unit test, get cases in pull request. """
 
-import os
 import json
-import re
-import time
-import subprocess
-import requests
-import urllib.request
-import ssl
+import os
 import platform
+import re
+import ssl
+import subprocess
+import time
+import urllib.request
+
+import requests
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')

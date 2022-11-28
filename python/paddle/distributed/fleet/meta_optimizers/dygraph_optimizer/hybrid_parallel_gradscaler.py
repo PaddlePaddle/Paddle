@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...base.topology import ParallelMode
-import paddle.autograd as imperative_base
 import paddle
+import paddle.autograd as imperative_base
 from paddle import _legacy_C_ops
+
+from ...base.topology import ParallelMode
 
 __all__ = []
 

@@ -17,12 +17,12 @@ import unittest
 import paddle
 import paddle.vision.transforms as T
 from paddle import Model
-from paddle.static import InputSpec
-from paddle.vision.models import LeNet
-from paddle.vision.datasets import MNIST
+from paddle.fluid.framework import _test_eager_guard
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.fluid.framework import _test_eager_guard
+from paddle.static import InputSpec
+from paddle.vision.datasets import MNIST
+from paddle.vision.models import LeNet
 
 
 # Accelerate unittest

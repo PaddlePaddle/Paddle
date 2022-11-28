@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import os
+import warnings
+
 import paddle
 from paddle.fluid import core
-from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.core import (
+    CUDAPlace,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
-    CUDAPlace,
 )
-import warnings
+from paddle.fluid.layers.utils import _hash_with_id
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
     from paddle.fluid.core import CUDAGraph as CoreCUDAGraph

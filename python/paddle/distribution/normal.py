@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import math
+from collections.abc import Iterable
+
 import numpy as np
+
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
@@ -25,8 +28,6 @@ from paddle.fluid.layers import (
     nn,
     tensor,
 )
-
-from collections.abc import Iterable
 
 
 class Normal(distribution.Distribution):

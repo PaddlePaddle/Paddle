@@ -11,20 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from functools import reduce
-from .meta_optimizer_base import MetaOptimizerBase
 import logging
+from functools import reduce
+
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
-from paddle.fluid.layers import tensor
 import paddle
 from paddle import framework
-from paddle.framework import core
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.clip import GradientClipByNorm, append_gradient_clip_ops
-from paddle.fluid.optimizer import Optimizer, Momentum
 from paddle.fluid.dygraph import base as imperative_base
+from paddle.fluid.layers import tensor
+from paddle.fluid.optimizer import Momentum, Optimizer
+from paddle.framework import core
 
 
 class DGCMomentumOptimizer(Optimizer):

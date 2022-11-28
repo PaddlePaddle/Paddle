@@ -16,12 +16,11 @@ from collections import OrderedDict
 
 import paddle
 import paddle.fluid.core as core
+from paddle import _legacy_C_ops
 
-from ..collective import _get_global_env
-from ..collective import _new_ring_id
 from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
-from paddle import _legacy_C_ops
+from ..collective import _get_global_env, _new_ring_id
 
 
 def get_all_process_groups():

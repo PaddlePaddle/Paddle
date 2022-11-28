@@ -17,12 +17,10 @@ from functools import reduce
 
 import paddle
 
-from ..utils import _get_comm_group
-from ..process_group import get_process_group
 from ..cluster import LinkType
 from ..dist_tensor import DistributedTensor
-from ..utils import _get_idx_in_axis
-from ..dist_tensor import DistributedTensor
+from ..process_group import get_process_group
+from ..utils import _get_comm_group, _get_idx_in_axis
 
 COMM_OP_TYPE = [
     "send_v2",

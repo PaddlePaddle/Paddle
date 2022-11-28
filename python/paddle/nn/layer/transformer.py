@@ -14,20 +14,22 @@
 
 # TODO: define the classes of Transformer neural network
 
-import copy
 import collections
+import copy
+
 import numpy as np
 
 import paddle
-from .common import Linear, Dropout
-from .norm import LayerNorm
-from .. import functional as F
+from paddle.fluid.data_feeder import convert_dtype
+
 from ... import tensor
 from ...fluid import layers
-from .. import Layer
-from .container import LayerList
 from ...framework import ParamAttr
-from paddle.fluid.data_feeder import convert_dtype
+from .. import Layer
+from .. import functional as F
+from .common import Dropout, Linear
+from .container import LayerList
+from .norm import LayerNorm
 
 __all__ = []
 

@@ -17,14 +17,17 @@
 import numpy as np
 
 from paddle import get_flags
-from ...device import get_cudnn_version
-from .. import Layer
-from ..initializer import Normal
-from .. import functional as F
+
+from ...device import (
+    get_cudnn_version,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+)
 from ...fluid.layers import utils
+from .. import Layer
+from .. import functional as F
 from ..functional.conv import _update_padding_nd
-from ...device import is_compiled_with_cuda
-from ...device import is_compiled_with_rocm
+from ..initializer import Normal
 
 __all__ = []
 

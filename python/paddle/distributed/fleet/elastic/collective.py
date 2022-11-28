@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
 import os
 import shutil
-import paddle
+import tempfile
 
+import paddle
+from paddle.distributed.fleet.elastic.manager import LauncherInterface
 from paddle.distributed.fleet.launch_utils import (
     logger,
     pull_worker_log,
     start_local_trainers,
 )
-from paddle.distributed.fleet.elastic.manager import LauncherInterface
 
 
 class CollectiveLauncher(LauncherInterface):

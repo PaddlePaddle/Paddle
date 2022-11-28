@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import warnings
 
-import os
+from google.protobuf import text_format
+
 import paddle
 from paddle.distributed import fleet
-from paddle.framework import core
-from paddle.distributed.ps.utils.public import *  # noqa: F403
-from paddle.static import Program, CompiledProgram, Executor, ParallelExecutor
-from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
+from paddle.distributed.communicator import Communicator, HeterClient
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.proto import the_one_ps_pb2
-from paddle.distributed.communicator import Communicator, HeterClient
-from google.protobuf import text_format
+from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
 from paddle.distributed.ps.coordinator import Coordinator
+from paddle.distributed.ps.utils.public import *  # noqa: F403
+from paddle.framework import core
+from paddle.static import CompiledProgram, Executor, ParallelExecutor, Program
 
 __all__ = [
     'Table',

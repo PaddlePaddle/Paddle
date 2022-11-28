@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph.amp import amp_guard
-from paddle.fluid.dygraph.amp import amp_decorate
+from paddle.fluid.dygraph.amp import amp_decorate, amp_guard
 
 __all__ = []
 

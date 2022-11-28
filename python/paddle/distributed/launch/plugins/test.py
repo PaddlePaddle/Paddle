@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 from paddle.distributed import fleet
+from paddle.io import DataLoader, Dataset
 from paddle.vision.models import ResNet
 from paddle.vision.models.resnet import BottleneckBlock
-from paddle.io import DataLoader, Dataset
 
 base_lr = 0.1
 momentum_rate = 0.9

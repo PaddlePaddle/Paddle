@@ -16,12 +16,14 @@
 """
 TestCases for check_api_compatible.py
 """
-import unittest
 import tempfile
+import unittest
 
-from check_api_compatible import read_argspec_from_file
-from check_api_compatible import check_compatible
-from check_api_compatible import check_compatible_str
+from check_api_compatible import (
+    check_compatible,
+    check_compatible_str,
+    read_argspec_from_file,
+)
 
 
 class Test_check_compatible(unittest.TestCase):

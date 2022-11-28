@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import os
+
 from paddle.distributed.utils.launch_utils import (
     get_cluster,
-    get_gpus,
     get_cluster_from_args,
+    get_gpus,
+    logger,
 )
-from paddle.distributed.utils.launch_utils import logger
 
 __all__ = []
 

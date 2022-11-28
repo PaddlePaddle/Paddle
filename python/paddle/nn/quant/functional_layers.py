@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...tensor import math, manipulation
+from ...tensor import manipulation, math
 from .. import Layer
 
 __all__ = []

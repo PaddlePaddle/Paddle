@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 import paddle.fluid as fluid
 from paddle.device import get_available_custom_device
 

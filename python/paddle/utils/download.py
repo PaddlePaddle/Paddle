@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import os
-import sys
 import os.path as osp
 import shutil
-import requests
 import subprocess
-import hashlib
+import sys
 import tarfile
-import zipfile
 import time
+import zipfile
+
+import requests
 
 try:
     from tqdm import tqdm

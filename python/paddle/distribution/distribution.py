@@ -22,13 +22,14 @@
 import warnings
 
 import numpy as np
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
 from paddle.fluid.framework import (
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
 from paddle.fluid.layers import tensor
 

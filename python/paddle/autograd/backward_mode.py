@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 import paddle
+from paddle.fluid import core, framework
+from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 
 __all__ = []
 

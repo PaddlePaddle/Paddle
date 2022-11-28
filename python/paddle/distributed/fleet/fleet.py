@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import copy
-import paddle
 import os
-from paddle.framework import _global_flags
+
+import paddle
 from paddle.fluid import compiler
-from .base.role_maker import PaddleCloudRoleMaker, RoleMakerBase
-from .base.strategy_compiler import StrategyCompiler
-from .base.distributed_strategy import DistributedStrategy
-from .base.meta_optimizer_factory import MetaOptimizerFactory
-from .base.runtime_factory import RuntimeFactory
-from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.ir import apply_build_strategy
+from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.framework import _global_flags
+
 from .base import topology as tp
+from .base.distributed_strategy import DistributedStrategy
+from .base.meta_optimizer_factory import MetaOptimizerFactory
+from .base.role_maker import PaddleCloudRoleMaker, RoleMakerBase
+from .base.runtime_factory import RuntimeFactory
+from .base.strategy_compiler import StrategyCompiler
 from .meta_parallel import model_parallel_random_seed
 from .utils.log_util import logger, set_log_level
 

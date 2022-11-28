@@ -27,11 +27,13 @@ images per class.
 
 """
 
+import pickle
+import tarfile
+
 import numpy
+
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
-import tarfile
-import pickle
 
 __all__ = []
 

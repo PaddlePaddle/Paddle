@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from PIL import Image
+
 from paddle.utils import try_import
 
 __all__ = []

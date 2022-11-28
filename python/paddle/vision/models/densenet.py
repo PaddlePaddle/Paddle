@@ -16,10 +16,17 @@ import math
 
 import paddle
 import paddle.nn as nn
-from paddle.nn import Conv2D, BatchNorm, Linear, Dropout
-from paddle.nn import AdaptiveAvgPool2D, MaxPool2D, AvgPool2D
-from paddle.nn.initializer import Uniform
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn import (
+    AdaptiveAvgPool2D,
+    AvgPool2D,
+    BatchNorm,
+    Conv2D,
+    Dropout,
+    Linear,
+    MaxPool2D,
+)
+from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
 
 __all__ = []

@@ -31,8 +31,8 @@ Communicator is used for async distribute training in distribute_transpiler mode
 It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
 import paddle
-from paddle.framework import core
 from paddle.distributed.ps.utils.public import DistributedMode
+from paddle.framework import core
 
 __all__ = ['Communicator', 'FLCommunicator', 'LargeScaleKV']
 

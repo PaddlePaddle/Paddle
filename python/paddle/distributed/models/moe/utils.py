@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 
 def _number_count(numbers, upper_range):

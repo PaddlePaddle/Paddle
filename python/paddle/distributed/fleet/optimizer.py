@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import copy
+
 import paddle
-from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle.distributed import fleet
+
+from .meta_optimizers import HeterParallelOptimizer, HybridParallelOptimizer
 from .utils.log_util import logger
 
 

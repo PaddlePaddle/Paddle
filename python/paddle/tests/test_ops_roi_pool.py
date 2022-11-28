@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.vision.ops import roi_pool, RoIPool
+from paddle.vision.ops import RoIPool, roi_pool
 
 
 class TestRoIPool(unittest.TestCase):

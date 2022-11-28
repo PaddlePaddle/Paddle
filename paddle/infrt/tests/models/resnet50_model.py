@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import paddle
-from paddle.vision.models import resnet50
 from paddle.jit import to_static
 from paddle.static import InputSpec
-import sys
+from paddle.vision.models import resnet50
 
 model = resnet50(True)
 net = to_static(

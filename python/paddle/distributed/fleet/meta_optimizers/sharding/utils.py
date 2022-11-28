@@ -11,19 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle
-from paddle.framework import core
-from paddle.utils import unique_name
+import os
+import re
 from functools import reduce
+
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import (
-    is_loss_grad_op,
+    OP_ROLE_KEY,
+    OpRole,
     is_backward_op,
+    is_loss_grad_op,
     is_optimizer_op,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-
-import re
-import os
+from paddle.framework import core
+from paddle.utils import unique_name
 
 
 def check_broadcast(block):

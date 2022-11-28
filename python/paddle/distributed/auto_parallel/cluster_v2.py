@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import IntEnum, unique
+
 import numpy as np
-from enum import IntEnum
-from enum import unique
 
 from paddle.fluid import core
 from paddle.fluid.core import Device  # noqa: F401

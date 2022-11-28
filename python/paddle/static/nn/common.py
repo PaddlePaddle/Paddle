@@ -13,17 +13,15 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.initializer import Normal
-from paddle.fluid.framework import static_only, Variable, _non_static_mode
-
-from paddle.fluid.data_feeder import check_dtype
-
 from paddle.common_ops_import import (
+    LayerHelper,
     check_type,
     check_variable_and_dtype,
     utils,
-    LayerHelper,
 )
+from paddle.fluid.data_feeder import check_dtype
+from paddle.fluid.framework import Variable, _non_static_mode, static_only
+from paddle.fluid.initializer import Normal
 
 __all__ = []
 

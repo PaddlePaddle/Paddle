@@ -15,10 +15,8 @@
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-
-from paddle.nn import Conv2D, Dropout
-from paddle.nn import AdaptiveAvgPool2D, MaxPool2D
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn import AdaptiveAvgPool2D, Conv2D, Dropout, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
 
 __all__ = []

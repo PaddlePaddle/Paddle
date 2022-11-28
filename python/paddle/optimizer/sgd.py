@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.dygraph import no_grad
-from paddle import _C_ops, _legacy_C_ops
 import warnings
-from ..fluid.layer_helper import LayerHelper
-from ..fluid import unique_name
-from ..fluid import layers
+
+from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid import core, framework, layers, unique_name
+from ..fluid.dygraph import no_grad
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
+from .optimizer import Optimizer
 
 __all__ = []
 

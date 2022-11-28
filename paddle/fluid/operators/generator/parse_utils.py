@@ -14,7 +14,8 @@
 
 import re
 from copy import copy
-from typing import Dict, Any, List, Tuple
+from typing import Any, Dict, List, Tuple
+
 from tests import is_attr, is_input, is_output, is_vec
 
 

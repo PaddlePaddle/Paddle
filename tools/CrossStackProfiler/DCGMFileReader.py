@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import multiprocessing
 import os
 import re
-import logging
 import tempfile
-import pandas as pd
-import multiprocessing
 from multiprocessing import Process
 
-from CspFileReader import FileReader
-from CspFileReader import getLogger
-from CspFileReader import dcgmMetricParameterMap
-from CspFileReader import PIPELINEINFO_TRACE_NUM
-from CspFileReader import FILEORGANIZEFORM_BYTRAINER
+import pandas as pd
+from CspFileReader import (
+    FILEORGANIZEFORM_BYTRAINER,
+    PIPELINEINFO_TRACE_NUM,
+    FileReader,
+    dcgmMetricParameterMap,
+    getLogger,
+)
 
 
 class dcgmFileReader(FileReader):

@@ -14,16 +14,17 @@
 import paddle.static as static
 from paddle.fluid import core
 from paddle.utils import unique_name
-from .meta_optimizer_base import MetaOptimizerBase
+
 from .common import (
-    OpRole,
     OP_ROLE_KEY,
     OP_ROLE_VAR_KEY,
     CollectiveHelper,
-    is_loss_grad_op,
+    OpRole,
     is_backward_op,
+    is_loss_grad_op,
     is_optimizer_op,
 )
+from .meta_optimizer_base import MetaOptimizerBase
 
 
 class RawProgramOptimizer(MetaOptimizerBase):

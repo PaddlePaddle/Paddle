@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-
-from paddle import Model, set_device
-from paddle.static import InputSpec as Input
-from paddle.metric import Accuracy
-from paddle.vision.datasets import MNIST
-from paddle.vision.models import LeNet
-import paddle.static.amp as amp
-import random
 import argparse
 import ast
+import random
+
+import numpy as np
+
+import paddle
+import paddle.static.amp as amp
+from paddle import Model, set_device
+from paddle.metric import Accuracy
+from paddle.static import InputSpec as Input
+from paddle.vision.datasets import MNIST
+from paddle.vision.models import LeNet
 
 SEED = 2
 paddle.seed(SEED)

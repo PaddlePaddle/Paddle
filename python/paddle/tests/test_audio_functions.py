@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import unittest
 
 import librosa
 import numpy as np
-import paddle
-
-import paddle.audio
-from scipy import signal
-import itertools
 from parameterized import parameterized
+from scipy import signal
+
+import paddle
+import paddle.audio
 
 
 def parameterize(*params):

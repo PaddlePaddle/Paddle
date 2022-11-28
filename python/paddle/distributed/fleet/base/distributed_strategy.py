@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import google.protobuf
+import google.protobuf.text_format
+
 import paddle
-from paddle.distributed.fleet.utils.log_util import logger
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
+from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
-import google.protobuf.text_format
-import google.protobuf
 
 __all__ = []
 

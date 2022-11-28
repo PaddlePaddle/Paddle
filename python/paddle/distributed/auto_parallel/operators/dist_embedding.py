@@ -12,40 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import infer_shape
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import gradient_synchronization
-from .common import (
-    naive_copy_op_dist_attr_for_program,
-    register_distributed_operator_impl,
-    set_comm_op_dist_attr_for_program,
-)
-from ..utils import is_dim_shard
-from ..utils import is_dim_replicate
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..dist_attribute import OperatorDistributedAttribute
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from ..process_group import new_process_group
-from ..utils import (
-    _get_comm_group,
-    _get_idx_in_axis,
-    _get_corresponding_rank,
-    set_var_dist_attr,
-)
-from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op
-from ..cost import (
-    build_comm_costs_from_descs,
-    build_comp_costs_from_descs,
-    build_dp_costs,
-)
-from ..cost import EmbeddingOpCost, EmbeddingGradOpCost
 from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import core, unique_name
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+
+from ..cost import (
+    EmbeddingGradOpCost,
+    EmbeddingOpCost,
+    build_comm_costs_from_descs,
+    build_comm_desc_from_dist_op,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..dist_attribute import OperatorDistributedAttribute
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    _get_idx_in_axis,
+    compute_compatible_and_update_dim_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    set_var_dist_attr,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    gradient_synchronization,
+    infer_shape,
+    naive_copy_op_dist_attr_for_program,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
 )
 
 

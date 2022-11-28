@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+
 import paddle
-from paddle.fluid import core
 from paddle.autograd import PyLayer
 from paddle.autograd.py_layer import LegacyPyLayer
-
-from paddle.fluid import framework
-import contextlib
+from paddle.fluid import core, framework
 from paddle.fluid.framework import in_dygraph_mode
 
 from ..utils.log_util import logger

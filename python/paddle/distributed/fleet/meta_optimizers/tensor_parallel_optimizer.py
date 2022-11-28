@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 
 import paddle.static as static
-from .meta_optimizer_base import MetaOptimizerBase
+
 from .common import (
-    CollectiveHelper,
     OP_ROLE_KEY,
     OP_ROLE_VAR_KEY,
+    CollectiveHelper,
     OpRole,
     is_backward_op,
     is_loss_grad_op,
     is_optimizer_op,
 )
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 

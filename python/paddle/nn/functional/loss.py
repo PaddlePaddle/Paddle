@@ -13,27 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from ...fluid.data_feeder import check_variable_and_dtype
-
 # TODO: define loss functions of neural network
 import paddle
 import paddle.fluid as fluid
-from ...fluid.layers.nn import _elementwise_op_in_dygraph
-from ...tensor.manipulation import reshape
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import _varbase_creator
-from ...static import Variable
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.framework import _non_static_mode, core
 from paddle.utils import deprecated
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.framework import core, _non_static_mode
+
+from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import (
-    _in_legacy_dygraph,
-    in_dygraph_mode,
-    _non_static_mode,
     _current_expected_place,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    _varbase_creator,
+    in_dygraph_mode,
 )
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.layers.nn import _elementwise_op_in_dygraph
+from ...static import Variable
+from ...tensor.manipulation import reshape
 
 __all__ = []
 

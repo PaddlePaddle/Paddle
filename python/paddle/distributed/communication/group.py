@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import warnings
+
 import paddle
 import paddle.distributed as dist
 import paddle.fluid.core as core

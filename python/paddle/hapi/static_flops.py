@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from collections import OrderedDict
+
+import numpy as np
+
 from paddle.static import Program, Variable
 
 __all__ = []

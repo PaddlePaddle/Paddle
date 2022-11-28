@@ -16,18 +16,16 @@ import itertools
 import re
 
 from type_mapping import (
-    input_types_map,
-    optional_input_types_map,
     attr_types_map,
-    opmaker_attr_types_map,
-    output_type_map,
-)
-from type_mapping import (
     dense_input_types_map,
     dense_optional_input_types_map,
     dense_output_types_map,
-    sr_output_types_map,
+    input_types_map,
+    opmaker_attr_types_map,
+    optional_input_types_map,
+    output_type_map,
     phi_attr_types_map,
+    sr_output_types_map,
 )
 
 

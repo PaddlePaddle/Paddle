@@ -14,13 +14,12 @@
 
 import math
 import numbers
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 
 import paddle
 from paddle.utils import try_import
-
-from collections.abc import Sequence, Iterable
 
 __all__ = []
 

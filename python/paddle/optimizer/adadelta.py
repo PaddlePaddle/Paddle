@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import framework
-from ..framework import in_dygraph_mode
 from paddle import _C_ops
+
+from ..fluid import framework
 from ..fluid.dygraph import no_grad
+from ..framework import in_dygraph_mode
+from .optimizer import Optimizer
 
 __all__ = []
 

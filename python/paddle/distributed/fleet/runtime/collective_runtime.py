@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .runtime_base import RuntimeBase
 import logging
+
+from .runtime_base import RuntimeBase
 
 __all__ = []
 

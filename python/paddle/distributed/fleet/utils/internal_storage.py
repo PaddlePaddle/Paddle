@@ -27,6 +27,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+
 from ..meta_parallel.sharding.sharding_utils import Type, device_guard
 
 

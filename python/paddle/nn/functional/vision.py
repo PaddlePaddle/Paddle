@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...device import get_cudnn_version
-from ...static import Variable
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
-from ...device import is_compiled_with_rocm
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.framework import _non_static_mode
+
+from ...device import get_cudnn_version, is_compiled_with_rocm
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
+from ...static import Variable
 
 __all__ = []
 

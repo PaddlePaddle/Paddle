@@ -14,25 +14,29 @@
 
 import copy
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..process_group import new_process_group
-from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
-from ..utils import (
-    compute_compatible_dim_mapping,
-    set_dist_op_desc_original_id,
-    _get_comm_group,
-)
-from ..dist_attribute import (
-    TensorDistributedAttribute,
-    OperatorDistributedAttribute,
-)
-
 from paddle.fluid import core
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.fluid.framework import Operator
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+
+from ..dist_attribute import (
+    OperatorDistributedAttribute,
+    TensorDistributedAttribute,
+)
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    compute_compatible_dim_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 
 class DistributedPNorm(DistributedOperatorImplContainer):

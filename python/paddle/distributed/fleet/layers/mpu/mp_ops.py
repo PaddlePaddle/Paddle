@@ -14,18 +14,20 @@
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.framework import in_dynamic_mode
-from paddle.framework import _in_legacy_dygraph
-from paddle.framework import in_dygraph_mode
-from paddle.framework import _varbase_creator
-from paddle.framework import LayerHelper
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.nn import Layer
-from paddle.distributed import collective
-from ....communication.reduce import ReduceOp, _get_reduce_op
-from paddle.fluid.data_feeder import check_dtype
 from paddle.common_ops_import import dygraph_utils
+from paddle.distributed import collective
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.framework import (
+    LayerHelper,
+    _in_legacy_dygraph,
+    _varbase_creator,
+    in_dygraph_mode,
+    in_dynamic_mode,
+)
+from paddle.nn import Layer
+
+from ....communication.reduce import ReduceOp, _get_reduce_op
 
 
 def _c_identity(tensor, group=None):

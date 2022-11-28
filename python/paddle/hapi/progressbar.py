@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import os
+import struct
 import sys
 import time
-import numpy as np
-import struct
 from collections import namedtuple
+
+import numpy as np
 
 __all__ = []
 
