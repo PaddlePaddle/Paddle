@@ -18,14 +18,13 @@
 # See details in https://github.com/serge-sans-paille/gast/
 
 import os
-from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import (
     EarlyReturnTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import (
+from .assert_transformer import (
     AssertTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import (
@@ -76,7 +75,6 @@ from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import (
 
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
 __all__ = ['DygraphToStaticAst']
 
