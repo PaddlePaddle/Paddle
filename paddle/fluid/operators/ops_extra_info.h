@@ -95,6 +95,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fuse_activation_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_activation_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_activation_scale", ExtraAttrProperty::ONEDNN},
+        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_relu", ExtraAttrProperty::ONEDNN},

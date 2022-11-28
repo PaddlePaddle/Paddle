@@ -356,6 +356,42 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Sigmoid(
         self.act = paddle.nn.functional.sigmoid
 
 
+class ElementwiseScaleOneDNNFusePassTest_Add(
+    ElementwiseActivationMkldnnFusePassTest
+):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_add
+        self.act_alpha = 0.6
+        self.act = paddle.scale
+
+
+class ElementwiseScaleOneDNNFusePassTest_Sub(
+    ElementwiseActivationMkldnnFusePassTest
+):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_sub
+        self.act_alpha = 0.6
+        self.act = paddle.scale
+
+
+class ElementwiseScaleOneDNNFusePassTest_Mul(
+    ElementwiseActivationMkldnnFusePassTest
+):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_mul
+        self.act_alpha = 0.6
+        self.act = paddle.scale
+
+
+class ElementwiseScaleOneDNNFusePassTest_Div(
+    ElementwiseActivationMkldnnFusePassTest
+):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_div
+        self.act_alpha = 0.6
+        self.act = paddle.scale
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
