@@ -31,15 +31,15 @@ namespace cub = hipcub;
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace phi {
 
 template <typename T>
-using CudnnDataType = paddle::platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
