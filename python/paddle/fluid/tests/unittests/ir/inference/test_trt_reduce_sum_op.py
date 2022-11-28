@@ -63,7 +63,7 @@ class TRTReduceSumAllTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
-            reduce_sum = fluid.layers.reduce_sum(data, keep_dim=True)
+            reduce_sum = paddle.sum(data, keepdim=True)
             out = nn.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {

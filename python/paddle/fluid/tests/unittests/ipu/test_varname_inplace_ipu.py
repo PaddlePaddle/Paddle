@@ -62,9 +62,9 @@ class TestBase(IPUOpTest):
                 add1 = paddle.fluid.layers.elementwise_add(x, x)
                 reshape = paddle.reshape(add1, **self.attrs)
                 add2 = paddle.fluid.layers.elementwise_add(reshape, reshape)
-                scale1 = paddle.fluid.layers.scale(add2)
-                scale2 = paddle.fluid.layers.scale(scale1, scale=1.3, bias=0.5)
-                scale3 = paddle.fluid.layers.scale(scale2, scale=2, bias=0.7)
+                scale1 = paddle.scale(add2)
+                scale2 = paddle.scale(scale1, scale=1.3, bias=0.5)
+                scale3 = paddle.scale(scale2, scale=2, bias=0.7)
 
             fetch_list = [scale3.name]
 
