@@ -136,6 +136,7 @@ class BaseTransform:
 
     calling logic:
 
+        .. code-block:: test
         if keys is None:
             _get_params -> _apply_image()
         else:
@@ -909,7 +910,7 @@ class HueTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the hue. Can be any number
-            between 0 and 0.5, 0 gives the original image
+            between 0 and 0.5, 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -953,14 +954,14 @@ class ColorJitter(BaseTransform):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
-        brightness (float): How much to jitter brightness.
-            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers.
-        contrast (float): How much to jitter contrast.
-            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers.
-        saturation (float): How much to jitter saturation.
-            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers.
-        hue (float): How much to jitter hue.
-            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
+        brightness (float, optional): How much to jitter brightness.
+            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers. Default: 0.
+        contrast (float, optional): How much to jitter contrast.
+            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers. Default: 0.
+        saturation (float, optional): How much to jitter saturation.
+            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers. Default: 0.
+        hue (float, optional): How much to jitter hue.
+            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5. Default: 0.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:

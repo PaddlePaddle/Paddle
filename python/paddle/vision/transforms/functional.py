@@ -269,18 +269,18 @@ def center_crop(img, output_size):
         PIL.Image or np.array: Cropped image.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        from PIL import Image
-        from paddle.vision.transforms import functional as F
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
 
-        fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
 
-        fake_img = Image.fromarray(fake_img)
+            fake_img = Image.fromarray(fake_img)
 
-        cropped_img = F.center_crop(fake_img, (150, 100))
-        print(cropped_img.size)
+            cropped_img = F.center_crop(fake_img, (150, 100))
+            print(cropped_img.size)
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -919,7 +919,7 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image|np.array): Image to be converted to grayscale.
-
+        num_output_channels (int, optional): The number of channels for the output image. Default: 1.
     Returns:
         PIL.Image or np.array: Grayscale version of the image.
             if num_output_channels = 1 : returned image is single channel
