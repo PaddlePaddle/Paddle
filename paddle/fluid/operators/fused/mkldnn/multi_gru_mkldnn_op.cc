@@ -59,11 +59,11 @@ class MultiGRUHandler {
         origin_mode_(ctx.Attr<bool>("origin_mode")),
         layers_(ctx.Attr<int>("layers")),
         concat_pds_(layers_, std::shared_ptr<dnnl::concat::primitive_desc>()),
-        x_(ctx.Input<LoDTensor>("X")),
+        x_(ctx.Input<phi::DenseTensor>("X")),
         weights_x_(ctx.MultiInput<phi::DenseTensor>("WeightX")),
         weights_h_(ctx.MultiInput<phi::DenseTensor>("WeightH")),
         biases_(ctx.MultiInput<phi::DenseTensor>("Bias")),
-        hidden_(ctx.Output<LoDTensor>("Hidden")),
+        hidden_(ctx.Output<phi::DenseTensor>("Hidden")),
         x_lod_(x_->lod()[0]) {
     PADDLE_ENFORCE_EQ(
         weights_x_.size(),
@@ -128,7 +128,8 @@ class MultiGRUHandler {
 
     if (is_int8) {
       // Add int8 attributes
-      const auto scale_weights = ctx.MultiInput<LoDTensor>("Scale_weights");
+      const auto scale_weights =
+          ctx.MultiInput<phi::DenseTensor>("Scale_weights");
       PADDLE_ENFORCE_EQ(
           scale_weights.size(),
           layers_ * 2,
@@ -670,11 +671,11 @@ class MultiGRUHandler {
   // on Ti size, thus we need another key to cache them
   std::string memory_key_;
 
-  const LoDTensor* x_;
+  const phi::DenseTensor* x_;
   const std::vector<const phi::DenseTensor*> weights_x_;
   const std::vector<const phi::DenseTensor*> weights_h_;
   const std::vector<const phi::DenseTensor*> biases_;
-  LoDTensor* hidden_;
+  phi::DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
   const paddle::framework::Vector<size_t>& x_lod_;
 };

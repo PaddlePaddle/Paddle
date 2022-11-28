@@ -1720,7 +1720,7 @@ def _dynamic_decode_declarative(
                 states_arrays,
             )
         if max_step_num is not None:
-            control_flow.logical_and(
+            paddle.logical_and(
                 paddle.logical_not(nn.reduce_all(global_finished)),
                 control_flow.less_equal(step_idx, max_step_num),
                 cond,

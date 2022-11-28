@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
@@ -28,9 +29,7 @@ class TRTReduceSumTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
-            reduce_sum = fluid.layers.reduce_sum(
-                data, dim=[2, -1], keep_dim=True
-            )
+            reduce_sum = paddle.sum(data, axis=[2, -1], keepdim=True)
             out = fluid.layers.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
@@ -63,7 +62,7 @@ class TRTReduceSumAllTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
-            reduce_sum = fluid.layers.reduce_sum(data, keep_dim=True)
+            reduce_sum = paddle.sum(data, keepdim=True)
             out = fluid.layers.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {

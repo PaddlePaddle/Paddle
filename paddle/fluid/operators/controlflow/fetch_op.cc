@@ -142,12 +142,14 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(phi::DenseTensor) The resulted phi::DenseTensor which is "
+             "expected to return "
              "to users.");
     AddOutput(
         "Out",
-        "(vector<LoDTensor>|unordered_map<string, int32_t>) A fetching list"
-        " of LoDTensor|unordered_map<string, int32_t> which may have "
+        "(vector<phi::DenseTensor>|unordered_map<string, int32_t>) A fetching "
+        "list"
+        " of phi::DenseTensor|unordered_map<string, int32_t> which may have "
         "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddComment(R"DOC(

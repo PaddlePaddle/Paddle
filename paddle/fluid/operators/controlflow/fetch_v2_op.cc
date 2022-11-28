@@ -200,10 +200,12 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(phi::DenseTensor) The resulted phi::DenseTensor which is "
+             "expected to return "
              "to users.");
     AddOutput("Out",
-              "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
+              "(vector<phi::DenseTensor>) A fetching list of phi::DenseTensor "
+              "which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddAttr<bool>("deepcopy", "(bool) Whether deep copy is required.")
