@@ -17,6 +17,8 @@ import paddle.nn as nn
 from collections import OrderedDict
 from typing import Dict
 
+__all__ = ["IntermediateLayerGetter"]
+
 
 def _make_divisible(v, divisor=8, min_value=None):
     """
