@@ -1418,7 +1418,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_eager_deletion_delete_vars',
     'test_asp_pruning_1d',
     'test_imperative_using_non_zero_gpu',
-    'test_machine_translation',
     'test_flatten_op',
     'test_onnx_export',
     'test_optimizer_for_varbase',
