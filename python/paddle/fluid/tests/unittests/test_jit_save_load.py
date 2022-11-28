@@ -24,7 +24,7 @@ from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph import Linear
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.dygraph.io import INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid import unique_name
 

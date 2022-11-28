@@ -15,17 +15,17 @@
 Distribute CTR model for test fleet api
 """
 
+import os
 import shutil
 import tempfile
 import time
 
+import ctr_dataset_reader
+import numpy as np
+from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-import os
-import numpy as np
-
-import ctr_dataset_reader
-from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 paddle.enable_static()
 

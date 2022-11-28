@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.communicator import FLCommunicator
+from paddle.distributed.communicator import FLCommunicator
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 from google.protobuf import text_format
 from paddle.distributed.ps.utils.public import is_distributed_env

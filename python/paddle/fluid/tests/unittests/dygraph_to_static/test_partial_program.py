@@ -16,7 +16,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 
 from test_fetch_feed import Linear
 
