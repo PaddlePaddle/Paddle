@@ -80,7 +80,7 @@ class DecoderCell(layers.RNNCell):
                 attn_scores, encoder_padding_mask
             )
         attn_scores = layers.softmax(attn_scores)
-        attn_out = layers.squeeze(
+        attn_out = paddle.squeeze(
             layers.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
@@ -318,7 +318,7 @@ class PolicyGradient:
         neg_log_prob = layers.cross_entropy(act_prob, action)
         cost = neg_log_prob * reward
         cost = (
-            (layers.reduce_sum(cost) / layers.reduce_sum(length))
+            (paddle.sum(cost) / paddle.sum(length))
             if length is not None
             else layers.reduce_mean(cost)
         )
@@ -407,7 +407,7 @@ class MLE:
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
         loss = layers.reduce_mean(loss, dim=[0])
-        loss = layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
         return loss

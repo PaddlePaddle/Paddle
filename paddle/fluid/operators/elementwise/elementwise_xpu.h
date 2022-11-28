@@ -43,8 +43,8 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
   PADDLE_ENFORCE_EQ(
       x_var->IsType<phi::DenseTensor>(),
       true,
-      platform::errors::InvalidArgument(
-          "XPU only support LoDTensor, Input(X) is not LoDTensor"));
+      platform::errors::InvalidArgument("XPU only support phi::DenseTensor, "
+                                        "Input(X) is not phi::DenseTensor"));
 
   auto x = x_var->Get<phi::DenseTensor>();
   auto* y = ctx.Input<phi::DenseTensor>("Y");
