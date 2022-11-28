@@ -1962,7 +1962,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             ret = instanceNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
@@ -1970,21 +1970,21 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value2 = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
@@ -1997,7 +1997,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
             def test_Variable():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret1 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_Variable)
@@ -2005,7 +2005,7 @@ class TestLayer(LayerTest):
             # the input dtype of InstanceNorm must be float32 or float64
             def test_type():
                 input = np.random.random(shape).astype('int32')
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
