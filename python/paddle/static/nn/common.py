@@ -1828,7 +1828,7 @@ def batch_norm(
     # variance and variance_out share the same memory
     variance_out = variance
 
-    if paddle.in_dygraph_mode():
+    if _non_static_mode():
         inputs_has_MomemtumTensor = False
         attrs_has_momentum = False
         tmp_tensor_type = core.eager.Tensor
