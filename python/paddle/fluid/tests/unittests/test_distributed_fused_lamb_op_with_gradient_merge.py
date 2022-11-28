@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test_distributed_fused_lamb_op_with_clip import run_test
 import unittest
+
+from test_distributed_fused_lamb_op_with_clip import run_test
 
 
 class TestDistributedFusedLambGradientMerge(unittest.TestCase):

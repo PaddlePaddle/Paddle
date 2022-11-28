@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn.functional as F
-from paddle import fluid
-import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
-import numpy as np
 import unittest
 from unittest import TestCase
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.fluid.initializer as I
+import paddle.nn.functional as F
+from paddle import fluid
 
 
 class TestFunctionalConv2D(TestCase):

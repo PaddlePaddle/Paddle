@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import os
-import unittest
 import time
+import unittest
 
 import paddle
 
 paddle.enable_static()
 
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 
 class TestCommunicator(unittest.TestCase):

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import copy
+import unittest
+
+import numpy as np
 from op_test import OpTest
 from test_multiclass_nms_op import iou
+
 import paddle.fluid as fluid
 
 

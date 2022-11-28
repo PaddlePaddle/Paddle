@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+from unittest import TestCase
+
+import numpy as np
+
 import paddle
 import paddle.nn.initializer as I
-import numpy as np
-import unittest
 from paddle.fluid.framework import _test_eager_guard
-from unittest import TestCase
 
 
 class TestDeformConv2D(TestCase):

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-from paddle import fluid, nn
-import paddle.fluid.dygraph as dg
-import paddle.nn.functional as F
-import paddle.fluid.initializer as I
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.fluid.initializer as I
+import paddle.nn.functional as F
+from paddle import fluid, nn
 
 
 class Conv3DTransposeTestCase(unittest.TestCase):

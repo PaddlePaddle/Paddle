@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.device.cuda.graphs import CUDAGraph
-import unittest
-import numpy as np
 import os
 import pathlib
 import shutil
-from paddle.fluid.dygraph.base import switch_to_static_graph
+import unittest
+
+import numpy as np
 from simple_nets import simple_fc_net_with_inputs
+
+import paddle
+from paddle.device.cuda.graphs import CUDAGraph
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 def can_use_cuda_graph():

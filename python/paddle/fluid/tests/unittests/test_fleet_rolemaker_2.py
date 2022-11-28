@@ -13,10 +13,11 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 import os
-import unittest
 import tempfile
+import unittest
+
+import paddle
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
@@ -34,11 +35,13 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
+        from paddle.fluid.incubate.fleet.base.role_maker import (
+            GeneralRoleMaker,
+            RoleMakerBase,
+        )
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 
         paddle.enable_static()
 

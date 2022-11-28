@@ -13,21 +13,23 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
 from test_conv2d_op import (
     TestConv2DOp,
     TestConv2DOp_v2,
+    create_test_channel_last_class,
+    create_test_cudnn_channel_last_class,
+    create_test_cudnn_padding_SAME_class,
     create_test_padding_SAME_class,
     create_test_padding_VALID_class,
-    create_test_channel_last_class,
-    create_test_cudnn_padding_SAME_class,
-    create_test_cudnn_channel_last_class,
 )
+
+import paddle.fluid.core as core
 
 # ----------------TestDepthwiseConv -----
 

@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-
 import functools
-import unittest
-import numpy as np
-
 import gc
+import math
+import unittest
+
+import numpy as np
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 

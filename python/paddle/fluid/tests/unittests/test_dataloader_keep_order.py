@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+
+import paddle.fluid as fluid
 
 
 def create_reader(shape, batch_number):

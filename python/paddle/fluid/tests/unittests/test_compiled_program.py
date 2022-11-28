@@ -13,12 +13,14 @@
 # limitations under the license.
 
 import unittest
+
 import numpy as np
+from simple_nets import simple_fc_net
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from test_imperative_base import new_program_scope
-from simple_nets import simple_fc_net
 
 
 class TestCompiledProgram(unittest.TestCase):

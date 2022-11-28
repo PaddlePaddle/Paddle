@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
+import copy
 import math
-import paddle
+import unittest
+
+import numpy as np
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-import copy
+
+import paddle
 
 
 def generate_proposals_in_python(

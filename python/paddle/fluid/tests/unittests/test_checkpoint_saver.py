@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 
 from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver

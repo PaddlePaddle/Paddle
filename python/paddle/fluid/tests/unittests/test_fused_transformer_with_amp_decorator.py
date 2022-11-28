@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 import paddle.nn as nn
 from paddle.incubate.nn.layer.fused_transformer import (
-    FusedMultiHeadAttention,
     FusedFeedForward,
+    FusedMultiHeadAttention,
 )
-import unittest
 
 
 class PreModel(nn.Layer):

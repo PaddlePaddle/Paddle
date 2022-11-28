@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+from jit_load_rename_var import rename_var_with_generator
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import unique_name
-from test_imperative_base import new_program_scope
-from jit_load_rename_var import rename_var_with_generator
+from paddle.fluid import core, unique_name
 
 LOADED_VAR_SUFFIX = ".load_0"
 

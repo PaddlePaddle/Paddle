@@ -12,29 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import inspect
 import unittest
 
-import contextlib
 import numpy as np
 from decorator_helper import prog_scope
-import inspect
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
-import paddle.fluid.nets as nets
-from paddle.fluid.framework import Program, program_guard, default_main_program
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid import core
-from paddle.fluid.initializer import Constant
 import paddle.fluid.layers as layers
-from test_imperative_base import new_program_scope
-from paddle.fluid.dygraph import nn
-from paddle.fluid.dygraph import base
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _test_eager_guard
-from paddle.tensor import random
+import paddle.fluid.nets as nets
 import paddle.nn.functional as F
+from paddle.fluid import core
+from paddle.fluid.dygraph import base, nn, to_variable
+from paddle.fluid.framework import (
+    Program,
+    _test_eager_guard,
+    default_main_program,
+    program_guard,
+)
+from paddle.fluid.initializer import Constant
+from paddle.fluid.layers.device import get_places
+from paddle.fluid.param_attr import ParamAttr
+from paddle.tensor import random
 
 
 class LayerTest(unittest.TestCase):

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
-import unittest
 import itertools
+import unittest
+from typing import Optional
+
 import numpy as np
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):

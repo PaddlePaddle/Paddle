@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 from paddle import fluid
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import lstm_unit
-from paddle.fluid.framework import program_guard, Program
 
 
 def sigmoid_np(x):

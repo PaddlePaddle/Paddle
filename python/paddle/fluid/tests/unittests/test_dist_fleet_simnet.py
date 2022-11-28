@@ -14,7 +14,9 @@
 
 import os
 import unittest
+
 from test_dist_fleet_base import TestFleetBase
+
 import paddle
 
 paddle.enable_static()

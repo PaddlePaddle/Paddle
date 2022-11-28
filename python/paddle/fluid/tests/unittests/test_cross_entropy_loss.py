@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
 from test_softmax_op import stable_softmax
 from test_softmax_with_cross_entropy_op import cross_entropy
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 

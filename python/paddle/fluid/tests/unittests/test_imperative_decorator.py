@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+import unittest
+
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import unittest
-import inspect
-
-from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 
 

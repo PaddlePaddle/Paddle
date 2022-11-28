@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import os
-
 from paddle.fluid import ParamAttr
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor

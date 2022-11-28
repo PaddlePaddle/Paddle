@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
-import tempfile
-import os
 
 
 class TestSaveLoadAPIError(unittest.TestCase):

@@ -13,17 +13,19 @@
 # limitations under the License.
 """Test cases for Downpour."""
 
+import os
+import sys
+import unittest
+
+from google.protobuf import text_format
+
 import paddle
 import paddle.fluid as fluid
-import os
-import unittest
-import sys
-from paddle.fluid.incubate.fleet.parameter_server.pslib.node import (
-    DownpourWorker,
-    DownpourServer,
-)
-from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+from paddle.fluid.incubate.fleet.parameter_server.pslib.node import (
+    DownpourServer,
+    DownpourWorker,
+)
 from paddle.fluid.trainer_factory import TrainerFactory
 
 cache_path = os.path.expanduser('~/.cache/paddle/dataset')

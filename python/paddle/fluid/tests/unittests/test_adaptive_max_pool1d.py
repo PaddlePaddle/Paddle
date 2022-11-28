@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 from op_test import check_out_dtype
-import paddle.fluid.core as core
+
 import paddle
-import paddle.nn.functional as F
 import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 def adaptive_start_index(index, input_size, output_size):

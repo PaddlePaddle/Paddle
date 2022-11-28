@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph import GRUCell
-
-import numpy as np
 
 np.random.seed = 123
 

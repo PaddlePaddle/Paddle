@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
 
 paddle.seed(100)
 

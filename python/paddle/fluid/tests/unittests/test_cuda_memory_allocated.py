@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-from paddle.fluid import core
+
+import paddle
 from paddle.device.cuda import device_count, memory_allocated
+from paddle.fluid import core
 
 
 class TestMemoryAllocated(unittest.TestCase):

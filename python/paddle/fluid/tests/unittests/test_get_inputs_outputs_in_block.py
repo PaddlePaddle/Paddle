@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
+
+import paddle
 from paddle.fluid.layers import utils
 
 paddle.enable_static()

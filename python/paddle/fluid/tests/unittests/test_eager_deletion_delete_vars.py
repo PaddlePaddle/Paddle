@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 
 os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
-import paddle.fluid as fluid
-import unittest
 import multiprocessing
+import unittest
 from functools import reduce
 
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

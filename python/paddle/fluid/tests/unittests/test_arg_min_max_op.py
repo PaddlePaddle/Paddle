@@ -14,12 +14,14 @@
 
 import os
 import unittest
+
 import numpy as np
 from op_test import OpTest
+from test_attribute_var import UnittestBase
+
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
-from test_attribute_var import UnittestBase
 
 
 class BaseTestCase(OpTest):

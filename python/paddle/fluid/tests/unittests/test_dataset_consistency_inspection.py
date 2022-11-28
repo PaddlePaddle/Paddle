@@ -15,12 +15,13 @@
 TestCases for Dataset consistency insepection of use_var_list and data_generator.
 """
 
-import paddle
-import paddle.fluid as fluid
 import math
 import os
 import tempfile
 import unittest
+
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.incubate.data_generator as dg
 
 # paddle.enable_static()

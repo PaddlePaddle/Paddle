@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.core as core
-import paddle
+import copy
+import unittest
+
 import numpy as np
+
+import paddle
+import paddle.fluid.core as core
 from paddle.fluid.framework import (
     EagerParamBase,
     _current_expected_place,
@@ -22,8 +26,6 @@ from paddle.fluid.framework import (
     _test_eager_guard,
     in_dygraph_mode,
 )
-import unittest
-import copy
 
 
 class EagerScaleTestCase(unittest.TestCase):

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.dygraph as dg
-import numpy as np
-import unittest
+from paddle import fluid
 from paddle.fluid.framework import _test_eager_guard
 
 

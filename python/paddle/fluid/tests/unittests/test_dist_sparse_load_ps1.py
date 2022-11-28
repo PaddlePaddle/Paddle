@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
 import shutil
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet import fleet
+import unittest
+
+import numpy as np
 from test_dist_sparse_load_ps0 import SparseLoadOp
+
+import paddle
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
+from paddle.distributed.fleet import fleet
 
 
 @unittest.skip(reason="Skip unstable ut, need rewrite with new implement")

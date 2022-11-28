@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 
 
 def pow_grad(x, y, dout):

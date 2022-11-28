@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import random
 import collections
+import random
+import unittest
+
+import numpy as np
+from decorator_helper import prog_scope
+
 import paddle
 import paddle.fluid as fluid
-import unittest
-from decorator_helper import prog_scope
 
 
 class Memory:

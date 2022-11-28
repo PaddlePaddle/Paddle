@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import os
+
 from dist_test_utils import remove_ps_flag, silentremove
 
 silentremove("test_handle_signal_in_serv_op.flag")
 silentremove("test_list_and_serv_run_empty_optimize_block.flag")
 
-import paddle
-import paddle.fluid as fluid
 import time
 import unittest
 from multiprocessing import Process
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

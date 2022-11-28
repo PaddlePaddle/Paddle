@@ -14,6 +14,7 @@
 """This is unit test of Test filter_instag Op."""
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
 

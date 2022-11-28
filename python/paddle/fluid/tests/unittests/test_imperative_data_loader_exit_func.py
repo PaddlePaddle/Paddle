@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import signal
-import unittest
 import multiprocessing
+import queue
+import signal
 import time
+import unittest
 
 from paddle.fluid.framework import _test_eager_guard
-
-import queue
-
 from paddle.fluid.reader import (
-    multiprocess_queue_set,
-    _cleanup,
     CleanupFuncRegistrar,
+    _cleanup,
+    multiprocess_queue_set,
 )
 
 # NOTE: These special functions cannot be detected by the existing coverage mechanism,

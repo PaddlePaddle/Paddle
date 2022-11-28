@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
 
+import numpy as np
 from op_test import OpTest
+
+import paddle
 
 
 def distribute_fpn_proposals_wrapper(

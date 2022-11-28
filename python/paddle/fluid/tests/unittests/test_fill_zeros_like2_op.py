@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle.fluid as fluid
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from op_test import OpTest
 
 
 class TestFillZerosLike2Op(OpTest):

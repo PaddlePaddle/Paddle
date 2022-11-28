@@ -14,12 +14,14 @@
 
 import math
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle.fluid as fluid
 from paddle import fluid
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import gru_unit
-from paddle.fluid.framework import program_guard, Program
 
 
 class TestGRUUnitAPIError(unittest.TestCase):

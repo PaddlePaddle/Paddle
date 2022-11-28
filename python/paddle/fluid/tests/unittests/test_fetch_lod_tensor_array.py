@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
-import numpy as np
 import unittest
+
+import numpy as np
+from simple_nets import simple_fc_net, simple_fc_net_with_inputs
+
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from simple_nets import simple_fc_net_with_inputs, simple_fc_net
 
 
 class TestFetchLoDTensorArray(unittest.TestCase):

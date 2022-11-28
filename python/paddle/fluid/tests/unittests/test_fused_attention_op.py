@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+from op_test import OpTest
 
 import paddle
-import paddle.nn.functional as F
 import paddle.incubate.nn.functional as incubate_f
-from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.common import Linear, Dropout
-from paddle.nn.layer.transformer import _convert_attention_mask
+import paddle.nn.functional as F
 from paddle import tensor
 from paddle.fluid import layers
-import unittest
-from op_test import OpTest
 from paddle.fluid.framework import default_main_program
+from paddle.nn.layer.common import Dropout, Linear
+from paddle.nn.layer.norm import LayerNorm
+from paddle.nn.layer.transformer import _convert_attention_mask
 
 default_main_program().random_seed = 42
 

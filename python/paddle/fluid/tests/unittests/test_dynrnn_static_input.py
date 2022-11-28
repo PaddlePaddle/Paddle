@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.backward import append_backward
-import paddle.fluid.framework as framework
-from paddle.fluid.framework import Program, switch_main_program
 import bisect
+import unittest
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, switch_main_program
 
 fluid.default_startup_program().random_seed = 1
 np.random.seed(1)

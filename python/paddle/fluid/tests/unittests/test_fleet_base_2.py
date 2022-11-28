@@ -14,11 +14,13 @@
 
 import tempfile
 import unittest
+
 import paddle
 
 paddle.enable_static()
 
 import os
+
 import paddle.fluid as fluid
 
 

@@ -12,39 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import itertools
+import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
+from paddle.fluid.dygraph import Linear
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import (
-    SGDOptimizer,
-    Adam,
-    MomentumOptimizer,
-    LarsMomentumOptimizer,
-    AdagradOptimizer,
-    AdamaxOptimizer,
-    DpsgdOptimizer,
-    DecayedAdagradOptimizer,
     AdadeltaOptimizer,
-    RMSPropOptimizer,
+    AdagradOptimizer,
+    Adam,
+    AdamaxOptimizer,
+    DecayedAdagradOptimizer,
+    DpsgdOptimizer,
+    ExponentialMovingAverage,
     FtrlOptimizer,
     LambOptimizer,
-)
-from paddle.fluid.optimizer import (
-    ModelAverage,
-    ExponentialMovingAverage,
-    PipelineOptimizer,
+    LarsMomentumOptimizer,
     LookaheadOptimizer,
+    ModelAverage,
+    MomentumOptimizer,
+    PipelineOptimizer,
     RecomputeOptimizer,
+    RMSPropOptimizer,
+    SGDOptimizer,
 )
-from paddle.fluid.dygraph import Linear
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
-
-from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
+import numpy as np
 import op_test
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework

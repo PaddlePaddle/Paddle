@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import unittest
-import unittest
 
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import (
-    _test_eager_guard,
     _in_legacy_dygraph,
+    _test_eager_guard,
     in_dygraph_mode,
 )
 

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
+
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-import paddle.nn.functional as F
 import paddle.fluid.initializer as I
-import math
-from op_test import OpTest, skip_check_grad_ci
+import paddle.nn.functional as F
 
 paddle.enable_static()
 np.random.seed(100)

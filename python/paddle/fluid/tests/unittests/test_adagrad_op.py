@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
-import math
-import paddle
 
 
 class TestAdagradOp1(OpTest):

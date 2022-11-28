@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 from test_eager_deletion_dynamic_rnn_base import TestBase
+
 import paddle
 import paddle.fluid as fluid
 

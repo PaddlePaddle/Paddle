@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, core, program_guard
-import paddle
-from paddle.fluid.framework import _test_eager_guard
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 # Situation 1: shape is a list(without tensor)

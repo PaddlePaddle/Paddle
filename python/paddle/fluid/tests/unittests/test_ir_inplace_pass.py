@@ -14,11 +14,13 @@
 
 import os
 import unittest
+
 import numpy as np
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+import paddle.fluid.core as core
 
 
 def fc_with_batchnorm(use_feed):

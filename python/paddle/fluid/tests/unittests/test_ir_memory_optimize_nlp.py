@@ -14,10 +14,12 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
+import unittest
+
+from ir_memory_optimize_net_base import TestIrMemOptBase
+
 import paddle
 import paddle.fluid as fluid
-import unittest
-from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
 def lstm_net(

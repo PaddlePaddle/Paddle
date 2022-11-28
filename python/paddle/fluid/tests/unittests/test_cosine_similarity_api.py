@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+import paddle.fluid.core as core
 import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.fluid.core as core
-
-from paddle.fluid import Program, program_guard, Executor, default_main_program
+from paddle.fluid import Executor, Program, default_main_program, program_guard
 
 
 class TestCosineSimilarityAPI(unittest.TestCase):

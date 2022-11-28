@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test import check_out_dtype
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.nn.functional as F
 
 

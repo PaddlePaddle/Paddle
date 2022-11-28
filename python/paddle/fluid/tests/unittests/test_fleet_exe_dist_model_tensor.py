@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
-from paddle.fluid.core import DistModelTensor
-from paddle.fluid.core import DistModelDataType
+
+import paddle
+from paddle.fluid.core import DistModelDataType, DistModelTensor
 
 paddle.enable_static()
 

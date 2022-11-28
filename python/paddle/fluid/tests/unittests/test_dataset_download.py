@@ -14,7 +14,8 @@
 
 import os
 import unittest
-from paddle.dataset.common import download, DATA_HOME, md5file
+
+from paddle.dataset.common import DATA_HOME, download, md5file
 
 
 class TestDataSetDownload(unittest.TestCase):

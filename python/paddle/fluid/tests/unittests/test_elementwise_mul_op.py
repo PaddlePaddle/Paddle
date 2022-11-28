@@ -15,16 +15,16 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
-
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    skip_check_grad_ci,
     convert_float_to_uint16,
+    skip_check_grad_ci,
 )
 
 

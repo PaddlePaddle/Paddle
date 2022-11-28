@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest
+
 import paddle
 from paddle.fluid.framework import _test_eager_guard
-
-from op_test import OpTest
 
 
 def graph_send_recv_wrapper(

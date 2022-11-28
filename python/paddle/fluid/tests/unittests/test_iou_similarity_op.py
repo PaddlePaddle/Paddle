@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy.random as random
 from op_test import OpTest
 

@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from simple_nets import bow_net, fc_with_batchnorm, init_data
-from fake_reader import fake_imdb_reader
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+import os
+import unittest
 from functools import partial
+
+from fake_reader import fake_imdb_reader
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+from simple_nets import bow_net, fc_with_batchnorm, init_data
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import unittest
-import os
 
 
 class TestFuseOptimizationOps(TestParallelExecutorBase):

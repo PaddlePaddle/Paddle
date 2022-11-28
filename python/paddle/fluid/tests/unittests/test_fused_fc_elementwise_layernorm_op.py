@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from paddle.fluid import core
-from test_fc_op import fc_refer, MatrixGenerate
+from test_fc_op import MatrixGenerate, fc_refer
 from test_layer_norm_op import _reference_layer_norm_naive
+
+from paddle.fluid import core
 
 np.random.random(123)
 

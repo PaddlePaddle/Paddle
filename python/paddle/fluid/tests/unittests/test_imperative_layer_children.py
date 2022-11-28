@@ -14,11 +14,11 @@
 
 import unittest
 
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 
 

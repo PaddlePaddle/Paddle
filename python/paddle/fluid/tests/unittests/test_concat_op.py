@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    skip_check_grad_ci,
-    convert_float_to_uint16,
-)
+from decorator_helper import prog_scope
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import _test_eager_guard
-import paddle
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 
 
 class TestConcatOp(OpTest):

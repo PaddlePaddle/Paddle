@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import Pool2D, BatchNorm, Linear
+from paddle.fluid import BatchNorm, Linear, Pool2D, core
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.jit import TracedLayer
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 

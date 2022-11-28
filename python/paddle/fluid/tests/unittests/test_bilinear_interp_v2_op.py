@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.nn.functional import interpolate
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.nn.functional import interpolate
 
 
 def bilinear_interp_test(

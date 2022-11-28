@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from test_imperative_base import new_program_scope
 
 LOADED_VAR_SUFFIX = ".load_0"
 

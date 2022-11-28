@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import time
-import paddle.nn as nn
-import numpy as np
 import threading
+import time
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 
 

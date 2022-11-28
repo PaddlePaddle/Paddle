@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import unittest
-from paddle.fluid import core
+
 from paddle.device.cuda import device_count, get_device_properties
+from paddle.fluid import core
 
 
 class TestGetDeviceProperties(unittest.TestCase):

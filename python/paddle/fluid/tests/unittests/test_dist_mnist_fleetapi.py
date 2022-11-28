@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
@@ -45,8 +47,8 @@ class FleetCollectiveTest(unittest.TestCase):
         import paddle.fluid as fluid
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         from paddle.fluid.incubate.fleet.collective import (
-            fleet,
             DistributedStrategy,
+            fleet,
         )
 
         if not fluid.core.is_compiled_with_cuda():

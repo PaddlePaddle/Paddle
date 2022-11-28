@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import sys
+import unittest
+import warnings
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import unittest
-import sys
-import warnings
 import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 from paddle.fluid.tests.unittests.c_embedding_op_base import (
     TestCEmbeddingCPU,
     TestCEmbeddingOpBase,

@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid.core as core
-from paddle.static import program_guard, Program
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard, convert_np_dtype_to_dtype_
+from paddle.static import Program, program_guard
 
 
 class TestFullOp(unittest.TestCase):

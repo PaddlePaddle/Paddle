@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import numpy as np
-import paddle
 import warnings
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestBackwardInferVarDataTypeShape(unittest.TestCase):

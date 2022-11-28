@@ -18,11 +18,12 @@ os.environ['CPU_NUM'] = '2'
 
 import unittest
 
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler
 from fake_reader import fake_imdb_reader
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import compiler
 
 
 def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):

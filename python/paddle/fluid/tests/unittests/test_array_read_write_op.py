@@ -14,15 +14,16 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import default_main_program
 from paddle.fluid import Program, program_guard
-import numpy as np
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import default_main_program
 
 
 def _test_read_write(x):

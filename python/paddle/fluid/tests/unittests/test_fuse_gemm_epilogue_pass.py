@@ -14,9 +14,11 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid.core as core
 
 

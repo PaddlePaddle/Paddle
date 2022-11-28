@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.static as static
-import paddle
 
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.static as static
 
 
 class BackwardNet:

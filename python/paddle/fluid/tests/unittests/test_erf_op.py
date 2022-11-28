@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from scipy.special import erf
 from op_test import OpTest
+from scipy.special import erf
 
 import paddle
 import paddle.fluid as fluid

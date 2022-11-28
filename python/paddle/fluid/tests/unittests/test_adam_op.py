@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from paddle.fluid import core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.op import Operator
 
 
 class TestAdamOp1(OpTest):
