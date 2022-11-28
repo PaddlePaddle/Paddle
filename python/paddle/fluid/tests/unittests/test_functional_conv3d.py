@@ -87,7 +87,7 @@ class TestFunctionalConv3D(TestCase):
                         (-1, self.in_channels, -1, -1, -1),
                         dtype=self.dtype,
                     )
-                y = fluid.layers.conv3d(
+                y = paddle.static.nn.conv3d(
                     x,
                     self.out_channels,
                     self.filter_shape,
@@ -480,7 +480,7 @@ class TestFunctionalConv3DErrorCase11(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 x = fluid.data("input", self.input.shape, dtype=paddle.float32)
-                y = fluid.layers.conv3d(
+                y = paddle.static.nn.conv3d(
                     x,
                     self.num_filters,
                     self.filter_size,

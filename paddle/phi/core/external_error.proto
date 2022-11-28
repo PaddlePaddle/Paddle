@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 syntax = "proto2";
-package paddle.platform.proto;
+package phi.proto;
 
 // (NOTE:zhouwei): ApiType describes which kind of external third party API
 // More external third party API can be added.
