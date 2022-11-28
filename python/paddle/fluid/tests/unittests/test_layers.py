@@ -2863,15 +2863,9 @@ class TestLayer(LayerTest):
             )
             crop_offsets3 = [0, dim1, dim2, 0]
 
-            out1 = fluid.layers.crop_tensor(
-                x, shape=crop_shape1, offsets=crop_offsets1
-            )
-            out2 = fluid.layers.crop_tensor(
-                x, shape=crop_shape2, offsets=crop_offsets2
-            )
-            out3 = fluid.layers.crop_tensor(
-                x, shape=crop_shape3, offsets=crop_offsets3
-            )
+            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
 
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
