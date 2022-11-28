@@ -20,9 +20,9 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-__global__ void RemovePaddingKernel(const half* input0,
-                                    const int32_t* input1,
-                                    half* output) {
+__global__ void remove_padding_kernel(const half* input0,
+                                      const int32_t* input1,
+                                      half* output) {
   int word_id = blockIdx.x * gridDim.y + blockIdx.y;
   int32_t seqence_length = input1[blockIdx.x + 1] - input1[blockIdx.x];
   if (blockIdx.y < seqence_length) {
@@ -33,9 +33,9 @@ __global__ void RemovePaddingKernel(const half* input0,
   }
 }
 
-__global__ void RecoverPaddingKernel(const half* input0,
-                                     const int32_t* input1,
-                                     half* output) {
+__global__ void recover_padding_kernel(const half* input0,
+                                       const int32_t* input1,
+                                       half* output) {
   int word_id = blockIdx.x * gridDim.y + blockIdx.y;
   int32_t seqence_length = input1[blockIdx.x + 1] - input1[blockIdx.x];
   if (blockIdx.y < seqence_length) {
@@ -218,7 +218,7 @@ int TransformerInputConvertPlugin::enqueue(
       MaxLength,
       vector_length /
           num_threads);  //  batchs, max sequnce length, input0.dims.d[2]/*
-  RemovePaddingKernel<<<num_blocks, num_threads, 0, stream>>>(
+  remove_padding_kernel<<<num_blocks, num_threads, 0, stream>>>(
       input0, output2, output0);  // input(no_varlen), pos_id, input(varlen)
   return cudaGetLastError() != cudaSuccess;
 }
@@ -341,7 +341,7 @@ int TransformerOutputConvertPlugin::enqueue(
       vector_length / num_threads);  //  batchs, max sequnce length
                                      //  (mask_id.dims.d[1]),
                                      //  input.dims.d[1]/*
-  RecoverPaddingKernel<<<num_blocks, num_threads, 0, stream>>>(
+  recover_padding_kernel<<<num_blocks, num_threads, 0, stream>>>(
       input0, input2, output);
   return cudaGetLastError() != cudaSuccess;
 }
