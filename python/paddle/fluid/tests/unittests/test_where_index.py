@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
@@ -101,7 +102,7 @@ class TestWhereOpError(unittest.TestCase):
     def test_api(self):
         with program_guard(Program(), Program()):
             cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
-            result = fluid.layers.where(cond)
+            result = paddle.nonzero(cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
@@ -112,7 +113,7 @@ class TestWhereOpError(unittest.TestCase):
 class TestWhereRaiseError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.where([10])
+            paddle.nonzero([10])
 
         self.assertRaises(TypeError, test_type)
 

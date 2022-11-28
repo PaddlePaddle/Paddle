@@ -142,7 +142,6 @@ __all__ = [
     'psroi_pool',
     'prroi_pool',
     'continuous_value_model',
-    'where',
     'sign',
     'unfold',
     'deformable_roi_pooling',
@@ -9679,59 +9678,6 @@ def continuous_value_model(input, cvm, use_cvm=True):
         inputs={'X': [input], 'CVM': [cvm]},
         outputs={'Y': [out]},
         attrs={"use_cvm": use_cvm},
-    )
-    return out
-
-
-def where(condition):
-    """
-    Return an int64 tensor with rank 2, specifying the coordinate of true element in `condition`.
-
-    Args:
-        condition(Variable): A bool tensor with rank at least 1, the data type is bool.
-
-    Returns:
-        Variable, the output data type is int64. : The tensor variable storing a 2-D tensor, which involves all coordinate.
-
-    Examples:
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             import paddle.fluid.layers as layers
-             import numpy as np
-
-             # condition is a tensor [True, False, True]
-             condition = layers.assign(np.array([1, 0, 1], dtype='int32'))
-             condition = layers.cast(condition, 'bool')
-             out = layers.where(condition) # [[0], [2]]
-
-             # condition is a tensor [[True, False], [False, True]]
-             condition = layers.assign(np.array([[1, 0], [0, 1]], dtype='int32'))
-             condition = layers.cast(condition, 'bool')
-             out = layers.where(condition) # [[0, 0], [1, 1]]
-
-             # condition is a tensor [False, False, False]
-             condition = layers.assign(np.array([0, 0, 0], dtype='int32'))
-             condition = layers.cast(condition, 'bool')
-             out = layers.where(condition) # [[]]
-
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.nonzero(condition)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.where_index(condition)
-
-    helper = LayerHelper("where_index", **locals())
-
-    out = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64
-    )
-
-    helper.append_op(
-        type='where_index',
-        inputs={'Condition': condition},
-        outputs={'Out': [out]},
     )
     return out
 
