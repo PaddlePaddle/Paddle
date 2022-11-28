@@ -162,7 +162,7 @@ def model():
 
     # need cos sim
     inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
-    scale_infer = layers.scale(x=inference, scale=5.0)
+    scale_infer = paddle.scale(x=inference, scale=5.0)
 
     label = layers.data(name='score', shape=[1], dtype='float32')
     square_cost = layers.square_error_cost(input=scale_infer, label=label)

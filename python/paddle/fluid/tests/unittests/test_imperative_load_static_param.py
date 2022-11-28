@@ -75,8 +75,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         nce_label = fluid.data(
             name="nce_label", shape=[None, 10], dtype='int64'
         )
-        nce_out_1 = fluid.layers.nce(nce_in, nce_label, 10000)
-        nce_out_2 = fluid.layers.nce(nce_in, nce_label, 10000)
+        nce_out_1 = paddle.static.nn.nce(nce_in, nce_label, 10000)
+        nce_out_2 = paddle.static.nn.nce(nce_in, nce_label, 10000)
 
         prelu_in = fluid.data(
             name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'

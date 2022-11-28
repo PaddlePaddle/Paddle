@@ -43,6 +43,8 @@ class StreamAnalyzer {
   platform::DeviceContext* ParseDeviceContext(
       const OpFuncNode& op_func_node) const;
 
+  platform::DeviceType GetWaiterType(const Instruction& instr) const;
+
  private:
   bool HasDataDependency(const Instruction& cur_instr,
                          const Instruction& next_instr) const;
@@ -69,8 +71,6 @@ class StreamAnalyzer {
       const DependencyBuilder& dependency_builder,
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
           event_info_map) const;
-
-  platform::DeviceType GetWaiterType(const Instruction& instr) const;
 
   DownstreamRunType AnalyseRunTypeForTwoInstructions(
       const Instruction& cur_instr, const Instruction& next_instr) const;
