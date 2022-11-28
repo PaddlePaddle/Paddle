@@ -27,7 +27,6 @@ namespace operators {
 namespace math {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in
@@ -51,9 +50,8 @@ using LoDTensor = phi::DenseTensor;
  * For a mini-batch of 2 variable lengths sentences, containing 3, and 1
  * time-steps:
  *
- * Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3,
- * 4].
- * Besides, for the sake of simplicity, we assume M=1 and N=2.
+ * Assumed input (X) is a [4, M, N] float phi::DenseTensor, and X->lod()[0] =
+ * [0, 3, 4]. Besides, for the sake of simplicity, we assume M=1 and N=2.
  *
  * X = [[a1, a2;
  *       b1, b2;
@@ -89,7 +87,7 @@ template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const LoDTensor& in,
+                  const phi::DenseTensor& in,
                   const phi::DenseTensor* padding_data,
                   bool padding_trainable,
                   const int context_start,
@@ -218,7 +216,7 @@ template <typename DeviceContext, typename T>
 class ContextProjectGradFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const LoDTensor& in,
+                  const phi::DenseTensor& in,
                   bool padding_trainable,
                   const int context_start,
                   const int context_length,
