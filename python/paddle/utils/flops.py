@@ -216,6 +216,10 @@ def _matmul_v2_flops(input_shapes, attrs):
 
 
 def _relu_class_flops(input_shapes, attrs):
+    """FLOPs computation for relu_like ops.
+    For elu/leaky_relu/prelu/relu/relu6/silu (input):
+        equation: flops = (numel)total number of elements in the input tensor.
+    """
     input = input_shapes.get('X')[0]
     return prod(input)
 
@@ -237,10 +241,6 @@ def _prelu_flops(input_shapes, attrs):
 
 @register_flops("relu")
 def _relu_flops(input_shapes, attrs):
-    """FLOPs computation for relu op.
-    For relu(input):
-        equation: flops = (numel)total number of elements in the input tensor.
-    """
     return _relu_class_flops(input_shapes, attrs)
 
 
