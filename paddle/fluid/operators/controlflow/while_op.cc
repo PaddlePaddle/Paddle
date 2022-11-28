@@ -290,7 +290,7 @@ class WhileGradOp : public framework::OperatorBase {
 
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto &og_outside = *scope.FindVar(outside_og_name);
-          if (og_outside.IsType<framework::DenseTensor>() &&
+          if (og_outside.IsType<phi::DenseTensor>() &&
               !og_outside.GetMutable<phi::DenseTensor>()->IsInitialized()) {
             auto *var_desc = parent_block->FindVarRecursive(outside_og_name);
             PADDLE_ENFORCE_NOT_NULL(var_desc,
