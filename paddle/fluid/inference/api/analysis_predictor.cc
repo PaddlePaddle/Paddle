@@ -38,6 +38,7 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -260,6 +261,10 @@ bool AnalysisPredictor::Init(
   } else {
     VLOG(2) << "Profiler is deactivated, and no profiling report will be "
                "generated.";
+  }
+
+  if (!status_is_cloned_) {
+    parent_predictor_id_ = predictor_id_;
   }
 
   // no matter with or without MKLDNN
@@ -555,6 +560,15 @@ bool AnalysisPredictor::PrepareProgram(
   }
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
+
+  if (config_.enable_memory_optim_) {
+    auto *pass_res_info =
+        inference::analysis::PassResultInfoForRuntime::Instance();
+    auto reuse_table =
+        pass_res_info->Get<std::unordered_map<std::string, std::string>>(
+            parent_predictor_id_, "memory_optimize_pass");
+    executor_->MakeReusePlan(reuse_table);
+  }
 
   return true;
 }
@@ -1080,6 +1094,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
+  argument_.SetParentPredictorID(parent_predictor_id_);
   argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
@@ -2128,6 +2143,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
+  x->parent_predictor_id_ = this->parent_predictor_id_;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
@@ -2187,12 +2203,6 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
-  if (config_.enable_memory_optim()) {
-    LOG(WARNING) << "If you want to run output hook function, you should "
-                    "use config.EnableMemoryOptim(false) to turn off memory "
-                    "reuse!";
-    return;
-  }
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
     executor_->RegisterOutputHook([this](framework::OperatorBase *op) {

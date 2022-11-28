@@ -67,6 +67,9 @@ class NaiveExecutor {
 
   Scope* GetScope() { return scope_; }
 
+  void MakeReusePlan(
+      const std::unordered_map<std::string, std::string>& reuse_table);
+
   void ResetTrtOps(int num);
 
   void RegisterOutputHook(const HookFunc& hookfunc);
@@ -83,6 +86,11 @@ class NaiveExecutor {
   Scope* scope_{nullptr};
 
   HookFunc hookfunc_{nullptr};
+
+  // Record information that tensor_a should ShareBufferWith tensor_b.
+  std::unordered_map<OperatorBase*,
+                     std::unordered_map<phi::DenseTensor*, phi::DenseTensor*>>
+      reuse_tensor_cache;
 };
 
 }  // namespace framework

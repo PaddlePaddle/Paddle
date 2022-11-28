@@ -15,10 +15,13 @@
 #include "paddle/fluid/framework/naive_executor.h"
 
 #include <string>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
+#include "paddle/phi/core/dense_tensor.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -61,6 +64,11 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePush(op->Type(), platform::NvtxRangeColor::Green);
 #endif
+    if (reuse_tensor_cache.count(op.get())) {
+      for (auto it : reuse_tensor_cache[op.get()]) {
+        it.first->ShareBufferWith(*it.second);
+      }
+    }
     op->Run(*scope_, place_);
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
@@ -147,6 +155,25 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
   hookfunc_ = hookfunc;
+}
+
+void NaiveExecutor::MakeReusePlan(
+    const std::unordered_map<std::string, std::string> &reuse_table) {
+  for (auto &op : ops_) {
+    for (auto name : op->InputVars()) {
+      if (reuse_table.count(name)) {
+        auto *var = scope_->FindVar(name);
+        const auto &reuse_name = reuse_table.at(name);
+        auto *reuse_var = scope_->FindVar(reuse_name);
+        if (var->IsType<phi::DenseTensor>() &&
+            reuse_var->IsType<phi::DenseTensor>()) {
+          auto tensor = var->GetMutable<phi::DenseTensor>();
+          auto reuse_tensor = reuse_var->GetMutable<phi::DenseTensor>();
+          reuse_tensor_cache[op.get()].emplace(tensor, reuse_tensor);
+        }
+      }
+    }
+  }
 }
 
 NaiveExecutor::~NaiveExecutor() {
