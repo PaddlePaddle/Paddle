@@ -69,12 +69,11 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
 class LabelSmoothOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(phi::DenseTensor) The input labels of LabelSmooth operator. This "
-        "input can be batched labels in one-hot encoding or output from "
-        "softmax, with shape [N x K], where N is the batch size and K is "
-        "the number of classes");
+    AddInput("X",
+             "(LoDTensor) The input labels of LabelSmooth operator. This "
+             "input can be batched labels in one-hot encoding or output from "
+             "softmax, with shape [N x K], where N is the batch size and K is "
+             "the number of classes");
     AddInput("PriorDist",
              "(Tensor, optional)"
              "The prior distribution to be added to the smoothed label. It is "
@@ -85,7 +84,7 @@ class LabelSmoothOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Out",
               "(loDTensor) The smoothed label of LabelSmooth operator. It has"
-              "the same shape and LoD with the Input(phi::DenseTensor).");
+              "the same shape and LoD with the Input(LoDTensor).");
     AddAttr<float>("epsilon",
                    "(float, default 0.0f)"
                    "The smoothing parameter of LabelSmooth operator.")

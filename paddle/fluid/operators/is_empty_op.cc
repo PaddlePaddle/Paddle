@@ -39,10 +39,9 @@ class IsEmptyOp : public framework::OperatorWithKernel {
 class IsEmptyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(phi::DenseTensor) Tensor which is to be checked.");
-    AddOutput(
-        "Out",
-        "(phi::DenseTensor) a boolean Tensor that indicate empty or not.");
+    AddInput("X", "(LoDTensor) Tensor which is to be checked.");
+    AddOutput("Out",
+              "(LoDTensor) a boolean Tensor that indicate empty or not.");
     AddComment(R"DOC(
 IsEmpty Operator which checks whether a tensor is empty.
 
