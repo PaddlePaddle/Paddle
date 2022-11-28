@@ -17,7 +17,7 @@ from ...incubate.asp import calculate_density  # noqa: F401
 from ...incubate.asp import decorate  # noqa: F401
 from ...incubate.asp import prune_model  # noqa: F401
 from ...incubate.asp import reset_excluded_layers  # noqa: F401
-from ....incubate.asp import add_supported_layer  # noqa: F401
+from ...incubate.asp import add_supported_layer  # noqa: F401
 from ...incubate.asp import sparsity  # noqa: F401
 
 
