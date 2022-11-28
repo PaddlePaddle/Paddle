@@ -150,7 +150,22 @@ class Ast3ToGAst(AstToGAst):
             return new_node
 
         def visit_Call(self, node):
-            starred = kwargs = []
+            if sys.version_info.minor < 5:
+                if node.starargs:
+                    star = gast.Starred(self._visit(node.starargs), gast.Load())
+                    gast.copy_location(star, node)
+                    starred = [star]
+                else:
+                    starred = []
+
+                if node.kwargs:
+                    kw = gast.keyword(None, self._visit(node.kwargs))
+                    gast.copy_location(kw, node.kwargs)
+                    kwargs = [kw]
+                else:
+                    kwargs = []
+            else:
+                starred = kwargs = []
 
             new_node = gast.Call(
                 self._visit(node.func),
@@ -219,6 +234,17 @@ class Ast3ToGAst(AstToGAst):
             return new_node
         else:
             return self.generic_visit(node)
+
+    if sys.version_info.minor < 6:
+
+        def visit_comprehension(self, node):
+            new_node = gast.comprehension(
+                target=self._visit(node.target),
+                iter=self._visit(node.iter),
+                ifs=self._visit(node.ifs),
+                is_async=0,
+            )
+            return ast.copy_location(new_node, node)
 
 
 class GAstToAst3(GAstToAst):
@@ -305,7 +331,47 @@ class GAstToAst3(GAstToAst):
         else:
             return self.generic_visit(node)
 
-    if sys.version_info.minor < 8:
+    if sys.version_info.minor < 5:
+
+        def visit_Call(self, node):
+            if node.args and isinstance(node.args[-1], gast.Starred):
+                args = node.args[:-1]
+                starargs = node.args[-1].value
+            else:
+                args = node.args
+                starargs = None
+
+            if node.keywords and node.keywords[-1].arg is None:
+                keywords = node.keywords[:-1]
+                kwargs = node.keywords[-1].value
+            else:
+                keywords = node.keywords
+                kwargs = None
+
+            new_node = ast.Call(
+                self._visit(node.func),
+                self._visit(args),
+                self._visit(keywords),
+                self._visit(starargs),
+                self._visit(kwargs),
+            )
+            ast.copy_location(new_node, node)
+            return new_node
+
+        def visit_ClassDef(self, node):
+            self.generic_visit(node)
+            new_node = ast.ClassDef(
+                name=self._visit(node.name),
+                bases=self._visit(node.bases),
+                keywords=self._visit(node.keywords),
+                body=self._visit(node.body),
+                decorator_list=self._visit(node.decorator_list),
+                starargs=None,
+                kwargs=None,
+            )
+            return ast.copy_location(new_node, node)
+
+    elif sys.version_info.minor < 8:
 
         def visit_FunctionDef(self, node):
             new_node = ast.FunctionDef(

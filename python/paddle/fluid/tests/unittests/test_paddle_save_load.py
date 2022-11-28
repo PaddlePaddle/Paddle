@@ -150,10 +150,8 @@ class TestSaveLoadPickle(unittest.TestCase):
             paddle.save(save_dict, path, 5)
 
         protocols = [
-            2,
+            2, 3, 4
         ]
-        if sys.version_info.major >= 3 and sys.version_info.minor >= 7:
-            protocols += [3, 7]
         for protocol in protocols:
             paddle.save(save_dict, path, pickle_protocol=protocol)
             dict_load = paddle.load(path)

@@ -1799,10 +1799,8 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                 paddle.fluid.save(prog, path, 5)
 
             protocols = [
-                2,
+                2, 3, 4
             ]
-            if sys.version_info.major >= 3 and sys.version_info.minor >= 7:
-                protocols += [3, 7]
             for protocol in protocols:
                 paddle.fluid.save(prog, path, protocol)
                 # set var to zero
