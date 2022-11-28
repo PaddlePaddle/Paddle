@@ -109,7 +109,6 @@ __all__ = [
     'log',
     'crop_tensor',
     'prelu',
-    'flatten',
     'unique',
     'unique_with_counts',
     'elementwise_add',
@@ -6838,98 +6837,6 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         inputs={"X": x, 'Alpha': alpha},
         attrs={"mode": mode, "data_format": data_format},
         outputs={"Out": out},
-    )
-    return out
-
-
-def flatten(x, axis=1, name=None):
-    r"""
-    **Flatten op**
-
-    Flatten the input tensor into a 2D matrix.
-
-    For Example:
-
-    .. code-block:: text
-
-        Case 1:
-
-          Given
-            X.shape = (3, 100, 100, 4)
-
-          and
-            axis = 2
-
-          We get:
-            Out.shape = (3 * 100, 4 * 100)
-
-        Case 2:
-
-          Given
-            X.shape = (3, 100, 100, 4)
-
-          and
-            axis = 0
-
-          We get:
-            Out.shape = (1, 3 * 100 * 100 * 4)
-
-    Args:
-        x (Variable): A tensor of rank >= axis. A tensor with type float32,
-                      float64, int8, int32, int64, uint8.
-        axis (int): Indicate up to which input dimensions (exclusive) should
-                    be flattened to the outer dimension of the output.
-                    The value for axis must be in the range [0, R], where R
-                    is the rank of the input tensor. Default: 1.
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-
-    Returns:
-        Variable: A 2D tensor with the contents of the input tensor, with input \
-                  dimensions up to axis flattened to the outer dimension of \
-                  the output and remaining input dimensions flattened into the \
-                  inner dimension of the output. A Tensor with type same as input x.
-
-    Raises:
-        ValueError: If x is not a variable.
-        ValueError: If axis is not in range [0, rank(x)].
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
-            # x shape is [4, 4, 3]
-            out = fluid.layers.flatten(x=x, axis=2)
-            # out shape is [16, 3]
-    """
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
-        'flatten',
-    )
-    if _non_static_mode():
-        return _legacy_C_ops.flatten2(x, 'axis', axis)[0]
-
-    helper = LayerHelper('flatten', **locals())
-
-    if not (isinstance(x, Variable)):
-        raise ValueError("The input x should be a Variable")
-
-    if not (isinstance(axis, int)) or axis > len(x.shape) or axis < 0:
-        raise ValueError("The axis should be a int, and in range [0, rank(x)]")
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='flatten2',
-        inputs={"X": x},
-        outputs={'Out': out, 'XShape': x_shape},
-        attrs={"axis": axis},
     )
     return out
 
