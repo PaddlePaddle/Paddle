@@ -1262,9 +1262,9 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeImmutable(graph, "split", "X");
-  QuantizeElementwise(graph, "add");
-  QuantizeElementwise(graph, "multiply");
-  QuantizeElementwise(graph, "subtract");
+  QuantizeElementwise(graph, "elementwise_add");
+  QuantizeElementwise(graph, "elementwise_mul");
+  QuantizeElementwise(graph, "elementwise_sub");
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);
