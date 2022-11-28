@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+import paddle
 import numpy as np
 import unittest
 
@@ -27,8 +28,8 @@ class TestOpNameConflict(unittest.TestCase):
                 y = fluid.data(name="y", shape=[1], dtype='float32')
                 z = fluid.data(name="z", shape=[1], dtype='float32')
 
-                m = fluid.layers.elementwise_add(x, y, name="add")
-                n = fluid.layers.elementwise_add(y, z, name="add")
+                m = paddle.add(x, y, name="add")
+                n = paddle.add(y, z, name="add")
                 p = m + n
 
                 place = fluid.CPUPlace()
