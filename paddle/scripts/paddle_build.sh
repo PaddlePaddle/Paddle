@@ -3784,7 +3784,7 @@ function main() {
         echo "in cichek_py37:"
         echo "which python:"
         which python
-        python ${PADDLE_ROOT}/test_ljd.py
+        #python ${PADDLE_ROOT}/test_ljd.py
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
