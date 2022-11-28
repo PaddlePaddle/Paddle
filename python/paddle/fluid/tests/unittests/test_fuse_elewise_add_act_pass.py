@@ -91,7 +91,7 @@ class TestMNIST(TestParallelExecutorBase):
 
 class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
     def build_program(self, main_program, startup_program):
-        with fluid.program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             X = fluid.data(name="X", shape=[3, 3], dtype='float32')
             Y = fluid.data(name="Y", shape=[3, 3], dtype='float32')
             Out1 = X * 5
