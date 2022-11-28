@@ -65,7 +65,6 @@ __all__ = [
     'has_inf',
     'zeros_like',
     'ones_like',
-    'diag',
     'triu',
 ]
 
@@ -1516,59 +1515,6 @@ def zeros_like(x, out=None):
         attrs={'value': 0, "dtype": x.dtype},
         outputs={'Out': [out]},
     )
-    out.stop_gradient = True
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.diag")
-def diag(diagonal):
-    r"""
-	:alias_main: paddle.diag
-	:alias: paddle.diag,paddle.tensor.diag,paddle.tensor.creation.diag
-	:old_api: paddle.fluid.layers.diag
-
-    This OP creates a square matrix which has diagonal values specified by input :attr:`diagonal`.
-
-    Args:
-        diagonal(Variable|numpy.ndarray): The input tensor should be 1D tensor, the input shape is :math:`[ N]` , \
-            specifying diagonal values by this input tensor. The input data type should be float32, float64, int32, int64.
-
-    Returns:
-        Variable, the output data type is the same as input data type.: The tensor variable storing the square matrix, \
-            the diagonal values specified by input :attr:`diagonal`. the output shape is :math:`[N, N]` with two dims.
-
-    Examples:
-        .. code-block:: python
-
-          # [[3, 0, 0]
-          #  [0, 4, 0]
-          #  [0, 0, 5]
-
-          import paddle.fluid as fluid
-          import numpy as np
-          diagonal = np.arange(3, 6, dtype='int32')
-          data = fluid.layers.diag(diagonal)
-          # diagonal.shape=(3,) data.shape=(3, 3)
-
-    """
-    check_type(diagonal, 'diagonal', (Variable, numpy.ndarray), 'diag')
-    check_dtype(
-        diagonal.dtype,
-        'diagonal',
-        ['float32', 'float64', 'int32', 'int64'],
-        'diag',
-    )
-    helper = LayerHelper("diag", **locals())
-
-    if not isinstance(diagonal, Variable):
-        diagonal = assign(diagonal)
-
-    out = helper.create_variable_for_type_inference(dtype=diagonal.dtype)
-
-    helper.append_op(
-        type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]}
-    )
-
     out.stop_gradient = True
     return out
 
