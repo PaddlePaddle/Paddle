@@ -28,7 +28,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
@@ -90,8 +89,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
                         "Variances",
                         "GenerateProposals");
 
-    auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
-    auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
+    auto *rpn_rois = context.Output<phi::DenseTensor>("RpnRois");
+    auto *rpn_roi_probs = context.Output<phi::DenseTensor>("RpnRoiProbs");
 
     int pre_nms_top_n = context.Attr<int>("pre_nms_topN");
     int post_nms_top_n = context.Attr<int>("post_nms_topN");
@@ -288,9 +287,10 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Bounding box variances with same shape as `Anchors`.");
 
     AddOutput("RpnRois",
-              "(LoDTensor), Output proposals with shape (rois_num, 4).");
-    AddOutput("RpnRoiProbs",
-              "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+              "(phi::DenseTensor), Output proposals with shape (rois_num, 4).");
+    AddOutput(
+        "RpnRoiProbs",
+        "(phi::DenseTensor) Scores of proposals with shape (rois_num, 1).");
     AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
         .AsDispensable();
     AddAttr<int>("pre_nms_topN",

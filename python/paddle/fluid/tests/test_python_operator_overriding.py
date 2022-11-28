@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
-import paddle.fluid as fluid
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 

@@ -1034,8 +1034,6 @@ PADDLE_DEFINE_EXPORTED_bool(
  * default=Predictor
  * Example:
  * Note:
- * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
- * FLAGS_jit_engine_type == PE, using PEEngine by default
  * FLAGS_jit_engine_type == New, using InterpreterEngine by default
  * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
  */
@@ -1053,4 +1051,17 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
  * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
  */
 PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+
+/**
+ * CUDNNv8 related FLAG
+ * Name: cudnn_cache_saturation_count
+ * Since Version: 2.5.0
+ * Value Range: int64_t, default=1
+ * Example:
+ * Note: Set saturation count for CUDNNv8 cache. A candidate execution
+ * plan need to be considered as the fastest plan by exhaustive search
+ * N times before it is actually added in the cache. It is useful when
+ * the result of exhaustive search is unstable.
+ */
+PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND

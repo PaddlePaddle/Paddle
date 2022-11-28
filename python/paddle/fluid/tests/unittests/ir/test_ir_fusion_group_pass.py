@@ -16,9 +16,11 @@ import unittest
 
 import numpy as np
 from pass_test import PassTest
+
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 
 
 class FusionGroupPassTest(PassTest):
@@ -85,10 +87,14 @@ class FusionGroupPassComplicatedTest(FusionGroupPassTest):
             one = layers.fill_constant(shape=[1], dtype=dtype, value=1.0)
             tmp_0 = one * self.feed_vars[0]
             # subgraph with 9 op nodes
-            tmp_1 = tmp_0 * layers.sigmoid(self.feed_vars[1]) + layers.sigmoid(
-                self.feed_vars[2]
-            ) * layers.tanh(self.feed_vars[3])
-            tmp_2 = layers.tanh(tmp_1) + layers.sigmoid(self.feed_vars[4])
+            tmp_1 = tmp_0 * paddle.nn.functional.sigmoid(
+                self.feed_vars[1]
+            ) + paddle.nn.functional.sigmoid(self.feed_vars[2]) * paddle.tanh(
+                self.feed_vars[3]
+            )
+            tmp_2 = paddle.tanh(tmp_1) + paddle.nn.functional.sigmoid(
+                self.feed_vars[4]
+            )
 
         self.append_gradients(tmp_2)
 
@@ -162,10 +168,10 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
             tmp_0 = layers.sum(
                 [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]]
             )
-            tmp_1 = layers.sqrt(tmp_0)
+            tmp_1 = paddle.sqrt(tmp_0)
             tmp_2 = layers.mul(tmp_0, self.feed_vars[3])
             # subgraph with 2 op nodes
-            tmp_3 = layers.square(layers.sum([tmp_1, tmp_2]))
+            tmp_3 = paddle.square(layers.sum([tmp_1, tmp_2]))
 
         self.append_gradients(tmp_3)
 
@@ -201,7 +207,7 @@ class FusionGroupPassFillConstantTest(FusionGroupPassTest):
 
             tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
             tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
-            tmp_2 = layers.scale(
+            tmp_2 = paddle.scale(
                 tmp_1, scale=3.0, bias=1.0, bias_after_scale=True
             )
             tmp_3 = layers.elementwise_mul(tmp_2, tmp_0)
