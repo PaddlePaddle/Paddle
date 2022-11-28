@@ -49,31 +49,6 @@ static void tokenize(const std::string& ops,
   op_set->insert(ops.substr(beg));
 }
 
-bool is_in_xpu_black_list(const std::string& op_name) {
-  static bool inited = false;
-  static std::unordered_set<std::string> xpu_black_list;
-  static std::mutex s_mtx;
-  if (!inited) {
-    std::lock_guard<std::mutex> guard(s_mtx);
-    if (!inited) {
-      if (std::getenv("XPU_BLACK_LIST") != nullptr) {
-        std::string ops(std::getenv("XPU_BLACK_LIST"));
-        tokenize(ops, ',', &xpu_black_list);
-      }
-      inited = true;
-      VLOG(3) << "XPU Black List: ";
-      for (auto iter = xpu_black_list.begin(); iter != xpu_black_list.end();
-           ++iter) {
-        VLOG(3) << *iter << " ";
-      }
-    }
-  }
-  if (xpu_black_list.find(op_name) != xpu_black_list.end()) {
-    return true;
-  }
-  return false;
-}
-
 #ifdef PADDLE_WITH_XPU_KP
 bool is_xpu_kp_support_op(const std::string& op_name,
                           const pOpKernelType& type) {

@@ -27,7 +27,6 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_or
 from .utils import (
     assert_same_structure,
     map_structure,
@@ -625,10 +624,12 @@ class StaticRNN:
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
@@ -637,7 +638,7 @@ class StaticRNN:
                 dtype='float32',
                 is_sparse=False)
             # transform batch size to dim 1
-            x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
             rnn = fluid.layers.StaticRNN()
             with rnn.step():
@@ -714,10 +715,12 @@ class StaticRNN:
         Examples 1:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -726,7 +729,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -742,9 +745,11 @@ class StaticRNN:
         Examples 2:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -753,7 +758,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
                 boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -842,10 +847,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -854,7 +861,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -893,10 +900,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -905,7 +914,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -953,10 +962,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -965,7 +976,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -3266,12 +3277,12 @@ class Switch:
         else:
             pre_cond_num = len(self.pre_not_conditions)
             pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
-            new_not_cond = logical_and(
+            new_not_cond = paddle.logical_and(
                 x=pre_not_cond, y=paddle.logical_not(x=condition)
             )
             self.pre_not_conditions.append(new_not_cond)
             cond_block = ConditionalBlock(
-                [logical_and(x=pre_not_cond, y=condition)],
+                [paddle.logical_and(x=pre_not_cond, y=condition)],
                 is_scalar_condition=True,
             )
 
@@ -3387,7 +3398,7 @@ class IfElse:
         output = ie() #  [array([[-7.], [-9.], [ 8.], [ 7.]], dtype=float32)]
 
         # Get the first Variable in the output List and add all elements.
-        out = fluid.layers.reduce_sum(output[0])
+        out = paddle.sum(output[0])
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())

@@ -61,7 +61,7 @@ class TestWhileOp(unittest.TestCase):
         array_len2 = layers.fill_constant(shape=[1], dtype='int32', value=3)
         array_len2 = layers.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
-        cond2 = layers.logical_or(x=j, y=array_len2)
+        cond2 = paddle.logical_or(x=j, y=array_len2)
         cond2 = layers.ones(shape=[1], dtype='int32')
         cond2 = layers.cast(cond2, 'bool')
         while_op = layers.While(cond=cond)

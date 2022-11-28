@@ -577,7 +577,7 @@ def scaled_dot_product_attention(
 
         # permute the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -598,7 +598,7 @@ def scaled_dot_product_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         return paddle.reshape(
             x=trans_x,
             shape=list(
@@ -620,7 +620,7 @@ def scaled_dot_product_attention(
     v = __split_heads(v, num_heads)
 
     key_dim_per_head = keys.shape[-1] // num_heads
-    scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
+    scaled_q = paddle.scale(x=q, scale=key_dim_per_head**-0.5)
     product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
     x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])
