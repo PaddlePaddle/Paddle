@@ -247,7 +247,7 @@ inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
                          segment_bits);
 
   SortPostprocessKernel<<<grid, block, 0, cu_stream>>>(
-      self_ptr, i_s_ptr, indices_ptr, values_ptr, nsegments, nsort);
+      self_ptr, i_s_ptr, values_ptr, indices_ptr, nsegments, nsort);
 }
 
 // The method is called when # of the rows of the input is less than or equal to
