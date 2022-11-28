@@ -45,7 +45,8 @@ set(COMMON_KERNEL_DEPS
     im2col
     vol2col
     concat_and_split_functor
-    selected_rows_functor)
+    selected_rows_functor
+    warprnnt)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils

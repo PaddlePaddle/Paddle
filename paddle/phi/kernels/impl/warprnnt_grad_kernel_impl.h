@@ -25,60 +25,36 @@
 namespace phi {
 
 template <typename T, typename Context>
-void WarpctcGradKernel(const Context& dev_ctx,
-                       const DenseTensor& logits,
-                       const paddle::optional<DenseTensor>& logits_length,
-                       const DenseTensor& warpctcgrad,
-                       const DenseTensor& loss_grad,
-                       int blank,
-                       bool norm_by_times,
-                       DenseTensor* logits_grad) {
+void WarprnntGradKernel(const Context& dev_ctx,
+                        const DenseTensor& logits,
+                        const DenseTensor& logits_length,
+                        const DenseTensor& warprnntgrad,
+                        const DenseTensor& loss_grad,
+                        int blank,
+                        float fastemit_lambda,
+                        int num_threads,
+                        DenseTensor* logits_grad) {
   dev_ctx.template Alloc<T>(logits_grad);
 
-  if (logits_length.is_initialized()) {
-    int max_seq_length = warpctcgrad.dims()[0];  // Tmax
-    int num_sequences = warpctcgrad.dims()[1];   // B
-    int seq_width = warpctcgrad.dims()[2];       // D
+  int B = warprnntgrad.dims()[0];     // B
+  int Tmax = warprnntgrad.dims()[1];  // Tmax
+  int Umax = warprnntgrad.dims()[2];  // Umax
+  int D = warprnntgrad.dims()[3];     // D
 
-    // B
-    auto logits_len_e = EigenTensor<int64_t, 1>::From(*logits_length);
-    // (B, 1)
-    auto loss_grad_e = EigenTensor<T, 2>::From(loss_grad);
-    // (T, B, D)
-    auto warpctcgrad_e = EigenTensor<T, 3>::From(warpctcgrad);
+  // (B, 1)
+  auto loss_grad_e = EigenTensor<T, 2>::From(loss_grad);
+  // (B, T, U, D)
+  auto warprnntgrad_e = EigenTensor<T, 4>::From(warprnntgrad);
 
-    auto logits_grad_e = EigenTensor<T, 3>::From(*logits_grad);
+  auto logits_grad_e = EigenTensor<T, 4>::From(*logits_grad);
 
-    Eigen::DSizes<int, 3> grad_shape(1, num_sequences, 1);
-    Eigen::DSizes<int, 3> bcast(max_seq_length, 1, seq_width);
-    auto logits_g =
-        warpctcgrad_e * loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
+  Eigen::DSizes<int, 4> grad_shape(B, 1, 1, 1);
+  Eigen::DSizes<int, 4> bcast(1, Tmax, Umax, D);
+  auto logits_g =
+      warprnntgrad_e * loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
 
-    auto* place = dev_ctx.eigen_device();
-    if (norm_by_times) {
-      auto scales = logits_len_e.cast<T>()
-                        .inverse()
-                        .reshape(grad_shape)
-                        .broadcast(bcast)
-                        .eval();
-      logits_grad_e.device(*place) = logits_g * scales;
-    } else {
-      logits_grad_e.device(*place) = logits_g;
-    }
-  } else {
-    paddle::operators::math::UnpaddingLoDTensorFunctor<Context, T>()(
-        dev_ctx,
-        warpctcgrad,
-        logits_grad,
-        -1,
-        0,
-        norm_by_times,
-        paddle::operators::math::kLengthBatchWidth);
-
-    const T* loss_grad_data = loss_grad.data<T>();
-    paddle::operators::math::ScaleLoDTensorFunctor<Context, T>()(
-        dev_ctx, loss_grad_data, logits_grad);
-  }
+  auto* place = dev_ctx.eigen_device();
+  logits_grad_e.device(*place) = logits_g;
 }
 
 }  // namespace phi
