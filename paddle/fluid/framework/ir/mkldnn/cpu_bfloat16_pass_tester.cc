@@ -68,7 +68,7 @@ void SetOp(ProgramDesc* prog,
 static const std::initializer_list<std::string> variable_names{
     "z", "a", "b", "c", "d", "e", "f", "g", "h", "i"};
 
-void PreparePass(std::unique_ptr<ir::Graph>& graph,
+void PreparePass(std::unique_ptr<ir::Graph>& graph,  // NOLINT
                  int* original_nodes_num,
                  int* current_nodes_num) {
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_pass");
@@ -180,6 +180,39 @@ TEST(CpuBfloat16Pass, duplicated_input_ops) {
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
   MainTest(BuildProgramDescDuplicatedInput(use_mkldnn),
+           quant_op,
+           dequant_op,
+           added_nodes);
+}
+
+ProgramDesc BuildProgramDescDuplicated2Input(bool use_mkldnn) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, use_mkldnn, "float32");
+  SetOp(&prog, "dropout", "Dropout2", {"c"}, {"d"}, use_mkldnn, "float32");
+  SetOp(&prog,
+        "concat",
+        "Concat",
+        {"b", "d", "b"},
+        {"e"},
+        use_mkldnn,
+        "bfloat16");
+  SetOp(&prog, "transpose2", "Transpose", {"f"}, {"g"}, use_mkldnn, "float32");
+  SetOp(&prog, "sum", "Sum", {"e", "g"}, {"h"}, use_mkldnn, "bfloat16");
+  SetOp(&prog, "reshape2", "Reshape", {"h"}, {"i"}, use_mkldnn, "bfloat16");
+
+  return prog;
+}
+
+TEST(CpuBfloat16Pass, duplicated_2input_ops) {
+  bool use_mkldnn = true;
+  int quant_op = 4;
+  int dequant_op = 2;
+  // each added op consists of 2 nodes
+  int added_nodes = quant_op * 2 + dequant_op * 2;
+  MainTest(BuildProgramDescDuplicated2Input(use_mkldnn),
            quant_op,
            dequant_op,
            added_nodes);

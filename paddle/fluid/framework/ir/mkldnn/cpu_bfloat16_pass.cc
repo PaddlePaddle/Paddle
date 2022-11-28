@@ -63,6 +63,8 @@ class Quanter {
 
   int get_counter() const { return counter; }
 
+  int get_xputs_map_size() const { return xputs_map.size(); }
+
   virtual ~Quanter() = default;
 
  protected:
@@ -253,6 +255,11 @@ void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, Bloat16Ops);
 
     Quantizer quantizer(graph, op);
+    if (quantizer.get_xputs_map_size() != static_cast<int>(op->inputs.size())) {
+      VLOG(4) << "Skip because the number of OP input is inconsistent with the "
+                 "number of conversions.";
+      return;
+    }
     quantizer.AddQuantOps();
     quantize_counter += quantizer.get_counter();
 
