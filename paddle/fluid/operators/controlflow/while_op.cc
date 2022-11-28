@@ -34,7 +34,6 @@ namespace paddle {
 namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
-using LoDTensor = phi::DenseTensor;
 
 namespace {  // NOLINT
 static std::string GetSkipEagerDeletionVarsDebugString(
@@ -99,7 +98,7 @@ class WhileOp : public framework::OperatorBase {
                             platform::errors::NotFound(
                                 "Input(Condition) of WhileOp is not found."));
 
-    auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
+    auto &cond = scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         cond.dims(),
         phi::make_ddim({1}),
@@ -235,9 +234,10 @@ class WhileOp : public framework::OperatorBase {
             framework::Variable *input_var = scope.FindVar(input_var_name);
             if (input_var->IsType<phi::DenseTensor>()) {
               rename_vars.push_back(input_var_rename);
-              auto input_var_tensor = input_var->Get<LoDTensor>();
+              auto input_var_tensor = input_var->Get<phi::DenseTensor>();
               auto *rename_input_var_tensor =
-                  current_scope.Var(input_var_rename)->GetMutable<LoDTensor>();
+                  current_scope.Var(input_var_rename)
+                      ->GetMutable<phi::DenseTensor>();
               framework::TensorCopy(
                   input_var_tensor, dev_place, rename_input_var_tensor);
               rename_input_var_tensor->set_lod(input_var_tensor.lod());
@@ -267,8 +267,8 @@ class WhileOp : public framework::OperatorBase {
               var_rename.substr(0, var_rename.size() - strlen(kSuffix));
           current_scope.Rename(var_rename, input_var_name);
         }
-        cond_data =
-            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
+        cond_data = GetCondData(
+            scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
     } else {
       auto &current_scope = scope.NewScope();
@@ -294,6 +294,7 @@ class WhileOp : public framework::OperatorBase {
             t->clear();
           }
         }
+
         if (FLAGS_control_flow_use_new_executor) {
           core_->Run({}, false);
         } else {
@@ -465,7 +466,8 @@ class WhileGradOp : public framework::OperatorBase {
           }
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "Currently only support LoDTensor and LoDTensorArray in "
+              "Currently only support phi::DenseTensor and "
+              "phi::DenseTensorArray in "
               "WhileGradOp."));
         }
       }
@@ -545,16 +547,16 @@ class WhileGradOp : public framework::OperatorBase {
                                          inside_grad_name));
           PADDLE_ENFORCE_EQ(
               var->IsType<framework::LoDTensorArray>() ||
-                  var->IsType<LoDTensor>(),
+                  var->IsType<phi::DenseTensor>(),
               true,
               platform::errors::InvalidArgument(
                   "Currently the type of var only can be LoDTensorArray, "
-                  "or LoDTensor, but the received var[%s] is %s.",
+                  "or phi::DenseTensor, but the received var[%s] is %s.",
                   inside_grad_name,
                   framework::ToTypeName(var->Type())));
 
           if ((var_iter == outside_og_names.end()) &&
-              var->IsType<LoDTensor>()) {
+              var->IsType<phi::DenseTensor>()) {
             auto &inside_tensor = var->Get<phi::DenseTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] =

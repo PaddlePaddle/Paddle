@@ -111,9 +111,9 @@ void shard_index(const Tensor &table_t,
 
 template <typename TIds, typename T>
 void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
-  auto *table_t = context.Input<LoDTensor>("W");
-  auto *ids_t = context.Input<LoDTensor>("Ids");
-  auto *output_t = context.Output<LoDTensor>("Out");
+  auto *table_t = context.Input<phi::DenseTensor>("W");
+  auto *ids_t = context.Input<phi::DenseTensor>("Ids");
+  auto *output_t = context.Output<phi::DenseTensor>("Out");
   const int64_t start_idx = context.Attr<int64_t>("start_index");
 
   auto stream =
@@ -165,7 +165,7 @@ template <typename T>
 class CEmbeddingNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
@@ -181,10 +181,12 @@ template <typename TIds, typename T>
 void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // get inputs
   const int64_t start_idx = context.Attr<int64_t>("start_index");
-  auto ids_t = context.Input<LoDTensor>("Ids");
-  auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
+  auto ids_t = context.Input<phi::DenseTensor>("Ids");
+  auto d_output_t =
+      context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
   auto table_t = context.Input<phi::DenseTensor>("W");
-  auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+  auto table_grad_t =
+      context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
   VLOG(10) << "ids_t:" << ids_t << ", d_output_t:" << d_output_t
            << ", table_t:" << table_t << ", table_grad_t" << table_grad_t;
@@ -243,7 +245,7 @@ template <typename T>
 class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
