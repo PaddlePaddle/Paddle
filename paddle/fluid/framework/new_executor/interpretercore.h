@@ -67,6 +67,10 @@ class InterpreterCore {
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
+  const std::set<std::string>& JitInputVars() const;
+
+  void SetJitInputVars(const std::set<std::string>& jit_input_vars);
+
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);
@@ -79,6 +83,8 @@ class InterpreterCore {
   void BuildOperatorDependences();
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
   void BuildSkipShareLoDInfo();
+  void UpdateSyncOpNum();
+  void AnalyseExecuteOrderForTrace();
 
   // inplace
   void BuildInplace();
@@ -92,10 +98,16 @@ class InterpreterCore {
   void RunInstruction(const Instruction& instr_node);
   void RunNextInstructions(const Instruction& instr_id,
                            std::deque<size_t>* reserved_next_ops);
+  void RunOperator(const Instruction& instr_node);
+  // Trace
+  void TraceInstructionList(const std::vector<Instruction>& vec_instr);
+
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
                const std::vector<phi::DenseTensor>& feed_tensors,
                bool prepare_feed);
+
+  void RecordMemcpyD2H(const Instruction& instr_node);
 
   // gc
   void RecordStreamForGC(const Instruction& instr);
@@ -154,6 +166,10 @@ class InterpreterCore {
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
+
+  // used for Trace
+  int64_t sync_op_num_{-1};
+  std::vector<size_t> trace_execute_order_;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

@@ -21,26 +21,10 @@ from .scatter import scatter
 from .batch_isend_irecv import batch_isend_irecv, P2POp
 from .reduce_scatter import reduce_scatter
 from .all_to_all import alltoall, alltoall_single
-from .group import is_initialized, destroy_process_group, get_group
-
-__all__ = [
-    "ReduceOp",
-    "all_gather",
-    "all_gather_object",
-    "all_reduce",
-    "alltoall",
-    "alltoall_single",
-    "broadcast",
-    "reduce",
-    "send",
-    "scatter",
-    "isend",
-    "recv",
-    "irecv",
-    "batch_isend_irecv",
-    "P2POp",
-    "reduce_scatter",
-    "is_initialized",
-    "destroy_process_group",
-    "get_group",
-]
+from .group import (
+    is_initialized,
+    destroy_process_group,
+    get_group,
+    wait,
+    barrier,
+)
