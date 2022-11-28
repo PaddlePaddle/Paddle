@@ -299,7 +299,7 @@ class BaseModel(fluid.dygraph.Layer):
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = fluid.layers.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axes=[2])
         max_tar_seq_len = fluid.layers.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
@@ -822,7 +822,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 else:
                     step_input = new_hidden
             dec_att = self.attention(step_input, enc_outputs, enc_padding_mask)
-            dec_att = fluid.layers.squeeze(dec_att, [1])
+            dec_att = paddle.squeeze(dec_att, [1])
             concat_att_out = fluid.layers.concat([dec_att, step_input], 1)
             out = self.concat_fc(concat_att_out)
             input_feed = out
@@ -834,7 +834,7 @@ class AttentionModel(fluid.dygraph.Layer):
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = fluid.layers.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axes=[2])
         max_tar_seq_len = fluid.layers.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
