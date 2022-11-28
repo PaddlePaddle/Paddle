@@ -1736,7 +1736,7 @@ class Model(object):
                 evaluation at the end of epoch. If None, will not do evaluation.
                 An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended. Default: None.
-            batch_size (int, optional): The batch size of train_data and eval_data. When
+            batch_size (int|list, optional): The batch size of train_data and eval_data. When
                 train_data and eval_data are both the instance of Dataloader, this
                 parameter will be ignored. Default: 1.
             epochs (int, optional): The number of epochs to train the model. Default: 1.
@@ -1860,10 +1860,20 @@ class Model(object):
         """
         assert train_data is not None, "train_data must be given!"
 
+        if isinstance(batch_size, (tuple, list)) and all(
+             [isinstance(x, int) for x in batch_size]
+         ):
+             assert (
+                 len(batch_size) == 2
+             ), "batch_size length error, expected train_batch_size and eval_batch_size."
+             train_batch_size, eval_batch_size = batch_size
+         elif isinstance(batch_size, int):
+             train_batch_size, eval_batch_size = batch_size, batch_size
+        
         if isinstance(train_data, Dataset):
             train_sampler = DistributedBatchSampler(
                 train_data,
-                batch_size=batch_size,
+                batch_size=train_batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
             )
@@ -1879,7 +1889,7 @@ class Model(object):
 
         if eval_data is not None and isinstance(eval_data, Dataset):
             eval_sampler = DistributedBatchSampler(
-                eval_data, batch_size=batch_size
+                eval_data, batch_size=eval_batch_size
             )
             eval_loader = DataLoader(
                 eval_data,
