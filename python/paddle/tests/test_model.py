@@ -61,7 +61,7 @@ class LeNetDygraph(paddle.nn.Layer):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1, -1)
             x = self.fc(x)
         return x
 
@@ -163,7 +163,7 @@ def dynamic_train(model, dataloader):
     for inputs, labels in dataloader:
         outputs = model(inputs)
         loss = CrossEntropyLoss(reduction="sum")(outputs, labels)
-        avg_loss = fluid.layers.reduce_sum(loss)
+        avg_loss = paddle.sum(loss)
         avg_loss.backward()
         optim.minimize(avg_loss)
         model.clear_gradients()
@@ -510,7 +510,7 @@ class TestModelFunction(unittest.TestCase):
             m.train()
             output = m(to_tensor(data))
             loss = CrossEntropyLoss(reduction='sum')(output, to_tensor(label))
-            avg_loss = fluid.layers.reduce_sum(loss)
+            avg_loss = paddle.sum(loss)
             avg_loss.backward()
             optim.minimize(avg_loss)
             m.clear_gradients()

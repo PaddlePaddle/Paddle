@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
 
@@ -20,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
-import paddle
 
 
 class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
@@ -32,10 +32,12 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
             data2 = fluid.data(
                 name="data2", shape=[8, 32, 128], dtype="float32"
             )
+
             trans1 = paddle.transpose(data1, perm=[0, 2, 1])
             trans2 = paddle.transpose(data2, perm=[0, 2, 1])
-            flatt1 = fluid.layers.flatten(trans1)
-            flatt2 = fluid.layers.flatten(trans2)
+            flatt1 = paddle.flatten(trans1, 1, -1)
+            flatt2 = paddle.flatten(trans2, 1, -1)
+
             concat_out = fluid.layers.concat([flatt1, flatt2], axis=1)
             # There is no parameters for above structure.
             # Hence, append a batch_norm to avoid failure caused by load_combined.
