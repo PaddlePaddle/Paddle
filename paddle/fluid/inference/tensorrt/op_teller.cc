@@ -606,12 +606,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(8200)
       if (!with_dynamic_shape) return false;
       auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto input_var_name = desc.Input("Input")[0];
       auto index_var_name = desc.Input("Index")[0];
       auto* input_var_desc = block->FindVar(input_var_name);
