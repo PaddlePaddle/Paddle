@@ -154,7 +154,9 @@ class Collective(Fleet):
             "must be as Program type."
         )
 
-        io.save_persistables(executor, dirname, main_program, filename=filename)
+        paddle.distributed.io.save_persistables(
+            executor, dirname, main_program, filename=filename
+        )
 
     def save_checkpoint(
         self,

@@ -195,28 +195,6 @@ inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
   return key;
 }
 
-inline std::vector<std::vector<int64_t>> ToOnednnPadding(
-    const std::vector<int64_t>& paddings) {
-  if (paddings.size() == 6) {
-    int padding_front = paddings[0];
-    int padding_back = paddings[1];
-    int padding_top = paddings[2];
-    int padding_bottom = paddings[3];
-    int padding_left = paddings[4];
-    int padding_right = paddings[5];
-
-    return {{padding_front, padding_top, padding_left},
-            {padding_back, padding_bottom, padding_right}};
-  } else {
-    int padding_top = paddings[0];
-    int padding_bottom = paddings[1];
-    int padding_left = paddings[2];
-    int padding_right = paddings[3];
-
-    return {{padding_top, padding_left}, {padding_bottom, padding_right}};
-  }
-}
-
 // The function adjusts the vector of weight dimensions for group convolutions
 inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
                                   const int groups) {
@@ -304,11 +282,6 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
   return (OneDNNContext::tls().is_tid_used_in_key() == true)
              ? key + "-t:" + ThreadIDasStr()
              : key;
-}
-
-template <typename T>
-bool constexpr is_int8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 }
 
 }  // namespace funcs

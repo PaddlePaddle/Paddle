@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 
 
 def simple_fc_net_with_inputs(img, label, class_num=10):
@@ -88,7 +89,7 @@ def bow_net(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
+    bow_tanh = paddle.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")

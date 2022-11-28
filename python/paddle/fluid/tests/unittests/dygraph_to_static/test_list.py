@@ -18,7 +18,7 @@ import unittest
 import paddle
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.layers.utils import map_structure
 
 SEED = 2020
@@ -121,7 +121,7 @@ def test_list_append_in_while_loop_with_stack(x, iter_num):
     while i < iter_num.numpy()[0]:
         a.append(x)
         i += 1
-    out = fluid.layers.stack(a, axis=1)
+    out = paddle.stack(a, axis=1)
     return out
 
 

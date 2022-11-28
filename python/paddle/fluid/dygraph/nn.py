@@ -670,6 +670,7 @@ class Pool2D(layers.Layer):
     def forward(self, input):
         if _non_static_mode():
             if not self._use_mkldnn and in_dygraph_mode():
+                input = input._use_cudnn(self._use_cudnn)
                 return _C_ops.pool2d(
                     input,
                     self._pool_size,
@@ -682,7 +683,6 @@ class Pool2D(layers.Layer):
                     self._global_pooling,
                     False,
                     "EXPLICIT",
-                    self._use_cudnn,
                 )
 
             attrs = (
@@ -876,7 +876,6 @@ class Linear(layers.Layer):
         else:
             pre_activation = tmp
         return self._helper.append_activation(pre_activation, act=self._act)
-
 
 class Dropout(layers.Layer):
     """
@@ -1324,7 +1323,6 @@ class LayerNorm(layers.Layer):
                     self.bias,
                     self._epsilon,
                     self._begin_norm_axis,
-                    False,
                 )
                 return dygraph_utils._append_activation_in_dygraph(
                     pre_act, act=self._act

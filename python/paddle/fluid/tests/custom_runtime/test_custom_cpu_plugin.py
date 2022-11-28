@@ -14,9 +14,10 @@
 
 import os
 import sys
-import unittest
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
 
 
 class TestCustomCPUPlugin(unittest.TestCase):

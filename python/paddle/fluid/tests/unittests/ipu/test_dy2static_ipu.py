@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ProgramCache,
 )
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
@@ -46,7 +46,7 @@ class SimpleLayer(paddle.nn.Layer):
     @to_static()
     def forward(self, x, target=None):
         x = self.conv(x)
-        x = paddle.fluid.layers.flatten(x, axis=1)
+        x = paddle.flatten(x, 1, -1)
         if target is not None:
             if self.use_softmax:
                 x = paddle.fluid.layers.softmax(x)
@@ -238,7 +238,7 @@ class TestWithoutIdentityLoss2(TestBase):
 
 class TestWithoutIdentityLoss3(TestBase):
     def set_op_attrs(self):
-        self.loss_op = partial(paddle.fluid.layers.kldiv_loss, reduction="none")
+        self.loss_op = partial(paddle.nn.functional.kl_div, reduction="none")
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')

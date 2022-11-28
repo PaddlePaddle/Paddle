@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
+import unittest
 import warnings
 
 import paddle.utils.cpp_extension.extension_utils as utils

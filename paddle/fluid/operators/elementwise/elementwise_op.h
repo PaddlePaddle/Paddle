@@ -43,13 +43,14 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ElementwiseOp");
 
-    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Y").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                          "The input var's type should be LoDTensor, but the "
-                          "received is %s [%s].",
-                          ctx->GetInputsVarType("Y").front(),
-                          ctx->Inputs("Y").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Y").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be phi::DenseTensor, but the "
+            "received is %s [%s].",
+            ctx->GetInputsVarType("Y").front(),
+            ctx->Inputs("Y").front()));
 
     if (ctx->GetInputsVarType("X").front() ==
         framework::proto::VarType::SELECTED_ROWS) {
@@ -174,8 +175,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // When elementwise is first oneDNN op (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+          (tensor.layout() != phi::DataLayout::ONEDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
                   .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,

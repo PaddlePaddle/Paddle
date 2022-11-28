@@ -19,7 +19,7 @@ import os
 import warnings
 import logging
 import paddle.fluid as fluid
-from paddle.fluid import core
+from paddle.framework import core
 import paddle.fluid.framework as framework
 
 # logging.basicConfig(
@@ -482,7 +482,7 @@ def get_geo_trainer_send_context(attrs):
     if attrs['ps_mode'] != DistributedMode.GEO:
         raise ValueError(
             "ps mode: {} not matched {}",
-            format(ps_mode, "get_geo_trainer_send_context"),
+            format(attrs['ps_mode'], "get_geo_trainer_send_context"),
         )
     send_ctx = {}
     trainer_id = get_role_id(attrs['role_maker'])
@@ -896,7 +896,7 @@ def find_heter_ops(program, default_device="cpu"):
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
-            " please using fluid.device_guard() to run OPs on different device."
+            " please using static.device_guard() to run OPs on different device."
         )
 
     total_heter_ops = 0

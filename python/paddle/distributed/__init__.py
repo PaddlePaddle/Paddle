@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import io
 from .spawn import spawn  # noqa: F401
 from .launch.main import launch  # noqa: F401
-
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
@@ -27,16 +27,14 @@ from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
-from .collective import all_gather  # noqa: F401
-from .collective import all_gather_object  # noqa: F401
-from .collective import barrier  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
-from .collective import wait  # noqa: F401
 
 from .communication import (
     stream,
     ReduceOp,
+    all_gather,
+    all_gather_object,
     all_reduce,
     alltoall,
     alltoall_single,
@@ -53,6 +51,8 @@ from .communication import (
     is_initialized,
     destroy_process_group,
     get_group,
+    wait,
+    barrier,
 )  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
@@ -74,6 +74,7 @@ from .sharding import save_group_sharded_model  # noqa: F401
 from . import rpc
 
 __all__ = [  # noqa
+    "io",
     "spawn",
     "launch",
     "scatter",
@@ -110,5 +111,4 @@ __all__ = [  # noqa
     "isend",
     "irecv",
     "reduce_scatter",
-    "rpc",
 ]

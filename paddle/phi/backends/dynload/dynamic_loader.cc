@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
 #include <windows.h>

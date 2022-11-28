@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
 import os
+import tempfile
+
 import numpy as np
+
 import paddle
-import paddle.static as static
-import paddle.utils as utils
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.io import Dataset
-
+import paddle.static as static
+import paddle.utils as utils
 from paddle.distributed.fleet import auto
+from paddle.io import Dataset
 
 paddle.enable_static()
 

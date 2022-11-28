@@ -37,12 +37,14 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
 class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("FpnRois", "(LoDTensor) The RoIs at all levels in shape (-1, 4)");
+    AddInput("FpnRois",
+             "(phi::DenseTensor) The RoIs at all levels in shape (-1, 4)");
     AddInput("RoisNum",
              "(Tensor) The number of RoIs in shape (B),"
              "B is the number of images")
         .AsDispensable();
-    AddOutput("MultiFpnRois", "(LoDTensor) Output with distribute operator")
+    AddOutput("MultiFpnRois",
+              "(phi::DenseTensor) Output with distribute operator")
         .AsDuplicable();
     AddOutput("RestoreIndex",
               "(Tensor) An array of positive number which is "

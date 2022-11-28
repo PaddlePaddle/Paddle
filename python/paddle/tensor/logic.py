@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from .layer_function_generator import templatedoc
-from ..static import Variable
-
 # TODO: define logic functions of a tensor
+
+import paddle
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import _in_eager_mode_
+from ..static import Variable
+from .layer_function_generator import templatedoc
 
 if _in_eager_mode_:
     Tensor = paddle.fluid.framework.core.eager.Tensor
 else:
     from ..framework import VarBase as Tensor
 
-from ..framework import in_dygraph_mode
-from ..framework import LayerHelper
-from ..fluid.framework import _in_legacy_dygraph
-
-# TODO: define logic functions of a tensor
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.creation import full
+
+from ..fluid.framework import _in_legacy_dygraph
+from ..framework import LayerHelper, in_dygraph_mode
 
 __all__ = []
 
@@ -445,8 +444,7 @@ def equal(x, y, name=None):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
-        default_axis = -1
-        return _C_ops.equal(x, y, default_axis)
+        return _C_ops.equal(x, y)
     else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.equal(x, y)
@@ -502,8 +500,7 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        default_axis = -1
-        return _C_ops.greater_equal(x, y, default_axis)
+        return _C_ops.greater_equal(x, y)
     else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.greater_equal(x, y)
@@ -559,7 +556,7 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
-        return _C_ops.greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y)
     else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.greater_than(x, y)
@@ -616,8 +613,7 @@ def less_equal(x, y, name=None):
             print(result1)  # result1 = [True True False]
     """
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.less_equal(x, y, axis)
+        return _C_ops.less_equal(x, y)
     else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.less_equal(x, y)
@@ -674,8 +670,7 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        default_axis = -1
-        return _C_ops.less_than(x, y, default_axis)
+        return _C_ops.less_than(x, y)
     else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.less_than(x, y)
@@ -732,8 +727,7 @@ def not_equal(x, y, name=None):
             print(result1)  # result1 = [False True True]
     """
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.not_equal(x, y, axis)
+        return _C_ops.not_equal(x, y)
     else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.not_equal(x, y)
