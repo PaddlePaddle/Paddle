@@ -16,126 +16,153 @@
 
 import unittest
 import numpy as np
-import numpy as np
-from paddle.fluid import Program, program_guard
-from paddle import fluid
 import paddle
+from op_test import OpTest
+
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
-class TestChunkOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The type of axis in chunk_op should be int or Variable.
-            def test_axis_type():
-                x1 = paddle.fluid.data(shape=[4], dtype='float16', name='x3')
-                paddle.chunk(x=x1, chunks=2, axis=3.2)
+class TestClipByNormOp(OpTest):
+    def setUp(self):
+        self.max_relative_error = 0.006
+        self.python_api = fluid.layers.clip_by_norm
+        self.init_dtype()
+        self.initTestCase()
+        input = np.random.random(self.shape).astype(self.dtype)
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.op_type = "clip_by_norm"
+        self.inputs = {
+            'X': input,
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': output}
 
-            self.assertRaises(TypeError, test_axis_type)
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
-            # The type of axis in chunk op should be int or Variable.
-            def test_axis_variable_type():
-                x2 = paddle.fluid.data(shape=[4], dtype='float16', name='x9')
-                x3 = paddle.fluid.data(shape=[1], dtype='float16', name='x10')
-                paddle.chunk(input=x2, chunks=2, axis=x3)
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1.0
 
-            self.assertRaises(TypeError, test_axis_variable_type)
-
-            # The type of num_or_sections in chunk_op should be int, tuple or list.
-            def test_chunks_type():
-                x4 = paddle.fluid.data(shape=[4], dtype='float16', name='x4')
-                paddle.chunk(input=x4, chunks=2.1, axis=3)
-
-            self.assertRaises(TypeError, test_chunks_type)
-
-            def test_axis_type_tensor():
-                x5 = paddle.fluid.data(shape=[4], dtype='float16', name='x6')
-                paddle.chunk(input=x5, chunks=2, axis=3.2)
-
-            self.assertRaises(TypeError, test_axis_type_tensor)
-
-
-class API_TestChunk(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = paddle.fluid.data('data1', shape=[4, 6, 6], dtype='float64')
-            data2 = paddle.fluid.data('data2', shape=[1], dtype='int32')
-            x0, x1, x2 = paddle.chunk(data1, chunks=3, axis=data2)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            input1 = np.random.random([4, 6, 6]).astype('float64')
-            input2 = np.array([2]).astype('int32')
-            r0, r1, r2, = exe.run(
-                feed={"data1": input1, "data2": input2}, fetch_list=[x0, x1, x2]
-            )
-            ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=2)
-            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
-            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
-            np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
-class API_TestChunk1(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = paddle.fluid.data('data1', shape=[4, 6, 6], dtype='float64')
-            x0, x1, x2 = paddle.chunk(data1, chunks=3, axis=2)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            input1 = np.random.random([4, 6, 6]).astype('float64')
-            (
-                r0,
-                r1,
-                r2,
-            ) = exe.run(feed={"data1": input1}, fetch_list=[x0, x1, x2])
-            ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=2)
-            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
-            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
-            np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
+class TestCase1(TestClipByNormOp):
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1e20
 
 
-class API_TestDygraphChunk(unittest.TestCase):
-    def test_out1(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([4, 6, 6]).astype("int32")
-            # input is a variable which shape is [4, 6, 6]
-            input = fluid.dygraph.to_variable(input_1)
-            x0, x1, x2 = paddle.chunk(input, chunks=3, axis=1)
-            x0_out = x0.numpy()
-            x1_out = x1.numpy()
-            x2_out = x2.numpy()
-            ex_x0, ex_x1, ex_x2 = np.array_split(input_1, 3, axis=1)
-        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
-        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
-        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+class TestCase2(TestClipByNormOp):
+    def initTestCase(self):
+        self.shape = (16, 16)
+        self.max_norm = 0.1
 
-    def test_out2(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([4, 6, 6]).astype("bool")
-            # input is a variable which shape is [4, 6, 6]
-            input = fluid.dygraph.to_variable(input_1)
-            x0, x1, x2 = paddle.chunk(input, chunks=3, axis=1)
-            x0_out = x0.numpy()
-            x1_out = x1.numpy()
-            x2_out = x2.numpy()
-            ex_x0, ex_x1, ex_x2 = np.array_split(input_1, 3, axis=1)
-        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
-        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
-        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
-    def test_axis_tensor_input(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([4, 6, 6]).astype("int32")
-            # input is a variable which shape is [4, 6, 6]
-            input = fluid.dygraph.to_variable(input_1)
-            num1 = paddle.full(shape=[1], fill_value=1, dtype='int32')
-            x0, x1, x2 = paddle.chunk(input, chunks=3, axis=num1)
-            x0_out = x0.numpy()
-            x1_out = x1.numpy()
-            x2_out = x2.numpy()
-            ex_x0, ex_x1, ex_x2 = np.array_split(input_1, 3, axis=1)
-        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
-        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
-        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+class TestCase3(TestClipByNormOp):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max_norm = 1.0
+
+
+class TestClipByNormOpFp16(TestClipByNormOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(
+                    place, atol=0.001, check_eager=True
+                )
+
+
+class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1e20
+
+
+class TestClipByNormOpFp16Case2(TestClipByNormOpFp16):
+    def initTestCase(self):
+        self.shape = (16, 16)
+        self.max_norm = 0.1
+
+
+class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max_norm = 1.0
+
+
+class TestClipByNormOpWithSelectedRows(unittest.TestCase):
+    def check_with_place(self, place):
+        self.config_test_case()
+        scope = core.Scope()
+
+        # set input
+        x_selected_rows = scope.var('X').get_selected_rows()
+        x_selected_rows.set_rows(self.grad_rows)
+        x_tensor = x_selected_rows.get_tensor()
+        x_np = np.random.random(self.grad_shape).astype("float32")
+        x_np[np.abs(x_np) < self.max_relative_error] = 0.5
+        x_tensor.set(x_np, place)
+
+        # set output
+        out_selected_rows = scope.var('Out').get_selected_rows()
+
+        # run clip_by_norm_op
+        clip_by_norm_op = fluid.op.Operator(
+            "clip_by_norm", max_norm=self.max_norm, X='X', Out='Out'
+        )
+        clip_by_norm_op.run(scope, place)
+
+        # check output
+        self.assertEqual(out_selected_rows.rows(), self.grad_clipped_rows)
+        out_tensor = out_selected_rows.get_tensor()
+        y_np = np.zeros(self.grad_clipped_shape)
+        y_np[0] = np.sum(x_np[0:2])
+        y_np[1] = x_np[2]
+        y_np[2] = x_np[3]
+        norm = np.sqrt(np.sum(np.square(y_np)))
+        if norm > self.max_norm:
+            output = self.max_norm * y_np / norm
+        else:
+            output = y_np
+        np.testing.assert_allclose(
+            np.array(out_tensor),
+            output,
+            rtol=1e-05,
+            atol=1e-05,
+            equal_nan=False,
+        )
+
+    def test_clip_by_norm_with_selected_ros(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            self.check_with_place(place)
+
+    def config_test_case(self):
+        self.max_norm = 1.0
+        self.max_relative_error = 0.006
+        self.grad_shape = (4, 1)
+        self.grad_clipped_shape = (3, 1)
+        self.grad_rows = [0, 0, 1, 2]
+        self.grad_clipped_rows = [0, 1, 2]
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
