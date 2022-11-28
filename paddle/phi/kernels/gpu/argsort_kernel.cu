@@ -200,14 +200,14 @@ static __global__ void SortPostprocessKernel(const T *in,
 }
 
 template <typename T>
-inline void SegmentedSortPairsByFullSort(
-    const phi::GPUContext &ctx,
-    const T *const self_ptr,
-    T *const values_ptr,
-    int64_t *const indices_ptr const int64_t nsegments,
-    const int64_t nsort,
-    const int64_t n,
-    const bool descending) {
+inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
+                                         const T *const self_ptr,
+                                         T *const values_ptr,
+                                         int64_t *const indices_ptr,
+                                         const int64_t nsegments,
+                                         const int64_t nsort,
+                                         const int64_t n,
+                                         const bool descending) {
   int64_t segment_bits = std::max<int64_t>(
       1L, static_cast<int64_t>(std::ceil(std::log2(nsegments))));
 
