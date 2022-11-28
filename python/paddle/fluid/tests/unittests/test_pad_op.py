@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 from test_attribute_var import UnittestBase
-import paddle.nn.functional as F
 
 
 class TestPadOp(OpTest):
@@ -173,8 +172,8 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
     def call_func(self, x):
         padding_value = paddle.assign([1.0])
         # test for int value
-        tmp = F.pad(x, pad=[1, 1, 1, 1], value=1)
-        out = F.pad(x, pad=[1, 1, 1, 1], value=padding_value)
+        tmp = paddle.pad(x, pad=[1, 1, 1, 1], value=1)
+        out = paddle.pad(x, pad=[1, 1, 1, 1], value=padding_value)
         return out
 
 
