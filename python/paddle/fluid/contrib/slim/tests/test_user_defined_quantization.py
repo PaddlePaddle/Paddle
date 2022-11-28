@@ -73,12 +73,8 @@ def pact(x, name=None):
         learning_rate=1,
     )
     u_param = helper.create_parameter(attr=u_param_attr, shape=[1], dtype=dtype)
-    x = fluid.layers.elementwise_sub(
-        x, fluid.layers.relu(fluid.layers.elementwise_sub(x, u_param))
-    )
-    x = fluid.layers.elementwise_add(
-        x, fluid.layers.relu(fluid.layers.elementwise_sub(-u_param, x))
-    )
+    x = paddle.subtract(x, fluid.layers.relu(paddle.subtract(x, u_param)))
+    x = paddle.add(x, fluid.layers.relu(paddle.subtract(-u_param, x)))
 
     return x
 

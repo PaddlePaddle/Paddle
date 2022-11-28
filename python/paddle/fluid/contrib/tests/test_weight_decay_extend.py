@@ -171,9 +171,7 @@ class TestWeightDecay(unittest.TestCase):
             ]
 
             for params in param_list:
-                updated_p = fluid.layers.elementwise_sub(
-                    x=params[0], y=params[1]
-                )
+                updated_p = paddle.subtract(x=params[0], y=params[1])
                 fluid.layers.assign(input=updated_p, output=params[0])
 
             optimizer.apply_optimize(avg_cost, startup_prog, params_grads)

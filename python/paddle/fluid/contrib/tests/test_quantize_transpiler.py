@@ -56,7 +56,7 @@ def residual_block(num):
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
-        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
+        hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
     fc = fluid.layers.fc(input=hidden, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
     loss = paddle.mean(loss)
