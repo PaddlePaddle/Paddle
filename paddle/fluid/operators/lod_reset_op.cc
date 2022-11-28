@@ -109,7 +109,7 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
              "could be a Tensor or phi::DenseTensor, where the data of output "
              "variable inherits from.");
     AddInput("Y",
-             "(Tensor, phi::DenseTensor, optional) If provided and Y is "
+             "(phi::DenseTensor, optional) If provided and Y is "
              "phi::DenseTensor, "
              "lod of Input(Y) would be considered as the target lod first, "
              "otherwise data of Input(Y) would be considered as the "
