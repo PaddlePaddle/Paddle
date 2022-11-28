@@ -24,7 +24,8 @@ from .norm import LayerNorm
 from .. import functional as F
 from ... import tensor
 from ...fluid import layers
-from .. import Layer, LayerList
+from .. import Layer
+from .container import LayerList
 from ...framework import ParamAttr
 from paddle.fluid.data_feeder import convert_dtype
 

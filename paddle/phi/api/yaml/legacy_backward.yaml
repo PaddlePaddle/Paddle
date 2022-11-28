@@ -67,8 +67,8 @@
     func : addmm_grad
 
 - backward_op : affine_grid_grad
-  forward : affine_grid (Tensor input, IntArray outputShape, bool align_corners=true, bool use_cudnn=true) -> Tensor(output)
-  args : (Tensor output_grad, IntArray outputShape, bool use_cudnn=true, bool align_corners=true)
+  forward : affine_grid (Tensor input, IntArray outputShape, bool align_corners=true) -> Tensor(output)
+  args : (Tensor input, Tensor output_grad, IntArray outputShape, bool align_corners=true)
   output : Tensor(input_grad)
   infer_meta :
     func : AffineGridGradInferMeta
@@ -76,7 +76,7 @@
   kernel :
     func : affine_grid_grad
     param : [output_grad, outputShape, align_corners]
-    use_gpudnn: use_cudnn
+  no_need_buffer : input
 
 - backward_op : amax_grad
   forward: amax (Tensor x,  int64_t[] axis={},  bool keepdim=false) -> Tensor(out)
@@ -262,7 +262,6 @@
     param : [input, filter]
   kernel :
     func : conv2d_grad
-    use_gpudnn : true
   backward : conv2d_grad_grad
 
 - backward_op : conv2d_grad_grad
@@ -274,7 +273,6 @@
     param: [input, filter, grad_out]
   kernel :
     func : conv2d_grad_grad
-    use_gpudnn : true
   optional : grad_input_grad, grad_filter_grad
 
 - backward_op : conv2d_transpose_double_grad
@@ -285,7 +283,6 @@
     func : Conv2dTransposeDoubleGradInferMeta
   kernel :
     func : conv2d_transpose_grad_grad
-    use_gpudnn : true
 
 - backward_op : conv2d_transpose_grad
   forward : conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
@@ -295,7 +292,6 @@
     func : Conv2dTransposeGradInferMeta
   kernel :
     func : conv2d_transpose_grad
-    use_gpudnn : true
   backward : conv2d_transpose_double_grad
 
 - backward_op : conv3d_double_grad
@@ -307,7 +303,6 @@
     param: [input, filter, grad_out]
   kernel :
     func : conv3d_double_grad
-    use_gpudnn : true
   optional : grad_input_grad, grad_filter_grad
 
 - backward_op : conv3d_grad
@@ -319,7 +314,6 @@
     param : [input, filter]
   kernel :
     func : conv3d_grad
-    use_gpudnn : true
   backward : conv3d_double_grad
 
 - backward_op : conv3d_transpose_grad
@@ -330,7 +324,6 @@
     func : ConvTransposeGradInferMeta
   kernel :
     func : conv3d_transpose_grad
-    use_gpudnn : true
 
 - backward_op : crop_grad
   forward : crop_tensor (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
@@ -401,7 +394,6 @@
   kernel :
     func : depthwise_conv2d_grad
     param : [input, filter, out_grad, strides, paddings, padding_algorithm, groups, dilations, data_format]
-    use_gpudnn : True
   backward : depthwise_conv2d_double_grad
 
 - backward_op : depthwise_conv2d_transpose_grad
@@ -484,6 +476,7 @@
   args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor(weight_grad)
   invoke : embedding_grad_impl(x, weight, out_grad, padding_idx, sparse, weight_grad)
+  no_need_buffer : weight
 
 - backward_op : expand_as_grad
   forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
@@ -640,7 +633,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_swish_grad
+    func : hardswish_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hardtanh_grad
@@ -651,7 +644,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_tanh_grad
+    func : hardtanh_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hsigmoid_loss_grad
@@ -1210,8 +1203,8 @@
     func : pixel_shuffle_grad
 
 - backward_op : pool2d_double_grad
-  forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn)
+  forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : Pool2DInferMeta
@@ -1219,11 +1212,11 @@
   kernel :
     func : pool2d_double_grad
     param : [grad_x_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
-    use_gpudnn : use_gpudnn
+  no_need_buffer : x
 
 - backward_op : pool2d_grad
-  forward : pool2d(Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn)
+  forward : pool2d(Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1231,12 +1224,11 @@
   kernel :
     func : pool2d_grad
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
-    use_gpudnn : use_gpudnn
   backward : pool2d_double_grad
 
 - backward_op : pool3d_grad
-  forward : pool3d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn)
+  forward : pool3d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1244,7 +1236,6 @@
   kernel :
     func : pool3d_grad
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
-    use_gpudnn : use_gpudnn
 
 - backward_op : pow_double_grad
   forward : pow_grad(Tensor x, Tensor grad_out, Scalar y) -> Tensor(grad_x)
@@ -1601,7 +1592,6 @@
     param : [out]
   kernel :
     func : softmax_grad
-    use_gpudnn : true
 
 - backward_op : spectral_norm_grad
   forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)

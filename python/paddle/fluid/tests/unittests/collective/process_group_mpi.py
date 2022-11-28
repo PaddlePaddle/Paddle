@@ -12,22 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import ctypes
 import random
+import unittest
+
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.distributed.collective import Group
-from paddle.distributed.collective import _default_group_name
-from paddle.distributed.collective import _set_group_map
-from paddle.distributed.collective import _set_group_map_by_name
-from paddle.distributed.collective import _set_group_map_backend
-from paddle.fluid.framework import _set_expected_place
 import paddle.distributed as dist
-import ctypes
+import paddle.fluid.core as core
+from paddle.distributed.collective import (
+    Group,
+    _default_group_name,
+    _set_group_map,
+    _set_group_map_backend,
+    _set_group_map_by_name,
+)
+from paddle.fluid import core
+from paddle.fluid.framework import _set_expected_place, _test_eager_guard
 
 ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 

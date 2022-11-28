@@ -79,7 +79,7 @@ class EagerNumpyAllocation : public phi::Allocation {
   explicit EagerNumpyAllocation(PyObject* numpy_data, phi::DataType dtype)
       : Allocation(
             static_cast<void*>(pybind11::detail::array_proxy(numpy_data)->data),
-            framework::DataTypeSize(dtype) * PyArray_Size_(numpy_data),
+            phi::SizeOf(dtype) * PyArray_Size_(numpy_data),
             paddle::platform::CPUPlace()),
         arr_(numpy_data) {
     PADDLE_ENFORCE_NOT_NULL(

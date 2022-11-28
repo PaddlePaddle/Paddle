@@ -10,7 +10,7 @@ set(XPU_RT_LIB_NAME "libxpurt.so")
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE
       "https://baidu-kunlun-product.su.bcebos.com/KL-SDK/klsdk-dev")
-  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20221116")
+  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20221124")
 else()
   set(XPU_BASE_URL "${XPU_BASE_URL}")
 endif()
@@ -56,6 +56,9 @@ set(XPU_XCCL_URL
 set(XPU_PACK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
     CACHE STRING "" FORCE)
+set(XPU_CHECK_DEPENCE_URL
+    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/check_xpu_dependence.sh"
+    CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
@@ -80,9 +83,10 @@ ExternalProject_Add(
   PREFIX ${SNAPPY_PREFIX_DIR}
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
-    wget ${XPU_PACK_DEPENCE_URL} && bash pack_paddle_depence.sh ${XPU_XRE_URL}
-    ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
-    ${XPU_XCCL_DIR_NAME}
+    wget ${XPU_CHECK_DEPENCE_URL} && bash check_xpu_dependence.sh
+    ${XPU_BASE_URL} ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
+    pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
+    ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}

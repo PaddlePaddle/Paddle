@@ -151,7 +151,7 @@ class RecurrentOpTest1(unittest.TestCase):
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            h = layers.scale(
+            h = paddle.scale(
                 x=layers.elementwise_add(x=h_pre, y=x_t),
                 scale=self.py_rnn.scale,
             )
@@ -316,7 +316,9 @@ class RecurrentOpTest2(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = layers.sigmoid(x=layers.elementwise_add(x=temp_l, y=temp_r))
+            h = paddle.nn.functional.sigmoid(
+                x=layers.elementwise_add(x=temp_l, y=temp_r)
+            )
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
@@ -417,8 +419,8 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
             h_pre2 = rnn.memory(init=h_boot2)
             x_t = rnn.step_input(x)
 
-            mem1 = layers.scale(x=h_pre1, scale=1.0)
-            mem2 = layers.scale(x=h_pre2, scale=1.0)
+            mem1 = paddle.scale(x=h_pre1, scale=1.0)
+            mem2 = paddle.scale(x=h_pre2, scale=1.0)
             out = layers.sums(input=[mem1, x_t, mem2])
 
             rnn.update_memory(h_pre1, mem1)
@@ -710,7 +712,9 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = layers.sigmoid(x=layers.elementwise_add(temp_l, temp_r))
+            h = paddle.nn.functional.sigmoid(
+                x=layers.elementwise_add(temp_l, temp_r)
+            )
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
