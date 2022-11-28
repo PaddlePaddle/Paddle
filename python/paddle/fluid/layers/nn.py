@@ -75,7 +75,6 @@ __all__ = [
     'batch_norm',
     'instance_norm',
     'data_norm',
-    'reduce_sum',
     'reduce_mean',
     'reduce_all',
     'reduce_any',

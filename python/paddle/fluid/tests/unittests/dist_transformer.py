@@ -1591,8 +1591,8 @@ def transformer(
         soft_label=True if label_smooth_eps else False,
     )
     weighted_cost = cost * weights
-    sum_cost = layers.reduce_sum(weighted_cost)
-    token_num = layers.reduce_sum(weights)
+    sum_cost = paddle.sum(weighted_cost)
+    token_num = paddle.sum(weights)
     avg_cost = sum_cost / token_num
     avg_cost.stop_gradient = True
     return sum_cost, avg_cost, predict, token_num
