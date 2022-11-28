@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-import paddle.fluid.core as core
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
 import paddle
-import os
 import paddle.fluid as fluid
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-from parallel_executor_test_base import DeviceType
+import paddle.fluid.core as core
 
 
 def simple_fc_net(use_feed):

@@ -14,7 +14,9 @@
 
 import unittest
 from typing import Optional
+
 import numpy as np
+
 import paddle
 import paddle.fluid.core as core
 

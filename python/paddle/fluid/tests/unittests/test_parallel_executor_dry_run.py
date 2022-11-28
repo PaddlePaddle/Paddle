@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import os
+import unittest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import unittest
-import logging
-import os
 
 os.environ['CPU_NUM'] = str(4)
 

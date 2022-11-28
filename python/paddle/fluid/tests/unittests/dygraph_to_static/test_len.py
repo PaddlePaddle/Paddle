@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
 from paddle.fluid.dygraph.dygraph_to_static import convert_call
+from paddle.jit.api import declarative
 
 SEED = 2020
 np.random.seed(SEED)

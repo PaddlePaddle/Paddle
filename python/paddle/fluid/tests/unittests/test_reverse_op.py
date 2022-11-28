@@ -14,17 +14,18 @@
 
 import os
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from op_test import OpTest
+from test_attribute_var import UnittestBase
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
-
-from paddle.fluid.framework import program_guard, Program
-from test_attribute_var import UnittestBase
+from paddle.fluid import core
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestReverseOp(OpTest):

@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import (
     NodeVarType,
     StaticAnalysisVisitor,
 )
+from paddle.utils import gast
 
 
 def func_to_test1(a, b):

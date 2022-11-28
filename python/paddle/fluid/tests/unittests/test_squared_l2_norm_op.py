@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 from numpy import linalg as LA
 from op_test import OpTest
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.framework import in_dygraph_mode

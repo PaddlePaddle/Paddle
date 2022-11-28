@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import unittest
+
+import paddle
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
-from paddle.fluid import compiler
 import paddle.fluid.core as core
-import unittest
-import paddle
-import os
+from paddle.fluid import compiler
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)

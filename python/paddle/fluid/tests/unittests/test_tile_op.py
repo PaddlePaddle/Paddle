@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, core, program_guard
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, core, program_guard
 
 
 # Situation 1: repeat_times is a list (without tensor)

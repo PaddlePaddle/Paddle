@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import math
+import os
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler
 import paddle.fluid.core as core
-import unittest
-import numpy as np
-import os
+from paddle.fluid import compiler
 
 
 def Lenet(data, class_dim):

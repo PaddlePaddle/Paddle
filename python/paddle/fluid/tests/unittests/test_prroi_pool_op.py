@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
-from py_precise_roi_pool import PyPrRoIPool
+
+import numpy as np
 from op_test import OpTest
+from py_precise_roi_pool import PyPrRoIPool
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard

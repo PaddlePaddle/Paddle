@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+import paddle.sparse as sparse
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
-import paddle.sparse as sparse
 
 
 class TestSparseConv(unittest.TestCase):

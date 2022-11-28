@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
-from op_test import OpTest
 
 numpy_apis = {
     "real": np.real,

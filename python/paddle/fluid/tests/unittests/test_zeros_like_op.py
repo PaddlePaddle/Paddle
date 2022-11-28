@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle import zeros_like
-from paddle import _C_ops
-from paddle.fluid import core, Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle import _C_ops, zeros_like
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.framework import _test_eager_guard, convert_np_dtype_to_dtype_
 
 
 class TestZerosLikeAPIError(unittest.TestCase):

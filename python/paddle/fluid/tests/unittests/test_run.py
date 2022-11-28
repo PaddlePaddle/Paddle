@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import subprocess
-import sys, os
-import tempfile
-
+import os
 import random
-
+import subprocess
+import sys
+import tempfile
+import unittest
 from os import listdir
 from os.path import isfile, join
 

@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid.core as core
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.nn.functional as F
 
 np.random.seed(10)

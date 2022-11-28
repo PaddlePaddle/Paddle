@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.nn.functional as F
-import paddle.fluid as fluid
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.framework import _test_eager_guard
 
 

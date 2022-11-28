@@ -17,10 +17,11 @@ import sys
 import unittest
 
 import numpy as np
+import scipy.signal
 from numpy import fft
 from numpy.lib.stride_tricks import as_strided
+
 import paddle
-import scipy.signal
 
 paddle.set_default_dtype('float64')
 

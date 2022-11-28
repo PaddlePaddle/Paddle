@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 from paddle.fluid.framework import (
-    _enable_legacy_dygraph,
     _disable_legacy_dygraph,
+    _enable_legacy_dygraph,
 )
 
 

@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
-from op_test import OpTest
 
 
 # default kNCHW

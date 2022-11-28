@@ -18,9 +18,10 @@ fluid.core._set_fuse_parameter_group_size(3)
 fluid.core._set_fuse_parameter_memory_size(131072)
 
 import unittest
-import seresnext_net
-from seresnext_test_base import TestResnetBase, DeviceType
 from functools import partial
+
+import seresnext_net
+from seresnext_test_base import DeviceType, TestResnetBase
 
 
 class TestResnetWithFuseAllReduceCPU(TestResnetBase):

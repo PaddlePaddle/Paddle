@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import partial
-import numpy
-import unittest
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from simple_nets import init_data, simple_fc_net
 import os
+import unittest
+from functools import partial
+
+import numpy
+from simple_nets import init_data, simple_fc_net
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestFeedPersistableVar(unittest.TestCase):

@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 

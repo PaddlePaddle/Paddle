@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid.framework import _test_eager_guard
-
-import numpy as np
-import unittest
 import os
 import re
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.seed(100)
 

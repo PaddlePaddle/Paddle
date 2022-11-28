@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+from math import floor, sqrt
+
 import numpy as np
 from op_test import OpTest
-from math import sqrt
-from math import floor
+
 from paddle import fluid
 
 

@@ -23,13 +23,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import time
+import os
 import random
+import time
 import unittest
+
 import numpy as np
 from PIL import Image, ImageOps
-
-import os
 
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -37,9 +37,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit.api import declarative
+from paddle.fluid.dygraph.nn import BatchNorm, Conv2DTranspose
 from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
+from paddle.jit.api import declarative
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,

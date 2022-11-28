@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+from simple_nets import init_data, simple_fc_net
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.framework import switch_main_program
-from simple_nets import simple_fc_net, init_data
 from paddle.static import Program, program_guard
 
 paddle.enable_static()

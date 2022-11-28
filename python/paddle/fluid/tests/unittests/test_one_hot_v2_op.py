@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import Program, program_guard, _test_eager_guard
+from paddle.fluid.framework import Program, _test_eager_guard, program_guard
 
 
 class TestOneHotOp(OpTest):

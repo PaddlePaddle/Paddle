@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
-import paddle.fluid.layers as layers
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import switch_main_program
-from paddle.fluid.framework import Program, program_guard
+
 import numpy as np
 
-from paddle.fluid.layers.control_flow import shrink_memory
-from paddle.fluid.layers.control_flow import lod_rank_table
+import paddle
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, program_guard, switch_main_program
+from paddle.fluid.layers.control_flow import lod_rank_table, shrink_memory
 
 
 class TestShrinkRNNMemoryBase(unittest.TestCase):

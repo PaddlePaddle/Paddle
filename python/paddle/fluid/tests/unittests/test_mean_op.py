@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from test_sum_op import TestReduceOPTensorAxisBase
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, OpTestTool
+from test_sum_op import TestReduceOPTensorAxisBase
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 

@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
-import paddle.fluid.core as core
 
+import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
+
+import paddle
+import paddle.fluid.core as core
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):

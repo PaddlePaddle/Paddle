@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.passes.pass_utils import split_program
-from paddle.vision.models import resnet18 as resnet
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.nn as nn
-import unittest
-import numpy as np
+from paddle.distributed.passes.pass_utils import split_program
+from paddle.vision.models import resnet18 as resnet
 
 
 class TestSplitProgram(unittest.TestCase):

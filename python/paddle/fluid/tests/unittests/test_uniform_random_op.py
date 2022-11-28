@@ -14,17 +14,17 @@
 
 import os
 import unittest
+
 import numpy as np
 from op_test import OpTest
+from test_attribute_var import UnittestBase
+
 import paddle
-import paddle.fluid.core as core
-import paddle
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
-
-from test_attribute_var import UnittestBase
+from paddle.fluid.op import Operator
 from paddle.tensor import random
 
 

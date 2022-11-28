@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from paddle import fluid
+
 import paddle
+from paddle import fluid
 
 
 class TestMarginRankLossOp(OpTest):

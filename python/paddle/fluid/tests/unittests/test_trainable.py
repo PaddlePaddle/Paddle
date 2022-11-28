@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import Counter
 import unittest
+from collections import Counter
+
+from simple_nets import init_data
+
 import paddle
 import paddle.fluid as fluid
-from simple_nets import init_data
 
 
 def test_trainable():

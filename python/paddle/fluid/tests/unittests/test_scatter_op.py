@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 

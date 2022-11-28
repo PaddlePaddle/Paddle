@@ -13,20 +13,19 @@
 # limitations under the License.
 
 import os
-import time
 import tempfile
+import time
 import unittest
+
 import numpy as np
+from bert_dygraph_model import PretrainModelLayer
+from bert_utils import get_bert_config, get_feed_data_reader
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-from bert_dygraph_model import PretrainModelLayer
-from bert_utils import get_bert_config, get_feed_data_reader
-
-from predictor_utils import PredictorTools
+from paddle.jit import ProgramTranslator
 
 program_translator = ProgramTranslator()
 place = (

@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
+import numpy
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-import numpy
+import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.op import Operator
 
 
 def calculate_momentum_by_numpy(

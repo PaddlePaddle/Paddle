@@ -16,19 +16,21 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test import OpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import core
-from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 from paddle.fluid.framework import default_main_program
-from xpu.get_test_cover_info import (
-    create_test_class,
-    get_xpu_op_support_types,
-    XPUOpTestWrapper,
-)
+from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 
 paddle.enable_static()
 

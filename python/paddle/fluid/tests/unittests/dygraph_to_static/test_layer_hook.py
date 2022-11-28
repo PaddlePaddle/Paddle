@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 def forward_post_hook1(layer, input, output):

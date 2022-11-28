@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import check_out_dtype
-import paddle
-from paddle.fluid.framework import _test_eager_guard
-import paddle.fluid.core as core
 from test_sum_op import TestReduceOPTensorAxisBase
+
+import paddle
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class ApiMaxTest(unittest.TestCase):

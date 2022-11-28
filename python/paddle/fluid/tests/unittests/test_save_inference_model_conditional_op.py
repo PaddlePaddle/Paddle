@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
 
 import paddle
 import paddle.nn.functional as F

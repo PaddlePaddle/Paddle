@@ -16,11 +16,11 @@ import time
 import unittest
 
 import numpy as np
+from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from test_resnet import ResNet, optimizer_setting, SEED
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2

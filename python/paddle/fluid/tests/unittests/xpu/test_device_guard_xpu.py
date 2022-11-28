@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import sys
+import unittest
 
 sys.path.append("..")
+
+import warnings
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import warnings
 
 paddle.enable_static()
 

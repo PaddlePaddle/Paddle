@@ -13,10 +13,12 @@
 # limitations under the License.
 import os
 import tempfile
-import paddle
 import unittest
-import numpy as np
 from typing import Dict, List, Tuple
+
+import numpy as np
+
+import paddle
 
 
 class BaseLayer(paddle.nn.Layer):

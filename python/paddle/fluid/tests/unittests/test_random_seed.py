@@ -14,12 +14,13 @@
 """Test cloud role maker."""
 
 import unittest
-import paddle.fluid.generator as generator
 
-import paddle.fluid as fluid
 import numpy as np
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.generator as generator
 
 
 class TestGeneratorSeed(unittest.TestCase):

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from op_test import OpTest
-import paddle
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.op import Operator
 
 paddle.enable_static()
 

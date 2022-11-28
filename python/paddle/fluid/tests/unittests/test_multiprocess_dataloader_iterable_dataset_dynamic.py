@@ -15,24 +15,22 @@
 import sys
 import time
 import unittest
+
 import numpy as np
-
-import paddle.fluid as fluid
-from paddle.io import DataLoader
-from paddle.fluid.dygraph.nn import Linear
-
 from test_multiprocess_dataloader_iterable_dataset_static import (
-    RandomDataset,
-    RandomBatchedDataset,
-    prepare_places,
-)
-from test_multiprocess_dataloader_iterable_dataset_static import (
-    EPOCH_NUM,
     BATCH_SIZE,
+    CLASS_NUM,
+    EPOCH_NUM,
     IMAGE_SIZE,
     SAMPLE_NUM,
-    CLASS_NUM,
+    RandomBatchedDataset,
+    RandomDataset,
+    prepare_places,
 )
+
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import Linear
+from paddle.io import DataLoader
 
 
 class SimpleFCNet(fluid.dygraph.Layer):

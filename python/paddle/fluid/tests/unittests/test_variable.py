@@ -15,16 +15,16 @@
 import unittest
 from functools import reduce
 
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import (
     Program,
     convert_np_dtype_to_dtype_,
     default_main_program,
 )
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import numpy as np
 
 paddle.enable_static()
 

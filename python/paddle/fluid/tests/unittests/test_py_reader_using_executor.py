@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import compiler
-import paddle.fluid.unique_name as unique_name
-import paddle.fluid.core as core
-import numpy as np
-import threading
 import multiprocessing
 import os
+import threading
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.unique_name as unique_name
+from paddle.fluid import compiler
 
 os.environ['CPU_NUM'] = str(4)
 

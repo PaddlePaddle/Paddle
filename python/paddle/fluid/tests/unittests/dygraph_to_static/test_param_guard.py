@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import unittest
 
-from paddle.jit import to_static, ProgramTranslator
+import numpy as np
+
+import paddle
+from paddle.jit import ProgramTranslator, to_static
 
 
 class NetWithParameterList(paddle.nn.Layer):

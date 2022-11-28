@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import inspect
-from paddle.utils import gast
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
-
 from paddle import to_tensor
 from paddle.fluid.dygraph import to_variable
-from paddle.jit.api import dygraph_to_static_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
+from paddle.jit.api import dygraph_to_static_func
+from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)

@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.static import program_guard
-from paddle.static import Program
+from paddle.static import Program, program_guard
 
 # Support types are ref from `paddle.tensor.math`
 # - Related paddle dtypes:

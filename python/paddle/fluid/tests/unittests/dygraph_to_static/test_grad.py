@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import unittest
 import os
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 class GradLayer(paddle.nn.Layer):

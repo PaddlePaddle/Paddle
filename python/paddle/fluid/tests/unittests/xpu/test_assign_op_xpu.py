@@ -16,6 +16,7 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import paddle
 
 '''

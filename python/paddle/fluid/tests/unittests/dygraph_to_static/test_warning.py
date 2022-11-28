@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import warnings
+
+import paddle
 from paddle.fluid.layers.control_flow import cond
 
 

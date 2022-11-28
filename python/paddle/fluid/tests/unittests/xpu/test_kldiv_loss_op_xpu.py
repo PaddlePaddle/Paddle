@@ -14,16 +14,18 @@
 import sys
 
 sys.path.append("..")
-import paddle
 import unittest
+
 import numpy as np
-from paddle.nn.functional import kl_div
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle.nn.functional import kl_div
 
 paddle.enable_static()
 
