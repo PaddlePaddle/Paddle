@@ -21,7 +21,7 @@ import os
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import (
+from .early_return_transformer import (
     EarlyReturnTransformer,
 )
 from .assert_transformer import (
@@ -30,10 +30,8 @@ from .assert_transformer import (
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import (
     BasicApiTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import (
+from .break_continue_transformer import (
     BreakContinueTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import (
     BreakTransformOptimizer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.call_transformer import (
@@ -45,19 +43,19 @@ from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import (
 from paddle.fluid.dygraph.dygraph_to_static.typehint_transformer import (
     TypeHintTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import (
+from .ifelse_transformer import (
     IfElseTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
     LogicalTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import (
+from .loop_transformer import (
     LoopTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import (
     PrintTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+from .return_transformer import (
     ReturnTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import (

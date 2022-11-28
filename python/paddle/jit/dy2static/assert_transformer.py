@@ -22,6 +22,8 @@ from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
 
+__all__ = ['AssertTransformer']
+
 
 class AssertTransformer(BaseTransformer):
     """

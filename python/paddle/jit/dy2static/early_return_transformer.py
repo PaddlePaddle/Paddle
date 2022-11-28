@@ -20,6 +20,8 @@ from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
 
+__all__ = ['EarlyReturnTransformer']
+
 
 class EarlyReturnTransformer(BaseTransformer):
     """
