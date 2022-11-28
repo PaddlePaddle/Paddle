@@ -4157,40 +4157,6 @@ class TestBook(LayerTest):
             )
             return concat1, concat2
 
-    def test_deform_roi_pooling(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = layers.data(
-                name='input',
-                shape=[2, 3, 32, 32],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            rois = layers.data(
-                name="rois", shape=[4], dtype='float32', lod_level=1
-            )
-            trans = layers.data(
-                name="trans",
-                shape=[2, 3, 32, 32],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            out = layers.deformable_roi_pooling(
-                input=input,
-                rois=rois,
-                trans=trans,
-                no_trans=False,
-                spatial_scale=1.0,
-                group_size=(1, 1),
-                pooled_height=8,
-                pooled_width=8,
-                part_size=(8, 8),
-                sample_per_part=4,
-                trans_std=0.1,
-            )
-        return out
-
     def test_retinanet_target_assign(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
