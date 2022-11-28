@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import unittest
-import os
-import numpy as np
 import math
+import os
 import sys
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

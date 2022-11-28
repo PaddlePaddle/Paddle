@@ -127,10 +127,8 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   phi::DenseTensor table_t_pad;
 
-  size_t mem_size =
-      table_t->numel() * framework::DataTypeSize(table_t->dtype());
-  size_t line_mem_size =
-      table_t->dims()[1] * framework::DataTypeSize(table_t->dtype());
+  size_t mem_size = table_t->numel() * phi::SizeOf(table_t->dtype());
+  size_t line_mem_size = table_t->dims()[1] * phi::SizeOf(table_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(
@@ -227,11 +225,11 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
   const size_t mem_size =
-      table_grad_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
+      table_grad_t->numel() * phi::SizeOf(table_grad_t->dtype());
 
   // check align
   size_t line_mem_size =
-      table_grad_t->dims()[1] * framework::DataTypeSize(table_grad_t->dtype());
+      table_grad_t->dims()[1] * phi::SizeOf(table_grad_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(

@@ -14,8 +14,10 @@
 
 import abc
 import unittest
+
 import numpy as np
 from scipy.special import erf
+
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
