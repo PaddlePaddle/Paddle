@@ -39,7 +39,7 @@ def _is_numpy_image(img):
 
 
 def to_tensor(pic, data_format='CHW'):
-    """Converts a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
+    """Converts a ``PIL.Image`` or ``numpy.ndarray`` to paddle.Tensor.
 
     See ``ToTensor`` for more details.
 
@@ -269,18 +269,18 @@ def center_crop(img, output_size):
         PIL.Image or np.array: Cropped image.
 
     Examples:
-        .. code-block:: python
+    .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
+        import numpy as np
+        from PIL import Image
+        from paddle.vision.transforms import functional as F
 
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+        fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
 
-            fake_img = Image.fromarray(fake_img)
+        fake_img = Image.fromarray(fake_img)
 
-            cropped_img = F.center_crop(fake_img, (150, 100))
-            print(cropped_img.size)
+        cropped_img = F.center_crop(fake_img, (150, 100))
+        print(cropped_img.size)
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -764,7 +764,8 @@ def rotate(
             Origin is the upper left corner.
             Default is the center of the image.
         fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
-            If int, it is used for all channels respectively. Default value is 0.
+            If int, it is used for all channels respectively.
+
 
     Returns:
         PIL.Image or np.array: Rotated image.
@@ -918,7 +919,6 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image|np.array): Image to be converted to grayscale.
-        num_output_chanels(int, optional): The number of channels for the output image. The default value is 1.
 
     Returns:
         PIL.Image or np.array: Grayscale version of the image.
