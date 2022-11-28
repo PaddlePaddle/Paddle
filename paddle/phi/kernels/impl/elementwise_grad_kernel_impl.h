@@ -612,7 +612,6 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
   funcs::GetDoubleGradSafeTensor<Context, T>(
       dev_ctx, y, ddy.get_ptr(), &ddy_safe);
 
-  VLOG(3) << "here00000";
   if (d_ddout.get_ptr()) {
     if (d_x) {
       // d_x = ddy * d_ddout
@@ -631,7 +630,6 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
           dev_ctx, ddx_safe, *(d_ddout.get_ptr()), d_y, axis);
     }
   } else {
-    VLOG(3) << "here11111";
     if (d_x) {
       FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), d_x);
     }
