@@ -93,7 +93,6 @@ __all__ = [
     'smooth_l1',
     'one_hot',
     'autoincreased_step_counter',
-    'squeeze',
     'unsqueeze',
     'lod_reset',
     'lod_append',
@@ -107,7 +106,6 @@ __all__ = [
     'gather_nd',
     'relu',
     'log',
-    'crop_tensor',
     'prelu',
     'unique',
     'unique_with_counts',
@@ -4096,7 +4094,7 @@ def ctc_greedy_decoder(
         return ctc_out
     else:
         ctc_out_len = helper.create_variable_for_type_inference(dtype="int64")
-        ctc_input = squeeze(topk_indices, [2])
+        ctc_input = paddle.squeeze(topk_indices, [2])
 
         helper.append_op(
             type="ctc_align",
@@ -4635,105 +4633,6 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         counter.stop_gradient = True
 
     return counter
-
-
-def squeeze(input, axes, name=None):
-    """
-    This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
-    remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
-    to one will be deleted.
-
-
-    .. code-block:: text
-
-        Case1:
-
-          Input:
-            X.shape = (1, 3, 1, 5)
-            axes = [0]
-          Output:
-            Out.shape = (3, 1, 5)
-
-        Case2:
-
-          Input:
-            X.shape = (1, 3, 1, 5)
-            axes = []
-          Output:
-            Out.shape = (3, 5)
-
-        Case3:
-
-          Input:
-            X.shape = [1,3,1,5]
-            axes = [-2]
-          Output:
-            Out.shape = [1,3,5]
-
-    Args:
-        input (Variable): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
-                          axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
-                          Axes range is :math:`[-rank(input), rank(input))`.
-                          If axes is negative, :math:`axes=axes+rank(input)`.
-        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
-
-    Returns:
-        Variable: Output squeezed Tensor. Data type is same as input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            # set batch size=None
-            x = fluid.data(name='x', shape=[None, 5, 1, 10])
-            y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
-
-    """
-    if in_dygraph_mode():
-        return _C_ops.squeeze(input, axes)
-    if _in_legacy_dygraph():
-        out, _ = _legacy_C_ops.squeeze2(input, 'axes', axes)
-        return out
-
-    helper = LayerHelper("squeeze", **locals())
-    check_variable_and_dtype(
-        input,
-        'input',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'bool',
-            'int8',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'squeeze',
-    )
-    check_type(axes, 'axis/axes', (list, tuple, Variable), 'squeeze')
-
-    attrs = {}
-    if isinstance(axes, Variable):
-        axes.stop_gradient = True
-        attrs["axes"] = axes
-    elif isinstance(axes, (list, tuple)):
-        if utils._contain_var(axes):
-            attrs["axes"] = utils._convert_to_tensor_list(axes)
-        else:
-            attrs["axes"] = axes
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="squeeze2",
-        inputs={"X": input},
-        attrs=attrs,
-        outputs={"Out": out, "XShape": x_shape},
-    )
-
-    return out
 
 
 def unsqueeze(input, axes, name=None):
@@ -6537,199 +6436,6 @@ def relu(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out}
-    )
-    return out
-
-
-def crop_tensor(x, shape=None, offsets=None, name=None):
-    """
-    Crop input into output, as specified by offsets and shape.
-
-    .. code-block:: text
-
-        * Case 1 (input is a 2-D Tensor):
-            Input:
-                X.shape = [3, 5]
-                X.data = [[0, 1, 2, 0, 0],
-                          [0, 3, 4, 0, 0],
-                          [0, 0, 0, 0, 0]]
-            Parameters:
-                shape = [2, 2]
-                offsets = [0, 1]
-            Output:
-                Out.shape = [2, 2]
-                Out.data = [[1, 2],
-                            [3, 4]]
-        * Case 2 (input is a 3-D Tensor):
-            Input:
-                X.shape = [2, 3, 4]
-                X.data =  [[[0, 1, 2, 3],
-                            [0, 5, 6, 7],
-                            [0, 0, 0, 0]],
-                           [[0, 3, 4, 5],
-                            [0, 6, 7, 8],
-                            [0, 0, 0, 0]]]
-            Parameters:
-                shape = [2, 2, -1]
-                offsets = [0, 0, 1]
-            Output:
-                Out.shape = [2, 2, 3]
-                Out.data  = [[[1, 2, 3],
-                              [5, 6, 7]],
-                             [[3, 4, 5],
-                              [6, 7, 8]]]
-
-    Parameters:
-        x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Tensor): The output shape is specified
-            by `shape`. Its data type is int32. If a list/tuple, it's length must be
-            the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
-            When it is a list, each element can be an integer or a Tensor of shape: [1].
-            If Variable contained, it is suitable for the case that the shape may
-            be changed each iteration.
-        offsets (list|tuple|Variable, optional): Specifies the cropping
-            offsets at each dimension. Its data type is int32. If a list/tuple, it's length
-            must be the same as the dimension size of `x`. If a Tensor, it should be a 1-D
-            Tensor. When it is a list, each element can be an integer or a Tensor of shape: [1].
-            If Variable contained, it is suitable for the case that the offsets may be changed
-            each iteration. Default: None, the offsets are 0 at each dimension.
-        name(str, optional): The default value is None. Normally there is no need for user to set
-            this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: The cropped Tensor has same data type with `x`.
-
-    Examples:
-
-        .. code-block:: python
-          :name: code-example1
-
-            import paddle
-            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-            # x.shape = [3, 3]
-            # x = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-
-            # shape can be a 1-D Tensor or list or tuple.
-            shape = paddle.to_tensor([2, 2], dtype='int32')
-            # shape = [2, 2]
-            # shape = (2, 2)
-            out = paddle.crop(x, shape)
-            # out.shape = [2, 2]
-            # out = [[1,2], [4,5]]
-
-            # offsets can be a 1-D Tensor or list or tuple.
-            offsets = paddle.to_tensor([0, 1], dtype='int32')
-            # offsets = [1, 0]
-            # offsets = (1, 1)
-            out = paddle.crop(x, shape, offsets)
-            # out.shape = [2, 2]
-            # if offsets = [0, 0], out = [[1,2], [4,5]]
-            # if offsets = [0, 1], out = [[2,3], [5,6]]
-            # if offsets = [1, 0], out = [[4,5], [7,8]]
-            # if offsets = [1, 1], out = [[5,6], [8,9]]
-
-    """
-    helper = LayerHelper('crop_tensor', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'crop_tensor'
-    )
-    check_type(shape, 'shape', (list, tuple, Variable), 'crop_tensor')
-    check_type(
-        offsets, 'offsets', (list, tuple, Variable, type(None)), 'crop_tensor'
-    )
-
-    if offsets is None:
-        offsets = [0] * len(x.shape)
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
-    attrs = {}
-
-    def _attr_shape_check(shape_val):
-        if not isinstance(shape_val, int):
-            raise TypeError(
-                "Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: %s."
-                % type(shape_val)
-            )
-        if shape_val == 0:
-            raise ValueError(
-                "Attr(shape) of Op(crop_tensor) should not be zero, but received: %s."
-                % str(shape_val)
-            )
-        if shape_val < -1:
-            raise ValueError(
-                "When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: %s."
-                % str(shape_val)
-            )
-
-    def _attr_offsets_check(offset_val):
-        if not isinstance(offset_val, int):
-            raise TypeError(
-                "Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: %s."
-                % type(offset_val)
-            )
-        if offset_val < 0:
-            raise ValueError(
-                "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
-                % str(offset_val)
-            )
-
-    if isinstance(offsets, Variable):
-        offsets.stop_gradient = True
-        ipts['Offsets'] = offsets
-        attrs['offsets'] = [-1] * len(x.shape)
-    elif utils._contain_var(offsets):
-        new_offsets_tensor = []
-        offsets_attr = []
-        for dim in offsets:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_offsets_tensor.append(dim)
-                offsets_attr.append(-1)
-            else:
-                _attr_offsets_check(dim)
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_offsets_tensor.append(temp_out)
-                offsets_attr.append(dim)
-        ipts['OffsetsTensor'] = new_offsets_tensor
-        attrs['offsets'] = offsets_attr
-    else:
-        for offset in offsets:
-            _attr_offsets_check(offset)
-        attrs['offsets'] = offsets
-
-    if isinstance(shape, Variable):
-        shape.stop_gradient = True
-        ipts['Shape'] = shape
-    elif utils._contain_var(shape):
-        new_shape_tensor = []
-        shape_attr = []
-        for dim_size in shape:
-            if isinstance(dim_size, Variable):
-                dim_size.stop_gradient = True
-                new_shape_tensor.append(dim_size)
-                shape_attr.append(0)
-            else:
-                _attr_shape_check(dim_size)
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out
-                )
-                new_shape_tensor.append(temp_out)
-                shape_attr.append(dim_size)
-        ipts['ShapeTensor'] = new_shape_tensor
-        attrs['shape'] = shape_attr
-    else:
-        for dim_size in shape:
-            _attr_shape_check(dim_size)
-        attrs['shape'] = shape
-
-    helper.append_op(
-        type='crop_tensor',
-        inputs=ipts,
-        outputs={'Out': out},
-        attrs=None if len(attrs) == 0 else attrs,
     )
     return out
 
