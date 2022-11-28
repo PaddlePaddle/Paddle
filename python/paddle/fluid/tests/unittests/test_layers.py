@@ -3484,7 +3484,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             data = self._get_data(name='x', shape=[2, 3, 3], dtype="float32")
-            out, ids = layers.argsort(input=data, axis=1)
+            out, ids = paddle.argsort(x=data, axis=1)
             return out
             return ids
 
@@ -3829,7 +3829,7 @@ class TestBook(LayerTest):
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
-            out, ids = layers.argsort(input=data, axis=1)
+            out, ids = paddle.argsort(x=data, axis=1)
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
             out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
