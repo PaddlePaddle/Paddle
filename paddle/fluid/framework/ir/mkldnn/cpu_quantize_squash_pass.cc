@@ -337,7 +337,8 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
 
     if (dequant_in->outputs.size() == 1) {
       if (any_op->Op()->Type() == "conv2d" ||
-          any_op->Op()->Type() == "conv2d_transpose") {
+          any_op->Op()->Type() == "conv2d_transpose" ||
+          any_op->Op()->Type() == "fc") {
         // do not squash if fuse residual connection is true
         // because residual fusion does not support force output with fp32
         if (any_op->Op()->GetAttrIfExists<bool>("fuse_residual_connection"))
@@ -418,8 +419,8 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
                 last_op_names.begin(), last_op_names.end(), quant_out->Name()),
             last_op_names.end());
         last_op_names.push_back(first_quant_out->Name());
-        last_op->Op()->SetInput(last_op_input_name,
-                                std::vector<std::string>(last_op_names));
+        last_op_op->SetInput(last_op_input_name,
+                             std::vector<std::string>(last_op_names));
 
         IR_NODE_LINK_TO(first_quant_out, last_op);
         GraphSafeRemoveNodes(graph, {quant_op, quant_out});

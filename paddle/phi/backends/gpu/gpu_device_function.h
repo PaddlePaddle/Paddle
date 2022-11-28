@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/rocm_device_function.h"
+#include "paddle/phi/backends/gpu/rocm/rocm_device_function.h"
 #else
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_device_function.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
 #endif
 
 #endif
