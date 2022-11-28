@@ -1838,7 +1838,7 @@ def fast_decode(
             )
             accu_scores = layers.elementwise_add(
                 x=paddle.log(topk_scores),
-                y=layers.reshape(pre_scores, shape=[-1]),
+                y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
             # beam_search op uses lod to distinguish branches.
