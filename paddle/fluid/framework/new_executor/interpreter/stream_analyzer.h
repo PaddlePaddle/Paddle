@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-enum DownstreamRunType { kDirectRun, kSyncRun, kEventRun };
+enum DownstreamRunType { kDirectRun, kEventRun };
 
 class StreamAnalyzer {
  public:

@@ -87,10 +87,10 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Inputs",
-             "(std::vector<LoDTensor>) The inputs of fusion_group op.")
+             "(std::vector<phi::DenseTensor>) The inputs of fusion_group op.")
         .AsDuplicable();
     AddOutput("Outs",
-              "(std::vector<LoDTensor>) The outputs of fusion_group op.")
+              "(std::vector<phi::DenseTensor>) The outputs of fusion_group op.")
         .AsDuplicable();
     AddAttr<std::vector<int>>("outs_dtype",
                               "The data type of Outputs in fusion_group op.")

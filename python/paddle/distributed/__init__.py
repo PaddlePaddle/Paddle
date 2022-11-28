@@ -27,10 +27,8 @@ from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
-from .collective import barrier  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
-from .collective import wait  # noqa: F401
 
 from .communication import (
     stream,
@@ -53,6 +51,8 @@ from .communication import (
     is_initialized,
     destroy_process_group,
     get_group,
+    wait,
+    barrier,
 )  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401

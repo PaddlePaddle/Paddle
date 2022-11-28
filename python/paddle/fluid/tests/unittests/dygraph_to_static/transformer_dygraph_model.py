@@ -23,7 +23,7 @@ from paddle.fluid.dygraph import (
     Linear,
     to_variable,
 )
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.jit.api import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
 import paddle
 import paddle.nn.functional as F
@@ -586,8 +586,8 @@ class CrossEntropyCriterion:
             soft_label=True if self.label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = layers.reduce_sum(weighted_cost)
-        token_num = layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, token_num

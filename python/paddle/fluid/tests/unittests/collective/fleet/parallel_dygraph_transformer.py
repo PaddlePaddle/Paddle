@@ -947,8 +947,8 @@ class TransFormer(Layer):
             soft_label=True if self._label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = fluid.layers.reduce_sum(weighted_cost)
-        token_num = fluid.layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, predict, token_num

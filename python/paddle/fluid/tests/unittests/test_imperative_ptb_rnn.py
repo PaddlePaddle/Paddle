@@ -20,7 +20,7 @@ from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph import TracedLayer
+from paddle.jit import TracedLayer
 from test_imperative_base import new_program_scope
 import numpy as np
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
@@ -231,7 +231,7 @@ class PtbModel(fluid.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 

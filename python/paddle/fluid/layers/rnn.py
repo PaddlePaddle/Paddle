@@ -1720,7 +1720,7 @@ def _dynamic_decode_declarative(
                 states_arrays,
             )
         if max_step_num is not None:
-            control_flow.logical_and(
+            paddle.logical_and(
                 paddle.logical_not(nn.reduce_all(global_finished)),
                 control_flow.less_equal(step_idx, max_step_num),
                 cond,
@@ -2088,11 +2088,11 @@ class TrainingHelper(DecodeHelper):
 
         def _slice(x):  # TODO: use Variable.__getitem__
             axes = [0 if self.time_major else 1]
-            return nn.squeeze(
+            return paddle.squeeze(
                 nn.slice(
                     x, axes=axes, starts=[next_time], ends=[next_time + 1]
                 ),
-                axes=axes,
+                axis=axes,
             )
 
         next_inputs = map_structure(_slice, self.inputs_)
