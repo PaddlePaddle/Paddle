@@ -2893,7 +2893,7 @@ class TestLayer(LayerTest):
             data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
-            predict = paddle.nn.functional.softmax(input=fc_out)
+            predict = paddle.nn.functional.softmax(fc_out)
             result = fluid.layers.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
