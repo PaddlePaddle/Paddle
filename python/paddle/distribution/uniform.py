@@ -29,9 +29,9 @@ from paddle.fluid.layers import (
     tensor,
 )
 
+
 import paddle.nn.functional as F
 import paddle
-
 
 
 class Uniform(distribution.Distribution):

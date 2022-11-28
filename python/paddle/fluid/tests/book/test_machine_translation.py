@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import contextlib
 
 import numpy as np
@@ -144,7 +145,6 @@ def decoder_decode(context, is_sparse):
             x=F.log(topk_scores),
             y=paddle.reshape(pre_score, shape=[-1]),
             axis=0,
-
         )
         selected_ids, selected_scores = pd.beam_search(
             pre_ids,
