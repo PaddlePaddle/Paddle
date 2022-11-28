@@ -34,7 +34,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -58,9 +57,9 @@ template <typename DeviceContext, typename T>
 class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto roi_ins = ctx.MultiInput<LoDTensor>("MultiLevelRois");
-    const auto score_ins = ctx.MultiInput<LoDTensor>("MultiLevelScores");
-    auto fpn_rois = ctx.Output<LoDTensor>("FpnRois");
+    const auto roi_ins = ctx.MultiInput<phi::DenseTensor>("MultiLevelRois");
+    const auto score_ins = ctx.MultiInput<phi::DenseTensor>("MultiLevelScores");
+    auto fpn_rois = ctx.Output<phi::DenseTensor>("FpnRois");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     const int post_nms_topN = ctx.Attr<int>("post_nms_topN");

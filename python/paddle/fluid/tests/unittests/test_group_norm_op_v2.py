@@ -178,6 +178,58 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
             self.test_numerical_accuracy()
 
 
+class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
+    def test_numerical_accuracy(self):
+        # fp16 only supported in cuda
+        if not core.is_compiled_with_cuda():
+            return
+        paddle.disable_static()
+        shapes = [
+            (2, 6, 4),
+            (2, 6, 4, 4),
+            (2, 6, 6, 6, 2),
+            (2, 6, 6, 6, 2, 3),
+            (2, 6, 6, 6, 256, 3),
+        ]
+        np.random.seed(10)
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
+            places.append(fluid.CUDAPlace(0))
+
+        for place in places:
+            for shape in shapes:
+                scale = np.array([1]).astype("float32")
+                bias = np.array([0]).astype("float32")
+                data = np.random.random(shape).astype("float32")
+                expect_res1 = group_norm_naive_for_general_dimension(
+                    data, scale, bias, epsilon=1e-5, groups=6
+                )
+                expect_res2 = group_norm_naive_for_general_dimension(
+                    data, scale, bias, epsilon=1e-5, groups=2
+                )
+
+                gn1 = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
+                gn2 = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
+                paddle.assign(paddle.cast(gn1.weight, 'float16'), gn1.weight)
+                paddle.assign(paddle.cast(gn1.bias, 'float16'), gn1.bias)
+                paddle.assign(paddle.cast(gn2.weight, 'float16'), gn2.weight)
+                paddle.assign(paddle.cast(gn2.bias, 'float16'), gn2.bias)
+
+                data_pd = paddle.to_tensor(data.astype('float16'))
+                result1 = gn1(data_pd).numpy()
+                result2 = gn2(data_pd).numpy()
+                np.testing.assert_allclose(
+                    result1, expect_res1, rtol=1e-2, atol=1e-3
+                )
+                np.testing.assert_allclose(
+                    result2, expect_res2, rtol=1e-2, atol=1e-3
+                )
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_numerical_accuracy()
+
+
 class TestGroupNormDimException(unittest.TestCase):
     def test_exception(self):
         def test_empty_input_static_API():

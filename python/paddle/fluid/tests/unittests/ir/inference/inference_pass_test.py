@@ -14,13 +14,13 @@
 
 import random
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 class InferencePassTest(unittest.TestCase):
