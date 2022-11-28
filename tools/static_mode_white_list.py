@@ -444,6 +444,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_reorder_lod_tensor',
     'test_reshape_op',
     'test_reshape_bf16_op',
+    'test_retinanet_detection_output',
     'test_reverse_op',
     'test_rmsprop_op',
     'test_rnn_cell_api',
