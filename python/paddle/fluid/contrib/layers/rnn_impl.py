@@ -879,15 +879,13 @@ class BasicLSTMUnit(Layer):
         gate_input = layers.elementwise_add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
         new_cell = layers.elementwise_add(
-            layers.elementwise_mul(
+            paddle.multiply(
                 pre_cell,
                 paddle.nn.functional.sigmoid(
                     layers.elementwise_add(f, self._forget_bias)
                 ),
             ),
-            layers.elementwise_mul(
-                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
-            ),
+            paddle.multiply(paddle.nn.functional.sigmoid(i), paddle.tanh(j)),
         )
         new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
 

@@ -78,14 +78,12 @@ def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
 
     cell_t = fluid.layers.sums(
         input=[
-            fluid.layers.elementwise_mul(x=forget_gate, y=cell_t_prev),
-            fluid.layers.elementwise_mul(x=input_gate, y=cell_tilde),
+            paddle.multiply(x=forget_gate, y=cell_t_prev),
+            paddle.multiply(x=input_gate, y=cell_tilde),
         ]
     )
 
-    hidden_t = fluid.layers.elementwise_mul(
-        x=output_gate, y=paddle.tanh(x=cell_t)
-    )
+    hidden_t = paddle.multiply(x=output_gate, y=paddle.tanh(x=cell_t))
 
     return hidden_t, cell_t
 

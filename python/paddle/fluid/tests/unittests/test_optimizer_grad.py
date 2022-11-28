@@ -110,14 +110,14 @@ class SimpleNetWithCond:
             cond_res = fluid.layers.elementwise_add(
                 cond_yz, param_z, name='sum_cond_true'
             )
-            cond_useless = fluid.layers.elementwise_mul(param_x, param_y)
+            cond_useless = paddle.multiply(param_x, param_y)
             return cond_res
 
         def cond_false():
             cond_res = fluid.layers.elementwise_add(
                 param_y, param_z, name='sum_cond_false'
             )
-            cond_useless = fluid.layers.elementwise_mul(param_z, param_z)
+            cond_useless = paddle.multiply(param_z, param_z)
             return cond_res
 
         cond_i = fluid.layers.assign(np.array([cond_i], dtype='float32'))

@@ -406,7 +406,7 @@ class TestFakeInit(TranspilerTest):
 
         true_logits = fluid.layers.elementwise_add(
             paddle.sum(
-                fluid.layers.elementwise_mul(input_emb, true_emb_w),
+                paddle.multiply(input_emb, true_emb_w),
                 dim=1,
                 keep_dim=True,
             ),

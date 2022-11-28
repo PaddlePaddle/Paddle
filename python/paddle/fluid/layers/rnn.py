@@ -1125,10 +1125,9 @@ class BeamSearchDecoder(Decoder):
         )
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
-        probs = nn.elementwise_mul(
+        probs = paddle.multiply(
             paddle.tile(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
             self.noend_mask_tensor,
-            axis=-1,
         ) - nn.elementwise_mul(probs, (finished - 1), axis=0)
         return probs
 

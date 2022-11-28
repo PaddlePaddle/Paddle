@@ -75,12 +75,10 @@ class BasicLSTMUnit(Layer):
         gate_input = layers.elementwise_add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
         new_cell = layers.elementwise_add(
-            layers.elementwise_mul(
+            paddle.multiply(
                 pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
             ),
-            layers.elementwise_mul(
-                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
-            ),
+            paddle.multiply(paddle.nn.functional.sigmoid(i), paddle.tanh(j)),
         )
 
         new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
@@ -442,13 +440,12 @@ class BaseModel(fluid.dygraph.Layer):
                 np.array(noend_array, dtype='float32')
             )
 
-            step_log_probs = fluid.layers.elementwise_mul(
+            step_log_probs = paddle.multiply(
                 paddle.expand(
                     fluid.layers.unsqueeze(beam_finished, [2]),
                     [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
-                axis=-1,
             ) - fluid.layers.elementwise_mul(
                 step_log_probs, (beam_finished - 1), axis=0
             )

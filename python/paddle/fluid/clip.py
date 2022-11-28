@@ -572,7 +572,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
-                new_grad = layers.elementwise_mul(g, clip_input)
+                new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))

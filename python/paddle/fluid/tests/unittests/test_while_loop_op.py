@@ -221,7 +221,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             return layers.less_than(i, eleven)
 
         def body(i, x):
-            x = layers.elementwise_mul(x=i, y=i)
+            x = paddle.multiply(x=i, y=i)
             i = layers.increment(i)
             return [i, x]
 
@@ -397,7 +397,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
                 return data_add_three
 
             def fn_square():
-                data_mul_data = layers.elementwise_mul(x=i, y=i)
+                data_mul_data = paddle.multiply(x=i, y=i)
                 return data_mul_data
 
             def fn_add_one():

@@ -247,13 +247,13 @@ class LSTMCell(Layer):
             gate_input = elementwise_add(gate_input, self._bias)
             i, j, f, o = split(gate_input, num_or_sections=4, dim=-1)
             new_cell = elementwise_add(
-                elementwise_mul(
+                paddle.multiply(
                     pre_cell,
                     self._gate_activation(
                         elementwise_add(f, self._forget_bias)
                     ),
                 ),
-                elementwise_mul(
+                paddle.multiply(
                     paddle.nn.functional.sigmoid(i), paddle.tanh(j)
                 ),
             )

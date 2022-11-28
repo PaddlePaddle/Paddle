@@ -316,7 +316,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         def greater_equal_branch(i, a):
             return layers.cond(
                 i < 8.0,
-                lambda: layers.elementwise_mul(a, a),
+                lambda: paddle.multiply(a, a),
                 lambda: layers.elementwise_div(a, a),
             )
 
@@ -374,7 +374,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 lambda: fluid.layers.cond(
                     a - b < -1.0,
                     lambda: fluid.layers.elementwise_add(a, b),
-                    lambda: fluid.layers.elementwise_mul(a, b),
+                    lambda: paddle.multiply(a, b),
                 ),
                 lambda: fluid.layers.cond(
                     a == b,

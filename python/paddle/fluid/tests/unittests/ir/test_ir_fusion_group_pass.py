@@ -210,7 +210,7 @@ class FusionGroupPassFillConstantTest(FusionGroupPassTest):
             tmp_2 = paddle.scale(
                 tmp_1, scale=3.0, bias=1.0, bias_after_scale=True
             )
-            tmp_3 = layers.elementwise_mul(tmp_2, tmp_0)
+            tmp_3 = paddle.multiply(tmp_2, tmp_0)
 
         self.append_gradients(tmp_3)
 

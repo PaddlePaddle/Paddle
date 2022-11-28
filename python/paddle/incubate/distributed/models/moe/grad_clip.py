@@ -229,7 +229,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 if g.dtype == core.VarDesc.VarType.FP16
                 else clip_var
             )
-            new_grad = layers.elementwise_mul(x=g, y=clip_input)
+            new_grad = paddle.multiply(x=g, y=clip_input)
             params_and_grads.append((p, new_grad))
         return params_and_grads
 

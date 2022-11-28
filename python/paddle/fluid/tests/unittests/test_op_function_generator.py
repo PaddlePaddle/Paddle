@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 from paddle.fluid.framework import in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -55,7 +56,7 @@ class TestVariable(unittest.TestCase):
             x = fluid.dygraph.to_variable(a)
             y = fluid.dygraph.to_variable(b)
 
-            res1 = layers.elementwise_mul(x, y)
+            res1 = paddle.multiply(x, y)
             res2 = _legacy_C_ops.elementwise_mul(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())

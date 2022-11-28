@@ -7299,8 +7299,8 @@ class LookaheadOptimizer:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
                         tmp_var = layers.elementwise_add(
-                            layers.elementwise_mul(fast_var, alpha),
-                            layers.elementwise_mul(
+                            paddle.multiply(fast_var, alpha),
+                            paddle.multiply(
                                 slow_var, layers.elementwise_sub(one_var, alpha)
                             ),
                         )
