@@ -81,6 +81,7 @@ const std::unordered_map<std::string, nvinfer1::UnaryOperation>
         {"atanh", nvinfer1::UnaryOperation::kATANH},
         {"ceil", nvinfer1::UnaryOperation::kCEIL},
         {"floor", nvinfer1::UnaryOperation::kFLOOR},
+        {"reciprocal", nvinfer1::UnaryOperation::kRECIP},
 #if IS_TRT_VERSION_GE(7000)
         {"erf", nvinfer1::UnaryOperation::kERF},
 #endif
@@ -152,6 +153,10 @@ class FloorOpConverter : public UnaryOpConverter {
  public:
   FloorOpConverter() { op_type_ = "floor"; }
 };
+class ReciprocalOpConverter : public UnaryOpConverter {
+ public:
+  ReciprocalOpConverter() { op_type_ = "reciprocal"; }
+};
 #if IS_TRT_VERSION_GE(7000)
 class ErfOpConverter : public UnaryOpConverter {
  public:
@@ -179,6 +184,7 @@ REGISTER_TRT_OP_CONVERTER(asinh, AsinhOpConverter);
 REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
+REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
 #if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
 #endif

@@ -33,6 +33,7 @@ from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 import paddle.nn.functional as F
 
 
@@ -1313,7 +1314,7 @@ class TestLayer(LayerTest):
 
             embs = layers.concat(input=embs, axis=1)
             wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
-            nce_loss = layers.nce(
+            nce_loss = paddle.static.nn.nce(
                 input=embs,
                 label=wl,
                 num_total_classes=dict_size,
@@ -1688,7 +1689,9 @@ class TestLayer(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32'
             )
-            ret = layers.conv3d(input=images, num_filters=3, filter_size=2)
+            ret = paddle.static.nn.conv3d(
+                input=images, num_filters=3, filter_size=2
+            )
             static_ret = self.get_static_graph_result(
                 feed={'pixel': np.ones([2, 3, 6, 6, 6], dtype='float32')},
                 fetch_list=[ret],
@@ -3271,7 +3274,7 @@ class TestBook(LayerTest):
             embs.append(emb)
 
         embs = layers.concat(input=embs, axis=1)
-        loss = layers.nce(
+        loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],
             num_total_classes=dict_size,
@@ -3502,23 +3505,15 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
             )
-            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
-            out = layers.pad2d(
-                input,
-                paddings=[1, 2, 3, 4],
+
+            tmp_pad = paddle.nn.Pad2D(
+                padding=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape",
             )
-            out_1 = layers.pad2d(
-                input,
-                paddings=paddings,
-                mode='reflect',
-                data_format='NCHW',
-                name="shape",
-            )
+            out = tmp_pad(input)
             return out
-            return out_1
 
     def make_prelu(self):
         with program_guard(
@@ -3561,7 +3556,7 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[13, 11], dtype='float32'
             )
-            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            out = random.uniform_random_batch_size_like(input, [-1, 11])
             return out
 
     def make_gaussian_random(self):
@@ -3637,7 +3632,7 @@ class TestBook(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            out = layers.scale(input, scale=scale_var)
+            out = paddle.scale(input, scale=scale_var)
             return out
 
     def make_iou_similarity(self):
@@ -3694,34 +3689,6 @@ class TestBook(LayerTest):
             out = layers.batch_norm(data, momentum=momentum)
             return out
 
-    def make_inplace_abn(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data', shape=[32, 128, 128], dtype="float32"
-            )
-            out = layers.inplace_abn(data, act='leaky_relu', act_alpha=0.2)
-            return out
-
-    def make_inplace_abn_momentum_variable(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data', shape=[32, 128, 128], dtype="float32"
-            )
-            momentum = self._get_data(
-                name='momentum',
-                shape=[1],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            out = layers.inplace_abn(
-                data, momentum=momentum, act='elu', act_alpha=2.0
-            )
-            return out
-
     def make_range(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3764,7 +3731,9 @@ class TestBook(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            loss = paddle.nn.functional.kl_div(
+                input=x, label=target, reduction='batchmean'
+            )
             return loss
 
     def make_temporal_shift(self):
@@ -3773,14 +3742,6 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
             out = layers.temporal_shift(x, seg_num=2, shift_ratio=0.2)
-            return out
-
-    def make_shuffle_channel(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.shuffle_channel(x, group=4)
             return out
 
     def make_fsp_matrix(self):
@@ -3806,7 +3767,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.mse_loss(input=x, label=y)
+            out = paddle.nn.functional.mse_loss(input=x, label=y)
             return out
 
     def make_square_error_cost(self):
@@ -3885,7 +3846,7 @@ class TestBook(LayerTest):
         strides = [1, 1, 1]
         with self.static_graph():
             x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            out = layers.strided_slice(
+            out = paddle.strided_slice(
                 x, axes=axes, starts=starts, ends=ends, strides=strides
             )
             return out
@@ -4382,21 +4343,24 @@ class TestBook(LayerTest):
     def test_warpctc_with_padding(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            input_length = layers.data(
+            input_length = paddle.static.data(
                 name='logits_length', shape=[11], dtype='int64'
             )
-            label_length = layers.data(
+            label_length = paddle.static.data(
                 name='labels_length', shape=[12], dtype='int64'
             )
-            label = layers.data(name='label', shape=[12, 1], dtype='int32')
-            predict = layers.data(
+            label = paddle.static.data(
+                name='label', shape=[12, 1], dtype='int32'
+            )
+            predict = paddle.static.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = layers.warpctc(
-                input=predict,
-                label=label,
-                input_length=input_length,
-                label_length=label_length,
+            output = paddle.nn.functional.ctc_loss(
+                log_probs=predict,
+                labels=label,
+                input_lengths=input_length,
+                label_lengths=label_length,
+                reduction='none',
             )
             return output
 
