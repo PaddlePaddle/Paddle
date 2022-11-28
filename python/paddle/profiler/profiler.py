@@ -889,9 +889,9 @@ class Profiler:
             )
 
         if self.with_flops:
-            self.print_flops()
+            self._print_flops()
 
-    def print_flops(self, repeat=1):
+    def _print_flops(self, repeat=1):
         if not self.with_flops:
             print('ERROR: with_flops disabled.')
             return
