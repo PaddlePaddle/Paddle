@@ -141,7 +141,6 @@ __all__ = [
     'py_func',
     'psroi_pool',
     'prroi_pool',
-    'fsp_matrix',
     'continuous_value_model',
     'where',
     'sign',
@@ -9624,59 +9623,6 @@ def prroi_pool(
             'pooled_width': pooled_width,
         },
     )
-    return out
-
-
-def fsp_matrix(x, y):
-    """
-
-    **FSP matrix op**
-
-    This op is used to calculate the flow of solution procedure (FSP) matrix of two 4-D Tensor feature maps.
-    Given feature map x with shape [x_channel, h, w] and feature map y with shape
-    [y_channel, h, w], we can get the fsp matrix of x and y in two steps:
-
-    1. reshape x into matrix with shape [x_channel, h * w] and reshape and
-       transpose y into matrix with shape [h * w, y_channel].
-    2. multiply x and y to get fsp matrix with shape [x_channel, y_channel].
-
-    The output is a batch of fsp matrices.
-
-    Args:
-
-        x (Variable): A 4-D Tensor feature map with shape [batch_size, x_channel, height, width].
-                      A Tensor with type float32, float64.
-        y (Variable): A 4-D Tensor feature map with shape [batch_size, y_channel, height, width].
-                      The y_channel can be different with the x_channel of Input(X)
-                      while the other dimensions must be the same with Input(X)'s. A Tensor with
-                      type float32, float64.
-
-    Returns:
-
-        fsp matrix (Variable): The output of FSP op with shape [batch_size, x_channel, y_channel].
-        The x_channel is the channel of x and the y_channel is the channel of y. A Tensor with
-        type float32, float64.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            data = fluid.data(name='data', shape=[None, 3, 32, 32])
-            feature_map_0 = fluid.layers.conv2d(data, num_filters=2,
-                                                filter_size=3)
-            feature_map_1 = fluid.layers.conv2d(feature_map_0, num_filters=2,
-                                                filter_size=1)
-            loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
-
-    """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fsp_matrix')
-    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'fsp_matrix')
-    helper = LayerHelper('fsp_matrix', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype(input_param_name='x')
-    )
-    helper.append_op(type='fsp', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out
 
 

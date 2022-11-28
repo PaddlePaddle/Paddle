@@ -3744,15 +3744,6 @@ class TestBook(LayerTest):
             out = layers.temporal_shift(x, seg_num=2, shift_ratio=0.2)
             return out
 
-    def make_fsp_matrix(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            y = self._get_data(name="Y", shape=[8, 4, 4], dtype="float32")
-            out = layers.fsp_matrix(x, y)
-            return out
-
     def make_pixel_shuffle(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
