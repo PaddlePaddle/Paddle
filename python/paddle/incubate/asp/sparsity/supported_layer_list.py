@@ -16,10 +16,10 @@
 import numpy as np
 import paddle
 import copy
-from paddle.fluid.contrib import sparsity
+from paddle.incubate.asp import sparsity
 import threading
 import logging
-from ...log_helper import get_logger
+from paddle.fluid.log_helper import get_logger
 
 __all__ = ['add_supported_layer']
 

@@ -23,12 +23,12 @@ import paddle
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
-from paddle.fluid.contrib import sparsity
+from paddle.incubate.asp import sparsity
 from paddle.fluid import core
-from paddle.fluid.contrib.sparsity.supported_layer_list import (
+from .supported_layer_list import (
     supported_layers_and_prune_func_map,
 )
-from paddle.fluid.contrib.sparsity.supported_layer_list import _default_pruning
+from .supported_layer_list import _default_pruning
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()

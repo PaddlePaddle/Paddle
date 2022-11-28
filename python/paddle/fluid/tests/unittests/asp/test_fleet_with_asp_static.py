@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import os
 from paddle.static import sparsity
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.incubate.asp.sparsity.asp import ASPHelper
 import numpy as np
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
@@ -92,13 +92,13 @@ class TestFleetWithASPStatic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
@@ -168,13 +168,13 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
@@ -225,13 +225,13 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )

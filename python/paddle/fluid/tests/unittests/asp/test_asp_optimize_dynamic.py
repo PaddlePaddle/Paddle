@@ -16,7 +16,7 @@
 import unittest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.incubate.asp.sparsity.asp import ASPHelper
 import numpy as np
 
 
@@ -178,13 +178,13 @@ class TestASPDynamicOptimize(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
@@ -227,14 +227,14 @@ class TestASPDynamicOptimize(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )
                 else:
 
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.sparsity.check_sparsity(
                             mat.T, n=2, m=4
                         )
                     )

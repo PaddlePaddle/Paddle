@@ -17,7 +17,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.incubate.asp.sparsity.asp import ASPHelper
 import numpy as np
 
 paddle.enable_static()
@@ -87,7 +87,7 @@ class TestASPHelperPruningBase(unittest.TestCase):
                     fluid.global_scope().find_var(param.name).get_tensor()
                 )
                 self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
+                    paddle.incubate.asp.sparsity.check_sparsity(
                         mat.T, func_name=check_func_name, n=2, m=4
                     )
                 )

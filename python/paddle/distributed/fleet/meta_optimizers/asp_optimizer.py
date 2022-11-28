@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 
 from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.incubate.asp.sparsity.asp import ASPHelper
+
 
 __all__ = []
 
