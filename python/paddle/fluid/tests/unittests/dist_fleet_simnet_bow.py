@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+import os
 import time
+
+import numpy as np
+from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-import os
-from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 paddle.enable_static()
 
@@ -55,7 +56,7 @@ def fake_simnet_reader():
 def get_acc(cos_q_nt, cos_q_pt, batch_size):
     cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
     cond = fluid.layers.cast(cond, dtype='float64')
-    cond_3 = fluid.layers.reduce_sum(cond)
+    cond_3 = paddle.sum(cond)
     acc = fluid.layers.elementwise_div(
         cond_3,
         fluid.layers.fill_constant(
