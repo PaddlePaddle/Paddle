@@ -151,7 +151,6 @@ class BaseTransform:
                 _get_params -> _apply_image()
             else:
                 _get_params -> _apply_*() for * in keys
-    """
     
     If you want to implement a self-defined transform method for image,
     rewrite _apply_* method in subclass.
