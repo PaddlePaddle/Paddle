@@ -141,7 +141,6 @@ __all__ = [
     'py_func',
     'psroi_pool',
     'prroi_pool',
-    'pixel_shuffle',
     'fsp_matrix',
     'continuous_value_model',
     'where',
@@ -9624,68 +9623,6 @@ def prroi_pool(
             'pooled_height': pooled_height,
             'pooled_width': pooled_width,
         },
-    )
-    return out
-
-
-def pixel_shuffle(x, upscale_factor):
-    """
-
-    This op rearranges elements in a tensor of shape [N, C, H, W]
-    to a tensor of shape [N, C/r**2, H*r, W*r].
-    This is useful for implementing efficient sub-pixel convolution
-    with a stride of 1/r.
-    Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
-    Using an Efficient Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_ .
-    by Shi et. al (2016) for more details.
-
-    Parameters:
-
-        x(Variable): 4-D tensor, the data type should be float32 or float64.
-        upscale_factor(int): factor to increase spatial resolution.
-
-    Returns:
-        Out(Variable): Reshaped tensor according to the new dimension.
-
-    Raises:
-        ValueError: If the square of upscale_factor cannot divide the channels of input.
-
-    Examples:
-        .. code-block:: python
-
-            # declarative mode
-            import paddle.fluid as fluid
-            import numpy as np
-            input = fluid.data(name="input", shape=[2,9,4,4])
-            output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-
-            input_data = np.random.rand(2,9,4,4).astype("float32")
-            output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data},
-                fetch_list=[output],
-                return_numpy=True)
-
-            # print(output.shape)
-            # (2L, 1L, 12L, 12L)
-
-    """
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
-    helper = LayerHelper("pixel_shuffle", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    if not isinstance(upscale_factor, int):
-        raise TypeError("upscale factor must be int type")
-
-    helper.append_op(
-        type="pixel_shuffle",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"upscale_factor": upscale_factor},
     )
     return out
 

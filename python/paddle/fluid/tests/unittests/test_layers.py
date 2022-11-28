@@ -3758,7 +3758,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
-            out = layers.pixel_shuffle(x, upscale_factor=3)
+            out = paddle.nn.functional.pixel_shuffle(x, upscale_factor=3)
             return out
 
     def make_mse_loss(self):
