@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
-import os
-import paddle
 import numpy as np
-import paddle.fluid.layers as layers
+
+import paddle
 import paddle.distributed.fleet as fleet
+import paddle.fluid.layers as layers
 from paddle.distributed.fleet.utils.hybrid_parallel_inference import (
     HybridParallelInferenceHelper,
 )

@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 import random
 import unittest
 
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from simnet_dygraph_model import BOW, HingeLoss
 
 SEED = 102
