@@ -1953,7 +1953,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            ret = layers.instance_norm(input=X)
+            ret = paddle.static.nn.instance_norm(input=X)
             static_ret = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
             )[0]
