@@ -374,4 +374,9 @@ def _pool_flops(input_shapes, attrs):
 
 @register_flops("reduce_sum")
 def _reduece_sum_flops(input_shapes, attrs):
-    return prod(input_shapes.get('X')[0])
+    """FLOPs computation for reduce_sum op.
+    For reduce_sum(input):
+        equation: flops = (numel)total number of elements in the input tensor.
+    """
+    input = input_shapes.get('X')[0]
+    return prod(input)
