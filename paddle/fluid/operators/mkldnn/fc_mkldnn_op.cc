@@ -28,7 +28,6 @@ using dnnl::prop_kind;
 using dnnl::stream;
 using framework::DDim;
 using framework::ExecutionContext;
-using LoDTensor = phi::DenseTensor;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::to_void_cast;
 using platform::MKLDNNDeviceContext;
@@ -382,7 +381,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
   void PrepareSrcMem(const std::shared_ptr<inner_product_forward>& fc_p,
                      const std::shared_ptr<dnnl::memory>& src_mem,
-                     const LoDTensor* x,
+                     const phi::DenseTensor* x,
                      const dnnl::engine& engine) const {
     auto x_md = x->mem_desc().reshape(src_mem->get_desc().dims());
     if (x_md != src_mem->get_desc()) {
@@ -403,10 +402,10 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<LoDTensor>("Input");
+    const auto* x = ctx.Input<phi::DenseTensor>("Input");
     const auto* weights = ctx.Input<phi::DenseTensor>("W");
     const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
-    auto out = ctx.Output<LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
 
     const auto& scale_weights = ctx.Attr<std::vector<float>>("Scale_weights");
 
@@ -513,9 +512,9 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
   }
 
   void RecomputeOutputDims(const ExecutionContext& ctx,
-                           const LoDTensor* x,
+                           const phi::DenseTensor* x,
                            const phi::DenseTensor* weights,
-                           LoDTensor* out) const {
+                           phi::DenseTensor* out) const {
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool padding_weights = ctx.Attr<bool>("padding_weights");
     PADDLE_ENFORCE_EQ(padding_weights,

@@ -19,7 +19,7 @@ import tempfile
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.static import InputSpec
 
 program_translator = ProgramTranslator()

@@ -14,47 +14,49 @@
 """
 math functions
 """
+
+# TODO: define math functions
+
 import numpy as np
 
-from paddle.common_ops_import import VarDesc
-from paddle.common_ops_import import dygraph_only
-from paddle.common_ops_import import templatedoc
-from paddle.common_ops_import import dygraph_utils
-
-from .manipulation import cast
-from .creation import _complex_to_real_dtype
-from .layer_function_generator import generate_layer_fn
-
 import paddle
-from ..static import Variable
-from ..framework import (
-    core,
-    in_dygraph_mode,
-    _non_static_mode,
-    LayerHelper,
-    _in_legacy_dygraph,
-)
-from ..fluid.framework import _in_legacy_dygraph
-from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
+from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
+
 from ..fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
     check_dtype,
+    check_type,
+    check_variable_and_dtype,
     convert_dtype,
 )
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ..fluid.layers import utils
-
-# TODO: define math functions
+from ..fluid.framework import _in_legacy_dygraph
+from ..fluid.layers import elementwise_sub, utils
+from ..framework import (
+    LayerHelper,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    _varbase_creator,
+    convert_np_dtype_to_dtype_,
+    core,
+    in_dygraph_mode,
+)
+from ..static import Variable
+from .creation import _complex_to_real_dtype
+from .layer_function_generator import generate_layer_fn, templatedoc
+from .manipulation import cast
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401
+from .ops import acosh  # noqa: F401
 from .ops import asin  # noqa: F401
+from .ops import asinh  # noqa: F401
+from .ops import atan  # noqa: F401
+from .ops import atanh  # noqa: F401
 from .ops import ceil  # noqa: F401
 from .ops import ceil_  # noqa: F401
 from .ops import cos  # noqa: F401
-from .ops import tan  # noqa: F401
-from .ops import sinh  # noqa: F401
 from .ops import cosh  # noqa: F401
+from .ops import erf  # noqa: F401
 from .ops import exp  # noqa: F401
 from .ops import exp_  # noqa: F401
 from .ops import expm1  # noqa: F401
@@ -66,18 +68,12 @@ from .ops import round  # noqa: F401
 from .ops import round_  # noqa: F401
 from .ops import rsqrt  # noqa: F401
 from .ops import rsqrt_  # noqa: F401
-from .ops import square  # noqa: F401
-from .ops import atan  # noqa: F401
-from .ops import erf  # noqa: F401
+from .ops import sin  # noqa: F401
+from .ops import sinh  # noqa: F401
 from .ops import sqrt  # noqa: F401
 from .ops import sqrt_  # noqa: F401
-from .ops import sin  # noqa: F401
-from .ops import asinh  # noqa: F401
-from .ops import acosh  # noqa: F401
-from .ops import atanh  # noqa: F401
-
-from ..fluid.layers import elementwise_sub
-from paddle import _C_ops, _legacy_C_ops
+from .ops import square  # noqa: F401
+from .ops import tan  # noqa: F401
 
 __all__ = []
 

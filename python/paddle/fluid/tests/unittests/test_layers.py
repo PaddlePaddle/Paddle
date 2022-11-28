@@ -1962,7 +1962,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             ret = instanceNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
@@ -1970,21 +1970,21 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value2 = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
@@ -1997,7 +1997,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
             def test_Variable():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret1 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_Variable)
@@ -2005,7 +2005,7 @@ class TestLayer(LayerTest):
             # the input dtype of InstanceNorm must be float32 or float64
             def test_type():
                 input = np.random.random(shape).astype('int32')
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
@@ -2863,15 +2863,9 @@ class TestLayer(LayerTest):
             )
             crop_offsets3 = [0, dim1, dim2, 0]
 
-            out1 = fluid.layers.crop_tensor(
-                x, shape=crop_shape1, offsets=crop_offsets1
-            )
-            out2 = fluid.layers.crop_tensor(
-                x, shape=crop_shape2, offsets=crop_offsets2
-            )
-            out3 = fluid.layers.crop_tensor(
-                x, shape=crop_shape3, offsets=crop_offsets3
-            )
+            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
 
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
@@ -2921,7 +2915,6 @@ class TestBook(LayerTest):
         self.not_compare_static_dygraph_set = set(
             {
                 "make_gaussian_random",
-                "make_gaussian_random_batch_size_like",
                 "make_kldiv_loss",
                 "make_prelu",
                 "make_sampling_id",
@@ -3580,19 +3573,6 @@ class TestBook(LayerTest):
             out = layers.sampling_id(x)
             return out
 
-    def make_gaussian_random_batch_size_like(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32'
-            )
-
-            out = layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0
-            )
-            return out
-
     def make_sum(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -4117,7 +4097,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support layers with param now
         with self.static_graph():
             x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
-            out = layers.squeeze(input=x, axes=[2])
+            out = paddle.squeeze(x, axis=[2])
             return out
 
     def test_flatten(self):
@@ -4129,7 +4109,7 @@ class TestBook(LayerTest):
                 shape=[4, 4, 3],
                 dtype="float32",
             )
-            out = layers.flatten(x, axis=1, name="flatten")
+            out = paddle.flatten(x, 1, -1, name="flatten")
             return out
 
     def test_linspace(self):
