@@ -94,9 +94,9 @@ void IndexSampleKernel(const Context &ctx,
                     errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataType2String(index_type),
-                        phi::DataType2String(DataType::INT32),
-                        phi::DataType2String(DataType::INT64)));
+                        phi::DataTypeToString(index_type),
+                        phi::DataTypeToString(DataType::INT32),
+                        phi::DataTypeToString(DataType::INT64)));
   if (index_type == DataType::INT32) {
     IndexSampleInner<T, Context, int>(ctx, x, index, out);
   } else if (index_type == DataType::INT64) {

@@ -25,31 +25,10 @@ from paddle.distributed.communication.group import (
 )
 
 
-def _check_tensor_shape(tensor, shape, nranks=1):
-    expect_shape = list(shape)
-    expect_shape[0] //= nranks
-    if list(tensor.shape) != expect_shape:
-        raise RuntimeError("The in_tensor for scatter is not correctly-sized.")
-
-
-def _check_tensor_list_shape(tensor_list, shape, nranks=1):
-    if len(tensor_list) != nranks:
-        raise RuntimeError(
-            "The tensor_list for scatter is not correctly-sized."
-        )
-    for tensor in tensor_list:
-        if tensor.shape != shape:
-            raise RuntimeError(
-                "The tensor_list for scatter is not correctly-sized."
-            )
-
-
 def _scatter_tensor_in_dygraph(
     out_tensor, in_tensor, src_rank_in_group, group, sync_op, use_calc_stream
 ):
     nranks = group.nranks
-    if group.rank == src_rank_in_group:
-        _check_tensor_shape(out_tensor, in_tensor.shape, nranks)
 
     if use_calc_stream:
         return group.process_group.scatter_tensor_on_calc_stream(
@@ -74,7 +53,6 @@ def _scatter_in_dygraph(
             raise RuntimeError(
                 "The tensor_list should not be empty on src rank."
             )
-        _check_tensor_list_shape(tensor_list, tensor.shape, nranks)
     else:
         tensor_list = [tensor for _ in range(nranks)]
 

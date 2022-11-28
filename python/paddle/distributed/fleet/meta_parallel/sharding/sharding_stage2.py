@@ -318,7 +318,7 @@ class ShardingStage2(nn.Layer):
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
         # Multi stream operation will be supported later
-        collective.wait(tensor=buffer, group=self._group, use_calc_stream=True)
+        dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -382,7 +382,7 @@ class ShardingStage2(nn.Layer):
                     )
 
                     # Multi stream operation will be supported later
-                    collective.wait(
+                    dist.wait(
                         tensor=param.grad,
                         group=self._group,
                         use_calc_stream=True,
@@ -448,7 +448,7 @@ class ShardingStage2(nn.Layer):
                         )
 
                         # Multi stream operation will be supported later
-                        collective.wait(
+                        dist.wait(
                             tensor=grad_storage.buffer,
                             group=self._group,
                             use_calc_stream=True,

@@ -184,7 +184,7 @@ class Normal(distribution.Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
             )
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
             zero_tmp_shape = nn.shape(zero_tmp_reshape)
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
@@ -199,7 +199,7 @@ class Normal(distribution.Distribution):
             ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 

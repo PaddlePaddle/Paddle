@@ -13,9 +13,8 @@
 # limitations under the License
 
 import unittest
-from paddle.distributed.auto_parallel.cluster_v2 import Device
-from paddle.distributed.auto_parallel.cluster_v2 import Link
-from paddle.distributed.auto_parallel.cluster_v2 import DeviceMesh
+
+from paddle.distributed.auto_parallel.cluster_v2 import Device, DeviceMesh, Link
 
 
 class TestDeviceMesh(unittest.TestCase):

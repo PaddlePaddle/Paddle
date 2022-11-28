@@ -107,8 +107,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
-            d = layers.reshape(d, shape=[10])
-            prev = layers.reshape(prev, shape=[10])
+            d = paddle.reshape(d, shape=[10])
+            prev = paddle.reshape(prev, shape=[10])
             result = layers.sums(input=[d, prev])
 
             i = layers.increment(x=i, in_place=True)
@@ -117,8 +117,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             with while_op2.block():
                 d2 = layers.array_read(array=data_array, i=j)
                 prev2 = layers.array_read(array=mem_array, i=j)
-                d2 = layers.reshape(d2, shape=[10])
-                prev2 = layers.reshape(prev2, shape=[10])
+                d2 = paddle.reshape(d2, shape=[10])
+                prev2 = paddle.reshape(prev2, shape=[10])
                 result2 = layers.sums(input=[d2, prev2])
 
                 j = layers.increment(x=j, in_place=True)
@@ -128,7 +128,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         sum_result = layers.array_read(array=mem_array, i=j)
         sum_result.persistable = True
         tmp = layers.unsqueeze(sum_result, axes=[0])
-        tmp = layers.expand(tmp, expand_times=[10, 1])
+        tmp = paddle.expand(tmp, [10, -1])
         fc = layers.fc(tmp, size=256)
         loss = paddle.mean(sum_result)
 
