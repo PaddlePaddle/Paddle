@@ -33,7 +33,12 @@ from paddle.fluid.core import (
 )
 
 from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import StatisticData, _build_table, SortedKeys
+from .profiler_statistic import (
+    StatisticData,
+    _build_table,
+    SortedKeys,
+    gen_layer_flops,
+)
 from paddle.profiler import utils
 from .timer import benchmark
 
@@ -882,6 +887,18 @@ class Profiler:
                     views=views,
                 )
             )
+
+        if self.with_flops:
+            self.print_flops()
+
+    def print_flops(self, repeat=1):
+        if not self.with_flops:
+            print('ERROR: with_flops disabled.')
+            return
+
+        print(" Flops Profiler Begin ".center(100, "-"))
+        print(gen_layer_flops(self.profiler_result.get_data(), repeat))
+        print("- Flops Profiler End -".center(100, "-"))
 
 
 def get_profiler(config_path):
