@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import itertools
-import numpy as np
 import re
+import string
 
+import numpy as np
+import opt_einsum
+
+from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
 from .linalg import matmul, transpose
-from .manipulation import squeeze, unsqueeze, reshape
+from .manipulation import reshape, squeeze, unsqueeze
 from .math import multiply
 from .math import sum as paddle_sum
-from ..fluid.framework import _in_legacy_dygraph
-from paddle import _C_ops, _legacy_C_ops
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-import collections
-import string
-import opt_einsum
 
 __all__ = []
 
