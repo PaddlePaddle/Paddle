@@ -33,7 +33,6 @@ from paddle.fluid.dygraph.io import (
     _construct_params_and_buffers,
     _construct_program_holders,
 )
-from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.framework import (
     EagerParamBase,
     ParamBase,
@@ -52,6 +51,7 @@ from paddle.fluid.io import (
     _pickle_loads_mac,
     _unpack_saved_dict,
 )
+from paddle.jit.api import _SaveLoadConfig
 
 __all__ = []
 
