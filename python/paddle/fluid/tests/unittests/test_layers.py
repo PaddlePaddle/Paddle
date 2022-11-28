@@ -2863,15 +2863,9 @@ class TestLayer(LayerTest):
             )
             crop_offsets3 = [0, dim1, dim2, 0]
 
-            out1 = fluid.layers.crop_tensor(
-                x, shape=crop_shape1, offsets=crop_offsets1
-            )
-            out2 = fluid.layers.crop_tensor(
-                x, shape=crop_shape2, offsets=crop_offsets2
-            )
-            out3 = fluid.layers.crop_tensor(
-                x, shape=crop_shape3, offsets=crop_offsets3
-            )
+            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
 
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
@@ -4103,7 +4097,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support layers with param now
         with self.static_graph():
             x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
-            out = layers.squeeze(input=x, axes=[2])
+            out = paddle.squeeze(x, axis=[2])
             return out
 
     def test_flatten(self):
