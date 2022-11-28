@@ -55,7 +55,7 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddComment(
         R"DOC(This OP is used to broadcast a vector of inputs
-                     with Tensor or phi::DenseTensor type, following broadcast semantics.)DOC");
+                     with phi::DenseTensor type, following broadcast semantics.)DOC");
   }
 };
 
