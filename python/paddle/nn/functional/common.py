@@ -27,7 +27,6 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid import dygraph_utils
-from ...fluid.layers import utils
 from ...fluid.data_feeder import (
     check_variable_and_dtype,
     check_dtype,
@@ -327,11 +326,6 @@ def reshape(x, shape, name=None):
             "but received %s." % len(shape)
         )
         attrs["shape"] = get_attr_shape(shape)
-        if _contain_var(shape):
-            inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
-        elif isinstance(actual_shape, Variable):
-            actual_shape.stop_gradient = True
-            inputs["Shape"] = actual_shape
 
     out = (
         x

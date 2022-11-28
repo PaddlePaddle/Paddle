@@ -386,7 +386,7 @@ class TestReshapeFAPI(unittest.TestCase):
             )
             res1 = paddle.nn.functional.reshape(x=input, shape=[0, 0, 0, 30])
             res2 = paddle.nn.functional.reshape(
-                x=input, shape=[0, 0, 0, 0, 2, 3]
+                x=input, shape=paddle.to_tensor([0, 0, 0, 0, 2, 3])
             )
 
             in_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
@@ -423,7 +423,7 @@ class TestReshapeFAPI(unittest.TestCase):
                     x=input, shape=[0, 0, 0, 30]
                 )
                 res2 = paddle.nn.functional.reshape(
-                    x=input, shape=[0, 0, 0, 0, 2, 3]
+                    x=input, shape=paddle.to_tensor([0, 0, 0, 0, 2, 3])
                 )
 
             res_list = [res1, res2]
@@ -431,7 +431,7 @@ class TestReshapeFAPI(unittest.TestCase):
                 np.testing.assert_allclose(res.numpy(), res_np[i], rtol=1e-05)
 
 
-class TestDropout3DCAPI(unittest.TestCase):
+class TestReshapeCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -445,9 +445,13 @@ class TestDropout3DCAPI(unittest.TestCase):
                 res_np = np.reshape(input_np, (2, 3, 4, 30))
                 input = fluid.dygraph.to_variable(input_np)
                 m = paddle.nn.Reshape(shape=[0, 0, 0, 30])
+                n = paddle.nn.Reshape(shape=paddle.to_tensor([0, 0, 0, 30]))
                 m.eval()
+                n.eval()
                 result = m(input)
+                result2 = n(input)
                 np.testing.assert_allclose(result.numpy(), res_np, rtol=1e-05)
+                np.testing.assert_allclose(result2.numpy(), res_np, rtol=1e-05)
 
 
 class TestStaticReshape_(TestReshapeAPI):
