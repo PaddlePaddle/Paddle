@@ -145,7 +145,7 @@ class BaseTransform:
     
     Examples:
     
-        ..code-block:: python
+        ..code-block:: test
 
             if keys is None:
                 _get_params -> _apply_image()
