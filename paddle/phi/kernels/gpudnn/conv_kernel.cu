@@ -50,8 +50,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                            const std::vector<int>& strides,
                            const std::vector<int>& padding_common,
                            const std::vector<int>& dilations,
-                           paddle::platform::DataLayout compute_format,
-                           paddle::platform::DataLayout layout,
+                           phi::backends::gpu::DataLayout compute_format,
+                           phi::backends::gpu::DataLayout layout,
                            bool exhaustive_search,
                            bool deterministic,
                            int groups,
@@ -63,8 +63,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
-  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
   // ------------------- cudnn descriptors ---------------------
   ConvArgs args{handle,
@@ -113,16 +113,16 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   int i_n, i_c, i_d, i_h, i_w;
   int o_n, o_c, o_d, o_h, o_w;
 
-  if (compute_format == paddle::platform::DataLayout::kNHWC) {
+  if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
     GetNCDHW(transformed_input->dims(),
-             paddle::platform::DataLayout::kNHWC,
+             phi::backends::gpu::DataLayout::kNHWC,
              &i_n,
              &i_c,
              &i_d,
              &i_h,
              &i_w);
     GetNCDHW(transformed_output->dims(),
-             paddle::platform::DataLayout::kNHWC,
+             phi::backends::gpu::DataLayout::kNHWC,
              &o_n,
              &o_c,
              &o_d,
@@ -130,14 +130,14 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
              &o_w);
   } else {
     GetNCDHW(transformed_input->dims(),
-             paddle::platform::DataLayout::kNCHW,
+             phi::backends::gpu::DataLayout::kNCHW,
              &i_n,
              &i_c,
              &i_d,
              &i_h,
              &i_w);
     GetNCDHW(transformed_output->dims(),
-             paddle::platform::DataLayout::kNCHW,
+             phi::backends::gpu::DataLayout::kNCHW,
              &o_n,
              &o_c,
              &o_d,
@@ -227,7 +227,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                            const std::vector<int>& strides,
                            const std::vector<int>& padding_common,
                            const std::vector<int>& dilations,
-                           paddle::platform::DataLayout layout,
+                           phi::backends::gpu::DataLayout layout,
                            bool exhaustive_search,
                            bool deterministic,
                            int groups,
@@ -247,8 +247,8 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
-  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
   float alpha = 1.0f;
   float beta = 0.0f;
@@ -368,11 +368,11 @@ void ConvCudnnKernel(const Context& ctx,
                         "FLAGS_cudnn_deterministic True at same time."));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
 #ifdef PADDLE_WITH_HIP
   // HIP MIOPEN ONLY SUPPORT NCHW format
-  auto compute_format = paddle::platform::DataLayout::kNCHW;
+  auto compute_format = phi::backends::gpu::DataLayout::kNCHW;
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
   // Tensor Core introduced from Volta GPUs supports more faster conv op
@@ -388,20 +388,20 @@ void ConvCudnnKernel(const Context& ctx,
   // We will only do data format conversion from NHWC to NCHW.
   // cudnn will convert NCHW to NHWC automatically on Tensor Core.
   auto compute_format = compute_in_nhwc && channel_last
-                            ? paddle::platform::DataLayout::kNHWC
-                            : paddle::platform::DataLayout::kNCHW;
+                            ? phi::backends::gpu::DataLayout::kNHWC
+                            : phi::backends::gpu::DataLayout::kNCHW;
 #endif
   VLOG(3) << "Compute ConvOp with cuDNN:"
           << " data_format=" << data_format << " compute_format="
-          << (compute_format == paddle::platform::DataLayout::kNHWC ? "NHWC"
-                                                                    : "NCHW");
+          << (compute_format == phi::backends::gpu::DataLayout::kNHWC ? "NHWC"
+                                                                      : "NCHW");
 
   // ------------ transformed tensor -----------
   DenseTensor transformed_input_channel(input.type());
   DenseTensor transformed_output(output->type());
   DenseTensor transformed_filter_channel(filter.type());
 
-  if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
+  if (channel_last && compute_format == phi::backends::gpu::DataLayout::kNCHW) {
     VLOG(3) << "Transform input tensor from NHWC to NCHW.";
     ResizeToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
     TransToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
@@ -412,7 +412,7 @@ void ConvCudnnKernel(const Context& ctx,
     transformed_input_channel.ShareDataWith(input);
     transformed_output.ShareDataWith(*output);
   }
-  if (compute_format == paddle::platform::DataLayout::kNHWC) {
+  if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
     VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
     ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
     TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
@@ -426,7 +426,7 @@ void ConvCudnnKernel(const Context& ctx,
   DDim in_data_dims;
   DDim filter_data_dims;
 
-  if (compute_format == paddle::platform::DataLayout::kNCHW) {
+  if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
     filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   } else {
@@ -448,7 +448,7 @@ void ConvCudnnKernel(const Context& ctx,
     std::vector<int> new_input_shape_vec(data_dim + 2);
     new_input_shape_vec[0] = transformed_input_channel.dims()[0];
 
-    if (compute_format == paddle::platform::DataLayout::kNCHW) {
+    if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
       new_input_shape_vec[1] = transformed_input_channel.dims()[1];
     } else {
       new_input_shape_vec[data_dim + 1] =
@@ -459,14 +459,14 @@ void ConvCudnnKernel(const Context& ctx,
     for (size_t i = 0; i < data_dim; ++i) {
       padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
       padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
-      if (compute_format == paddle::platform::DataLayout::kNCHW) {
+      if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
         new_input_shape_vec[i + 2] =
             transformed_input_channel.dims()[i + 2] + padding_diff[i];
       } else {
         new_input_shape_vec[i + 1] =
             transformed_input_channel.dims()[i + 1] + padding_diff[i];
       }
-      if (compute_format == paddle::platform::DataLayout::kNCHW) {
+      if (compute_format == phi::backends::gpu::DataLayout::kNCHW) {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       } else {
@@ -513,14 +513,14 @@ void ConvCudnnKernel(const Context& ctx,
     }
   }
 
-  paddle::platform::DataLayout layout =
-      compute_format == paddle::platform::DataLayout::kNHWC
-          ? paddle::platform::DataLayout::kNHWC
-          : paddle::platform::DataLayout::kNCHW;
+  phi::backends::gpu::DataLayout layout =
+      compute_format == phi::backends::gpu::DataLayout::kNHWC
+          ? phi::backends::gpu::DataLayout::kNHWC
+          : phi::backends::gpu::DataLayout::kNCHW;
   if (transformed_input.dims().size() == 5) {
-    layout = compute_format == paddle::platform::DataLayout::kNHWC
-                 ? paddle::platform::DataLayout::kNDHWC
-                 : paddle::platform::DataLayout::kNCDHW;
+    layout = compute_format == phi::backends::gpu::DataLayout::kNHWC
+                 ? phi::backends::gpu::DataLayout::kNDHWC
+                 : phi::backends::gpu::DataLayout::kNCDHW;
   }
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
@@ -564,7 +564,7 @@ void ConvCudnnKernel(const Context& ctx,
                            &transformed_output);
 #endif
 
-  if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
+  if (channel_last && compute_format == phi::backends::gpu::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
 }

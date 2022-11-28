@@ -148,7 +148,7 @@ class TestReverseLoDTensorArray(unittest.TestCase):
 
             reverse_array = fluid.layers.reverse(tensor_array, axis=axis)
             output, _ = fluid.layers.tensor_array_to_tensor(reverse_array)
-            loss = fluid.layers.reduce_sum(output)
+            loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
             input_grads = list(
                 map(

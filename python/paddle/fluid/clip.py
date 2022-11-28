@@ -73,7 +73,7 @@ def _squared_l2_norm(x):
         or x.dtype == core.VarDesc.VarType.BF16
     ):
         square = paddle.square(x)
-        sum_square = layers.reduce_sum(square)
+        sum_square = paddle.sum(square)
         return sum_square
 
     if in_dygraph_mode():
