@@ -1313,7 +1313,7 @@ class TestLayer(LayerTest):
                 embs.append(emb)
 
             embs = layers.concat(input=embs, axis=1)
-            wl = paddle.unsqueeze(words[label_word], axes=[0])
+            wl = paddle.unsqueeze(words[label_word], axis=[0])
             nce_loss = paddle.static.nn.nce(
                 input=embs,
                 label=wl,
