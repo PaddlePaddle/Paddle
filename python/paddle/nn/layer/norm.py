@@ -27,7 +27,7 @@
 
 # TODO: define normalization api
 
-from ...fluid.dygraph import BatchNorm  # noqa: F401
+from paddle.nn import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
 from ...framework import get_default_dtype
