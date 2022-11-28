@@ -42,7 +42,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
@@ -982,7 +982,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
     for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
       // reduce sum with wrap
-      val += platform::CudaShuffleXorSync(0xFFFFFFFF, val, i);
+      val += phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, val, i);
     }
 
     size_t idx_j = j + threadIdx.y;
@@ -1004,7 +1004,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
         for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
           // reduce sum with wrap
-          inter_val += platform::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
+          inter_val +=
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
         }
         if (threadIdx.x == 0 && (idx_j < w)) d_intermediate[idx_j] = inter_val;
       }
@@ -1160,14 +1161,14 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
   if (BcastY) {
     if (dy) {
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dy[j] = val;
       }
     }
   } else {
     if (dx) {
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dx[j] = val;
       }
@@ -1175,7 +1176,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   }
   if (!SameShapeOfIntermediateOutAndOut) {
     if (d_intermediate) {
-      inter_val = paddle::platform::reduceSum(inter_val, tid, h);
+      inter_val = phi::backends::gpu::reduceSum(inter_val, tid, h);
       if (threadIdx.x == 0) {
         d_intermediate[j] = inter_val;
       }

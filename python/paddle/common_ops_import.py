@@ -36,6 +36,6 @@ from paddle.fluid.data_feeder import (  # noqa: F401
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.layers import fill_constant, utils, scale  # noqa: F401
+from paddle.fluid.layers import fill_constant, utils  # noqa: F401
 from paddle.tensor.layer_function_generator import templatedoc  # noqa: F401
 import paddle.fluid as fluid  # noqa: F401

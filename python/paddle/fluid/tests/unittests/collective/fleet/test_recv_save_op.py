@@ -13,20 +13,20 @@
 # limitations under the License.
 
 import os
+import shutil
 import signal
 import time
-import shutil
 import unittest
-
 from multiprocessing import Process
 
 import numpy as np
+from dist_test_utils import remove_ps_flag
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
-from dist_test_utils import remove_ps_flag
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.fluid.op import Operator
 
 
 def run_pserver(pserver_id):

@@ -22,12 +22,11 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
-#include "paddle/fluid/framework/new_executor/interpreter/event_manager.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
-#include "paddle/fluid/framework/new_executor/stream_analyzer.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -67,6 +66,10 @@ class InterpreterCore {
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
+  const std::set<std::string>& JitInputVars() const;
+
+  void SetJitInputVars(const std::set<std::string>& jit_input_vars);
 
   const VariableScope* GetVariableScope() const;
 
@@ -117,6 +120,7 @@ class InterpreterCore {
 
   interpreter::DependencyBuilder dependency_builder_;
   interpreter::ExecutionConfig execution_config_;
+  interpreter::StreamAnalyzer stream_analyzer_;
 
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
@@ -135,7 +139,6 @@ class InterpreterCore {
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned
 
-  StreamAnalyzer stream_analyzer_;
   EventsWaiter main_thread_blocker_;
   std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
 
@@ -155,6 +158,8 @@ class InterpreterCore {
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
+
+  // for jit
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

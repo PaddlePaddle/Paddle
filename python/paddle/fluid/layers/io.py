@@ -19,7 +19,6 @@ import threading
 
 from ..data_feeder import DataFeeder
 from .control_flow import BlockGuard
-from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import (
@@ -190,6 +189,7 @@ class ListenAndServ:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             with fluid.program_guard(main):
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
@@ -200,7 +200,7 @@ class ListenAndServ:
                         name="X",
                         append_batch_size=False)
                     fluid.initializer.Constant(value=1.0)(x, main.global_block())
-                    layers.scale(x=x, scale=10.0, out=out_var)
+                    paddle.scale(x=x, scale=10.0, out=out_var)
 
             exe = fluid.Executor(place)
             exe.run(main)
