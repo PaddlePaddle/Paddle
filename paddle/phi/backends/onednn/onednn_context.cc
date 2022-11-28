@@ -433,8 +433,6 @@ bool OneDNNContext::HasDnnInput(const std::string& input_name) const {
   return impl_->HasDnnInput(input_name);
 }
 
-void OneDNNContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
-
 const DenseTensor* OneDNNContext::GetDnnInput(
     const std::string& input_name) const {
   return impl_->GetDnnInput(input_name);
