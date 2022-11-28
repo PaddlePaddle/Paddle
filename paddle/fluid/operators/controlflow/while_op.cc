@@ -302,8 +302,8 @@ class WhileOp : public framework::OperatorBase {
               ctx_.get(), &current_scope, false, false, false);
         }
 
-        cond_data =
-            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
+        cond_data = GetCondData(
+            scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
       scope.DeleteScope(&current_scope);
     }
