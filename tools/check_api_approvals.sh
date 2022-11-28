@@ -64,7 +64,7 @@ fi
 filter_fluid=`git diff --name-only upstream/develop |  grep "py$" | grep "^python/paddle/fluid/tests/unittest"`
 filter_fluid+=" `git diff --name-only upstream/develop | grep "py$" | grep -v "^python/paddle/fluid"| grep "^python/paddle"`"
 has_fluid=`git diff -U0 upstream/$BRANCH -- $filter_fluid | grep '^\+' | grep -v '^++' | grep -E "(fluid\.)|(paddle\.fluid)"`
-if [ "${has_fluid} != "" ]; then
+if [ "${has_fluid}" != "" ]; then
     for fluid in "${has_fluid}";
     do
         echo "${fluid}"
