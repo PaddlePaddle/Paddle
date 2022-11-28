@@ -442,7 +442,7 @@ TEST(CudnnNormConvFp16, K1S1) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -472,7 +472,7 @@ TEST(CudnnNormConvFp16, K3S1) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -502,7 +502,7 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -532,7 +532,7 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() <= 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3), paddle::platform::EnforceNotMet);
