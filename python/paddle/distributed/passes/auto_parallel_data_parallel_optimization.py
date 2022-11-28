@@ -641,7 +641,7 @@ class DataParallelOptimizationPass(PassBase):
         for idx, prior_name, post_name in dep_var_pairs:
             prior_var = block.var(prior_name)
             post_var = block.var(post_name)
-            insert_dependencies_for_two_vars(
+            depend_op = insert_dependencies_for_two_vars(
                 block,
                 idx,
                 prior_var,
@@ -654,6 +654,7 @@ class DataParallelOptimizationPass(PassBase):
                 is_recompute=False,
                 sync=False,
             )
+            depend_op.dist_attr.execution_stream = self.gradient_sync_stream
         block._sync_with_cpp()
 
         # remove naive synchronization & assign allreduce stream
