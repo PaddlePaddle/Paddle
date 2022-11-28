@@ -109,7 +109,6 @@ __all__ = [
     'log',
     'crop_tensor',
     'prelu',
-    'unique',
     'unique_with_counts',
     'elementwise_add',
     'elementwise_div',
@@ -9679,46 +9678,6 @@ def continuous_value_model(input, cvm, use_cvm=True):
         attrs={"use_cvm": use_cvm},
     )
     return out
-
-
-def unique(x, dtype='int32'):
-    r"""
-    Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
-
-    Args:
-        x(Tensor): A 1-D input tensor, it's data type should be float32, float64, int32, int64.
-        dtype(np.dtype|str, optional): The type of index tensor: int32, int64. Default: int32.
-
-    Returns:
-        tuple: (out, index). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
-            `index` is an index tensor pointing to `out`, by which user can recover the original `x` tensor.
-
-    Examples:
-        .. code-block:: python
-
-             import numpy as np
-             import paddle.fluid as fluid
-             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
-             out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
-    """
-
-    check_variable_and_dtype(
-        x, "x", ['float32', 'float64', 'int32', 'int64'], "unique"
-    )
-    helper = LayerHelper("unique", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    index = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type='unique',
-        inputs={'X': x},
-        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
-        outputs={'Out': [out], 'Index': [index]},
-    )
-
-    return out, index
 
 
 def unique_with_counts(x, dtype='int32'):
