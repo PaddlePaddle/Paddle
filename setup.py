@@ -1305,12 +1305,12 @@ def print_info_of_reminding(help_messages):
 
 def main():
 
-    # # Parse the command line and check arguments before we proceed with building steps and setup
-    # parse_input_command(filter_args_list)
+    # Parse the command line and check arguments before we proceed with building steps and setup
+    parse_input_command(filter_args_list)
 
-    # # Execute the build process,cmake and make
-    # if cmake_and_make:
-    #     build_steps()
+    # Execute the build process,cmake and make
+    if cmake_and_make:
+        build_steps()
 
     # envir_dict is environment variables after cmake
     # sys.path.append("/build/python/")
