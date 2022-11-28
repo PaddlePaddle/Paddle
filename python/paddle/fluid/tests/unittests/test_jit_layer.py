@@ -20,7 +20,7 @@ import numpy as np
 from paddle.static import InputSpec
 from paddle.fluid.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
 )
 
@@ -29,7 +29,7 @@ paddle.seed(1)
 
 class Net(paddle.nn.Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = paddle.nn.Linear(4, 4)
         self.fc2 = paddle.nn.Linear(4, 4)
         self._bias = 0.4

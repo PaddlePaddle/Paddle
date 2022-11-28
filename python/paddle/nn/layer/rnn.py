@@ -20,7 +20,8 @@ import paddle
 from paddle import framework
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.nn import Layer, LayerList
+from paddle.nn import Layer
+from .container import LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import flatten, map_structure
 from paddle import _C_ops, _legacy_C_ops
@@ -30,10 +31,7 @@ from paddle.framework import core
 from paddle.static import default_startup_program
 from paddle.static import program_guard
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 __all__ = []
 
@@ -188,7 +186,7 @@ class RNNCellBase(Layer):
                 return True
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
@@ -332,7 +330,7 @@ class SimpleRNNCell(RNNCellBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(SimpleRNNCell, self).__init__()
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
@@ -491,7 +489,7 @@ class LSTMCell(RNNCellBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(LSTMCell, self).__init__()
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
@@ -650,7 +648,7 @@ class GRUCell(RNNCellBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(GRUCell, self).__init__()
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
@@ -772,7 +770,7 @@ class RNN(Layer):
     """
 
     def __init__(self, cell, is_reverse=False, time_major=False):
-        super(RNN, self).__init__()
+        super().__init__()
         self.cell = cell
         if not hasattr(self.cell, "call"):
             # for non-dygraph mode, `rnn` api uses cell.call
@@ -846,7 +844,7 @@ class BiRNN(Layer):
     """
 
     def __init__(self, cell_fw, cell_bw, time_major=False):
-        super(BiRNN, self).__init__()
+        super().__init__()
         self.cell_fw = cell_fw
         self.cell_bw = cell_bw
         if cell_fw.input_size != cell_bw.input_size:
@@ -902,7 +900,7 @@ class RNNBase(LayerList):
         bias_ih_attr=None,
         bias_hh_attr=None,
     ):
-        super(RNNBase, self).__init__()
+        super().__init__()
         bidirectional_list = ["bidirectional", "bidirect"]
         self.mode = mode
         self.input_size = input_size
@@ -964,9 +962,9 @@ class RNNBase(LayerList):
             for direction in range(self.num_directions):
                 suffix = '_reverse' if direction == 1 else ''
                 param_names.extend(['weight_ih_l{}{}', 'weight_hh_l{}{}'])
-                if bias_ih_attr != False:
+                if bias_ih_attr is not False:
                     param_names.append('bias_ih_l{}{}')
-                if bias_hh_attr != False:
+                if bias_hh_attr is not False:
                     param_names.append('bias_hh_l{}{}')
                 param_names = [x.format(layer, suffix) for x in param_names]
         for name, param in zip(param_names, self.parameters()):
@@ -1187,7 +1185,7 @@ class RNNBase(LayerList):
         main_str = '{input_size}, {hidden_size}'
         if self.num_layers != 1:
             main_str += ', num_layers={num_layers}'
-        if self.time_major != False:
+        if self.time_major is not False:
             main_str += ', time_major={time_major}'
         if self.dropout != 0:
             main_str += ', dropout={dropout}'
@@ -1301,7 +1299,7 @@ class SimpleRNN(RNNBase):
         else:
             raise ValueError("Unknown activation '{}'".format(activation))
         self.activation = activation
-        super(SimpleRNN, self).__init__(
+        super().__init__(
             mode,
             input_size,
             hidden_size,
@@ -1427,7 +1425,7 @@ class LSTM(RNNBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(LSTM, self).__init__(
+        super().__init__(
             "LSTM",
             input_size,
             hidden_size,
@@ -1546,7 +1544,7 @@ class GRU(RNNBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(GRU, self).__init__(
+        super().__init__(
             "GRU",
             input_size,
             hidden_size,

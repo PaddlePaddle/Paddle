@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import abc
 import copy
 import math
@@ -109,7 +108,7 @@ class BaseQuantizer(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, quant_bits=8):
-        super(BaseQuantizer, self).__init__()
+        super().__init__()
         assert isinstance(quant_bits, int)
         assert quant_bits > 0 and quant_bits <= 16
 
@@ -133,7 +132,7 @@ class AbsmaxQuantizer(BaseQuantizer):
     """
 
     def __init__(self, quant_bits=8):
-        super(AbsmaxQuantizer, self).__init__(quant_bits)
+        super().__init__(quant_bits)
 
     def sample_data(self, layer, tensors):
         assert isinstance(tensors, tuple)
@@ -151,7 +150,7 @@ class PerChannelAbsmaxQuantizer(BaseQuantizer):
     """
 
     def __init__(self, quant_bits=8):
-        super(PerChannelAbsmaxQuantizer, self).__init__(quant_bits)
+        super().__init__(quant_bits)
 
     def sample_data(self, layer, tensors):
         assert isinstance(layer, paddle.nn.Layer)
@@ -182,7 +181,7 @@ class BaseHistQuantizer(BaseQuantizer, metaclass=abc.ABCMeta):
     """ """
 
     def __init__(self, quant_bits=8, bins=1024, upsample_bins=64):
-        super(BaseHistQuantizer, self).__init__(quant_bits)
+        super().__init__(quant_bits)
         self.bins = bins
         self.upsample_bins = upsample_bins
 
@@ -232,7 +231,7 @@ class HistQuantizer(BaseHistQuantizer):
     def __init__(
         self, quant_bits=8, bins=1024, upsample_bins=64, hist_percent=0.99999
     ):
-        super(HistQuantizer, self).__init__(quant_bits, bins, upsample_bins)
+        super().__init__(quant_bits, bins, upsample_bins)
         self.hist_percent = hist_percent
 
     def cal_thresholds(self):
@@ -257,7 +256,7 @@ class KLQuantizer(BaseHistQuantizer):
     """ """
 
     def __init__(self, quant_bits=8, bins=1024, upsample_bins=64):
-        super(KLQuantizer, self).__init__(quant_bits, bins, upsample_bins)
+        super().__init__(quant_bits, bins, upsample_bins)
 
     def cal_thresholds(self):
         for idx in range(len(self.hists)):

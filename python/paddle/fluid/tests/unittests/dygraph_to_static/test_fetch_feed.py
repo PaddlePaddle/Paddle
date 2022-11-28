@@ -16,15 +16,15 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 
 SEED = 2020
 
 
 class Pool2D(fluid.dygraph.Layer):
     def __init__(self):
-        super(Pool2D, self).__init__()
+        super().__init__()
         self.pool2d = fluid.dygraph.Pool2D(
             pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
         )
@@ -41,7 +41,7 @@ class Pool2D(fluid.dygraph.Layer):
 
 class Linear(fluid.dygraph.Layer):
     def __init__(self, input_dim=10, output_dim=5):
-        super(Linear, self).__init__()
+        super().__init__()
         self.fc = fluid.dygraph.Linear(
             input_dim,
             output_dim,

@@ -24,11 +24,11 @@ import numpy as np
 
 class RecurrentTest(fluid.Layer):
     def __init__(self, name_scope):
-        super(RecurrentTest, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, in1, in2):
         out = fluid.layers.mul(in1, in2)
-        sum_out = fluid.layers.reduce_sum(out)
+        sum_out = paddle.sum(out)
         return sum_out, out
 
 

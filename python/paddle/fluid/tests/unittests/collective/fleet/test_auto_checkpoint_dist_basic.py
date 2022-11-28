@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
+from test_auto_checkpoint import AutoCheckPointACLBase
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import fleet
-import os
-
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
+from paddle.fluid.incubate.fleet.collective import fleet
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
-from test_auto_checkpoint import AutoCheckPointACLBase
 
 paddle.enable_static()
 logger = get_logger()
@@ -98,7 +98,7 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
             self.assertEqual(len(o._exe_status), 1)
 
         o = acp._get_train_epoch_range()
-        assert o == None, "now train epoch must not exits now"
+        assert o is None, "now train epoch must not exits now"
         self.assertEqual(i, 2)
 
         fs.delete(save_dir)

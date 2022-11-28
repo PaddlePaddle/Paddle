@@ -30,8 +30,9 @@ from collections import deque
 from types import MethodType
 
 import paddle
+import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed import collective as dist
+from paddle.distributed import collective as collective
 from paddle.distributed.collective import _get_global_group
 
 from ...utils.internal_storage import GradStorage
@@ -92,7 +93,7 @@ class ShardingStage2(nn.Layer):
 
         # Communication related attributes
         self._group = (
-            dist.new_group(_get_global_group().ranks)
+            collective.new_group(_get_global_group().ranks)
             if group is None
             else group
         )

@@ -39,7 +39,7 @@ class _Conv3D(Layer):
         bias_attr=None,
         data_format="NDHWC",
     ):
-        super(_Conv3D, self).__init__()
+        super().__init__()
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -248,7 +248,7 @@ class Conv3D(_Conv3D):
         bias_attr=None,
         data_format="NDHWC",
     ):
-        super(Conv3D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -388,7 +388,7 @@ class SubmConv3D(_Conv3D):
         bias_attr=None,
         data_format="NDHWC",
     ):
-        super(SubmConv3D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,

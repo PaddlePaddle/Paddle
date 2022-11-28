@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -49,9 +49,9 @@ template <typename DeviceContext, typename T>
 class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *input = context.Input<LoDTensor>("Input");
+    auto *input = context.Input<phi::DenseTensor>("Input");
     auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
-    auto *output = context.Output<LoDTensor>("Output");
+    auto *output = context.Output<phi::DenseTensor>("Output");
     const int64_t num = input->dims()[0];
     const int64_t bbox_width = input->numel() / num;
     auto lod = input->lod();

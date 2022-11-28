@@ -25,7 +25,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 from paddle.nn import Linear, Conv2D, Softmax, Conv2DTranspose
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX

@@ -19,11 +19,11 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import Conv2D, Pool2D, BatchNorm, Linear
+from paddle.fluid import Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph import TracedLayer
+from paddle.jit import TracedLayer
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
@@ -87,18 +87,16 @@ class ConvBNLayer(fluid.Layer):
         act=None,
         use_cudnn=False,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
-            act=None,
             bias_attr=False,
-            use_cudnn=use_cudnn,
         )
 
         self._batch_norm = BatchNorm(num_filters, act=act)
@@ -114,7 +112,7 @@ class BottleneckBlock(fluid.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, use_cudnn=False
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -168,7 +166,7 @@ class BottleneckBlock(fluid.Layer):
 
 class ResNet(fluid.Layer):
     def __init__(self, layers=50, class_dim=102, use_cudnn=True):
-        super(ResNet, self).__init__()
+        super().__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -243,7 +241,7 @@ class ResNet(fluid.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 

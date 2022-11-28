@@ -21,8 +21,8 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 import paddle.jit.dy2static as _jst
 
@@ -336,7 +336,7 @@ class TestEnableDeclarative(unittest.TestCase):
 
 class Net(fluid.dygraph.layers.Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return x + 1
@@ -366,7 +366,7 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
 
 class SwitchModeNet(paddle.nn.Layer):
     def __init__(self):
-        super(SwitchModeNet, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x):

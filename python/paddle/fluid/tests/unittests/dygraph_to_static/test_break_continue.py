@@ -16,8 +16,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
@@ -160,7 +160,7 @@ def test_for_in_else(x):
 
 
 def while_loop_class_var(x):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4

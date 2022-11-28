@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
+import unittest
+
 import numpy as np
 
 import paddle
@@ -32,8 +33,8 @@ class TestDygraphFleetAPI(unittest.TestCase):
         self.shape = (2, 10, 5)
 
     def test_dygraph_fleet_api(self):
-        import paddle.distributed.fleet as fleet
         import paddle.distributed as dist
+        import paddle.distributed.fleet as fleet
 
         strategy = fleet.DistributedStrategy()
         strategy.amp = True

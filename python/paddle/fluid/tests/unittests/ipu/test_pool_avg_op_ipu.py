@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -136,23 +137,6 @@ class TestCase6(TestBase):
     def set_attrs(self):
         super().set_attrs()
         self.attrs['exclusive'] = False
-
-
-class TestAdaptive(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {
-            "pool_size": 1,
-            "pool_type": 'avg',
-            "require_index": False,
-        }
-
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
-        )
-        out = paddle.fluid.layers.adaptive_pool2d(x, **self.attrs)
-        self.fetch_list = [out.name]
 
 
 if __name__ == "__main__":

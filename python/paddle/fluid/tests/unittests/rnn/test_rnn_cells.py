@@ -16,16 +16,16 @@ import paddle
 
 paddle.framework.set_default_dtype("float64")
 
-import numpy as np
 import unittest
 
-from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell
+import numpy as np
 from convert import convert_params_for_cell
+from rnn_numpy import GRUCell, LSTMCell, SimpleRNNCell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
     def __init__(self, bias=True, place="cpu"):
-        super(TestSimpleRNNCell, self).__init__(methodName="runTest")
+        super().__init__(methodName="runTest")
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
@@ -77,7 +77,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 class TestGRUCell(unittest.TestCase):
     def __init__(self, bias=True, place="cpu"):
-        super(TestGRUCell, self).__init__(methodName="runTest")
+        super().__init__(methodName="runTest")
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
@@ -129,7 +129,7 @@ class TestGRUCell(unittest.TestCase):
 
 class TestLSTMCell(unittest.TestCase):
     def __init__(self, bias=True, place="cpu"):
-        super(TestLSTMCell, self).__init__(methodName="runTest")
+        super().__init__(methodName="runTest")
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)

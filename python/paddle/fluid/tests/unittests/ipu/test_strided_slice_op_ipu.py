@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -51,7 +52,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        out = paddle.fluid.layers.strided_slice(x, **self.attrs)
+        out = paddle.strided_slice(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -127,9 +128,7 @@ class TestCase3(TestBase):
         ends = paddle.static.data(
             name=self.feed_list[2], shape=self.feed_shape[2], dtype='int32'
         )
-        out = paddle.fluid.layers.strided_slice(
-            x, starts=starts, ends=ends, **self.attrs
-        )
+        out = paddle.strided_slice(x, starts=starts, ends=ends, **self.attrs)
         self.fetch_list = [out.name]
 
 

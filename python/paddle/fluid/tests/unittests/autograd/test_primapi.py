@@ -15,14 +15,14 @@
 import typing
 import unittest
 
-import numpy as np
-import paddle
-
 import autograd
 import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
+import numpy as np
 import utils
+
+import paddle
 from paddle.incubate.autograd import primx
 
 
@@ -100,7 +100,7 @@ class TestFowardApi(unittest.TestCase):
         actual = actual()
         self.assertEqual(type(actual), type(expected))
         for i, j in zip(actual, expected):
-            np.testing.assert_allclose(i, j, atol=1e-3, rtol=1e-3)
+            np.testing.assert_allclose(i, j, rtol=1e-6)
 
 
 @utils.place(config.DEVICES)

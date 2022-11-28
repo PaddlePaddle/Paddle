@@ -17,7 +17,7 @@ import warnings
 import paddle.nn as nn
 import numpy as np
 from .static_flops import static_flops, Table
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     unwrap_decorators,
 )
 
@@ -49,7 +49,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
 
             class LeNet(nn.Layer):
                 def __init__(self, num_classes=10):
-                    super(LeNet, self).__init__()
+                    super().__init__()
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
                         nn.Conv2D(

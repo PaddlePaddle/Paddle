@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import numpy as np
-import paddle.nn as nn
-import paddle.fluid as fluid
-import paddle.static as static
-import paddle.nn.functional as F
-from paddle.distributed.fleet import auto
 
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
+import paddle.nn.functional as F
+import paddle.static as static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import make_data_unshard
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.utils import make_data_unshard
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 
@@ -64,7 +65,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         param_initializer = nn.initializer.Normal(
@@ -395,7 +396,7 @@ class TestMLP(unittest.TestCase):
 
         # test fill_constant_batch_size_like
 
-        self.assertTrue(fill_op is not None)
+        self.assertIsNotNone(fill_op)
         ref_shape = [-1, 8, 0, 48]
         shape = fill_op.attr("shape")
         self.assertTrue(ref_shape == shape)

@@ -100,7 +100,7 @@ class DPGroup(StrategyGroupBase):
     """
 
     def __init__(self, list_of_ranks):
-        super(DPGroup, self).__init__(list_of_ranks)
+        super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
         ), "Rank {} belongs to multi dp groups".format(self._rank)
@@ -119,7 +119,7 @@ class MPGroup(StrategyGroupBase):
     """
 
     def __init__(self, list_of_ranks):
-        super(MPGroup, self).__init__(list_of_ranks)
+        super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
         ), "Rank {} belongs to multi mp groups".format(self._rank)
@@ -138,7 +138,7 @@ class ShardingGroup(StrategyGroupBase):
     """
 
     def __init__(self, list_of_ranks):
-        super(ShardingGroup, self).__init__(list_of_ranks)
+        super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
         ), "Rank {} belongs to multi sharding groups".format(self._rank)
@@ -157,7 +157,7 @@ class PPGroup(StrategyGroupBase):
     """
 
     def __init__(self, list_of_ranks):
-        super(PPGroup, self).__init__(list_of_ranks)
+        super().__init__(list_of_ranks)
         assert not isinstance(
             self.group, list
         ), "Rank {} belongs to multi pp groups".format(self._rank)

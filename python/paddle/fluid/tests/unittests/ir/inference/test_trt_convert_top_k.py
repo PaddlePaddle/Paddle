@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import Any, Dict, List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
@@ -123,7 +125,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             attrs, False
         ), 1e-3
 
-        ## for dynamic_shape
+        # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(

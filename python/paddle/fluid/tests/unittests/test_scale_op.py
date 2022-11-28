@@ -133,7 +133,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 class TestScaleRaiseError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.scale([10])
+            paddle.scale([10])
 
         self.assertRaises(TypeError, test_type)
 
@@ -297,6 +297,20 @@ class TestScaleTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestScaleOpZeroNumelVariable(unittest.TestCase):
+    def test_check_zero_numel_cpu(self):
+        paddle.set_device('cpu')
+        data = paddle.ones([0, 1])
+        out = paddle.scale(data, 2)
+        self.assertEqual(out, data)
+
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            data = paddle.ones([0, 1])
+            out = paddle.scale(data, 2)
+            self.assertEqual(out, data)
 
 
 if __name__ == "__main__":

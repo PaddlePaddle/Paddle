@@ -40,11 +40,12 @@ import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
+from paddle.device import get_all_custom_device_type
 
 _grad_scalar = None
 
 
-class TensorHookRemoveHelper(object):
+class TensorHookRemoveHelper:
     """
     A helper class that for removing Tensor gradient's hook.
     NOTE(wuweilong):the operation weakref.ref(tensor) will cause some unexpected errors in eager mode.
@@ -376,7 +377,11 @@ def monkey_patch_varbase():
             if self._grad_ivar() is None:
                 return None
 
-            new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
+            new_ivar = self._grad_ivar()
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if 'npu' in get_all_custom_device_type():
+                new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
+            new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
                 return (
                     np.array(new_ivar.value().get_selected_rows().get_tensor()),
@@ -881,6 +886,10 @@ def monkey_patch_varbase():
         self.get_tensor()._clear()
 
     @framework.dygraph_only
+    def _use_cudnn(self, use_cudnn=True):
+        return self._tensor_use_cudnn(use_cudnn)
+
+    @framework.dygraph_only
     def _uva(self, device_id=0):
         '''
         Returns self tensor with the UVA(unified virtual addressing).
@@ -1017,6 +1026,9 @@ def monkey_patch_varbase():
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
+    def __hash__(self):
+        return hash(id(self))
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -1060,6 +1072,8 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_numel", _numel)
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
+        setattr(core.eager.Tensor, "__hash__", __hash__)
+        setattr(core.eager.Tensor, "_use_cudnn", _use_cudnn)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

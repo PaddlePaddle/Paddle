@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.fluid as fluid
+import paddle.static as static
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import (
     CollectiveHelper,
@@ -28,7 +28,7 @@ __all__ = []
 
 class TensorParallelOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(TensorParallelOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
@@ -46,7 +46,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(TensorParallelOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
         self.mp_degree = user_defined_strategy.tensor_parallel_configs[
@@ -57,7 +57,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         if not self.role_maker._is_collective:
             return False
 
-        if self.user_defined_strategy.tensor_parallel == True:
+        if self.user_defined_strategy.tensor_parallel:
             return True
         return False
 
@@ -174,7 +174,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.startup_program = startup_program
         if startup_program is None:
-            self.startup_program = fluid.default_startup_program()
+            self.startup_program = static.default_startup_program()
 
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, self.startup_program, parameter_list, no_grad_set

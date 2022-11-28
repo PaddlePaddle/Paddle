@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
-import sys
 import subprocess
+import sys
 import tempfile
+import unittest
 
 
-class TestCollectiveAPIRunnerBase(object):
+class TestCollectiveAPIRunnerBase:
     def check_pass(self, *args, **kwargs):
         raise NotImplementedError(
             "get model should be implemented by child class."

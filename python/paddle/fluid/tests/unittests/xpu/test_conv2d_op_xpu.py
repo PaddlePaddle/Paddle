@@ -261,10 +261,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
                 self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if (
-                hasattr(self, "no_need_check_grad")
-                and self.no_need_check_grad == True
-            ):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
@@ -273,10 +270,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
                 )
 
         def test_check_grad_no_filter(self):
-            if (
-                hasattr(self, "no_need_check_grad")
-                and self.no_need_check_grad == True
-            ):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
@@ -285,10 +279,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
                 )
 
         def test_check_grad_no_input(self):
-            if (
-                hasattr(self, "no_need_check_grad")
-                and self.no_need_check_grad == True
-            ):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
@@ -433,10 +424,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
 
         def test_check_grad(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
-            if (
-                hasattr(self, "no_need_check_grad")
-                and self.no_need_check_grad == True
-            ):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
@@ -446,10 +434,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
 
         def test_check_grad_no_filter(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
-            if (
-                hasattr(self, "no_need_check_grad")
-                and self.no_need_check_grad == True
-            ):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
@@ -459,10 +444,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
 
         def test_check_grad_no_input(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
-            if (
-                hasattr(self, "no_need_check_grad")
-                and self.no_need_check_grad == True
-            ):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()

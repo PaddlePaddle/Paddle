@@ -24,7 +24,8 @@ from .norm import LayerNorm
 from .. import functional as F
 from ... import tensor
 from ...fluid import layers
-from .. import Layer, LayerList
+from .. import Layer
+from .container import LayerList
 from ...framework import ParamAttr
 from paddle.fluid.data_feeder import convert_dtype
 
@@ -163,7 +164,7 @@ class MultiHeadAttention(Layer):
         weight_attr=None,
         bias_attr=None,
     ):
-        super(MultiHeadAttention, self).__init__()
+        super().__init__()
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
@@ -524,7 +525,7 @@ class TransformerEncoderLayer(Layer):
         self._config.pop("self")
         self._config.pop("__class__", None)  # py3
 
-        super(TransformerEncoderLayer, self).__init__()
+        super().__init__()
 
         assert (
             d_model > 0
@@ -678,7 +679,7 @@ class TransformerEncoder(Layer):
     """
 
     def __init__(self, encoder_layer, num_layers, norm=None):
-        super(TransformerEncoder, self).__init__()
+        super().__init__()
         self.layers = LayerList(
             [
                 (
@@ -850,7 +851,7 @@ class TransformerDecoderLayer(Layer):
         self._config.pop("self")
         self._config.pop("__class__", None)  # py3
 
-        super(TransformerDecoderLayer, self).__init__()
+        super().__init__()
 
         assert (
             d_model > 0
@@ -1057,7 +1058,7 @@ class TransformerDecoder(Layer):
     """
 
     def __init__(self, decoder_layer, num_layers, norm=None):
-        super(TransformerDecoder, self).__init__()
+        super().__init__()
         self.layers = LayerList(
             [
                 (
@@ -1286,7 +1287,7 @@ class Transformer(Layer):
         custom_encoder=None,
         custom_decoder=None,
     ):
-        super(Transformer, self).__init__()
+        super().__init__()
 
         assert (
             d_model > 0

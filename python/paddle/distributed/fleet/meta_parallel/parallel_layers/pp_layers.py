@@ -53,7 +53,7 @@ from paddle.incubate.distributed.fleet import recompute_hybrid
 __all__ = []
 
 
-class LayerDesc(object):
+class LayerDesc:
     def __init__(self, layer_func, *inputs, **kwargs):
         self.layer_func = layer_func
         self.inputs = inputs
@@ -83,13 +83,13 @@ class SharedLayerDesc(LayerDesc):
         *inputs,
         **kwargs
     ):
-        super(SharedLayerDesc, self).__init__(layer_func, *inputs, **kwargs)
+        super().__init__(layer_func, *inputs, **kwargs)
         self.layer_name = key
         self.forward_func = forward_func
         self.shared_weight_attr = shared_weight_attr
 
 
-class SegmentLayers(object):
+class SegmentLayers:
     def __init__(
         self,
         layers_desc,
@@ -171,15 +171,17 @@ class SegmentLayers(object):
     def uniform(self, num_items, num_parts):
         result = [0 for _ in range(num_parts + 1)]
         part_size = math.floor(num_items / num_parts)
-        for i in range(num_parts):
-            result[i] = int(min(part_size * i, num_items))
+        extra_layers = num_items % num_parts
+        for i in range(1, num_parts):
+            offset = 1 if i > (num_parts - extra_layers) else 0
+            result[i] = int(min(result[i - 1] + part_size + offset, num_items))
         result[num_parts] = num_items
         return result
 
 
 class PipelineLayerChunk(Layer):
     def __init__(self):
-        super(PipelineLayerChunk, self).__init__()
+        super().__init__()
         self.run_function = []
 
     def append(self, sublayer):
@@ -240,7 +242,7 @@ class PipelineLayer(Layer):
 
         class ReshapeHelp(Layer):
             def __init__(self, shape):
-                super(ReshapeHelp, self).__init__()
+                super().__init__()
                 self.shape = shape
 
             def forward(self, x):
@@ -275,7 +277,7 @@ class PipelineLayer(Layer):
                         ReshapeHelp, shape=[-1, 256]),
                     LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
                 ]
-                super(AlexNetPipeDesc, self).__init__(
+                super().__init__(
                     layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
         model = AlexNetPipeDesc(num_stages=pipeline_parallel_size, topology=hcg._topo)
@@ -293,7 +295,7 @@ class PipelineLayer(Layer):
         recompute_ctx=None,
         num_virtual_pipeline_stages=None,
     ):
-        super(PipelineLayer, self).__init__()
+        super().__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
 
@@ -720,7 +722,7 @@ class PipelineLayer(Layer):
 
     def _need_recompute(self, funcs, inputs):
         if not any(
-            input_.stop_gradient == False
+            not input_.stop_gradient
             for input_ in inputs
             if isinstance(input_, paddle.Tensor)
         ):

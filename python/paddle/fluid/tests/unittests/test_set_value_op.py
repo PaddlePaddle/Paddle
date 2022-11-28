@@ -976,7 +976,7 @@ class TestError(TestSetValueBase):
 
 class Model(paddle.nn.Layer):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(12, 12, 3)
 
     def forward(self, x, y):
@@ -1436,7 +1436,7 @@ class TestGradientTruncated(unittest.TestCase):
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
             y2 = y + 1
-            loss = paddle.fluid.layers.reduce_sum(y2)
+            loss = paddle.paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (

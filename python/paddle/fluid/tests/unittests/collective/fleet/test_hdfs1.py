@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.tests.unittests.hdfs_test_utils import FSTestBase
-import unittest
-import paddle.fluid as fluid
 import os
+import unittest
 
+import paddle.fluid as fluid
 from paddle.distributed.fleet.utils.fs import FSTimeOut, HDFSClient
+from paddle.fluid.tests.unittests.hdfs_test_utils import FSTestBase
 
 java_home = os.environ["JAVA_HOME"]
 
@@ -68,7 +68,7 @@ java.io.IOException: Input/output error
         """  # fmt: off, avoid remove tabs in string
 
         print("split lines:", s.splitlines())
-        self.assertTrue(fs._test_match(s.splitlines()) != None)
+        self.assertIsNotNone(fs._test_match(s.splitlines()))
 
     def test_config(self):
         config = {"fs.default.name": "hdfs://xxx", "hadoop.job.ugi": "ugi"}

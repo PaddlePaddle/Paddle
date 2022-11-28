@@ -14,10 +14,11 @@
 
 import os
 import sys
+import tempfile
 import time
 import unittest
+
 import numpy as np
-import tempfile
 
 EPOCH_NUM = 1
 BATCH_SIZE = 1024
@@ -54,7 +55,11 @@ def train_func_ampo1(epoch_id, train_loader, model, cost, optimizer, scaler):
     for batch_id, (images, labels) in enumerate(train_loader()):
         # forward
         with paddle.amp.auto_cast(
-            custom_black_list={"flatten_contiguous_range", "greater_than"},
+            custom_black_list={
+                "flatten_contiguous_range",
+                "greater_than",
+                "matmul_v2",
+            },
             level='O1',
         ):
             outputs = model(images)
@@ -133,7 +138,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         class LeNet5(paddle.nn.Layer):
             def __init__(self):
-                super(LeNet5, self).__init__()
+                super().__init__()
                 self.fc = paddle.nn.Linear(in_features=1024, out_features=10)
                 self.relu = paddle.nn.ReLU()
                 self.fc1 = paddle.nn.Linear(in_features=10, out_features=10)
@@ -202,7 +207,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         class LeNet5(paddle.nn.Layer):
             def __init__(self):
-                super(LeNet5, self).__init__()
+                super().__init__()
                 self.fc = paddle.nn.Linear(in_features=1024, out_features=10)
                 self.relu = paddle.nn.ReLU()
                 self.fc1 = paddle.nn.Linear(in_features=10, out_features=10)

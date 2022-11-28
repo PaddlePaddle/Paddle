@@ -19,7 +19,7 @@ import tempfile
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.static import InputSpec
 
 program_translator = ProgramTranslator()
@@ -291,7 +291,7 @@ def for_tuple_as_enumerate_value(x_array):
 # 20. test for function in a class
 class ForwardContainsForLayer(paddle.nn.Layer):
     def __init__(self):
-        super(ForwardContainsForLayer, self).__init__()
+        super().__init__()
         self.high = 5
         self.low = 3
 

@@ -26,7 +26,6 @@ from paddle.fluid import (
     CompiledProgram,
     default_main_program,
     Program,
-    layers,
     unique_name,
     program_guard,
 )
@@ -201,7 +200,7 @@ def normalize_program(program, feed_vars, fetch_vars):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
             if var.dtype != paddle.bool:
-                var = layers.scale(
+                var = paddle.scale(
                     var, 1.0, name="save_infer_model/scale_{}".format(i)
                 )
             uniq_fetch_vars.append(var)
@@ -688,7 +687,7 @@ def deserialize_persistables(program, data, executor):
         if not isinstance(var, Parameter):
             continue
         var_tmp = paddle.fluid.global_scope().find_var(var.name)
-        assert var_tmp != None, "can't not find var: " + var.name
+        assert var_tmp is not None, "can't not find var: " + var.name
         new_shape = (np.array(var_tmp.get_tensor())).shape
         assert var.name in origin_shape_map, var.name + " MUST in var list."
         origin_shape = origin_shape_map.get(var.name)

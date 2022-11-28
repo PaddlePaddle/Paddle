@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
-from paddle.fluid import core
+from distutils.core import Extension, setup
 from distutils.sysconfig import get_python_lib
-from distutils.core import setup, Extension
+
 from setuptools.command.build_ext import build_ext
+
+from paddle.fluid import core
 
 
 # refer: https://note.qidong.name/2018/03/setup-warning-strict-prototypes
@@ -27,7 +29,7 @@ class BuildExt(build_ext):
     def build_extensions(self):
         if '-Wstrict-prototypes' in self.compiler.compiler_so:
             self.compiler.compiler_so.remove('-Wstrict-prototypes')
-        super(BuildExt, self).build_extensions()
+        super().build_extensions()
 
 
 # cc flags

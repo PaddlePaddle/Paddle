@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
+from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import nn
-from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_MAC
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -58,7 +58,7 @@ class Net(nn.Layer):
     """
 
     def __init__(self, in_dim, out_dim, use_custom_op=False):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = nn.Linear(in_dim, in_dim)
         self.fc2 = nn.Linear(in_dim, out_dim)
         self.relu_act = (

@@ -24,6 +24,8 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
+from paddle.utils.flops import flops
+
 
 class TestProfiler(unittest.TestCase):
     @classmethod
@@ -205,8 +207,8 @@ class TestProfiler(unittest.TestCase):
 class TestProfilerAPIError(unittest.TestCase):
     def test_errors(self):
         options = utils.ProfilerOptions()
-        self.assertTrue(options['profile_path'] is None)
-        self.assertTrue(options['timeline_path'] is None)
+        self.assertIsNone(options['profile_path'])
+        self.assertIsNone(options['timeline_path'])
 
         options = options.with_state('All')
         self.assertTrue(options['state'] == 'All')
@@ -219,6 +221,81 @@ class TestProfilerAPIError(unittest.TestCase):
         with utils.Profiler(enabled=True) as prof:
             self.assertTrue(utils.get_profiler() == prof)
             self.assertTrue(global_profiler != prof)
+
+
+class TestFLOPSAPI(unittest.TestCase):
+    def test_flops(self):
+        self.assertTrue(flops('relu', {'X': [[12, 12]]}, {'output': 4}) == 144)
+        self.assertTrue(flops('dropout', {}, {'output': 4}) == 0)
+        self.assertTrue(
+            flops(
+                'transpose2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
+            )
+            == 0
+        )
+        self.assertTrue(
+            flops(
+                'reshape2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
+            )
+            == 0
+        )
+        self.assertTrue(
+            flops(
+                'unsqueeze2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
+            )
+            == 0
+        )
+        self.assertTrue(
+            flops(
+                'layer_norm',
+                {'Bias': [[128]], 'Scale': [[128]], 'X': [[32, 128, 28, 28]]},
+                {'epsilon': 0.01},
+            )
+            == 32 * 128 * 28 * 28 * 8
+        )
+        self.assertTrue(
+            flops(
+                'elementwise_add', {'X': [[12, 12, 12]], 'Y': [[2, 2, 12]]}, {}
+            )
+            == 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('gelu', {'X': [[12, 12, 12]]}, {}) == 5 * 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops(
+                'matmul',
+                {'X': [[3, 12, 12, 8]], 'Y': [[12, 12, 8]]},
+                {'transpose_X': False, 'transpose_Y': True},
+            )
+            == 3 * 12 * 12 * 12 * 2 * 8
+        )
+        self.assertTrue(
+            flops(
+                'matmul_v2',
+                {'X': [[3, 12, 12, 8]], 'Y': [[12, 12, 8]]},
+                {'trans_x': False, 'trans_y': True},
+            )
+            == 3 * 12 * 12 * 12 * 2 * 8
+        )
+        self.assertTrue(
+            flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
+        )
 
 
 if __name__ == '__main__':

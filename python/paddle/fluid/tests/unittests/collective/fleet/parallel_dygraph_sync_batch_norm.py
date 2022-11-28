@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.nn import Conv2D, SyncBatchNorm
 from paddle.fluid.dygraph.base import to_variable
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.nn import Conv2D, SyncBatchNorm
 
 
 class TestLayer(fluid.dygraph.Layer):
@@ -32,7 +31,7 @@ class TestLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(TestLayer, self).__init__()
+        super().__init__()
 
         self._conv = Conv2D(
             in_channels=num_channels,

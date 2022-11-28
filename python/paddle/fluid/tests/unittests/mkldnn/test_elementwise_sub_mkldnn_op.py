@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle.fluid.core as core
 from paddle import enable_static
+from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
-from paddle.fluid.framework import _current_expected_place
-import paddle.fluid.core as core
 
 
 @OpTestTool.skip_if(
@@ -90,26 +92,24 @@ class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
+class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+
+class TestMKLDNNElementwiseSubOp6(TestMKLDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 2, [180, 1]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [1, 256]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
 
-    def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
-
-class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
+class TestMKLDNNElementwiseSubOp7(TestMKLDNNElementwiseSubOp):
     def init_input_output(self):
-        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
-        self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.x = np.random.uniform(0.1, 2, [1, 180]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [256, 1]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
@@ -131,15 +131,6 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
 
     def init_axis(self):
         self.axis = 2
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ignore_y(self):
-        pass
-
-    def test_check_grad_ignore_x(self):
-        pass
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

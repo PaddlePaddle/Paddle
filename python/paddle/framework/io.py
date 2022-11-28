@@ -12,47 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import collections
-import pickle
-import warnings
-import sys
-import numpy as np
 import copyreg
+import os
+import pickle
+import sys
+import warnings
+from collections.abc import Iterable
+
+import numpy as np
+
 import paddle
 
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.io import (
-    _unpack_saved_dict,
-    _pack_loaded_dict,
-    _pickle_loads_mac,
+from paddle.fluid.dygraph.io import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    _construct_params_and_buffers,
+    _construct_program_holders,
 )
-from paddle.fluid.io import _legacy_save as _legacy_static_save
-from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
-
 from paddle.fluid.framework import (
+    EagerParamBase,
+    ParamBase,
+    Program,
     Variable,
-    _varbase_creator,
+    _current_expected_place,
     _dygraph_tracer,
     _non_static_mode,
-    ParamBase,
-    EagerParamBase,
-    _current_expected_place,
-    Program,
+    _varbase_creator,
 )
-from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import (
-    _construct_program_holders,
-    _construct_params_and_buffers,
+from paddle.fluid.io import _is_file_path, _is_memory_buffer
+from paddle.fluid.io import _legacy_save as _legacy_static_save
+from paddle.fluid.io import (
+    _open_file_buffer,
+    _pack_loaded_dict,
+    _pickle_loads_mac,
+    _unpack_saved_dict,
 )
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
+from paddle.jit.api import _SaveLoadConfig
 
 __all__ = []
 
@@ -669,6 +668,7 @@ def save(obj, path, protocol=4, **configs):
 
     Examples:
         .. code-block:: python
+            :name: code-example-1
 
             # example 1: dynamic graph
             import paddle
@@ -690,7 +690,11 @@ def save(obj, path, protocol=4, **configs):
             # save weight of emb
             paddle.save(emb.weight, "emb.weight.pdtensor")
 
+        .. code-block:: python
+            :name: code-example-2
+
             # example 2: Save multiple state_dict at the same time
+            import paddle
             from paddle import nn
             from paddle.optimizer import Adam
 
@@ -700,6 +704,8 @@ def save(obj, path, protocol=4, **configs):
             path = 'example/model.pdparams'
             paddle.save(obj, path)
 
+        .. code-block:: python
+            :name: code-example-3
 
             # example 3: static graph
             import paddle
@@ -728,6 +734,9 @@ def save(obj, path, protocol=4, **configs):
             path_state_dict = 'temp/model.pdparams'
             paddle.save(prog.state_dict("param"), path_tensor)
 
+        .. code-block:: python
+            :name: code-example-4
+
             # example 4: save program
             import paddle
 
@@ -740,6 +749,8 @@ def save(obj, path, protocol=4, **configs):
             path = "example/main_program.pdmodel"
             paddle.save(main_program, path)
 
+        .. code-block:: python
+            :name: code-example-5
 
             # example 5: save object to memory
             from io import BytesIO
@@ -918,6 +929,7 @@ def load(path, **configs):
 
     Examples:
         .. code-block:: python
+            :name: code-example-1
 
             # example 1: dynamic graph
             import paddle
@@ -946,8 +958,11 @@ def load(path, **configs):
             # load weight of emb
             load_weight = paddle.load("emb.weight.pdtensor")
 
+        .. code-block:: python
+            :name: code-example-2
 
             # example 2: Load multiple state_dict at the same time
+            import paddle
             from paddle import nn
             from paddle.optimizer import Adam
 
@@ -958,6 +973,8 @@ def load(path, **configs):
             paddle.save(obj, path)
             obj_load = paddle.load(path)
 
+        .. code-block:: python
+            :name: code-example-3
 
             # example 3: static graph
             import paddle
@@ -988,6 +1005,8 @@ def load(path, **configs):
             paddle.save(prog.state_dict("param"), path_tensor)
             load_state_dict = paddle.load(path_tensor)
 
+        .. code-block:: python
+            :name: code-example-4
 
             # example 4: load program
             import paddle
@@ -1003,6 +1022,8 @@ def load(path, **configs):
             load_main = paddle.load(path)
             print(load_main)
 
+        .. code-block:: python
+            :name: code-example-5
 
             # example 5: save object to memory
             from io import BytesIO

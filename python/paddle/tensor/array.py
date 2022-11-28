@@ -14,10 +14,9 @@
 
 # Define functions about array.
 
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..framework import LayerHelper, _non_static_mode, core
 from ..static import Variable
-from ..framework import LayerHelper, core, _non_static_mode
-from ..fluid.data_feeder import check_type
-from ..fluid.data_feeder import check_variable_and_dtype
 
 __all__ = []
 

@@ -16,14 +16,14 @@ import unittest
 from paddle.fluid.framework import in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.dygraph.jit import TracedLayer
+from paddle.jit.api import TracedLayer
 import numpy as np
 from paddle import _legacy_C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
     def __init__(self, name_scope):
-        super(TestTracedLayer, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, input):
         return _legacy_C_ops.relu(input)

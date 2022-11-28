@@ -24,7 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class LeNetDygraph(fluid.dygraph.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
-        super(LeNetDygraph, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.features = nn.Sequential(
             nn.Conv2D(1, 6, 3, stride=1, padding=1),
@@ -47,7 +47,7 @@ class LeNetDygraph(fluid.dygraph.Layer):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1, -1)
             x = self.fc(x)
         return x
 

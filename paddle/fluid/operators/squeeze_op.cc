@@ -128,7 +128,7 @@ class SqueezeOp : public framework::OperatorWithKernel {
     // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::kMKLDNN,
+    //                                     phi::DataLayout::ONEDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
     // #endif
@@ -155,7 +155,7 @@ class SqueezeGradOp : public framework::OperatorWithKernel {
     // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::kMKLDNN,
+    //                                     phi::DataLayout::ONEDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
     // #endif
@@ -222,7 +222,7 @@ class Squeeze2Op : public framework::OperatorWithKernel {
     // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::kMKLDNN,
+    //                                     phi::DataLayout::ONEDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
     // #endif
@@ -270,7 +270,7 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
     // #ifdef PADDLE_WITH_MKLDNN
     //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::kMKLDNN,
+    //                                     phi::DataLayout::ONEDNN,
     //                                     framework::LibraryType::kMKLDNN);
     //    }
     // #endif

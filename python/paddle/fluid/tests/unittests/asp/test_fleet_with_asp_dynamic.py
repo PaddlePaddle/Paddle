@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed.fleet as fleet
-import unittest
-import paddle
-import paddle.fluid.core as core
 import os
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+import unittest
+
 import numpy as np
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid.core as core
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
@@ -30,7 +32,7 @@ else:
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(32, 32)
         self.linear2 = paddle.nn.Linear(32, 10)
 

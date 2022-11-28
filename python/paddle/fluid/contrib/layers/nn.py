@@ -36,7 +36,8 @@ from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layers import slice, reshape
+from paddle.fluid.layers import slice
+import paddle
 import warnings
 from paddle import _C_ops, _legacy_C_ops
 
@@ -1242,7 +1243,7 @@ def sparse_embedding(
             )
         entry_str = entry._to_attr()
 
-    if slot == None:
+    if slot is None:
         slot = 0
 
     helper.append_op(
@@ -1549,17 +1550,17 @@ def tdm_sampler(
                 mask, axes=[1], starts=[start_offset], ends=[end_offset]
             )
 
-            layer_samples = reshape(
+            layer_samples = paddle.reshape(
                 layer_samples, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_samples.stop_gradient = True
 
-            layer_labels = reshape(
+            layer_labels = paddle.reshape(
                 layer_labels, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_labels.stop_gradient = True
 
-            layer_mask = reshape(
+            layer_mask = paddle.reshape(
                 layer_mask, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_mask.stop_gradient = True

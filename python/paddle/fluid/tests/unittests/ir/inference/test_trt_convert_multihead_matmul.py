@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
@@ -818,7 +820,11 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             "Y": ["matmul1_weight"],
                         },
                         "op_outputs": {"Out": ["matmul1_output"]},
-                        "op_attrs": {"trans_x": False, "trans_y": False},
+                        "op_attrs": {
+                            "trans_x": False,
+                            "trans_y": False,
+                            "Input_scale_layer": 1.0,
+                        },
                     },
                     {
                         "op_type": "elementwise_add",
@@ -832,6 +838,7 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             "Scale_x": 1.0,
                             "Scale_y": 1.0,
                             "axis": 2,
+                            "Out": 1.0,
                         },
                     },
                     {
@@ -1035,6 +1042,11 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
+        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        yield self.create_inference_config(), generate_trt_nodes_num(), (
+            1e-3,
+            1e-3,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,

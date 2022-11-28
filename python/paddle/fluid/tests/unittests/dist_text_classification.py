@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
+import string
+import tarfile
+
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-import os
-import tarfile
-import string
-import re
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
 VOCAB_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/imdb.vocab'
@@ -167,7 +169,7 @@ def tokenize(pattern):
         # tarfile.extractfile, which does random access and might
         # destroy hard disks.
         tf = tarf.next()
-        while tf != None:
+        while tf is not None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
                 yield tarf.extractfile(tf).read().rstrip(b'\n\r').translate(

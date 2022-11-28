@@ -22,7 +22,6 @@ import re
 import types
 
 import numpy
-import six
 import builtins
 
 from paddle.fluid.dygraph.container import Sequential
@@ -37,31 +36,13 @@ from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
     TranslatorLogger,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    StaticFunction,
-)
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    convert_to_static,
-)
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    unwrap_decorators,
-)
+
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
 
-# TODO(liym27): A better way to do this.
-BUILTIN_LIKELY_MODULES = [
-    collections,
-    pdb,
-    copy,
-    inspect,
-    re,
-    six,
-    numpy,
-    logging,
-]
+
 # The api(s) should be considered as plain function and convert
 # them into static layer code.
 PADDLE_NEED_CONVERT_APIS = [Sequential]
@@ -71,7 +52,7 @@ translator_logger = TranslatorLogger()
 CONVERSION_OPTIONS = "An attribute for a function that indicates conversion flags of the function in dynamic-to-static."
 
 
-class ConversionOptions(object):
+class ConversionOptions:
     """
     A container for conversion flags of a function in dynamic-to-static.
 
@@ -99,6 +80,32 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+def builtin_modules():
+    """
+    Return builtin modules.
+    """
+    modules = [
+        collections,
+        pdb,
+        copy,
+        inspect,
+        re,
+        numpy,
+        logging,
+    ]
+    try:
+        import six
+
+        modules.append(six)
+    except ImportError:
+        pass  # do nothing
+
+    return modules
+
+
+BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
 def is_unsupported(func):
@@ -170,6 +177,13 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
+    # NOTE(Aurelius84): Fix it after all files migrating into jit.
+    from paddle.jit.dy2static.program_translator import (
+        convert_to_static,
+        unwrap_decorators,
+        StaticFunction,
+    )
+
     translator_logger.log(
         1, "Convert callable object: convert {}.".format(func)
     )

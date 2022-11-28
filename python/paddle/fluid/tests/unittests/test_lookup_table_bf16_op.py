@@ -169,7 +169,7 @@ class TestLookupTableBF16OpWIsSelectedRows4DIds(
         self.ids_shape = (3, 4, 5, 1)
 
     def setUp(self):
-        super(TestLookupTableBF16OpWIsSelectedRows4DIds, self).setUp()
+        super().setUp()
         self.flat_ids = self.ids.flatten()
 
 

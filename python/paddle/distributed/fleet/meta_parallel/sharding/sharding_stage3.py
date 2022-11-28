@@ -18,12 +18,13 @@ from types import MethodType
 from collections import OrderedDict
 
 import paddle
+import paddle.distributed as dist
 from paddle import nn
 from paddle.autograd import PyLayer
 import paddle.fluid.core as core
 from paddle.fluid.framework import ParamBase
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed import collective as dist
+from paddle.distributed import collective
 from paddle.distributed.collective import _get_global_group
 
 from .sharding_utils import Type, ShardingClipGrad, device_guard
@@ -101,7 +102,7 @@ class ShardingStage3(nn.Layer):
 
         # Communication group establishment
         self._group = (
-            dist.new_group(_get_global_group().ranks)
+            collective.new_group(_get_global_group().ranks)
             if group is None
             else group
         )

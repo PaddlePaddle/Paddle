@@ -16,8 +16,8 @@ import numpy as np
 import unittest
 
 import paddle
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
@@ -321,7 +321,7 @@ class TestNetWithExternalFunc(TestDygraphIfElseNet):
 
 class DiffModeNet1(paddle.nn.Layer):
     def __init__(self, mode):
-        super(DiffModeNet1, self).__init__()
+        super().__init__()
         self.mode = mode
 
     @paddle.jit.to_static
@@ -337,7 +337,7 @@ class DiffModeNet1(paddle.nn.Layer):
 
 class DiffModeNet2(paddle.nn.Layer):
     def __init__(self, mode):
-        super(DiffModeNet2, self).__init__()
+        super().__init__()
         self.mode = mode
 
     @paddle.jit.to_static
@@ -474,7 +474,7 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
 class IfElseNet(paddle.nn.Layer):
     def __init__(self):
-        super(IfElseNet, self).__init__()
+        super().__init__()
         self.param = self.create_parameter(
             shape=[3, 2], dtype='float32', is_bias=False
         )

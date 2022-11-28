@@ -20,7 +20,7 @@ from paddle.jit import to_static, not_to_static
 from paddle.fluid.framework import Parameter
 from paddle.fluid.framework import program_guard
 from paddle.fluid.executor import global_scope
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     StaticFunction,
 )
 
@@ -37,7 +37,7 @@ class ProxyLayer(Layer):
     """
 
     def __init__(self, layer, loss_func, metrics):
-        super(ProxyLayer, self).__init__()
+        super().__init__()
         # NOTE: All verify logics are finished in Engine.Prepare
         self.inner_layer = layer
         self.loss_func = loss_func
@@ -192,7 +192,7 @@ class BuildInfo:
         self.states = defaultdict(bool)
 
 
-class ProgramHelper(object):
+class ProgramHelper:
     """
     A Helper class for Engine to provides different Program IR according specified 'mode'.
     """

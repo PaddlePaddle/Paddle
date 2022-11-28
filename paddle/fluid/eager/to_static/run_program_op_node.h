@@ -316,6 +316,26 @@ inline void RunProgramAPI(
     auto output_names = details::GetTensorsName(out);
     auto dout_names = details::GetTensorsName(dout);
 
+    if (VLOG_IS_ON(6)) {
+      std::stringstream s;
+      s << "input_names: ";
+      for (auto name : input_names) {
+        s << name << " ";
+      }
+      s << std::endl;
+      s << "output_names: ";
+      for (auto name : output_names) {
+        s << name << " ";
+      }
+      s << std::endl;
+      s << "dout_names: ";
+      for (auto name : dout_names) {
+        s << name << " ";
+      }
+      s << std::endl;
+      VLOG(6) << s.str();
+    }
+
     auto *forward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
     auto *backward_global_block = PADDLE_GET_CONST(
@@ -354,6 +374,20 @@ inline void RunProgramAPI(
       skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
       // update interpretercore skip_gc_var
       interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
+
+      std::set<std::string> input_vars;
+      input_vars.insert(input_names.begin(), input_names.end());
+      interpreter_core->SetJitInputVars(input_vars);
+
+      if (VLOG_IS_ON(6)) {
+        std::stringstream s;
+        s << "skip_eager_delete_vars: ";
+        for (auto name : skip_eager_delete_vars) {
+          s << name << " ";
+        }
+        VLOG(6) << s.str();
+      }
+
       interpretercore_info_cache.UpdateSkipEagerDeleteVars(
           program_id, false, skip_eager_delete_vars);
       VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
@@ -403,7 +437,7 @@ inline void RunProgramAPI(
       VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
           out_scope_vec->front());
 
-      if (is_test) {
+      if (is_test || !egr::Controller::Instance().HasGrad()) {
         VLOG(4) << "is test, set this scope can reused";
         global_inner_scope->SetCanReuesd(true);
         details::GcScope(global_inner_scope);
@@ -481,7 +515,7 @@ inline void RunProgramAPI(
     // Debug info: scope info when run end
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
     // Step 5. Drop all children scopes while testing.
-    if (is_test) {
+    if (is_test || !egr::Controller::Instance().HasGrad()) {
       out_scope_vec->front()->DropKids();
     }
     VLOG(2) << "The number of sub scopes after forward: "

@@ -79,4 +79,4 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
 
     """
-    return _C_ops.sparse_addmm(input, x, y, alpha, beta)
+    return _C_ops.sparse_addmm(input, x, y, beta, alpha)

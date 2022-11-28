@@ -29,7 +29,7 @@ class ConvBNLayer(fluid.Layer):
         groups=1,
         data_format="NCHW",
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
@@ -69,7 +69,7 @@ def create_program(data_format="NCHW"):
         )
         y = conv(x) + x
 
-        loss = fluid.layers.reduce_sum(y)
+        loss = paddle.sum(y)
 
         sgd = fluid.optimizer.SGD(learning_rate=0.01)
         sgd.minimize(loss)

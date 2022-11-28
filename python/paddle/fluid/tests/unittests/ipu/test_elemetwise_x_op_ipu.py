@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -140,17 +141,17 @@ class TestDiv(TestMul):
 
 class TestMin(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_min
+        self.op = paddle.minimum
 
 
 class TestMax(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_max
+        self.op = paddle.maximum
 
 
 class TestPow(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_pow
+        self.op = paddle.pow
 
 
 class TestMod(TestMul):
@@ -161,7 +162,7 @@ class TestMod(TestMul):
         self.rtol_fp16 = 1e-3
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_mod
+        self.op = paddle.remainder
 
 
 if __name__ == "__main__":
