@@ -16,6 +16,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_XPU)
+  add_subdirectory(xpu)
   list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
 endif()
 

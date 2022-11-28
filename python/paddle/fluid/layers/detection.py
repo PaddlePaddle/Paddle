@@ -1719,7 +1719,9 @@ def ssd_loss(
     conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
-        return nn.flatten(x=var, axis=2)
+        out = paddle.flatten(var, 2, -1)
+        out = paddle.flatten(out, 0, 1)
+        return out
 
     # 1. Find matched bounding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
