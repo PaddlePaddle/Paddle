@@ -25,7 +25,7 @@ list(
   pool3d_op_plugin.cu
   deformable_conv_op_plugin.cu
   matmul_op_int8_plugin.cu
-  transformer_input_convert_plugin.cu
+  transformer_input_output_convert_plugin.cu
   remove_padding_plugin.cu
   recover_padding_plugin.cu
   c_allreduce_op_plugin.cu

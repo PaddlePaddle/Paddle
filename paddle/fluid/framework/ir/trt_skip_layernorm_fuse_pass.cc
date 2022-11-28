@@ -207,14 +207,14 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
             "trt_embedding_eltwise_layernorm_fuse_pass, "
             "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    } else if (!use_varseqlen && pos_id == "") {
       VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id, set mask_id. Please "
+                                  "pos_id. Please "
                                   "reconfig"));
     }
   }
