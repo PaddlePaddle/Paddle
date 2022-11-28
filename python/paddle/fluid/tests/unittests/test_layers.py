@@ -1880,7 +1880,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            ret = layers.group_norm(
+            ret = paddle.static.nn.group_norm(
                 input=X,
                 groups=2,
                 param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
