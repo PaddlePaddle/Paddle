@@ -424,7 +424,9 @@ def pow(x, y, name=None):
         out = x^{y}
 
     Note:
-        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
 
 
     Args:
@@ -683,7 +685,9 @@ def subtract(x, y, name=None):
         out = x - y
 
     Note:
-        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -777,7 +781,9 @@ def divide(x, y, name=None):
         out = x / y
 
     Note:
-        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -821,7 +827,9 @@ def floor_divide(x, y, name=None):
         out = trunc(x / y)
 
     Note:
-        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
         Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
@@ -863,7 +871,9 @@ def remainder(x, y, name=None):
         out = x \% y
 
     Note:
-        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -928,7 +938,9 @@ def multiply(x, y, name=None):
         out = x * y
 
     Note:
-        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
@@ -984,7 +996,9 @@ def maximum(x, y, name=None):
         out = max(x, y)
 
     Note:
-        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1050,7 +1064,9 @@ def minimum(x, y, name=None):
         out = min(x, y)
 
     Note:
-        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1118,7 +1134,9 @@ def fmax(x, y, name=None):
         out = fmax(x, y)
 
     Note:
-        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -1186,7 +1204,9 @@ def fmin(x, y, name=None):
         out = fmin(x, y)
 
     Note:
-        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -3966,7 +3986,12 @@ def any(x, axis=None, keepdim=False, name=None):
 
 def broadcast_shape(x_shape, y_shape):
     """
-    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
+    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to boardcasting for more details.
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x_shape (list[int]|tuple[int]): A shape of tensor.
@@ -4995,7 +5020,9 @@ def heaviside(x, y, name=None):
             \right.
 
     Note:
-        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
