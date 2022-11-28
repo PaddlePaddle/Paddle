@@ -200,9 +200,10 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
+  meta_.use_cudnn = meta.use_cudnn;
 }
 
-/* @jim19930609: This interface will be further modified util we finalized the
+/* @jim19930609: This interface will be further modified until we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:
    1. Designed behaviour: DenseTensor constructed with its underlying storage_
@@ -262,6 +263,10 @@ template const NPUStorageProperties& DenseTensor::storage_properties() const;
 #ifdef PADDLE_WITH_MKLDNN
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
 #endif
+
+bool DenseTensor::storage_properties_initialized() const {
+  return storage_properties_ != nullptr;
+}
 
 void DenseTensor::set_storage_properties(
     std::unique_ptr<StorageProperties>&& storage_properties) {

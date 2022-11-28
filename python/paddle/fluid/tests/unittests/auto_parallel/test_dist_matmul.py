@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 from paddle.distributed.fleet import auto
-
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 
@@ -106,8 +106,8 @@ def matmulv2_dp2mp2(init_x, init_y, trans_x, trans_y):
 
 def parallelizer(program_func, *args, **kwargs):
     from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
 
     main_program, start_program, loss = program_func(*args, **kwargs)
 

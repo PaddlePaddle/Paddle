@@ -263,7 +263,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(asinh_grad, AsinhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(acosh_grad, AcoshGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(atanh_grad, AtanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_grad, TanhGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_tanh_grad, HardTanhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardtanh_grad, HardTanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(thresholded_relu_grad,
                                    ThresholdedReluGradKernel)
@@ -336,6 +336,7 @@ PD_REGISTER_KERNEL(square_double_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
+
 PD_REGISTER_KERNEL(sin_double_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -345,6 +346,7 @@ PD_REGISTER_KERNEL(sin_double_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
+
 PD_REGISTER_KERNEL(sin_triple_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -354,6 +356,27 @@ PD_REGISTER_KERNEL(sin_triple_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(cos_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CosDoubleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(cos_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CosTripleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
+
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
@@ -365,7 +388,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(log2_grad, Log2GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log10_grad, Log10GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log1p_grad, Log1pGradKernel)
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(log_double_grad, LogDoubleGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardswish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)

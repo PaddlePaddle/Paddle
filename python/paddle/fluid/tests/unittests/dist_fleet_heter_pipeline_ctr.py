@@ -15,14 +15,14 @@
 Distribute CTR model for test fleet api
 """
 
+import os
 import time
+
+import ctr_dataset_reader
+from test_dist_fleet_heter_base import FleetDistHeterRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-import os
-
-import ctr_dataset_reader
-from test_dist_fleet_heter_base import runtime_main, FleetDistHeterRunnerBase
 
 paddle.enable_static()
 

@@ -101,6 +101,24 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
         def init_max_relative_error(self):
             self.max_relative_error = 0.006
 
+    class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.y = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.out = self.x + self.y
+
+    class TestElementwiseAddOp_ZeroDim2(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.y = np.random.uniform(-1, 1, [13, 17]).astype(self.dtype)
+            self.out = self.x + self.y
+
+    class TestElementwiseAddOp_ZeroDim3(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(-1, 1, [13, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.out = self.x + self.y
+
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )

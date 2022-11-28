@@ -72,8 +72,8 @@ def _squared_l2_norm(x):
         or x.dtype == core.VarDesc.VarType.FP16
         or x.dtype == core.VarDesc.VarType.BF16
     ):
-        square = layers.square(x)
-        sum_square = layers.reduce_sum(square)
+        square = paddle.square(x)
+        sum_square = paddle.sum(square)
         return sum_square
 
     if in_dygraph_mode():
@@ -540,7 +540,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             global_norm_var_fp64 = paddle.add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
         global_norm_var = paddle.add_n(global_norm_var)
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
@@ -648,7 +648,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )
-                global_norm_var = layers.sqrt(x=global_norm_var)
+                global_norm_var = paddle.sqrt(x=global_norm_var)
                 max_global_norm = layers.fill_constant(
                     shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
                 )
@@ -727,7 +727,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
-            group_norm_var = layers.sqrt(x=group_norm_var)
+            group_norm_var = paddle.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = layers.elementwise_div(
                 x=clip_var,
