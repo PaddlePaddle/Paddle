@@ -1798,7 +1798,7 @@ def multi_box_head(
     """
 
     def _reshape_with_axis_(input, axis=1):
-        out = nn.flatten(x=input, axis=axis)
+        out = paddle.flatten(x=input, start_axis=axis, stop_axis=-1)
         return out
 
     def _is_list_or_tuple_(data):
@@ -1908,7 +1908,7 @@ def multi_box_head(
         )
 
         mbox_loc = paddle.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
+        mbox_loc_flatten = paddle.flatten(mbox_loc, start_axis=1, stop_axis=-1)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -1921,7 +1921,7 @@ def multi_box_head(
             stride=stride,
         )
         conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
-        conf_loc_flatten = nn.flatten(conf_loc, axis=1)
+        conf_loc_flatten = nn.flatten(conf_loc, start_axis=1, stop_axis=-1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
