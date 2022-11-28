@@ -20,7 +20,7 @@ from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph import TracedLayer
+from paddle.jit import TracedLayer
 from test_imperative_base import new_program_scope
 import numpy as np
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program

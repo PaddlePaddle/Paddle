@@ -26,11 +26,12 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 const int kBoxDim = 4;
 
 template <typename T>
-void AppendRois(LoDTensor* out, int64_t offset, phi::DenseTensor* to_add) {
+void AppendRois(phi::DenseTensor* out,
+                int64_t offset,
+                phi::DenseTensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -513,19 +514,21 @@ template <typename T>
 class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* rpn_rois = context.Input<LoDTensor>("RpnRois");
-    auto* gt_classes = context.Input<LoDTensor>("GtClasses");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* rpn_rois = context.Input<phi::DenseTensor>("RpnRois");
+    auto* gt_classes = context.Input<phi::DenseTensor>("GtClasses");
+    auto* is_crowd = context.Input<phi::DenseTensor>("IsCrowd");
+    auto* gt_boxes = context.Input<phi::DenseTensor>("GtBoxes");
+    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
 
-    auto* rois = context.Output<LoDTensor>("Rois");
-    auto* labels_int32 = context.Output<LoDTensor>("LabelsInt32");
-    auto* bbox_targets = context.Output<LoDTensor>("BboxTargets");
-    auto* bbox_inside_weights = context.Output<LoDTensor>("BboxInsideWeights");
+    auto* rois = context.Output<phi::DenseTensor>("Rois");
+    auto* labels_int32 = context.Output<phi::DenseTensor>("LabelsInt32");
+    auto* bbox_targets = context.Output<phi::DenseTensor>("BboxTargets");
+    auto* bbox_inside_weights =
+        context.Output<phi::DenseTensor>("BboxInsideWeights");
     auto* bbox_outside_weights =
-        context.Output<LoDTensor>("BboxOutsideWeights");
-    auto* max_overlap_with_gt = context.Output<LoDTensor>("MaxOverlapWithGT");
+        context.Output<phi::DenseTensor>("BboxOutsideWeights");
+    auto* max_overlap_with_gt =
+        context.Output<phi::DenseTensor>("MaxOverlapWithGT");
 
     int batch_size_per_im = context.Attr<int>("batch_size_per_im");
     float fg_fraction = context.Attr<float>("fg_fraction");
@@ -685,21 +688,25 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "RpnRois",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [N, 4]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[N, 4]. "
         "N is the number of the GenerateProposalOp's output, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddInput("GtClasses",
-             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+             "(phi::DenseTensor), This input is a 2D phi::DenseTensor with "
+             "shape [M, 1]. "
              "M is the number of groundtruth, "
              "each element is a class label of groundtruth.");
     AddInput(
         "IsCrowd",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[M, 1]. "
         "M is the number of groundtruth, "
         "each element is a flag indicates whether a groundtruth is crowd.");
     AddInput(
         "GtBoxes",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 4]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[M, 4]. "
         "M is the number of groundtruth, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddInput("ImInfo",
@@ -707,7 +714,8 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
              "B is the number of input images, "
              "each element consists of im_height, im_width, im_scale.");
     AddInput("MaxOverlap",
-             "(LoDTensor), This input is a 1D LoDTensor with shape [N]."
+             "(phi::DenseTensor), This input is a 1D phi::DenseTensor with "
+             "shape [N]."
              "N is the number of Input(RpnRois), "
              "each element is the maximum overlap between "
              "the proposal RoI and ground-truth.")
@@ -715,28 +723,34 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddOutput(
         "Rois",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
+        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
+        "[P, 4]. "
         "P usuall equal to  batch_size_per_im * batch_size, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("LabelsInt32",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
+              "(phi::DenseTensor), This output is a 2D phi::DenseTensor with "
+              "shape [P, 1], "
               "each element represents a class label of a roi");
     AddOutput("BboxTargets",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+              "(phi::DenseTensor), This output is a 2D phi::DenseTensor with "
+              "shape [P, 4 * "
               "class_nums], "
               "each element represents a box label of a roi");
     AddOutput(
         "BboxInsideWeights",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
+        "[P, 4 * "
         "class_nums], "
         "each element indicates whether a box should contribute to loss.");
     AddOutput(
         "BboxOutsideWeights",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
+        "[P, 4 * "
         "class_nums], "
         "each element indicates whether a box should contribute to loss.");
     AddOutput("MaxOverlapWithGT",
-              "(LoDTensor), This output is a 1D LoDTensor with shape [P], "
+              "(phi::DenseTensor), This output is a 1D phi::DenseTensor with "
+              "shape [P], "
               "each element indicates the maxoverlap "
               "between output RoIs and ground-truth. "
               "The output RoIs may include ground-truth "
