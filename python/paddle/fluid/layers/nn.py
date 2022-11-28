@@ -109,7 +109,6 @@ __all__ = [
     'log',
     'crop_tensor',
     'prelu',
-    'unique_with_counts',
     'elementwise_add',
     'elementwise_div',
     'elementwise_sub',
@@ -9678,65 +9677,6 @@ def continuous_value_model(input, cvm, use_cvm=True):
         attrs={"use_cvm": use_cvm},
     )
     return out
-
-
-def unique_with_counts(x, dtype='int32'):
-    r"""
-    This OP return a unique tensor for `x` , and count tensor that the count of unique result in raw input, \
-    and an index tensor pointing to this unique tensor.
-
-    **NOTICE**: This op support the variable type of Tensor only.
-
-    Args:
-        x(Variable): A 1-D input tensor with input shape of :math:`[N]` , the input data type is float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of count and index tensor, it could be int32, int64. Default value is int32.
-
-    Returns:
-        tuple, the variable type in tuple is Tensor, the output :attr:`out` data type is the same as input :attr:`x`, \
-        and data type of output :attr:`index` and :attr:`count` will be int32 or int64.: The :attr:`out` is unique tensor for input :attr:`x`,\
-        the data shape is :math:`[K]`, the `K` may be different to the `N` in shape of :attr:`x`. :attr:`index` is an index tensor pointing\
-        to :attr:`out`, the data shape is :math:`[N]` , the data shape is the same as input :attr:`x`. :attr:`count` is count of unique element in\
-        the :attr:`x`, the data shape is :math:`[K]`, the data shape is the same as output :attr:`out`.
-
-    Examples:
-        .. code-block:: python
-
-             import numpy as np
-             import paddle.fluid as fluid
-             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
-             out, index, count = fluid.layers.unique_with_counts(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
-                                                        # count is [1, 3, 1, 1]
-            # x.shape=(6,) out.shape=(4,), index.shape=(6,), count.shape=(4,)
-    """
-    check_variable_and_dtype(
-        x, "x", ['float32', 'float64', 'int32', 'int64'], "unique_with_counts"
-    )
-    if not (dtype == 'int32' or dtype == 'int64'):
-        raise TypeError(
-            "Op unique_with_counts, index dtype must be int32 or int64"
-        )
-
-    if x is None or len(x.shape) != 1:
-        raise ValueError(
-            "Op unique_with_counts, x must not be null and size of dim must be 1"
-        )
-
-    helper = LayerHelper("unique_with_counts", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    index = helper.create_variable_for_type_inference(dtype)
-
-    count = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type='unique_with_counts',
-        inputs={'X': x},
-        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
-        outputs={'Out': [out], 'Index': [index], 'Count': [count]},
-    )
-
-    return out, index, count
 
 
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
