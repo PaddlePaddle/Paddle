@@ -158,7 +158,7 @@ class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         has 3 sequence at certain lod level. The Mask is a bool column vector,
         such as [0, 1, 0] at the same level. The first and third sequence will
         be send to False Output phi::DenseTensor; whereas the second sequence will
-        be send to True Output phi::DenseTensor. Please refer to Mergephi::DenseTensorOp.)DOC");
+        be send to True Output phi::DenseTensor. Please refer to MergeLoDTensorOp.)DOC");
   }
 };
 
