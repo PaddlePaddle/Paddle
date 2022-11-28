@@ -79,6 +79,7 @@ void MemcpyD2HKernel(const Context& dev_ctx,
     case 0: { /* CPUPlace */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       DenseTensor pinned_out;
+      pinned_out.set_meta(out->meta());
       // NOTE(Ruibiao): When blocking=true, phi::Copy use NULL stream but not
       // the stream given in dev_ctx. Therefore, to achieve synchronous copy, we
       // should set blocking=false and add a dev_ctx.Wait() here.
