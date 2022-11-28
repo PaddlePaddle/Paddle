@@ -125,7 +125,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
+            dropout = paddle.nn.Dropout(p=0.35)
             ret = dropout(t)
             ret2 = paddle.nn.functional.dropout(t, p=0.35)
             static_ret, static_ret2 = self.get_static_graph_result(
@@ -134,14 +134,14 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 t = base.to_variable(inp)
-                dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
+                dropout = paddle.nn.Dropout(p=0.35)
                 dy_eager_ret = dropout(t)
-                dy_eager_ret2 = paddle.nn.functional.dropout(t, p=0.35, seed=1)
+                dy_eager_ret2 = paddle.nn.functional.dropout(t, p=0.35)
                 dy_eager_ret_value = dy_eager_ret.numpy()
                 dy_eager_ret2_value = dy_eager_ret2.numpy()
 
             t = base.to_variable(inp)
-            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
+            dropout = paddle.nn.Dropout(p=0.35)
             dy_ret = dropout(t)
             dy_ret2 = paddle.nn.functional.dropout(t, p=0.35)
             dy_ret_value = dy_ret.numpy()
