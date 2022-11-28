@@ -2863,15 +2863,9 @@ class TestLayer(LayerTest):
             )
             crop_offsets3 = [0, dim1, dim2, 0]
 
-            out1 = fluid.layers.crop_tensor(
-                x, shape=crop_shape1, offsets=crop_offsets1
-            )
-            out2 = fluid.layers.crop_tensor(
-                x, shape=crop_shape2, offsets=crop_offsets2
-            )
-            out3 = fluid.layers.crop_tensor(
-                x, shape=crop_shape3, offsets=crop_offsets3
-            )
+            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
 
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
@@ -2921,7 +2915,6 @@ class TestBook(LayerTest):
         self.not_compare_static_dygraph_set = set(
             {
                 "make_gaussian_random",
-                "make_gaussian_random_batch_size_like",
                 "make_kldiv_loss",
                 "make_sampling_id",
                 "make_uniform_random_batch_size_like",
@@ -3561,19 +3554,6 @@ class TestBook(LayerTest):
             )
 
             out = layers.sampling_id(x)
-            return out
-
-    def make_gaussian_random_batch_size_like(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32'
-            )
-
-            out = layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0
-            )
             return out
 
     def make_sum(self):
