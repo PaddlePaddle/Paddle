@@ -133,7 +133,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 class TestScaleRaiseError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.scale([10])
+            paddle.scale([10])
 
         self.assertRaises(TypeError, test_type)
 

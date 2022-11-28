@@ -12,6 +12,143 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
+
+from ..graph import Graph
+
+
+_PATTERNS = {}
+
+
+def register_pattern(cls):
+    """Register pattern for rule-based tuner."""
+    name = cls.name
+
+    def register(name):
+        global _PATTERNS
+        _PATTERNS[name] = cls()
+
+    register(name)
+
+    return cls
+
+
+def convert_to_graph(ops, block):
+    """Convert ops to graph."""
+    graph = Graph()
+    graph.attrs["var_to_id"] = {}  # {var_name: node_id}
+    graph.attrs["id_to_var"] = {}  # {node_id: var_name}
+    graph.attrs["op_to_id"] = {}  # {op_id: node_id}
+    graph.attrs["id_to_op"] = {}  # {node_id: op_id}
+
+    node_id = -1
+    for op in ops:
+        attrs = op.all_attrs()
+        attrs["type"] = op.type
+        node_id += 1
+
+        # create op node
+        op_node = graph.add_node(node_id, **attrs)
+        graph.attrs["op_to_id"][op.desc.id()] = op_node.id
+        graph.attrs["id_to_op"][op_node.id] = op.desc.id()
+        for input_name in op.input_names:
+            for var_name in op.input(input_name):
+                if var_name not in graph.attrs["var_to_id"]:
+                    # create var node
+                    node_id += 1
+                    var_node = graph.add_node(node_id)
+                    var = block._var_recursive(var_name)
+                    if var.is_parameter:
+                        var_node.attrs["type"] = "param"
+                    else:
+                        var_node.attrs["type"] = "var"
+                    graph.attrs["var_to_id"][var_name] = var_node.id
+                    graph.attrs["id_to_var"][var_node.id] = var_name
+                else:
+                    var_node_id = graph.attrs["var_to_id"][var_name]
+                    var_node = graph._nodes[var_node_id]
+
+                # create edge that input -> op
+                input_edge = graph.add_edge(var_node.id, op_node.id)
+                input_edge.attrs["input_name"] = input_name
+
+            for output_name in op.output_names:
+                for var_name in op.output(output_name):
+                    if var_name not in graph.attrs["var_to_id"]:
+                        # create var node
+                        node_id += 1
+                        var_node = graph.add_node(node_id)
+                        var = block._var_recursive(var_name)
+                        if var.is_parameter:
+                            var_node.attrs["type"] = "param"
+                        else:
+                            var_node.attrs["type"] = "var"
+                        graph.attrs["var_to_id"][var_name] = var_node.id
+                        graph.attrs["id_to_var"][var_node.id] = var_name
+                    else:
+                        var_node_id = graph.attrs["var_to_id"][var_name]
+                        var_node = graph._nodes[var_node_id]
+
+                    # create edge that op -> output
+                    output_edge = graph.add_edge(op_node.id, var_node.id)
+                    output_edge.attrs["output_name"] = output_name
+
+    return graph
+
+
+class BasePattern(ABC):
+    name = "base"
+
+    def __init__(self):
+        self.graph = None
+        self.build()
+
+    @abstractmethod
+    def build(self):
+        pass
+
+
+@register_pattern
+class QKVPattern(BasePattern):
+    name = "qkv"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        self.graph = Graph()
+
+        query = self.graph.add_node(0, **{"type": "var"})
+
+        q_weight = self.graph.add_node(1, **{"dim": 2, "type": "param"})
+        k_weight = self.graph.add_node(2, **{"dim": 2, "type": "param"})
+        v_weight = self.graph.add_node(3, **{"dim": 2, "type": "param"})
+
+        q_matmul = self.graph.add_node(4, **{"type": "matmul_v2"})
+        k_matmul = self.graph.add_node(5, **{"type": "matmul_v2"})
+        v_matmul = self.graph.add_node(6, **{"type": "matmul_v2"})
+
+        q_x = self.graph.add_edge(0, 4, **{"input_name": "X"})
+        k_x = self.graph.add_edge(0, 5, **{"input_name": "X"})
+        v_x = self.graph.add_edge(0, 6, **{"input_name": "X"})
+        q_y = self.graph.add_edge(1, 4, **{"input_name": "Y"})
+        k_y = self.graph.add_edge(2, 5, **{"input_name": "Y"})
+        v_y = self.graph.add_edge(3, 6, **{"input_name": "Y"})
+
+        q = self.graph.add_node(7, **{"type": "var"})
+        k = self.graph.add_node(8, **{"type": "var"})
+        v = self.graph.add_node(9, **{"type": "var"})
+
+        q_out = self.graph.add_edge(7, 4, **{"output_name": "Out"})
+        k_out = self.graph.add_edge(8, 5, **{"output_name": "Out"})
+        v_out = self.graph.add_edge(9, 6, **{"output_name": "Out"})
+
+        # Pattern
+        self.graph.attrs["shard_tensor"] = [
+            (1, 2, 3),
+            [[-1, 0], [-1, 1]],
+        ]  # 2-tuple such as (tensor_id, patterns)
+
 
 class OperatorGroupUtil:
     common_starts = ["layer_norm", "matmul_v2", "matmul"]
