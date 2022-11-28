@@ -136,10 +136,8 @@ void ConvTransposeRawKernel(const Context& ctx,
       (data_layout != DataLayout::kNHWC
            ? static_cast<int>(out_dims[1]) / groups
            : static_cast<int>(out_dims[out_dims.size() - 1]) / groups);
-  paddle::operators::math::
-      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          col2im;
-  paddle::operators::math::Col2VolFunctor<Context, T> col2vol;
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
+  phi::funcs::Col2VolFunctor<Context, T> col2vol;
   funcs::ConcatFunctor<Context, T> concat_functor;
 
   // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
