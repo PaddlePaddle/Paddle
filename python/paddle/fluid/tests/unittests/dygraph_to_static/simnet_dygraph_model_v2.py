@@ -186,7 +186,7 @@ class ElementwiseSubLayer:
         """
         operation
         """
-        sub = paddle.fluid.layers.elementwise_sub(x, y)
+        sub = paddle.subtract(x, y)
         return sub
 
 

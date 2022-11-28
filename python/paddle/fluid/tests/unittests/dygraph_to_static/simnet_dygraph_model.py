@@ -171,7 +171,7 @@ class ElementwiseAddLayer:
         """
         operation
         """
-        add = fluid.layers.elementwise_add(x, y)
+        add = paddle.add(x, y)
         return add
 
 
@@ -190,7 +190,7 @@ class ElementwiseSubLayer:
         """
         operation
         """
-        sub = fluid.layers.elementwise_sub(x, y)
+        sub = paddle.subtract(x, y)
         return sub
 
 
