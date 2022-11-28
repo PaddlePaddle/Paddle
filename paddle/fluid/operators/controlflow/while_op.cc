@@ -442,7 +442,7 @@ class WhileGradOp : public framework::OperatorBase {
                   inside_grad_name,
                   framework::ToTypeName(var->Type())));
 
-          if (!is_var_input_and_output && var->IsType<LoDTensor>()) {
+          if (!is_var_input_and_output && var->IsType<phi::DenseTensor>()) {
             auto &inside_tensor = var->Get<phi::DenseTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] =
