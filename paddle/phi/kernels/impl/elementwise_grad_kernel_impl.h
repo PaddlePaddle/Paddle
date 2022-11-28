@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -611,6 +612,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
   funcs::GetDoubleGradSafeTensor<Context, T>(
       dev_ctx, y, ddy.get_ptr(), &ddy_safe);
 
+  VLOG(3) << "here00000";
   if (d_ddout.get_ptr()) {
     if (d_x) {
       // d_x = ddy * d_ddout
@@ -627,6 +629,14 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::MultiplyFunctor<T>,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, ddx_safe, *(d_ddout.get_ptr()), d_y, axis);
+    }
+  } else {
+    VLOG(3) << "here11111";
+    if (d_x) {
+      FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), d_x);
+    }
+    if (d_y) {
+      FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), d_y);
     }
   }
 
