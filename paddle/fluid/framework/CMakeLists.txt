@@ -704,7 +704,23 @@ if(TENSORRT_FOUND)
          feed_fetch_method
          graph_to_program_pass
          variable_helper
-         tensorrt_engine_op)
+         tensorrt_engine_op
+         sched_layers_pool)
+elseif(WITH_GPU)
+  cc_library(
+    naive_executor
+    SRCS naive_executor.cc
+    DEPS op_registry
+         denormal
+         device_context
+         scope
+         framework_proto
+         glog
+         lod_rank_table
+         feed_fetch_method
+         graph_to_program_pass
+         variable_helper
+         sched_layers_pool)
 else()
   cc_library(
     naive_executor
@@ -783,7 +799,8 @@ if(WITH_DISTRIBUTE)
            monitor
            heter_service_proto
            fleet_executor
-           ${BRPC_DEP})
+           ${BRPC_DEP}
+           sched_layers_pool)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )
@@ -867,7 +884,8 @@ if(WITH_DISTRIBUTE)
            heter_server
            brpc
            fleet_executor
-           flags)
+           flags
+           sched_layers_pool)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )
@@ -938,7 +956,8 @@ if(WITH_DISTRIBUTE)
            variable_helper
            timer
            monitor
-           fleet_executor)
+           fleet_executor
+           sched_layers_pool)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS
@@ -1001,7 +1020,8 @@ elseif(WITH_PSLIB)
          timer
          monitor
          fleet_executor
-         ${BRPC_DEP})
+         ${BRPC_DEP}
+         sched_layers_pool)
 else()
   cc_library(
     executor
@@ -1048,7 +1068,8 @@ else()
          variable_helper
          timer
          monitor
-         fleet_executor)
+         fleet_executor
+         sched_layers_pool)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper
@@ -1248,3 +1269,10 @@ cc_test(
   DEPS phi_utils)
 
 cc_test(convert_utils_test SRCS convert_utils_test.cc)
+
+if(WITH_GPU)
+  cc_library(
+    sched_layers_pool
+    SRCS sched_layers_pool.cc
+    DEPS op_registry phi_tensor device_context)
+endif()

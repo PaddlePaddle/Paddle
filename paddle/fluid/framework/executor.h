@@ -28,6 +28,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/sched_layers_pool.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -158,6 +162,7 @@ class Executor {
 
  private:
   const platform::Place place_;
+  framework::VectorSchedLayersPool* sched_layer_pools_;
 };
 
 }  // namespace framework

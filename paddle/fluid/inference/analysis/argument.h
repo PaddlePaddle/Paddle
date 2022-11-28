@@ -377,6 +377,11 @@ struct Argument {
   DECL_ARGUMENT_FIELD(custom_device_type, CustomDeviceType, std::string);
   DECL_ARGUMENT_FIELD(custom_device_id, CustomDeviceId, int);
 
+  // memory limit filed
+  DECL_ARGUMENT_FIELD(memory_limit, MemoryLimit, int64_t);
+  DECL_ARGUMENT_FIELD(pin_memory, UsePinMemory, bool);
+  DECL_ARGUMENT_FIELD(fixedlayer_algorithm, FixedLayerAlgorithm, int);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };
