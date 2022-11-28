@@ -69,6 +69,15 @@ def _c_embedding_flops(input_shapes, attrs):
     return 0
 
 
+@register_flops("conv2d")
+def _conv2d_flops(input_shapes, attrs):
+
+    bias = input_shapes.get('Bias')[0]
+    input = input_shapes.get('Input')[0]
+    weight = input_shapes.get('Filter')[0]
+    return 0
+
+
 @register_flops("dropout")
 def _dropout_flops(input_shapes, attrs):
     """FLOPs computation for dropout op.
