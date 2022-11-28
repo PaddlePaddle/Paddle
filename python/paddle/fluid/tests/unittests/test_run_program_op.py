@@ -417,7 +417,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.op_type = "run_program"
         self.dtype = np.float32
         self.input_names = {'X': ['x'], 'Params': ['emb_weight']}
-        self.output_names = {'Out': ['reduce_sum_0.tmp_0']}
+        self.output_names = {'Out': ['sum_0.tmp_0']}
 
         self.inputs = {
             'X': {'x': np.array([[1, 3, 0, 4, 7]]).astype("int64")},
@@ -456,7 +456,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
             ),
             is_sparse=True,
         )
-        y = fluid.layers.reduce_sum(emb, dim=-1)
+        y = paddle.sum(emb, axis=-1)
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
         # 3. append backward

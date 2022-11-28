@@ -15,11 +15,11 @@ import numbers
 import unittest
 
 import numpy as np
-import paddle
 import scipy.stats
-
 from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+
+import paddle
 
 np.random.seed(2022)
 

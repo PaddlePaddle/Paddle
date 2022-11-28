@@ -317,5 +317,65 @@ class TestGroupNormEager(unittest.TestCase):
                 )
 
 
+class TestGroupNormEager_fp32(unittest.TestCase):
+    def test_dygraph_api(self):
+        self.dtype = np.float32
+        self.shape = (8, 32, 32)
+        input = np.random.random(self.shape).astype(self.dtype)
+
+        with fluid.dygraph.guard():
+            tensor_1 = fluid.dygraph.to_variable(input)
+            tensor_1.stop_gradient = False
+            groupNorm = fluid.dygraph.nn.GroupNorm(
+                channels=32, groups=4, dtype='float32'
+            )
+            ret1 = groupNorm(tensor_1)
+            ret1.backward()
+            with _test_eager_guard():
+                tensor_eager_1 = fluid.dygraph.to_variable(input)
+                tensor_eager_1.stop_gradient = False
+                groupNorm_eager = fluid.dygraph.nn.GroupNorm(
+                    channels=32, groups=4
+                )
+                ret2 = groupNorm_eager(tensor_eager_1)
+                ret2.backward()
+                self.assertEqual(
+                    (
+                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
+                    ).all(),
+                    True,
+                )
+
+
+class TestGroupNormEager_fp16(unittest.TestCase):
+    def test_dygraph_api(self):
+        self.dtype = np.float32
+        self.shape = (8, 32, 32)
+        input = np.random.random(self.shape).astype(self.dtype)
+
+        with fluid.dygraph.guard():
+            tensor_1 = fluid.dygraph.to_variable(input)
+            tensor_1.stop_gradient = False
+            groupNorm = fluid.dygraph.nn.GroupNorm(
+                channels=32, groups=4, dtype='float16'
+            )
+            ret1 = groupNorm(tensor_1)
+            ret1.backward()
+            with _test_eager_guard():
+                tensor_eager_1 = fluid.dygraph.to_variable(input)
+                tensor_eager_1.stop_gradient = False
+                groupNorm_eager = fluid.dygraph.nn.GroupNorm(
+                    channels=32, groups=4
+                )
+                ret2 = groupNorm_eager(tensor_eager_1)
+                ret2.backward()
+                self.assertEqual(
+                    (
+                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
+                    ).all(),
+                    True,
+                )
+
+
 if __name__ == '__main__':
     unittest.main()
