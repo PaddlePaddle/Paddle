@@ -166,6 +166,7 @@ class QuantizationPass(PassBase):
 
         # 7. Convert Graph back to Program
         quant_program = main_graph.to_program()
+        quant_program = self.move_presist_var_to_global_block(quant_program)
 
         # 8.1 get new prams_grads from quant_program
         new_params_grads = []
@@ -198,6 +199,23 @@ class QuantizationPass(PassBase):
         context.set_attr("startup_program", startup_program)
         context.set_attr("params_grads", new_params_grads)
         context.set_attr("loss", new_loss)
+
+    def move_presist_var_to_global_block(self, program):
+        global_block = program.global_block()
+        for _op in global_block.ops:
+            if _op.type == "while":
+                _block_id = _op.attr("sub_block").id
+                _block = program.block(_block_id)
+                persistables = []
+                for _name, _var in _block.vars.items():
+                    if _var.persistable:
+                        global_block._clone_variable(_var)
+                        persistables.append(_name)
+                for _name in persistables:
+                    _block._remove_var(_name)
+                persistables.extend(_op.input('X'))
+                _op.desc.set_input("X", persistables)
+        return program
 
     def reset_scope_var(self, quant_program, dist_context, scope, place):
         # The var_value, created by qatization_passes, should has same shape with the value after parallel.
@@ -370,7 +388,21 @@ class QuantizationPass(PassBase):
                     quant_op_dist_attr.process_mesh = (
                         origin_op_dist_attr.process_mesh
                     )
+
+                    scale_offset = 0
                     for idx, input_name in enumerate(quant_op.input_arg_names):
+                        if (
+                            origin_op.type == "while"
+                            and input_name not in origin_op.input_arg_names
+                        ):
+                            assert (
+                                "@scale" in input_name
+                                or "@zero_point" in input_name
+                            )
+                            scale_offset += 1
+                            continue
+
+                        idx -= scale_offset
                         origin_input_name = origin_op.input_arg_names[idx]
                         origin_input_dist_attr = (
                             origin_op_dist_attr.inputs_dist_attrs[
@@ -380,18 +412,6 @@ class QuantizationPass(PassBase):
                         quant_op_dist_attr.set_input_dist_attr(
                             input_name, origin_input_dist_attr
                         )
-
-                        # if not main_program.blocks[ib]._find_var_recursive(input_name):
-                        #     origin_input_var = main_program.blocks[ib]._var_recursive(origin_input_name)
-                        #     origin_in_tensor_dist_attr = (
-                        #         dist_context.get_dist_tensor_for_program(
-                        #             origin_input_var
-                        #         ).dist_attr
-                        #     )
-                        #     quant_input_var = block.vars[input_name]
-                        #     dist_context.set_tensor_dist_attr_for_program(
-                        #         quant_input_var, origin_in_tensor_dist_attr
-                        #     )
 
                     for idx, output_name in enumerate(
                         quant_op.output_arg_names
