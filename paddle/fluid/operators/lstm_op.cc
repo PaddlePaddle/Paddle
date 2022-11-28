@@ -148,8 +148,8 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Input",
-        "(phi::DenseTensor) the first input is a phi::DenseTensor, which support "
-        "variable-time length input sequence. The underlying tensor in "
+        "(phi::DenseTensor) the first input is a phi::DenseTensor, which "
+        "support variable-time length input sequence. The underlying tensor in "
         "this phi::DenseTensor is a matrix with shape (T X 4D), where T is the "
         "total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
