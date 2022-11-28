@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/im2col.h"
-
-#include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
+#include "paddle/phi/kernels/funcs/im2col_cfo_cpu.h"
 
 namespace phi {
 class CPUContext;
 }  // namespace phi
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -30,9 +28,7 @@ namespace math {
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class T, typename DeviceContext>
-class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                    DeviceContext,
-                    T> {
+class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& im,
@@ -43,13 +39,13 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im.dims()));
     PADDLE_ENFORCE_EQ(col->dims().size(),
                       5,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col->dims()));
@@ -77,9 +73,7 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class T, typename DeviceContext>
-class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                    DeviceContext,
-                    T> {
+class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& col,
@@ -90,13 +84,13 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im->dims()));
     PADDLE_ENFORCE_EQ(col.dims().size(),
                       5,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col.dims()));
@@ -111,22 +105,22 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
     int col_height = col.dims()[3];
     int col_width = col.dims()[4];
 
-    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
-                       ((dilation[0] * (filter_height - 1) + 1))) /
-                              stride[0] +
-                          1,
-                      col_height,
-                      platform::errors::InvalidArgument(
-                          "Output_height and padding(padding_up, "
-                          "padding_down) are inconsistent."));
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       ((dilation[1] * (filter_width - 1) + 1))) /
-                              stride[1] +
-                          1,
-                      col_width,
-                      platform::errors::InvalidArgument(
-                          "Output_height and padding(padding_up, "
-                          "padding_down) are inconsistent."));
+    PADDLE_ENFORCE_EQ(
+        (im_height + padding[0] + padding[2] -
+         ((dilation[0] * (filter_height - 1) + 1))) /
+                stride[0] +
+            1,
+        col_height,
+        phi::errors::InvalidArgument("Output_height and padding(padding_up, "
+                                     "padding_down) are inconsistent."));
+    PADDLE_ENFORCE_EQ(
+        (im_width + padding[1] + padding[3] -
+         ((dilation[1] * (filter_width - 1) + 1))) /
+                stride[1] +
+            1,
+        col_width,
+        phi::errors::InvalidArgument("Output_height and padding(padding_up, "
+                                     "padding_down) are inconsistent."));
 
     int channels_col = im_channels * filter_height * filter_width;
 
@@ -160,16 +154,16 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
   }
 };
 
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              double>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              double>;
 
@@ -179,9 +173,7 @@ template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class T, typename DeviceContext>
-class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                    DeviceContext,
-                    T> {
+class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& im,
@@ -192,13 +184,13 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im.dims()));
     PADDLE_ENFORCE_EQ(col->dims().size(),
                       5,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col->dims()));
@@ -254,9 +246,7 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class T, typename DeviceContext>
-class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                    DeviceContext,
-                    T> {
+class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& col,
@@ -267,13 +257,13 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im->dims()));
     PADDLE_ENFORCE_EQ(col.dims().size(),
                       5,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col.dims()));
@@ -288,14 +278,14 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
         col_height,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output_height and padding(padding_up, padding_down) "
             "are inconsistent."));
     PADDLE_ENFORCE_EQ(
         (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
         col_width,
-        platform::errors::InvalidArgument("col_width and padding(padding_left, "
-                                          "padding_right) are inconsistent."));
+        phi::errors::InvalidArgument("col_width and padding(padding_left, "
+                                     "padding_right) are inconsistent."));
 
     T* im_data = im->data<T>();
     const T* col_data = col.data<T>();
@@ -335,18 +325,17 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
   }
 };
 
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              double>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              double>;
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

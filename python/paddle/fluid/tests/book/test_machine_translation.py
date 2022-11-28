@@ -14,16 +14,17 @@
 
 
 import contextlib
+import os
+import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as pd
 import paddle.nn.functional as F
 from paddle.fluid.executor import Executor
-import unittest
-import os
 
 paddle.enable_static()
 
@@ -167,7 +168,7 @@ def decoder_decode(context, is_sparse):
         # source sentences have ended.
         length_cond = pd.less_than(x=counter, y=array_len)
         finish_cond = paddle.logical_not(pd.is_empty(x=selected_ids))
-        pd.logical_and(x=length_cond, y=finish_cond, out=cond)
+        paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 
     translation_ids, translation_scores = pd.beam_search_decode(
         ids=ids_array, scores=scores_array, beam_size=beam_size, end_id=10

@@ -154,7 +154,7 @@ def lm_model(
             hidden_array.append(pre_hidden)
             cell_array.append(pre_cell)
 
-        input_embedding = layers.transpose(input_embedding, perm=[1, 0, 2])
+        input_embedding = paddle.transpose(input_embedding, perm=[1, 0, 2])
         rnn = PaddingRNN()
 
         with rnn.step():
@@ -230,7 +230,7 @@ def lm_model(
                 c, axes=[0], starts=[num_steps - 1], ends=[num_steps]
             )
             last_cell_array.append(last_c)
-        real_res = layers.transpose(x=real_res, perm=[1, 0, 2])
+        real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
         last_hidden = layers.concat(last_hidden_array, 0)
         last_cell = layers.concat(last_cell_array, 0)
 
@@ -317,17 +317,17 @@ def lm_model(
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, num_layers, hidden_size]
         )
-        last_hidden = layers.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
 
         last_cell = layers.concat(cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, num_layers, hidden_size]
         )
-        last_cell = layers.transpose(x=last_cell, perm=[1, 0, 2])
+        last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
 
         real_res = layers.concat(res, 0)
         real_res = paddle.reshape(real_res, shape=[len, -1, hidden_size])
-        real_res = layers.transpose(x=real_res, perm=[1, 0, 2])
+        real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
 
         return real_res, last_hidden, last_cell
 
@@ -404,7 +404,7 @@ def lm_model(
             init_cell=init_cell_reshape,
         )
     elif rnn_model == "cudnn":
-        x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+        x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
         rnn_out, last_hidden, last_cell = layers.lstm(
             x_emb,
             init_hidden_reshape,
@@ -417,7 +417,7 @@ def lm_model(
                 low=-init_scale, high=init_scale
             ),
         )
-        rnn_out = layers.transpose(rnn_out, perm=[1, 0, 2])
+        rnn_out = paddle.transpose(rnn_out, perm=[1, 0, 2])
     elif rnn_model == "basic_lstm":
         rnn_out, last_hidden, last_cell = basic_lstm(
             x_emb,
@@ -468,7 +468,7 @@ def lm_model(
 
     loss = paddle.reshape(loss, shape=[-1, num_steps])
     loss = layers.reduce_mean(loss, dim=[0])
-    loss = layers.reduce_sum(loss)
+    loss = paddle.sum(loss)
 
     loss.persistable = True
     last_cell.persistable = True

@@ -582,6 +582,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     Examples:
         .. code-block:: python
 
+            import paddle
             import numpy as np
             import paddle.fluid as fluid
 
@@ -591,7 +592,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
             batch_size = 32
             max_iter = 20
 
-
+            paddle.enable_static()
             def gen_train_data():
                 x_data = np.random.uniform(0, 255, (batch_size, 3, image_height,
                                                     image_width)).astype('float64')
@@ -601,12 +602,12 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
 
             def get_focal_loss(pred, label, fg_num, num_classes):
-                pred = fluid.layers.reshape(pred, [-1, num_classes])
-                label = fluid.layers.reshape(label, [-1, 1])
+                pred = paddle.reshape(pred, [-1, num_classes])
+                label = paddle.reshape(label, [-1, 1])
                 label.stop_gradient = True
                 loss = fluid.layers.sigmoid_focal_loss(
                     pred, label, fg_num, gamma=2.0, alpha=0.25)
-                loss = fluid.layers.reduce_sum(loss)
+                loss = paddle.sum(loss)
                 return loss
 
 
@@ -628,7 +629,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
                     fg_label = fluid.layers.greater_equal(label, data)
                     fg_label = fluid.layers.cast(fg_label, dtype='int32')
-                    fg_num = fluid.layers.reduce_sum(fg_label)
+                    fg_num = paddle.sum(fg_label, dtype='int32')
                     fg_num.stop_gradient = True
                     avg_loss = get_focal_loss(output, label, fg_num, num_classes)
                     return avg_loss
@@ -774,7 +775,7 @@ def detection_output(
         code_type='decode_center_size',
     )
     scores = nn.softmax(input=scores)
-    scores = nn.transpose(scores, perm=[0, 2, 1])
+    scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype
@@ -1847,9 +1848,9 @@ def ssd_loss(
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
     loss = paddle.reshape(x=loss, shape=actual_shape)
-    loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
+    loss = paddle.sum(loss, axis=1, keepdim=True)
     if normalize:
-        normalizer = nn.reduce_sum(target_loc_weight)
+        normalizer = paddle.sum(target_loc_weight)
         loss = loss / normalizer
 
     return loss
@@ -2443,7 +2444,7 @@ def multi_box_head(
             stride=stride,
         )
 
-        mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
+        mbox_loc = paddle.transpose(mbox_loc, perm=[0, 2, 3, 1])
         mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
         mbox_locs.append(mbox_loc_flatten)
 
@@ -2456,7 +2457,7 @@ def multi_box_head(
             padding=pad,
             stride=stride,
         )
-        conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
+        conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
         conf_loc_flatten = nn.flatten(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
 
