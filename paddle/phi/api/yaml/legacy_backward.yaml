@@ -633,7 +633,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_swish_grad
+    func : hardswish_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hardtanh_grad
@@ -644,7 +644,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_tanh_grad
+    func : hardtanh_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hsigmoid_loss_grad
