@@ -1476,9 +1476,9 @@ class CublasFusedMLP {
             &cublas_transB,
             sizeof(cublas_transB)));
 
-    SetCublasMatrixLayout_(x_desc_, trans_x, M, K);
-    SetCublasMatrixLayout_(w_desc_, trans_w, K, N);
-    SetCublasMatrixLayout_(out_desc_, false, M, N);
+    SetCublasMatrixLayout(x_desc_, trans_x, M, K);
+    SetCublasMatrixLayout(w_desc_, trans_w, K, N);
+    SetCublasMatrixLayout(out_desc_, false, M, N);
   }
 
   void ComputeForward(const phi::DenseTensor *x,
@@ -1503,7 +1503,7 @@ class CublasFusedMLP {
             &bias_data,
             sizeof(bias_data)));
 
-    cublasLtEpilogue_t epiloque_func = GetEpilogueType_(activation, add_bias);
+    cublasLtEpilogue_t epiloque_func = GetEpilogueType(activation, add_bias);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc_,
@@ -1583,8 +1583,8 @@ class CublasFusedMLP {
   }
 
  private:
-  cublasLtEpilogue_t GetEpilogueType_(const std::string &activation,
-                                      const bool add_bias) {
+  cublasLtEpilogue_t GetEpilogueType(const std::string &activation,
+                                     const bool add_bias) {
     if (activation == "relu") {
       if (add_bias) {
         return CUBLASLT_EPILOGUE_RELU_BIAS;
@@ -1615,10 +1615,10 @@ class CublasFusedMLP {
     }
   }
 
-  void SetCublasMatrixLayout_(cublasLtMatrixLayout_t layout_desc,
-                              const bool transpose,
-                              const uint64_t cublas_row,
-                              const uint64_t cublas_col) {
+  void SetCublasMatrixLayout(cublasLtMatrixLayout_t layout_desc,
+                             const bool transpose,
+                             const uint64_t cublas_row,
+                             const uint64_t cublas_col) {
     cudaDataType_t mat_type = CUDA_R_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
