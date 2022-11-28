@@ -18,7 +18,7 @@ import sys
 import paddle
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 

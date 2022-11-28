@@ -22,7 +22,7 @@ from paddle.jit import to_static
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
@@ -751,7 +751,7 @@ class TestTrain(unittest.TestCase):
 
                     if batch_id == args.train_batch_num:
                         if to_static:
-                            fluid.dygraph.jit.save(bmn, self.model_save_prefix)
+                            paddle.jit.save(bmn, self.model_save_prefix)
                         else:
                             fluid.dygraph.save_dygraph(
                                 bmn.state_dict(), self.dy_param_path
@@ -865,7 +865,7 @@ class TestTrain(unittest.TestCase):
 
     def predict_dygraph_jit(self, data):
         with fluid.dygraph.guard(self.place):
-            bmn = fluid.dygraph.jit.load(self.model_save_prefix)
+            bmn = paddle.jit.load(self.model_save_prefix)
             bmn.eval()
 
             x = to_variable(data)

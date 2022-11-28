@@ -20,7 +20,7 @@ from paddle.fluid import ParamAttr
 from paddle.fluid import layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.dygraph.nn import Embedding
 from seq2seq_utils import Seq2SeqModelHyperParams as args
 

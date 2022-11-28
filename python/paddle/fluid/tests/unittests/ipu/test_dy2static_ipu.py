@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ProgramCache,
 )
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
