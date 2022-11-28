@@ -169,7 +169,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 'trainable_statistics': trainable_statistics,
                 'fuse_with_relu': False,
             }
-            op_type = 'sparse_batch_norm_'
+            op_type = 'sparse_batch_norm'
             helper = LayerHelper(op_type)
             dtype = input.dtype
             mean_out = helper.create_variable_for_type_inference(

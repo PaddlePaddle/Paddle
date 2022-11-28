@@ -82,6 +82,8 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
     backward_op_dict = to_named_dict(backward_ops)
 
     for op in ops:
+        if op['name'][-1] == '_':
+            op['name'] = op['name'][:-1]
         op['op_name'] = SPARSE_OP_PREFIX + op['name']
         op['name'] = op['op_name']
         if op["backward"] is not None:
