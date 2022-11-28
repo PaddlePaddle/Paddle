@@ -14,15 +14,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.dygraph.layers import Layer, _convert_camel_to_snake
 from paddle.incubate.asp import sparsity
 from paddle.incubate.asp.sparsity.supported_layer_list import (
     supported_layers_and_prune_func_map,
 )
-from paddle.fluid.dygraph.layers import Layer, _convert_camel_to_snake
 
 
 class MyOwnLayer(Layer):
