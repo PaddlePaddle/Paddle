@@ -2411,7 +2411,6 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
 
     def GenerateCode(self):
         forward_api_list = self.forward_api_list
-        grad_api_dict = self.grad_api_dict
         forward_apis_dict = {}
         for api_item in forward_api_list:
             forward_apis_dict[api_item['op']] = api_item

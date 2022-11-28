@@ -90,6 +90,7 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
             backward_op_item = backward_op_dict[forward_op_item['backward']]
         if new_op_name != op_name:
             forward_op_item['op_name'] = op_name
+
         if 'backward' in op_args and has_backward:
             backward_op_list = op_args['backward'].split(',')
             _, bw_op_name = get_op_and_op_name(backward_op_list[0])

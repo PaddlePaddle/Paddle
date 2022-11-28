@@ -16,8 +16,9 @@ import os
 import sys
 
 import paddle
+
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
@@ -296,7 +297,9 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
-                block = fluid.layers.concat(input=[route, block], axis=1)
+                block = fluid.layers.concat(
+                    input=[route, block], axis=1  # noqa: F821
+                )
             route, tip = self.yolo_blocks[i](block)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)
@@ -343,9 +346,7 @@ class YOLOv3(fluid.dygraph.Layer):
                     name="yolo_box" + str(i),
                 )
                 self.boxes.append(boxes)
-                self.scores.append(
-                    fluid.layers.transpose(scores, perm=[0, 2, 1])
-                )
+                self.scores.append(paddle.transpose(scores, perm=[0, 2, 1]))
             self.downsample //= 2
 
         if not self.is_train:

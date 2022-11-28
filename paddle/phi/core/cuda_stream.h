@@ -28,8 +28,7 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
-// TODO(phi): remove fluid headers.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 

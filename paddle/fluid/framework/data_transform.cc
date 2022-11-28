@@ -49,24 +49,24 @@ void TransformData(const OpKernelType &expected_kernel_type,
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
+    if (lin == DataLayout::ONEDNN || lout == DataLayout::ONEDNN) {
       PADDLE_ENFORCE_EQ(
-          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
+          !(lin == DataLayout::ONEDNN && lout == DataLayout::ONEDNN),
           true,
           platform::errors::PreconditionNotMet(
-              "No layout transform needed between two MKLDNN OPKernels."));
+              "No layout transform needed between two oneDNN OPKernels."));
 
-      if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
+      if (lin != DataLayout::ONEDNN && lout == DataLayout::ONEDNN) {
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
-        auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
-                                                        ToMKLDNNFormat(lin));
+        auto out_format = phi::funcs::OneDNNFormatForSize(in.dims().size(),
+                                                          ToOneDNNFormat(lin));
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
         if (lin == DataLayout::kNHWC || lin == DataLayout::kNDHWC) {
-          platform::MatchShapeToLayout(&out, lin, lout);
+          phi::funcs::MatchShapeToLayout(&out, lin, lout);
           // We register only NHWC assuming that model is consistent e.g. either
           // NHWC or NCHW
           paddle::platform::MKLDNNDeviceContext::tls()

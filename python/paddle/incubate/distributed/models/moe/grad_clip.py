@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 import paddle.distributed as dist
 from paddle.fluid.clip import ClipGradBase, _squared_l2_norm
 from paddle.fluid.dygraph import base as imperative_base
@@ -141,21 +143,21 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
             global_norm_var_fp16 = layers.concat(sum_square_list_fp16)
-            global_norm_var_fp16 = layers.reduce_sum(global_norm_var_fp16)
+            global_norm_var_fp16 = paddle.sum(global_norm_var_fp16)
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
             global_norm_var_fp32 = layers.concat(sum_square_list_fp32)
-            global_norm_var_fp32 = layers.reduce_sum(global_norm_var_fp32)
+            global_norm_var_fp32 = paddle.sum(global_norm_var_fp32)
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
                 global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
         if len(sum_square_list) > 0:
             global_norm_var_fp64 = layers.concat(sum_square_list)
-            global_norm_var_fp64 = layers.reduce_sum(global_norm_var_fp64)
+            global_norm_var_fp64 = paddle.sum(global_norm_var_fp64)
             global_norm_var.append(global_norm_var_fp64)
         global_norm_var = layers.concat(global_norm_var)
-        global_norm_var = layers.reduce_sum(global_norm_var)
+        global_norm_var = paddle.sum(global_norm_var)
         return global_norm_var, sum_dtype
 
     @imperative_base.no_grad
@@ -207,13 +209,13 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             global_norm_var = global_norm_var_normal + global_norm_var_moe
 
         params_and_grads = []
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
         clip_var = layers.elementwise_div(
             x=max_global_norm,
-            y=layers.elementwise_max(x=global_norm_var, y=max_global_norm),
+            y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
         for p, g in params_grads:
             if g is None:

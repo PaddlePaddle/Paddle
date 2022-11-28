@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
 import paddle
-import paddle.static as static
 import paddle.nn as nn
+import paddle.static as static
 
 paddle.enable_static()
 

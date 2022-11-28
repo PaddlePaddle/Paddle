@@ -20,9 +20,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/infermeta/backward.h"
 
@@ -457,6 +457,26 @@ class PowDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+template <typename T>
+class PowTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("pow_triple_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input("DOut"));
+    op->SetInput("DDX", this->Input("DDX"));
+    op->SetInput("D_DX", this->OutputGrad("DX"));
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+    op->SetOutput("D_X", this->InputGrad("X"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDX", this->InputGrad("DDX"));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
 class PowOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -523,6 +543,16 @@ class PowOpDoubleGrad : public framework::OperatorWithKernel {
   }
 };
 
+class PowOpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+};
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
@@ -575,6 +605,9 @@ REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
 DECLARE_INFER_SHAPE_FUNCTOR(pow_double_grad,
                             PowDoubleGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pow_triple_grad,
+                            PowTripleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralTernaryGradInferMeta));
 
 REGISTER_OPERATOR(
     pow,
@@ -594,7 +627,12 @@ REGISTER_OPERATOR(pow_grad,
 REGISTER_OPERATOR(pow_double_grad,
                   ops::PowOpDoubleGrad,
                   ops::ActivationDoubleGradOpInplaceInferer,
+                  ops::PowTripleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PowTripleGradOpMaker<paddle::imperative::OpBase>,
                   PowDoubleGradInferShapeFunctor);
+REGISTER_OPERATOR(pow_triple_grad,
+                  ops::PowOpTripleGrad,
+                  PowTripleGradInferShapeFunctor);
 /* ========================================================================== */
 
 /* ==========================  register checkpoint ===========================*/

@@ -14,17 +14,18 @@
 
 import shutil
 import tempfile
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
-from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.sharding import (
     group_sharded_parallel,
     save_group_sharded_model,
 )
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
 
 epoch = 10
 paddle.seed(2022)

@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -100,7 +99,7 @@ class MNIST(fluid.dygraph.Layer):
     def forward(self, inputs, label):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._fc(x)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = paddle.mean(loss)
