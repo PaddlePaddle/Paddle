@@ -4142,7 +4142,7 @@ class TestBook(LayerTest):
     def test_unfold(self):
         with self.static_graph():
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
-            out = layers.unfold(x, [3, 3], 1, 1, 1)
+            out = paddle.nn.functional.unfold(x, [3, 3], 1, 1, 1)
             return out
 
     def test_partial_concat(self):

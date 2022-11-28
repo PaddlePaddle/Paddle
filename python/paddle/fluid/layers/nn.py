@@ -146,7 +146,6 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
-    'unfold',
     'deformable_roi_pooling',
     'shard_index',
     'hard_swish',
@@ -9984,81 +9983,6 @@ def unique_with_counts(x, dtype='int32'):
     )
 
     return out, index, count
-
-
-def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
-    r"""
-
-    This op returns a col buffer of sliding local blocks of input x, also known
-    as im2col for batched 2D image tensors. For each block under the convolution filter,
-    all element will be rearranged as a column. While the convolution filter sliding over
-    the input feature map, a series of such columns will be formed.
-
-    For each input :math:`x` with shape [N, C, H, W], the output shape [N, Cout, Lout]
-    can be calculated as following.
-
-    .. math::
-
-        dkernel[0] &= dilations[0] \times (kernel\_sizes[0] - 1) + 1
-
-        dkernel[1] &= dilations[1] \times (kernel\_sizes[1] - 1) + 1
-
-        hout &= \frac{H + paddings[0] + paddings[2] - dkernel[0]}{strides[0]} + 1
-
-        wout &= \frac{W + paddings[1] + paddings[3] - dkernel[1]}{strides[1]} + 1
-
-        Cout &= C \times kernel\_sizes[0] \times kernel\_sizes[1]
-
-        Lout &= hout \times wout
-
-
-    Parameters:
-        x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
-                                  data type can be float32 or float64
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
-                                  or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
-                                  For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
-                                  [padding_top, padding_left, padding_bottom, padding_right]
-                                  or [padding_h, padding_w] or an integer padding.
-                                  If [padding_h, padding_w] was given, it will expanded to
-                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
-                                  padding was given, [padding, padding, padding, padding] will
-                                  be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
-                                  [dilation_h, dilation_w], or an integer dilation treated as
-                                  [dilation, dilation]. For default, it will be [1, 1].
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-
-    Returns:
-        The tensor corresponding to the sliding local blocks.
-        The output shape is [N, Cout, Lout] as decriabled above.
-        Cout is the  total number of values within each block,
-        and Lout is the total number of such blocks.
-        The data type of output is the same as the input :math:`x`
-
-    Return Type:
-        Tensor
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.randn((100,3,224,224))
-            y = F.unfold(x, [3, 3], 1, 1, 1)
-    """
-
-    return paddle.nn.functional.unfold(
-        x, kernel_sizes, strides, paddings, dilations, name
-    )
 
 
 def deformable_roi_pooling(
