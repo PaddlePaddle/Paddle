@@ -67,6 +67,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         .. code-block:: python
 
             # Example1: set Regularizer in optimizer
+            import paddle
             import paddle.fluid as fluid
 
             main_prog = fluid.Program()
@@ -76,7 +77,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=128, act='relu')
                 prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-                loss = fluid.layers.cross_entropy(input=prediction, label=label)
+                loss = paddle.nn.functional.cross_entropy(input=prediction, label=label)
                 avg_loss = fluid.layers.mean(loss)
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=1e-4,
@@ -180,6 +181,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         .. code-block:: python
 
             # Example1: set Regularizer in optimizer
+            import paddle
             import paddle.fluid as fluid
 
             main_prog = fluid.Program()
@@ -189,7 +191,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=128, act='relu')
                 prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-                loss = fluid.layers.cross_entropy(input=prediction, label=label)
+                loss = paddle.nn.functional.cross_entropy(input=prediction, label=label)
                 avg_loss = fluid.layers.mean(loss)
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=1e-4,

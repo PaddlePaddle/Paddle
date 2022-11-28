@@ -117,7 +117,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
 
     Examples:
         .. code-block:: python
-
+            import paddle
             import paddle.fluid as fluid
             BATCH_SIZE = 128
             CLIP_MAX = 2e-6
@@ -131,7 +131,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
                 predict = fluid.layers.fc(
                     input=hidden2, size=10, act='softmax')
                 label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-                cost = fluid.layers.cross_entropy(input=predict, label=label)
+                cost = paddle.nn.functional.cross_entropy(input=predict, label=label)
                 avg_cost = fluid.layers.mean(cost)
             prog_clip = prog.clone()
             prog_clip.block(0).var(hidden1.name)._set_error_clip(

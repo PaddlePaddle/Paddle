@@ -647,7 +647,7 @@ def py_reader(
          def network(image, label):
              # user defined network, here a softmax regession example
              predict = fluid.layers.fc(input=image, size=10, act='softmax')
-             return fluid.layers.cross_entropy(input=predict, label=label)
+             return paddle.nn.functional.cross_entropy(input=predict, label=label)
 
          reader = fluid.layers.py_reader(capacity=64,
                                          shapes=[(-1, 1, 28, 28), (-1, 1)],
@@ -687,7 +687,7 @@ def py_reader(
              img, label = fluid.layers.read_file(reader)
              # User defined network. Here a simple regression as example
              predict = fluid.layers.fc(input=img, size=10, act='softmax')
-             loss = fluid.layers.cross_entropy(input=predict, label=label)
+             loss = paddle.nn.functional.cross_entropy(input=predict, label=label)
              return fluid.layers.mean(loss)
 
          # Create train_main_prog and train_startup_prog
@@ -792,7 +792,7 @@ def create_py_reader_by_data(
           def network(img, label):
               # User defined network. Here a simple regression as example
               predict = fluid.layers.fc(input=img, size=10, act='softmax')
-              loss = fluid.layers.cross_entropy(input=predict, label=label)
+              loss = paddle.nn.functional.cross_entropy(input=predict, label=label)
               return fluid.layers.mean(loss)
 
           MEMORY_OPT = False
