@@ -20,7 +20,7 @@ from paddle.fluid import ParamAttr
 from paddle.fluid import layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.dygraph.nn import Embedding
 from seq2seq_utils import Seq2SeqModelHyperParams as args
 
@@ -302,7 +302,7 @@ class BaseModel(fluid.dygraph.Layer):
         )
         loss = loss * tar_mask
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss
 
@@ -405,7 +405,7 @@ class BaseModel(fluid.dygraph.Layer):
         parent_ids = []
 
         for step_idx in range(paddle.to_tensor(self.beam_max_step_num)):
-            if fluid.layers.reduce_sum(1 - beam_finished).numpy()[0] == 0:
+            if paddle.sum(1 - beam_finished).numpy()[0] == 0:
                 break
             step_input = self._merge_batch_beams(step_input)
             new_dec_hidden, new_dec_cell = [], []
@@ -488,7 +488,7 @@ class BaseModel(fluid.dygraph.Layer):
             ]
             next_finished = self._gather(beam_finished, beam_indices, batch_pos)
             next_finished = fluid.layers.cast(next_finished, "bool")
-            next_finished = fluid.layers.logical_or(
+            next_finished = paddle.logical_or(
                 next_finished,
                 fluid.layers.equal(token_indices, end_token_tensor),
             )
@@ -830,6 +830,6 @@ class AttentionModel(fluid.dygraph.Layer):
         )
         loss = loss * tar_mask
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss

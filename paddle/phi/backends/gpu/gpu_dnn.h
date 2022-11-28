@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,17 +13,15 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
-void RecordEvent(const Instruction& instruction, const platform::Place& place);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-void RecordEvent(const Instruction& instruction);
+#ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/gpu/rocm/miopen_desc.h"
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
+#else  // CUDA
+#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#endif
 
-void WaitEvent(const Instruction& instruction, const platform::Place& place);
-
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+#endif

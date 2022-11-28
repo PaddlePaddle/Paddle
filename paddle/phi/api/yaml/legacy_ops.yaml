@@ -171,7 +171,7 @@
   infer_meta :
     func : ArgMinMaxInferMeta
   kernel :
-    func : arg_max
+    func : argmax
 
 - op : argmin
   args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
@@ -179,7 +179,7 @@
   infer_meta :
     func : ArgMinMaxInferMeta
   kernel :
-    func : arg_min
+    func : argmin
 
 - op : assign
   args : (Tensor x)
@@ -914,7 +914,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_swish
+    func : hardswish
   backward : hardswish_grad
 
 - op : hardtanh
@@ -924,7 +924,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_tanh
+    func : hardtanh
   backward : hardtanh_grad
 
 - op : hsigmoid_loss

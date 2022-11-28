@@ -347,7 +347,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(atanh_grad, AtanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_grad, TanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_double_grad, TanhDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_triple_grad, TanhTripleGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_tanh_grad, HardTanhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardtanh_grad, HardTanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_double_grad,
                                    LeakyReluDoubleGradKernel)
@@ -474,7 +474,7 @@ PD_REGISTER_KERNEL(log_double_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardswish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
