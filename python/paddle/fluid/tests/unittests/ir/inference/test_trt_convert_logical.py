@@ -31,90 +31,104 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        def generate_weight():
-            return np.random.random([1, 32, 16, 32]).astype(np.float32)
+        for shape in [[2, 16], [2, 16, 32], [1, 32, 16, 32]]:
+            for op_type in ["logical_and", "logical_or", "logical_xor"]:
+                for axis in [-1]:
+                    self.dims = len(shape)
+                    dics = [
+                        {"axis": axis, "in_dtype": 0, "out_dtype": 0},
+                        {"in_dtype": 5, "out_dtype": 0},
+                        {"in_dtype": 0, "out_dtype": 5},
+                    ]
+                    ops_config = [
+                        {
+                            "op_type": "cast",
+                            "op_inputs": {"X": ["input_data1"]},
+                            "op_outputs": {"Out": ["cast_output_data1"]},
+                            "op_attrs": dics[1],
+                        },
+                        {
+                            "op_type": "cast",
+                            "op_inputs": {"X": ["input_data2"]},
+                            "op_outputs": {"Out": ["cast_output_data3"]},
+                            "op_attrs": dics[1],
+                        },
+                        {
+                            "op_type": op_type,
+                            "op_inputs": {
+                                "X": ["cast_output_data1"],
+                                "Y": ["cast_output_data3"],
+                            },
+                            "op_outputs": {"Out": ["cast_output_data0"]},
+                            "op_attrs": dics[0],
+                        },
+                        {
+                            "op_type": "cast",
+                            "op_inputs": {"X": ["cast_output_data0"]},
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[2],
+                        },
+                    ]
+                    ops = self.generate_op_config(ops_config)
 
-        for batch in [1]:
-            for shape in [[batch, 32, 16, 32]]:
-                for op_type in ["logical_and", "logical_or", "logical_xor"]:
-                    for axis in [-1]:
-                        self.dims = len(shape)
-                        dics = [
-                            {"axis": axis},
-                            {"in_dtype": 5, "out_dtype": 0},
-                            {"in_dtype": 0, "out_dtype": 5},
-                        ]
-                        ops_config = [
-                            {
-                                "op_type": "cast",
-                                "op_inputs": {"X": ["input_data"]},
-                                "op_outputs": {"Out": ["cast_output_data1"]},
-                                "op_attrs": dics[1],
-                            },
-                            {
-                                "op_type": "cast",
-                                "op_inputs": {"X": ["input_data"]},
-                                "op_outputs": {"Out": ["cast_output_data3"]},
-                                "op_attrs": dics[1],
-                            },
-                            {
-                                "op_type": op_type,
-                                "op_inputs": {
-                                    "X": ["cast_output_data1"],
-                                    "Y": ["cast_output_data3"],
-                                },
-                                "op_outputs": {"Out": ["cast_output_data0"]},
-                                "op_attrs": dics[0],
-                            },
-                            {
-                                "op_type": "cast",
-                                "op_inputs": {"X": ["cast_output_data0"]},
-                                "op_outputs": {"Out": ["output_data"]},
-                                "op_attrs": dics[2],
-                            },
-                        ]
-                        ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data1": TensorConfig(
+                                data_gen=partial(generate_input, shape)
+                            ),
+                            "input_data2": TensorConfig(
+                                data_gen=partial(generate_input, shape)
+                            ),
+                        },
+                        outputs=["output_data"],
+                    )
 
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={
-                                "weight": TensorConfig(
-                                    data_gen=partial(generate_weight)
-                                )
-                            },
-                            inputs={
-                                "input_data": TensorConfig(
-                                    data_gen=partial(generate_input, shape)
-                                ),
-                            },
-                            outputs=["output_data"],
-                        )
-
-                        yield program_config
+                    yield program_config
 
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            # The input.dims[1] must be equal to the weight's length.
-            if self.dims == 4:
+            if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 32, 16, 32],
-                    "cast_output_data1": [1, 32, 16, 32],
-                    "cast_output_data3": [1, 32, 16, 32],
-                    "cast_output_data0": [1, 32, 16, 32],
+                    "input_data1": [2, 16],
+                    "input_data2": [2, 16],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [1, 32, 16, 32],
-                    "cast_output_data1": [1, 32, 16, 32],
-                    "cast_output_data3": [1, 32, 16, 32],
-                    "cast_output_data0": [1, 32, 16, 32],
+                    "input_data1": [2, 16],
+                    "input_data2": [2, 16],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 32, 16, 32],
-                    "cast_output_data1": [1, 32, 16, 32],
-                    "cast_output_data3": [1, 32, 16, 32],
-                    "cast_output_data0": [1, 32, 16, 32],
+                    "input_data1": [2, 16],
+                    "input_data2": [2, 16],
+                }
+            if self.dims == 3:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data1": [2, 16, 32],
+                    "input_data2": [2, 16, 32],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data1": [2, 16, 32],
+                    "input_data2": [2, 16, 32],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data1": [2, 16, 32],
+                    "input_data2": [2, 16, 32],
+                }
+            if self.dims == 4:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data1": [1, 32, 16, 32],
+                    "input_data2": [1, 32, 16, 32],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data1": [1, 32, 16, 32],
+                    "input_data2": [1, 32, 16, 32],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data1": [1, 32, 16, 32],
+                    "input_data2": [1, 32, 16, 32],
                 }
 
         def clear_dynamic_shape():
@@ -126,9 +140,9 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
             if dynamic_shape:
                 ver = paddle_infer.get_trt_compile_version()
                 if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8400:
-                    return 0, 6
-                return 1, 2
-            return 0, 6
+                    return 0, 7
+                return 1, 3
+            return 0, 7
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
