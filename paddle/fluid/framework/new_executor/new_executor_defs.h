@@ -310,6 +310,10 @@ class Instruction {
     events_to_wait_.emplace_back(instr_id, event, waiter_type);
   }
 
+  const std::vector<EventInter>& EventsToWait() const {
+    return events_to_wait_;
+  }
+
   void AddNextInstrInDifferentThread(size_t id) {
     next_instrs_in_different_thread.push_back(id);
   }
