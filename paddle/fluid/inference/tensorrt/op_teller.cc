@@ -1760,8 +1760,8 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-#if !IS_TRT_VERSION_GE(8000)
-        VLOG(3) << "The version of TRT must be greater than 8000";
+#if !IS_TRT_VERSION_GE(8100)
+        VLOG(3) << "The version of TRT must be greater than 8100";
         return false;
 #endif
       }
