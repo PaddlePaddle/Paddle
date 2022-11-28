@@ -144,7 +144,7 @@ class BOW(fluid.dygraph.Layer):
         mask_emb = paddle.expand(o_np_mask, [-1, self.hid_dim])
         emb = emb * mask_emb
         emb = paddle.reshape(emb, shape=[-1, self.seq_len, self.hid_dim])
-        bow_1 = fluid.layers.reduce_sum(emb, dim=1)
+        bow_1 = paddle.sum(emb, axis=1)
         bow_1 = paddle.tanh(bow_1)
         fc_1 = self._fc1(bow_1)
         fc_2 = self._fc2(fc_1)

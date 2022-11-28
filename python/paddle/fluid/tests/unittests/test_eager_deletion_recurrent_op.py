@@ -592,7 +592,7 @@ class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
             mem_pre = rnn_1.memory(shape=[-1, self.input_dim], batch_ref=x)
             x_t = rnn_1.step_input(x)
             last_rnn_output = rnn_0()
-            last_rnn_sum = fluid.layers.reduce_sum(last_rnn_output)
+            last_rnn_sum = paddle.sum(last_rnn_output)
             mem = layers.elementwise_add(x=x_t, y=last_rnn_sum)
             y = layers.elementwise_add(x=mem_pre, y=mem)
             rnn_1.update_memory(mem_pre, mem)
