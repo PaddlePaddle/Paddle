@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
@@ -472,13 +473,29 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            const paddle::optional<DenseTensor>& ddx,
-                            const paddle::optional<DenseTensor>& ddy,
+                            const paddle::optional<DenseTensor>& ddx_opt,
+                            const paddle::optional<DenseTensor>& ddy_opt,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* dx,
                             DenseTensor* dy,
                             DenseTensor* ddout) {
+  paddle::optional<DenseTensor> ddx;
+  paddle::optional<DenseTensor> ddy;
+  if (!ddx_opt && dy) {
+    DenseTensor ddx_tmp =
+        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
+    ddx = paddle::make_optional<DenseTensor>(ddx_tmp);
+  } else {
+    ddx = ddx_opt;
+  }
+  if (!ddy_opt && dx) {
+    DenseTensor ddy_tmp =
+        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0));
+    ddy = paddle::make_optional<DenseTensor>(ddy_tmp);
+  } else {
+    ddy = ddy_opt;
+  }
   // Get dims from the input x, y, output_grad
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
@@ -858,11 +875,11 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            const paddle::optional<DenseTensor>& ddx,
-                            const paddle::optional<DenseTensor>& ddy,
-                            const paddle::optional<DenseTensor>& d_dx,
-                            const paddle::optional<DenseTensor>& d_dy,
-                            const paddle::optional<DenseTensor>& d_ddout,
+                            const paddle::optional<DenseTensor>& ddx_opt,
+                            const paddle::optional<DenseTensor>& ddy_opt,
+                            const paddle::optional<DenseTensor>& d_dx_opt,
+                            const paddle::optional<DenseTensor>& d_dy_opt,
+                            const paddle::optional<DenseTensor>& d_ddout_opt,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* out_d_x,
@@ -870,6 +887,49 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             DenseTensor* out_d_dout,
                             DenseTensor* out_d_ddx,
                             DenseTensor* out_d_ddy) {
+  paddle::optional<DenseTensor> ddx;
+  paddle::optional<DenseTensor> ddy;
+  paddle::optional<DenseTensor> d_ddout;
+  paddle::optional<DenseTensor> d_dx;
+  paddle::optional<DenseTensor> d_dy;
+  if (!ddx_opt && (out_d_y || out_d_dout)) {
+    DenseTensor ddx_tmp =
+        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
+    ddx = paddle::make_optional<DenseTensor>(ddx_tmp);
+  } else {
+    ddx = ddx_opt;
+  }
+  if (!ddy_opt && (out_d_x || out_d_dout)) {
+    DenseTensor ddy_tmp =
+        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0));
+    ddy = paddle::make_optional<DenseTensor>(ddy_tmp);
+  } else {
+    ddy = ddy_opt;
+  }
+
+  if (!d_ddout_opt && (out_d_y || out_d_x)) {
+    DenseTensor d_ddout_tmp =
+        phi::FullLike<T, Context>(dev_ctx, dout, static_cast<T>(0));
+    d_ddout = paddle::make_optional<DenseTensor>(d_ddout_tmp);
+  } else {
+    d_ddout = d_ddout_opt;
+  }
+
+  if (!d_dx_opt && out_d_ddy) {
+    DenseTensor d_dx_tmp =
+        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
+    d_dx = paddle::make_optional<DenseTensor>(d_dx_tmp);
+  } else {
+    d_dx = d_dx_opt;
+  }
+
+  if (!d_dy_opt && out_d_ddx) {
+    DenseTensor d_dy_tmp =
+        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0));
+    d_dy = paddle::make_optional<DenseTensor>(d_dy_tmp);
+  } else {
+    d_dy = d_dy_opt;
+  }
   // Get dims from the input x, y, output_grad
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
