@@ -44,7 +44,7 @@ from paddle.fluid.layers.control_flow import (
     less_than,
     increment,
 )
-from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+from .return_transformer import (
     RETURN_NO_VALUE_VAR_NAME,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
