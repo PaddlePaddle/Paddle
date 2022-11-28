@@ -38,6 +38,7 @@ class TensorRTPool3dTest(InferencePassTest):
         self.pool_stride = 1
         self.pool_padding = 0
         self.ceil_mode = False
+        self.exclusive = False
         self.enable_trt = True
         self.serialize = False
         self.precision = AnalysisConfig.Precision.Float32
@@ -164,6 +165,7 @@ class TensorRTAvgPool3dTest(TensorRTPool3dTest):
         self.pool_stride = 1
         self.pool_padding = 0
         self.ceil_mode = False
+        self.exclusive = False
 
 
 class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
