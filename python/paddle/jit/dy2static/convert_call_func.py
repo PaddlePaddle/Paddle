@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 
 import collections
 import copy
@@ -32,6 +31,7 @@ from .convert_operators import (
     convert_range,
     convert_enumerate,
 )
+
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
     TranslatorLogger,
 )
@@ -39,7 +39,7 @@ from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
-__all__ = []
+__all__ = ["convert_call"]
 
 
 # The api(s) should be considered as plain function and convert
