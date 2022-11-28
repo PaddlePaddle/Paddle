@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
-// namespace details {
 template <typename T>
 struct CustomDeviceStatusType {};
 
@@ -32,7 +31,6 @@ struct CustomDeviceStatusType {};
   }
 
 DEFINE_CUSTOM_DEVICE_STATUS_TYPE(C_Status, C_SUCCESS);
-// }  // namespace details
 
 inline std::string build_custom_device_error_msg(C_Status stat) {
   std::ostringstream sout;
