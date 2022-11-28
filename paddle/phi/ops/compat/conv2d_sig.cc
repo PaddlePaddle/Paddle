@@ -53,46 +53,9 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
                          {"DInput", "DFilter", "DDOutput"});
 }
 
-KernelSignature FusedConv2dOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("fused_conv2d",
-                         {"Input", "Filter", "Bias", "ResidualData"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "dilations",
-                          "groups",
-                          "data_format",
-                          "mkldnn_data_type",
-                          "fuse_activation",
-                          "fuse_residual_connection",
-                          "force_fp32_output"},
-                         {"Output"});
-}
-
-KernelSignature FusedConv3dOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("fused_conv3d",
-                         {"Input", "Filter", "Bias", "ResidualData"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "dilations",
-                          "groups",
-                          "data_format",
-                          "mkldnn_data_type",
-                          "fuse_activation",
-                          "fuse_residual_connection",
-                          "force_fp32_output"},
-                         {"Output"});
-}
-
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(conv2d, phi::Conv2dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_grad, phi::Conv2dGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_grad_grad,
                            phi::Conv2dDoubleGradOpArgumentMapping);
-
-PD_REGISTER_ARG_MAPPING_FN(fused_conv2d, phi::FusedConv2dOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(fused_conv3d, phi::FusedConv3dOpArgumentMapping);
