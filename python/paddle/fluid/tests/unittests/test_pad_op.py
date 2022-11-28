@@ -112,12 +112,12 @@ class TestPadOpError(unittest.TestCase):
             input_data = np.random.random((2, 2)).astype("float32")
 
             def test_Variable():
-                F.pad(x=input_data, pad=[1, 1, 1, 1])
+                paddle.pad(x=input_data, pad=[1, 1, 1, 1])
 
             self.assertRaises(TypeError, test_Variable)
 
             data = fluid.data(name='data', shape=[4], dtype='float16')
-            F.pad(x=data, pad=[0, 1])
+            paddle.pad(x=data, pad=[0, 1])
 
 
 class TestPaddingValueTensor(UnittestBase):

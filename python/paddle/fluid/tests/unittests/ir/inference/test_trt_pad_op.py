@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.nn.functional as F
 from paddle.fluid.core import AnalysisConfig
 
 
@@ -29,7 +29,9 @@ class PadOpTRTTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[1, 3, 128, 128], dtype="float32"
             )
-            pad_out = F.pad(x=data, pad=[0, 0, 0, 0, 0, 1, 1, 2], value=0.0)
+            pad_out = paddle.pad(
+                x=data, pad=[0, 0, 0, 0, 0, 1, 1, 2], value=0.0
+            )
             out = fluid.layers.batch_norm(pad_out, is_test=True)
 
         self.feeds = {

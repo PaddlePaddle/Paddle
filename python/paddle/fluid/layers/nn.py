@@ -21,7 +21,6 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.nn.functional as F
 from ..layer_helper import LayerHelper
 from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant
