@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import random
-import paddle.distributed as dist
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 import paddle.nn as nn
-from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.distributed.utils.launch_utils import find_free_ports, get_cluster
+from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 
 
 def set_random_seed(seed, dp_id, rank_id):

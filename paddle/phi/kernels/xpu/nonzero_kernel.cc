@@ -15,8 +15,8 @@
 #include "paddle/phi/kernels/nonzero_kernel.h"
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

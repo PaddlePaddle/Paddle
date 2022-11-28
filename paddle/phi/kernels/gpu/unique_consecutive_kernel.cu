@@ -33,7 +33,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts) {
-  auto data_type = var_type_map[dtype];
+  auto data_type = phi::TransToPhiDataType(dtype);
   if (data_type == phi::DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel() + 1,

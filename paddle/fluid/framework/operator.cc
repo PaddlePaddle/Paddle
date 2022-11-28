@@ -384,10 +384,13 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           std::string dtype = is_no_need_buffer_var
                                   ? "unknown_dtype"
                                   : GetDtype(*scope, var_name);
+          std::string place = is_no_need_buffer_var
+                                  ? "unknown_place"
+                                  : GetPlace(*scope, var_name);
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
-          ss << "(" << GetPlace(*scope, var_name) << ")";
+          ss << "(" << place << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -1802,7 +1805,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     this->Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
-        Type(), Attrs(), infer_shape_ctx, *runtime_ctx);
+        Type(), Attrs(), infer_shape_ctx, *runtime_ctx, Id());
   }
 
   if (FLAGS_enable_unused_var_check) {
@@ -3253,7 +3256,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
   #endif
   */
-
   // For compatible with Op with extra attrs for specific backend
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();

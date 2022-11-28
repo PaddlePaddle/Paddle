@@ -80,7 +80,7 @@ class TestArrayReadWrite(unittest.TestCase):
         self.assertEqual(outs[0], outs[1])
 
         total_sum = layers.sums(input=[a_sum, x_sum])
-        total_sum_scaled = layers.scale(x=total_sum, scale=1 / 6.0)
+        total_sum_scaled = paddle.scale(x=total_sum, scale=1 / 6.0)
 
         append_backward(total_sum_scaled)
 
@@ -117,7 +117,7 @@ class TestArrayReadWrite(unittest.TestCase):
             total_sum_dygraph = layers.sums(
                 input=[a_sum_dygraph, x_sum_dygraph]
             )
-            total_sum_scaled_dygraph = layers.scale(
+            total_sum_scaled_dygraph = paddle.scale(
                 x=total_sum_dygraph, scale=1 / 6.0
             )
             total_sum_scaled_dygraph.backward()

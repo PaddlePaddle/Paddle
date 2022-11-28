@@ -14,11 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 from test_collective_multi_nodes import TestDistBase
-
-import os
 
 
 class TestDYgrapShardingDP(TestDistBase):

@@ -210,14 +210,14 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   void CreateNCCLEnvCache(const Place& place, const std::string& place_key);
 
+  void SyncCalcStream(const Place& place);
+
   std::shared_ptr<ProcessGroup::Task> RunFnInNCCLEnv(
       std::function<void(ncclComm_t, gpuStream_t)> fn,
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
-
-  void SyncCalcStream(const Place& place);
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
@@ -245,6 +245,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
  private:
   std::shared_ptr<Store> store_;
+
   std::unordered_map<std::string, platform::DeviceEvent>
       place_to_calc_event_;  // event on calc stream
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
