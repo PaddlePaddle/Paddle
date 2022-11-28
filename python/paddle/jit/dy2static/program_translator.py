@@ -37,7 +37,7 @@ from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
     update_op_callstack_with_origin_info,
 )
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import (
+from .partial_program import (
     partial_program_from,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func

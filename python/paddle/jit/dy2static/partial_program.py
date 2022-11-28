@@ -23,7 +23,7 @@ from paddle.fluid.executor import (
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+from .return_transformer import (
     RETURN_NO_VALUE_MAGIC_NUM,
 )
 from paddle.fluid.layers.utils import flatten
