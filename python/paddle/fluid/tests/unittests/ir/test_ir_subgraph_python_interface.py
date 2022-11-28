@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.framework import IrGraph
-from paddle.fluid.tests.unittests.op_test import OpTestTool
-from paddle.fluid import core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
+from paddle.fluid import core
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
+from paddle.fluid.framework import IrGraph, Program, program_guard
+from paddle.fluid.tests.unittests.op_test import OpTestTool
 
 paddle.enable_static()
 

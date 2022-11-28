@@ -16,6 +16,7 @@ import sys
 from functools import partial, reduce
 import warnings
 
+
 import paddle
 from paddle.utils import deprecated
 from . import nn
@@ -563,7 +564,7 @@ def _maybe_copy(state, new_state, step_mask):
 
 def _transpose_batch_time(x):
     perm = [1, 0] + list(range(2, len(x.shape)))
-    return nn.transpose(x, perm)
+    return paddle.transpose(x, perm)
 
 
 def _rnn_dynamic_graph(
@@ -591,7 +592,7 @@ def _rnn_dynamic_graph(
         mask = sequence_lod.sequence_mask(
             sequence_length, maxlen=time_steps, dtype=inputs.dtype
         )
-        mask = nn.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     if is_reverse:
         inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
@@ -678,7 +679,7 @@ def _rnn_static_graph(
             maxlen=max_seq_len,
             dtype=flatten(initial_states)[0].dtype,
         )
-        mask = nn.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
     if is_reverse:
         inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
         mask = tensor.reverse(mask, axis=[0]) if sequence_length else None
@@ -1032,14 +1033,14 @@ class BeamSearchDecoder(Decoder):
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
         x = paddle.tile(x, expand_times)  # [batch_size, beam_size, ...]
-        x = nn.transpose(
+        x = paddle.transpose(
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
         x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
-        x = nn.transpose(
+        x = paddle.transpose(
             x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
         )  # [batch_size * beam_size, ...]
         return x
@@ -1334,7 +1335,7 @@ class BeamSearchDecoder(Decoder):
         next_lengths = next_lengths + tensor.cast(
             paddle.logical_not(next_finished), beam_state.lengths.dtype
         )
-        next_finished = control_flow.logical_or(
+        next_finished = paddle.logical_or(
             next_finished,
             control_flow.equal(token_indices, self.end_token_tensor),
         )
@@ -1498,7 +1499,7 @@ def _dynamic_decode_imperative(
             # beams would be reordered and the finished status of each
             # entry might change. Otherwise, perform logical OR which
             # would not change the already finished.
-            next_finished = control_flow.logical_or(next_finished, finished)
+            next_finished = paddle.logical_or(next_finished, finished)
             # To confirm states.finished/finished be consistent with
             # next_finished.
             tensor.assign(next_finished, finished)
@@ -1557,7 +1558,9 @@ def _dynamic_decode_imperative(
 
     if not output_time_major:
         final_outputs = map_structure(
-            lambda x: nn.transpose(x, [1, 0] + list(range(2, len(x.shape)))),
+            lambda x: paddle.transpose(
+                x, [1, 0] + list(range(2, len(x.shape)))
+            ),
             final_outputs,
         )
 
@@ -1629,7 +1632,7 @@ def _dynamic_decode_declarative(
         return new_state
 
     def _transpose_batch_time(x):
-        return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        return paddle.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _create_array_out_of_while(dtype):
         current_block_idx = default_main_program().current_block_idx
@@ -1659,9 +1662,7 @@ def _dynamic_decode_declarative(
             # be reordered and the finished status of each entry might change.
             # Otherwise, perform logical OR which would not change the already
             # finished.
-            next_finished = control_flow.logical_or(
-                next_finished, global_finished
-            )
+            next_finished = paddle.logical_or(next_finished, global_finished)
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
                 tensor.cast(
@@ -1719,7 +1720,7 @@ def _dynamic_decode_declarative(
                 states_arrays,
             )
         if max_step_num is not None:
-            control_flow.logical_and(
+            paddle.logical_and(
                 paddle.logical_not(nn.reduce_all(global_finished)),
                 control_flow.less_equal(step_idx, max_step_num),
                 cond,

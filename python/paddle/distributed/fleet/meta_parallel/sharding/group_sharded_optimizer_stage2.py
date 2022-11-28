@@ -46,7 +46,7 @@ from .group_sharded_storage import ParamStorage, GradStorage
 from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
-alignment = {"gpu": 256, "cpu": 4096}
+alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}
 align = {
     Type.fp16.value: 2,
     Type.bf16.value: 2,
@@ -85,7 +85,9 @@ class GroupShardedOptimizerStage2(Optimizer):
     ):
 
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
-        assert core.is_compiled_with_cuda(), "Only GPU is supported now"
+        assert (
+            core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
+        ), "Only GPU and XPU is supported now"
 
         # Segmentation information
         self._dtype_rank_params = (

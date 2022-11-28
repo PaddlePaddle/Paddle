@@ -37,6 +37,8 @@ from ...fluid.framework import (
 
 __all__ = []
 
+kIgnoreIndex = -100
+
 
 def dice_loss(input, label, epsilon=0.00001, name=None):
     r"""
@@ -506,7 +508,6 @@ def edit_distance(
         input_length(Tensor): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         label_length(Tensor): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length should be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length should be [4,4,4]
-        NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
         Tuple:
@@ -1819,7 +1820,70 @@ def ctc_loss(
 
     """
 
-    loss_out = fluid.layers.warpctc(
+    def warpctc(
+        input,
+        label,
+        blank=0,
+        norm_by_times=False,
+        input_length=None,
+        label_length=None,
+    ):
+        if in_dygraph_mode():
+            if input_length is None or label_length is None:
+                raise ValueError(
+                    "input_length and label_length must not be None in dygraph mode!"
+                )
+            loss_out = _C_ops.warpctc(
+                input, label, input_length, label_length, blank, norm_by_times
+            )
+            return loss_out
+        if _non_static_mode():
+            if input_length is None or label_length is None:
+                raise ValueError(
+                    "input_length and label_length must not be None in dygraph mode!"
+                )
+            grad, loss_out = _legacy_C_ops.warpctc(
+                input,
+                label,
+                input_length,
+                label_length,
+                'blank',
+                blank,
+                'norm_by_times',
+                norm_by_times,
+            )
+            return loss_out
+        helper = LayerHelper('warpctc', **locals())
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], "warpctc"
+        )
+        check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
+        this_inputs = {'Logits': [input], 'Label': [label]}
+        if input_length is not None and label_length is not None:
+            check_variable_and_dtype(
+                input_length, 'LogitsLength', ['int64'], "warpctc"
+            )
+            check_variable_and_dtype(
+                label_length, 'LabelLength', ['int64'], "warpctc"
+            )
+            this_inputs['LogitsLength'] = [input_length]
+            this_inputs['LabelLength'] = [label_length]
+
+        loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type='warpctc',
+            inputs=this_inputs,
+            outputs={'WarpCTCGrad': [grad_out], 'Loss': [loss_out]},
+            attrs={
+                'blank': blank,
+                'norm_by_times': norm_by_times,
+            },
+        )
+        return loss_out
+
+    loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
 

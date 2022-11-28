@@ -2177,7 +2177,7 @@ def insert_dependencies_for_two_ops(
         [block.var(name) for name in posterior_op.input_arg_names]
     )
 
-    insert_dependencies_for_two_vars(
+    return insert_dependencies_for_two_vars(
         block,
         idx,
         first_var,
@@ -2231,6 +2231,8 @@ def insert_dependencies_for_two_vars(
 
     if sync:
         block._sync_with_cpp()
+
+    return depend_op
 
 
 def use_standalone_executor():

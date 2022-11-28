@@ -16,12 +16,11 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-// TODO(phi): remove fluid headers.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
-static std::vector<paddle::gpuDeviceProp> g_device_props;
+static std::vector<phi::gpuDeviceProp> g_device_props;
 
 namespace phi {
 namespace backends {

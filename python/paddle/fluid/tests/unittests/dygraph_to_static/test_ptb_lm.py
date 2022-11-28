@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -122,12 +122,12 @@ class SimpleLSTMRNN(fluid.Layer):
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_hidden = fluid.layers.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
         last_cell = fluid.layers.concat(cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_cell = fluid.layers.transpose(x=last_cell, perm=[1, 0, 2])
+        last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
         return real_res, last_hidden, last_cell
 
 
@@ -220,7 +220,7 @@ class PtbModel(fluid.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 
