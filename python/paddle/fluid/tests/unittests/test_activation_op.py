@@ -2417,8 +2417,8 @@ class TestLog(TestActivation):
             name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
         )
 
-        self.assertRaises(TypeError, F.log, in1)
-        self.assertRaises(TypeError, F.log, in2)
+        self.assertRaises(TypeError, paddle.log, in1)
+        self.assertRaises(TypeError, paddle.log, in2)
 
 
 class TestLog_ZeroDim(TestLog):

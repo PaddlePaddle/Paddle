@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as pd
-import paddle.nn.functional as F
 from paddle.fluid.executor import Executor
 
 paddle.enable_static()
@@ -143,7 +142,7 @@ def decoder_decode(context, is_sparse):
         topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
         # calculate accumulated scores after topk to reduce computation cost
         accu_scores = pd.elementwise_add(
-            x=F.log(topk_scores),
+            x=paddle.log(topk_scores),
             y=paddle.reshape(pre_score, shape=[-1]),
             axis=0,
         )

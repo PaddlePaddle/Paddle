@@ -31,7 +31,6 @@ from paddle.fluid.layers import (
 )
 
 
-import paddle.nn.functional as F
 import paddle
 
 
@@ -221,7 +220,7 @@ class Uniform(distribution.Distribution):
             if in_dygraph_mode():
                 lb = _C_ops.cast(lb_bool, value.dtype)
                 ub = _C_ops.cast(ub_bool, value.dtype)
-                return F.log(lb * ub) - F.log(self.high - self.low)
+                return paddle.log(lb * ub) - paddle.log(self.high - self.low)
 
             if _in_legacy_dygraph():
                 lb = _legacy_C_ops.cast(
@@ -230,7 +229,7 @@ class Uniform(distribution.Distribution):
                 ub = _legacy_C_ops.cast(
                     ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype', value.dtype
                 )
-                return F.log(lb * ub) - F.log(self.high - self.low)
+                return paddle.log(lb * ub) - paddle.log(self.high - self.low)
 
         name = self.name + '_log_prob'
         lb_bool = self.low < value
@@ -238,7 +237,7 @@ class Uniform(distribution.Distribution):
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
         return elementwise_sub(
-            F.log(lb * ub), F.log(self.high - self.low), name=name
+            paddle.log(lb * ub), paddle.log(self.high - self.low), name=name
         )
 
     def probs(self, value):
@@ -291,4 +290,4 @@ class Uniform(distribution.Distribution):
 
         """
         name = self.name + '_entropy'
-        return F.log(self.high - self.low, name=name)
+        return paddle.log(self.high - self.low, name=name)
