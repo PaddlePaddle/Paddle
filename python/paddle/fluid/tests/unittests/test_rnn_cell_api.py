@@ -644,7 +644,7 @@ def def_seq2seq_model(
     )
     loss = loss * tar_mask
     loss = layers.reduce_mean(loss, dim=[0])
-    loss = layers.reduce_sum(loss)
+    loss = paddle.sum(loss)
 
     # optimizer
     optimizer = fluid.optimizer.Adam(0.001)

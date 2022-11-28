@@ -31,7 +31,7 @@ from ...fluid.layers import data_norm  # noqa: F401
 from ...fluid.layers import group_norm  # noqa: F401
 from ...fluid.layers import instance_norm  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
-from ...fluid.layers import nce  # noqa: F401
+from .loss import nce  # noqa: F401
 from ...fluid.layers import prelu  # noqa: F401
 from ...fluid.layers import py_func  # noqa: F401
 from ...fluid.layers import row_conv  # noqa: F401
