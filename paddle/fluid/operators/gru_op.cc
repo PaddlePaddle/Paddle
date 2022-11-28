@@ -119,8 +119,8 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         "Input",
         "(phi::DenseTensor) The first input is a LodTensor, which supports "
         "variable-time length input sequence. The underlying tensor in "
-        "this phi::DenseTensor is a matrix with shape (T X 3D), where, T is the "
-        "total time steps in this mini-batch, D is the hidden size.");
+        "this phi::DenseTensor is a matrix with shape (T X 3D), where, T is "
+        "the total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
              "(Tensor, optional) The initial hidden state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
@@ -168,8 +168,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
               "(phi::DenseTensor) the hidden state phi::DenseTensor organized "
               "in sequences. "
               "This phi::DenseTensor is a matrix with shape (T X D) and has "
-              "the same LoD "
-              "with `BatchGate`.");
+              "the same LoD with `BatchGate`.");
     AddAttr<std::string>("activation",
                          "(string, default tanh) "
                          "The activation type used for output candidate {h}_t.")
