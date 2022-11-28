@@ -1314,7 +1314,7 @@ class TestLayer(LayerTest):
 
             embs = layers.concat(input=embs, axis=1)
             wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
-            nce_loss = layers.nce(
+            nce_loss = paddle.static.nn.nce(
                 input=embs,
                 label=wl,
                 num_total_classes=dict_size,
@@ -3274,7 +3274,7 @@ class TestBook(LayerTest):
             embs.append(emb)
 
         embs = layers.concat(input=embs, axis=1)
-        loss = layers.nce(
+        loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],
             num_total_classes=dict_size,
@@ -4343,21 +4343,24 @@ class TestBook(LayerTest):
     def test_warpctc_with_padding(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            input_length = layers.data(
+            input_length = paddle.static.data(
                 name='logits_length', shape=[11], dtype='int64'
             )
-            label_length = layers.data(
+            label_length = paddle.static.data(
                 name='labels_length', shape=[12], dtype='int64'
             )
-            label = layers.data(name='label', shape=[12, 1], dtype='int32')
-            predict = layers.data(
+            label = paddle.static.data(
+                name='label', shape=[12, 1], dtype='int32'
+            )
+            predict = paddle.static.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = layers.warpctc(
-                input=predict,
-                label=label,
-                input_length=input_length,
-                label_length=label_length,
+            output = paddle.nn.functional.ctc_loss(
+                log_probs=predict,
+                labels=label,
+                input_lengths=input_length,
+                label_lengths=label_length,
+                reduction='none',
             )
             return output
 
