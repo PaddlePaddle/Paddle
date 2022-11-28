@@ -69,7 +69,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
             },
         )
 
-        grad_var = main_block.var(var_name)
+        grad_var = main_block._var_recursive(var_name)
         dims_mapping = ctx.get_tensor_dist_attr_for_program(
             grad_var
         ).dims_mapping
@@ -140,7 +140,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         res.append(cost_mapping)
 
         main_block = backward_op.block
-        vars = main_block.vars
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
@@ -588,7 +587,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             for varname in backward_op.desc.output(output_name):
                 if varname in kwargs["grad_var_to_var"]:
                     fwd_name = kwargs["grad_var_to_var"][varname]
-                    if fwd_name not in main_block.vars:
+                    if not main_block._find_var_recursive(fwd_name):
                         continue
                     if is_parameter_related(fwd_name, main_block):
                         out_grad_names.append(varname)

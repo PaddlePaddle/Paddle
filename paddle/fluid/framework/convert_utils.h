@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 // TODO(chenweihang): this file may need to be removed
 
@@ -37,7 +38,8 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
 
 size_t DataTypeSize(DataType dtype);
 DataType String2DataType(const std::string& str);
-std::string DataType2String(DataType dtype);
+
+using phi::DataType2String;
 
 }  // namespace framework
 }  // namespace paddle
