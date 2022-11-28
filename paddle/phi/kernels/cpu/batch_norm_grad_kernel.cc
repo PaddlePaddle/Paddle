@@ -36,7 +36,6 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& ctx,
-
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,

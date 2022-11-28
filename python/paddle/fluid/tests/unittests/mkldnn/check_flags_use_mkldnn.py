@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle.fluid as fluid
 import os
-from paddle.fluid.layer_helper import LayerHelper
+
+import numpy as np
+
+import paddle.fluid as fluid
 from paddle.fluid.framework import _global_flags
+from paddle.fluid.layer_helper import LayerHelper
 
 
 def check():

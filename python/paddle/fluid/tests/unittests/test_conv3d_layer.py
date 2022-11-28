@@ -101,7 +101,7 @@ class Conv3DTestCase(unittest.TestCase):
                     bias_attr = False
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
-                y_var = fluid.layers.conv3d(
+                y_var = paddle.static.nn.conv3d(
                     x_var,
                     self.num_filters,
                     self.filter_size,

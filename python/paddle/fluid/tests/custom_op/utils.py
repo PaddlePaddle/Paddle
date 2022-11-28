@@ -15,6 +15,7 @@
 import os
 import sys
 from distutils.sysconfig import get_python_lib
+
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
 IS_MAC = sys.platform.startswith('darwin')

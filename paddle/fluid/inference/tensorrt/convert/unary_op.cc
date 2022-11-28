@@ -90,6 +90,7 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
         {"floor", {nvinfer1::UnaryOperation::kFLOOR}},
         {"rsqrt",
          {nvinfer1::UnaryOperation::kSQRT, nvinfer1::UnaryOperation::kRECIP}},
+        {"reciprocal", {nvinfer1::UnaryOperation::kRECIP}},
 #if IS_TRT_VERSION_GE(7000)
         {"erf", {nvinfer1::UnaryOperation::kERF}},
 #endif
@@ -166,6 +167,10 @@ class RsqrtOpConverter : public UnaryOpConverter {
  public:
   RsqrtOpConverter() { op_type_ = "rsqrt"; }
 };
+class ReciprocalOpConverter : public UnaryOpConverter {
+ public:
+  ReciprocalOpConverter() { op_type_ = "reciprocal"; }
+};
 #if IS_TRT_VERSION_GE(7000)
 class ErfOpConverter : public UnaryOpConverter {
  public:
@@ -194,6 +199,7 @@ REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
 REGISTER_TRT_OP_CONVERTER(rsqrt, RsqrtOpConverter);
+REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
 #if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
 #endif
