@@ -300,6 +300,8 @@ class TestModel(unittest.TestCase):
         result = model.evaluate(self.val_dataset,
                                 batch_size=64,
                                 num_iters=num_iters)
+        
+        model.fit(self.train_dataset, batch_size=(64, 64), shuffle=False)
 
         train_sampler = DistributedBatchSampler(self.train_dataset,
                                                 batch_size=64,
