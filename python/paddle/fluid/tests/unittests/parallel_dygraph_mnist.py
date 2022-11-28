@@ -16,7 +16,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
@@ -86,7 +85,7 @@ class MNIST(fluid.dygraph.Layer):
         self.pool_2_shape = 50 * 4 * 4
         SIZE = 10
         scale = (2.0 / (self.pool_2_shape**2 * SIZE)) ** 0.5
-        self._fc = Linear(
+        self._fc = paddle.nn.Linear(
             self.pool_2_shape,
             10,
             weight_attr=paddle.ParamAttr(
