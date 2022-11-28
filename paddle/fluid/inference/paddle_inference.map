@@ -24,6 +24,11 @@
 			*paddle_infer::services::PredictorPool*;
 
 			*paddle::experimental*;
+
+			*paddle::imperative*;
+			*paddle::detailv3*;
+			*paddle::framework*;
+			*paddle::operators*;
 		};
 
 		*Pass*;

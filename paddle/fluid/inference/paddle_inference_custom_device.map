@@ -25,7 +25,10 @@
 
 			*paddle::experimental*;
 
-			*paddle::framework::details*;
+			*paddle::imperative*;
+			*paddle::detailv3*;
+			*paddle::framework*;
+			*paddle::operators*;
 		};
 
 		*Pass*;
