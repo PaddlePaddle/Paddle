@@ -34,7 +34,7 @@ class SimpleLayer(paddle.nn.Layer):
         use_reduction=True,
         use_identity_loss=True,
     ):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self.loss_op = loss_op
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1
@@ -238,7 +238,7 @@ class TestWithoutIdentityLoss2(TestBase):
 
 class TestWithoutIdentityLoss3(TestBase):
     def set_op_attrs(self):
-        self.loss_op = partial(paddle.fluid.layers.kldiv_loss, reduction="none")
+        self.loss_op = partial(paddle.nn.functional.kl_div, reduction="none")
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')

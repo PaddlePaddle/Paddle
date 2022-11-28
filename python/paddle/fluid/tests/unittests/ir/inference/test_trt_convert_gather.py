@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
 from functools import partial
 from typing import List
-import unittest
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):
@@ -85,7 +87,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                         "index_data": TensorConfig(
                                             data_gen=partial(
                                                 generate_input2
-                                                if index_type_int32 == True
+                                                if index_type_int32
                                                 else generate_input4,
                                                 index,
                                             )
@@ -180,7 +182,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             if self.input_num == 3:
                 return 0, 5
             else:
-                if dynamic_shape and self.index_type_int32 == True:
+                if dynamic_shape and self.index_type_int32:
                     return 1, 3
                 else:
                     return 0, 4

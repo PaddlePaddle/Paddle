@@ -55,7 +55,7 @@ class DynamicGRU(fluid.dygraph.Layer):
         origin_mode=False,
         init_size=None,
     ):
-        super(DynamicGRU, self).__init__()
+        super().__init__()
 
         self.gru_unit = GRUUnit(
             size * 3,
@@ -87,13 +87,9 @@ class DynamicGRU(fluid.dygraph.Layer):
             input_ = fluid.layers.slice(
                 inputs, axes=[1], starts=[j], ends=[j + 1]
             )
-            input_ = fluid.layers.reshape(
-                input_, [-1, input_.shape[2]], inplace=False
-            )
+            input_ = paddle.reshape(input_, [-1, input_.shape[2]])
             hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = fluid.layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False
-            )
+            hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             res.append(hidden_)
 
         if self.is_reverse:
@@ -104,7 +100,7 @@ class DynamicGRU(fluid.dygraph.Layer):
 
 class BiGRU(fluid.dygraph.Layer):
     def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
-        super(BiGRU, self).__init__()
+        super().__init__()
 
         self.pre_gru = Linear(
             input_dim=input_dim,
@@ -172,7 +168,7 @@ class BiGRU(fluid.dygraph.Layer):
 
 class LinearChainCRF(fluid.dygraph.Layer):
     def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
-        super(LinearChainCRF, self).__init__()
+        super().__init__()
 
         self._param_attr = param_attr
         self._dtype = dtype
@@ -236,7 +232,7 @@ class LinearChainCRF(fluid.dygraph.Layer):
 
 class CRFDecoding(fluid.dygraph.Layer):
     def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
-        super(CRFDecoding, self).__init__()
+        super().__init__()
 
         self._dtype = dtype
         self._size = size
@@ -287,7 +283,7 @@ class ChunkEval(fluid.dygraph.Layer):
     def __init__(
         self, num_chunk_types, chunk_scheme, excluded_chunk_types=None
     ):
-        super(ChunkEval, self).__init__()
+        super().__init__()
         self.num_chunk_types = num_chunk_types
         self.chunk_scheme = chunk_scheme
         self.excluded_chunk_types = excluded_chunk_types
@@ -358,7 +354,7 @@ class ChunkEval(fluid.dygraph.Layer):
 
 class LexNet(fluid.dygraph.Layer):
     def __init__(self, args, length=None):
-        super(LexNet, self).__init__()
+        super().__init__()
         """
         define the lexical analysis network structure
         word: stores the input of the model
@@ -472,7 +468,7 @@ class LexNet(fluid.dygraph.Layer):
         return avg_cost, crf_decode
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     vocab_size = 100

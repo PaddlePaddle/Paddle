@@ -13,8 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle.fluid.core as core
+from paddle import enable_static
+from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import (
+    pool2d_backward_navie as pool2d_backward_naive,
+)
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
@@ -24,10 +30,6 @@ from paddle.fluid.tests.unittests.test_pool2d_op import (
     TestPool2D_Op_Mixin,
     max_pool2D_forward_naive,
 )
-from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import (
-    pool2d_backward_navie as pool2d_backward_naive,
-)
-from paddle import enable_static
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -39,7 +41,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
         self.dtype = np.uint16
 
     def setUp(self):
-        super(TestPoolBf16MklDNNOpGrad, self).setUp()
+        super().setUp()
         self.attrs['mkldnn_data_type'] = "bfloat16"
         self.x_fp32 = np.random.random(self.shape).astype(np.float32)
 

@@ -18,6 +18,7 @@ import platform
 import shutil
 import tempfile
 import unittest
+
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 
@@ -45,8 +46,8 @@ class TestRoleMakerBase(unittest.TestCase):
         self.assertTrue(len(pserver_endpoints) == 0)
 
         print(role.to_string())
-        self.assertTrue(role._all_gather(1, "worker") is None)
-        self.assertTrue(role._all_reduce(1, "sum", "worker") is None)
+        self.assertIsNone(role._all_gather(1, "worker"))
+        self.assertIsNone(role._all_reduce(1, "sum", "worker"))
         role._barrier("worker")
 
 

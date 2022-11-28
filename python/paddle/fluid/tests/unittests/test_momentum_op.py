@@ -889,23 +889,31 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 multi_precision=use_amp,
             )
         else:
+            parameters = list(model.parameters())
+            n = len(parameters)
             optimizer = paddle.optimizer.Momentum(
                 parameters=[
                     {
-                        'params': model.parameters(),
+                        'params': parameters[: int(n / 2)],
                         'weight_decay': 0.001,
                         'learning_rate': 0.1,
                         'momentum': 0.99,
-                    }
+                    },
+                    {
+                        'params': parameters[int(n / 2) :],
+                        'weight_decay': 0.001,
+                        'learning_rate': 0.1,
+                        'momentum': 0.99,
+                    },
                 ],
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp,
             )
         for idx in range(5):
-            if place == 'gpu' and use_amp == True:
+            if place == 'gpu' and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-            if place == 'gpu' and use_amp == True:
+            if place == 'gpu' and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)

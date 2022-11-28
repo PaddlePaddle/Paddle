@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 from paddle.distributed import fleet
 
 
-class TestNewGroupAPI(object):
+class TestNewGroupAPI:
     def __init__(self):
         paddle.distributed.init_parallel_env()
         topo = fleet.CommunicateTopology(

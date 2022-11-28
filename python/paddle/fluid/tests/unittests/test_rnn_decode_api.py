@@ -105,7 +105,7 @@ class DecoderCell(layers.RNNCell):
         return out, [new_lstm_states, out]
 
 
-class Encoder(object):
+class Encoder:
     def __init__(self, num_layers, hidden_size, dropout_prob=0.0):
         self.encoder_cell = EncoderCell(num_layers, hidden_size, dropout_prob)
 
@@ -119,7 +119,7 @@ class Encoder(object):
         return encoder_output, encoder_final_state
 
 
-class Decoder(object):
+class Decoder:
     def __init__(
         self,
         num_layers,
@@ -191,7 +191,7 @@ class Decoder(object):
         return decoder_output, decoder_final_state, dec_seq_lengths
 
 
-class Seq2SeqModel(object):
+class Seq2SeqModel:
     """Seq2Seq model: RNN encoder-decoder with attention"""
 
     def __init__(
@@ -302,7 +302,7 @@ class Seq2SeqModel(object):
         return probs, samples, sample_length
 
 
-class PolicyGradient(object):
+class PolicyGradient:
     """policy gradient"""
 
     def __init__(self, lr=None):
@@ -318,7 +318,7 @@ class PolicyGradient(object):
         neg_log_prob = layers.cross_entropy(act_prob, action)
         cost = neg_log_prob * reward
         cost = (
-            (layers.reduce_sum(cost) / layers.reduce_sum(length))
+            (paddle.sum(cost) / paddle.sum(length))
             if length is not None
             else layers.reduce_mean(cost)
         )
@@ -395,7 +395,7 @@ def reward_func(samples, sample_length):
     )
 
 
-class MLE(object):
+class MLE:
     """teacher-forcing MLE training"""
 
     def __init__(self, lr=None):
@@ -407,13 +407,13 @@ class MLE(object):
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
         loss = layers.reduce_mean(loss, dim=[0])
-        loss = layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
         return loss
 
 
-class SeqPGAgent(object):
+class SeqPGAgent:
     def __init__(
         self,
         model_cls,

@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest, IPUOpTest
 from paddle.jit import to_static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, IPUD2STest
 
 
 class TestBase(IPUOpTest):
@@ -107,7 +108,7 @@ class TestCase2(TestBase):
 
 class SimpleLayer(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1
         )

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import os
-import sys
 import shlex
+import sys
 import unittest
+
 from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (  # noqa: F401
     prepare_python_path_and_return_module,
     remove_path_if_exists,
@@ -47,7 +48,9 @@ class PsPassTestBase(unittest.TestCase):
         if ps_mode == "cpu-ps" or ps_mode == 'heter-ps':
             os.environ['WITH_DISTRIBUTE'] = 'ON'
 
-            cmd = [sys.executable, "-u",] + [
+            cmd = [
+                sys.executable,
+                "-u",
                 "-m",
                 "launch",
                 "--log_dir",

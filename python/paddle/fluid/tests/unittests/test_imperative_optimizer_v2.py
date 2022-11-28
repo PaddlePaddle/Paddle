@@ -32,7 +32,6 @@ from paddle.fluid.optimizer import (
 )
 from paddle.fluid.optimizer import (
     ModelAverage,
-    DGCMomentumOptimizer,
     ExponentialMovingAverage,
     PipelineOptimizer,
     LookaheadOptimizer,
@@ -42,13 +41,15 @@ from paddle.fluid.dygraph import Linear
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
+
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
 
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._fc1 = Linear(784, 10)
         self._fc2 = Linear(10, 10)
@@ -81,7 +82,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def _check_exception(self, exception_message, place=None):
         seed = 90
         batch_size = 128
-        if place == None:
+        if place is None:
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -105,7 +106,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         seed = 90
         batch_size = 128
 
-        if place == None:
+        if place is None:
             place = (
                 fluid.CPUPlace()
                 if not core.is_compiled_with_cuda()
@@ -139,7 +140,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
             label.stop_gradient = True
 
-            img = fluid.layers.reshape(img, shape=[batch_size, -1])
+            img = paddle.reshape(img, shape=[batch_size, -1])
             cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             dy_out = avg_loss.numpy()
@@ -170,7 +171,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
-            if place == None:
+            if place is None:
                 place = (
                     fluid.CPUPlace()
                     if not core.is_compiled_with_cuda()
@@ -189,7 +190,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 name='pixel', shape=[1, 28, 28], dtype='float32'
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            img = fluid.layers.reshape(img, shape=[batch_size, 784])
+            img = paddle.reshape(img, shape=[batch_size, 784])
             cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             optimizer.minimize(avg_loss)

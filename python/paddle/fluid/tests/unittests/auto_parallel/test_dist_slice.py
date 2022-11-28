@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 from paddle.distributed.fleet import auto
 
@@ -32,6 +33,7 @@ def make_program_dp2():
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
         tmp_3 = x[:2, :2, :2]
+        tmp_3 = x[:4, :2, :2]
     return main_program, start_program
 
 
@@ -55,8 +57,8 @@ def make_program_serial():
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
 
     main_program, start_program = program_func()
 

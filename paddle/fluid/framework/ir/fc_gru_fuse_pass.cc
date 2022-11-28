@@ -228,8 +228,8 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
           nullptr,
           platform::errors::NotFound("FC bias var has not been found."));
 
-      auto* gru_bias_tensor = gru_bias_var->GetMutable<LoDTensor>();
-      auto* fc_bias_tensor = fc_bias_var->GetMutable<LoDTensor>();
+      auto* gru_bias_tensor = gru_bias_var->GetMutable<phi::DenseTensor>();
+      auto* fc_bias_tensor = fc_bias_var->GetMutable<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           gru_bias_tensor->numel(),
           fc_bias_tensor->numel(),
@@ -350,7 +350,8 @@ void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) && fusion_count > 0)
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (fusion_count > 0))
     string::PrettyLogDetail("---    fused %d pairs of fc gru patterns",
                             fusion_count);
 }

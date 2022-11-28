@@ -25,7 +25,7 @@ paddle.enable_static()
 
 class RandomDataset(Dataset):
     def __init__(self, num_samples, seed=123):
-        super(RandomDataset, self).__init__()
+        super().__init__()
         np.random.seed(seed)
         self.num_samples = num_samples
 
@@ -113,7 +113,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
         cost = fluid.layers.softmax_with_cross_entropy(
             logits, label, return_softmax=False
         )
-        sum_cost = fluid.layers.reduce_sum(cost)
+        sum_cost = paddle.sum(cost)
 
         # Test program
         test_program = train_program.clone(for_test=True)

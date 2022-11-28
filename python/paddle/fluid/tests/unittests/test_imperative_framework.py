@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 from test_imperative_base import new_program_scope
@@ -21,7 +22,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class MLP(fluid.Layer):
     def __init__(self, input_size):
-        super(MLP, self).__init__()
+        super().__init__()
         self._linear1 = fluid.dygraph.Linear(
             input_size,
             3,
@@ -46,7 +47,7 @@ class MLP(fluid.Layer):
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 

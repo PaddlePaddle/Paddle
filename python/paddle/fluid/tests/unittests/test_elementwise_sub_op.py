@@ -46,6 +46,36 @@ class TestElementwiseOp(OpTest):
         )
 
 
+class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
 class TestBF16ElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -418,6 +448,36 @@ class TestFloatElementwiseSubop(unittest.TestCase):
         with _test_eager_guard():
             self.func_dygraph_sub()
         self.func_dygraph_sub()
+
+
+class TestFloatElementwiseSubop1(unittest.TestCase):
+    def func_dygraph_sub(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: nparray - tenor
+        expect_out = np_a - np_b
+        actual_out = np_a - tensor_b
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        # normal case: tenor - nparray
+        actual_out = tensor_a - np_b
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        paddle.enable_static()
+
+    def test_dygraph_sub(self):
+        with _test_eager_guard():
+            self.func_dygraph_sub()
 
 
 if __name__ == '__main__':

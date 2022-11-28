@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import math
+import os
+import sys
+import tempfile
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import contextlib
-import math
-import sys
-import os
-import unittest
-import tempfile
 from paddle.fluid.executor import Executor
-import paddle
 
 paddle.enable_static()
 
@@ -70,10 +71,10 @@ def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
     def linear(inputs):
         return fluid.layers.fc(input=inputs, size=size, bias_attr=True)
 
-    forget_gate = fluid.layers.sigmoid(x=linear([hidden_t_prev, x_t]))
-    input_gate = fluid.layers.sigmoid(x=linear([hidden_t_prev, x_t]))
-    output_gate = fluid.layers.sigmoid(x=linear([hidden_t_prev, x_t]))
-    cell_tilde = fluid.layers.tanh(x=linear([hidden_t_prev, x_t]))
+    forget_gate = paddle.nn.functional.sigmoid(x=linear([hidden_t_prev, x_t]))
+    input_gate = paddle.nn.functional.sigmoid(x=linear([hidden_t_prev, x_t]))
+    output_gate = paddle.nn.functional.sigmoid(x=linear([hidden_t_prev, x_t]))
+    cell_tilde = paddle.tanh(x=linear([hidden_t_prev, x_t]))
 
     cell_t = fluid.layers.sums(
         input=[
@@ -83,7 +84,7 @@ def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
     )
 
     hidden_t = fluid.layers.elementwise_mul(
-        x=output_gate, y=fluid.layers.tanh(x=cell_t)
+        x=output_gate, y=paddle.tanh(x=cell_t)
     )
 
     return hidden_t, cell_t

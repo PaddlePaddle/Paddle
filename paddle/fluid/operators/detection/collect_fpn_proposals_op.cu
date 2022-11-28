@@ -26,8 +26,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 
 namespace paddle {
@@ -50,7 +50,7 @@ static __global__ void GetLengthLoD(const int nthreads,
                                     const int* batch_ids,
                                     int* length_lod) {
   CUDA_KERNEL_LOOP(i, nthreads) {
-    platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
+    phi::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
 

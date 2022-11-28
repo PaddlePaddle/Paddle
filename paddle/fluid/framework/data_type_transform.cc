@@ -40,12 +40,12 @@ static void XPUCastData(const phi::DenseTensor& in,
                         const platform::XPUDeviceContext* dev_ctx) {
   using XPUInTDType = typename XPUTypeTrait<InType>::Type;
   using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
-  int r = xpu::cast_v2<XPUInTDType, XPUOutTDType>(
+  int r = xpu::cast<XPUInTDType, XPUOutTDType>(
       dev_ctx->x_context(),
       reinterpret_cast<const XPUInTDType*>(in.data<InType>()),
       reinterpret_cast<XPUOutTDType*>(out->mutable_data<OutType>(in.place())),
       in.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   dev_ctx->Wait();
 }
 
@@ -111,6 +111,16 @@ struct CastDataType {
             out_begin,
             CastDataTypeFunctor<InType, OutType>());
       context->Wait();
+#endif
+#if defined(PADDLE_WITH_IPU)
+    } else if (platform::is_ipu_place(in_.place())) {
+      platform::Transform<phi::CPUContext> trans;
+      auto* context = static_cast<const phi::CPUContext*>(ctx_);
+      trans(*context,
+            in_begin,
+            in_end,
+            out_begin,
+            CastDataTypeFunctor<InType, OutType>());
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(

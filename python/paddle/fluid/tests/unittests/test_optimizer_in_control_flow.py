@@ -97,7 +97,7 @@ def static(
 
         id = fluid.data('id', [1], 'int32')
         two = layers.fill_constant([1], 'int32', 2)
-        mod_two = layers.elementwise_mod(id, two) == 0
+        mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
             avg_loss = layers.case(
@@ -136,7 +136,7 @@ def static(
 
 class DygraphLayer(fluid.dygraph.Layer):
     def __init__(self):
-        super(DygraphLayer, self).__init__()
+        super().__init__()
         self.fc_1 = fluid.dygraph.nn.Linear(
             INPUT_SIZE,
             FC_SIZE,

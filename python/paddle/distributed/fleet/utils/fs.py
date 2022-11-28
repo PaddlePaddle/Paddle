@@ -19,6 +19,7 @@ import re
 import time
 import abc
 from paddle.fluid import core
+from .log_util import logger
 import functools
 
 import shutil
@@ -46,7 +47,7 @@ class FSShellCmdAborted(ExecuteError):
     pass
 
 
-class FS(object):
+class FS:
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError
@@ -574,7 +575,7 @@ class HDFSClient(FS):
     def _test_match(self, lines):
         for l in lines:
             m = self._bd_err_re.match(l)
-            if m != None:
+            if m is not None:
                 return m
 
         return None
@@ -611,8 +612,8 @@ class HDFSClient(FS):
         return self._is_dir(fs_path)
 
     def _is_dir(self, fs_path):
-        cmd = "test -d {}".format(fs_path, redirect_stderr=True)
-        ret, lines = self._run_cmd(cmd, retry_times=1)
+        cmd = "test -d {}".format(fs_path)
+        ret, lines = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
         if ret:
             # other error
             if self._test_match(lines):

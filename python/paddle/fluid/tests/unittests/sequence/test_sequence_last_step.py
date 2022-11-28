@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
+import unittest
+
+import numpy as np
+
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
-import numpy as np
-import unittest
-import sys
 
 sys.path.append("../")
 

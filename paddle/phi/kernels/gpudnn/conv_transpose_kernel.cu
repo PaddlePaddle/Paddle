@@ -199,7 +199,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
   // ------------------- cudnn descriptors ---------------------
-  ConvArgs args{&transformed_out,
+  ConvArgs args{handle,
+                &transformed_out,
                 &filter,
                 &transformed_x,
                 strides,
@@ -208,7 +209,6 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                 dtype,
                 groups,
                 data_layout};
-  args.handle = handle;
   args.idesc.set(transformed_out, iwo_groups);
   args.wdesc.set(filter, layout_tensor, iwo_groups);
   args.odesc.set(transformed_x, iwo_groups);
@@ -227,7 +227,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
-  using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+  using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
   workspace_size =
       std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));
@@ -240,8 +240,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = ctx.cudnn_workspace_handle();
-  for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
+  for (int g = 0; g < groups; g++) {
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
           handle,
@@ -258,26 +258,24 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
           cudnn_workspace,
           workspace_size));
     };
-#else   // PADDLE_WITH_HIP
-    auto cudnn_func = [&](void* cudnn_workspace) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
-          handle,
-          &alpha,
-          args.wdesc.desc(),
-          filter_data + filter_offset * g,
-          args.odesc.desc(),
-          x_data + x_offset * g,
-          args.cdesc.desc(),
-          bwd_result.algo,
-          cudnn_workspace,
-          workspace_size,
-          &beta,
-          args.idesc.desc(),
-          transformed_out_data + out_offset * g));
-    };
-#endif  // PADDLE_WITH_HIP
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
+#else   // PADDLE_WITH_HIP
+  ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
+                                                args,
+                                                bwd_result,
+                                                x_data,
+                                                filter_data,
+                                                transformed_out_data,
+                                                groups,
+                                                out_offset,
+                                                filter_offset,
+                                                x_offset,
+                                                workspace_size,
+                                                &workspace_handle,
+                                                false);
+#endif  // PADDLE_WITH_HIP
+
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(ctx, &transformed_out, out, starts, ends, axes);
   } else if (!is_sys_pad && strides.size() == 3U) {

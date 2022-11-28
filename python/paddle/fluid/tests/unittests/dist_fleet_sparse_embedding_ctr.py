@@ -18,11 +18,10 @@ Distribute CTR model for test fleet api
 import os
 
 import numpy as np
+from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-
-from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 
 def fake_ctr_reader():

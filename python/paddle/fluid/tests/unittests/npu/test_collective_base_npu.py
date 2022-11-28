@@ -28,7 +28,7 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 
 
-class TestCollectiveRunnerBase(object):
+class TestCollectiveRunnerBase:
     def get_model(self, train_prog, startup_prog):
         raise NotImplementedError(
             "get model should be implemented by child class."
@@ -138,7 +138,6 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 

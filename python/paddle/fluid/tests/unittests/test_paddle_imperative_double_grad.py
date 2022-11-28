@@ -128,7 +128,7 @@ class TestDygraphDoubleGrad(TestCase):
             (none_grad,) = self.grad(
                 [x], [y], create_graph=create_graph, allow_unused=True
             )
-            self.assertTrue(none_grad is None)
+            self.assertIsNone(none_grad)
 
             (grad_with_none_and_not_none,) = self.grad(
                 [x, y], [y], create_graph=create_graph
@@ -164,7 +164,7 @@ class TestDygraphDoubleGrad(TestCase):
         x.stop_gradient = False
 
         alpha = 0.2
-        y = fluid.layers.leaky_relu(x, alpha=alpha)
+        y = paddle.nn.functional.leaky_relu(x, alpha)
         y = y * y
         z = y * y
 

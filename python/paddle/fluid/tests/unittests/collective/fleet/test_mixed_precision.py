@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.nn as nn
 import paddle.static as static
-import numpy as np
 
 paddle.enable_static()
 
 
 class SimpleNet(nn.Layer):
     def __init__(self, input_size, output_size):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(input_size, output_size)
         self.relu1 = nn.ReLU()
         self.linear2 = nn.Linear(input_size, output_size)

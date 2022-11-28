@@ -284,9 +284,11 @@ def fused_bias_dropout_residual_layer_norm(
     name=None,
 ):
     r"""
+
     The fused_bias_dropout_residual_layer_norm operator. The pseudo code is as follows:
 
     .. code-block:: python
+
         y = layer_norm(residual + dropout(bias + x))
 
     Parameters:
@@ -315,10 +317,9 @@ def fused_bias_dropout_residual_layer_norm(
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output Tensor, the data type and shape is same as `x`.
+        Tensor, The output Tensor, the data type and shape is same as `x`.
 
     Examples:
-
         .. code-block:: python
 
             # required: gpu
@@ -336,6 +337,7 @@ def fused_bias_dropout_residual_layer_norm(
                 x, residual, bias)
             # [2, 4, 128]
             print(output.shape)
+
     """
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
@@ -947,7 +949,6 @@ def fused_multi_transformer(
             # required: gpu
             import paddle
             import paddle.incubate.nn.functional as F
-            import numpy as np
 
             # input: [batch_size, seq_len, embed_dim]
             x = paddle.rand(shape=(2, 4, 128), dtype="float32")

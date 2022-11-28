@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+import ast
+import copy
+import os
+import struct
+import sys
+
+import numpy as np
+import yaml
+
+import paddle
+import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.ps.utils.ps_program_builder import (
     debug_program,
@@ -19,16 +31,6 @@ from paddle.distributed.ps.utils.ps_program_builder import (
     new_pass,
     ps_log_root_dir,
 )
-import paddle.distributed.fleet as fleet
-import argparse
-import sys
-import yaml
-import copy
-import paddle
-import os
-import ast
-import numpy as np
-import struct
 
 sys.path.append("..")
 from ps_dnn_model import StaticModel
@@ -46,7 +48,7 @@ def is_distributed_env():
         return True
 
 
-class YamlHelper(object):
+class YamlHelper:
     def load_yaml(self, yaml_file, other_part=None):
         part_list = ["runner", "hyper_parameters"]
         if other_part:
@@ -167,12 +169,12 @@ def get_user_defined_strategy(config):
         strategy.is_fl_ps_mode = (
             True if config.get("runner.is_fl_ps_mode") == 1 else False
         )
-        if strategy.is_fl_ps_mode == True:
+        if strategy.is_fl_ps_mode:
             strategy.pipeline = False
             micro_num = 1
             strategy.pipeline_configs = {
                 "accumulate_steps": micro_num
-            }  ## num_microbatches
+            }  # num_microbatches
     elif sync_mode == "geo":
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
@@ -317,7 +319,7 @@ def bf16_to_fp32(val):
     return np.float32(struct.unpack('<f', struct.pack('<I', val << 16))[0])
 
 
-class DnnTrainer(object):
+class DnnTrainer:
     def __init__(self, config):
         self.metrics = {}
         self.config = config
@@ -372,7 +374,7 @@ class DnnTrainer(object):
             print("entering run_minimize -- old")
             fleet_obj = fleet.distributed_optimizer(
                 inner_optimizer, user_defined_strategy
-            )  ## Fleet 对象
+            )  # Fleet object
             fleet_obj.minimize(loss)
 
         if fleet.is_server():

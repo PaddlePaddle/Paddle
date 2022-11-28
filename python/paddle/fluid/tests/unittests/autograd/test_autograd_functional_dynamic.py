@@ -16,16 +16,16 @@ import collections
 import typing
 import unittest
 
+import config
 import numpy as np
+import utils
+from utils import matmul, mul, nested, o2, reduce, reduce_dim
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.incubate.autograd.utils import as_tensors
 from paddle.fluid.framework import _test_eager_guard
-
-import config
-import utils
-from utils import matmul, mul, nested, o2, reduce, reduce_dim
+from paddle.incubate.autograd.utils import as_tensors
 
 
 def make_v(f, inputs):
@@ -593,7 +593,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
         hessian = paddle.incubate.autograd.Hessian(func, self.x)
-        assert hessian[:].stop_gradient == False
+        assert not hessian[:].stop_gradient
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )

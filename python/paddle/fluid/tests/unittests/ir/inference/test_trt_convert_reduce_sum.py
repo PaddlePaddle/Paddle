@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import Any, Dict, List
-import unittest
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
@@ -29,7 +30,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        ## dim should be in (-rank, rank), and not NONE
+        # dim should be in (-rank, rank), and not NONE
         rank = len(inputs['input_data'].shape)
         for x in attrs[0]["dim"]:
             if x >= rank or x <= -rank:

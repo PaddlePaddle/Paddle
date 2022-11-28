@@ -17,16 +17,13 @@ All layers just related to the detection neural network.
 
 import paddle
 
-from .layer_function_generator import generate_layer_fn
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
-from . import ops
-from ... import compat as cpt
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import numpy as np
@@ -331,10 +328,10 @@ def retinanet_target_assign(
     bbox_inside_weight.stop_gradient = True
     fg_num.stop_gradient = True
 
-    cls_logits = nn.reshape(x=cls_logits, shape=(-1, num_classes))
-    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    cls_logits = paddle.reshape(x=cls_logits, shape=(-1, num_classes))
+    bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,
@@ -513,10 +510,10 @@ def rpn_target_assign(
     target_bbox.stop_gradient = True
     bbox_inside_weight.stop_gradient = True
 
-    cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
-    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    cls_logits = paddle.reshape(x=cls_logits, shape=(-1, 1))
+    bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,
@@ -585,6 +582,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     Examples:
         .. code-block:: python
 
+            import paddle
             import numpy as np
             import paddle.fluid as fluid
 
@@ -594,7 +592,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
             batch_size = 32
             max_iter = 20
 
-
+            paddle.enable_static()
             def gen_train_data():
                 x_data = np.random.uniform(0, 255, (batch_size, 3, image_height,
                                                     image_width)).astype('float64')
@@ -604,12 +602,12 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
 
             def get_focal_loss(pred, label, fg_num, num_classes):
-                pred = fluid.layers.reshape(pred, [-1, num_classes])
-                label = fluid.layers.reshape(label, [-1, 1])
+                pred = paddle.reshape(pred, [-1, num_classes])
+                label = paddle.reshape(label, [-1, 1])
                 label.stop_gradient = True
                 loss = fluid.layers.sigmoid_focal_loss(
                     pred, label, fg_num, gamma=2.0, alpha=0.25)
-                loss = fluid.layers.reduce_sum(loss)
+                loss = paddle.sum(loss)
                 return loss
 
 
@@ -631,7 +629,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
                     fg_label = fluid.layers.greater_equal(label, data)
                     fg_label = fluid.layers.cast(fg_label, dtype='int32')
-                    fg_num = fluid.layers.reduce_sum(fg_label)
+                    fg_num = paddle.sum(fg_label, dtype='int32')
                     fg_num.stop_gradient = True
                     avg_loss = get_focal_loss(output, label, fg_num, num_classes)
                     return avg_loss
@@ -777,7 +775,7 @@ def detection_output(
         code_type='decode_center_size',
     )
     scores = nn.softmax(input=scores)
-    scores = nn.transpose(scores, perm=[0, 2, 1])
+    scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype
@@ -996,63 +994,15 @@ def box_coder(
                                     box_normalized=False,
                                     axis=1)
     """
-    check_variable_and_dtype(
-        prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
+    return paddle.vision.ops.box_coder(
+        prior_box=prior_box,
+        prior_box_var=prior_box_var,
+        target_box=target_box,
+        code_type=code_type,
+        box_normalized=box_normalized,
+        axis=axis,
+        name=name,
     )
-    check_variable_and_dtype(
-        target_box, 'target_box', ['float32', 'float64'], 'box_coder'
-    )
-    if in_dygraph_mode():
-        if isinstance(prior_box_var, Variable):
-            box_coder_op = _C_ops.box_coder(
-                prior_box,
-                prior_box_var,
-                target_box,
-                code_type,
-                box_normalized,
-                axis,
-                [],
-            )
-        elif isinstance(prior_box_var, list):
-            box_coder_op = _C_ops.box_coder(
-                prior_box,
-                None,
-                target_box,
-                code_type,
-                box_normalized,
-                axis,
-                prior_box_var,
-            )
-        else:
-            raise TypeError(
-                "Input variance of box_coder must be Variable or lisz"
-            )
-        return box_coder_op
-    helper = LayerHelper("box_coder", **locals())
-
-    output_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype
-    )
-
-    inputs = {"PriorBox": prior_box, "TargetBox": target_box}
-    attrs = {
-        "code_type": code_type,
-        "box_normalized": box_normalized,
-        "axis": axis,
-    }
-    if isinstance(prior_box_var, Variable):
-        inputs['PriorBoxVar'] = prior_box_var
-    elif isinstance(prior_box_var, list):
-        attrs['variance'] = prior_box_var
-    else:
-        raise TypeError("Input variance of box_coder must be Variable or lisz")
-    helper.append_op(
-        type="box_coder",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"OutputBox": output_box},
-    )
-    return output_box
 
 
 @templatedoc()
@@ -1801,7 +1751,7 @@ def ssd_loss(
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
-    gt_label = nn.reshape(
+    gt_label = paddle.reshape(
         x=gt_label, shape=(len(gt_label.shape) - 1) * (0,) + (-1, 1)
     )
     gt_label.stop_gradient = True
@@ -1820,9 +1770,7 @@ def ssd_loss(
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
-    conf_loss = nn.reshape(
-        x=conf_loss, shape=(-1, 0), actual_shape=actual_shape
-    )
+    conf_loss = paddle.reshape(x=conf_loss, shape=actual_shape)
     conf_loss.stop_gradient = True
     neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
@@ -1899,10 +1847,10 @@ def ssd_loss(
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
-    loss = nn.reshape(x=loss, shape=(-1, 0), actual_shape=actual_shape)
-    loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
+    loss = paddle.reshape(x=loss, shape=actual_shape)
+    loss = paddle.sum(loss, axis=1, keepdim=True)
     if normalize:
-        normalizer = nn.reduce_sum(target_loc_weight)
+        normalizer = paddle.sum(target_loc_weight)
         loss = loss / normalizer
 
     return loss
@@ -1974,8 +1922,8 @@ def prior_box(
             #declarative mode
             import paddle.fluid as fluid
             import numpy as np
-        import paddle
-        paddle.enable_static()
+            import paddle
+            paddle.enable_static()
             input = fluid.data(name="input", shape=[None,3,6,9])
             image = fluid.data(name="image", shape=[None,3,9,12])
             box, var = fluid.layers.prior_box(
@@ -2021,75 +1969,20 @@ def prior_box(
                 # [6L, 9L, 1L, 4L]
 
     """
-
-    if in_dygraph_mode():
-        step_w, step_h = steps
-        if max_sizes == None:
-            max_sizes = []
-        return _C_ops.prior_box(
-            input,
-            image,
-            min_sizes,
-            aspect_ratios,
-            variance,
-            max_sizes,
-            flip,
-            clip,
-            step_w,
-            step_h,
-            offset,
-            min_max_aspect_ratios_order,
-        )
-    helper = LayerHelper("prior_box", **locals())
-    dtype = helper.input_dtype()
-    check_variable_and_dtype(
-        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
+    return paddle.vision.ops.prior_box(
+        input=input,
+        image=image,
+        min_sizes=min_sizes,
+        max_sizes=max_sizes,
+        aspect_ratios=aspect_ratios,
+        variance=variance,
+        flip=flip,
+        clip=clip,
+        steps=steps,
+        offset=offset,
+        min_max_aspect_ratios_order=min_max_aspect_ratios_order,
+        name=name,
     )
-
-    def _is_list_or_tuple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
-
-    if not _is_list_or_tuple_(min_sizes):
-        min_sizes = [min_sizes]
-    if not _is_list_or_tuple_(aspect_ratios):
-        aspect_ratios = [aspect_ratios]
-    if not (_is_list_or_tuple_(steps) and len(steps) == 2):
-        raise ValueError(
-            'steps should be a list or tuple ',
-            'with length 2, (step_width, step_height).',
-        )
-
-    min_sizes = list(map(float, min_sizes))
-    aspect_ratios = list(map(float, aspect_ratios))
-    steps = list(map(float, steps))
-
-    attrs = {
-        'min_sizes': min_sizes,
-        'aspect_ratios': aspect_ratios,
-        'variances': variance,
-        'flip': flip,
-        'clip': clip,
-        'step_w': steps[0],
-        'step_h': steps[1],
-        'offset': offset,
-        'min_max_aspect_ratios_order': min_max_aspect_ratios_order,
-    }
-    if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
-        if not _is_list_or_tuple_(max_sizes):
-            max_sizes = [max_sizes]
-        attrs['max_sizes'] = max_sizes
-
-    box = helper.create_variable_for_type_inference(dtype)
-    var = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="prior_box",
-        inputs={"Input": input, "Image": image},
-        outputs={"Boxes": box, "Variances": var},
-        attrs=attrs,
-    )
-    box.stop_gradient = True
-    var.stop_gradient = True
-    return box, var
 
 
 def density_prior_box(
@@ -2551,7 +2444,7 @@ def multi_box_head(
             stride=stride,
         )
 
-        mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
+        mbox_loc = paddle.transpose(mbox_loc, perm=[0, 2, 3, 1])
         mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
         mbox_locs.append(mbox_loc_flatten)
 
@@ -2564,7 +2457,7 @@ def multi_box_head(
             padding=pad,
             stride=stride,
         )
-        conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
+        conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
         conf_loc_flatten = nn.flatten(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
 
@@ -2583,9 +2476,9 @@ def multi_box_head(
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
-        mbox_locs_concat = nn.reshape(mbox_locs_concat, shape=[0, -1, 4])
+        mbox_locs_concat = paddle.reshape(mbox_locs_concat, shape=[0, -1, 4])
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
-        mbox_confs_concat = nn.reshape(
+        mbox_confs_concat = paddle.reshape(
             mbox_confs_concat, shape=[0, -1, num_classes]
         )
 

@@ -23,6 +23,7 @@ endif()
 # use to get_property location of static lib
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
+cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -304,6 +305,10 @@ option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
+option(WITH_CUDNN_FRONTEND
+       "Compile with CUDNN Frontend API support (experimental)" OFF)
+option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
+       OFF)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -385,6 +390,16 @@ if(NOT WITH_GPU AND WITH_NCCL)
   set(WITH_NCCL
       OFF
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
+endif()
+
+if(NOT WITH_GPU AND WITH_CUDNN_DSO)
+  message(
+    WARNING
+      "Can't compile with cuDNN libraries when compiling without GPU. Force WITH_CUDNN_DSO=OFF."
+  )
+  set(WITH_CUDNN_DSO
+      OFF
+      CACHE STRING "Disable cuDNN libraries when compiling without GPU" FORCE)
 endif()
 
 # force WITH_XPU on when WITH_XPU_KP

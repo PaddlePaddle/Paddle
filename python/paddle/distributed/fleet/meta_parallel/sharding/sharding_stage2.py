@@ -30,8 +30,9 @@ from collections import deque
 from types import MethodType
 
 import paddle
+import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed import collective as dist
+from paddle.distributed import collective as collective
 from paddle.distributed.collective import _get_global_group
 
 from ...utils.internal_storage import GradStorage
@@ -92,7 +93,7 @@ class ShardingStage2(nn.Layer):
 
         # Communication related attributes
         self._group = (
-            dist.new_group(_get_global_group().ranks)
+            collective.new_group(_get_global_group().ranks)
             if group is None
             else group
         )
@@ -317,7 +318,7 @@ class ShardingStage2(nn.Layer):
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
         # Multi stream operation will be supported later
-        dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
+        collective.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -381,7 +382,7 @@ class ShardingStage2(nn.Layer):
                     )
 
                     # Multi stream operation will be supported later
-                    dist.wait(
+                    collective.wait(
                         tensor=param.grad,
                         group=self._group,
                         use_calc_stream=True,
@@ -447,7 +448,7 @@ class ShardingStage2(nn.Layer):
                         )
 
                         # Multi stream operation will be supported later
-                        dist.wait(
+                        collective.wait(
                             tensor=grad_storage.buffer,
                             group=self._group,
                             use_calc_stream=True,

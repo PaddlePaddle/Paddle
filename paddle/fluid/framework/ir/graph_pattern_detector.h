@@ -526,6 +526,19 @@ struct ConvBN : public PatternBase {
   PATTERN_DECL_NODE(bn_saved_variance);
 };
 
+struct LayerNormShiftScale : public PatternBase {
+  LayerNormShiftScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "layer_norm_shift_scale") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
+};
+
 struct OperatorActivation : public PatternBase {
   OperatorActivation(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "operator_activation") {}
@@ -537,6 +550,44 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(preceding_op_out);
   PATTERN_DECL_NODE(activation);
   PATTERN_DECL_NODE(activation_out);
+};
+
+struct Squeeze2Transpose2 : public PatternBase {
+  Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(squeeze2_op_in);
+  PATTERN_DECL_NODE(squeeze2_op);
+  PATTERN_DECL_NODE(squeeze2_op_out);
+  PATTERN_DECL_NODE(transpose2_op);
+};
+
+struct OperatorUnsqueeze2 : public PatternBase {
+  OperatorUnsqueeze2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "operator_unsqueeze2") {}
+
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
+
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(unsqueeze2_op);
+  PATTERN_DECL_NODE(unsqueeze2_out);
+};
+
+struct OperatorReshape2 : public PatternBase {
+  OperatorReshape2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "operator_reshape2") {}
+
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
+
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
 };
 
 // SEQCONV with Elementwise_Add ReLU
@@ -1074,7 +1125,7 @@ struct ResidualElementwise : public PatternBase {
 };
 
 // General struct for immutable ops:
-// reshape, transpose, slice, shape, nearest-interp
+// reshape, transpose, slice, shape, nearest-interp, split
 // Forward pass for no weights-op.
 // immutable_out is a result of the operator.
 struct Immutable : public PatternBase {
@@ -2003,6 +2054,12 @@ struct AddSupportInt8 : public PatternBase {
   op->outputs.push_back(out_var);   \
   out_var->inputs.clear();          \
   out_var->inputs.push_back(op);
+
+// Set the in_var as the input of the op
+#define IR_VAR_OP_LINK(in_var, op) \
+  in_var->outputs.clear();         \
+  in_var->outputs.push_back(op);   \
+  op->inputs.push_back(in_var);
 
 }  // namespace ir
 }  // namespace framework

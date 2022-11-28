@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import paddle
 from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid import core
+from paddle.framework import core
 import subprocess
 import re
 import os
@@ -25,7 +26,7 @@ __all__ = []
 
 class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(ParameterServerOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
@@ -33,7 +34,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(ParameterServerOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 
@@ -185,8 +186,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
-        _main = fluid.Program()
-        _startup = fluid.Program()
+        _main = paddle.static.Program()
+        _startup = paddle.static.Program()
 
         from paddle.fluid.incubate.fleet.parameter_server.ir import (
             pserver_pass as server,
@@ -394,7 +395,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 loss.block.program._heter_pipeline_opt = {
                     "trainer": "HeterPipelineTrainer",
                     "device_worker": "HeterSection",
-                    "trainers": self.role_maker._get_stage_trainers(),  ## trainer num in each stage
+                    "trainers": self.role_maker._get_stage_trainers(),  # trainer num in each stage
                     "trainer_id": int(self.role_maker._role_id()),
                     "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
                     "num_pipeline_stages": int(
