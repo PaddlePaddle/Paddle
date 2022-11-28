@@ -142,7 +142,6 @@ __all__ = [
     'psroi_pool',
     'prroi_pool',
     'continuous_value_model',
-    'sign',
     'unfold',
     'deformable_roi_pooling',
     'shard_index',
@@ -9679,40 +9678,6 @@ def continuous_value_model(input, cvm, use_cvm=True):
         outputs={'Y': [out]},
         attrs={"use_cvm": use_cvm},
     )
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.sign")
-def sign(x):
-    r"""
-    This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
-
-    Args:
-        x(Variable|numpy.ndarray): The input variable could be N-D tensor or N-D numpy array, \
-            the input data type is float32 or float64.
-
-    Returns:
-        Variable, the output data type is the same as input data type. : The output sign tensor with identical shape to input :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-
-          # [1.0, 0.0, -1.0]
-          data = fluid.layers.sign(np.array([3.0, 0.0, -2.0], dtype='float32'))
-    """
-
-    helper = LayerHelper("sign", **locals())
-    check_type(x, 'x', (Variable, np.ndarray), 'sign')
-    if isinstance(x, np.ndarray):
-        x = assign(x)
-    check_dtype(x.dtype, 'x', ['float16', 'float32', 'float64'], 'sign')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
-
     return out
 
 
