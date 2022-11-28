@@ -275,7 +275,7 @@ def monkey_patch_variable():
         Returns:
             Variable: self[index]
         """
-        from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
+        from paddle.jit.dy2static.convert_operators import (
             _run_paddle_pop,
         )
 

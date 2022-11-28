@@ -35,7 +35,7 @@ from paddle.fluid.dygraph.base import (
     switch_to_static_graph,
 )
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
+from paddle.jit.dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
 )
