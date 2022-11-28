@@ -285,8 +285,9 @@ def _transpose2_flops(input_shapes, attrs):
 
 @register_flops("pool")
 def _pool_flops(input_shapes, attrs):
-    if isinstance(input_shapes, dict):
-        input = input_shapes.get('X')[0]
-    else:
-        input = input_shapes[0]
+    """FLOPs computation for pool op.
+    For pool(input):
+        equation: flops = (numel)total number of elements in the input tensor.
+    """
+    input = input_shapes.get('X')[0]
     return prod(input)
