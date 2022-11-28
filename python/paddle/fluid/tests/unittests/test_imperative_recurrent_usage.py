@@ -28,7 +28,7 @@ class RecurrentTest(fluid.Layer):
 
     def forward(self, in1, in2):
         out = fluid.layers.mul(in1, in2)
-        sum_out = fluid.layers.reduce_sum(out)
+        sum_out = paddle.sum(out)
         return sum_out, out
 
 

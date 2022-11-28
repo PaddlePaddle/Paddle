@@ -476,6 +476,7 @@
   args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor(weight_grad)
   invoke : embedding_grad_impl(x, weight, out_grad, padding_idx, sparse, weight_grad)
+  no_need_buffer : weight
 
 - backward_op : expand_as_grad
   forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
@@ -632,7 +633,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_swish_grad
+    func : hardswish_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hardtanh_grad
@@ -643,7 +644,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_tanh_grad
+    func : hardtanh_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hsigmoid_loss_grad
