@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-import paddle.distributed.fleet as fleet
 from test_collective_multi_nodes import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
+
+import paddle
+import paddle.distributed.fleet as fleet
 from paddle import nn
-import numpy as np
 
 
 def weight_init(mp, shape, col=True, seed=1024):
@@ -148,6 +148,7 @@ class TestDygraphHybridFp16(TestCollectiveAPIRunnerBase):
     def check_pass(self, *args, **kwargs):
 
         from common import init_parallel_env
+
         import paddle
         from paddle.distributed import fleet
 

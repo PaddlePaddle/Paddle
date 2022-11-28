@@ -85,7 +85,7 @@ class TestReduceSum2(OpTest):
 class TestReduceSumNet(unittest.TestCase):
     def set_reduce_sum_function(self, x):
         # keep_dim = False
-        return paddle.fluid.layers.reduce_sum(x, dim=-1)
+        return paddle.sum(x, axis=-1)
 
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -153,7 +153,7 @@ class TestReduceSumNet(unittest.TestCase):
 class TestReduceSumNet2(TestReduceSumNet):
     def set_reduce_sum_function(self, x):
         # keep_dim = True
-        return paddle.fluid.layers.reduce_sum(x, dim=-1, keep_dim=True)
+        return paddle.sum(x, axis=-1, keepdim=True)
 
 
 class TestReduceSumNet3(TestReduceSumNet):
@@ -172,7 +172,7 @@ class TestReduceSumNet3(TestReduceSumNet):
             b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
 
             z = paddle.add(a, b)
-            loss = fluid.layers.reduce_sum(z)
+            loss = paddle.sum(z)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 

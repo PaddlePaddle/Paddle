@@ -14,8 +14,8 @@
 
 import os
 import sys
-import unittest
 import tempfile
+import unittest
 
 
 class TestCustomCPUProfilerPlugin(unittest.TestCase):
