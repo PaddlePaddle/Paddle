@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 
 import unittest
 import paddle
@@ -1798,9 +1797,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
             with self.assertRaises(ValueError):
                 paddle.fluid.save(prog, path, 5)
 
-            protocols = [
-                2, 3, 4
-            ]
+            protocols = [2, 3, 4]
             for protocol in protocols:
                 paddle.fluid.save(prog, path, protocol)
                 # set var to zero
