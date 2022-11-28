@@ -16,7 +16,6 @@ import datetime
 from paddle.common_ops_import import LayerHelper
 from paddle.framework import in_dygraph_mode
 from paddle.framework import _non_static_mode
-from paddle.common_ops_import import check_variable_and_dtype
 import paddle
 import paddle.fluid.core as core
 from paddle import _legacy_C_ops

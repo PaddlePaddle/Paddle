@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.parallel_env import ParallelEnv
+from paddle.fluid.framework import _test_eager_guard
 
 
 def init_process_group(strategy=None):

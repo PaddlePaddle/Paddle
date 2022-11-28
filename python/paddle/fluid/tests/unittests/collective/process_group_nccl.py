@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.distributed.parallel_env import ParallelEnv
 import paddle.distributed as dist
+from paddle.distributed.parallel_env import ParallelEnv
 from paddle.fluid.framework import _test_eager_guard
 
 
