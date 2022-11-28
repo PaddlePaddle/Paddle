@@ -19,7 +19,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable, Layer
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 
 import unittest
 

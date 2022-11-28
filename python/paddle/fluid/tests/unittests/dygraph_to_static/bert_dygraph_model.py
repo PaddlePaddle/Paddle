@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer
 from paddle.nn import Linear
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 
 from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 

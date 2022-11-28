@@ -131,18 +131,23 @@ class OpUtilsMap {
   static OpUtilsMap& Instance();
 
   bool Contains(const std::string& op_type) const {
-    return base_kernel_name_map_.count(op_type) ||
+    return fluid_op_to_phi_kernel_.count(op_type) ||
            arg_mapping_fn_map_.count(op_type);
   }
 
-  void InsertBaseKernelName(std::string op_type, std::string base_kernel_name) {
+  void InsertBaseKernelName(const std::string& op_type,
+                            const std::string& base_kernel_name) {
+    fluid_op_to_phi_kernel_.insert({op_type, base_kernel_name});
+  }
+  void InsertFluidOplName(std::string op_type, std::string base_kernel_name) {
     PADDLE_ENFORCE_EQ(
-        base_kernel_name_map_.count(op_type),
+        phi_kernel_to_fluid_op_.count(base_kernel_name),
         0UL,
         phi::errors::AlreadyExists(
-            "Operator (%s)'s api name has been registered.", op_type));
-    base_kernel_name_map_.insert(
-        {std::move(op_type), std::move(base_kernel_name)});
+            "Operator (%s)'s kernel name (%s) has been registered.",
+            op_type,
+            base_kernel_name));
+    phi_kernel_to_fluid_op_.insert({base_kernel_name, op_type});
   }
 
   bool HasArgumentMappingFn(const std::string& op_type) const {
@@ -163,8 +168,8 @@ class OpUtilsMap {
     if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
       return deprecated_kernel_name;
     }
-    auto it = base_kernel_name_map_.find(op_type);
-    if (it == base_kernel_name_map_.end()) {
+    auto it = fluid_op_to_phi_kernel_.find(op_type);
+    if (it == fluid_op_to_phi_kernel_.end()) {
       return op_type;
     } else {
       return it->second;
@@ -181,15 +186,23 @@ class OpUtilsMap {
     }
   }
 
-  const paddle::flat_hash_map<std::string, std::string>& base_kernel_name_map()
-      const {
-    return base_kernel_name_map_;
+  const paddle::flat_hash_map<std::string, std::string>&
+  fluid_op_to_phi_kernel() const {
+    return fluid_op_to_phi_kernel_;
+  }
+
+  const paddle::flat_hash_map<std::string, std::string>&
+  phi_kernel_to_fluid_op() const {
+    return phi_kernel_to_fluid_op_;
   }
 
  private:
   OpUtilsMap() = default;
 
-  paddle::flat_hash_map<std::string, std::string> base_kernel_name_map_;
+  paddle::flat_hash_map<std::string, std::string> fluid_op_to_phi_kernel_;
+
+  paddle::flat_hash_map<std::string, std::string> phi_kernel_to_fluid_op_;
+
   paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
@@ -198,6 +211,7 @@ class OpUtilsMap {
 struct BaseKernelNameRegistrar {
   BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name) {
     OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
+    OpUtilsMap::Instance().InsertFluidOplName(op_type, base_kernel_name);
   }
 };
 
