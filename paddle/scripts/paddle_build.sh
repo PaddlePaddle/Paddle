@@ -577,7 +577,7 @@ function cmake_gen_and_build() {
     export CMAKE_BUILD_TYPE=Release PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7 PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so WITH_GPU=OFF WITH_TENSORRT=ON WITH_ROCM=OFF WITH_CINN=OFF WITH_DISTRIBUTE=ON WITH_MKL=OFF WITH_AVX=OFF CUDA_ARCH_NAME=Volta NEW_RELEASE_PYPI=OFF NEW_RELEASE_ALL=OFF NEW_RELEASE_JIT=OFF WITH_PYTHON=ON CUDNN_ROOT=/usr/ WITH_TESTING=ON WITH_COVERAGE=OFF WITH_INCREMENTAL_COVERAGE=OFF CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_CONTRIB=ON WITH_INFERENCE_API_TEST=ON WITH_INFRT=OFF INFERENCE_DEMO_INSTALL_DIR=/root/.cache/inference_demo PY_VERSION=3.7 CMAKE_INSTALL_PREFIX=/paddle/build WITH_PSCORE=ON WITH_PSLIB=OFF WITH_GLOO=ON LITE_GIT_TAG=release/v2.10 WITH_XPU=OFF WITH_MLU=OFF WITH_IPU=OFF WITH_CNCL=OFF XPU_SDK_ROOT= WITH_LITE=OFF WITH_XPU_BKCL=OFF WITH_ARM=OFF WITH_ASCEND=OFF WITH_ASCEND_CL=OFF WITH_ASCEND_INT64=OFF WITH_STRIP=ON ON_INFER=OFF WITH_HETERPS=OFF WITH_FLUID_ONLY=OFF CUDA_ARCH_BIN= WITH_RECORD_BUILDTIME=OFF WITH_UNITY_BUILD=ON WITH_ONNXRUNTIME=OFF WITH_CUDNN_FRONTEND=OFF
     echo "which python:"
     which python
-    python setup.py install
+    python setup.py bdist_wheel
     #python setup.py develop
     echo "which python:"
     which python
@@ -881,6 +881,8 @@ function run_linux_cpu_test() {
     pip install hypothesis
 
     #pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    pip install ${PADDLE_ROOT}/dist/*whl
+
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
