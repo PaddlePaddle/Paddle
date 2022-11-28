@@ -27,7 +27,6 @@ function(find_register FILENAME PATTERN OUTPUT)
 endfunction()
 
 function(find_phi_register FILENAME ADD_PATH)
-  # find the op_name of REGISTER_OPERATOR(op_name, ...), REGISTER_OP_CPU_KERNEL(op_name, ...) , etc.
   # set op_name to OUTPUT
   set(options "")
   set(oneValueArgs "")
