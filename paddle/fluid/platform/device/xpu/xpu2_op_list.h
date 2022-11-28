@@ -282,6 +282,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"floor", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"gather_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
