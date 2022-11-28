@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .common import fc  # noqa: F401
-form .common import batch_norm  #noqa: F401
+from .common import batch_norm  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
