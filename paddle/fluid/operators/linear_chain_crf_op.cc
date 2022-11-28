@@ -35,13 +35,12 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
-    AddInput(
-        "Label",
-        "(phi::DenseTensor<int64_t>), when a phi::DenseTensor input,  "
-        "[N x 1], where N is the total element number in a mini-batch. "
-        "when a Tensor input, [N x S], where N is batch number. "
-        "S is max length of sequences. The ground truth."
-        "A  phi::DenseTensor with int64.");
+    AddInput("Label",
+             "(phi::DenseTensor<int64_t>), when a phi::DenseTensor input,  "
+             "[N x 1], where N is the total element number in a mini-batch. "
+             "when a Tensor input, [N x S], where N is batch number. "
+             "S is max length of sequences. The ground truth."
+             "A  phi::DenseTensor with int64.");
     AddInput("Length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch."
