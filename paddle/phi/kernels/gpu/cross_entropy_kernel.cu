@@ -23,8 +23,8 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -772,10 +772,10 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
         handle,
-        paddle::platform::CudnnDataType<T>::kOne(),
+        phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
-        paddle::platform::CudnnDataType<T>::kZero(),
+        phi::backends::gpu::CudnnDataType<T>::kZero(),
         descp,
         softmax_data,
         MIOPEN_SOFTMAX_LOG,
@@ -787,10 +787,10 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
         handle,
         CUDNN_SOFTMAX_LOG,
         mode,
-        paddle::platform::CudnnDataType<T>::kOne(),
+        phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
-        paddle::platform::CudnnDataType<T>::kZero(),
+        phi::backends::gpu::CudnnDataType<T>::kZero(),
         descp,
         softmax_data));
 #endif
@@ -1206,10 +1206,10 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
         handle,
-        paddle::platform::CudnnDataType<T>::kOne(),
+        phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
-        paddle::platform::CudnnDataType<T>::kZero(),
+        phi::backends::gpu::CudnnDataType<T>::kZero(),
         descp,
         softmax_data,
         MIOPEN_SOFTMAX_LOG,
@@ -1221,10 +1221,10 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
         handle,
         CUDNN_SOFTMAX_LOG,
         mode,
-        paddle::platform::CudnnDataType<T>::kOne(),
+        phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
         logits_data,
-        paddle::platform::CudnnDataType<T>::kZero(),
+        phi::backends::gpu::CudnnDataType<T>::kZero(),
         descp,
         softmax_data));
 #endif
