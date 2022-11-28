@@ -53,6 +53,15 @@ class MyModel(nn.Layer):
         return super().set_state_dict(state_dict)
 
 
+class MyModel2(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(100, 300)
+
+    def forward(self, x):
+        return self.linear(x)
+
+
 def is_state_dict_equal(model1, model2):
     st1 = model1.state_dict()
     st2 = model2.state_dict()
@@ -71,6 +80,19 @@ class TestStateDictConvert(unittest.TestCase):
         self.assertFalse(is_state_dict_equal(model1, model2))
         model2.set_state_dict(model1.state_dict())
         self.assertTrue(is_state_dict_equal(model1, model2))
+
+
+class TestStateDictReturn(unittest.TestCase):
+    def test_missing_keys_and_unexpected_keys(self):
+        model1 = MyModel2()
+        tmp_dict = dict()
+        tmp_dict["unexpected_keys"] = paddle.to_tensor(1)
+        missing_keys, unexpected_keys = model1.set_state_dict(tmp_dict)
+        self.assertEqual(len(missing_keys), 2)
+        self.assertEqual(missing_keys[0], "linear.weight")
+        self.assertEqual(missing_keys[1], "linear.bias")
+        self.assertEqual(len(unexpected_keys), 1)
+        self.assertEqual(unexpected_keys[0], "unexpected_keys")
 
 
 if __name__ == "__main__":
