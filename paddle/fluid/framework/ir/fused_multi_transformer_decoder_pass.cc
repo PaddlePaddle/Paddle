@@ -2555,9 +2555,7 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
                           Node* ffn_output) {
-    auto* matmul0_op = matmul0->Op();
     auto* matmul_linear_op = matmul_linear->Op();
-    auto* ffn_matmul_0_op = ffn_matmul0->Op();
     auto* ffn_matmul_1_op = ffn_matmul1->Op();
     // Calc index of transformer layer by LayerNorm Scale name
     // This calculation assumes:
