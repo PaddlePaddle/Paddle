@@ -886,8 +886,8 @@ def monkey_patch_varbase():
         self.get_tensor()._clear()
 
     @framework.dygraph_only
-    def _use_cudnn(self, use_cudnn=True):
-        return self._tensor_use_cudnn(use_cudnn)
+    def _use_gpudnn(self, use_gpudnn=True):
+        return self._tensor_use_gpudnn(use_gpudnn)
 
     @framework.dygraph_only
     def _uva(self, device_id=0):
@@ -1073,7 +1073,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
         setattr(core.eager.Tensor, "__hash__", __hash__)
-        setattr(core.eager.Tensor, "_use_cudnn", _use_cudnn)
+        setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

@@ -357,7 +357,7 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.dtype = src.meta_.dtype;
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
-  meta_.use_cudnn = src.meta_.use_cudnn;
+  meta_.use_gpudnn = src.meta_.use_gpudnn;
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_MKLDNN

@@ -90,7 +90,7 @@ struct ArgsIterator {
 
 struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   KernelKeySet key_set;
-  bool disable_cudnn = false;
+  bool disable_gpudnn = false;
   // this dtype_set is used for cache multi-inputs dtype and used for
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
@@ -101,9 +101,9 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
-    // tensor's attribute use_cudnn=False, explicitly disable cudnn kernel
-    if (tensor_backend_set == BackendSet(Backend::GPU) || disable_cudnn) {
-      disable_cudnn = true;
+    // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
+    if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
+      disable_gpudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
     }
     // assign DataLayout

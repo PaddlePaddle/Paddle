@@ -200,7 +200,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
-  meta_.use_cudnn = meta.use_cudnn;
+  meta_.use_gpudnn = meta.use_gpudnn;
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
