@@ -1867,8 +1867,8 @@ class Model(object):
                  len(batch_size) == 2
              ), "batch_size length error, expected train_batch_size and eval_batch_size."
              train_batch_size, eval_batch_size = batch_size
-         elif isinstance(batch_size, int):
-             train_batch_size, eval_batch_size = batch_size, batch_size
+        elif isinstance(batch_size, int):
+            train_batch_size, eval_batch_size = batch_size, batch_size
         
         if isinstance(train_data, Dataset):
             train_sampler = DistributedBatchSampler(
