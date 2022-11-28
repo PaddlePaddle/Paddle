@@ -324,9 +324,7 @@ def bmn_loss_func(
             num_entries = fluid.layers.cast(
                 fluid.layers.shape(pmask), dtype=DATATYPE
             )
-            num_positive = fluid.layers.cast(
-                fluid.layers.reduce_sum(pmask), dtype=DATATYPE
-            )
+            num_positive = fluid.layers.cast(paddle.sum(pmask), dtype=DATATYPE)
             ratio = num_entries / num_positive
             coef_0 = 0.5 * ratio / (ratio - 1)
             coef_1 = 0.5 * ratio
@@ -353,21 +351,15 @@ def bmn_loss_func(
         gt_iou_map = fluid.layers.elementwise_mul(gt_iou_map, mask)
 
         u_hmask = fluid.layers.cast(x=gt_iou_map > 0.7, dtype=DATATYPE)
-        u_mmask = fluid.layers.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
+        u_mmask = paddle.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
         u_mmask = fluid.layers.cast(x=u_mmask, dtype=DATATYPE)
-        u_lmask = fluid.layers.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
+        u_lmask = paddle.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
         u_lmask = fluid.layers.cast(x=u_lmask, dtype=DATATYPE)
         u_lmask = fluid.layers.elementwise_mul(u_lmask, mask)
 
-        num_h = fluid.layers.cast(
-            fluid.layers.reduce_sum(u_hmask), dtype=DATATYPE
-        )
-        num_m = fluid.layers.cast(
-            fluid.layers.reduce_sum(u_mmask), dtype=DATATYPE
-        )
-        num_l = fluid.layers.cast(
-            fluid.layers.reduce_sum(u_lmask), dtype=DATATYPE
-        )
+        num_h = fluid.layers.cast(paddle.sum(u_hmask), dtype=DATATYPE)
+        num_m = fluid.layers.cast(paddle.sum(u_mmask), dtype=DATATYPE)
+        num_l = fluid.layers.cast(paddle.sum(u_lmask), dtype=DATATYPE)
 
         r_m = num_h / num_m
         u_smmask = fluid.layers.assign(
@@ -391,11 +383,7 @@ def bmn_loss_func(
         weights.stop_gradient = True
         loss = fluid.layers.square_error_cost(pred_score, gt_iou_map)
         loss = fluid.layers.elementwise_mul(loss, weights)
-        loss = (
-            0.5
-            * fluid.layers.reduce_sum(loss)
-            / fluid.layers.reduce_sum(weights)
-        )
+        loss = 0.5 * paddle.sum(loss) / paddle.sum(weights)
 
         return loss
 
@@ -406,8 +394,8 @@ def bmn_loss_func(
         nmask = fluid.layers.cast(x=(gt_iou_map <= 0.9), dtype=DATATYPE)
         nmask = fluid.layers.elementwise_mul(nmask, mask)
 
-        num_positive = fluid.layers.reduce_sum(pmask)
-        num_entries = num_positive + fluid.layers.reduce_sum(nmask)
+        num_positive = paddle.sum(pmask)
+        num_entries = num_positive + paddle.sum(nmask)
         ratio = num_entries / num_positive
         coef_0 = 0.5 * ratio / (ratio - 1)
         coef_1 = 0.5 * ratio
@@ -415,11 +403,11 @@ def bmn_loss_func(
         loss_pos = fluid.layers.elementwise_mul(
             fluid.layers.log(pred_score + epsilon), pmask
         )
-        loss_pos = coef_1 * fluid.layers.reduce_sum(loss_pos)
+        loss_pos = coef_1 * paddle.sum(loss_pos)
         loss_neg = fluid.layers.elementwise_mul(
             fluid.layers.log(1.0 - pred_score + epsilon), nmask
         )
-        loss_neg = coef_0 * fluid.layers.reduce_sum(loss_neg)
+        loss_neg = coef_0 * paddle.sum(loss_neg)
         loss = -1 * (loss_pos + loss_neg) / num_entries
         return loss
 

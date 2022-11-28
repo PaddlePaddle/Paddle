@@ -276,7 +276,7 @@ class BertModelLayer(Layer):
         self_attn_mask = fluid.layers.matmul(
             x=input_mask, y=input_mask, transpose_y=True
         )
-        self_attn_mask = fluid.layers.scale(
+        self_attn_mask = paddle.scale(
             x=self_attn_mask, scale=10000.0, bias=-1.0, bias_after_scale=False
         )
         n_head_self_attn_mask = paddle.stack(
