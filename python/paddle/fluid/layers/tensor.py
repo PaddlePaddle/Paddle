@@ -63,7 +63,6 @@ __all__ = [
     'zeros',
     'reverse',
     'has_inf',
-    'linspace',
     'zeros_like',
     'ones_like',
     'diag',
@@ -1469,121 +1468,6 @@ def has_inf(x):
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def linspace(start, stop, num, dtype=None, name=None):
-    r"""
-    This OP return fixed number of evenly spaced values within a given interval.
-
-    Args:
-        start(int|float|Tensor): The input :attr:`start` is start variable of range. It is a scalar, \
-            or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
-        stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a scalar, \
-            or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
-        num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
-            or a Tensor of shape [1] with data type int32.
-        dtype(np.dtype|str, optional): The data type of output tensor, it could be
-            int32, int64, float32 and float64. Default: if None, the data type is float32.
-        name(str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`.Default: None.
-
-    Returns:
-        Tensor: the output data type will be float32, float64. The 1-D tensor with fixed number of evenly spaced values, \
-        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
-        the value with input :attr:`start`.
-
-    Examples:
-        .. code-block:: python
-
-             import paddle
-             data = paddle.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
-             data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
-
-    """
-    if dtype is None:
-        dtype = 'float32'
-    tensor_num = num
-    tensor_start = start
-    tensor_stop = stop
-    if not isinstance(num, Variable):
-        check_type(num, 'num', (int), 'linspace')
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
-        with device_guard("cpu"):
-            tensor_start = fill_constant([1], dtype, start)
-    if not isinstance(stop, Variable):
-        with device_guard("cpu"):
-            tensor_stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, Variable):
-        with device_guard("cpu"):
-            tensor_num = fill_constant([1], 'int32', num)
-    if in_dygraph_mode():
-        return _C_ops.linspace(
-            tensor_start,
-            tensor_stop,
-            tensor_num,
-            dtype,
-            _current_expected_place(),
-        )
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.linspace(
-            tensor_start, tensor_stop, tensor_num, 'dtype', dtype
-        )
-    helper = LayerHelper("linspace", **locals())
-
-    start_dtype = convert_dtype(tensor_start.dtype)
-    stop_dtype = convert_dtype(tensor_stop.dtype)
-    out_dtype = convert_dtype(dtype)
-    if isinstance(start, Variable):
-        check_dtype(
-            start.dtype,
-            'start',
-            ['float32', 'float64', 'int32', 'int64'],
-            'linspace',
-        )
-    else:
-        check_type(start, 'start', (int, float), 'linspace')
-
-    if isinstance(stop, Variable):
-        check_dtype(
-            stop.dtype,
-            'stop',
-            ['float32', 'float64', 'int32', 'int64'],
-            'linspace',
-        )
-    else:
-        check_type(stop, 'stop', (int, float), 'linspace')
-    if isinstance(num, Variable):
-        check_dtype(num.dtype, 'num', ['int32'], 'linspace')
-    check_dtype(
-        dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
-    )
-    if (
-        (stop_dtype == "float64" or start_dtype == "float64")
-        and out_dtype in ["float32", "int32"]
-    ) or (
-        (stop_dtype == "int64" or start_dtype == "int64")
-        and out_dtype == "int32"
-    ):
-        raise ValueError(
-            "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
-            "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
-                start_dtype, stop_dtype, dtype
-            )
-        )
-
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    helper.append_op(
-        type='linspace',
-        inputs={'Start': tensor_start, 'Stop': tensor_stop, 'Num': tensor_num},
-        attrs={'dtype': dtype},
-        outputs={'Out': [out]},
-    )
-    if isinstance(num, int):
-        out.desc.set_shape((num,))
     return out
 
 

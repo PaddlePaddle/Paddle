@@ -4135,7 +4135,7 @@ class TestBook(LayerTest):
     def test_linspace(self):
         program = Program()
         with program_guard(program):
-            out = layers.linspace(20, 10, 5, 'float64')
+            out = paddle.linspace(20, 10, 5, 'float64')
             self.assertIsNotNone(out)
         print(str(program))
 
