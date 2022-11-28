@@ -14,9 +14,10 @@
 
 # test for new CI check, should not be matched.
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 
 EPOCH_NUM = 3
 ITER_NUM = 5
