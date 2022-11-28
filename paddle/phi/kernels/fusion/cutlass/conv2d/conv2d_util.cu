@@ -52,8 +52,8 @@ void naive_conv_cpu(const half *input,
                     int pad_w,
                     int stride_h,
                     int stride_w,
-                    const half *residual,
-                    OpType op_type) {
+                    OpType op_type,
+                    const half *residual = nullptr) {
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
   struct logical_struct input_shape = {batch, ic, ih, iw};
@@ -109,9 +109,24 @@ float diff(const half *c, const float *c_baseline, int n) {
   return max_diff;
 }
 
-float conv2d_diff_cpu(COMMON_CONV_PARAMS,
-                      const half *residual,
-                      OpType op_type) {
+float conv2d_diff_cpu(ConvAllParams params, OpType op_type) {
+  const half *input = params.input;
+  const half *weight = params.weight;
+  const half *bias = params.bias;
+  half *output = params.output;
+  int batch = params.batch;
+  int ic = params.ic;
+  int ih = params.ih;
+  int iw = params.iw;
+  int kh = params.kh;
+  int kw = params.kw;
+  int oc = params.oc;
+  int pad_h = params.pad_h;
+  int pad_w = params.pad_w;
+  int stride_h = params.stride_h;
+  int stride_w = params.stride_w;
+  const half *residual = params.residual;
+
   // debug code
   half *cpu_input, *cpu_weight, *cpu_bias;
   float *cpu_output;
@@ -155,8 +170,8 @@ float conv2d_diff_cpu(COMMON_CONV_PARAMS,
                  pad_w,
                  stride_h,
                  stride_w,
-                 residual,
-                 op_type);
+                 op_type,
+                 residual);
   float max_diff = diff(output_from_cutlass, cpu_output, output_size);
   free(cpu_output);
   free(cpu_input);
@@ -242,9 +257,24 @@ __global__ void naive_conv2d_kernel(const half *input,
   }
 }
 
-float conv2d_diff_gpu(COMMON_CONV_PARAMS,
-                      const half *residual,
-                      OpType op_type) {
+float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
+  const half *input = params.input;
+  const half *weight = params.weight;
+  const half *bias = params.bias;
+  half *output = params.output;
+  int batch = params.batch;
+  int ic = params.ic;
+  int ih = params.ih;
+  int iw = params.iw;
+  int kh = params.kh;
+  int kw = params.kw;
+  int oc = params.oc;
+  int pad_h = params.pad_h;
+  int pad_w = params.pad_w;
+  int stride_h = params.stride_h;
+  int stride_w = params.stride_w;
+  const half *residual = params.residual;
+
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
   int M = batch * oh * ow;

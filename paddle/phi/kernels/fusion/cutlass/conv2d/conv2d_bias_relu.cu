@@ -23,7 +23,7 @@ namespace phi {
 namespace fusion {
 
 template <typename TShape, typename WShape, int aligment = 8>
-cutlass::Status cutlass_nhwc_conv2d_bias_relu(COMMON_CONV_PARAMS) {
+cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
   using ElementInputA = cutlass::half_t;
@@ -72,14 +72,33 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(COMMON_CONV_PARAMS) {
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
 
+  const half *input = params.input;
+  const half *weight = params.weight;
+  const half *bias = params.bias;
+  half *output = params.output;
+  int batch = params.batch;
+  int ic = params.ic;
+  int ih = params.ih;
+  int iw = params.iw;
+  int kh = params.kh;
+  int kw = params.kw;
+  int oc = params.oc;
+  int pad_h = params.pad_h;
+  int pad_w = params.pad_w;
+  int stride_h = params.stride_h;
+  int stride_w = params.stride_w;
+
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
+  const int dilationh = 1;
+  const int dilationw = 1;
+
   cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
   cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
                                                 {oc, kh, kw, ic},
-                                                {pad_h, pad_w, pad_h, pad_w},
+                                                {pad_h, pad_h, pad_w, pad_w},
                                                 {stride_h, stride_w},
-                                                {1, 1},
+                                                {dilationh, dilationw},
                                                 {batch, oh, ow, oc},
                                                 mode,
                                                 1);
@@ -110,55 +129,41 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(COMMON_CONV_PARAMS) {
 // config 1
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<64, 64, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 2
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<64, 32, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 3
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<128, 32, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 4
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<128, 64, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 5
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<64, 64, 32>,
-    cutlass::gemm::GemmShape<32, 32, 32>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<32, 32, 32>>(ConvAllParams);
 // config6
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<64, 128, 32>,
-    cutlass::gemm::GemmShape<32, 64, 32>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<32, 64, 32>>(ConvAllParams);
 // config 7
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<64, 128, 64>,
-    cutlass::gemm::GemmShape<64, 64, 32>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
 // config 8
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<64, 256, 32>,
-    cutlass::gemm::GemmShape<64, 64, 32>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
 // config 9
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
     cutlass::gemm::GemmShape<128, 64, 32>,
-    cutlass::gemm::GemmShape<64, 32, 32>>(COMMON_CONV_PARAMS);
+    cutlass::gemm::GemmShape<64, 32, 32>>(ConvAllParams);
 
-std::vector<std::function<cutlass::Status(const half *,
-                                          const half *,
-                                          const half *,
-                                          half *,
-                                          int,
-                                          int,
-                                          int,
-                                          int,
-                                          int,
-                                          int,
-                                          int,
-                                          int,
-                                          int,
-                                          int,
-                                          int)>>
+std::vector<std::function<cutlass::Status(ConvAllParams)>>
     cutlass_conv2d_bias_relu_all_func = {
         cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<64, 64, 64>,
                                       cutlass::gemm::GemmShape<32, 32, 64>>,
@@ -180,13 +185,25 @@ std::vector<std::function<cutlass::Status(const half *,
                                       cutlass::gemm::GemmShape<64, 32, 32>>};
 std::map<std::vector<int>, int> map_problem_conv2d_bias_relu;
 
-void cutlass_conv2d_bias_relu(COMMON_CONV_PARAMS) {
+void cutlass_conv2d_bias_relu(ConvAllParams params) {
+  int batch = params.batch;
+  int ic = params.ic;
+  int ih = params.ih;
+  int iw = params.iw;
+  int kh = params.kh;
+  int kw = params.kw;
+  int oc = params.oc;
+  int pad_h = params.pad_h;
+  int pad_w = params.pad_w;
+  int stride_h = params.stride_h;
+  int stride_w = params.stride_w;
+
   std::vector<int> problem_size = {
       batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, stride_h, stride_w};
 
   if (map_problem_conv2d_bias_relu.count(problem_size)) {
     cutlass_conv2d_bias_relu_all_func[map_problem_conv2d_bias_relu.at(
-        problem_size)](COMMON_CONV_ARGS);
+        problem_size)](params);
     return;
   } else {
     map_problem_conv2d_bias_relu[problem_size] = -1;
@@ -197,7 +214,7 @@ void cutlass_conv2d_bias_relu(COMMON_CONV_PARAMS) {
     cutlass::Status status;
     auto func = cutlass_conv2d_bias_relu_all_func[i];
     for (int ii = 0; ii < WARMUP; ii++) {
-      status = func(COMMON_CONV_ARGS);
+      status = func(params);
     }
 
     cudaEvent_t beg, end;
@@ -205,7 +222,7 @@ void cutlass_conv2d_bias_relu(COMMON_CONV_PARAMS) {
     cudaEventCreate(&end);
     cudaEventRecord(beg);
     for (int ii = 0; ii < REPEAT; ii++) {
-      status = func(COMMON_CONV_ARGS);
+      status = func(params);
     }
 
     cudaEventRecord(end);
@@ -217,9 +234,8 @@ void cutlass_conv2d_bias_relu(COMMON_CONV_PARAMS) {
       map_problem_conv2d_bias_relu[problem_size] = i;
     }
     // debug code
-    // conv2d_diff_cpu(COMMON_CONV_ARGS, nullptr, "conv2d_bias_relu");
-    std::cout << conv2d_diff_gpu(COMMON_CONV_ARGS, nullptr, CONV2D_BIAS_RELU)
-              << std::endl;
+    // conv2d_diff_cpu(params, CONV2D_BIAS_RELU);
+    std::cout << conv2d_diff_gpu(params, CONV2D_BIAS_RELU) << std::endl;
   }
 }
 }  // namespace fusion

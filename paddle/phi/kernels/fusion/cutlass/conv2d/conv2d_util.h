@@ -27,11 +27,11 @@ typedef enum {
   CONV2D_BIAS_SILU
 } OpType;
 
-// This two functions calculate diff of cutlass output and baseline output
-// We recommend use conv2d_diff_gpu bacause gpu is more fast than cpu
-// return value is the max diff between cutlass and baseline
-float conv2d_diff_cpu(COMMON_CONV_PARAMS, const half* residual, OpType op_type);
-float conv2d_diff_gpu(COMMON_CONV_PARAMS, const half* residual, OpType op_type);
+// This two functions calculate diff of cutlass output and baseline output, you
+// can use them to debug. We recommend use conv2d_diff_gpu bacause gpu is more
+// fast than cpu return value is the max diff between cutlass and baseline
+float conv2d_diff_cpu(ConvAllParams params, OpType op_type);
+float conv2d_diff_gpu(ConvAllParams params, OpType op_type);
 
 }  // namespace fusion
 }  // namespace phi
