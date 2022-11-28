@@ -166,9 +166,7 @@ class TestUniformRandomOpBF16AttrTensorAPI(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
-            ret = fluid.layers.nn.uniform_random(
-                [1, dim_tensor, 2], dtype=np.uint16
-            )
+            ret = paddle.uniform([1, dim_tensor, 2], dtype=np.uint16)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -187,12 +185,8 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
             _min = 5
             _max = 10
 
-            ret = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
-            ret_2 = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
+            ret = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
+            ret_2 = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
             res = fluid.layers.equal(ret, ret_2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)

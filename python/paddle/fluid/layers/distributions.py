@@ -234,7 +234,7 @@ class Uniform(Distribution):
         else:
             output_shape = shape + batch_shape
             output = (
-                nn.uniform_random(output_shape, seed=seed)
+                paddle.uniform(output_shape, seed=seed)
                 * (
                     tensor.zeros(output_shape, dtype=self.low.dtype)
                     + (self.high - self.low)
