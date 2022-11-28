@@ -62,6 +62,10 @@ def register_flops(op_type):
 
 @register_flops("c_embedding")
 def _c_embedding_flops(input_shapes, **attrs):
+    """FLOPs computation for c_embedding op.
+    For c_embedding(input):
+        equation: flops = 0
+    """
     return 0
 
 
