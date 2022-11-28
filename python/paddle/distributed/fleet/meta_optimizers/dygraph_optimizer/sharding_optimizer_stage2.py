@@ -34,7 +34,6 @@ from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed.collective import (
     _get_global_group,
     new_group,
-    wait,
 )
 
 from ...utils.internal_storage import ParamStorage, GradStorage
@@ -174,7 +173,7 @@ class ShardingOptimizerStage2(Optimizer):
             )
 
         # Multi stream operation will be supported later
-        wait(tensor=p, group=self.group, use_calc_stream=True)
+        dist.wait(tensor=p, group=self.group, use_calc_stream=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -464,7 +463,7 @@ class ShardingOptimizerStage2(Optimizer):
                 )
 
             # Multi stream operation will be supported later
-            wait(
+            dist.wait(
                 tensor=internal_storage.buffer,
                 group=self.group,
                 use_calc_stream=True,

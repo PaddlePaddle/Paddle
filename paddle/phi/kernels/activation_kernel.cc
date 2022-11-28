@@ -45,12 +45,12 @@ using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
 PD_REGISTER_KERNEL(
-    hard_swish, CPU, ALL_LAYOUT, phi::HardSwishKernel, float, double) {}
+    hardswish, CPU, ALL_LAYOUT, phi::HardSwishKernel, float, double) {}
 PD_REGISTER_KERNEL(relu6, CPU, ALL_LAYOUT, phi::Relu6Kernel, float, double) {}
 PD_REGISTER_KERNEL(swish, CPU, ALL_LAYOUT, phi::SwishKernel, float, double) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(hard_swish,
+PD_REGISTER_KERNEL(hardswish,
                    GPU,
                    ALL_LAYOUT,
                    phi::HardSwishKernel,
@@ -80,13 +80,13 @@ PD_REGISTER_KERNEL(swish,
 #endif
 
 #if defined PADDLE_WITH_XPU
-PD_REGISTER_KERNEL(hard_swish, XPU, ALL_LAYOUT, phi::HardSwishKernel, float) {}
+PD_REGISTER_KERNEL(hardswish, XPU, ALL_LAYOUT, phi::HardSwishKernel, float) {}
 PD_REGISTER_KERNEL(relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float) {}
 PD_REGISTER_KERNEL(swish, XPU, ALL_LAYOUT, phi::SwishKernel, float) {}
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-PD_REGISTER_KERNEL(hard_swish,
+PD_REGISTER_KERNEL(hardswish,
                    OneDNN,
                    ONEDNN,
                    phi::HardSwishKernel,
