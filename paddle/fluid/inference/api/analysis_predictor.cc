@@ -2219,7 +2219,9 @@ void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
   std::call_once(register_hook_flag, [this] {
     executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
       auto output_var_names =
-          op->Attr<std::vector<std::string>>("OutputVarNames");
+          op->HasAttr("OutputVarNames")
+              ? op->Attr<std::vector<std::string>>("OutputVarNames")
+              : std::vector<std::string>();
       int output_var_names_index = 0;
       for (auto &output : op->Outputs()) {
         for (auto &var_name : output.second) {
@@ -2229,9 +2231,10 @@ void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
           if (!dense_tensor.initialized()) continue;
           auto tensor = this->GetOutputTensor(var_name);
           for (auto &hookfunc : this->hookfuncs_) {
-            hookfunc(op->Type(),
-                     output_var_names[output_var_names_index++],
-                     *tensor);
+            var_name = output_var_names.empty()
+                           ? var_name
+                           : output_var_names[output_var_names_index++];
+            hookfunc(op->Type(), var_name, *tensor);
           }
         }
       }
