@@ -149,7 +149,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
              "should contain lod information.");
     AddInput("PadValue",
              "(phi::DenseTensor), this phi::DenseTensor holds values that will be fill into "
-             "padded steps. It can be a scalar or a phi::DenseTensor whose shape equals "
+             "padded steps. It can be a scalar or a tensor whose shape equals "
              "to time steps in sequences. If it's a scalar, it will be "
              "automatically broadcasted to the shape of time step.");
     AddOutput(
