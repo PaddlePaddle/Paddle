@@ -2880,7 +2880,7 @@ class TestLayer(LayerTest):
     def test_shard_index(self):
         with self.static_graph():
             x = fluid.layers.data(name="label", shape=[4, 1], dtype='int64')
-            shard_label = fluid.layers.shard_index(
+            shard_label = paddle.shard_index(
                 input=x, index_num=20, nshards=2, shard_id=0
             )
 

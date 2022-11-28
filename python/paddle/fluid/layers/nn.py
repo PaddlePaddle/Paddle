@@ -146,7 +146,6 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
-    'shard_index',
     'hard_swish',
     'mish',
     'gather_tree',
@@ -9982,82 +9981,6 @@ def unique_with_counts(x, dtype='int32'):
     )
 
     return out, index, count
-
-
-@deprecated(since="2.0.0", update_to="paddle.shard_index")
-def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
-    """
-    Reset the values of `input` according to the shard it beloning to.
-    Every value in `input` must be a non-negative integer, and
-    the parameter `index_num` represents the integer above the maximum
-    value of `input`. Thus, all values in `input` must be in the range
-    [0, index_num) and each value can be regarded as the offset to the beginning
-    of the range. The range is further split into multiple shards. Specifically,
-    we first compute the `shard_size` according to the following formula,
-    which represents the number of integers each shard can hold. So for the
-    i'th shard, it can hold values in the range [i*shard_size, (i+1)*shard_size).
-    ::
-
-        shard_size = (index_num + nshards - 1) // nshards
-
-    For each value `v` in `input`, we reset it to a new value according to the
-    following formula:
-    ::
-
-        v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id+1) * shard_size else ignore_value
-
-    That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
-    if it in the range. Otherwise, we reset it to be `ignore_value`.
-
-    Args:
-        input (Tensor): Input tensor with data type int64 or int32. It's last dimension must be 1.
-        index_num (int): An integer represents the integer above the maximum value of `input`.
-        nshards (int): The number of shards.
-        shard_id (int): The index of the current shard.
-        ignore_value (int): An integer value out of sharded index range.
-
-    Returns:
-        Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            label = paddle.to_tensor([[16], [1]], "int64")
-            shard_label = paddle.shard_index(input=label,
-                                             index_num=20,
-                                             nshards=2,
-                                             shard_id=0)
-            print(shard_label)
-            # [[-1], [1]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.shard_index(
-            input, index_num, nshards, shard_id, ignore_value
-        )
-
-    check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
-    op_type = 'shard_index'
-    helper = LayerHelper(op_type, **locals())
-    if shard_id < 0 or shard_id >= nshards:
-        raise ValueError(
-            'The shard_id(%d) should be in [0, %d)' % (shard_id, nshards)
-        )
-
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [input]},
-        outputs={'Out': out},
-        attrs={
-            'index_num': index_num,
-            'nshards': nshards,
-            'shard_id': shard_id,
-            'ignore_value': ignore_value,
-        },
-        stop_gradient=True,
-    )
-    return out
 
 
 @templatedoc()
