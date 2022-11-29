@@ -40,6 +40,7 @@ import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
+from paddle.device import get_all_custom_device_type
 
 _grad_scalar = None
 
@@ -376,7 +377,11 @@ def monkey_patch_varbase():
             if self._grad_ivar() is None:
                 return None
 
-            new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
+            new_ivar = self._grad_ivar()
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if 'npu' in get_all_custom_device_type():
+                new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
+            new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
                 return (
                     np.array(new_ivar.value().get_selected_rows().get_tensor()),

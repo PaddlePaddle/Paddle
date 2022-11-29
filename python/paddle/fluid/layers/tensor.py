@@ -63,7 +63,6 @@ __all__ = [
     'zeros',
     'linspace',
     'diag',
-    'triu',
 ]
 
 
@@ -1517,10 +1516,3 @@ def diag(diagonal):
 
     out.stop_gradient = True
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.triu")
-def triu(input, diagonal=0, name=None):
-    import paddle
-
-    return paddle.tensor.triu(x=input, diagonal=diagonal, name=name)

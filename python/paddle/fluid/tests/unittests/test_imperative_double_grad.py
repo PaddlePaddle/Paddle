@@ -636,7 +636,7 @@ class TestRaiseNoDoubleGradOp(TestCase):
         with fluid.dygraph.guard():
             x = paddle.ones(shape=[2, 3, 2, 2], dtype='float32')
             x.stop_gradient = False
-            y = paddle.fluid.layers.group_norm(x, groups=1)
+            y = paddle.static.nn.group_norm(x, groups=1)
 
             dx = fluid.dygraph.grad(
                 outputs=[y], inputs=[x], create_graph=True, retain_graph=True

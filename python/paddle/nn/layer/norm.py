@@ -46,6 +46,7 @@ from .. import functional as F
 from paddle import _C_ops, _legacy_C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
+from paddle.device import get_all_custom_device_type
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
@@ -682,6 +683,26 @@ class _BatchNormBase(Layer):
             shape=param_shape,
         )
         self._variance.stop_gradient = True
+
+        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        if 'npu' in get_all_custom_device_type():
+            with no_grad():
+                weight_trans = _C_ops.npu_identity(
+                    self.weight, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                bias_trans = _C_ops.npu_identity(
+                    self.bias, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                mean_trans = _C_ops.npu_identity(
+                    self._mean, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                var_trans = _C_ops.npu_identity(
+                    self._variance, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                weight_trans._share_underline_tensor_to(self.weight)
+                bias_trans._share_underline_tensor_to(self.bias)
+                mean_trans._share_underline_tensor_to(self._mean)
+                var_trans._share_underline_tensor_to(self._variance)
 
         self._data_format = data_format
         self._in_place = False

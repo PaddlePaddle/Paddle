@@ -36,7 +36,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
+from paddle.fluid.dygraph import to_variable
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
 
 # Note: Set True to eliminate randomness.

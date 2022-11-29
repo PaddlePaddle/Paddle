@@ -593,7 +593,8 @@ class MSELoss(Layer):
 
         reduce_op = 'reduce_mean'
         if self.reduction == 'sum':
-            reduce_op = 'reduce_sum'
+            square_out = paddle.sum(square_out)
+            return square_out
 
         return getattr(fluid.layers, reduce_op)(square_out)
 

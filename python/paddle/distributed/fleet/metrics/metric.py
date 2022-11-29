@@ -37,7 +37,7 @@ def sum(input, scope=None, util=None):
 
           # in model.py
           input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
+          cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = fluid.layers.elementwise_add(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
@@ -77,7 +77,7 @@ def max(input, scope=None, util=None):
 
           # in model.py
           input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
+          cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = paddle.maximum(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
@@ -117,7 +117,7 @@ def min(input, scope=None, util=None):
 
           # in model.py
           input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
+          cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = fluid.layers.elementwise_min(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)

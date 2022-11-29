@@ -186,7 +186,7 @@ class TestIfElse(unittest.TestCase):
                 false_target = paddle.tanh(false_target)
                 ie.output(false_target)
             if_out = ie()
-            out = layers.reduce_sum(if_out[0])
+            out = paddle.sum(if_out[0])
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())

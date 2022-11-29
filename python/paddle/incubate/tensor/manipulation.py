@@ -52,7 +52,7 @@ def _npu_identity(x, format=-1):
         return _C_ops.npu_identity(x, format)
 
     if _in_legacy_dygraph():
-        return _legacy_C_ops.npu_identity(x, format)
+        return _legacy_C_ops.npu_identity(x, 'format', format)
 
     check_variable_and_dtype(
         x,
