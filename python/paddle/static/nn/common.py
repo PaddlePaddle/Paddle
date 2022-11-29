@@ -1652,7 +1652,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         mode (str): The mode for weight sharing.
         param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
             weight (alpha), it can be create by ParamAttr. None by default. \
-            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
         name (str, optional): Name for the operation (optional, default is None). \
