@@ -24,7 +24,6 @@ from paddle.fluid.layers import (
     array_length,
     array_read,
     array_write,
-    create_array,
 )
 from paddle.fluid.layers import (
     assign,
@@ -136,7 +135,7 @@ def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
 
     def maybe_to_tensor_array(v):
         if isinstance(v, list):
-            return create_array("float32", initialized_list=v)
+            return paddle.tensor.create_array("float32", initialized_list=v)
         else:
             return v
 
@@ -814,7 +813,7 @@ def _run_paddle_pop(array, *args):
 #  Maybe support start == end for slice op.
 def _slice_tensor_array(array, start, end):
     def true_fn():
-        null_array = create_array("float32")
+        null_array = paddle.tensor.create_array("float32")
         return null_array
 
     def false_fn(array, start, end):

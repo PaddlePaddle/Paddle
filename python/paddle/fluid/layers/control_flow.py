@@ -56,7 +56,6 @@ __all__ = [
     'Switch',
     'increment',
     'array_write',
-    'create_array',
     'less_than',
     'array_read',
     'array_length',
@@ -1712,7 +1711,7 @@ def array_write(x, i, array=None):
         ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.numpy().item(0)
         if array is None:
-            array = create_array(x.dtype)
+            array = paddle.tensor.create_array(x.dtype)
         assert isinstance(
             array, list
         ), "The 'array' in array_write must be a list in dygraph mode"
@@ -1748,64 +1747,6 @@ def array_write(x, i, array=None):
         outputs={'Out': [array]},
     )
     return array
-
-
-def create_array(dtype, initialized_list=None):
-    """
-    This OP creates an LOD_TENSOR_ARRAY. It is used as
-    the input of :ref:`api_fluid_layers_array_read` and
-    :ref:`api_fluid_layers_array_write`. Also it can be used
-    with  :ref:`api_fluid_layers_While` to create RNN network.
-
-    Args:
-        dtype (str): The data type of the elements in the lod_tensor_array.
-                     Support data type: float32, float64, int32, int64.
-        initialized_list(list): Used to initialize as default value for created array.
-                    All values in initialized list should be a Tensor.
-
-    Returns:
-        Variable: The empty lod_tensor_array. The data type of elements in Tensor is ``dtype``.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
-
-    """
-    array = []
-    if initialized_list is not None:
-        if not isinstance(initialized_list, (list, tuple)):
-            raise TypeError(
-                "Require type(initialized_list) should be list/tuple, but received {}".format(
-                    type(initialized_list)
-                )
-            )
-        array = list(initialized_list)
-
-    # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
-    for val in array:
-        if not isinstance(val, Variable):
-            raise TypeError(
-                "All values in `initialized_list` should be Variable, but recevied {}.".format(
-                    type(val)
-                )
-            )
-
-    if _non_static_mode():
-        return array
-
-    helper = LayerHelper("array", **locals())
-    tensor_array = helper.create_variable(
-        name="{0}.out".format(helper.name),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype=dtype,
-    )
-
-    for val in array:
-        array_write(x=val, i=array_length(tensor_array), array=tensor_array)
-
-    return tensor_array
 
 
 @templatedoc()

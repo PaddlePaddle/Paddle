@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+import paddle.tensor as tensor
 from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard
 
 paddle.enable_static()
@@ -692,7 +693,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
             for each_x in x:
                 each_x.stop_gradient = False
 
-            arr = layers.create_array(dtype="float32")
+            arr = tensor.create_array(dtype="float32")
             for i in range(3):
                 idx = layers.array_length(arr)
                 arr = layers.array_write(x=x[i], i=idx, array=arr)

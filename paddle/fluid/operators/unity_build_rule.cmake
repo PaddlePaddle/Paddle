@@ -150,6 +150,7 @@ register_unity_group(
   lod_array_length_op.cc
   lod_rank_table_op.cc
   lod_reset_op.cc
+  lod_tensor_to_array_op.cc
   log_softmax_op.cc
   lookup_table_dequant_op.cc
   lrn_op.cc
@@ -258,6 +259,7 @@ register_unity_group(
   selu_op.cc
   shape_op.cc
   shard_index_op.cc
+  shrink_rnn_memory_op.cc
   shuffle_batch_op.cc
   shuffle_channel_op.cc
   sigmoid_cross_entropy_with_logits_op.cc
