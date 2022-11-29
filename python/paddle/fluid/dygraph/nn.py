@@ -2122,7 +2122,7 @@ class NCE(layers.Layer):
                              bias_attr='nce.b')
 
                 wl = paddle.unsqueeze(words[label_word], axis=[0])
-                nce_loss3 = nce(embs3, wl)
+                nce_loss3 = paddle.static.nn.nce(embs3, wl)
 
     """
 
