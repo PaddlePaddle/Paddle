@@ -1956,45 +1956,6 @@ def array_read(array, i):
     return out
 
 
-def shrink_memory(x, i, table):
-    """
-    This function creates an operator to shrink rnn memory using the RankTable
-    as mentioned in the input parameter.
-
-    NOTE: This API is very low-level API. It is used by DynamicRNN only.
-
-    Since the Dynamic RNN uses no-padding way to implement RNN. The sequence
-    will be sorted by order, and the length of valid memory will be shrink after
-    each time step.
-
-    Args:
-        x(Variable): The memory object in the previous time step.
-        i(Variable): The step count variable. A int scalar as LoDTensor.
-        table(Variable): The RNNRankTable object.
-
-    Returns:
-        the memory variable after shrink.
-
-    Examples:
-
-        Since this API is very low level API. The example is not provided.
-        Please reference the implementation of class DynamicRNN for detail
-        usage.
-    """
-    helper = LayerHelper('shrink_memory', **locals())
-    check_type(x, 'x', Variable, 'shrink_memory')
-    check_type(i, 'i', Variable, 'shrink_memory')
-    check_type(table, 'table', Variable, 'shrink_memory')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='shrink_rnn_memory',
-        inputs={'X': [x], 'I': [i], 'RankTable': [table]},
-        outputs={'Out': [out]},
-        attrs={},
-    )
-    return out
-
-
 def array_length(array):
     """
     This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
