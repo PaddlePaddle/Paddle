@@ -653,10 +653,9 @@ struct SwapDim0And2InTranspose {
 
 // This function is to combine dimension. fox example:
 // (0, 1, 3, 2) --> (0, 2, 1)
-inline void CombineTransposeDim3(const framework::DDim& shape,
-                                 const std::vector<int>& perm,
-                                 std::vector<int>* new_perm,
-                                 framework::DDim* new_dims) {
+inline std::vector<int> CombineTransposeDim3(const framework::DDim& shape,
+                                             const std::vector<int>& perm,
+                                             std::vector<int>* new_perm) {
   PADDLE_ENFORCE_EQ(shape.size(),
                     perm.size(),
                     platform::errors::InvalidArgument(
@@ -671,42 +670,40 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
     new_perm->resize(1);
     (*new_perm)[0] = perm[0];
     dim_vec.push_back(shape[0]);
-    *new_dims = phi::make_ddim(dim_vec);
-    return;
-  }
-  std::vector<int> new_dim_pos(shape.size(), -1);
-  std::vector<int64_t> combined_dims(shape.size(), 0);
-  int cur_head = perm[0];
-  new_dim_pos[cur_head] = 0;
-  combined_dims[0] = shape[cur_head];
-  int dim_idx = 0;
-  for (int perm_idx = 1; perm_idx < shape.size(); ++perm_idx) {
-    // combine consecutive dimensions.
-    if (cur_head + 1 == perm[perm_idx]) {
-      cur_head = perm[perm_idx];
-      combined_dims[dim_idx] *= shape[cur_head];
-    } else {
-      // Else start a new dimension.
-      cur_head = perm[perm_idx];
-      dim_idx++;
-      new_dim_pos[cur_head] = dim_idx;
-      combined_dims[dim_idx] = shape[cur_head];
+  } else {
+    int dim_idx = 0;
+    std::vector<int> new_dim_pos(shape.size(), -1);
+    std::vector<int64_t> combined_dims(shape.size(), 0);
+
+    int cur_head = perm[0];
+    new_dim_pos[cur_head] = 0;
+    combined_dims[0] = shape[cur_head];
+    for (int perm_idx = 1; perm_idx < shape.size(); ++perm_idx) {
+      // combine consecutive dimensions.
+      if (cur_head + 1 == perm[perm_idx]) {
+        cur_head = perm[perm_idx];
+        combined_dims[dim_idx] *= shape[cur_head];
+      } else {
+        // Else start a new dimension.
+        cur_head = perm[perm_idx];
+        dim_idx++;
+        new_dim_pos[cur_head] = dim_idx;
+        combined_dims[dim_idx] = shape[cur_head];
+      }
+    }
+    new_perm->resize(dim_idx + 1);
+
+    dim_idx = 0;
+    for (int i = 0; i < new_dim_pos.size(); ++i) {
+      if (new_dim_pos[i] >= 0) {
+        int new_perm_idx = new_dim_pos[i];
+        (*new_perm)[dim_idx] = new_perm_idx;
+        dim_vec.push_back(combined_dims[new_perm_idx]);
+        dim_idx++;
+      }
     }
   }
-
-  new_perm->resize(dim_idx + 1);
-
-  dim_idx = 0;
-  for (int i = 0; i < new_dim_pos.size(); ++i) {
-    if (new_dim_pos[i] >= 0) {
-      int new_perm_idx = new_dim_pos[i];
-      (*new_perm)[dim_idx] = new_perm_idx;
-      dim_vec.push_back(combined_dims[new_perm_idx]);
-      dim_idx++;
-    }
-  }
-
-  *new_dims = phi::make_ddim(dim_vec);
+  return dim_vec;
 }
 
 template <typename T, typename IndexType = int>
@@ -717,48 +714,29 @@ struct TransposeSimple {
                   phi::DenseTensor* out) {
     // First reduce the dimensions of the input tensor if possible.
     std::vector<int> new_perm;
-    framework::DDim new_dims;
-    CombineTransposeDim3(in.dims(), perm, &new_perm, &new_dims);
-
-    // Only use tile copy GPU kernel when dimension is 2 or 3.
-    int dims = new_dims.size();
-    std::vector<int> new_dim_vec = phi::vectorize<int>(new_dims);
-    if (dims < 2 || dims > 3) return false;
+    std::vector<int> new_dims =
+        CombineTransposeDim3(in.dims(), perm, &new_perm);
     auto in_data = in.data<T>();
     auto out_data = out->data<T>();
+
     // In most cases, dim will not greater than 3 after combine.
-    switch (dims) {
-      case 2:
-        if (new_perm[0] == 1 && new_perm[1] == 0) {
-          // Add the first dimension size as 1.
-          new_dim_vec.insert(new_dim_vec.begin(), 1);
-          SwapDim1And2InTranspose<T, IndexType>()(
-              ctx, in_data, new_dim_vec, out_data);
-          return true;
-        }
-        break;
-      case 3:
-        // In this case, suppose we can do coalescing read and write in tile.
-        if (new_perm == std::vector<int>({0, 2, 1})) {
-          SwapDim1And2InTranspose<T, IndexType>()(
-              ctx, in_data, new_dim_vec, out_data);
-          return true;
-        } else if (new_perm == std::vector<int>({2, 1, 0})) {
-          // Maybe can optimize later, find a way to do coalescing memory copy.
-          // But I think it depends on the data size. If span is not large,
-          // maybe
-          // can do coalescing.
-          SwapDim0And2InTranspose<T, IndexType>()(
-              ctx, in_data, new_dim_vec, out_data);
-          return true;
-        } else {
-          return false;
-        }
-        break;
-      default:
-        return false;
+    if (new_perm.size() == 2 && new_perm[1] == 0) {
+      // Add the first dimension size as 1.
+      new_dims.insert(new_dims.begin(), 1);
+      SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
+      return true;
+    } else if (new_perm == std::vector<int>({0, 2, 1})) {
+      SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
+      return true;
+    } else if (new_perm == std::vector<int>({2, 1, 0})) {
+      // Maybe can optimize later, find a way to do coalescing memory copy.
+      // But I think it depends on the data size. If span is not large,
+      // maybe can do coalescing.
+      SwapDim0And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
+      return true;
+    } else {
+      return false;
     }
-    return false;
   }
 };
 

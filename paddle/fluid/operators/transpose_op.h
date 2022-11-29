@@ -91,9 +91,16 @@ struct DimsSimplifier {
                           const std::vector<int64_t>& dims)
       : perm_(rank), src_dims_(rank), count_(numel) {
     SimplifyPermAndDims(rank, dims, perm);
+    perm_.resize(rank_);
+    src_dims_.resize(rank_);
     dst_dims_.resize(rank_);
-    for (auto i = 0; i < rank_; ++i) {
-      dst_dims_[i] = src_dims_[perm_[i]];
+    if (!is_seq_perm_) {
+      for (auto i = 0; i < rank_; ++i) {
+        dst_dims_[i] = src_dims_[perm_[i]];
+      }
+    } else {
+      dst_dims_[0] = numel;
+      src_dims_[0] = numel;
     }
   }
 
@@ -108,6 +115,7 @@ struct DimsSimplifier {
  private:
   int rank_{1};
   int64_t count_{0};
+  bool is_seq_perm_{true};
   std::vector<int> perm_;
   std::vector<int64_t> src_dims_;
   std::vector<int64_t> dst_dims_;
@@ -163,18 +171,15 @@ struct DimsSimplifier {
     // Acquire simplified perm with help of combined dims
     // and original perm, finally simplified perm is [1, 0]
     int perm_idx = 0;
-    bool is_sequential = true;
     for (auto i = 0; i < rank; ++i) {
       const int mapped = valid_map[perm[i]];
       if (mapped >= 0) {
         perm_[perm_idx] = mapped;
-        is_sequential &= (mapped == perm_idx);
+        is_seq_perm_ &= (mapped == perm_idx);
         perm_idx += 1;
       }
     }
-    perm_.resize(valid_dim_idx);
-    src_dims_.resize(valid_dim_idx);
-    rank_ = is_sequential ? 1 : valid_dim_idx;
+    rank_ = is_seq_perm_ ? 1 : valid_dim_idx;
   }
 };
 
@@ -190,6 +195,7 @@ struct PermTypeClassifier {
     if (rank == 1) {
       type_ = PermuteType::kCopy;
     } else {
+      constexpr int64_t dim_limitation = 65536;
       const int dst_vec_size = phi::GetVectorizedSize<T>(dst);
 
       // While the last dim is fixed, there is chance for vectorized IO.
@@ -203,25 +209,39 @@ struct PermTypeClassifier {
       // Permute at last 2 dims, namely transpose.
       if ((rank == 2 && perm[1] == 0 && perm[0] == 1) ||
           (rank == 3 && perm[2] == 1 && perm[1] == 2)) {
-        type_ = PermuteType::kGeneralTranspose;
-        num_rows_tile_ = GETTILESIZE(dims[rank - 2], kTileSize);
-
-        int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
-        int tile_size = (rank == 2 ? 1 : dims[0]) * num_rows_tile_ *
-                        GETTILESIZE(dims[last_idx], kTileSize);
-        vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
+        int64_t channel = rank == 2 ? 1 : dims[0];
+        // Currently, transpose kernel cannot cover the case that channel
+        // dimension is more than 65536 which is the limitation of dim3 setting.
+        // This special case will be covered by extended transpose kernel later.
+        if (channel < dim_limitation) {
+          type_ = PermuteType::kGeneralTranspose;
+          num_rows_tile_ = GETTILESIZE(dims[rank - 2], kTileSize);
+          int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
+          int tile_size =
+              channel * num_rows_tile_ * GETTILESIZE(dims[last_idx], kTileSize);
+          vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
+        } else {
+          type_ = PermuteType::kGeneralPermute;
+        }
         return;
       }
 
       // Permute at first dim and third dim.
       if (rank == 3 && perm[2] == 0 && perm[1] == 1) {
-        type_ = PermuteType::kSwapTranspose;
-        num_rows_tile_ = GETTILESIZE(dims[0], kTileSize);
+        // Currently, transpose kernel cannot cover the case that channel
+        // dimension is more than 65536 which is the limitation of dim3 setting.
+        // This special case will be covered by extended transpose kernel later.
+        if (dims[1] < dim_limitation) {
+          type_ = PermuteType::kSwapTranspose;
+          num_rows_tile_ = GETTILESIZE(dims[0], kTileSize);
 
-        int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
-        int tile_size =
-            dims[1] * num_rows_tile_ * GETTILESIZE(dims[2], kTileSize);
-        vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
+          int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
+          int tile_size =
+              dims[1] * num_rows_tile_ * GETTILESIZE(dims[2], kTileSize);
+          vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
+        } else {
+          type_ = PermuteType::kGeneralPermute;
+        }
         return;
       }
       vec_size_ = dst_vec_size;
