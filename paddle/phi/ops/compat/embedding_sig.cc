@@ -62,7 +62,7 @@ PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad, embedding_sparse_grad);
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad,
                              sparse_weight_embedding_grad);
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad,
-                             sparse_weight_embedding_grad);
+                             sparse_weight_embedding_sparse_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2, phi::EmbeddingOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2_grad,

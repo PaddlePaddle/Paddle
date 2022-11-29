@@ -223,21 +223,22 @@ struct ArgumentMappingFnRegistrar {
   }
 };
 
-#define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
-      PD_REGISTER_base_kernel_name_ns_check_##op_type,                         \
-      "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
-  static const ::phi::BaseKernelNameRegistrar                                  \
-      __registrar_base_kernel_name_for_##op_type(#op_type, #base_kernel_name); \
-  int TouchBaseKernelNameSymbol_##op_type() { return 0; }
+#define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)               \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      PD_REGISTER_base_kernel_name_ns_check_##base_kernel_name,               \
+      "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");    \
+  static const ::phi::BaseKernelNameRegistrar                                 \
+      __registrar_base_kernel_name_for_##base_kernel_name(#op_type,           \
+                                                          #base_kernel_name); \
+  int TouchBaseKernelNameSymbol_##base_kernel_name() { return 0; }
 
-#define PD_DECLARE_BASE_KERNEL_NAME(op_type)                              \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
-      PD_DECLARE_ai_name_ns_check_##op_type,                              \
-      "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace."); \
-  extern int TouchBaseKernelNameSymbol_##op_type();                       \
-  UNUSED static int __declare_base_kernel_name_symbol_for_##op_type =     \
-      TouchBaseKernelNameSymbol_##op_type()
+#define PD_DECLARE_BASE_KERNEL_NAME(op_type, base_kernel_name)                 \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      PD_DECLARE_ai_name_ns_check_##base_kernel_name,                          \
+      "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace.");      \
+  extern int TouchBaseKernelNameSymbol_##base_kernel_name();                   \
+  UNUSED static int __declare_base_kernel_name_symbol_for_##base_kernel_name = \
+      TouchBaseKernelNameSymbol_##base_kernel_name()
 
 #define PD_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
