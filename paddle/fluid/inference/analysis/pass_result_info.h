@@ -39,7 +39,7 @@ class PassResultInfoForRuntime {
   }
 
   template <typename T>
-  void SetInfos(int predictor_id, const std::string pass_name, T infos) {
+  void Set(int predictor_id, const std::string pass_name, T infos) {
     map[predictor_id].emplace(pass_name, infos);
   }
 
@@ -52,7 +52,7 @@ class PassResultInfoForRuntime {
             "Not find predictor_id %d and pass_name %s",
             predictor_id,
             pass_name));
-    return paddle::get<T>(map[predictor_id][pass_name]);
+    return PADDLE_GET_CONST(T, map[predictor_id][pass_name]);
   }
 
  private:

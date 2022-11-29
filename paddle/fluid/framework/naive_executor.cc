@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
-#include "paddle/phi/core/dense_tensor.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

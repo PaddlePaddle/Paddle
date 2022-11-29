@@ -326,9 +326,9 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
-  pass_res_info->SetInfos(
+  pass_res_info->Set(
       argument->parent_predictor_id(), "memory_optimize_pass", node2cluster);
-  // UpdateOpDescsByReuse(graph, node2cluster, sort_kind);
+
   return;
 }
 
