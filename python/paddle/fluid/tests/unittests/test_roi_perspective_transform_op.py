@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import unittest
+from math import floor, sqrt
+
 import numpy as np
 from math import sqrt
 from math import floor

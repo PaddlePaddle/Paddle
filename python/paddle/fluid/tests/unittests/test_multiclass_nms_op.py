@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import copy
+import unittest
+
+import numpy as np
 from op_test import OpTest
+
 import paddle
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import (
-    in_dygraph_mode,
     _non_static_mode,
+    in_dygraph_mode,
 )
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _C_ops, _legacy_C_ops
 
 
 def multiclass_nms3(

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 import unittest
 
 

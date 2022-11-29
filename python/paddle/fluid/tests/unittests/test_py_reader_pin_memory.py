@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
 
 
 def user_reader(inputs):

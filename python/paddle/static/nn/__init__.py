@@ -31,7 +31,7 @@ from ...fluid.layers import create_parameter  # noqa: F401
 from ...fluid.layers import crf_decoding  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
 from .loss import nce  # noqa: F401
-from ...fluid.layers import prelu  # noqa: F401
+from .common import prelu  # noqa: F401
 from ...fluid.layers import py_func  # noqa: F401
 from ...fluid.layers import row_conv  # noqa: F401
 from ...fluid.layers import spectral_norm  # noqa: F401
@@ -101,4 +101,5 @@ __all__ = [  # noqa
     'sequence_enumerate',
     'sequence_reverse',
     'StaticRNN',
+    'prelu',
 ]
