@@ -3974,16 +3974,6 @@ class TestBook(LayerTest):
             x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
 
-    def test_roi_perspective_transform(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[8], dtype="float32", lod_level=1
-            )
-            output = layers.roi_perspective_transform(x, rois, 7, 7, 0.6)
-            return output
-
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
