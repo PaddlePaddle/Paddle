@@ -1298,6 +1298,19 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "less_than" || op_type == "greater_than" ||
+        op_type == "logical_or" || op_type == "logical_xor" ||
+        op_type == "logical_and" || op_type == "less_equal") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        VLOG(3) << "these ops do not support static shape yet";
+        return false;
+      }
+#else
+      VLOG(3) << "these are not supported when TensorRT < 8.4";
+      return false;
+#endif
+    }
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
@@ -2360,6 +2373,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
+      "less_equal",
       "dropout",
       "fill_any_like",
       "prelu",
@@ -2490,6 +2509,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
+      "less_equal",
       "dropout",
       "fill_any_like",
       "prelu",
