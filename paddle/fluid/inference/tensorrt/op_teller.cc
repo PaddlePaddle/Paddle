@@ -414,13 +414,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (has_attrs == false) return false;
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
-      std::string layout_str =
-          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout"));
-      if (layout_str != "NCHW") {
-        VLOG(3) << "Group norm trt plugin only support NCHW layout, but got "
-                << layout_str;
-        return false;
-      }
+      // std::string layout_str =
+      //     PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout"));
+      // if (layout_str != "NCHW") {
+      //   VLOG(3) << "Group norm trt plugin only support NCHW layout, but got "
+      //           << layout_str;
+      //   return false;
+      // }
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {

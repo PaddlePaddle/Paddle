@@ -66,10 +66,12 @@ bool GroupNormPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kLINEAR));
+            (format == nvinfer1::PluginFormat::kLINEAR ||
+             format == nvinfer1::PluginFormat::kHWC));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kLINEAR));
+            (format == nvinfer1::PluginFormat::kLINEAR ||
+             format == nvinfer1::PluginFormat::kHWC));
   }
 }
 
@@ -272,11 +274,20 @@ int GroupNormPluginDynamic::enqueue(
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
-
+  auto input_format = input_desc[0].format;
+  auto data_layout = DataLayout::kNCHW;
+  if (input_format == nvinfer1::TensorFormat::kHWC) {
+    data_layout = DataLayout::kNHWC;
+  }
   const auto input_ddim = phi::make_ddim(input_shape);
-
   int C = input_shape[1];
   int image_size = input_shape[2] * input_shape[3];
+  if (data_layout == DataLayout::kNHWC) {
+    // TODO(wangbojun)
+    VLOG(1) << "@@@ config C and image_size for KNHWC";
+    int C = input_shape[3];
+    int image_size = input_shape[1] * input_shape[2];
+  }
   int batchSize = input_shape[0];
   std::vector<int64_t> batched_mean_shape = {batchSize * mean_shape_[0]};
   std::vector<int64_t> batched_variance_shape = {batchSize *
@@ -302,6 +313,7 @@ int GroupNormPluginDynamic::enqueue(
   float *variance_d = mean_d + input_shape[0] * groups_;
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
   auto input_type = input_desc[0].type;
+
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
@@ -318,7 +330,7 @@ int GroupNormPluginDynamic::enqueue(
                output,
                mean_d,
                variance_d,
-               DataLayout::kNCHW);
+               data_layout);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
@@ -336,7 +348,7 @@ int GroupNormPluginDynamic::enqueue(
                output,
                mean_d,
                variance_d,
-               DataLayout::kNCHW);
+               data_layout);
   } else {
     // input not float
     PADDLE_THROW(platform::errors::Fatal(

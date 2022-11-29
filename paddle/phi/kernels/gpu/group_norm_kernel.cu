@@ -22,6 +22,7 @@
 
 namespace phi {
 
+// for nhwc
 template <typename T, typename AccT>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int N,
