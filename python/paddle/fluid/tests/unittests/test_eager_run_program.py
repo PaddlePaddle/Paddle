@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import unittest
+
 import numpy as np
+
+import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import (
-    _test_eager_guard,
-    Variable,
-    _in_legacy_dygraph,
-)
 from paddle.fluid import core
-from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
-    _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
+    _is_enable_standalone_executor,
 )
-
-import unittest
+from paddle.fluid.framework import (
+    Variable,
+    _in_legacy_dygraph,
+    _test_eager_guard,
+)
+from paddle.fluid.layers.utils import _hash_with_id
 
 
 def _append_backward_desc(main_program, outs):

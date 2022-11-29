@@ -12,29 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import inspect
 import unittest
 
-import contextlib
 import numpy as np
 from decorator_helper import prog_scope
-import inspect
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
-import paddle.fluid.nets as nets
-from paddle.fluid.framework import Program, program_guard, default_main_program
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid import core
-from paddle.fluid.initializer import Constant
 import paddle.fluid.layers as layers
-from test_imperative_base import new_program_scope
-from paddle.fluid.dygraph import nn
-from paddle.fluid.dygraph import base
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _test_eager_guard
-from paddle.tensor import random
+import paddle.fluid.nets as nets
 import paddle.nn.functional as F
+from paddle.fluid import core
+from paddle.fluid.dygraph import base, nn, to_variable
+from paddle.fluid.framework import (
+    Program,
+    _test_eager_guard,
+    default_main_program,
+    program_guard,
+)
+from paddle.fluid.initializer import Constant
+from paddle.fluid.layers.device import get_places
+from paddle.fluid.param_attr import ParamAttr
+from paddle.tensor import random
 
 
 class LayerTest(unittest.TestCase):
@@ -1064,7 +1066,7 @@ class TestLayer(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            out = layers.prelu(
+            out = paddle.static.nn.prelu(
                 data_t, mode, param_attr=ParamAttr(initializer=Constant(1.0))
             )
             static_rlt = self.get_static_graph_result(
@@ -2482,7 +2484,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a1 = layers.data(name='a1', shape=[1], dtype='int64')
             b1 = layers.data(name='b1', shape=[1], dtype='int64')
-            cond1 = layers.less_equal(x=a1, y=b1)
+            cond1 = paddle.less_equal(x=a1, y=b1)
             static_ret1 = self.get_static_graph_result(
                 feed={"a1": value_a, "b1": value_b}, fetch_list=[cond1]
             )[0]
@@ -2490,14 +2492,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da1 = base.to_variable(value_a)
                 db1 = base.to_variable(value_b)
-                dcond1 = layers.less_equal(x=da1, y=db1)
+                dcond1 = paddle.less_equal(x=da1, y=db1)
 
                 for i in range(len(static_ret1)):
                     self.assertTrue(dcond1.numpy()[i] == static_ret1[i])
 
             da1 = base.to_variable(value_a)
             db1 = base.to_variable(value_b)
-            dcond1 = layers.less_equal(x=da1, y=db1)
+            dcond1 = paddle.less_equal(x=da1, y=db1)
 
             for i in range(len(static_ret1)):
                 self.assertTrue(dcond1.numpy()[i] == static_ret1[i])
@@ -2506,7 +2508,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a2 = layers.data(name='a2', shape=[1], dtype='int64')
             b2 = layers.data(name='b2', shape=[1], dtype='int64')
-            cond2 = layers.greater_than(x=a2, y=b2)
+            cond2 = paddle.greater_than(x=a2, y=b2)
             static_ret2 = self.get_static_graph_result(
                 feed={"a2": value_a, "b2": value_b}, fetch_list=[cond2]
             )[0]
@@ -2514,14 +2516,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da2 = base.to_variable(value_a)
                 db2 = base.to_variable(value_b)
-                dcond2 = layers.greater_than(x=da2, y=db2)
+                dcond2 = paddle.greater_than(x=da2, y=db2)
 
                 for i in range(len(static_ret2)):
                     self.assertTrue(dcond2.numpy()[i] == static_ret2[i])
 
             da2 = base.to_variable(value_a)
             db2 = base.to_variable(value_b)
-            dcond2 = layers.greater_than(x=da2, y=db2)
+            dcond2 = paddle.greater_than(x=da2, y=db2)
 
             for i in range(len(static_ret2)):
                 self.assertTrue(dcond2.numpy()[i] == static_ret2[i])
@@ -2530,7 +2532,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a3 = layers.data(name='a3', shape=[1], dtype='int64')
             b3 = layers.data(name='b3', shape=[1], dtype='int64')
-            cond3 = layers.greater_equal(x=a3, y=b3)
+            cond3 = paddle.greater_equal(x=a3, y=b3)
             static_ret3 = self.get_static_graph_result(
                 feed={"a3": value_a, "b3": value_b}, fetch_list=[cond3]
             )[0]
@@ -2538,14 +2540,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da3 = base.to_variable(value_a)
                 db3 = base.to_variable(value_b)
-                dcond3 = layers.greater_equal(x=da3, y=db3)
+                dcond3 = paddle.greater_equal(x=da3, y=db3)
 
                 for i in range(len(static_ret3)):
                     self.assertTrue(dcond3.numpy()[i] == static_ret3[i])
 
             da3 = base.to_variable(value_a)
             db3 = base.to_variable(value_b)
-            dcond3 = layers.greater_equal(x=da3, y=db3)
+            dcond3 = paddle.greater_equal(x=da3, y=db3)
 
             for i in range(len(static_ret3)):
                 self.assertTrue(dcond3.numpy()[i] == static_ret3[i])
@@ -2554,7 +2556,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a4 = layers.data(name='a4', shape=[1], dtype='int64')
             b4 = layers.data(name='b4', shape=[1], dtype='int64')
-            cond4 = layers.equal(x=a4, y=b4)
+            cond4 = paddle.equal(x=a4, y=b4)
             static_ret4 = self.get_static_graph_result(
                 feed={"a4": value_a, "b4": value_b}, fetch_list=[cond4]
             )[0]
@@ -2562,14 +2564,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da4 = base.to_variable(value_a)
                 db4 = base.to_variable(value_b)
-                dcond4 = layers.equal(x=da4, y=db4)
+                dcond4 = paddle.equal(x=da4, y=db4)
 
                 for i in range(len(static_ret4)):
                     self.assertTrue(dcond4.numpy()[i] == static_ret4[i])
 
             da4 = base.to_variable(value_a)
             db4 = base.to_variable(value_b)
-            dcond4 = layers.equal(x=da4, y=db4)
+            dcond4 = paddle.equal(x=da4, y=db4)
 
             for i in range(len(static_ret4)):
                 self.assertTrue(dcond4.numpy()[i] == static_ret4[i])
@@ -2578,7 +2580,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a5 = layers.data(name='a5', shape=[1], dtype='int64')
             b5 = layers.data(name='b5', shape=[1], dtype='int64')
-            cond5 = layers.equal(x=a5, y=b5)
+            cond5 = paddle.equal(x=a5, y=b5)
             static_ret5 = self.get_static_graph_result(
                 feed={"a5": value_a, "b5": value_b}, fetch_list=[cond5]
             )[0]
@@ -2586,14 +2588,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da5 = base.to_variable(value_a)
                 db5 = base.to_variable(value_b)
-                dcond5 = layers.equal(x=da5, y=db5)
+                dcond5 = paddle.equal(x=da5, y=db5)
 
                 for i in range(len(static_ret5)):
                     self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
 
             da5 = base.to_variable(value_a)
             db5 = base.to_variable(value_b)
-            dcond5 = layers.equal(x=da5, y=db5)
+            dcond5 = paddle.equal(x=da5, y=db5)
 
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
@@ -2692,7 +2694,7 @@ class TestLayer(LayerTest):
 
             pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
             pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+            pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -2715,7 +2717,7 @@ class TestLayer(LayerTest):
 
                 pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
                 pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-                pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+                pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
                 out_1 = layers.case(
                     pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -2732,7 +2734,7 @@ class TestLayer(LayerTest):
 
             pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
             pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+            pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -2916,7 +2918,6 @@ class TestBook(LayerTest):
             {
                 "make_gaussian_random",
                 "make_kldiv_loss",
-                "make_prelu",
                 "make_sampling_id",
                 "make_uniform_random_batch_size_like",
             }
@@ -3480,22 +3481,6 @@ class TestBook(LayerTest):
                 name="shape",
             )
             out = tmp_pad(input)
-            return out
-
-    def make_prelu(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[5, 200, 100, 100], dtype="float32"
-            )
-            mode = 'channel'
-            out = layers.prelu(
-                input,
-                mode,
-                param_attr=ParamAttr(initializer=Constant(1.0)),
-                name='prelu',
-            )
             return out
 
     def make_mish(self):

@@ -15,19 +15,19 @@
 import os
 import tempfile
 import time
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.initializer import MSRA
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
-from paddle.jit.api import declarative
-from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
 import unittest
 
+import numpy as np
 from predictor_utils import PredictorTools
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.initializer import MSRA
+from paddle.fluid.param_attr import ParamAttr
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -326,7 +326,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
         y = self._bottleneck_conv(y, if_act=True)
         y = self._linear_conv(y, if_act=False)
         if ifshortcut:
-            y = fluid.layers.elementwise_add(inputs, y)
+            y = paddle.add(inputs, y)
         return y
 
 

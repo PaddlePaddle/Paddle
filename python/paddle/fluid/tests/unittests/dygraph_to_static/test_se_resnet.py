@@ -14,21 +14,21 @@
 
 import logging
 import math
-import time
-import unittest
 import os
 import tempfile
+import time
+import unittest
+
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
-from paddle.jit.api import declarative
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-from predictor_utils import PredictorTools
+from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -215,7 +215,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+        y = paddle.nn.functional.relu(paddle.add(x=short, y=scale))
         return y
 
 

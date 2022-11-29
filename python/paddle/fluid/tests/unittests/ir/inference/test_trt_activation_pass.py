@@ -204,17 +204,17 @@ class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
 
 class TensorRTSubgraphPassPreluAllTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluChannelTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='channel')
+        return paddle.static.nn.prelu(x, mode='channel')
 
 
 class TensorRTSubgraphPassPreluElementTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='element')
+        return paddle.static.nn.prelu(x, mode='element')
 
 
 class TensorRTSubgraphPassPreluDynamicTest(TensorRTSubgraphPassActivationTest):
@@ -233,7 +233,7 @@ class TensorRTSubgraphPassPreluDynamicTest(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16Test(TensorRTSubgraphPassActivationTest):
@@ -244,7 +244,7 @@ class TensorRTSubgraphPassPreluFp16Test(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16SerializeTest(
@@ -257,7 +257,7 @@ class TensorRTSubgraphPassPreluFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16DynamicTest(
@@ -278,7 +278,7 @@ class TensorRTSubgraphPassPreluFp16DynamicTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16DynamicSerializeTest(
@@ -299,7 +299,7 @@ class TensorRTSubgraphPassPreluFp16DynamicSerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassGeluTest(TensorRTSubgraphPassActivationTest):

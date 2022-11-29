@@ -14,8 +14,10 @@
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 from paddle.fluid.dygraph import (
     Embedding,
     Layer,
@@ -23,10 +25,8 @@ from paddle.fluid.dygraph import (
     Linear,
     to_variable,
 )
-from paddle.jit.api import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
-import paddle
-import paddle.nn.functional as F
+from paddle.jit.api import dygraph_to_static_func
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -756,13 +756,12 @@ class Transformer(Layer):
 
         def mask_probs(probs, finished, noend_mask_tensor):
             finished = layers.cast(finished, dtype=probs.dtype)
-            probs = layers.elementwise_mul(
+            probs = paddle.multiply(
                 paddle.expand(
                     layers.unsqueeze(finished, [2]),
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
-                axis=-1,
             ) - layers.elementwise_mul(probs, (finished - 1), axis=0)
             return probs
 
@@ -871,7 +870,7 @@ class Transformer(Layer):
             log_probs = gather(log_probs, topk_indices, batch_pos)
             finished = gather(finished, beam_indices, batch_pos)
             finished = paddle.logical_or(
-                finished, layers.equal(token_indices, end_token_tensor)
+                finished, paddle.equal(token_indices, end_token_tensor)
             )
             trg_word = paddle.reshape(token_indices, [-1, 1])
 

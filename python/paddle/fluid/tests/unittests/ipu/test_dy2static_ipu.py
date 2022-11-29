@@ -14,16 +14,15 @@
 
 import tempfile
 import unittest
+from functools import partial
 
 import numpy as np
+
 import paddle
-from paddle.jit.dy2static.program_translator import (
-    ProgramCache,
-)
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
 from paddle.jit import to_static
+from paddle.jit.dy2static.program_translator import ProgramCache
 from paddle.optimizer.lr import LRScheduler
-from functools import partial
 
 
 class SimpleLayer(paddle.nn.Layer):
