@@ -136,10 +136,11 @@ class BaseTransform:
 
     calling logic:
 
-        if keys is None:
-            _get_params -> _apply_image()
-        else:
-            _get_params -> _apply_*() for * in keys
+        ..code-block:: test
+            if keys is None:
+                _get_params -> _apply_image()
+            else:
+                _get_params -> _apply_*() for * in keys
 
     If you want to implement a self-defined transform method for image,
     rewrite _apply_* method in subclass.
@@ -153,14 +154,11 @@ class BaseTransform:
 
             Current available strings & data type are describe below:
 
-            - "image": input image, with shape of (H, W, C)
-            - "coords": coordinates, with shape of (N, 2)
-            - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,
-
-                       the 1st "xy" represents top left point of a box,
-                       the 2nd "xy" represents right bottom point.
-
-            - "mask": map used for segmentation, with shape of (H, W, 1)
+                - "image": input image, with shape of (H, W, C)
+                - "coords": coordinates, with shape of (N, 2)
+                - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,the 1st "xy" represents
+                top left point of a box,the 2nd "xy" represents right bottom point.
+                - "mask": map used for segmentation, with shape of (H, W, 1)
 
             You can also customize your data types only if you implement the corresponding
             _apply_*() methods, otherwise ``NotImplementedError`` will be raised.
@@ -433,9 +431,9 @@ class RandomResizedCrop(BaseTransform):
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
-        scale (list|tuple): Scale range of the cropped image before resizing, relatively to the origin
-            image. Default: (0.08, 1.0)
-        ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
+        scale (list|tuple, optional): Scale range of the cropped image before resizing, relatively to the origin
+            image. Default: (0.08, 1.0).
+        ratio (list|tuple, optional): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'. when use pil backend,
             support method are as following:
             - "nearest": Image.NEAREST,
@@ -778,7 +776,7 @@ class BrightnessTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the brightness. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -821,7 +819,7 @@ class ContrastTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the contrast. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -866,7 +864,7 @@ class SaturationTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the saturation. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -909,7 +907,7 @@ class HueTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the hue. Can be any number
-            between 0 and 0.5, 0 gives the original image
+            between 0 and 0.5, 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -953,14 +951,14 @@ class ColorJitter(BaseTransform):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
-        brightness (float): How much to jitter brightness.
-            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers.
-        contrast (float): How much to jitter contrast.
-            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers.
-        saturation (float): How much to jitter saturation.
-            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers.
-        hue (float): How much to jitter hue.
-            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
+        brightness (float, optional): How much to jitter brightness.
+            Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers. Default: 0.
+        contrast (float, optional): How much to jitter contrast.
+            Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers. Default: 0.
+        saturation (float, optional): How much to jitter saturation.
+            Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers. Default: 0.
+        hue (float, optional): How much to jitter hue.
+            Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5. Default: 0.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -1665,7 +1663,7 @@ class Grayscale(BaseTransform):
     """Converts image to grayscale.
 
     Args:
-        num_output_channels (int): (1 or 3) number of channels desired for output image
+        num_output_channels (int, optional): (1 or 3) number of channels desired for output image. Default: 1.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
