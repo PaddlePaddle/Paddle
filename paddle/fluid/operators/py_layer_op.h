@@ -18,6 +18,7 @@
 #include <functional>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/python_headers.h"
 
@@ -54,7 +55,7 @@ class PyLayerOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto data_type = paddle::framework::proto::VarType::Type::VarType_Type_FP32;
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 

@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import six
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -33,13 +34,13 @@ class TestSequenceUnpadOp(OpTest):
         x = np.random.random(self.x_shape).astype(self.dtype)
         out_lod = [self.length]
 
-        out = x[0, 0:self.length[0]]
-        for i in six.moves.xrange(1, x.shape[0]):
-            out = np.append(out, x[i, 0:self.length[i]], axis=0)
+        out = x[0, 0 : self.length[0]]
+        for i in range(1, x.shape[0]):
+            out = np.append(out, x[i, 0 : self.length[i]], axis=0)
 
-        out_shape = (sum(self.length), )
+        out_shape = (sum(self.length),)
         if len(self.x_shape) == 2:
-            out_shape = out_shape + (1, )
+            out_shape = out_shape + (1,)
         else:
             out_shape = out_shape + self.x_shape[2:]
 
@@ -79,7 +80,7 @@ class TestSequenceUnpadOp4(TestSequenceUnpadOp):
         self.dtype = "float64"
 
 
-class TestSequenceUnpadOp4(TestSequenceUnpadOp):
+class TestSequenceUnpadOp5(TestSequenceUnpadOp):
     def init(self):
         self.length = [0, 4, 3, 0]
         self.x_shape = (4, 5, 3, 3, 6)

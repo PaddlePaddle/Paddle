@@ -13,25 +13,25 @@
 # limitations under the License.
 
 from .common import fc  # noqa: F401
+from .common import instance_norm  # noqa: F401
+from .common import data_norm  # noqa: F401
+from .common import group_norm  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
+from .common import conv3d  # noqa: F401
+from .common import conv2d_transpose  # noqa: F401
+from .common import conv3d_transpose  # noqa: F401
 
 from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
 from ...fluid.layers import case  # noqa: F401
 from ...fluid.layers import cond  # noqa: F401
 from ...fluid.layers import conv2d  # noqa: F401
-from ...fluid.layers import conv2d_transpose  # noqa: F401
-from ...fluid.layers import conv3d  # noqa: F401
-from ...fluid.layers import conv3d_transpose  # noqa: F401
 from ...fluid.layers import create_parameter  # noqa: F401
 from ...fluid.layers import crf_decoding  # noqa: F401
-from ...fluid.layers import data_norm  # noqa: F401
-from ...fluid.layers import group_norm  # noqa: F401
-from ...fluid.layers import instance_norm  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
 from ...fluid.layers import multi_box_head  # noqa: F401
-from ...fluid.layers import nce  # noqa: F401
-from ...fluid.layers import prelu  # noqa: F401
+from .loss import nce  # noqa: F401
+from .common import prelu  # noqa: F401
 from ...fluid.layers import py_func  # noqa: F401
 from ...fluid.layers import row_conv  # noqa: F401
 from ...fluid.layers import spectral_norm  # noqa: F401
@@ -40,6 +40,8 @@ from ...fluid.layers import while_loop  # noqa: F401
 
 from ...fluid.input import embedding  # noqa: F401
 from ...fluid.contrib.layers import sparse_embedding  # noqa: F401
+from ...fluid.layers import continuous_value_model  # noqa: F401
+from ...fluid.layers import StaticRNN  # noqa: F401
 
 from ...fluid.layers.sequence_lod import sequence_conv  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_softmax  # noqa: F401
@@ -57,7 +59,7 @@ from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
 
-__all__ = [     #noqa
+__all__ = [  # noqa
     'fc',
     'batch_norm',
     'embedding',
@@ -68,7 +70,6 @@ __all__ = [     #noqa
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
-    'create_parameter',
     'crf_decoding',
     'data_norm',
     'deform_conv2d',
@@ -77,7 +78,6 @@ __all__ = [     #noqa
     'layer_norm',
     'multi_box_head',
     'nce',
-    'prelu',
     'py_func',
     'row_conv',
     'spectral_norm',
@@ -99,4 +99,6 @@ __all__ = [     #noqa
     'sequence_scatter',
     'sequence_enumerate',
     'sequence_reverse',
+    'StaticRNN',
+    'prelu',
 ]

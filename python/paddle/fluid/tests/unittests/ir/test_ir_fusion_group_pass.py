@@ -16,9 +16,11 @@ import unittest
 
 import numpy as np
 from pass_test import PassTest
+
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 
 
 class FusionGroupPassTest(PassTest):
@@ -26,8 +28,8 @@ class FusionGroupPassTest(PassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 2)
             self.feed_vars.append(
-                fluid.data(
-                    name="data2", shape=[128, 128], dtype=dtype))
+                fluid.data(name="data2", shape=[128, 128], dtype=dtype)
+            )
 
             # subgraph with only 1 op node
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
@@ -85,9 +87,14 @@ class FusionGroupPassComplicatedTest(FusionGroupPassTest):
             one = layers.fill_constant(shape=[1], dtype=dtype, value=1.0)
             tmp_0 = one * self.feed_vars[0]
             # subgraph with 9 op nodes
-            tmp_1 = tmp_0 * layers.sigmoid(self.feed_vars[1]) + layers.sigmoid(
-                self.feed_vars[2]) * layers.tanh(self.feed_vars[3])
-            tmp_2 = layers.tanh(tmp_1) + layers.sigmoid(self.feed_vars[4])
+            tmp_1 = tmp_0 * paddle.nn.functional.sigmoid(
+                self.feed_vars[1]
+            ) + paddle.nn.functional.sigmoid(self.feed_vars[2]) * paddle.tanh(
+                self.feed_vars[3]
+            )
+            tmp_2 = paddle.tanh(tmp_1) + paddle.nn.functional.sigmoid(
+                self.feed_vars[4]
+            )
 
         self.append_gradients(tmp_2)
 
@@ -100,8 +107,8 @@ class FusionGroupPassInplaceTest(FusionGroupPassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
             self.feed_vars.append(
-                fluid.data(
-                    name="data3", shape=[128, 32], dtype=dtype))
+                fluid.data(name="data3", shape=[128, 32], dtype=dtype)
+            )
 
             # subgraph with 3 op node
             tmp_0 = self.feed_vars[0] - self.feed_vars[1]
@@ -126,8 +133,8 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 2)
             self.feed_vars.append(
-                fluid.data(
-                    name="data2", shape=[128, 128], dtype=dtype))
+                fluid.data(name="data2", shape=[128, 128], dtype=dtype)
+            )
 
             # subgraph with 2 op nodes
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
@@ -154,20 +161,21 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
             self.feed_vars.append(
-                fluid.data(
-                    name="data3", shape=[128, 128], dtype=dtype))
+                fluid.data(name="data3", shape=[128, 128], dtype=dtype)
+            )
 
             # subgraph with 2 op nodes
             tmp_0 = layers.sum(
-                [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]])
-            tmp_1 = layers.sqrt(tmp_0)
+                [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]]
+            )
+            tmp_1 = paddle.sqrt(tmp_0)
             tmp_2 = layers.mul(tmp_0, self.feed_vars[3])
             # subgraph with 2 op nodes
-            tmp_3 = layers.square(layers.sum([tmp_1, tmp_2]))
+            tmp_3 = paddle.square(layers.sum([tmp_1, tmp_2]))
 
         self.append_gradients(tmp_3)
 
-        self.num_fused_ops = 4
+        self.num_fused_ops = 3
         self.fetch_list = [tmp_3, self.grad(tmp_0)]
 
 
@@ -199,8 +207,9 @@ class FusionGroupPassFillConstantTest(FusionGroupPassTest):
 
             tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
             tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
-            tmp_2 = layers.scale(
-                tmp_1, scale=3.0, bias=1.0, bias_after_scale=True)
+            tmp_2 = paddle.scale(
+                tmp_1, scale=3.0, bias=1.0, bias_after_scale=True
+            )
             tmp_3 = layers.elementwise_mul(tmp_2, tmp_0)
 
         self.append_gradients(tmp_3)

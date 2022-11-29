@@ -29,7 +29,7 @@ __global__ void DummyKernel(int *a) { a[0] = 0; }
 
 static void ForEachDevice(std::function<void(int)> func) {
   auto original_device = platform::GetCurrentDeviceId();
-  int count = platform::GetCUDADeviceCount();
+  int count = platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     platform::SetDeviceId(i);
     func(i);
@@ -43,13 +43,13 @@ void DummyKernelAndEvent() {
     ForEachDevice([](int d) {
       platform::SetDeviceId(d);
       hipStream_t stream;
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
       Mark("_cuda_startup_");
       int *ptr;
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&ptr, sizeof(int)));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&ptr, sizeof(int)));
       hipLaunchKernelGGL(DummyKernel, dim3(1), dim3(1), 0, stream, ptr);
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipFree(ptr));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipFree(ptr));
     });
   }
 #else
@@ -57,13 +57,13 @@ void DummyKernelAndEvent() {
     ForEachDevice([](int d) {
       platform::SetDeviceId(d);
       cudaStream_t stream;
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
       Mark("_cuda_startup_");
       int *ptr;
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&ptr, sizeof(int)));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&ptr, sizeof(int)));
       DummyKernel<<<1, 1, 0, stream>>>(ptr);
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaFree(ptr));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(ptr));
     });
   }
 #endif

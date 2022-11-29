@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
@@ -26,10 +26,11 @@ class PadOpTRTTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[1, 3, 128, 128], dtype="float32")
-            pad_out = fluid.layers.pad(x=data,
-                                       paddings=[0, 0, 0, 0, 0, 1, 1, 2],
-                                       pad_value=0.0)
+                name="data", shape=[1, 3, 128, 128], dtype="float32"
+            )
+            pad_out = fluid.layers.pad(
+                x=data, paddings=[0, 0, 0, 0, 0, 1, 1, 2], pad_value=0.0
+            )
             out = fluid.layers.batch_norm(pad_out, is_test=True)
 
         self.feeds = {
@@ -37,7 +38,8 @@ class PadOpTRTTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = PadOpTRTTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):

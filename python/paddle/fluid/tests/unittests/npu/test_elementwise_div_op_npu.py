@@ -12,22 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.core import ops
 
 paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseDiv(OpTest):
     def setUp(self):
         self.set_npu()
@@ -42,7 +40,7 @@ class TestElementwiseDiv(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(y),
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -54,30 +52,31 @@ class TestElementwiseDiv(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X', 'Y'],
+            self.place,
+            ['X', 'Y'],
             'Out',
             max_relative_error=0.007,
-            check_dygraph=False)
+        )
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'],
+            self.place,
+            ['Y'],
             'Out',
             max_relative_error=0.007,
             no_grad_set=set("X"),
-            check_dygraph=False)
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set("Y"), check_dygraph=False)
+            self.place, ['X'], 'Out', no_grad_set=set("Y")
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseDivFp16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -92,7 +91,7 @@ class TestElementwiseDivFp16(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(y),
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -105,11 +104,9 @@ class TestElementwiseDivFp16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseDivNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -130,12 +127,13 @@ class TestElementwiseDivNet(unittest.TestCase):
             c = paddle.static.data(name="c", shape=[32, 32], dtype='float32')
             d = paddle.static.data(name="d", shape=[32, 32], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
             f.stop_gradient = True
-            g = fluid.layers.elementwise_div(e, f)
+            g = paddle.divide(e, f)
 
             fc_1 = fluid.layers.fc(input=g, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
@@ -156,18 +154,23 @@ class TestElementwiseDivNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "c": c_np,
-                                             "d": d_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={
+                    "a": a_np,
+                    "b": b_np,
+                    "c": c_np,
+                    "d": d_np,
+                    "label": label_np,
+                },
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -175,8 +178,33 @@ class TestElementwiseDivNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
+
+
+class TestFloatStatus(unittest.TestCase):
+    def test_overflow(self):
+        paddle.disable_static()
+        paddle.set_device('npu')
+
+        flag = paddle.zeros([8])
+        ops.clear_float_status(flag, flag)
+        self.assertEqual(flag.numpy().sum(), 0.0)
+
+        x = paddle.to_tensor([12.564], stop_gradient=False)
+        y = paddle.to_tensor([2.0], stop_gradient=False)
+        z = x / y
+        out = 32768.0 * z
+
+        ops.get_float_status(flag, flag)
+        self.assertEqual(flag.numpy().sum(), 0.0)
+
+        out.sum().backward()
+
+        ops.get_float_status(flag, flag)
+        self.assertEqual(flag.numpy().sum(), 0.0)
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

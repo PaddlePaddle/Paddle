@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
+from functools import partial
 
 import numpy as np
-import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
-from functools import partial
 import paddle.fluid.optimizer as optimizer
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestAPICase(unittest.TestCase):
@@ -47,15 +47,18 @@ class TestAPICase(unittest.TestCase):
 
             # call fn_1
             out_0 = layers.case(
-                pred_fn_pairs=[(pred_1, fn_1), (pred_1, fn_2)], default=fn_3)
+                pred_fn_pairs=[(pred_1, fn_1), (pred_1, fn_2)], default=fn_3
+            )
 
             # call fn_2
             out_1 = layers.case(
-                pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3)
+                pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
+            )
 
             # call default fn_3
             out_2 = layers.case(
-                pred_fn_pairs=((pred_2, fn_1), (pred_2, fn_2)), default=fn_3)
+                pred_fn_pairs=((pred_2, fn_1), (pred_2, fn_2)), default=fn_3
+            )
 
             # no default, call fn_2
             out_3 = layers.case(pred_fn_pairs=[(pred_1, fn_2)])
@@ -63,34 +66,38 @@ class TestAPICase(unittest.TestCase):
             # no default, call fn_2. but pred_2 is false
             out_4 = layers.case(pred_fn_pairs=[(pred_2, fn_2)])
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             exe = fluid.Executor(place)
 
-            res = exe.run(main_program,
-                          fetch_list=[out_0, out_1, out_2, out_3, out_4])
+            res = exe.run(
+                main_program, fetch_list=[out_0, out_1, out_2, out_3, out_4]
+            )
 
-            self.assertTrue(np.allclose(res[0], 1))
-            self.assertTrue(np.allclose(res[1], 2))
-            self.assertTrue(np.allclose(res[2], 3))
-            self.assertTrue(np.allclose(res[3], 2))
-            self.assertTrue(np.allclose(res[4], 2))
+            np.testing.assert_allclose(res[0], 1, rtol=1e-05)
+            np.testing.assert_allclose(res[1], 2, rtol=1e-05)
+            np.testing.assert_allclose(res[2], 3, rtol=1e-05)
+            np.testing.assert_allclose(res[3], 2, rtol=1e-05)
+            np.testing.assert_allclose(res[4], 2, rtol=1e-05)
 
     def test_return_var_tuple(self):
         def fn_1():
             return layers.fill_constant(
-                shape=[1, 2], dtype='int32', value=1), layers.fill_constant(
-                    shape=[2, 3], dtype='float32', value=2)
+                shape=[1, 2], dtype='int32', value=1
+            ), layers.fill_constant(shape=[2, 3], dtype='float32', value=2)
 
         def fn_2():
             return layers.fill_constant(
-                shape=[3, 4], dtype='int32', value=3), layers.fill_constant(
-                    shape=[4, 5], dtype='float32', value=4)
+                shape=[3, 4], dtype='int32', value=3
+            ), layers.fill_constant(shape=[4, 5], dtype='float32', value=4)
 
         def fn_3():
             return layers.fill_constant(
-                shape=[5], dtype='int32', value=5), layers.fill_constant(
-                    shape=[5, 6], dtype='float32', value=6)
+                shape=[5], dtype='int32', value=5
+            ), layers.fill_constant(shape=[5, 6], dtype='float32', value=6)
 
         main_program = Program()
         startup_program = Program()
@@ -99,21 +106,25 @@ class TestAPICase(unittest.TestCase):
             y = layers.fill_constant(shape=[1], dtype='float32', value=1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=3)
 
-            pred_1 = layers.equal(x, y)  # true
-            pred_2 = layers.equal(x, z)  # false
+            pred_1 = paddle.equal(x, y)  # true
+            pred_2 = paddle.equal(x, z)  # false
 
             out = layers.case(((pred_1, fn_1), (pred_2, fn_2)), fn_3)
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
 
-            self.assertTrue(
-                np.allclose(np.asarray(ret[0]), np.full((1, 2), 1, np.int32)))
-            self.assertTrue(
-                np.allclose(
-                    np.asarray(ret[1]), np.full((2, 3), 2, np.float32)))
+            np.testing.assert_allclose(
+                np.asarray(ret[0]), np.full((1, 2), 1, np.int32), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                np.asarray(ret[1]), np.full((2, 3), 2, np.float32), rtol=1e-05
+            )
 
 
 class TestAPICase_Nested(unittest.TestCase):
@@ -121,29 +132,66 @@ class TestAPICase_Nested(unittest.TestCase):
         def fn_1(x=1):
             var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
             var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
-            out = layers.case(pred_fn_pairs=[(var_5 < var_6, partial(
-                layers.fill_constant, shape=[1], dtype='int32', value=x)),
-                                             (var_5 == var_6, partial(
-                                                 layers.fill_constant,
-                                                 shape=[2],
-                                                 dtype='int32',
-                                                 value=x))])
+            out = layers.case(
+                pred_fn_pairs=[
+                    (
+                        var_5 < var_6,
+                        partial(
+                            layers.fill_constant,
+                            shape=[1],
+                            dtype='int32',
+                            value=x,
+                        ),
+                    ),
+                    (
+                        var_5 == var_6,
+                        partial(
+                            layers.fill_constant,
+                            shape=[2],
+                            dtype='int32',
+                            value=x,
+                        ),
+                    ),
+                ]
+            )
             return out
 
         def fn_2(x=2):
             var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
             var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
-            out = layers.case(pred_fn_pairs=[(var_5 < var_6, partial(
-                fn_1, x=x)), (var_5 == var_6, partial(
-                    layers.fill_constant, shape=[2], dtype='int32', value=x))])
+            out = layers.case(
+                pred_fn_pairs=[
+                    (var_5 < var_6, partial(fn_1, x=x)),
+                    (
+                        var_5 == var_6,
+                        partial(
+                            layers.fill_constant,
+                            shape=[2],
+                            dtype='int32',
+                            value=x,
+                        ),
+                    ),
+                ]
+            )
             return out
 
         def fn_3():
             var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
             var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
-            out = layers.case(pred_fn_pairs=[(var_5 < var_6, partial(
-                fn_2, x=3)), (var_5 == var_6, partial(
-                    layers.fill_constant, shape=[2], dtype='int32', value=7))])
+            out = layers.case(
+                pred_fn_pairs=[
+                    (var_5 < var_6, partial(fn_2, x=3)),
+                    (
+                        var_5 == var_6,
+                        partial(
+                            layers.fill_constant,
+                            shape=[2],
+                            dtype='int32',
+                            value=7,
+                        ),
+                    ),
+                ]
+            )
             return out
 
         main_program = Program()
@@ -156,23 +204,29 @@ class TestAPICase_Nested(unittest.TestCase):
             pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
 
             out_1 = layers.case(
-                pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
+                pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
+            )
 
             out_2 = layers.case(
-                pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3)
+                pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
+            )
 
             out_3 = layers.case(
-                pred_fn_pairs=[(x == y, fn_1), (x == z, fn_2)], default=fn_3)
+                pred_fn_pairs=[(x == y, fn_1), (x == z, fn_2)], default=fn_3
+            )
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             exe = fluid.Executor(place)
 
             res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
 
-            self.assertTrue(np.allclose(res[0], 1))
-            self.assertTrue(np.allclose(res[1], 2))
-            self.assertTrue(np.allclose(res[2], 3))
+            np.testing.assert_allclose(res[0], 1, rtol=1e-05)
+            np.testing.assert_allclose(res[1], 2, rtol=1e-05)
+            np.testing.assert_allclose(res[2], 3, rtol=1e-05)
 
 
 class TestAPICase_Error(unittest.TestCase):
@@ -232,9 +286,11 @@ class TestMutiTask(unittest.TestCase):
         EPOCH_NUM = 2
 
         x = fluid.data(
-            name='x', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32')
+            name='x', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
+        )
         y = fluid.data(
-            name='y', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32')
+            name='y', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
+        )
 
         switch_id = fluid.data(name='switch_id', shape=[1], dtype='int32')
 
@@ -244,12 +300,12 @@ class TestMutiTask(unittest.TestCase):
 
         def fn_1():
             sum = layers.elementwise_mul(x, y)
-            loss = layers.mean(sum, name="f_1_loss")
+            loss = paddle.mean(sum, name="f_1_loss")
             adam.minimize(loss)
 
         def fn_2():
             sum = layers.elementwise_mul(x, y)
-            loss = layers.mean(sum, name="f_2_loss")
+            loss = paddle.mean(sum, name="f_2_loss")
             adagrad.minimize(loss)
 
         layers.case(pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2)
@@ -259,16 +315,19 @@ class TestMutiTask(unittest.TestCase):
 
         for epoch in range(EPOCH_NUM):
             np.random.seed(epoch)
-            feed_image = np.random.random(
-                size=[BATCH_SIZE, INPUT_SIZE]).astype('float32')
+            feed_image = np.random.random(size=[BATCH_SIZE, INPUT_SIZE]).astype(
+                'float32'
+            )
             main_program = fluid.default_main_program()
-            out = exe.run(main_program,
-                          feed={
-                              'x': feed_image,
-                              'y': feed_image,
-                              'switch_id': np.array([epoch]).astype('int32')
-                          },
-                          fetch_list=[])
+            out = exe.run(
+                main_program,
+                feed={
+                    'x': feed_image,
+                    'y': feed_image,
+                    'switch_id': np.array([epoch]).astype('int32'),
+                },
+                fetch_list=[],
+            )
 
 
 if __name__ == '__main__':

@@ -15,8 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -24,96 +27,203 @@ namespace operators {
 enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
 
 template <typename DeviceContext, typename T>
-inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
-                         const framework::Tensor& in, framework::Tensor* out,
+inline void TransCompute(const int dim,
+                         const DeviceContext& dev_ctx,
+                         const phi::DenseTensor& in,
+                         phi::DenseTensor* out,
                          const std::vector<int>& axis) {
   switch (dim) {
+    case 0:
+      phi::Copy<DeviceContext>(dev_ctx, in, dev_ctx.GetPlace(), false, out);
+      break;
     case 1:
-      math::Transpose<DeviceContext, T, 1> trans1;
+      phi::funcs::Transpose<DeviceContext, T, 1> trans1;
       trans1(dev_ctx, in, out, axis);
       break;
     case 2:
-      math::Transpose<DeviceContext, T, 2> trans2;
+      phi::funcs::Transpose<DeviceContext, T, 2> trans2;
       trans2(dev_ctx, in, out, axis);
       break;
     case 3:
-      math::Transpose<DeviceContext, T, 3> trans3;
+      phi::funcs::Transpose<DeviceContext, T, 3> trans3;
       trans3(dev_ctx, in, out, axis);
       break;
     case 4:
-      math::Transpose<DeviceContext, T, 4> trans4;
+      phi::funcs::Transpose<DeviceContext, T, 4> trans4;
       trans4(dev_ctx, in, out, axis);
       break;
     case 5:
-      math::Transpose<DeviceContext, T, 5> trans5;
+      phi::funcs::Transpose<DeviceContext, T, 5> trans5;
       trans5(dev_ctx, in, out, axis);
       break;
     case 6:
-      math::Transpose<DeviceContext, T, 6> trans6;
+      phi::funcs::Transpose<DeviceContext, T, 6> trans6;
       trans6(dev_ctx, in, out, axis);
       break;
     default:
       // for dim >= 7 situation
-      math::TransposeNormal<DeviceContext, T> trans_normal;
+      phi::funcs::TransposeNormal<DeviceContext, T> trans_normal;
       trans_normal(dev_ctx, in, out, axis);
   }
 }
 
-template <typename DeviceContext, typename T>
-class TransposeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.InputVar("X");
-    auto* out = context.OutputVar("Out");
-
-    const framework::Tensor* x_tensor =
-        GetLoDTensorOrSelectedRowsValueFromVar(*x);
-    framework::Tensor* out_tensor =
-        GetMutableLoDTensorOrSelectedRowsValueFromVar(out);
-
-    out_tensor->mutable_data<T>(context.GetPlace());
-    if (out_tensor->numel() == 0) {
-      return;
-    }
-
-    std::vector<int> axis = context.Attr<std::vector<int>>("axis");
-    int ndims = axis.size();
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    TransCompute<DeviceContext, T>(ndims, dev_ctx, *x_tensor, out_tensor, axis);
-  }
+enum PermuteType {
+  kCopy = 1,
+  kTranspose = 2,
+  kVecPermute = 3,
+  kGeneralPermute = 4
 };
 
-template <typename DeviceContext, typename T>
-class TransposeGradKernel : public framework::OpKernel<T> {
+constexpr int kBlockRows = 16;
+constexpr int kTileSize = 32;
+
+// Simplify the input dims and permute dims if possible.
+template <typename T>
+class TranposeTypeClassifier {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* out_grad = context.InputVar(framework::GradVarName("Out"));
-    auto* x_grad = context.OutputVar(framework::GradVarName("X"));
+  TranposeTypeClassifier(const int sm_count,
+                         const size_t rank,
+                         const int64_t numel,
+                         const std::vector<int32_t>& perm,
+                         const std::vector<int64_t>& dims,
+                         const T* src,
+                         T* dst)
+      : perm_(rank), src_dims(rank) {
+    SimplifyPermAndDims(rank, dims, perm);
+    if (rank_ > 1) {
+      vec_size_ = GetPermVecSize(sm_count, src, dst);
+    }
+    perm_.resize(rank_);
+    src_dims.resize(rank_);
+    dst_dims.resize(rank_);
 
-    if (!x_grad) {
+    for (auto i = 0; i < rank_; ++i) {
+      dst_dims[i] = src_dims[perm_[i]];
+    }
+  }
+
+  int GetRank() const { return rank_; }
+  int GetVecSize() const { return vec_size_; }
+  PermuteType GetPermType() const { return type_; }
+
+  std::vector<int> GetPerm() const { return perm_; }
+  std::vector<int64_t> GetSrcDims() const { return src_dims; }
+  std::vector<int64_t> GetDstDims() const { return dst_dims; }
+
+ private:
+  int rank_{1};
+  int vec_size_{1};
+  std::vector<int> perm_;
+  std::vector<int64_t> src_dims;
+  std::vector<int64_t> dst_dims;
+  PermuteType type_{kCopy};
+
+  void SimplifyPermAndDims(const size_t rank,
+                           const std::vector<int64_t>& in_dims,
+                           const std::vector<int32_t>& perm) {
+    int64_t combined_dims[phi::DDim::kMaxRank];
+    int valid_map[phi::DDim::kMaxRank];
+
+    // Merge consecutive dims to the fist one dim and
+    // leave original dim to be 1. Example below :
+    // perm: [2, 3, 0, 1], origin_dims : [4, 8, 2, 5]
+    // new_dims: [4, 8, 2, 5] -> [32, 1, 10, 1]
+    int start_perm_idx = 0;
+    while (start_perm_idx < rank) {
+      const int start_dim_idx = perm[start_perm_idx];
+      combined_dims[start_dim_idx] = in_dims[start_dim_idx];
+      int end_perm_idx = start_perm_idx + 1;
+
+      while (end_perm_idx < rank &&
+             perm[end_perm_idx] == perm[end_perm_idx - 1] + 1) {
+        const int end_dim_idx = perm[end_perm_idx];
+        combined_dims[start_dim_idx] *= in_dims[end_dim_idx];
+        combined_dims[end_dim_idx] = 1;
+        end_perm_idx += 1;
+      }
+      start_perm_idx = end_perm_idx;
+    }
+
+    // Reorder combined dims and marked useless dim as -1.
+    // for example, if combined dims is [32, 1, 10, 1],
+    // valid_map is [0, -1, 1, -1] and generate simplified
+    // dims as [32, 10]
+    int valid_dim_idx = 0;
+    bool sequential_flag = false;
+    for (auto i = 0; i < rank; ++i) {
+      const int src_dim = combined_dims[i];
+      if (src_dim == 1) {
+        valid_map[i] = -1;
+      } else {
+        sequential_flag = true;
+        valid_map[i] = valid_dim_idx;
+        src_dims[valid_dim_idx] = src_dim;
+        valid_dim_idx += 1;
+      }
+    }
+
+    if (valid_dim_idx == 0) {
+      src_dims[0] = 1;
+      perm_[0] = 0;
       return;
-    }
-    const framework::Tensor* out_grad_tensor =
-        GetLoDTensorOrSelectedRowsValueFromVar(*out_grad);
-    framework::Tensor* x_grad_tensor =
-        GetMutableLoDTensorOrSelectedRowsValueFromVar(x_grad);
-
-    x_grad_tensor->mutable_data<T>(context.GetPlace());
-    if (x_grad_tensor->numel() == 0) {
-      return;
+    } else if (valid_dim_idx == 1) {
+      type_ = PermuteType::kCopy;
     }
 
-    std::vector<int> axis = context.Attr<std::vector<int>>("axis");
-    std::vector<int> reversed_axis(axis);
+    // Acquire simplified perm with help of combined dims
+    // and original perm, finally simplified perm is [1, 0]
+    int perm_idx = 0;
+    for (auto i = 0; i < rank; ++i) {
+      const int mapped = valid_map[perm[i]];
+      if (mapped >= 0) {
+        perm_[perm_idx] = mapped;
+        perm_idx += 1;
+      }
+    }
+    rank_ = valid_dim_idx;
+  }
 
-    for (size_t i = 0; i < axis.size(); i++) {
-      reversed_axis[axis[i]] = i;
+  int GetPermVecSize(const int sm_count, const T* src, T* dst) {
+    // For gerneal_permute kernel, there is good chance for
+    // vectorized write.
+    type_ = PermuteType::kGeneralPermute;
+    int vec_size = phi::GetVectorizedSize<T>(dst);
+
+    // While the last dim is fixed, there is good chance for
+    // both vectorized read and write.
+    if (perm_[rank_ - 1] == rank_ - 1) {
+      int tmp_size = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+      tmp_size = GetDimVesSize(tmp_size, src_dims[rank_ - 1]);
+      if (tmp_size > 1) {
+        type_ = kVecPermute;
+        vec_size = tmp_size;
+      }
     }
 
-    int ndims = axis.size();
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad_tensor,
-                                   x_grad_tensor, reversed_axis);
+    // Once only transpose at the last 2 dims, there is good
+    // chance for vectorized read.
+    if ((rank_ == 2 && perm_[1] == 0 && perm_[0] == 1) ||
+        (rank_ == 3 && perm_[2] == 1 && perm_[1] == 2)) {
+      type_ = PermuteType::kTranspose;
+      int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+      // With bytes limitation of shared_memory, the VecSize shall be
+      // restricted for the type whose byte-size is less than 8 (double).
+      vec_size =
+          sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
+    }
+    return vec_size;
+  }
+
+  // To find if highest common divisor and make it as vec_size.
+  int GetDimVesSize(const int vec_size, const size_t target_dim) {
+    int dim_vec_size = 1;
+    for (auto size = vec_size; size > 0; size /= 2) {
+      if (target_dim % size == 0) {
+        dim_vec_size = size;
+        break;
+      }
+    }
+    return dim_vec_size;
   }
 };
 

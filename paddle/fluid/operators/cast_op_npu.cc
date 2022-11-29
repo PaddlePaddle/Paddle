@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/cast_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -32,25 +32,27 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class CastNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     int dtype = ctx.Attr<int>("out_dtype");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
 
-    if (x->type() == dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) == dtype) {
       // NOTE(zhiqiu): NPU cast op may result in wrong value, so
       // add special case here.
       VLOG(4) << "cast to same dtype:" << dtype;
       out->mutable_data(place, x->type());
       framework::TensorCopy(
-          *x, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
+          *x,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          out);
       return;
     }
 
@@ -78,8 +80,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Cast", {*x}, {*out},
-                              {{"dst_type", static_cast<int32_t>(aclDtype)}});
+    const auto& runner = NpuOpRunner(
+        "Cast", {*x}, {*out}, {{"dst_type", static_cast<int32_t>(aclDtype)}});
     runner.Run(stream);
   }
 };
@@ -89,7 +91,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
+    cast,
+    ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int>,

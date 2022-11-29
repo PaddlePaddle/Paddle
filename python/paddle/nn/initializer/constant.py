@@ -22,7 +22,7 @@ class Constant(ConstantInitializer):
     """Implement the constant initializer.
 
     Args:
-        value (float32): constant value to initialize the parameter 
+        value (float32|float64, optional): constant value to initialize the parameter. Default: 0.0.
 
     Examples:
         .. code-block:: python
@@ -43,4 +43,4 @@ class Constant(ConstantInitializer):
     def __init__(self, value=0.0):
         if value is None:
             raise ValueError("value must not be none.")
-        super(Constant, self).__init__(value=value, force_cpu=False)
+        super().__init__(value=value, force_cpu=False)

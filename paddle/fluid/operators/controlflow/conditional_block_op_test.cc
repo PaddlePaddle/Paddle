@@ -21,7 +21,6 @@ limitations under the License. */
 USE_NO_KERNEL_OP(conditional_block);
 USE_NO_KERNEL_OP(conditional_block_grad);
 
-using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 using Scope = paddle::framework::Scope;
 using Variable = paddle::framework::Variable;
@@ -32,17 +31,16 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
   Scope scope;
 
   Variable* cond_var = scope.Var("condition");
-  LoDTensor* cond_tensor = cond_var->GetMutable<LoDTensor>();
-  paddle::framework::DDim cond_dims = paddle::framework::make_ddim({1});
+  phi::DenseTensor* cond_tensor = cond_var->GetMutable<phi::DenseTensor>();
+  paddle::framework::DDim cond_dims = phi::make_ddim({1});
   bool* cond_data = cond_tensor->mutable_data<bool>(cond_dims, place);
   cond_data[0] = false;
 
   Variable* input_var = scope.Var("input_lod_tensor_array");
   LoDTensorArray* input_tensors = input_var->GetMutable<LoDTensorArray>();
   for (int i = 0; i < 5; ++i) {
-    paddle::framework::DDim in_dims =
-        paddle::framework::make_ddim({i + 1, i + 2});
-    LoDTensor lod_tensor;
+    paddle::framework::DDim in_dims = phi::make_ddim({i + 1, i + 2});
+    phi::DenseTensor lod_tensor;
     float* in_data = lod_tensor.mutable_data<float>(in_dims, place);
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
       in_data[j] = static_cast<float>(j);
@@ -60,14 +58,15 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
   auto conditional_grad_op = paddle::framework::OpRegistry::CreateOp(
       "conditional_block_grad",
       {{"Input", {"input_lod_tensor_array"}}, {"Cond", {"condition"}}},
-      {{"Input@GRAD", {"input_lod_tensor_array@GRAD"}}}, attrs);
+      {{"Input@GRAD", {"input_lod_tensor_array@GRAD"}}},
+      attrs);
 
   conditional_grad_op->Run(scope, place);
 
   const LoDTensorArray& out_tensors = input_grad_var->Get<LoDTensorArray>();
   for (int i = 0; i < 5; ++i) {
     paddle::framework::DDim out_dims = out_tensors[i].dims();
-    EXPECT_EQ(paddle::framework::make_ddim({i + 1, i + 2}), out_dims);
+    EXPECT_EQ(phi::make_ddim({i + 1, i + 2}), out_dims);
     const float* out_data = out_tensors[i].data<float>();
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
       EXPECT_EQ(0, out_data[j]);

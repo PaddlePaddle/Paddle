@@ -13,11 +13,22 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
+
+#include "gflags/gflags.h"
 #include "google/protobuf/text_format.h"
+#if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/index_dataset/index_sampler.h"
+#endif
 #include "paddle/fluid/framework/data_feed_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
+
+#ifdef PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#endif
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -25,6 +36,8 @@
 #endif
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
+DECLARE_bool(graph_get_neighbor_id);
+
 namespace paddle {
 namespace framework {
 
@@ -49,6 +62,8 @@ DatasetImpl<T>::DatasetImpl() {
   parse_logkey_ = false;
   preload_thread_num_ = 0;
   global_index_ = 0;
+  shuffle_by_uid_ = false;
+  parse_uid_ = false;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -91,7 +106,7 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=500000";
-  paddle::framework::hdfs_set_command(cmd);
+  paddle::framework::dataset_hdfs_set_command(cmd);
 }
 
 template <typename T>
@@ -108,6 +123,24 @@ template <typename T>
 void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
   google::protobuf::TextFormat::ParseFromString(data_feed_desc_str,
                                                 &data_feed_desc_);
+}
+
+template <typename T>
+std::vector<std::string> DatasetImpl<T>::GetSlots() {
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  use_slots_.clear();
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
+    const auto& slot = multi_slot_desc.slots(i);
+    if (slot.type() == "uint64" || slot.type() == "uint32") {
+      use_slots_.push_back(slot.name());
+    }
+  }
+  std::cout << "dataset use slots: ";
+  for (auto s : use_slots_) {
+    std::cout << s << " | ";
+  }
+  std::cout << " end " << std::endl;
+  return use_slots_;
 }
 
 template <typename T>
@@ -143,6 +176,12 @@ void DatasetImpl<T>::SetMergeBySid(bool is_merge) {
 }
 
 template <typename T>
+void DatasetImpl<T>::SetShuffleByUid(bool enable_shuffle_uid) {
+  shuffle_by_uid_ = enable_shuffle_uid;
+  parse_uid_ = true;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetEnablePvMerge(bool enable_pv_merge) {
   enable_pv_merge_ = enable_pv_merge;
 }
@@ -159,6 +198,16 @@ void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_rclist_.ReSize(record_candidate_size);
   VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval
           << " with record candidate size: " << record_candidate_size;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetGpuGraphMode(int is_graph_mode) {
+  gpu_graph_mode_ = is_graph_mode;
+}
+
+template <typename T>
+int DatasetImpl<T>::GetGpuGraphMode() {
+  return gpu_graph_mode_;
 }
 
 template <typename T>
@@ -208,13 +257,193 @@ void DatasetImpl<T>::CreateChannel() {
 // if sent message between workers, should first call this function
 template <typename T>
 void DatasetImpl<T>::RegisterClientToClientMsgHandler() {
-  auto fleet_ptr = FleetWrapper::GetInstance();
-  VLOG(3) << "RegisterClientToClientMsgHandler";
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
+  VLOG(1) << "RegisterClientToClientMsgHandler";
   fleet_ptr->RegisterClientToClientMsgHandler(
       0, [this](int msg_type, int client_id, const std::string& msg) -> int {
         return this->ReceiveFromClient(msg_type, client_id, msg);
       });
-  VLOG(3) << "RegisterClientToClientMsgHandler done";
+  VLOG(1) << "RegisterClientToClientMsgHandler done";
+}
+static void compute_left_batch_num(const int ins_num,
+                                   const int thread_num,
+                                   std::vector<std::pair<int, int>>* offset,
+                                   const int start_pos) {
+  int cur_pos = start_pos;
+  int batch_size = ins_num / thread_num;
+  int left_num = ins_num % thread_num;
+  for (int i = 0; i < thread_num; ++i) {
+    int batch_num_size = batch_size;
+    if (i == 0) {
+      batch_num_size = batch_num_size + left_num;
+    }
+    offset->push_back(std::make_pair(cur_pos, batch_num_size));
+    cur_pos += batch_num_size;
+  }
+}
+
+static void compute_batch_num(const int64_t ins_num,
+                              const int batch_size,
+                              const int thread_num,
+                              std::vector<std::pair<int, int>>* offset) {
+  int thread_batch_num = batch_size * thread_num;
+  // less data
+  if (static_cast<int64_t>(thread_batch_num) > ins_num) {
+    compute_left_batch_num(ins_num, thread_num, offset, 0);
+    return;
+  }
+
+  int cur_pos = 0;
+  int offset_num = static_cast<int>(ins_num / thread_batch_num) * thread_num;
+  int left_ins_num = static_cast<int>(ins_num % thread_batch_num);
+  if (left_ins_num > 0 && left_ins_num < thread_num) {
+    offset_num = offset_num - thread_num;
+    left_ins_num = left_ins_num + thread_batch_num;
+    for (int i = 0; i < offset_num; ++i) {
+      offset->push_back(std::make_pair(cur_pos, batch_size));
+      cur_pos += batch_size;
+    }
+    // split data to thread avg two rounds
+    compute_left_batch_num(left_ins_num, thread_num * 2, offset, cur_pos);
+  } else {
+    for (int i = 0; i < offset_num; ++i) {
+      offset->push_back(std::make_pair(cur_pos, batch_size));
+      cur_pos += batch_size;
+    }
+    if (left_ins_num > 0) {
+      compute_left_batch_num(left_ins_num, thread_num, offset, cur_pos);
+    }
+  }
+}
+
+static int compute_thread_batch_nccl(
+    const int thr_num,
+    const int64_t total_instance_num,
+    const int minibatch_size,
+    std::vector<std::pair<int, int>>* nccl_offsets) {
+  int thread_avg_batch_num = 0;
+  if (total_instance_num < static_cast<int64_t>(thr_num)) {
+    LOG(WARNING) << "compute_thread_batch_nccl total ins num:["
+                 << total_instance_num << "], less thread num:[" << thr_num
+                 << "]";
+    return thread_avg_batch_num;
+  }
+
+  auto& offset = (*nccl_offsets);
+  // split data avg by thread num
+  compute_batch_num(total_instance_num, minibatch_size, thr_num, &offset);
+  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
+#ifdef PADDLE_WITH_GLOO
+  auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
+  if (gloo_wrapper->Size() > 1) {
+    if (!gloo_wrapper->IsInitialized()) {
+      VLOG(0) << "GLOO is not inited";
+      gloo_wrapper->Init();
+    }
+    // adjust batch num per thread for NCCL
+    std::vector<int> thread_avg_batch_num_vec(1, thread_avg_batch_num);
+    std::vector<int64_t> total_instance_num_vec(1, total_instance_num);
+    auto thread_max_batch_num_vec =
+        gloo_wrapper->AllReduce(thread_avg_batch_num_vec, "max");
+    auto sum_total_ins_num_vec =
+        gloo_wrapper->AllReduce(total_instance_num_vec, "sum");
+    int thread_max_batch_num = thread_max_batch_num_vec[0];
+    int64_t sum_total_ins_num = sum_total_ins_num_vec[0];
+    int diff_batch_num = thread_max_batch_num - thread_avg_batch_num;
+    VLOG(3) << "diff batch num: " << diff_batch_num
+            << " thread max batch num: " << thread_max_batch_num
+            << " thread avg batch num: " << thread_avg_batch_num;
+    if (diff_batch_num == 0) {
+      LOG(WARNING) << "total sum ins " << sum_total_ins_num << ", thread_num "
+                   << thr_num << ", ins num " << total_instance_num
+                   << ", batch num " << offset.size()
+                   << ", thread avg batch num " << thread_avg_batch_num;
+      return thread_avg_batch_num;
+    }
+
+    int need_ins_num = thread_max_batch_num * thr_num;
+    // data is too less
+    if ((int64_t)need_ins_num > total_instance_num) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "error instance num:[%d] less need ins num:[%d]",
+          total_instance_num,
+          need_ins_num));
+      return thread_avg_batch_num;
+    }
+
+    int need_batch_num = (diff_batch_num + 1) * thr_num;
+    int offset_split_index = static_cast<int>(offset.size() - thr_num);
+    int split_left_num = total_instance_num - offset[offset_split_index].first;
+    while (split_left_num < need_batch_num) {
+      need_batch_num += thr_num;
+      offset_split_index -= thr_num;
+      split_left_num = total_instance_num - offset[offset_split_index].first;
+    }
+    int split_start = offset[offset_split_index].first;
+    offset.resize(offset_split_index);
+    compute_left_batch_num(
+        split_left_num, need_batch_num, &offset, split_start);
+    LOG(WARNING) << "total sum ins " << sum_total_ins_num << ", thread_num "
+                 << thr_num << ", ins num " << total_instance_num
+                 << ", batch num " << offset.size() << ", thread avg batch num "
+                 << thread_avg_batch_num << ", thread max batch num "
+                 << thread_max_batch_num
+                 << ", need batch num: " << (need_batch_num / thr_num)
+                 << "split begin (" << split_start << ")" << split_start
+                 << ", num " << split_left_num;
+    thread_avg_batch_num = thread_max_batch_num;
+  } else {
+    LOG(WARNING) << "thread_num " << thr_num << ", ins num "
+                 << total_instance_num << ", batch num " << offset.size()
+                 << ", thread avg batch num " << thread_avg_batch_num;
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "dataset compute nccl batch number need compile with GLOO"));
+#endif
+  return thread_avg_batch_num;
+}
+
+void MultiSlotDataset::PrepareTrain() {
+#ifdef PADDLE_WITH_GLOO
+  if (enable_heterps_) {
+    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+        input_channel_->Size() != 0) {
+      input_channel_->ReadAll(input_records_);
+      VLOG(3) << "read from channel to records with records size: "
+              << input_records_.size();
+    }
+    VLOG(3) << "input records size: " << input_records_.size();
+    int64_t total_ins_num = input_records_.size();
+    std::vector<std::pair<int, int>> offset;
+    int default_batch_size =
+        reinterpret_cast<MultiSlotInMemoryDataFeed*>(readers_[0].get())
+            ->GetDefaultBatchSize();
+    VLOG(3) << "thread_num: " << thread_num_
+            << " memory size: " << total_ins_num
+            << " default batch_size: " << default_batch_size;
+    compute_thread_batch_nccl(
+        thread_num_, total_ins_num, default_batch_size, &offset);
+    VLOG(3) << "offset size: " << offset.size();
+    for (int i = 0; i < thread_num_; i++) {
+      reinterpret_cast<MultiSlotInMemoryDataFeed*>(readers_[i].get())
+          ->SetRecord(&input_records_[0]);
+    }
+    for (size_t i = 0; i < offset.size(); i++) {
+      reinterpret_cast<MultiSlotInMemoryDataFeed*>(
+          readers_[i % thread_num_].get())
+          ->AddBatchOffset(offset[i]);
+    }
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "dataset set heterps need compile with GLOO"));
+#endif
+  return;
 }
 
 // load data into memory, Dataset hold this memory,
@@ -225,12 +454,91 @@ void DatasetImpl<T>::LoadIntoMemory() {
   platform::Timer timeline;
   timeline.Start();
   std::vector<std::thread> load_threads;
-  for (int64_t i = 0; i < thread_num_; ++i) {
-    load_threads.push_back(std::thread(
-        &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
-  }
-  for (std::thread& t : load_threads) {
-    t.join();
+  if (gpu_graph_mode_) {
+    VLOG(0) << "in gpu_graph_mode";
+#ifdef PADDLE_WITH_HETERPS
+    graph_all_type_total_keys_.clear();
+    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+    auto node_to_id = gpu_graph_ptr->feature_to_id;
+    auto edge_to_id = gpu_graph_ptr->edge_to_id;
+    graph_all_type_total_keys_.resize(node_to_id.size());
+    int cnt = 0;
+    for (auto& iter : node_to_id) {
+      int node_idx = iter.second;
+      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+      gpu_graph_ptr->get_all_id(
+          1, node_idx, thread_num_, &gpu_graph_device_keys);
+      auto& type_total_key = graph_all_type_total_keys_[cnt];
+      type_total_key.resize(thread_num_);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(2) << "node type: " << node_idx << ", gpu_graph_device_keys[" << i
+                << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+          type_total_key[i].push_back(gpu_graph_device_keys[i][j]);
+        }
+      }
+
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->SetDeviceKeys(&type_total_key[i], node_idx);
+        readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
+      }
+      cnt++;
+    }
+
+    VLOG(2) << "begin add feature_id into gpu_graph_total_keys_ size["
+            << gpu_graph_total_keys_.size() << "]";
+    for (auto& iter : node_to_id) {
+      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+      int node_idx = iter.second;
+      gpu_graph_ptr->get_all_feature_ids(
+          1, node_idx, thread_num_, &gpu_graph_device_keys);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(2) << "begin node type: " << node_idx << ", gpu_graph_device_keys["
+                << i << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+        }
+        VLOG(2) << "end node type: " << node_idx << ", gpu_graph_device_keys["
+                << i << "] = " << gpu_graph_device_keys[i].size();
+      }
+    }
+    VLOG(2) << "end add feature_id into gpu_graph_total_keys_ size["
+            << gpu_graph_total_keys_.size() << "]";
+
+    // FIX: trick for iterate edge table
+    for (auto& iter : edge_to_id) {
+      int edge_idx = iter.second;
+      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+      gpu_graph_ptr->get_all_id(
+          0, edge_idx, thread_num_, &gpu_graph_device_keys);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(1) << "edge type: " << edge_idx << ", gpu_graph_device_keys[" << i
+                << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+        }
+      }
+      if (FLAGS_graph_get_neighbor_id) {
+        std::vector<std::vector<uint64_t>> gpu_graph_neighbor_keys;
+        gpu_graph_ptr->get_all_neighbor_id(
+            0, edge_idx, thread_num_, &gpu_graph_neighbor_keys);
+        for (size_t i = 0; i < gpu_graph_neighbor_keys.size(); i++) {
+          for (size_t k = 0; k < gpu_graph_neighbor_keys[i].size(); k++) {
+            gpu_graph_total_keys_.push_back(gpu_graph_neighbor_keys[i][k]);
+          }
+        }
+      }
+    }
+#endif
+  } else {
+    for (int64_t i = 0; i < thread_num_; ++i) {
+      load_threads.push_back(std::thread(
+          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+    }
+    for (std::thread& t : load_threads) {
+      t.join();
+    }
   }
   input_channel_->Close();
   int64_t in_chan_size = input_channel_->Size();
@@ -279,6 +587,11 @@ void DatasetImpl<T>::WaitPreLoadDone() {
 // release memory data
 template <typename T>
 void DatasetImpl<T>::ReleaseMemory() {
+  release_thread_ = new std::thread(&DatasetImpl<T>::ReleaseMemoryFun, this);
+}
+
+template <typename T>
+void DatasetImpl<T>::ReleaseMemoryFun() {
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
   if (input_channel_) {
     input_channel_->Clear();
@@ -319,6 +632,13 @@ void DatasetImpl<T>::ReleaseMemory() {
     multi_pv_consume_[i]->Clear();
     multi_pv_consume_[i] = nullptr;
   }
+  if (enable_heterps_) {
+    input_records_.clear();
+    input_records_.shrink_to_fit();
+    std::vector<T>().swap(input_records_);
+    VLOG(3) << "release heterps input records records size: "
+            << input_records_.size();
+  }
   std::vector<paddle::framework::Channel<PvInstance>>().swap(multi_pv_consume_);
 
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
@@ -344,7 +664,7 @@ void DatasetImpl<T>::LocalShuffle() {
     VLOG(3) << "DatasetImpl<T>::LocalShuffle() end, no data to shuffle";
     return;
   }
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   input_channel_->Close();
   std::vector<T> data;
   input_channel_->ReadAll(data);
@@ -360,22 +680,102 @@ void DatasetImpl<T>::LocalShuffle() {
           << timeline.ElapsedSec() << " seconds";
 }
 
-template <typename T>
-void DatasetImpl<T>::GlobalShuffle(int thread_num) {
-#ifdef PADDLE_WITH_PSLIB
-  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
+// do tdm sample
+void MultiSlotDataset::TDMSample(const std::string tree_name,
+                                 const std::string tree_path,
+                                 const std::vector<uint16_t> tdm_layer_counts,
+                                 const uint16_t start_sample_layer,
+                                 const bool with_hierachy,
+                                 const uint16_t seed_,
+                                 const uint16_t sample_slot) {
+#if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
+  // init tdm tree
+  auto wrapper_ptr = paddle::distributed::IndexWrapper::GetInstance();
+  wrapper_ptr->insert_tree_index(tree_name, tree_path);
+  auto tree_ptr = wrapper_ptr->get_tree_index(tree_name);
+  auto _layer_wise_sample = paddle::distributed::LayerWiseSampler(tree_name);
+  _layer_wise_sample.init_layerwise_conf(
+      tdm_layer_counts, start_sample_layer, seed_);
+
+  VLOG(0) << "DatasetImpl<T>::Sample() begin";
   platform::Timer timeline;
   timeline.Start();
+
+  std::vector<std::vector<Record>> data;
+  std::vector<std::vector<Record>> sample_results;
+  if (!input_channel_ || input_channel_->Size() == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      std::vector<Record> tmp_data;
+      data.push_back(tmp_data);
+      if (!multi_output_channel_[i] || multi_output_channel_[i]->Size() == 0) {
+        continue;
+      }
+      multi_output_channel_[i]->Close();
+      multi_output_channel_[i]->ReadAll(data[i]);
+    }
+  } else {
+    input_channel_->Close();
+    std::vector<Record> tmp_data;
+    data.push_back(tmp_data);
+    input_channel_->ReadAll(data[data.size() - 1]);
+  }
+
+  VLOG(1) << "finish read src data, data.size = " << data.size()
+          << "; details: ";
   auto fleet_ptr = FleetWrapper::GetInstance();
+  for (unsigned int i = 0; i < data.size(); i++) {
+    VLOG(1) << "data[" << i << "]: size = " << data[i].size();
+    std::vector<Record> tmp_results;
+    _layer_wise_sample.sample_from_dataset(sample_slot, &data[i], &tmp_results);
+    VLOG(1) << "sample_results(" << sample_slot << ") = " << tmp_results.size();
+    VLOG(0) << "start to put sample in vector!";
+    // sample_results.push_back(tmp_results);
+    for (unsigned int j = 0; j < tmp_results.size(); j++) {
+      std::vector<Record> tmp_vec;
+      tmp_vec.emplace_back(tmp_results[j]);
+      sample_results.emplace_back(tmp_vec);
+    }
+    VLOG(0) << "finish to put sample in vector!";
+  }
+
+  auto output_channel_num = multi_output_channel_.size();
+  for (unsigned int i = 0; i < sample_results.size(); i++) {
+    auto output_idx = fleet_ptr->LocalRandomEngine()() % output_channel_num;
+    multi_output_channel_[output_idx]->Open();
+    // vector?
+    multi_output_channel_[output_idx]->Write(std::move(sample_results[i]));
+  }
+
+  data.clear();
+  sample_results.clear();
+  data.shrink_to_fit();
+  sample_results.shrink_to_fit();
+
+  timeline.Pause();
+  VLOG(0) << "DatasetImpl<T>::Sample() end, cost time=" << timeline.ElapsedSec()
+          << " seconds";
+#endif
+  return;
+}
+
+void MultiSlotDataset::GlobalShuffle(int thread_num) {
+  VLOG(3) << "MultiSlotDataset::GlobalShuffle() begin";
+  platform::Timer timeline;
+  timeline.Start();
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
 
   if (!input_channel_ || input_channel_->Size() == 0) {
-    VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, no data to shuffle";
+    VLOG(3) << "MultiSlotDataset::GlobalShuffle() end, no data to shuffle";
     return;
   }
 
   // local shuffle
   input_channel_->Close();
-  std::vector<T> data;
+  std::vector<Record> data;
   input_channel_->ReadAll(data);
   std::shuffle(data.begin(), data.end(), fleet_ptr->LocalRandomEngine());
   input_channel_->Open();
@@ -385,21 +785,29 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
 
   input_channel_->Close();
   input_channel_->SetBlockSize(fleet_send_batch_size_);
-  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() input_channel_ size "
+  VLOG(3) << "MultiSlotDataset::GlobalShuffle() input_channel_ size "
           << input_channel_->Size();
 
-  auto get_client_id = [this, fleet_ptr](const T& data) -> size_t {
-    if (!this->merge_by_insid_) {
-      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
-    } else {
+  auto get_client_id = [this, fleet_ptr](const Record& data) -> size_t {
+    if (this->merge_by_insid_) {
       return XXH64(data.ins_id_.data(), data.ins_id_.length(), 0) %
              this->trainer_num_;
+    } else if (this->shuffle_by_uid_) {
+      return XXH64(data.uid_.data(), data.uid_.length(), 0) %
+             this->trainer_num_;
+    } else {
+      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
     }
   };
 
   auto global_shuffle_func = [this, get_client_id]() {
-    auto fleet_ptr = FleetWrapper::GetInstance();
-    std::vector<T> data;
+#ifdef PADDLE_WITH_PSCORE
+    auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
+    // auto fleet_ptr = framework::FleetWrapper::GetInstance();
+    std::vector<Record> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
       for (auto& t : data) {
@@ -411,8 +819,8 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
       for (int i = 0; i < this->trainer_num_; ++i) {
         send_index[i] = i;
       }
-      std::shuffle(send_index.begin(), send_index.end(),
-                   fleet_ptr->LocalRandomEngine());
+      std::shuffle(
+          send_index.begin(), send_index.end(), fleet_ptr->LocalRandomEngine());
       for (int index = 0; index < this->trainer_num_; ++index) {
         int i = send_index[index];
         if (ars[i].Length() == 0) {
@@ -455,7 +863,6 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
   timeline.Pause();
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
-#endif
 }
 
 template <typename T>
@@ -623,6 +1030,7 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFeaNum(&total_fea_num_);
     readers_[i]->SetFileList(filelist_);
     readers_[i]->SetParseInsId(parse_ins_id_);
+    readers_[i]->SetParseUid(parse_uid_);
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
@@ -693,6 +1101,7 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetFeaNumMutex(&mutex_for_fea_num_);
     preload_readers_[i]->SetFeaNum(&total_fea_num_);
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
+    preload_readers_[i]->SetParseUid(parse_uid_);
     preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetParseLogKey(parse_logkey_);
     preload_readers_[i]->SetEnablePvMerge(enable_pv_merge_);
@@ -739,9 +1148,9 @@ int64_t DatasetImpl<T>::GetShuffleDataSize() {
   return sum;
 }
 
-template <typename T>
-int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
-                                      const std::string& msg) {
+int MultiSlotDataset::ReceiveFromClient(int msg_type,
+                                        int client_id,
+                                        const std::string& msg) {
 #ifdef _LINUX
   VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
           << ", client_id=" << client_id << ", msg length=" << msg.length();
@@ -753,13 +1162,13 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   if (ar.Cursor() == ar.Finish()) {
     return 0;
   }
-  std::vector<T> data;
+  std::vector<Record> data;
   while (ar.Cursor() < ar.Finish()) {
-    data.push_back(ar.Get<T>());
+    data.push_back(ar.Get<Record>());
   }
   CHECK(ar.Cursor() == ar.Finish());
 
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   // not use random because it doesn't perform well here.
   // to make sure each channel get data equally, we just put data to
   // channel one by one.
@@ -782,11 +1191,26 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 // explicit instantiation
 template class DatasetImpl<Record>;
 
+void MultiSlotDataset::DynamicAdjustReadersNum(int thread_num) {
+  if (thread_num_ == thread_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
+            << thread_num_ << ", thread_num_=thread_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to " << thread_num;
+  thread_num_ = thread_num;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  CreateReaders();
+  VLOG(3) << "adjust readers num done";
+  PrepareTrain();
+}
+
 void MultiSlotDataset::PostprocessInstance() {
   // divide pv instance, and merge to input_channel_
   if (enable_pv_merge_) {
-    auto fleet_ptr = FleetWrapper::GetInstance();
-    std::shuffle(input_records_.begin(), input_records_.end(),
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
+    std::shuffle(input_records_.begin(),
+                 input_records_.end(),
                  fleet_ptr->LocalRandomEngine());
     input_channel_->Open();
     input_channel_->Write(std::move(input_records_));
@@ -823,7 +1247,7 @@ void MultiSlotDataset::PreprocessInstance() {
   if (!enable_pv_merge_) {  // means to use Record
     this->LocalShuffle();
   } else {  // means to use Pv
-    auto fleet_ptr = FleetWrapper::GetInstance();
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
     input_channel_->Close();
     std::vector<PvInstance> pv_data;
     input_channel_->ReadAll(input_records_);
@@ -834,7 +1258,8 @@ void MultiSlotDataset::PreprocessInstance() {
       all_records.push_back(&input_records_[index]);
     }
 
-    std::sort(all_records.data(), all_records.data() + all_records_num,
+    std::sort(all_records.data(),
+              all_records.data() + all_records_num,
               [](const Record* lhs, const Record* rhs) {
                 return lhs->search_id < rhs->search_id;
               });
@@ -860,8 +1285,8 @@ void MultiSlotDataset::PreprocessInstance() {
       }
     }
 
-    std::shuffle(pv_data.begin(), pv_data.end(),
-                 fleet_ptr->LocalRandomEngine());
+    std::shuffle(
+        pv_data.begin(), pv_data.end(), fleet_ptr->LocalRandomEngine());
     input_pv_channel_->Open();
     input_pv_channel_->Write(std::move(pv_data));
 
@@ -871,7 +1296,8 @@ void MultiSlotDataset::PreprocessInstance() {
   }
 }
 
-void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
+void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
+                                                 int feadim,
                                                  int read_thread_num,
                                                  int consume_thread_num,
                                                  int shard_num) {
@@ -882,7 +1308,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
   }
 
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
-  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  auto fleet_ptr_ = framework::FleetWrapper::GetInstance();
   std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
       local_map_tables = fleet_ptr_->GetLocalTable();
   local_map_tables.resize(shard_num);
@@ -896,7 +1322,8 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
   for (size_t i = 0; i < consume_task_pool_.size(); i++) {
     consume_task_pool_[i].reset(new ::ThreadPool(1));
   }
-  auto consume_func = [&local_map_tables](int shard_id, int feadim,
+  auto consume_func = [&local_map_tables](int shard_id,
+                                          int feadim,
                                           std::vector<uint64_t>& keys) {
     for (auto k : keys) {
       if (local_map_tables[shard_id].find(k) ==
@@ -905,39 +1332,39 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
       }
     }
   };
-  auto gen_func = [this, &shard_num, &feadim, &local_map_tables,
-                   &consume_func](int i) {
-    std::vector<Record> vec_data;
-    std::vector<std::vector<uint64_t>> task_keys(shard_num);
-    std::vector<std::future<void>> task_futures;
-    this->multi_output_channel_[i]->Close();
-    this->multi_output_channel_[i]->ReadAll(vec_data);
-    for (size_t j = 0; j < vec_data.size(); j++) {
-      for (auto& feature : vec_data[j].uint64_feasigns_) {
-        int shard = feature.sign().uint64_feasign_ % shard_num;
-        task_keys[shard].push_back(feature.sign().uint64_feasign_);
-      }
-    }
+  auto gen_func =
+      [this, &shard_num, &feadim, &local_map_tables, &consume_func](int i) {
+        std::vector<Record> vec_data;
+        std::vector<std::vector<uint64_t>> task_keys(shard_num);
+        std::vector<std::future<void>> task_futures;
+        this->multi_output_channel_[i]->Close();
+        this->multi_output_channel_[i]->ReadAll(vec_data);
+        for (size_t j = 0; j < vec_data.size(); j++) {
+          for (auto& feature : vec_data[j].uint64_feasigns_) {
+            int shard = feature.sign().uint64_feasign_ % shard_num;
+            task_keys[shard].push_back(feature.sign().uint64_feasign_);
+          }
+        }
 
-    for (int shard_id = 0; shard_id < shard_num; shard_id++) {
-      task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
-          consume_func, shard_id, feadim, task_keys[shard_id]));
-    }
+        for (int shard_id = 0; shard_id < shard_num; shard_id++) {
+          task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+              consume_func, shard_id, feadim, task_keys[shard_id]));
+        }
 
-    multi_output_channel_[i]->Open();
-    multi_output_channel_[i]->Write(std::move(vec_data));
-    vec_data.clear();
-    vec_data.shrink_to_fit();
-    for (auto& tk : task_keys) {
-      tk.clear();
-      std::vector<uint64_t>().swap(tk);
-    }
-    task_keys.clear();
-    std::vector<std::vector<uint64_t>>().swap(task_keys);
-    for (auto& tf : task_futures) {
-      tf.wait();
-    }
-  };
+        multi_output_channel_[i]->Open();
+        multi_output_channel_[i]->Write(std::move(vec_data));
+        vec_data.clear();
+        vec_data.shrink_to_fit();
+        for (auto& tk : task_keys) {
+          tk.clear();
+          std::vector<uint64_t>().swap(tk);
+        }
+        task_keys.clear();
+        std::vector<std::vector<uint64_t>>().swap(task_keys);
+        for (auto& tf : task_futures) {
+          tf.wait();
+        }
+      };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(gen_func, i);
   }
@@ -1064,12 +1491,12 @@ void MultiSlotDataset::MergeByInsId() {
       }
     }
     for (auto& f : all_dense_uint64) {
-      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(), f.second.begin(),
-                                  f.second.end());
+      rec.uint64_feasigns_.insert(
+          rec.uint64_feasigns_.end(), f.second.begin(), f.second.end());
     }
     for (auto& f : all_dense_float) {
-      rec.float_feasigns_.insert(rec.float_feasigns_.end(), f.second.begin(),
-                                 f.second.end());
+      rec.float_feasigns_.insert(
+          rec.float_feasigns_.end(), f.second.begin(), f.second.end());
     }
 
     for (size_t k = i; k < j; k++) {
@@ -1124,7 +1551,7 @@ void MultiSlotDataset::MergeByInsId() {
   LOG(WARNING) << "total drop ins num: " << drop_ins_num;
   results.shrink_to_fit();
 
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   std::shuffle(results.begin(), results.end(), fleet_ptr->LocalRandomEngine());
   channel_data->Open();
   channel_data->Write(std::move(results));
@@ -1294,7 +1721,8 @@ void MultiSlotDataset::PreprocessChannel(
 // slots shuffle to input_channel_ with needed-shuffle slots
 void MultiSlotDataset::SlotsShuffle(
     const std::set<std::string>& slots_to_replace) {
-  PADDLE_ENFORCE_EQ(slots_shuffle_fea_eval_, true,
+  PADDLE_ENFORCE_EQ(slots_shuffle_fea_eval_,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "fea eval mode off, need to set on for slots shuffle"));
   platform::Timer timeline;
@@ -1317,6 +1745,155 @@ void MultiSlotDataset::SlotsShuffle(
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
           << ", memory data size for slots shuffle=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
+}
+
+template class DatasetImpl<SlotRecord>;
+void SlotRecordDataset::CreateChannel() {
+  if (input_channel_ == nullptr) {
+    input_channel_ = paddle::framework::MakeChannel<SlotRecord>();
+  }
+}
+void SlotRecordDataset::CreateReaders() {
+  VLOG(3) << "Calling CreateReaders()";
+  VLOG(3) << "thread num in Dataset: " << thread_num_;
+  VLOG(3) << "Filelist size in Dataset: " << filelist_.size();
+  VLOG(3) << "channel num in Dataset: " << channel_num_;
+  CHECK(thread_num_ > 0) << "thread num should > 0";
+  CHECK(channel_num_ > 0) << "channel num should > 0";
+  CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
+  VLOG(3) << "readers size: " << readers_.size();
+  if (readers_.size() != 0) {
+    VLOG(3) << "readers_.size() = " << readers_.size()
+            << ", will not create again";
+    return;
+  }
+  VLOG(3) << "data feed class name: " << data_feed_desc_.name();
+  for (int i = 0; i < thread_num_; ++i) {
+    readers_.push_back(DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
+    readers_[i]->Init(data_feed_desc_);
+    readers_[i]->SetThreadId(i);
+    readers_[i]->SetThreadNum(thread_num_);
+    readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
+    readers_[i]->SetFileListIndex(&file_idx_);
+    readers_[i]->SetFeaNumMutex(&mutex_for_fea_num_);
+    readers_[i]->SetFeaNum(&total_fea_num_);
+    readers_[i]->SetFileList(filelist_);
+    readers_[i]->SetParseInsId(parse_ins_id_);
+    readers_[i]->SetParseContent(parse_content_);
+    readers_[i]->SetParseLogKey(parse_logkey_);
+    readers_[i]->SetEnablePvMerge(enable_pv_merge_);
+    readers_[i]->SetCurrentPhase(current_phase_);
+    if (input_channel_ != nullptr) {
+      readers_[i]->SetInputChannel(input_channel_.get());
+    }
+  }
+  VLOG(3) << "readers size: " << readers_.size();
+}
+
+void SlotRecordDataset::ReleaseMemory() {
+  VLOG(3) << "SlotRecordDataset::ReleaseMemory() begin";
+  platform::Timer timeline;
+  timeline.Start();
+
+  if (input_channel_) {
+    input_channel_->Clear();
+    input_channel_ = nullptr;
+  }
+  if (enable_heterps_) {
+    VLOG(3) << "put pool records size: " << input_records_.size();
+    SlotRecordPool().put(&input_records_);
+    input_records_.clear();
+    input_records_.shrink_to_fit();
+    VLOG(3) << "release heterps input records records size: "
+            << input_records_.size();
+  }
+
+  readers_.clear();
+  readers_.shrink_to_fit();
+
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+
+  VLOG(3) << "SlotRecordDataset::ReleaseMemory() end";
+  VLOG(3) << "total_feasign_num_(" << STAT_GET(STAT_total_feasign_num_in_mem)
+          << ") - current_fea_num_(" << total_fea_num_ << ") = ("
+          << STAT_GET(STAT_total_feasign_num_in_mem) - total_fea_num_ << ")"
+          << " object pool size=" << SlotRecordPool().capacity();  // For Debug
+  STAT_SUB(STAT_total_feasign_num_in_mem, total_fea_num_);
+}
+void SlotRecordDataset::GlobalShuffle(int thread_num) {
+  // TODO(yaoxuefeng)
+  return;
+}
+
+void SlotRecordDataset::DynamicAdjustChannelNum(int channel_num,
+                                                bool discard_remaining_ins) {
+  if (channel_num_ == channel_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustChannelNum channel_num_="
+            << channel_num_ << ", channel_num_=channel_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust channel num from " << channel_num_ << " to "
+          << channel_num;
+  channel_num_ = channel_num;
+
+  if (static_cast<int>(input_channel_->Size()) >= channel_num) {
+    input_channel_->SetBlockSize(input_channel_->Size() / channel_num +
+                                 (discard_remaining_ins ? 0 : 1));
+  }
+
+  VLOG(3) << "adjust channel num done";
+}
+
+void SlotRecordDataset::PrepareTrain() {
+#ifdef PADDLE_WITH_GLOO
+  if (enable_heterps_) {
+    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+        input_channel_->Size() != 0) {
+      input_channel_->ReadAll(input_records_);
+      VLOG(3) << "read from channel to records with records size: "
+              << input_records_.size();
+    }
+    VLOG(3) << "input records size: " << input_records_.size();
+    int64_t total_ins_num = input_records_.size();
+    std::vector<std::pair<int, int>> offset;
+    int default_batch_size =
+        reinterpret_cast<SlotRecordInMemoryDataFeed*>(readers_[0].get())
+            ->GetDefaultBatchSize();
+    VLOG(3) << "thread_num: " << thread_num_
+            << " memory size: " << total_ins_num
+            << " default batch_size: " << default_batch_size;
+    compute_thread_batch_nccl(
+        thread_num_, total_ins_num, default_batch_size, &offset);
+    VLOG(3) << "offset size: " << offset.size();
+    for (int i = 0; i < thread_num_; i++) {
+      reinterpret_cast<SlotRecordInMemoryDataFeed*>(readers_[i].get())
+          ->SetRecord(&input_records_[0]);
+    }
+    for (size_t i = 0; i < offset.size(); i++) {
+      reinterpret_cast<SlotRecordInMemoryDataFeed*>(
+          readers_[i % thread_num_].get())
+          ->AddBatchOffset(offset[i]);
+    }
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "dataset set heterps need compile with GLOO"));
+#endif
+  return;
+}
+
+void SlotRecordDataset::DynamicAdjustReadersNum(int thread_num) {
+  if (thread_num_ == thread_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
+            << thread_num_ << ", thread_num_=thread_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to " << thread_num;
+  thread_num_ = thread_num;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  CreateReaders();
+  VLOG(3) << "adjust readers num done";
+  PrepareTrain();
 }
 
 }  // end namespace framework

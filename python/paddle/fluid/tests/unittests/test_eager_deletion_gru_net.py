@@ -13,32 +13,38 @@
 # limitations under the License.
 
 import unittest
+
 from test_eager_deletion_dynamic_rnn_base import TestBase
+
+import paddle
 import paddle.fluid as fluid
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
-def gru_net(data,
-            label,
-            dict_dim,
-            emb_dim=128,
-            hid_dim=128,
-            hid_dim2=96,
-            class_dim=2,
-            emb_lr=400.0):
+def gru_net(
+    data,
+    label,
+    dict_dim,
+    emb_dim=128,
+    hid_dim=128,
+    hid_dim2=96,
+    class_dim=2,
+    emb_lr=400.0,
+):
     emb = fluid.layers.embedding(
         input=data,
         size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(learning_rate=emb_lr))
+        param_attr=fluid.ParamAttr(learning_rate=emb_lr),
+    )
     fc0 = fluid.layers.fc(input=emb, size=hid_dim * 3)
     gru_h = fluid.layers.dynamic_gru(input=fc0, size=hid_dim, is_reverse=False)
     gru_max = fluid.layers.sequence_pool(input=gru_h, pool_type='max')
-    gru_max_tanh = fluid.layers.tanh(gru_max)
+    gru_max_tanh = paddle.tanh(gru_max)
     fc1 = fluid.layers.fc(input=gru_max_tanh, size=hid_dim2, act='tanh')
     prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
     return avg_cost
 
 

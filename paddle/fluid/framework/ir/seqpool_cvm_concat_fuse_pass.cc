@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -43,14 +44,60 @@ static void GetConcatNodes(ir::Graph* graph, std::vector<Node*>* concat_nodes) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   auto concat_op_node = BuildCVMConcatPattern(pattern);
-  GraphPatternDetector::handle_t handler = [&](
-      const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
-    Node* concat_op = subgraph.at(concat_op_node);
-    concat_nodes->push_back(concat_op);
-  };
+  GraphPatternDetector::handle_t handler =
+      [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+        Node* concat_op = subgraph.at(concat_op_node);
+        concat_nodes->push_back(concat_op);
+      };
   gpd(graph, handler);
 }
 }  // anonymous namespace
+
+SeqPoolCVMConcatFusePass::SeqPoolCVMConcatFusePass() {
+  AddOpCompat(OpCompat("sequence_pool"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("MaxIndex")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddAttr("pooltype")
+      .IsStringEQ("SUM")
+      .End()
+      .AddAttr("pad_value")
+      .End();
+  AddOpCompat(OpCompat("cvm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("CVM")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddAttr("use_cvm")
+      .IsBoolEQ(true)
+      .End();
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(1)
+      .End();
+}
 
 void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("seqpool_cvm_concat_fuse", graph);
@@ -101,19 +148,23 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
     Node* cvm_input_of_cvm;
     Node* concat_out_var = concat_node->outputs[0];
 
-    GraphPatternDetector::handle_t handler = [&](
-        const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
-      Node* seqpool_in_var = subgraph.at(seqpool_in_var_node);
-      Node* seqpool_op = subgraph.at(seqpool_op_node);
-      Node* seqpool_out_var = subgraph.at(seqpool_out_var_node);
-      Node* seqpool_idx_out_var = subgraph.at(seqpool_idx_out_var_node);
-      Node* cvm_op = subgraph.at(cvm_op_node);
-      Node* cvm_out_var = subgraph.at(cvm_out_var_node);
-      cvm_input_of_cvm = subgraph.at(cvm_cvm_in_var_node);
-      marked_nodes.insert({seqpool_op, seqpool_out_var, seqpool_idx_out_var,
-                           cvm_op, cvm_out_var, concat_node});
-      ins_to_concat[cvm_out_var->Name()] = seqpool_in_var;
-    };
+    GraphPatternDetector::handle_t handler =
+        [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+          Node* seqpool_in_var = subgraph.at(seqpool_in_var_node);
+          Node* seqpool_op = subgraph.at(seqpool_op_node);
+          Node* seqpool_out_var = subgraph.at(seqpool_out_var_node);
+          Node* seqpool_idx_out_var = subgraph.at(seqpool_idx_out_var_node);
+          Node* cvm_op = subgraph.at(cvm_op_node);
+          Node* cvm_out_var = subgraph.at(cvm_out_var_node);
+          cvm_input_of_cvm = subgraph.at(cvm_cvm_in_var_node);
+          marked_nodes.insert({seqpool_op,
+                               seqpool_out_var,
+                               seqpool_idx_out_var,
+                               cvm_op,
+                               cvm_out_var,
+                               concat_node});
+          ins_to_concat[cvm_out_var->Name()] = seqpool_in_var;
+        };
     gpd(graph, handler);
 
     if (!ins_to_concat.empty()) {
@@ -152,3 +203,9 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(seqpool_cvm_concat_fuse_pass,
               paddle::framework::ir::SeqPoolCVMConcatFusePass);
+REGISTER_PASS_CAPABILITY(seqpool_cvm_concat_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("sequence_pool", 0)
+            .EQ("cvm", 0)
+            .EQ("concat", 0));

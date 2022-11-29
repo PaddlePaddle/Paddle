@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -29,8 +28,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTruncatedNormal(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -47,9 +44,12 @@ class TestTruncatedNormal(unittest.TestCase):
                 weight_attr = paddle.framework.ParamAttr(
                     name="linear_weight",
                     initializer=paddle.nn.initializer.TruncatedNormal(
-                        mean=0.0, std=2.0))
+                        mean=0.0, std=2.0
+                    ),
+                )
                 linear = paddle.nn.Linear(
-                    2, 2, weight_attr=weight_attr, bias_attr=False)
+                    2, 2, weight_attr=weight_attr, bias_attr=False
+                )
 
             if run_npu:
                 place = paddle.NPUPlace(0)
@@ -64,7 +64,7 @@ class TestTruncatedNormal(unittest.TestCase):
         cpu_w = self._test(False)
         npu_w = self._test(True)
 
-        self.assertTrue(np.allclose(npu_w, cpu_w))
+        np.testing.assert_allclose(npu_w, cpu_w)
 
 
 if __name__ == '__main__':

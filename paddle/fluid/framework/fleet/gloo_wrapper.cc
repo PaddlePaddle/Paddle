@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -71,11 +72,24 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
     }
   }
   paddle::framework::fs_mv(tmp, path);
+  auto start = std::chrono::steady_clock::now();
+  while (paddle::framework::fs_exists(path) == false) {
+    VLOG(0) << "HdfsStore::set fs_mv retrying...";
+    paddle::framework::fs_mv(tmp, path);
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - start);
+    if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
+      PADDLE_THROW(paddle::platform::errors::ExecutionTimeout(
+          "fs_mv failed, tmp: %s, path: %s", tmp, path));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
+  }
 #endif
 }
 
 #ifdef PADDLE_WITH_GLOO
-int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
+int retry_do_func(std::function<int(void)> func,
+                  uint32_t max_try_time,
                   uint32_t retry_interval_ms) {
   for (uint32_t i = 0; i < max_try_time; ++i) {
     if (func() == 0) {
@@ -96,10 +110,12 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   // block until key is set
   wait({key});
   int ret = retry_do_func(
-      [&path]() { return paddle::framework::fs_exists(path) ? 0 : -1; }, 5,
+      [&path]() { return paddle::framework::fs_exists(path) ? 0 : -1; },
+      5,
       wait_sleep_ms_);
   bool is_exists = (ret == 0);
-  PADDLE_ENFORCE_EQ(is_exists, true,
+  PADDLE_ENFORCE_EQ(is_exists,
+                    true,
                     paddle::platform::errors::NotFound(
                         "HdfsStore::get, path not exists: " + path));
 
@@ -120,8 +136,10 @@ std::vector<char> HdfsStore::get(const std::string& key) {
         }
         return err_no;
       },
-      5, wait_sleep_ms_);
-  PADDLE_ENFORCE_EQ(read_status, 0,
+      5,
+      wait_sleep_ms_);
+  PADDLE_ENFORCE_EQ(read_status,
+                    0,
                     paddle::platform::errors::Fatal(
                         "HdfsStore::get, path read faied: " + path));
 #endif
@@ -140,6 +158,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
   auto start = std::chrono::steady_clock::now();
   std::vector<bool> check_key_status(keys.size(), false);
   while (!Check(keys, &check_key_status)) {
+    VLOG(0) << "HdfsStore::wait checking repeatedly...";
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
@@ -151,7 +170,8 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
         }
       }
       PADDLE_THROW(paddle::platform::errors::ExecutionTimeout(
-          "TIMEOUT self_rank = %d pair_rank = %d", self_rank_,
+          "TIMEOUT self_rank = %d pair_rank = %d",
+          self_rank_,
           last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
@@ -209,6 +229,8 @@ void ParallelConnectContext::connectFullMesh(
   // Create pairs
   auto transportContext = dev->createContext(rank, size);
   transportContext->setTimeout(getTimeout());
+  VLOG(0) << "transportContext timeout: " << getTimeout().count()
+          << ", curr rank: " << rank;
   for (int i = 0; i < size; i++) {
     if (i == rank) {
       continue;
@@ -225,6 +247,7 @@ void ParallelConnectContext::connectFullMesh(
 
   std::vector<std::shared_ptr<std::thread>> connect_threads(thread_num_);
   // Connect every pair
+  VLOG(0) << "connect_thread_num: " << thread_num_ << ", size: " << size;
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i].reset(new std::thread(
         [&store, &transportContext, total_add_size, this](
@@ -252,18 +275,29 @@ void ParallelConnectContext::connectFullMesh(
               sleep(5);
               --max_retry_times;
             }
-
             auto addr = extractAddress(allAddrs, i);
+            if (addr.empty()) {
+              VLOG(0) << "peer address is null";
+            }
+            Impl impl_;
+            memcpy(&impl_, addr.data(), sizeof(impl_));
+            struct sockaddr_in* sa = (struct sockaddr_in*)&(impl_.ss);
+            std::string ip = getCharIpAddr(sa->sin_addr.s_addr);
+            VLOG(0) << "peer " << i << " ip addr: " << ip
+                    << ", port: " << sa->sin_port;
             transportContext->getPair(i)->connect(addr);
           }
+          VLOG(0) << "peer connected success";
         },
-        i, connect_threads.size()));
+        i,
+        connect_threads.size()));
   }
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i]->join();
   }
   device_ = dev;
   transportContext_ = std::move(transportContext);
+  VLOG(0) << "ParallelConnectContext::connectFullMesh() is over";
 }
 #endif
 }  // namespace rendezvous

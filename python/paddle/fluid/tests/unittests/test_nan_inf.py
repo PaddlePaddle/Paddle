@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
-import unittest
 import os
-import sys
 import subprocess
+import sys
+import unittest
+
 import paddle
 
 paddle.enable_static()
@@ -29,18 +27,18 @@ class TestNanInf(unittest.TestCase):
         self._python_interp = sys.executable
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             self._python_interp += " -m coverage run --branch -p"
-        self._python_interp += " check_nan_inf_base.py"
 
         self.env = os.environ.copy()
 
-    def test_nan_inf(self):
+    def check_nan_inf(self):
         cmd = self._python_interp
 
         proc = subprocess.Popen(
             cmd.split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=self.env)
+            env=self.env,
+        )
 
         out, err = proc.communicate()
         returncode = proc.returncode
@@ -48,21 +46,33 @@ class TestNanInf(unittest.TestCase):
         print(out)
         print(err)
 
-        assert returncode == 0
         # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err
-                ).find('There are `nan` or `inf` in tensor'.encode()) != -1
+        if paddle.fluid.core.is_compiled_with_cuda():
+            assert (out + err).find('find_nan=1, find_inf=1'.encode()) != -1
+        else:
+            assert (out + err).find(
+                'There are `nan` or `inf` in tensor'.encode()
+            ) != -1
+
+    def test_nan_inf_in_static_mode(self):
+        self._python_interp += " check_nan_inf_base.py"
+        self.check_nan_inf()
+
+    def test_nan_inf_in_dynamic_mode(self):
+        self._python_interp += " check_nan_inf_base_dygraph.py"
+        self.check_nan_inf()
 
 
 class TestNanInfEnv(TestNanInf):
     def setUp(self):
-        super(TestNanInfEnv, self).setUp()
+        super().setUp()
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
         self.env[str("PADDLE_INF_NAN_SKIP_OP")] = str("mul")
         self.env[str("PADDLE_INF_NAN_SKIP_ROLE")] = str("loss")
         self.env[str("PADDLE_INF_NAN_SKIP_VAR")] = str(
-            "elementwise_add:fc_0.tmp_1")
+            "elementwise_add:fc_0.tmp_1"
+        )
 
 
 if __name__ == '__main__':

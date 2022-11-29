@@ -12,5 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.inference import Config, DataType, PlaceType, PrecisionType, Tensor, \
-    Predictor, create_predictor, get_version, get_num_bytes_of_data_type, PredictorPool
+from .wrapper import (
+    Config,
+    DataType,
+    PlaceType,
+    PrecisionType,
+    Tensor,
+    Predictor,
+    convert_to_mixed_precision,
+)
+
+from paddle.fluid.core import (
+    create_predictor,
+    get_version,
+    _get_phi_kernel_name,
+    get_trt_compile_version,
+    get_trt_runtime_version,
+    get_num_bytes_of_data_type,
+    PredictorPool,
+)
+
+__all__ = [  # noqa
+    'Config',
+    'DataType',
+    'PlaceType',
+    'PrecisionType',
+    'Tensor',
+    'Predictor',
+    'create_predictor',
+    'get_version',
+    '_get_phi_kernel_name',
+    'get_trt_compile_version',
+    'convert_to_mixed_precision',
+    'get_trt_runtime_version',
+    'get_num_bytes_of_data_type',
+    'PredictorPool',
+]

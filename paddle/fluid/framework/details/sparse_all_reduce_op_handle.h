@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/details/dgc_const_values.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -44,7 +44,8 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
                           const std::vector<Scope *> &local_scopes,
                           const std::vector<platform::Place> &places,
                           const platform::NCCLCommunicator *ctxs,
-                          bool is_encoded = false, int nranks = -1);
+                          bool is_encoded = false,
+                          int nranks = -1);
   std::string Name() const override;
 
  protected:

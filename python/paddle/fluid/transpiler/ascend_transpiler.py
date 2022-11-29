@@ -14,6 +14,7 @@
 
 from . import collective
 from .. import core
+
 OpRole = core.op_proto_and_checker_maker.OpRole
 from paddle.distributed import fleet
 
@@ -21,7 +22,7 @@ from paddle.distributed import fleet
 class AscendTranspiler(collective.Collective):
     def __init__(self, startup_program, main_program):
         self.nrings = 1
-        super(AscendTranspiler, self).__init__(self.nrings)
+        super().__init__(self.nrings)
         self._startup_program = startup_program
         self._main_program = main_program
 
@@ -30,8 +31,10 @@ class AscendTranspiler(collective.Collective):
         ring_id = -1
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_backward_op(op) and \
-                    self.op_role_var_key in op.attr_names:
+            if (
+                self._is_backward_op(op)
+                and self.op_role_var_key in op.attr_names
+            ):
                 op_role_var = op.all_attrs()[self.op_role_var_key]
 
                 if len(op_role_var) == 0:
@@ -55,8 +58,9 @@ class AscendTranspiler(collective.Collective):
                         outputs={'Out': grad},
                         attrs={
                             'ring_id': ring_id,
-                            self.op_role_key: OpRole.Backward
-                        })
+                            self.op_role_key: OpRole.Backward,
+                        },
+                    )
                     block._insert_op(
                         offset + 2,
                         type='scale',
@@ -64,8 +68,9 @@ class AscendTranspiler(collective.Collective):
                         outputs={'Out': grad},
                         attrs={
                             'scale': 1.0 / fleet.worker_num(),
-                            self.op_role_key: OpRole.Backward
-                        })
+                            self.op_role_key: OpRole.Backward,
+                        },
+                    )
 
         if grad is None:
             return

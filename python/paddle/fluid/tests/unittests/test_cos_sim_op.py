@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -26,16 +26,19 @@ class TestCosSimOp(OpTest):
         self.op_type = "cos_sim"
         self.inputs = {
             'X': np.random.random((6, 20)).astype("float32"),
-            'Y': np.random.random((6, 20)).astype("float32")
+            'Y': np.random.random((6, 20)).astype("float32"),
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=1)
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=1)
-        expect_out = (self.inputs['X'] * self.inputs['Y']).sum(axis=1) / \
-            expect_x_norm / expect_y_norm
+        expect_out = (
+            (self.inputs['X'] * self.inputs['Y']).sum(axis=1)
+            / expect_x_norm
+            / expect_y_norm
+        )
         self.outputs = {
             'XNorm': np.expand_dims(expect_x_norm, 1),
             'YNorm': np.expand_dims(expect_y_norm, 1),
-            'Out': np.expand_dims(expect_out, 1)
+            'Out': np.expand_dims(expect_out, 1),
         }
 
     def test_check_output(self):
@@ -46,11 +49,13 @@ class TestCosSimOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.06, no_grad_set=set("X"))
+            ['Y'], 'Out', max_relative_error=0.06, no_grad_set=set("X")
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.06, no_grad_set=set('Y'))
+            ['X'], 'Out', max_relative_error=0.06, no_grad_set=set('Y')
+        )
 
 
 class TestCosSimOp2(TestCosSimOp):
@@ -58,16 +63,19 @@ class TestCosSimOp2(TestCosSimOp):
         self.op_type = "cos_sim"
         self.inputs = {
             'X': np.random.random((6, 100)).astype("float32"),
-            'Y': np.random.random((1, 100)).astype("float32")
+            'Y': np.random.random((1, 100)).astype("float32"),
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=1)
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=1)
-        expect_out = (self.inputs['X'] * self.inputs['Y']).sum(axis=1) / \
-            expect_x_norm / expect_y_norm
+        expect_out = (
+            (self.inputs['X'] * self.inputs['Y']).sum(axis=1)
+            / expect_x_norm
+            / expect_y_norm
+        )
         self.outputs = {
             'XNorm': np.expand_dims(expect_x_norm, 1),
             'YNorm': np.expand_dims(expect_y_norm, 1),
-            'Out': np.expand_dims(expect_out, 1)
+            'Out': np.expand_dims(expect_out, 1),
         }
 
 
@@ -76,16 +84,19 @@ class TestCosSimOp3(TestCosSimOp):
         self.op_type = "cos_sim"
         self.inputs = {
             'X': np.random.random((6, 5, 4)).astype("float32"),
-            'Y': np.random.random((6, 5, 4)).astype("float32")
+            'Y': np.random.random((6, 5, 4)).astype("float32"),
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=(1, 2))
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=(1, 2))
-        expect_out = (self.inputs['X'] * self.inputs['Y']).sum(axis=(1, 2)) / \
-            expect_x_norm / expect_y_norm
+        expect_out = (
+            (self.inputs['X'] * self.inputs['Y']).sum(axis=(1, 2))
+            / expect_x_norm
+            / expect_y_norm
+        )
         self.outputs = {
             'XNorm': np.expand_dims(expect_x_norm, 1),
             'YNorm': np.expand_dims(expect_y_norm, 1),
-            'Out': np.expand_dims(expect_out, 1)
+            'Out': np.expand_dims(expect_out, 1),
         }
 
 
@@ -94,16 +105,19 @@ class TestCosSimOp4(TestCosSimOp):
         self.op_type = "cos_sim"
         self.inputs = {
             'X': np.random.random((6, 5, 20)).astype("float32"),
-            'Y': np.random.random((1, 5, 20)).astype("float32")
+            'Y': np.random.random((1, 5, 20)).astype("float32"),
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=(1, 2))
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=(1, 2))
-        expect_out = (self.inputs['X'] * self.inputs['Y']).sum(axis=(1, 2)) / \
-            expect_x_norm / expect_y_norm
+        expect_out = (
+            (self.inputs['X'] * self.inputs['Y']).sum(axis=(1, 2))
+            / expect_x_norm
+            / expect_y_norm
+        )
         self.outputs = {
             'XNorm': np.expand_dims(expect_x_norm, 1),
             'YNorm': np.expand_dims(expect_y_norm, 1),
-            'Out': np.expand_dims(expect_out, 1)
+            'Out': np.expand_dims(expect_out, 1),
         }
 
 
@@ -112,9 +126,11 @@ class TestCosSimOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.
             x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            )
             x2 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            )
             self.assertRaises(TypeError, fluid.layers.cos_sim, x1, x2)
 
             # the input dtype of batch_norm must be float32

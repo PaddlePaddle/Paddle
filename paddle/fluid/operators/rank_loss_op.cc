@@ -24,10 +24,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -35,7 +31,8 @@ namespace operators {
 
 class RankLossOp : public framework::OperatorWithKernel {
  public:
-  RankLossOp(const std::string &type, const framework::VariableNameMap &inputs,
+  RankLossOp(const std::string &type,
+             const framework::VariableNameMap &inputs,
              const framework::VariableNameMap &outputs,
              const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -50,78 +47,91 @@ class RankLossOp : public framework::OperatorWithKernel {
     auto right_dims = ctx->GetInputDim("Right");
     // check label_dims valid
     PADDLE_ENFORCE_GE(
-        label_dims.size(), 1,
+        label_dims.size(),
+        1,
         platform::errors::InvalidArgument(
             "The dimension size of Input(Label) must be greater than "
             "or equal to 1, but received %d.",
             label_dims.size()));
     PADDLE_ENFORCE_LE(
-        label_dims.size(), 2,
+        label_dims.size(),
+        2,
         platform::errors::InvalidArgument("The dimension size of Input(Label) "
                                           "must be less than or equal to 2, "
                                           "but received %d.",
                                           label_dims.size()));
     if (label_dims.size() == 2U) {
       PADDLE_ENFORCE_EQ(
-          label_dims[1], 1,
+          label_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dimension of Input(Label) must be 1, but received %d.",
               label_dims[1]));
     }
     // check left_dims valid
     PADDLE_ENFORCE_GE(
-        left_dims.size(), 1,
+        left_dims.size(),
+        1,
         platform::errors::InvalidArgument(
             "The dimension size of Input(Left) must be greater than "
             "or equal to 1, but received %d.",
             left_dims.size()));
     PADDLE_ENFORCE_LE(
-        left_dims.size(), 2,
+        left_dims.size(),
+        2,
         platform::errors::InvalidArgument("The dimension size of Input(Left) "
                                           "must be less than or equal to 2, "
                                           "but received %d.",
                                           left_dims.size()));
     if (left_dims.size() == 2U) {
       PADDLE_ENFORCE_EQ(
-          left_dims[1], 1,
+          left_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dimension of Input(Left) must be 1, but received %d.",
               left_dims[1]));
     }
     // check right_dims valid
     PADDLE_ENFORCE_GE(
-        right_dims.size(), 1,
+        right_dims.size(),
+        1,
         platform::errors::InvalidArgument(
             "The dimension size of Input(Right) must be greater than "
             "or equal to 1, but received %d.",
             right_dims.size()));
     PADDLE_ENFORCE_LE(
-        right_dims.size(), 2,
+        right_dims.size(),
+        2,
         platform::errors::InvalidArgument("The dimension size of Input(Right) "
                                           "must be less than or equal to 2, "
                                           "but received %d.",
                                           right_dims.size()));
     if (right_dims.size() == 2U) {
       PADDLE_ENFORCE_EQ(
-          right_dims[1], 1,
+          right_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dimension of Input(Right) must be 1, but received %d.",
               right_dims[1]));
     }
     PADDLE_ENFORCE_EQ(
-        label_dims[0], left_dims[0],
+        label_dims[0],
+        left_dims[0],
         platform::errors::InvalidArgument(
             "The first dimension of Input(Label) and Input(Left) "
             "must have the same value. But received Label.dims[0]=%d, "
             "Left.dims[0]=%d.",
-            label_dims[0], left_dims[0]));
+            label_dims[0],
+            left_dims[0]));
     PADDLE_ENFORCE_EQ(
-        label_dims[0], right_dims[0],
+        label_dims[0],
+        right_dims[0],
         platform::errors::InvalidArgument(
             "The first dimension of Input(Label) and Input(Right) "
             "must have the same value. But received Label.dims[0]=%d, "
             "Right.dims[0]=%d.",
-            label_dims[0], right_dims[0]));
+            label_dims[0],
+            right_dims[0]));
     ctx->SetOutputDim("Out", label_dims);
   }
 };
@@ -145,7 +155,7 @@ class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
 RankLoss Operator.
 
 RankLoss operator for RankNet
-(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf). 
+(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf).
 RankNet is a pairwise ranking model with
 one training sample consisting of a pair of doc A and B, and the label P
 indicating that A is ranked higher than B or not:
@@ -154,8 +164,8 @@ P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
 the input pair.
 
 The RankLoss operator takes three inputs: Left (o_i), Right (o_j) and Label
-(P_{i,j}), which represent the output score of RankNet for the two docs and 
-the label respectively, and yields the rank loss C_{i,j} using the following 
+(P_{i,j}), which represent the output score of RankNet for the two docs and
+the label respectively, and yields the rank loss C_{i,j} using the following
 equation:
 
 $$
@@ -182,8 +192,10 @@ class RankLossGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "RankLossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Left"), "Input", "Left", "RankLossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Right"), "Input", "Right", "RankLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "RankLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "RankLossGrad");
 
     auto left_dims = ctx->GetInputDim("Left");
     auto right_dims = ctx->GetInputDim("Right");
@@ -222,12 +234,18 @@ class RankLossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(rank_loss, ops::RankLossOp, ops::RankLossOpMaker,
+REGISTER_OPERATOR(rank_loss,
+                  ops::RankLossOp,
+                  ops::RankLossOpMaker,
                   ops::RankLossGradMaker<paddle::framework::OpDesc>,
                   ops::RankLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(rank_loss_grad, ops::RankLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    rank_loss, ops::RankLossKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CPU_KERNEL(rank_loss, ops::RankLossKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(rank_loss_grad,
+                       ops::RankLossGradKernel<phi::CPUContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(
+    rank_loss, paddle::operators::RankLossKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     rank_loss_grad,
-    ops::RankLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+    paddle::operators::RankLossGradKernel<phi::GPUContext, float>);

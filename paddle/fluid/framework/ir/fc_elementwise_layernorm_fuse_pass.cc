@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -136,6 +137,70 @@ static bool IsEqual(const std::vector<T> &x, const std::vector<T> &y) {
   return true;
 }
 
+FCElementwiseLayerNormFusePass::FCElementwiseLayerNormFusePass() {
+  AddOpCompat(OpCompat("fc"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("W")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("in_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("activation_type")
+      .IsStringIn({"relu", ""})
+      .End();
+
+  AddOpCompat(OpCompat("layer_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Mean")
+      .IsOptional()
+      .End()
+      .AddOutput("Variance")
+      .IsOptional()
+      .End()
+
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End()
+      .AddAttr("begin_norm_axis")
+      .IsNumGT(0)
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+}
+
 void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
@@ -159,23 +224,28 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       return;
     }
 
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     VLOG(4) << "handle FCElementwiseLayerNorm fuse";
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_w, fc_w, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_bias, fc_bias, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_out, fc_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_input, elementwise_input,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_input, elementwise_input, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     if (!IsEqual(fc_out->Var()->GetShape(),
                  elementwise_input->Var()->GetShape())) {
@@ -183,10 +253,10 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     int begin_norm_axis =
-        BOOST_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
+        PADDLE_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto layer_norm_x_dims = fc_out->Var()->GetShape();
-    auto layer_norm_x_mat_dims = framework::flatten_to_2d(
-        framework::make_ddim(layer_norm_x_dims), begin_norm_axis);
+    auto layer_norm_x_mat_dims =
+        phi::flatten_to_2d(phi::make_ddim(layer_norm_x_dims), begin_norm_axis);
     if (fc_w->Var()->GetShape()[1] != layer_norm_x_mat_dims[1]) {
       return;
     }
@@ -269,3 +339,9 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(fc_elementwise_layernorm_fuse_pass,
               paddle::framework::ir::FCElementwiseLayerNormFusePass);
+REGISTER_PASS_CAPABILITY(fc_elementwise_layernorm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fc", 0)
+            .LE("elementwise_add", 1)
+            .EQ("layer_norm", 0));

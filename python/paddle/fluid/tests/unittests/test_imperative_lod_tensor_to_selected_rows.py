@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,31 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-import numpy as np
-import six
-from utils import DyGraphProgramDescTracerTestHelper
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 
 
 class SimpleNet(fluid.Layer):
-    def __init__(self,
-                 hidden_size,
-                 vocab_size,
-                 num_steps=20,
-                 init_scale=0.1,
-                 is_sparse=False,
-                 dtype='float32'):
-        super(SimpleNet, self).__init__()
+    def __init__(
+        self,
+        hidden_size,
+        vocab_size,
+        num_steps=20,
+        init_scale=0.1,
+        is_sparse=False,
+        dtype='float32',
+    ):
+        super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -48,39 +49,49 @@ class SimpleNet(fluid.Layer):
             param_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
-                    low=-init_scale, high=init_scale)))
+                    low=-init_scale, high=init_scale
+                ),
+            ),
+        )
         self.softmax_bias = self.create_parameter(
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=fluid.initializer.UniformInitializer(
-                low=-self.init_scale, high=self.init_scale))
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
         projection = fluid.layers.matmul(
-            x_emb, fluid.layers.transpose(
-                self.embedding.weight, perm=[1, 0]))
+            x_emb, paddle.transpose(self.embedding.weight, perm=[1, 0])
+        )
         projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
-        projection = fluid.layers.reshape(
-            projection, shape=[-1, self.vocab_size])
+        projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
-            logits=projection, label=label, soft_label=False)
-        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
+            logits=projection, label=label, soft_label=False
+        )
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss
 
 
 class TestDygraphSimpleNet(unittest.TestCase):
-    def test_simple_net(self):
+    def func_simple_net(self):
         for is_sparse in [True, False]:
             dtype_list = ["float32"]
             if not core.is_compiled_with_rocm():
                 dtype_list.append("float64")
             for dtype in dtype_list:
                 self.simple_net_float32(is_sparse, dtype)
+
+    def test_simple_net(self):
+        with _test_eager_guard():
+            self.func_simple_net()
+        self.func_simple_net()
 
     def simple_net_float32(self, is_sparse, dtype):
         places = [fluid.CPUPlace()]
@@ -107,19 +118,21 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         num_steps=num_steps,
                         init_scale=init_scale,
                         is_sparse=is_sparse,
-                        dtype=dtype)
+                        dtype=dtype,
+                    )
 
                     sgd = SGDOptimizer(
                         learning_rate=1e-3,
-                        parameter_list=simple_net.parameters())
+                        parameter_list=simple_net.parameters(),
+                    )
                     dy_param_updated = dict()
                     dy_param_init = dict()
                     dy_loss = None
 
                     helper = DyGraphProgramDescTracerTestHelper(self)
-                    fluid.set_flags({
-                        'FLAGS_sort_sum_gradient': is_sort_sum_gradient
-                    })
+                    fluid.set_flags(
+                        {'FLAGS_sort_sum_gradient': is_sort_sum_gradient}
+                    )
 
                     for i in range(batch_num):
                         x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -151,12 +164,14 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         vocab_size=vocab_size,
                         num_steps=num_steps,
                         is_sparse=is_sparse,
-                        dtype=dtype)
+                        dtype=dtype,
+                    )
 
                     exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
                     x = fluid.layers.data(
-                        name="x", shape=[-1, num_steps], dtype='int64')
+                        name="x", shape=[-1, num_steps], dtype='int64'
+                    )
                     y = fluid.layers.data(name="y", shape=[-1, 1], dtype=dtype)
 
                     static_loss = simple_net(x, y)
@@ -167,8 +182,10 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     for param in simple_net.parameters():
                         static_param_name_list.append(param.name)
 
-                    out = exe.run(fluid.default_startup_program(),
-                                  fetch_list=static_param_name_list)
+                    out = exe.run(
+                        fluid.default_startup_program(),
+                        fetch_list=static_param_name_list,
+                    )
                     for i in range(len(static_param_name_list)):
                         static_param_init[static_param_name_list[i]] = out[i]
                     static_loss_value = None
@@ -179,26 +196,28 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         y_data = y_data.reshape((-1, 1))
                         fetch_list = [static_loss]
                         fetch_list.extend(static_param_name_list)
-                        out = exe.run(fluid.default_main_program(),
-                                      feed={"x": x_data,
-                                            "y": y_data},
-                                      fetch_list=fetch_list)
+                        out = exe.run(
+                            fluid.default_main_program(),
+                            feed={"x": x_data, "y": y_data},
+                            fetch_list=fetch_list,
+                        )
                         static_loss_value = out[0]
 
                         if i == batch_num - 1:
                             for k in range(3, len(out)):
-                                static_param_updated[static_param_name_list[
-                                    k - 1]] = out[k]
+                                static_param_updated[
+                                    static_param_name_list[k - 1]
+                                ] = out[k]
 
-                self.assertTrue(
-                    np.allclose(
-                        static_loss_value, dy_loss_value, rtol=1e-3))
-                for key, value in six.iteritems(static_param_init):
-                    self.assertTrue(np.array_equal(value, dy_param_init[key]))
-                for key, value in six.iteritems(static_param_updated):
-                    self.assertTrue(
-                        np.array_equal(value, dy_param_updated[key]))
+                np.testing.assert_allclose(
+                    static_loss_value, dy_loss_value, rtol=0.001
+                )
+                for key, value in static_param_init.items():
+                    np.testing.assert_array_equal(value, dy_param_init[key])
+                for key, value in static_param_updated.items():
+                    np.testing.assert_array_equal(value, dy_param_updated[key])
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

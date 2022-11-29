@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from paddle.utils import gast
 
-import gast
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+    StaticAnalysisVisitor,
+)
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 
-
-class PrintTransformer(gast.NodeTransformer):
+class PrintTransformer(BaseTransformer):
     """
     This class transforms python print function to fluid.layers.Print.
     """
@@ -32,7 +36,8 @@ class PrintTransformer(gast.NodeTransformer):
         self.root = wrapper_root.node
 
         self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
-        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        self.node_to_wrapper_map = (
+            self.static_analysis_visitor.get_node_to_wrapper_map()
         )
 
     def transform(self):
@@ -50,6 +55,5 @@ class PrintTransformer(gast.NodeTransformer):
         return gast.Expr(value=convert_print_node)
 
     def _create_print_node(self, print_args):
-        convert_print_func = gast.parse(
-            'paddle.jit.dy2static.convert_print').body[0].value
+        convert_print_func = gast.parse('_jst.Print').body[0].value
         return gast.Call(func=convert_print_func, args=print_args, keywords=[])

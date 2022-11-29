@@ -14,25 +14,28 @@ if(NOT PYTHON_EXECUTABLE)
   endif()
 endif()
 
-if (PYTHON_EXECUTABLE)
+if(PYTHON_EXECUTABLE)
   # write a python script that finds the numpy path
   file(WRITE ${PROJECT_BINARY_DIR}/FindNumpyPath.py
-      "try: import numpy; print(numpy.get_include())\nexcept:pass\n")
+       "try: import numpy; print(numpy.get_include())\nexcept:pass\n")
 
   # execute the find script
-  exec_program("${PYTHON_EXECUTABLE}" ${PROJECT_BINARY_DIR}
+  exec_program(
+    "${PYTHON_EXECUTABLE}" ${PROJECT_BINARY_DIR}
     ARGS "FindNumpyPath.py"
     OUTPUT_VARIABLE NUMPY_PATH)
 elseif(_numpy_out)
   message(STATUS "Python executable not found.")
-endif(PYTHON_EXECUTABLE)
+endif()
 
 find_path(PYTHON_NUMPY_INCLUDE_DIR numpy/arrayobject.h
-  HINTS "${NUMPY_PATH}" "${PYTHON_INCLUDE_PATH}")
+          HINTS "${NUMPY_PATH}" "${PYTHON_INCLUDE_PATH}")
 
 if(PYTHON_NUMPY_INCLUDE_DIR)
-  set(PYTHON_NUMPY_FOUND 1 CACHE INTERNAL "Python numpy found")
-endif(PYTHON_NUMPY_INCLUDE_DIR)
+  set(PYTHON_NUMPY_FOUND
+      1
+      CACHE INTERNAL "Python numpy found")
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(NumPy DEFAULT_MSG PYTHON_NUMPY_INCLUDE_DIR)

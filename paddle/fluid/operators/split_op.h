@@ -18,29 +18,35 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/operators/utils.h"
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
 static inline std::vector<framework::DDim> UpdateOutsDims(
-    const bool is_runtime, const bool each_section_is_known,
-    const framework::DDim in_dims, const size_t num, std::vector<int> sections,
-    const size_t axis, const int outs_number) {
+    const bool is_runtime,
+    const bool each_section_is_known,
+    const framework::DDim in_dims,
+    const size_t num,
+    std::vector<int> sections,
+    const size_t axis,
+    const int outs_number) {
   std::vector<framework::DDim> outs_dims(outs_number, in_dims);
   int64_t input_axis_dim = in_dims[axis];
   if (num > 0) {
     if (is_runtime || input_axis_dim > 0) {
       PADDLE_ENFORCE_EQ(
-          input_axis_dim % num, 0,
+          input_axis_dim % num,
+          0,
           platform::errors::InvalidArgument(
               "The input's size along the split dimension "
               "must be evenly divisible by Attr(num_or_sections). "
               "But received Attr(num_or_sections) "
               "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-              num, in_dims, axis));
+              num,
+              in_dims,
+              axis));
       size_t out_axis_dim = input_axis_dim / num;
 
       for (auto& out_dim : outs_dims) {
@@ -67,12 +73,13 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
 
       if (each_section_is_known) {
         PADDLE_ENFORCE_LE(
-            num_of_unk, 1,
+            num_of_unk,
+            1,
             platform::errors::InvalidArgument(
                 "Only one dimension value of Attr(num_or_sections) "
                 "in SplitOp can be -1. "
                 "But received Attr(num_or_sections) = [%s].",
-                framework::make_ddim(sections)));
+                phi::make_ddim(sections)));
       }
 
       if (unk_dim_idx != -1) {
@@ -80,26 +87,32 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         // input_axis_dim = 5, sum_of_sections = 5.
         // the following check will fail.
         PADDLE_ENFORCE_LT(
-            sum_of_section, input_axis_dim,
+            sum_of_section,
+            input_axis_dim,
             platform::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) other than unknown section "
                 "must be less than the input's "
                 "size "
                 "along the split dimension. But received Attr(num_or_sections) "
                 "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                framework::make_ddim(sections), in_dims, axis));
+                phi::make_ddim(sections),
+                in_dims,
+                axis));
         if (each_section_is_known) {
           sections[unk_dim_idx] = input_axis_dim - sum_of_section;
         }
       } else {
         PADDLE_ENFORCE_EQ(
-            sum_of_section, input_axis_dim,
+            sum_of_section,
+            input_axis_dim,
             platform::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) must be equal to the input's "
                 "size "
                 "along the split dimension. But received Attr(num_or_sections)"
                 " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                framework::make_ddim(sections), in_dims, axis));
+                phi::make_ddim(sections),
+                in_dims,
+                axis));
       }
     }
     for (int i = 0; i < outs_number; ++i) {
@@ -108,58 +121,6 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
   }
   return outs_dims;
 }
-template <typename DeviceContext, typename T>
-class SplitOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    int num = ctx.Attr<int>("num");
-    std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
-    int axis = ctx.Attr<int>("axis");
-
-    auto in_dims = in->dims();
-    auto outs_number = outs.size();
-
-    bool need_resize_outs_dims = false;
-    if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
-      axis = GetDataFromTensor(axis_tensor)[0];
-      need_resize_outs_dims = true;
-    }
-    auto sections_tensor_list =
-        ctx.MultiInput<framework::Tensor>("SectionsTensorList");
-    if (sections_tensor_list.size() > 0) {
-      sections = GetDataFromTensorList(sections_tensor_list);
-      need_resize_outs_dims = true;
-    }
-
-    if (need_resize_outs_dims) {
-      std::vector<framework::DDim> outs_dims =
-          UpdateOutsDims(true, true, in_dims, num, sections, axis, outs_number);
-      for (size_t j = 0; j < outs.size(); ++j) {
-        outs[j]->Resize(outs_dims[j]);
-      }
-    }
-
-    auto place = ctx.GetPlace();
-
-    std::vector<const framework::Tensor*> shape_refer;
-    for (size_t j = 0; j < outs.size(); ++j) {
-      outs[j]->mutable_data<T>(ctx.GetPlace());
-      shape_refer.emplace_back(outs[j]);
-    }
-
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (axis == 0 && outs.size() < 10) {
-      StridedMemcpyWithAxis0<T>(dev_ctx, *in, shape_refer, &outs);
-    } else {
-      math::SplitFunctor<DeviceContext, T> functor;
-      functor(dev_ctx, *in, shape_refer, axis, &outs);
-    }
-  }
-};
 
 template <typename T>
 class SplitGradMaker : public framework::SingleGradOpMaker<T> {

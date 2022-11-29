@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseSubOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -41,7 +38,7 @@ class TestElementwiseSubOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -64,7 +61,7 @@ class TestElementwiseSubOp(OpTest):
         self.axis = 0
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     # TODO(ascendrc): For grad tests, OpTest raises FatalError:Segmentation fault
     #  when call op.run, which may be caused by system environment exception
@@ -74,7 +71,7 @@ class TestElementwiseSubOp(OpTest):
     #         self.place, ['X', 'Y'],
     #         'Out',
     #         max_relative_error=0.006,
-    #         check_dygraph=False)
+    #         )
     #
     # def test_check_grad_ingore_x(self):
     #     self.check_grad_with_place(
@@ -82,18 +79,26 @@ class TestElementwiseSubOp(OpTest):
     #         'Out',
     #         no_grad_set=set("X"),
     #         max_relative_error=0.006,
-    #         check_dygraph=False)
+    #         )
     #
     # def test_check_grad_ingore_y(self):
     #     self.check_grad_with_place(
     #         self.place, ['X'],
     #         'Out',
     #         no_grad_set=set("Y"),
-    #         max_relative_error=0.006,check_dygraph=False)
+    #         max_relative_error=0.006,)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+class TestElementwiseSubOpInt32(TestElementwiseSubOp):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestElementwiseSubOpInt64(TestElementwiseSubOp):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 class TestSubtractAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -119,47 +124,50 @@ class TestSubtractAPI(unittest.TestCase):
 
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
-            x_value, y_value, z_value = exe.run(feed={"x": x_np,
-                                                      "y": y_np},
-                                                fetch_list=[x, y, z])
+            x_value, y_value, z_value = exe.run(
+                feed={"x": x_np, "y": y_np}, fetch_list=[x, y, z]
+            )
 
-            z_expected = np.array([1., -2., 2.])
+            z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual(
                 (x_value == x_np).all(),
                 True,
-                msg="x_value = {}, but expected {}".format(x_value, x_np))
+                msg="x_value = {}, but expected {}".format(x_value, x_np),
+            )
             self.assertEqual(
                 (y_value == y_np).all(),
                 True,
-                msg="y_value = {}, but expected {}".format(y_value, y_np))
+                msg="y_value = {}, but expected {}".format(y_value, y_np),
+            )
             self.assertEqual(
                 (z_value == z_expected).all(),
                 True,
-                msg="z_value = {}, but expected {}".format(z_value, z_expected))
+                msg="z_value = {}, but expected {}".format(z_value, z_expected),
+            )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # the input of elementwise_add must be Variable.
             x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0))
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0)
+            )
             y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0))
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0)
+            )
             self.assertRaises(TypeError, paddle.subtract, x1, y1)
 
             # the input dtype must be float16 or float32 or float64 or int32 or int64
             x2 = paddle.static.data(
-                name='x2', shape=[3, 4, 5, 6], dtype="uint8")
+                name='x2', shape=[3, 4, 5, 6], dtype="uint8"
+            )
             y2 = paddle.static.data(
-                name='y2', shape=[3, 4, 5, 6], dtype="uint8")
+                name='y2', shape=[3, 4, 5, 6], dtype="uint8"
+            )
             self.assertRaises(TypeError, paddle.subtract, x2, y2)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -176,7 +184,8 @@ class TestSubtractNet(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             sum = paddle.add(a, b)
             c = paddle.assign(b)
@@ -202,13 +211,15 @@ class TestSubtractNet(unittest.TestCase):
 
             pred_res, loss_res = exe.run(
                 main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -216,8 +227,8 @@ class TestSubtractNet(unittest.TestCase):
         npu_pred, npu_loss = self._test(True)
         cpu_pred, cpu_loos = self._test(False)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loos))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loos, rtol=1e-6)
 
 
 if __name__ == '__main__':

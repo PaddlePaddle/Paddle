@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/expand_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -24,12 +24,15 @@ template <typename DeviceContext, typename T>
 class TransposeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
-    framework::NPUAttributeMap attr_input = {{"perm", axis}};
     out->mutable_data<T>(ctx.device_context().GetPlace());
-    auto runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
+    NpuOpRunner runner;
+    runner.SetType("Transpose")
+        .AddInput(*x)
+        .AddInput(std::move(axis))
+        .AddOutput(*out);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -41,18 +44,19 @@ template <typename T>
 class TransposeGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     std::vector<int> reversed_axis(axis);
     for (size_t i = 0; i < axis.size(); i++) {
       reversed_axis[axis[i]] = i;
     }
     x_grad->mutable_data<T>(ctx.GetPlace());
-    framework::NPUAttributeMap attr_input = {{"perm", reversed_axis}};
-    auto runner = NpuOpRunner("TransposeD", {*out_grad}, {*x_grad}, attr_input);
+    NpuOpRunner runner;
+    runner.SetType("Transpose")
+        .AddInput(*out_grad)
+        .AddInput(std::move(reversed_axis))
+        .AddOutput(*x_grad);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -71,11 +75,18 @@ REGISTER_OP_NPU_KERNEL(
     ops::TransposeNPUKernel<paddle::platform::NPUDeviceContext,
                             paddle::platform::float16>,
     ops::TransposeNPUKernel<paddle::platform::NPUDeviceContext, int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::TransposeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+#endif
     ops::TransposeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::TransposeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>);
 
-REGISTER_OP_NPU_KERNEL(transpose2_grad, ops::TransposeGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(transpose2_grad,
+                       ops::TransposeGradNPUKernel<float>,
                        ops::TransposeGradNPUKernel<paddle::platform::float16>,
                        ops::TransposeGradNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::TransposeGradNPUKernel<int64_t>,
+#endif
                        ops::TransposeGradNPUKernel<uint8_t>,
                        ops::TransposeGradNPUKernel<int8_t>);

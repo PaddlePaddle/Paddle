@@ -33,8 +33,10 @@ namespace ir {
 
 // Inherient the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
-    const framework::proto::OpDesc& base_desc, const std::string& bias,
-    const std::string& activation, const std::string& output) {
+    const framework::proto::OpDesc& base_desc,
+    const std::string& bias,
+    const std::string& activation,
+    const std::string& output) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
   desc.SetType("conv2d_fusion");
@@ -46,6 +48,76 @@ framework::proto::OpDesc PrepareOpDesc(
   desc.SetAttr("use_cudnn", false);
   desc.Flush();
   return *desc.Proto();
+}
+
+ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("sigmoid"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("tanh"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
 }
 
 void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -63,6 +135,10 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
@@ -79,7 +155,8 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Link inputs and outputs.
     PADDLE_ENFORCE_NE(
-        subgraph.count(x), 0,
+        subgraph.count(x),
+        0,
         platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
@@ -89,8 +166,9 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(new_conv_op, act_out);               // Output
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op,
-                                 elementwise_add_out, act_op});
+    GraphSafeRemoveNodes(
+        graph,
+        {conv_op, conv_out, elementwise_add_op, elementwise_add_out, act_op});
   };
 
   gpd(graph, handler);
@@ -108,4 +186,6 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .LE("conv2d", 1)
             .LE("elementwise_add", 1)
             .EQ("relu", 0)
+            .EQ("sigmoid", 0)
+            .EQ("tanh", 0)
             .EQ("identity", 0));

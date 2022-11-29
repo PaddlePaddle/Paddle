@@ -18,7 +18,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 // msvc15 don't support constexpr in correct way.
-#if !defined(_WIN32)
+// static constexpr member implies inline since CXX17 and may cause multiple
+// definition.
+#if !defined(_WIN32) && (__cplusplus < 201703L)
 constexpr char Node::kControlDepVarName[];
 #else
 const char Node::kControlDepVarName[] = "__control_var";
@@ -30,7 +32,7 @@ std::unique_ptr<Node> CreateNodeForTest(const std::string &name,
 }
 
 std::unique_ptr<Node> CreateNodeForTest(VarDesc *var_desc) {
-  return std::unique_ptr<Node>(new Node(var_desc));
+  return std::unique_ptr<Node>(new Node(var_desc, 0));
 }
 
 std::unique_ptr<Node> CreateNodeForTest(OpDesc *op_desc) {

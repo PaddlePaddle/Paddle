@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
-import paddle.fluid as fluid
 import numpy as np
 from decorator_helper import prog_scope
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestRegistry(unittest.TestCase):
     @prog_scope()
     def test_registry_layer(self):
         x = fluid.layers.data(name='X', shape=[10, 10], dtype='float32')
-        output = fluid.layers.mean(x)
+        output = paddle.mean(x)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

@@ -12,20 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import collections
 import functools
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase, _varbase_creator, _dygraph_tracer
+from ..framework import (
+    Variable,
+    default_main_program,
+    _non_static_mode,
+    dygraph_only,
+    Parameter,
+    ParamBase,
+    _varbase_creator,
+    _dygraph_tracer,
+    EagerParamBase,
+)
 import pickle
-import six
 from . import learning_rate_scheduler
 import warnings
 from .. import core
 from .base import guard
-from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
+from paddle.jit.api import _SaveLoadConfig
+from paddle.fluid.dygraph.io import (
+    _construct_program_holders,
+    _construct_params_and_buffers,
+)
 
 __all__ = [
     'save_dygraph',
@@ -41,7 +51,8 @@ def _parse_load_config(configs):
         if key not in supported_configs:
             raise ValueError(
                 "The additional config (%s) of `paddle.fluid.load_dygraph` is not supported."
-                % (key))
+                % (key)
+            )
 
     # construct inner config
     inner_config = _SaveLoadConfig()
@@ -58,9 +69,9 @@ def save_dygraph(state_dict, model_path):
     :api_attr: imperative
 
     Save Layer's state_dict to disk. This will generate a file with suffix ".pdparams"
-    
+
     The state_dict is get from Layers.state_dict function
-    
+
     Args:
         state_dict(dict) : The state dict to be saved.
         model_path(str) : the file prefix to save the state_dict. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
@@ -88,14 +99,16 @@ def save_dygraph(state_dict, model_path):
     '''
 
     base_name = os.path.basename(model_path)
-    assert base_name != "", "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
+    assert (
+        base_name != ""
+    ), "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
 
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
 
     param_num = 0
     for k, v in state_dict.items():
-        if isinstance(v, ParamBase):
+        if isinstance(v, (ParamBase, EagerParamBase)):
             param_num += 1
 
     if param_num == 0:
@@ -104,7 +117,7 @@ def save_dygraph(state_dict, model_path):
     model_dict = {}
     name_table = {}
     for k, v in state_dict.items():
-        if isinstance(v, (Variable, core.VarBase)):
+        if isinstance(v, (Variable, core.VarBase, core.eager.Tensor)):
             model_dict[k] = v.numpy()
             name_table[k] = v.name
         else:
@@ -120,7 +133,7 @@ def save_dygraph(state_dict, model_path):
         pickle.dump(model_dict, f, protocol=2)
 
 
-# NOTE(chenweihang): load_dygraph will deprecated in future, we don't 
+# NOTE(chenweihang): load_dygraph will deprecated in future, we don't
 # support new loading features for it
 # TODO(qingqing01): remove dygraph_only to support loading static model.
 # maybe need to unify the loading interface after 2.0 API is ready.
@@ -128,24 +141,24 @@ def save_dygraph(state_dict, model_path):
 def load_dygraph(model_path, **configs):
     '''
     :api_attr: imperative
-    
+
     Load parameter state dict from disk.
 
     .. note::
-        Due to some historical reasons, if you load ``state_dict`` from the saved 
-        result of `paddle.static.save_inference_model`, the structured variable name 
-        will cannot be restored. You need to set the argument `use_structured_name=False` 
+        Due to some historical reasons, if you load ``state_dict`` from the saved
+        result of `paddle.static.save_inference_model`, the structured variable name
+        will cannot be restored. You need to set the argument `use_structured_name=False`
         when using `Layer.set_state_dict` later.
 
     Args:
-        model_path(str) : The file prefix store the state_dict. 
-            (The path should Not contain suffix '.pdparams') 
-        **configs (dict, optional): Other load configuration options for compatibility. We do not 
+        model_path(str) : The file prefix store the state_dict.
+            (The path should Not contain suffix '.pdparams')
+        **configs (dict, optional): Other load configuration options for compatibility. We do not
             recommend using these configurations, if not necessary, DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (str): The inference model file name of the paddle 1.x ``save_inference_model`` 
-            save format. Default file name is :code:`__model__` . 
-            (2) params_filename (str): The persistable variables file name of the paddle 1.x ``save_inference_model`` 
+            (1) model_filename (str): The inference model file name of the paddle 1.x ``save_inference_model``
+            save format. Default file name is :code:`__model__` .
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x ``save_inference_model``
             save format. No default file name, save variables separately by default.
 
     Returns:
@@ -164,7 +177,7 @@ def load_dygraph(model_path, **configs):
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, "paddle_dy")
 
-            scheduler = paddle.optimizer.lr.NoamDecay(	
+            scheduler = paddle.optimizer.lr.NoamDecay(
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,
@@ -194,21 +207,23 @@ def load_dygraph(model_path, **configs):
         para_dict = {}
         if os.path.exists(params_file_path):
             with open(params_file_path, 'rb') as f:
-                para_dict = pickle.load(f) if six.PY2 else pickle.load(
-                    f, encoding='latin1')
+                para_dict = pickle.load(f, encoding='latin1')
 
-        if not config.keep_name_table and "StructuredToParameterName@@" in para_dict:
+        if (
+            not config.keep_name_table
+            and "StructuredToParameterName@@" in para_dict
+        ):
             del para_dict["StructuredToParameterName@@"]
 
         if os.path.exists(opti_file_path):
             with open(opti_file_path, 'rb') as f:
-                opti_dict = pickle.load(f) if six.PY2 else pickle.load(
-                    f, encoding='latin1')
+                opti_dict = pickle.load(f, encoding='latin1')
     else:
         # check model path
         if not os.path.isdir(model_prefix):
-            raise ValueError("Model saved directory '%s' is not exists." %
-                             model_prefix)
+            raise ValueError(
+                "Model saved directory '%s' is not exists." % model_prefix
+            )
 
         # check whether model file exists
         if config.model_filename is None:
@@ -220,15 +235,16 @@ def load_dygraph(model_path, **configs):
         if os.path.exists(model_file_path):
             # Load state dict by `jit.save/io.save_inference_model` save format
             # NOTE(chenweihang): [ Compatibility of save_inference_model save format ]
-            # The model saved by `save_inference_model` does not completely correspond to 
-            # the information required by the `state_dict` under the dygraph. 
-            # `save_inference_model` not save structured name, we need to remind 
+            # The model saved by `save_inference_model` does not completely correspond to
+            # the information required by the `state_dict` under the dygraph.
+            # `save_inference_model` not save structured name, we need to remind
             # the user to configure the `use_structured_name` argument when `set_state_dict`
-            # NOTE(chenweihang): `jit.save` doesn't save optimizer state 
+            # NOTE(chenweihang): `jit.save` doesn't save optimizer state
 
             # 1. load program desc & construct _ProgramHolder
-            programs = _construct_program_holders(model_path,
-                                                  config.model_filename)
+            programs = _construct_program_holders(
+                model_path, config.model_filename
+            )
 
             # 2. load layer parameters & buffers
             # NOTE: using fluid.dygraph.guard() here will cause import error in py2
@@ -237,7 +253,8 @@ def load_dygraph(model_path, **configs):
                     model_prefix,
                     programs,
                     config.params_filename,
-                    append_suffix=False)
+                    append_suffix=False,
+                )
 
                 # 3. construct state_dict
                 para_dict = dict()
@@ -253,20 +270,25 @@ def load_dygraph(model_path, **configs):
                     structured_para_dict = dict()
                     for var_name in para_dict:
                         structured_name = extra_var_info[var_name].get(
-                            'structured_name', None)
-                        assert structured_name is not None, "Cannot find saved variable (%s)'s structured name in saved model." % var_name
+                            'structured_name', None
+                        )
+                        assert structured_name is not None, (
+                            "Cannot find saved variable (%s)'s structured name in saved model."
+                            % var_name
+                        )
                         structured_para_dict[structured_name] = para_dict[
-                            var_name]
+                            var_name
+                        ]
                     para_dict = structured_para_dict
         else:
             # load state dict by `io.save_params/persistables` save format
-            # TODO(chenweihang): [ Now only supports loading parameters seperately ]
+            # TODO(chenweihang): [ Now only supports loading parameters separately ]
             # If users save all parameters as one file, the [ variable.name -> variable ]
-            # mapping info will lost, so users need to give variable list, but users build 
+            # mapping info will lost, so users need to give variable list, but users build
             # variable list in dygraph mode is difficult, we recommend users to use
             # paddle.static.load_program_state in this case
 
-            # Try to load all the files in the directory in VarBase format, 
+            # Try to load all the files in the directory in VarBase format,
             # the file name is used as the name of VarBase
             load_var_list = []
 
@@ -287,7 +309,8 @@ def load_dygraph(model_path, **configs):
                         type='load',
                         inputs={},
                         outputs={'Out': new_var},
-                        attrs={'file_path': os.path.join(model_path, name)})
+                        attrs={'file_path': os.path.join(model_path, name)},
+                    )
                     load_var_list.append(new_var)
 
             # 3. construct state_dict

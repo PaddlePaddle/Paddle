@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/details/cow_ptr.h"
+
 #include "gtest/gtest.h"
 
 namespace paddle {

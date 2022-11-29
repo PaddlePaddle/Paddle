@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
-import unittest
 import os
-import sys
-import subprocess
 import re
+import subprocess
+import sys
+import unittest
 
 
 class TestFlagsUseMkldnn(unittest.TestCase):
@@ -32,7 +29,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self.env[str("DNNL_VERBOSE")] = str("1")
         self.env[str("FLAGS_use_mkldnn")] = str("1")
 
-        self.relu_regex = b"^dnnl_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
+        self.relu_regex = b"^onednn_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
 
     def _print_when_false(self, cond, out, err):
         if not cond:
@@ -51,7 +48,8 @@ class TestFlagsUseMkldnn(unittest.TestCase):
             cmd.split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=self.env)
+            env=self.env,
+        )
 
         out, err = proc.communicate()
         returncode = proc.returncode

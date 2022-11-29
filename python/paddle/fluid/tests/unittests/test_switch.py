@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import default_startup_program
 
@@ -32,7 +30,8 @@ class TestSwitch(unittest.TestCase):
         three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
         result = layers.create_global_var(
-            shape=[1], value=-1.0, dtype='float32', persistable=True)
+            shape=[1], value=-1.0, dtype='float32', persistable=True
+        )
 
         with layers.Switch() as switch:
             with switch.case(layers.less_than(x, zero_var)):
@@ -68,10 +67,12 @@ class TestSwitchCaseError(unittest.TestCase):
         with framework.program_guard(main_program, startup_program):
             cond = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
             zero_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
+                shape=[1], dtype='float32', value=0.0
+            )
 
             result = layers.create_global_var(
-                shape=[1], value=-1.0, dtype='float32', persistable=True)
+                shape=[1], value=-1.0, dtype='float32', persistable=True
+            )
 
             # 1. The type of 'condition' in case must be Variable.
             def test_condition_type():

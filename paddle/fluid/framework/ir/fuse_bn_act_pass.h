@@ -48,19 +48,29 @@ class FuseBatchNormActPass : public FusePassBase {
       ir::Graph *graph,
       const std::unordered_set<std::string> &act_grad_types) const;
 
-  std::vector<Node *> ReplaceNode(Node *cur_node, Node *new_node,
+  std::vector<Node *> ReplaceNode(Node *cur_node,
+                                  Node *new_node,
                                   const std::vector<Node *> &nodes) const;
 
-  void ReLinkNodes(Graph *graph, const Node *intermediate_out, Node *op_1,
-                   Node *op_2, Node *fused_op) const;
-  Node *CreateFusedBatchNormActNode(
-      Graph *g, const Node *act, const Node *bn, const std::string &bn_x_n,
-      const std::string &bn_scale_n, const std::string &bn_bias_n,
-      const std::string &bn_variance_n, const std::string &bn_mean_n,
-      const std::string &bn_mean_out_n, const std::string &bn_variance_out_n,
-      const std::string &bn_saved_variance_n,
-      const std::string &bn_saved_mean_n, const std::string &bn_reserve_space_n,
-      const std::string &act_out_n) const;
+  void ReLinkNodes(Graph *graph,
+                   const Node *intermediate_out,
+                   Node *op_1,
+                   Node *op_2,
+                   Node *fused_op) const;
+  Node *CreateFusedBatchNormActNode(Graph *g,
+                                    const Node *act,
+                                    const Node *bn,
+                                    const std::string &bn_x_n,
+                                    const std::string &bn_scale_n,
+                                    const std::string &bn_bias_n,
+                                    const std::string &bn_variance_n,
+                                    const std::string &bn_mean_n,
+                                    const std::string &bn_mean_out_n,
+                                    const std::string &bn_variance_out_n,
+                                    const std::string &bn_saved_variance_n,
+                                    const std::string &bn_saved_mean_n,
+                                    const std::string &bn_reserve_space_n,
+                                    const std::string &act_out_n) const;
 };
 
 }  // namespace ir

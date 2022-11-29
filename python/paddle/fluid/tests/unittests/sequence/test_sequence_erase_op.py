@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -27,7 +27,7 @@ def sequence_erase(in_seq, lod0, tokens):
     offset = 0
     for i in range(0, len(lod0)):
         num_out = 0
-        for dat in in_seq[offset:(offset + lod0[i])]:
+        for dat in in_seq[offset : (offset + lod0[i])]:
             if dat not in tokens:
                 out_seq.append(dat)
                 num_out += 1

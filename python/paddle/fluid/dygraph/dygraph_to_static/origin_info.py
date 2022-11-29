@@ -12,29 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 import inspect
 
-import gast
+from paddle.utils import gast
 from paddle.fluid import core
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
+from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
 from paddle.fluid.framework import Program
 
-# NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
-ORIGI_INFO = "Original information of source code for ast node."
-ORIGI_INFO_MAP = "Original information map of source code."
+from collections.abc import Sequence
 
 
-class Location(object):
+class Location:
     """
     Location information of source code.
     """
+
     __slots__ = (
         "filepath",
         "lineno",
-        "col_offset", )
+        "col_offset",
+    )
 
     def __init__(self, filepath, lineno, col_offset=None):
         self.filepath = filepath
@@ -42,22 +41,25 @@ class Location(object):
         self.col_offset = col_offset
 
     def __str__(self):
-        return "location: {}:{}:{}".format(self.filepath, self.lineno,
-                                           self.col_offset)
+        return "location: {}:{}:{}".format(
+            self.filepath, self.lineno, self.col_offset
+        )
 
     @property
     def line_location(self):
         return (self.filepath, self.lineno)
 
 
-class OriginInfo(object):
+class OriginInfo:
     """
     Original information of source code.
     """
+
     __slots__ = (
         "location",
         "function_name",
-        "source_code", )
+        "source_code",
+    )
 
     def __init__(self, location, function_name, source_code):
         self.location = location
@@ -66,17 +68,26 @@ class OriginInfo(object):
 
     def __str__(self):
         return "{} \nsource_code: {}  in function {}\n  ".format(
-            self.location, self.source_code, self.function_name)
+            self.location, self.source_code, self.function_name
+        )
 
     def formated_message(self):
         flag_for_origin_info = "(* user code *)"
         return '    File "{}", line {}, in {} {}\n\t{}'.format(
-            self.location.filepath, self.location.lineno, self.function_name,
-            flag_for_origin_info, self.source_code.lstrip())
+            self.location.filepath,
+            self.location.lineno,
+            self.function_name,
+            flag_for_origin_info,
+            self.source_code.lstrip(),
+        )
 
     def as_frame(self):
-        return (self.location.filepath, self.location.lineno,
-                self.function_name, self.source_code.lstrip())
+        return (
+            self.location.filepath,
+            self.location.lineno,
+            self.function_name,
+            self.source_code.lstrip(),
+        )
 
 
 class OriginInfoAttacher(gast.NodeTransformer):
@@ -141,9 +152,9 @@ class OriginInfoAttacher(gast.NodeTransformer):
 global_origin_info_map = {}
 
 
-def create_and_update_origin_info_map(transformed_node,
-                                      static_func,
-                                      is_global=True):
+def create_and_update_origin_info_map(
+    transformed_node, static_func, is_global=True
+):
     """
     Creates a original information map between transformed static function and original dygraph function.
 
@@ -161,9 +172,11 @@ def create_and_update_origin_info_map(transformed_node,
     static_node = attach_origin_info(static_node, static_func)
 
     for t_node, s_node in ast_walk(transformed_node, static_node):
-        assert type(t_node) == type(s_node), \
-            "The node types should be the same, but received type(t_node) is {}, and type(s_node) is {}." \
-                .format(type(t_node), type(s_node))
+        assert type(t_node) == type(
+            s_node
+        ), "The node types should be the same, but received type(t_node) is {}, and type(s_node) is {}.".format(
+            type(t_node), type(s_node)
+        )
         dygraph_info = getattr(t_node, ORIGI_INFO, None)
         static_info = getattr(s_node, ORIGI_INFO, None)
 
@@ -173,9 +186,15 @@ def create_and_update_origin_info_map(transformed_node,
         exist_origin_info = origin_info_map.get(static_loc)
 
         if exist_origin_info is not None:
-            if exist_origin_info.location.lineno >= dygraph_info.location.lineno:
+            if (
+                exist_origin_info.location.lineno
+                >= dygraph_info.location.lineno
+            ):
                 continue
-            if exist_origin_info.location.col_offset <= dygraph_info.location.col_offset:
+            if (
+                exist_origin_info.location.col_offset
+                <= dygraph_info.location.col_offset
+            ):
                 continue
 
         origin_info_map[static_loc] = dygraph_info
@@ -214,7 +233,7 @@ def ast_walk(transformed_node, static_node):
     def _as_list(x):
         if x is None:
             return []
-        return list(x) if isinstance(x, collections.Sequence) else [x]
+        return list(x) if isinstance(x, Sequence) else [x]
 
     transformed_node_list = _as_list(transformed_node)
     static_node_list = _as_list(static_node)
@@ -228,12 +247,15 @@ def ast_walk(transformed_node, static_node):
             # Node types should be strictly required, but there is no strict distinction between gast.Load and gast.Param
             # in the ast transformation process.
             if isinstance(t_node, (gast.Load, gast.Param)) or isinstance(
-                    s_node, (gast.Load, gast.Param)):
+                s_node, (gast.Load, gast.Param)
+            ):
                 continue
 
-        assert type(t_node) == type(s_node), \
-            "The node types should be the same, but received type(t_node) is {}, and type(s_node) is {}."\
-                .format(type(t_node), type(s_node))
+        assert type(t_node) == type(
+            s_node
+        ), "The node types should be the same, but received type(t_node) is {}, and type(s_node) is {}.".format(
+            type(t_node), type(s_node)
+        )
 
         yield t_node, s_node
 
@@ -288,11 +310,11 @@ def update_op_callstack_with_origin_info(program):
             loc = Location(filepath, lineno)
             dygraph_func_info = global_origin_info_map.get(loc.line_location)
             if dygraph_func_info:
-                filepath, lineno, funcname, code = \
-                    dygraph_func_info.as_frame()
+                filepath, lineno, funcname, code = dygraph_func_info.as_frame()
 
             callstack[i] = '  File "{}", line {}, in {}'.format(
-                filepath, lineno, funcname)
+                filepath, lineno, funcname
+            )
             callstack[i + 1] = '    {}'.format(code)
 
         return callstack

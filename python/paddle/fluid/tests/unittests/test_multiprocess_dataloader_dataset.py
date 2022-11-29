@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.io import Dataset, IterableDataset, TensorDataset, \
-        ComposeDataset, ChainDataset, DataLoader, random_split, Subset
+from paddle.fluid.framework import _test_eager_guard
+from paddle.io import (
+    ChainDataset,
+    ComposeDataset,
+    DataLoader,
+    Dataset,
+    IterableDataset,
+    TensorDataset,
+)
 
 IMAGE_SIZE = 32
 
@@ -35,7 +41,7 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, 9, (1, )).astype('int64')
+        label = np.random.randint(0, 9, (1,)).astype('int64')
         return image, label
 
 
@@ -47,7 +53,7 @@ class RandomIterableDataset(IterableDataset):
         for i in range(self.sample_num):
             np.random.seed(i)
             image = np.random.random([IMAGE_SIZE]).astype('float32')
-            label = np.random.randint(0, 9, (1, )).astype('int64')
+            label = np.random.randint(0, 9, (1,)).astype('int64')
             yield image, label
 
 
@@ -69,28 +75,38 @@ class TestTensorDataset(unittest.TestCase):
                 places=place,
                 num_workers=num_workers,
                 batch_size=1,
-                drop_last=True)
+                drop_last=True,
+            )
 
             for i, (input, label) in enumerate(dataloader()):
                 assert len(input) == 1
                 assert len(label) == 1
                 assert input.shape == [1, 3, 4]
                 assert label.shape == [1, 1]
-                assert isinstance(input, paddle.Tensor)
-                assert isinstance(label, paddle.Tensor)
+                assert isinstance(
+                    input, (fluid.core.VarBase, fluid.core.eager.Tensor)
+                )
+                assert isinstance(
+                    label, (fluid.core.VarBase, fluid.core.eager.Tensor)
+                )
                 assert np.allclose(input.numpy(), input_np[i])
                 assert np.allclose(label.numpy(), label_np[i])
 
-    def test_main(self):
+    def func_test_main(self):
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
 
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
+
 
 class TestComposeDataset(unittest.TestCase):
-    def test_main(self):
+    def func_test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
@@ -108,9 +124,14 @@ class TestComposeDataset(unittest.TestCase):
             assert np.allclose(input2, input2_t)
             assert np.allclose(label2, label2_t)
 
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
+
 
 class TestRandomSplitApi(unittest.TestCase):
-    def test_main(self):
+    def func_test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
@@ -129,15 +150,25 @@ class TestRandomSplitApi(unittest.TestCase):
 
         self.assertTrue(len(elements_list) == 0)
 
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
+
 
 class TestRandomSplitError(unittest.TestCase):
-    def test_errors(self):
+    def func_test_errors(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [3, 8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [])
+
+    def test_errors(self):
+        with _test_eager_guard():
+            self.func_test_errors()
+        self.func_test_errors()
 
 
 class TestSubsetDataset(unittest.TestCase):
@@ -162,7 +193,8 @@ class TestSubsetDataset(unittest.TestCase):
                 places=places,
                 num_workers=num_workers,
                 batch_size=1,
-                drop_last=True)
+                drop_last=True,
+            )
 
         dataloader = prepare_dataloader(dataset)
         dataloader_even = prepare_dataloader(even_subset)
@@ -173,8 +205,12 @@ class TestSubsetDataset(unittest.TestCase):
             assert len(label) == 1
             assert input.shape == [1, 3, 4]
             assert label.shape == [1, 1]
-            assert isinstance(input, paddle.Tensor)
-            assert isinstance(label, paddle.Tensor)
+            assert isinstance(
+                input, (fluid.core.VarBase, fluid.core.eager.Tensor)
+            )
+            assert isinstance(
+                label, (fluid.core.VarBase, fluid.core.eager.Tensor)
+            )
 
         elements_list = list()
         for _, (input, label) in enumerate(dataloader()):
@@ -192,7 +228,7 @@ class TestSubsetDataset(unittest.TestCase):
 
         self.assertEqual(odd_list, elements_list)
 
-    def test_main(self):
+    def func_test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
 
@@ -201,6 +237,11 @@ class TestSubsetDataset(unittest.TestCase):
             places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
+
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
 
 
 class TestChainDataset(unittest.TestCase):
@@ -227,12 +268,17 @@ class TestChainDataset(unittest.TestCase):
             assert np.allclose(label, samples[idx][1])
             idx += 1
 
-    def test_main(self):
+    def func_test_main(self):
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for p in places:
             self.run_main(num_workers=0, places=p)
+
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
 
 
 class NumpyMixTensorDataset(Dataset):
@@ -245,7 +291,7 @@ class NumpyMixTensorDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, 9, (1, )).astype('int64')
+        label = np.random.randint(0, 9, (1,)).astype('int64')
         return paddle.to_tensor(image, place=paddle.CPUPlace()), label
 
 
@@ -262,15 +308,20 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
                 places=place,
                 num_workers=num_workers,
                 batch_size=1,
-                drop_last=True)
+                drop_last=True,
+            )
 
             for i, (input, label) in enumerate(dataloader()):
                 assert len(input) == 1
                 assert len(label) == 1
                 assert input.shape == [1, IMAGE_SIZE]
                 assert label.shape == [1, 1]
-                assert isinstance(input, paddle.Tensor)
-                assert isinstance(label, paddle.Tensor)
+                assert isinstance(
+                    input, (fluid.core.VarBase, fluid.core.eager.Tensor)
+                )
+                assert isinstance(
+                    label, (fluid.core.VarBase, fluid.core.eager.Tensor)
+                )
 
 
 class ComplextDataset(Dataset):
@@ -281,13 +332,16 @@ class ComplextDataset(Dataset):
         return self.sample_num
 
     def __getitem__(self, idx):
-        return (3.1, 'abc', paddle.to_tensor(
-            np.random.random([IMAGE_SIZE]).astype('float32'),
-            place=paddle.CPUPlace()),
-                [1, np.random.random([2]).astype('float32')], {
-                    'a': 2.0,
-                    'b': np.random.random([2]).astype('float32')
-                })
+        return (
+            3.1,
+            'abc',
+            paddle.to_tensor(
+                np.random.random([IMAGE_SIZE]).astype('float32'),
+                place=paddle.CPUPlace(),
+            ),
+            [1, np.random.random([2]).astype('float32')],
+            {'a': 2.0, 'b': np.random.random([2]).astype('float32')},
+        )
 
 
 class TestComplextDataset(unittest.TestCase):
@@ -303,7 +357,8 @@ class TestComplextDataset(unittest.TestCase):
                 places=place,
                 num_workers=num_workers,
                 batch_size=2,
-                drop_last=True)
+                drop_last=True,
+            )
 
             for i, data in enumerate(dataloader()):
                 assert len(data) == 5
@@ -325,9 +380,134 @@ class TestComplextDataset(unittest.TestCase):
                 assert data[4]['a'].shape == [2]
                 assert data[4]['b'].shape == [2, 2]
 
-    def test_main(self):
+    def func_test_main(self):
         for num_workers in [0, 2]:
             self.run_main(num_workers)
+
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
+
+
+class SingleFieldDataset(Dataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __len__(self):
+        return self.sample_num
+
+    def __getitem__(self, idx):
+        return np.random.random((2, 3)).astype('float32')
+
+
+class TestSingleFieldDataset(unittest.TestCase):
+    def init_dataset(self):
+        self.sample_num = 16
+        self.dataset = SingleFieldDataset(self.sample_num)
+
+    def run_main(self, num_workers):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+        place = paddle.CPUPlace()
+        with fluid.dygraph.guard(place):
+            self.init_dataset()
+            dataloader = DataLoader(
+                self.dataset,
+                places=place,
+                num_workers=num_workers,
+                batch_size=2,
+                drop_last=True,
+            )
+
+            for i, data in enumerate(dataloader()):
+                assert isinstance(
+                    data, (fluid.core.VarBase, fluid.core.eager.Tensor)
+                )
+                assert data.shape == [2, 2, 3]
+
+    def func_test_main(self):
+        for num_workers in [0, 2]:
+            self.run_main(num_workers)
+
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
+
+
+class SingleFieldIterableDataset(IterableDataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __iter__(self):
+        for _ in range(self.sample_num):
+            yield np.random.random((2, 3)).astype('float32')
+
+
+class TestSingleFieldIterableDataset(TestSingleFieldDataset):
+    def init_dataset(self):
+        self.sample_num = 16
+        self.dataset = SingleFieldIterableDataset(self.sample_num)
+
+
+class TestDataLoaderGenerateStates(unittest.TestCase):
+    def setUp(self):
+        self.inputs = [(0, 1), (0, 2), (1, 3)]
+        self.outputs = [
+            [1835504127, 1731038949, 1320224556, 2330041505],
+            [2834126987, 2358157858, 1860244682, 1437227251],
+            [457190280, 2660306227, 859341110, 354512857],
+        ]
+
+    def func_test_main(self):
+        from paddle.fluid.dataloader.worker import _generate_states
+
+        for inp, outp in zip(self.inputs, self.outputs):
+            out = _generate_states(*inp)
+            assert out == outp
+
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
+
+
+class TestDatasetWithDropLast(unittest.TestCase):
+    def run_main(self, dataset, num_samples, batch_size):
+        for num_workers in [0, 1]:
+            for drop_last in [True, False]:
+                steps = (
+                    num_samples + (1 - int(drop_last)) * (batch_size - 1)
+                ) // batch_size
+                dataloader = DataLoader(
+                    dataset,
+                    batch_size=batch_size,
+                    drop_last=drop_last,
+                    num_workers=num_workers,
+                )
+                datas = []
+                for data in dataloader:
+                    datas.append(data)
+                assert len(datas) == steps
+
+    def func_test_map_dataset(self):
+        dataset = RandomDataset(10)
+        self.run_main(dataset, 10, 3)
+
+    def test_map_dataset(self):
+        with _test_eager_guard():
+            self.func_test_map_dataset()
+        self.func_test_map_dataset()
+
+    def func_test_iterable_dataset(self):
+        dataset = RandomIterableDataset(10)
+        self.run_main(dataset, 10, 3)
+
+    def test_iterable_dataset(self):
+        with _test_eager_guard():
+            self.func_test_iterable_dataset()
+        self.func_test_iterable_dataset()
 
 
 if __name__ == '__main__':

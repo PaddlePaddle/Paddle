@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy
 import unittest
 
+import numpy
+
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 program_translator = ProgramTranslator()
 
@@ -156,8 +155,11 @@ def dyfunc_print_continue_vars(x):
 class TestPrintBase(unittest.TestCase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.set_test_func()
 
     def set_test_func(self):

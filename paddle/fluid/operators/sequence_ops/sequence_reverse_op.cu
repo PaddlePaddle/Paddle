@@ -16,10 +16,9 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    sequence_reverse,
-    ops::SequenceReverseOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::SequenceReverseOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceReverseOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SequenceReverseOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceReverseOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(sequence_reverse,
+                        ops::SequenceReverseOpKernel<phi::GPUContext, uint8_t>,
+                        ops::SequenceReverseOpKernel<phi::GPUContext, int>,
+                        ops::SequenceReverseOpKernel<phi::GPUContext, int64_t>,
+                        ops::SequenceReverseOpKernel<phi::GPUContext, float>,
+                        ops::SequenceReverseOpKernel<phi::GPUContext, double>);

@@ -12,23 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import unittest
-import time
-import random
-import tempfile
 import shutil
-import numpy as np
+import tempfile
+import unittest
 
 import paddle
-from paddle import Model
-from paddle.static import InputSpec
-from paddle.vision.models import LeNet
-from paddle.hapi.callbacks import config_callbacks
 import paddle.vision.transforms as T
+from paddle.fluid.framework import _test_eager_guard
+from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
-from paddle.metric import Accuracy
-from paddle.nn.layer.loss import CrossEntropyLoss
 
 
 class MnistDataset(MNIST):
@@ -43,11 +35,7 @@ class TestCallbacks(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.save_dir)
 
-    def test_visualdl_callback(self):
-        # visualdl not support python2
-        if sys.version_info < (3, ):
-            return
-
+    def func_visualdl_callback(self):
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 
@@ -55,20 +43,25 @@ class TestCallbacks(unittest.TestCase):
         train_dataset = MnistDataset(mode='train', transform=transform)
         eval_dataset = MnistDataset(mode='test', transform=transform)
 
-        net = paddle.vision.LeNet()
+        net = paddle.vision.models.LeNet()
         model = paddle.Model(net, inputs, labels)
 
         optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
         model.prepare(
             optimizer=optim,
             loss=paddle.nn.CrossEntropyLoss(),
-            metrics=paddle.metric.Accuracy())
+            metrics=paddle.metric.Accuracy(),
+        )
 
         callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
-        model.fit(train_dataset,
-                  eval_dataset,
-                  batch_size=64,
-                  callbacks=callback)
+        model.fit(
+            train_dataset, eval_dataset, batch_size=64, callbacks=callback
+        )
+
+    def test_visualdl_callback(self):
+        with _test_eager_guard():
+            self.func_visualdl_callback()
+        self.func_visualdl_callback()
 
 
 if __name__ == '__main__':

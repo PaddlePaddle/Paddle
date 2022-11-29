@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import logging
 
 __all__ = ['get_logger']
@@ -45,7 +43,7 @@ def get_logger(name, level, fmt=None):
     handler = logging.StreamHandler()
 
     if fmt:
-        formatter = logging.Formatter(fmt=fmt)
+        formatter = logging.Formatter(fmt=fmt, datefmt='%a %b %d %H:%M:%S')
         handler.setFormatter(formatter)
 
     logger.addHandler(handler)

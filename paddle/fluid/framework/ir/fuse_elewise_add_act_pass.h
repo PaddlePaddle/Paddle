@@ -57,15 +57,20 @@ class FuseElewiseAddActPass : public FusePassBase {
    */
   void RemoveIntermediateOut(Graph *graph) const;
 
-  std::vector<Node *> ReplaceNode(Node *cur_node, Node *new_node,
+  std::vector<Node *> ReplaceNode(Node *cur_node,
+                                  Node *new_node,
                                   const std::vector<Node *> &nodes) const;
 
   std::vector<Node *> RemoveNode(Node *trg_node,
                                  const std::vector<Node *> &nodes) const;
 
-  void ReLinkNodes(Graph *graph, const Node *intermediate_out, Node *op_1,
-                   Node *op_2, Node *fused_op) const;
-  Node *CreateFuseElewiseAddActNode(Graph *g, const Node *op_1,
+  void ReLinkNodes(Graph *graph,
+                   const Node *intermediate_out,
+                   Node *op_1,
+                   Node *op_2,
+                   Node *fused_op) const;
+  Node *CreateFuseElewiseAddActNode(Graph *g,
+                                    const Node *op_1,
                                     const Node *op_2,
                                     const std::string &ele_x_n,
                                     const std::string &ele_y_n,

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
+
+import paddle.fluid as fluid
 
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
@@ -31,7 +31,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.out = np.add(self.x, self.y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "elementwise_add"
@@ -45,7 +45,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.out = np.dot(self.x, self.y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "mul"
@@ -64,7 +64,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
                 add_out1 = np.array(add_out[0])
                 mul_out = self.calc_mul_out(place, parallel)
                 add_out2 = np.array(add_out[0])
-                self.assertTrue(np.array_equal(add_out1, add_out2))
+                np.testing.assert_array_equal(add_out1, add_out2)
 
 
 class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
@@ -78,7 +78,8 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place)
+                places=place
+            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
@@ -90,7 +91,8 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place)
+                places=place
+            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
@@ -106,7 +108,7 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
                 add_out1 = np.array(add_out[0])
                 sub_out = self.calc_sub_out(place, parallel)
                 add_out2 = np.array(add_out[0])
-                self.assertTrue(np.array_equal(add_out1, add_out2))
+                np.testing.assert_array_equal(add_out1, add_out2)
 
 
 if __name__ == '__main__':

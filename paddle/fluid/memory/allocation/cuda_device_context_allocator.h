@@ -25,103 +25,98 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-
 namespace memory {
 namespace allocation {
 
 /**
- * CUDADeviceContextAllocation is a wrapper of the underbeneath allocation.
- * CUDADeviceContextAllocation adds a CUDA stream callback for the underbeneath
- * allocation so that CUDADeviceContextAllocation can be used in a CUDA stream
+ * GPUContextAllocation is a wrapper of the underbeneath allocation.
+ * GPUContextAllocation adds a CUDA stream callback for the underbeneath
+ * allocation so that GPUContextAllocation can be used in a CUDA stream
  * which deletes allocation in the callback.
  */
-class CUDADeviceContextAllocation : public Allocation {
+class GPUContextAllocation : public Allocation {
  public:
-  explicit CUDADeviceContextAllocation(AllocationPtr allocation)
-      : Allocation(allocation->ptr(), allocation->size(), allocation->place()),
+  explicit GPUContextAllocation(DecoratedAllocationPtr allocation)
+      : Allocation(allocation->ptr(),
+                   allocation->base_ptr(),
+                   allocation->size(),
+                   allocation->place()),
         underlying_allocation_(std::move(allocation)) {}
 
-  ~CUDADeviceContextAllocation() {
+  ~GPUContextAllocation() {
     PADDLE_ENFORCE_NOT_NULL(
         dev_ctx_,
         platform::errors::PreconditionNotMet(
-            "Device context is not set for CUDADeviceContextAllocation"));
+            "Device context is not set for GPUContextAllocation"));
     auto *p_allocation = underlying_allocation_.release();
-    VLOG(4) << "Adding callback to delete CUDADeviceContextAllocation at "
+    VLOG(4) << "Adding callback to delete GPUContextAllocation at "
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
-      VLOG(4) << "Delete CUDADeviceContextAllocation at " << p_allocation;
-      AllocationDeleter()(p_allocation);
+      VLOG(4) << "Delete GPUContextAllocation at " << p_allocation;
+      Allocator::AllocationDeleter(p_allocation);
     });
   }
 
-  void SetCUDADeviceContext(const platform::CUDADeviceContext *dev_ctx) {
-    dev_ctx_ = dev_ctx;
-  }
+  void SetGPUContext(const phi::GPUContext *dev_ctx) { dev_ctx_ = dev_ctx; }
 
  private:
-  AllocationPtr underlying_allocation_;
-  const platform::CUDADeviceContext *dev_ctx_{nullptr};
+  DecoratedAllocationPtr underlying_allocation_;
+  const phi::GPUContext *dev_ctx_{nullptr};
 };
 
 /**
- * CUDADeviceContextAllocator will allocate a CUDADeviceContextAllocation
+ * GPUContextAllocator will allocate a GPUContextAllocation
  * after waiting for a self-created event on the default stream. It does so to
  * let the non-default stream be able to allocate GPU memory which will be
  * released by stream callback
  */
-class CUDADeviceContextAllocator : public Allocator {
+class GPUContextAllocator : public Allocator {
  public:
-  explicit CUDADeviceContextAllocator(platform::CUDAPlace place,
-                                      gpuStream_t default_stream)
+  explicit GPUContextAllocator(platform::CUDAPlace place,
+                               gpuStream_t default_stream)
       : place_(place), default_stream_(default_stream) {
     platform::CUDADeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&event_, hipEventDisableTiming));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreate(&event_, cudaEventDisableTiming));
 #endif
   }
 
-  ~CUDADeviceContextAllocator() {
+  ~GPUContextAllocator() {
     if (event_) {
       platform::CUDADeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event_));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event_));
 #endif
     }
   }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
         platform::errors::PreconditionNotMet(
-            "Default stream is not set for CUDADeviceContextAllocator"));
+            "Default stream is not set for GPUContextAllocator"));
     platform::CUDADeviceGuard guard(place_.device);
-    auto allocation =
-        new CUDADeviceContextAllocation(memory::Alloc(place_, size));
+    auto allocation = new GPUContextAllocation(
+        static_unique_ptr_cast<Allocation>(memory::Alloc(place_, size)));
 // Wait for the event on stream
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, default_stream_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(default_stream_, event_, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, default_stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(default_stream_, event_, 0));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, default_stream_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamWaitEvent(default_stream_, event_, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, default_stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(default_stream_, event_, 0));
 #endif
     return allocation;
   }
 
-  void FreeImpl(Allocation *allocation) override { delete allocation; }
+  void FreeImpl(phi::Allocation *allocation) override { delete allocation; }
 
  private:
   platform::CUDAPlace place_;
@@ -130,46 +125,47 @@ class CUDADeviceContextAllocator : public Allocator {
 };
 
 /**
- * CUDADeviceContextAllocatorPool is a singletion stores mapping from
- * CUDAPlace(s) to std::shared_ptr<CUDADeviceContextAllocator>. When a
- * CUDADeviceContext's compute stream isn't default stream, it can call this
+ * GPUContextAllocatorPool is a singletion stores mapping from
+ * CUDAPlace(s) to std::shared_ptr<GPUContextAllocator>. When a
+ * phi::GPUContext's compute stream isn't default stream, it can call this
  * class to allocate GPU memory which will be released by a callback after
  * stream execution.
  */
-class CUDADeviceContextAllocatorPool {
+class GPUContextAllocatorPool {
  public:
-  static CUDADeviceContextAllocatorPool &Instance() {
-    static CUDADeviceContextAllocatorPool pool;
+  static GPUContextAllocatorPool &Instance() {
+    static GPUContextAllocatorPool pool;
     return pool;
   }
 
-  AllocationPtr Alloc(const platform::CUDADeviceContext &dev_ctx, size_t size) {
-    auto iter = allocators_.find(
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()));
+  AllocationPtr Alloc(const phi::GPUContext &dev_ctx, size_t size) {
+    auto iter =
+        allocators_.find(platform::CUDAPlace(dev_ctx.GetPlace().GetDeviceId()));
     PADDLE_ENFORCE_NE(
-        iter, allocators_.end(),
+        iter,
+        allocators_.end(),
         platform::errors::NotFound("No allocator found for CUDAPlace."));
     auto &allocator = iter->second;
     AllocationPtr allocation = allocator->Allocate(size);
-    static_cast<CUDADeviceContextAllocation *>(allocation.get())
-        ->SetCUDADeviceContext(&dev_ctx);
+    static_cast<GPUContextAllocation *>(allocation.get())
+        ->SetGPUContext(&dev_ctx);
     return allocation;
   }
 
  private:
-  CUDADeviceContextAllocatorPool() {
+  GPUContextAllocatorPool() {
     std::vector<int> devices = platform::GetSelectedDevices();
     for (int i : devices) {
       auto place = platform::CUDAPlace(i);
       auto compute_stream =
           platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
-      auto allocator = std::shared_ptr<CUDADeviceContextAllocator>(
-          new CUDADeviceContextAllocator(place, compute_stream));
+      auto allocator = std::shared_ptr<GPUContextAllocator>(
+          new GPUContextAllocator(place, compute_stream));
       allocators_.insert(make_pair(place, allocator));
     }
   }
 
-  std::map<platform::CUDAPlace, std::shared_ptr<CUDADeviceContextAllocator>>
+  std::map<platform::CUDAPlace, std::shared_ptr<GPUContextAllocator>>
       allocators_;
 };
 

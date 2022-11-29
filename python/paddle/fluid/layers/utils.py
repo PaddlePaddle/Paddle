@@ -12,15 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import collections
 import copy
-import six
 import numpy as np
-from ..framework import Variable, in_dygraph_mode
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..framework import Block, Variable, _non_static_mode
+from ..data_feeder import (
+    convert_dtype,
+    check_variable_and_dtype,
+    check_type,
+    check_dtype,
+)
 from ..layer_helper import LayerHelper
 from sys import version_info
+
+from collections.abc import Sequence
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -44,27 +49,52 @@ def convert_to_list(value, n, name, dtype=int):
         passed.
     """
     if isinstance(value, dtype):
-        return [value, ] * n
+        return [
+            value,
+        ] * n
     else:
         try:
             value_list = list(value)
         except TypeError:
-            raise ValueError("The " + name +
-                             "'s type must be list or tuple. Received: " + str(
-                                 value))
+            raise ValueError(
+                "The "
+                + name
+                + "'s type must be list or tuple. Received: "
+                + str(value)
+            )
         if len(value_list) != n:
-            raise ValueError("The " + name + "'s length must be " + str(n) +
-                             ". Received: " + str(value))
+            raise ValueError(
+                "The "
+                + name
+                + "'s length must be "
+                + str(n)
+                + ". Received: "
+                + str(value)
+            )
         for single_value in value_list:
+            assert not isinstance(single_value, Variable), (
+                "Required numerical type with '%s', but received Tensor."
+                % dtype
+            )
             try:
                 dtype(single_value)
             except (ValueError, TypeError):
                 raise ValueError(
-                    "The " + name + "'s type must be a list or tuple of " + str(
-                        n) + " " + str(dtype) + " . Received: " + str(
-                            value) + " "
-                    "including element " + str(single_value) + " of type" + " "
-                    + str(type(single_value)))
+                    "The "
+                    + name
+                    + "'s type must be a list or tuple of "
+                    + str(n)
+                    + " "
+                    + str(dtype)
+                    + " . Received: "
+                    + str(value)
+                    + " "
+                    "including element "
+                    + str(single_value)
+                    + " of type"
+                    + " "
+                    + str(type(single_value))
+                )
         return value_list
 
 
@@ -74,8 +104,16 @@ def is_sequence(seq):
     """
     if isinstance(seq, dict):
         return True
-    return (isinstance(seq, collections.Sequence) and
-            not isinstance(seq, six.string_types))
+    return isinstance(seq, Sequence) and not isinstance(seq, str)
+
+
+def _hash_with_id(*args):
+    """
+    Return int hash value calculated by id(arg) or tuple(id1,id2, ...).
+    """
+    assert len(args) > 0
+    info = tuple([id(v) for v in args])
+    return hash(info) & 0xFFFFFFF
 
 
 def _sorted(dict_):
@@ -83,7 +121,7 @@ def _sorted(dict_):
     Returns a sorted list of the dict keys, with error if keys not sortable.
     """
     try:
-        return sorted(six.iterkeys(dict_))
+        return sorted(dict_.keys())
     except TypeError:
         raise TypeError("nest only supports dicts with sortable keys.")
 
@@ -111,11 +149,18 @@ def _yield_flat_nest(nest):
             yield n
 
 
+def to_sequence(nest):
+    if is_sequence(nest):
+        return nest
+    else:
+        return [nest]
+
+
 def flatten(nest):
     """
-	:alias_main: paddle.flatten
-	:alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
-	:old_api: paddle.fluid.layers.flatten
+        :alias_main: paddle.flatten
+        :alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
+        :old_api: paddle.fluid.layers.flatten
 
     Traverse all entries in the nested structure and put them into an list.
     """
@@ -136,11 +181,13 @@ def _sequence_like(instance, args):
         # ordered and plain dicts (e.g., flattening a dict but using a
         # corresponding `OrderedDict` to pack it back).
         result = dict(zip(_sorted(instance), args))
-        return type(instance)((key, result[key])
-                              for key in six.iterkeys(instance))
-    elif (isinstance(instance, tuple) and hasattr(instance, "_fields") and
-          isinstance(instance._fields, collections.Sequence) and
-          all(isinstance(f, six.string_types) for f in instance._fields)):
+        return type(instance)((key, result[key]) for key in instance.keys())
+    elif (
+        isinstance(instance, tuple)
+        and hasattr(instance, "_fields")
+        and isinstance(instance._fields, Sequence)
+        and all(isinstance(f, str) for f in instance._fields)
+    ):
         # This is a namedtuple
         return type(instance)(*args)
     else:
@@ -173,15 +220,22 @@ def pack_sequence_as(structure, flat_sequence):
     if not is_sequence(structure):
         if len(flat_sequence) != 1:
             raise ValueError(
-                "Structure is a scalar but len(flat_sequence) == %d > 1" %
-                len(flat_sequence))
+                "Structure is a scalar but len(flat_sequence) == %d > 1"
+                % len(flat_sequence)
+            )
         return flat_sequence[0]
     flat_structure = flatten(structure)
     if len(flat_structure) != len(flat_sequence):
         raise ValueError(
             "Could not pack sequence. Structure had %d elements, but flat_sequence "
-            "had %d elements.  Structure: %s, flat_sequence: %s." %
-            (len(flat_structure), len(flat_sequence), structure, flat_sequence))
+            "had %d elements.  Structure: %s, flat_sequence: %s."
+            % (
+                len(flat_structure),
+                len(flat_sequence),
+                structure,
+                flat_sequence,
+            )
+        )
     _, packed = _packed_nest_with_indices(structure, flat_sequence, 0)
     return _sequence_like(structure, packed)
 
@@ -221,7 +275,8 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     if is_sequence_nest1 != is_sequence(nest2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
-            "First structure: %s\n\nSecond structure: %s." % (nest1, nest2))
+            "First structure: %s\n\nSecond structure: %s." % (nest1, nest2)
+        )
     if not is_sequence_nest1:
         return  # finished checking
     if check_types:
@@ -230,20 +285,43 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         if type_nest1 != type_nest2:
             raise TypeError(
                 "The two structures don't have the same sequence type. First "
-                "structure has type %s, while second structure has type %s." %
-                (type_nest1, type_nest2))
+                "structure has type %s, while second structure has type %s."
+                % (type_nest1, type_nest2)
+            )
         if isinstance(nest1, dict):
-            keys1 = set(six.iterkeys(nest1))
-            keys2 = set(six.iterkeys(nest2))
+            keys1 = set(nest1.keys())
+            keys2 = set(nest2.keys())
             if keys1 != keys2:
                 raise ValueError(
                     "The two dictionaries don't have the same set of keys. First "
-                    "structure has keys {}, while second structure has keys {}."
-                    .format(keys1, keys2))
+                    "structure has keys {}, while second structure has keys {}.".format(
+                        keys1, keys2
+                    )
+                )
     nest1_as_sequence = [n for n in _yield_value(nest1)]
     nest2_as_sequence = [n for n in _yield_value(nest2)]
     for n1, n2 in zip(nest1_as_sequence, nest2_as_sequence):
         _recursive_assert_same_structure(n1, n2, check_types)
+
+
+def padding_to_same_structure(nest1, nest2, obj=None):
+    def _padding_to_same_structure_single(value, obj):
+        def change_none_to_obj(x):
+            if x is None:
+                return obj
+            return x
+
+        if is_sequence(value):
+            value = pack_sequence_as(
+                value, [change_none_to_obj(item) for item in flatten(value)]
+            )
+        else:
+            value = change_none_to_obj(value)
+        return value
+
+    nest1 = _padding_to_same_structure_single(nest1, obj)
+    nest2 = _padding_to_same_structure_single(nest2, obj)
+    return nest1, nest2
 
 
 def assert_same_structure(nest1, nest2, check_types=True):
@@ -253,10 +331,12 @@ def assert_same_structure(nest1, nest2, check_types=True):
     len_nest1 = len(flatten(nest1)) if is_sequence(nest1) else 1
     len_nest2 = len(flatten(nest2)) if is_sequence(nest2) else 1
     if len_nest1 != len_nest2:
-        raise ValueError("The two structures don't have the same number of "
-                         "elements.\n\nFirst structure (%i elements): %s\n\n"
-                         "Second structure (%i elements): %s" %
-                         (len_nest1, nest1, len_nest2, nest2))
+        raise ValueError(
+            "The two structures don't have the same number of "
+            "elements.\n\nFirst structure (%i elements): %s\n\n"
+            "Second structure (%i elements): %s"
+            % (len_nest1, nest1, len_nest2, nest2)
+        )
     _recursive_assert_same_structure(nest1, nest2, check_types)
 
 
@@ -301,9 +381,12 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
                 check_dtype(
-                    dim.dtype, 'shape[' + str(idx) + ']', ['int32', 'int64'],
+                    dim.dtype,
+                    'shape[' + str(idx) + ']',
+                    ['int32', 'int64'],
                     op_type,
-                    '(When type of shape in' + op_type + 'is list or tuple.)')
+                    '(When type of shape in' + op_type + 'is list or tuple.)',
+                )
                 if convert_dtype(dim.dtype) == 'int64':
                     dim = cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
@@ -314,15 +397,17 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
 
     if isinstance(shape, Variable):
         shape.stop_gradient = True
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant',
-                    '(When type of shape in' + op_type + ' is Variable.)')
-        if (convert_dtype(shape.dtype) == 'int64'):
+        check_dtype(
+            shape.dtype,
+            'shape',
+            ['int32', 'int64'],
+            'fill_constant',
+            '(When type of shape in' + op_type + ' is Variable.)',
+        )
+        if convert_dtype(shape.dtype) == 'int64':
             shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, (
-            "The size of 'shape' in" + op_type + " can't be zero, "
-            "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
         if _contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
@@ -335,6 +420,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     Converts all elements of a list to Variable.
     """
     from .tensor import fill_constant
+
     new_list_tensor = []
     for ele in old_list:
 
@@ -342,7 +428,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:
-            assert isinstance(ele, six.integer_types)
+            assert isinstance(ele, int)
             temp_out = fill_constant([1], dtype, ele, force_cpu=True)
             new_list_tensor.append(temp_out)
     return new_list_tensor
@@ -354,10 +440,13 @@ def convert_shape_to_list(shape):
     """
     if isinstance(shape, (list, tuple)):
         shape = list(
-            map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
-                shape))
+            map(
+                lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
+                shape,
+            )
+        )
     else:
-        shape = list(shape.numpy().astype(int))
+        shape = shape.numpy().astype(int).tolist()
     return shape
 
 
@@ -374,7 +463,7 @@ def check_shape(shape):
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
                     )
-                if not isinstance(ele, six.integer_types):
+                if not isinstance(ele, int):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
@@ -382,19 +471,19 @@ def check_shape(shape):
 
 def try_set_static_shape_tensor(tensor, shape):
     """Try to set static shape of tensor from a shape tensor.
-    
+
     For example,
 
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
-    if not in_dygraph_mode():
+    if not _non_static_mode():
         # static mode, and shape is not all inferred (contains -1)
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
@@ -407,25 +496,56 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     """Try to get shape from a tensor with constant value.
 
     For example,
-    
+
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
-    if not in_dygraph_mode():
+    if not _non_static_mode():
         try:
             if shape_tensor.op is not None:
                 generate_op = shape_tensor.op
                 if generate_op.type == 'shape':
-                    var = shape_tensor.block.vars[generate_op.input_arg_names[
-                        0]]
+                    var = shape_tensor.block.vars[
+                        generate_op.input_arg_names[0]
+                    ]
                     return var.shape
         except:
             return None
 
         return None
+
+
+def get_inputs_outputs_in_block(block):
+    """
+    Returns the inputs and outputs variable used in this block but not
+    created in this block.
+    """
+    assert isinstance(
+        block, Block
+    ), "input non-Block argument for get_inputs_outputs_in_block."
+    assert (
+        block.parent_idx != -1
+    ), "input block should be a sub-block, not main block."
+
+    # Find input/output var names of all ops in block
+    inner_inputs = set()
+    inner_outputs = set()
+    for op in block.ops:
+        for iname in op.input_names:
+            for in_var_name in op.input(iname):
+                if not block.has_var(in_var_name):
+                    # variable not created in this block
+                    inner_inputs.add(in_var_name)
+        for oname in op.output_names:
+            for out_var_name in op.output(oname):
+                if not block.has_var(out_var_name):
+                    # variable not created in this block
+                    inner_outputs.add(out_var_name)
+
+    return inner_inputs, inner_outputs

@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -26,12 +26,16 @@ namespace ir {
 class Graph;
 class Node;
 
-class SimplifyWithBasicOpsPass : public Pass {
+class SimplifyWithBasicOpsPass : public OpCompatSensiblePass {
+ public:
+  SimplifyWithBasicOpsPass();
+
  protected:
   void ApplyImpl(Graph* graph) const override;
 
  private:
-  bool SimplifyDropout(Graph* graph, Node* n,
+  bool SimplifyDropout(Graph* graph,
+                       Node* n,
                        std::unordered_set<const Node*>* del_node_set) const;
 
   Node* GetInputVar(Node* n, const std::string& name) const;

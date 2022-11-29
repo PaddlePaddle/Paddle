@@ -15,8 +15,10 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -42,7 +44,7 @@ TEST(PD_Config, use_xpu) {
   PD_ConfigSwitchIrOptim(config, TRUE);
   bool ir_optim = PD_IrOptim(config);
   EXPECT_TRUE(ir_optim);
-  PD_ConfigEnableMemoryOptim(config);
+  PD_ConfigEnableMemoryOptim(config, true);
   bool memory_optim_enable = PD_ConfigMemoryOptimEnabled(config);
   EXPECT_TRUE(memory_optim_enable);
   PD_ConfigEnableProfile(config);

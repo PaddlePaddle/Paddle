@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-import numpy as np
 
 
 class ApiOnesTest(unittest.TestCase):
@@ -31,7 +26,7 @@ class ApiOnesTest(unittest.TestCase):
             ones = paddle.ones(shape=[10])
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -39,7 +34,7 @@ class ApiOnesTest(unittest.TestCase):
             ones = paddle.ones(shape=[10], dtype="float64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -47,7 +42,7 @@ class ApiOnesTest(unittest.TestCase):
             ones = paddle.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -56,7 +51,7 @@ class ApiOnesTest(unittest.TestCase):
             ones = fluid.layers.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 

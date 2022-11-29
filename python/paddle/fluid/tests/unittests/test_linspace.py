@@ -12,66 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid import core
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
             'Stop': np.array([10]).astype(dtype),
-            'Num': np.array([11]).astype('int32')
+            'Num': np.array([11]).astype('int32'),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
         self.outputs = {'Out': np.arange(0, 11).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceOpReverseCase(OpTest):
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
-            'Num': np.array([11]).astype('int32')
+            'Num': np.array([11]).astype('int32'),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
         self.outputs = {'Out': np.arange(10, -1, -1).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceOpNumOneCase(OpTest):
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
-            'Num': np.array([1]).astype('int32')
+            'Num': np.array([1]).astype('int32'),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
         self.outputs = {'Out': np.array(10, dtype=dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceAPI(unittest.TestCase):
@@ -100,14 +103,16 @@ class TestLinspaceAPI(unittest.TestCase):
         out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
         out_3 = paddle.linspace(0, 10, 5, dtype=core.VarDesc.VarType.FP32)
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
-                                      fetch_list=[out_1, out_2, out_3])
+        res_1, res_2, res_3 = exe.run(
+            fluid.default_main_program(), fetch_list=[out_1, out_2, out_3]
+        )
         assert np.array_equal(res_1, res_2)
 
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
             out = paddle.linspace(
-                0, 10, 5, dtype='float32', name='linspace_res')
+                0, 10, 5, dtype='float32', name='linspace_res'
+            )
             assert 'linspace_res' in out.name
 
     def test_imperative(self):
@@ -123,6 +128,11 @@ class TestLinspaceAPI(unittest.TestCase):
         self.assertEqual((out2.numpy() == np_out2).all(), True)
         self.assertEqual((out3.numpy() == np_out3).all(), True)
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_variable_input2()
+            self.test_imperative()
+
 
 class TestLinspaceOpError(unittest.TestCase):
     def test_errors(self):
@@ -133,20 +143,20 @@ class TestLinspaceOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
-            def test_dtype():
+            def test_dtype1():
                 fluid.layers.linspace(0, 10, 1.33, dtype="int32")
 
-            self.assertRaises(TypeError, test_dtype)
+            self.assertRaises(TypeError, test_dtype1)
 
             def test_start_type():
                 fluid.layers.linspace([0], 10, 1, dtype="float32")
 
             self.assertRaises(TypeError, test_start_type)
 
-            def test_end_dtype():
+            def test_end_type():
                 fluid.layers.linspace(0, [10], 1, dtype="float32")
 
-            self.assertRaises(TypeError, test_end_dtype)
+            self.assertRaises(TypeError, test_end_type)
 
             def test_step_dtype():
                 fluid.layers.linspace(0, 10, [0], dtype="float32")

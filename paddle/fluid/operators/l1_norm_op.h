@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -24,8 +25,8 @@ template <typename DeviceContext, typename T>
 class L1NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    framework::Tensor *Out = context.Output<framework::Tensor>("Out");
+    const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
+    phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
     Out->mutable_data<T>(context.GetPlace());
 
     auto x = framework::EigenVector<T>::Flatten(*X);
@@ -33,7 +34,7 @@ class L1NormKernel : public framework::OpKernel<T> {
     auto &place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    out.device(place) = x.abs().sum();
+    EigenL1Norm<std::decay_t<decltype(place)>, T>::Eval(place, out, x);
   }
 };
 
@@ -42,15 +43,16 @@ template <typename DeviceContext, typename T>
 class L1NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *x = context.Input<framework::Tensor>("X");
-    const framework::Tensor *d_out =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    const phi::DenseTensor *x = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(
-        d_out->numel(), 1,
+        d_out->numel(),
+        1,
         platform::errors::InvalidArgument(
             "Input(GRAD@Out) of L1NormGradOP should be a scalar."));
-    framework::Tensor *dx =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
+    phi::DenseTensor *dx =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(context.GetPlace());
 
     auto x_eigen = framework::EigenVector<T>::Flatten(*x);
@@ -59,8 +61,9 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     auto &place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    Eigen::DSizes<int, 1> x_dsize(x->numel());
-    dx_eigen.device(place) = d_out_eigen.broadcast(x_dsize) * x_eigen.sign();
+    Eigen::DSizes<Eigen::DenseIndex, 1> x_dsize(x->numel());
+    EigenL1NormGrad<std::decay_t<decltype(place)>, T>::Eval(
+        place, dx_eigen, d_out_eigen, x_eigen, x_dsize);
   }
 };
 

@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
-from paddle.fluid.tests.unittests.test_elementwise_mul_op import ElementwiseMulOp
+
 from paddle import enable_static
+from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
+from paddle.fluid.tests.unittests.test_elementwise_mul_op import (
+    ElementwiseMulOp,
+)
 
 
 class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
@@ -30,8 +33,8 @@ class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
 
 class TestMKLDNNElementwiseMulOp2(TestMKLDNNElementwiseMulOp):
     def init_input_output(self):
-        self.x = np.random.random((100, )).astype(self.dtype)
-        self.y = np.random.random((100, )).astype(self.dtype)
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
 
@@ -62,12 +65,23 @@ class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
+    # TODO(jczaja): Enable when grad is ready
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
 
 ''' INT8 Tests '''
 
 
 @skip_check_grad_ci(
-    reason="oneDNN's int8 elementwise_ops don't implemend grad kernel.")
+    reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
+)
 class TestInt8(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -89,7 +103,7 @@ class TestInt8(ElementwiseMulOp):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output(check_dygraph=(not self.use_mkldnn))
 
     def test_check_grad_normal(self):
         pass
@@ -109,8 +123,8 @@ class TestInt8Scales(TestInt8):
         return scale, quantized
 
     def init_input_output(self):
-        self.x_f = np.random.random((100, )).astype("float")
-        self.y_f = np.random.random((100, )).astype("float")
+        self.x_f = np.random.random((100,)).astype("float")
+        self.y_f = np.random.random((100,)).astype("float")
         self.out_f = np.multiply(self.x_f, self.y_f)
 
         self.scale_x, self.x = self.quantize(self.x_f)
@@ -126,14 +140,13 @@ class TestInt8Scales(TestInt8):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
         int_atol = 1  # different quantization techniques
-        self.check_output(
-            check_dygraph=(self.use_mkldnn == False), atol=int_atol)
+        self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
 
 
 class TestUint8Scales(TestInt8Scales):
     def init_input_output(self):
-        self.x_f = np.random.random((100, )).astype("float")
-        self.y_f = np.random.random((100, )).astype("float")
+        self.x_f = np.random.random((100,)).astype("float")
+        self.y_f = np.random.random((100,)).astype("float")
         self.out_f = np.multiply(self.x_f, self.y_f)
 
         self.scale_x, self.x = self.quantize(self.x_f, "uint8")

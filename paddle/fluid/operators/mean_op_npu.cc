@@ -9,19 +9,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mean_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = phi::DenseTensor;
+
 template <typename DeviceContext, typename T>
 class MeanNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     std::vector<int> axes;
 
@@ -30,7 +32,7 @@ class MeanNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("ReduceMeanD", {*x}, {*out}, attr_input);
+    const auto& runner = NpuOpRunner("ReduceMeanD", {*x}, {*out}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -47,39 +49,41 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto grad = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    PADDLE_ENFORCE_EQ(grad->numel(), 1,
+    PADDLE_ENFORCE_EQ(grad->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Mean Gradient Input Tensor len should be 1. But "
                           "received Out@Grad's elements num is %d.",
                           grad->numel()));
 
-    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
+    auto IG = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
     // ones
-    Tensor ones(grad->type());
+    Tensor ones(grad->dtype());
     ones.mutable_data<T>(IG->dims(), context.GetPlace());
-    auto runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
+    const auto& runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
     runner_ones.Run(stream);
 
     // means
-    Tensor mean_tensor(grad->type());
+    Tensor mean_tensor(grad->dtype());
     mean_tensor.Resize({1});
     mean_tensor.mutable_data<T>(context.GetPlace());
     FillNpuTensorWithConstant<T>(
         &mean_tensor, static_cast<T>(1.0 / static_cast<float>(IG->numel())));
 
     // means mul ones
-    Tensor mean_ma(grad->type());
+    Tensor mean_ma(grad->dtype());
     mean_ma.Resize(IG->dims());
     mean_ma.mutable_data<T>(context.GetPlace());
-    auto runner_mul_1 = NpuOpRunner("Mul", {mean_tensor, ones}, {mean_ma}, {});
+    const auto& runner_mul_1 =
+        NpuOpRunner("Mul", {mean_tensor, ones}, {mean_ma}, {});
     runner_mul_1.Run(stream);
 
     // and mul grad
-    auto runner_mul_2 = NpuOpRunner("Mul", {mean_ma, *grad}, {*IG}, {});
+    const auto& runner_mul_2 = NpuOpRunner("Mul", {mean_ma, *grad}, {*IG}, {});
     runner_mul_2.Run(stream);
   }
 };
@@ -90,13 +94,11 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    mean,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
 
 REGISTER_OP_NPU_KERNEL(
-    mean_grad, ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    mean_grad,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)

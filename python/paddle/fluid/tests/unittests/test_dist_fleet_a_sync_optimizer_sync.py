@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
+
+import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-import time
 
 paddle.enable_static()
 
@@ -31,8 +31,9 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-            "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_gradient_merge_optimizer(self):
         fleet.init(role_maker.PaddleCloudRoleMaker())
@@ -40,7 +41,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = paddle.fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
@@ -61,10 +62,6 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
                 sgds += 1
         self.assertEqual(sends, 0)
         self.assertEqual(sgds, 0)
-
-        fleet.init_worker()
-        time.sleep(8)
-        fleet.stop_worker()
 
 
 if __name__ == "__main__":

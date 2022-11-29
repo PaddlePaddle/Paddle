@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test import OpTest
 
 
@@ -43,7 +41,7 @@ class TestFlattenOp(OpTest):
         self.attrs = {"axis": self.axis}
 
 
-class TestFlattenOp(TestFlattenOp):
+class TestFlattenOp1(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 2, 10)
         self.axis = 0

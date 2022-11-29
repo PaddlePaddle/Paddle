@@ -1,0 +1,21 @@
+diff --git a/paddle/fluid/inference/api/paddle_analysis_config.h b/paddle/fluid/inference/api/paddle_analysis_config.h
+index d6a0b643c2..511844b482 100644
+--- a/paddle/fluid/inference/api/paddle_analysis_config.h
++++ b/paddle/fluid/inference/api/paddle_analysis_config.h
+@@ -46,6 +46,7 @@
+ namespace paddle {
+ 
+ class AnalysisPredictor;
++class TensorRTPredictor;
+ struct MkldnnQuantizerConfig;
+ 
+ struct LiteNNAdapterConfig {
+@@ -700,6 +701,8 @@ struct PD_INFER_DECL AnalysisConfig {
+ 
+   friend class ::paddle::AnalysisPredictor;
+ 
++  friend class ::paddle::TensorRTPredictor;
++
+   ///
+   /// \brief Get a pass builder for customize the passes in IR analysis phase.
+   /// NOTE: Just for developer, not an official API, easy to be broken.

@@ -21,9 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +30,8 @@ namespace operators {
 static void GenBKCLID(std::vector<BKCLUniqueId>* bkcl_ids) {
   for (size_t i = 0; i < bkcl_ids->size(); ++i) {
     BKCLResult_t ret = bkcl_get_unique_id(&(*bkcl_ids)[i]);
-    PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
+    PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
+                      ret,
                       platform::errors::PreconditionNotMet(
                           "bkcl get unique id failed [%d]", ret));
   }
@@ -44,8 +44,9 @@ static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
     std::string var_name = func(i);
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
+        var,
+        platform::errors::NotFound("Variable with name %s is not found",
+                                   var_name.c_str()));
     auto bkcl_id = var->GetMutable<BKCLUniqueId>();
     memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }
@@ -62,7 +63,7 @@ class CGenBKCLIdOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     int rank = Attr<int>("rank");
-    framework::Scope& local_scope = scope.NewScope();
+    int ring_id = Attr<int>("ring_id");
 
     std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
       return Output("Out");
@@ -75,14 +76,13 @@ class CGenBKCLIdOp : public framework::OperatorBase {
       GenBKCLID(&bkcl_ids);
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &bkcl_ids);
+      platform::SendBroadCastCommID(endpoint_list, &bkcl_ids, ring_id);
     } else {
       std::string endpoint = Attr<std::string>("endpoint");
-      platform::RecvBroadCastCommID(endpoint, &bkcl_ids);
+      platform::RecvBroadCastCommID(endpoint, &bkcl_ids, ring_id);
     }
 
     CopyBKCLIDToVar(bkcl_ids, func, scope);
-    scope.DeleteScope(&local_scope);
   }
 };
 
@@ -107,6 +107,8 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
     AddAttr<int>("rank",
                  "(int default 0) "
                  "The rank of the trainer in distributed training.")
+        .SetDefault(0);
+    AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
   }
 };

@@ -15,22 +15,21 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/platform/hostdevice.h"
+
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #define INT_BITS 32
+#if defined(__xpu__)
+#define __forceinline__ __inline__
+#endif
 
 namespace paddle {
-namespace operators {
-
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) CudaAlignedVector {
-  T val[Size];
-};
+namespace platform {
 
 struct FastDivMod {
   // 1st value represents the result of input number divides by recorded divisor
   // 2nd value represents the result of input number modulo by recorded divisor
-  using DivModT = CudaAlignedVector<uint32_t, 2>;
+  using DivModT = phi::AlignedVector<uint32_t, 2>;
 
   FastDivMod() {}
   HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {
@@ -54,16 +53,16 @@ struct FastDivMod {
     return (t + n) >> shift_val;
   }
 
-  __device__ __forceinline__ DivModT Divmod(uint32_t n) {
+  __device__ __forceinline__ DivModT Divmod(uint32_t n) const {
     uint32_t q = Div(n);
     DivModT result = {q, n - q * divisor};
     return result;
   }
 
-  int32_t divisor;
   int32_t shift_val;
+  uint32_t divisor;
   uint32_t multiplier;
 };
 
-}  // namespace operators
+}  // namespace platform
 }  // namespace paddle

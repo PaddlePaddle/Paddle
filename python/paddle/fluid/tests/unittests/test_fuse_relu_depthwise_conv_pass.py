@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+import unittest
+
+import numpy as np
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
-import paddle
-import paddle.dataset.mnist as mnist
-import unittest
-import os
 
 
 def norm(*args, **kargs):
@@ -37,14 +37,18 @@ def sep_conv(input, channel, stride, filter, dilation=1, act=None):
         padding=(filter // 2) * dilation,
         dilation=dilation,
         use_cudnn=False,
-        bias_attr=False)
+        bias_attr=False,
+    )
     input = norm(input)
-    if act: input = act(input)
+    if act:
+        input = act(input)
     # with scope('pointwise'):
     input = fluid.layers.conv2d(
-        input, channel, 1, 1, groups=1, padding=0, bias_attr=False)
+        input, channel, 1, 1, groups=1, padding=0, bias_attr=False
+    )
     input = norm(input)
-    if act: input = act(input)
+    if act:
+        input = act(input)
     return input
 
 
@@ -52,13 +56,13 @@ def simple_depthwise_net(use_feed):
     assert use_feed
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = fluid.layers.reshape(img, (-1, 1, 28, 28))
+    hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
         hidden = fluid.layers.relu(hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 
@@ -80,27 +84,36 @@ class TestMNIST(TestParallelExecutorBase):
         def _optimizer(learning_rate=1e-6):
             optimizer = fluid.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=fluid.regularizer.L2Decay(1e-6))
+                regularization=fluid.regularizer.L2Decay(1e-6),
+            )
             return optimizer
 
         if only_forward:
             _optimizer = None
 
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        (
+            fuse_op_first_loss,
+            fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={"image": img, "label": label},
             use_device=use_device,
             fuse_relu_depthwise_conv=True,
             use_ir_memory_optimize=True,
-            optimizer=_optimizer)
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+            optimizer=_optimizer,
+        )
+        (
+            not_fuse_op_first_loss,
+            not_fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={"image": img, "label": label},
             use_device=use_device,
             fuse_relu_depthwise_conv=False,
-            optimizer=_optimizer)
+            optimizer=_optimizer,
+        )
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
@@ -117,4 +130,5 @@ class TestMNIST(TestParallelExecutorBase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

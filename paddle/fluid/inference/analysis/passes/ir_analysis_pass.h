@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
@@ -31,6 +32,10 @@ class IrAnalysisPass : public AnalysisPass {
   void RunImpl(Argument* argument) override;
 
   void CollectFusionStatis(Argument* argument);
+
+  void ReadCalibrationInfo(
+      Argument* argument,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales);
 
   std::string repr() const override;
 };

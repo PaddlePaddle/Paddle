@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestInplace(unittest.TestCase):
-    def test_forward_version(self):
+    def func_test_forward_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
             self.assertEqual(var.inplace_version, 0)
@@ -39,7 +38,12 @@ class TestInplace(unittest.TestCase):
             var[2] = 3
             self.assertEqual(var.inplace_version, 3)
 
-    def test_backward_error(self):
+    def test_forward_version(self):
+        with _test_eager_guard():
+            self.func_test_forward_version()
+        self.func_test_forward_version()
+
+    def func_test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
@@ -56,12 +60,19 @@ class TestInplace(unittest.TestCase):
 
             loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegexp(
-                    RuntimeError,
-                    "received tensor_version:{} != wrapper_version_snapshot:{}".
-                    format(1, 0)):
+                RuntimeError,
+                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                    1, 0
+                ),
+            ):
                 loss.backward()
 
-    def test_backward_success_1(self):
+    def test_backward_error(self):
+        with _test_eager_guard():
+            self.func_test_backward_error()
+        self.func_test_backward_error()
+
+    def func_test_backward_success_1(self):
         # var_b is modified inplace before using it, the inplace operator doesn't result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
@@ -76,7 +87,12 @@ class TestInplace(unittest.TestCase):
             loss = var_c.sum()
             loss.backward()
 
-    def test_backward_success_2(self):
+    def test_backward_success_1(self):
+        with _test_eager_guard():
+            self.func_test_backward_success_1()
+        self.func_test_backward_success_1()
+
+    def func_test_backward_success_2(self):
         # Although var_b is modified inplace after using it, it does not used in gradient computation.
         # The inplace operator doesn't result in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
@@ -87,12 +103,19 @@ class TestInplace(unittest.TestCase):
 
             var_b[1:2] = 3  # var_b is modified inplace before using it
 
-            var_c = var_b + var_b  # Here, the grad op of sum doesn't use the value of var_b
+            var_c = (
+                var_b + var_b
+            )  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_c.sum()
 
             var_b[1:2] = 3  # var_b is modified inplace after using it
 
             loss.backward()
+
+    def test_backward_success_2(self):
+        with _test_eager_guard():
+            self.func_test_backward_success_2()
+        self.func_test_backward_success_2()
 
 
 class TestDygraphInplace(unittest.TestCase):
@@ -113,15 +136,20 @@ class TestDygraphInplace(unittest.TestCase):
     def inplace_api_processing(self, var):
         return paddle.squeeze_(var)
 
-    def test_inplace_api(self):
+    def func_test_inplace_api(self):
         var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
         inplace_var = self.inplace_api_processing(var)
         self.assertTrue(id(var) == id(inplace_var))
 
-        inplace_var[0] = 2.
-        self.assertTrue(np.array_equal(var.numpy(), inplace_var.numpy()))
+        inplace_var[0] = 2.0
+        np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
 
-    def test_forward_version(self):
+    def test_inplace_api(self):
+        with _test_eager_guard():
+            self.func_test_inplace_api()
+        self.func_test_inplace_api()
+
+    def func_test_forward_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
@@ -129,13 +157,18 @@ class TestDygraphInplace(unittest.TestCase):
             inplace_var = self.inplace_api_processing(var)
             self.assertEqual(var.inplace_version, 1)
 
-            inplace_var[0] = 2.
+            inplace_var[0] = 2.0
             self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
             self.assertEqual(var.inplace_version, 3)
 
-    def test_leaf_inplace_var_error(self):
+    def test_forward_version(self):
+        with _test_eager_guard():
+            self.func_test_forward_version()
+        self.func_test_forward_version()
+
+    def func_test_leaf_inplace_var_error(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var.stop_gradient = False
@@ -145,7 +178,12 @@ class TestDygraphInplace(unittest.TestCase):
 
             self.assertRaises(ValueError, leaf_inplace_error)
 
-    def test_backward_error(self):
+    def test_leaf_inplace_var_error(self):
+        with _test_eager_guard():
+            self.func_test_leaf_inplace_var_error()
+        self.func_test_leaf_inplace_var_error()
+
+    def func_test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
@@ -160,12 +198,19 @@ class TestDygraphInplace(unittest.TestCase):
 
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegexp(
-                    RuntimeError,
-                    "received tensor_version:{} != wrapper_version_snapshot:{}".
-                    format(1, 0)):
+                RuntimeError,
+                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                    1, 0
+                ),
+            ):
                 loss.backward()
 
-    def test_backward_success_1(self):
+    def test_backward_error(self):
+        with _test_eager_guard():
+            self.func_test_backward_error()
+        self.func_test_backward_error()
+
+    def func_test_backward_success_1(self):
         # var_b is modified inplace before using it, the inplace operator doesn't result
         # in incorrect gradient computation.
         grad_var_a, grad_var_a_inplace = 0, 1
@@ -175,7 +220,8 @@ class TestDygraphInplace(unittest.TestCase):
 
             var_b = var_a**2
             var_c = self.inplace_api_processing(
-                var_b)  # var_b is modified inplace before using it
+                var_b
+            )  # var_b is modified inplace before using it
 
             # Here, the gradient computation will use the value of var_b
             var_d = var_c**2
@@ -196,7 +242,12 @@ class TestDygraphInplace(unittest.TestCase):
 
         self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
 
-    def test_backward_success_2(self):
+    def test_backward_success_1(self):
+        with _test_eager_guard():
+            self.func_test_backward_success_1()
+        self.func_test_backward_success_1()
+
+    def func_test_backward_success_2(self):
         # Although var_b is modified inplace after using it, it does not used in gradient computation.
         # The inplace operator doesn't result in incorrect gradient computation.
         grad_var_a, grad_var_a_inplace = 0, 1
@@ -207,9 +258,12 @@ class TestDygraphInplace(unittest.TestCase):
             var_b = var_a**2
 
             var_c = self.inplace_api_processing(
-                var_b)  # var_b is modified inplace before using it
+                var_b
+            )  # var_b is modified inplace before using it
 
-            var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
+            var_d = (
+                var_c + var_c
+            )  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_d.sum()
 
             loss.backward()
@@ -221,15 +275,21 @@ class TestDygraphInplace(unittest.TestCase):
 
             var_b = var_a**2
 
-            var_c = self.non_inplace_api_processing(
-                var_b)  # var_b is modified inplace before using it
+            var_c = self.non_inplace_api_processing(var_b)
 
-            var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
+            var_d = (
+                var_c + var_c
+            )  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_d.sum()
 
             loss.backward()
             grad_var_a = var_a.grad.numpy()
-        self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
+        np.testing.assert_array_equal(grad_var_a_inplace, grad_var_a)
+
+    def test_backward_success_2(self):
+        with _test_eager_guard():
+            self.func_test_backward_success_2()
+        self.func_test_backward_success_2()
 
 
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
@@ -248,6 +308,16 @@ class TestDygraphInplaceReshape(TestDygraphInplace):
         return paddle.reshape_(var, [-1])
 
 
+class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        shape = paddle.to_tensor(-1)
+        return paddle.reshape(var, shape)
+
+    def inplace_api_processing(self, var):
+        shape = paddle.to_tensor(-1)
+        return paddle.reshape_(var, shape)
+
+
 class TestDygraphInplaceFlatten(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return var.flatten()
@@ -264,14 +334,16 @@ class TestDygraphInplaceScatter(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
         updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+        )
 
         return paddle.scatter(var, index, updates, overwrite=False)
 
     def inplace_api_processing(self, var):
         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
         updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+        )
 
         return paddle.scatter_(var, index, updates, overwrite=False)
 
@@ -391,22 +463,109 @@ class TestDygraphInplaceAdd(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.rand(2, 3, 4)
         self.dtype = "float32"
-        input_var_numpy_2 = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.input_var_2 = paddle.to_tensor(input_var_numpy_2)
+        self.input_var_numpy_2 = np.random.rand(2, 3, 4).astype(self.dtype)
 
     def non_inplace_api_processing(self, var):
-        return var.add(self.input_var_2)
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.add(input_var_2)
 
     def inplace_api_processing(self, var):
-        return var.add_(self.input_var_2)
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.add_(input_var_2)
 
 
 class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
     def non_inplace_api_processing(self, var):
-        return var.subtract(self.input_var_2)
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.subtract(input_var_2)
 
     def inplace_api_processing(self, var):
-        return var.subtract_(self.input_var_2)
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.subtract_(input_var_2)
+
+
+class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
+    def non_inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder(input_var_2)
+
+    def inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder_(input_var_2)
+
+    def test_leaf_inplace_var_error(self):
+        pass
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestLossIsInplaceVar(unittest.TestCase):
+    def func_test_loss_is_inplace_var(self):
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.ones((2, 2))
+            var_a.stop_gradient = False
+
+            var_b = var_a * 2
+            loss = var_b.tanh_()
+
+            loss.backward()
+            inplace_grad_var_a = var_a.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.ones((2, 2))
+            var_a.stop_gradient = False
+
+            var_b = var_a * 2
+            loss = var_b.tanh()
+
+            loss.backward()
+            grad_var_a = var_a.grad.numpy()
+
+        np.testing.assert_array_equal(inplace_grad_var_a, grad_var_a)
+
+    def test_loss_is_inplace_var(self):
+        with _test_eager_guard():
+            self.func_test_loss_is_inplace_var()
+        self.func_test_loss_is_inplace_var()
+
+
+class TestContinuouslyInplace(unittest.TestCase):
+    def func_test_continuously_inplace(self):
+        a = paddle.rand([2, 3])
+        a.stop_gradient = False
+        b = a * 2
+
+        b.reshape_([-1])
+        b.reshape_([2, 3])
+        b.reshape_([-1])
+
+        b.backward()
+
+    def test_continuously_inplace(self):
+        with _test_eager_guard():
+            self.func_test_continuously_inplace()
+        self.func_test_continuously_inplace()
+
+
+class TestGetitemBeforeInplace(unittest.TestCase):
+    def test_getitem_before_inplace(self):
+        with _test_eager_guard():
+            a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            a.stop_gradient = False
+            b = a**2
+            b[0] = 3
+            # getitem has no_need_buffer input
+            c = b[0:2]
+            loss = c.sum()
+            b[1] = 2
+            loss.backward()
 
 
 if __name__ == '__main__':

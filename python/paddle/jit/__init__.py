@@ -1,4 +1,5 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from ..fluid.dygraph.jit import save  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import load  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import TracedLayer  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import set_code_level  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import set_verbosity  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import declarative as to_static  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import not_to_static  #DEFINE_ALIAS
-from ..fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
-from ..fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
+from .api import save
+from .api import load
+from .api import TracedLayer
+from .api import set_code_level
+from .api import set_verbosity
+from .api import declarative as to_static
+from .api import not_to_static
+from .api import TranslatedLayer
 
 from . import dy2static
+from .dy2static.program_translator import ProgramTranslator
 
-__all__ = [
-    'save', 'load', 'TracedLayer', 'to_static', 'ProgramTranslator',
-    'TranslatedLayer', 'set_code_level', 'set_verbosity', 'not_to_static'
+__all__ = [  # noqa
+    'save',
+    'load',
+    'to_static',
+    'ProgramTranslator',
+    'TranslatedLayer',
+    'set_code_level',
+    'set_verbosity',
+    'not_to_static',
+    'TracedLayer',
 ]

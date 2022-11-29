@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest
 
+import paddle
 from paddle import fluid
 
 
@@ -34,8 +35,14 @@ class TestSequenceConcat(OpTest):
         x2 = np.random.random(size=(20, 80)).astype('float64')
         self.setLoD()
 
-        out = np.concatenate((x1[0:self.lod1[0]], x2[0:self.lod2[0]],
-                              x1[self.lod1[0]:], x2[self.lod2[0]:]))
+        out = np.concatenate(
+            (
+                x1[0 : self.lod1[0]],
+                x2[0 : self.lod2[0]],
+                x1[self.lod1[0] :],
+                x2[self.lod2[0] :],
+            )
+        )
 
         self.op_type = "sequence_concat"
         self.inputs = {
@@ -115,4 +122,5 @@ class TestSequenceConcatOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -24,25 +24,41 @@
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
-    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy,
+    const std::vector<Scope *> &local_scopes,
     const std::vector<Scope *> &local_exec_scopes,
-    const std::vector<platform::Place> &places, ir::Graph *graph)
+    const std::vector<platform::Place> &places,
+    ir::Graph *graph)
     : strategy_(strategy),
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
       places_(places),
       graph_(graph),
-      fetch_ctxs_(places),
-      pool_(strategy.num_threads_),
       // add one more thread for generate op_deps
       prepare_pool_(1) {
+  platform::EmplaceDeviceContexts(
+      &fetch_ctxs_,
+      places,
+      /*disable_setting_default_stream_for_allocator=*/true);
+  if (ir::IsTopologySortOperationsUnique(*graph_)) {
+    VLOG(10)
+        << "Change thread number to 1 because the toposort order is unique";
+    strategy_.num_threads_ = 1;
+    traced_ops_.clear();
+    for (auto *op_node : TopologySortOperations(*graph_)) {
+      if (op_node->IsWrappedBy<OpHandleBase>()) {
+        traced_ops_.emplace_back(&(op_node->Wrapper<OpHandleBase>()));
+      }
+    }
+  }
+  pool_.reset(new ::ThreadPool(strategy.num_threads_));
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
@@ -50,7 +66,8 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       bootstrap_ops_.emplace_back(op);
     }
   }
-  PADDLE_ENFORCE_GT(op_deps_.size(), 0,
+  PADDLE_ENFORCE_GT(op_deps_.size(),
+                    0,
                     platform::errors::PreconditionNotMet(
                         "The graph doesn't have operators."));
   PrepareAtomicOpDeps();
@@ -60,7 +77,9 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
-      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
+      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare",
+                                platform::TracerEventType::UserDefined,
+                                2));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
@@ -76,9 +95,13 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
   exception_.Clear();
-
-  InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
-                 &fetch_ops, &ready_fetch_ops, return_merged);
+  InsertFetchOps(fetch_tensors,
+                 &fetches,
+                 &fetched_vars,
+                 op_deps.get(),
+                 &fetch_ops,
+                 &ready_fetch_ops,
+                 return_merged);
   event.reset(nullptr);
   if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
     // If the num_threads is 1, we can record the order of operator's
@@ -95,6 +118,8 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     traced_ops_.clear();
     remaining_ = 0;
     auto complete_q = std::make_shared<BlockingQueue<size_t>>();
+    VLOG(3) << "number of bootstrap_ops_: " << bootstrap_ops_.size();
+    VLOG(3) << "number of ready_fetch_ops: " << ready_fetch_ops.size();
     for (auto op : bootstrap_ops_) {
       RunOpAsync(op_deps.get(), op, complete_q);
     }
@@ -124,21 +149,29 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     }
   }
   // Wait FetchOps.
-  ClearFetchOp(graph_, &fetch_ops);
+  if (!fetch_ops.empty()) {
+    platform::RecordEvent record_wait(
+        "FastThreadedSSAGraphExecutor::WaitFetchOps",
+        platform::TracerEventType::Operator,
+        1);
+    ClearFetchOp(graph_, &fetch_ops);
 
-  for (auto &place : places_) {
-    fetch_ctxs_.Get(place)->Wait();
+    for (auto &place : places_) {
+      fetch_ctxs_[place].get().get()->Wait();
+    }
   }
 
   return fetches;
 }
 
 void FastThreadedSSAGraphExecutor::InsertFetchOps(
-    const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
+    const std::vector<std::string> &fetch_tensors,
+    FetchResultType *fetches,
     std::unordered_map<std::string, std::vector<VarHandleBase *>> *fetched_vars,
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
-    std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged) {
+    std::vector<OpHandleBase *> *ready_fetch_ops,
+    bool return_merged) {
   std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
                                                    fetch_tensors.end());
   for (auto &fetch_var_name : fetch_tensor_set) {
@@ -154,7 +187,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     auto &var_name = fetch_tensors.at(i);
     auto fetched_var_it = fetched_vars->find(var_name);
     PADDLE_ENFORCE_NE(
-        fetched_var_it, fetched_vars->end(),
+        fetched_var_it,
+        fetched_vars->end(),
         platform::errors::PreconditionNotMet(
             "Cannot find fetched variable(%s) in current computation graph. "
             "Possible reasons are:\n"
@@ -166,18 +200,23 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
             "when using `executor.run` method. In other words, the format of "
             "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
             "is recommended.",
-            var_name, var_name));
+            var_name,
+            var_name));
 
     auto &vars = fetched_var_it->second;
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchAsyncOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                      &local_exec_scopes_, return_merged);
+    auto *op = new FetchAsyncOpHandle(fetch_node,
+                                      fetches,
+                                      i,
+                                      &local_scopes_,
+                                      &local_exec_scopes_,
+                                      return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
-      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
+      op->SetDeviceContext(p, fetch_ctxs_[p].get().get());
     }
 
     for (auto *var : vars) {
@@ -201,7 +240,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 }
 
 bool FastThreadedSSAGraphExecutor::RunOp(
-    OpHandleBase *op, const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
+    OpHandleBase *op,
+    const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
     size_t *complete) {
   RunOpSync(op);
   if (LIKELY(!exception_.IsCaught())) {
@@ -222,7 +262,10 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
-  this->pool_.enqueue([=] {
+  platform::RecordEvent record("WorkQueue::AddTask",
+                               platform::TracerEventType::UserDefined,
+                               10 /*level*/);
+  this->pool_->enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
 
@@ -247,11 +290,10 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           RunOpAsync(op_deps, post_op, complete_q);
         }
       }
-
+      VLOG(3) << "start to run op: " << op_to_run->Name();
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
-
       auto &outputs = op_to_run->Outputs();
       op_to_run = nullptr;
       for (auto &output : outputs) {

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import paddle.fluid as fluid
 
 
@@ -26,24 +25,26 @@ class TestAvoidTwiceInitialization(unittest.TestCase):
             initializer=fluid.initializer.Constant(value=0.01),
             shape=[2, 2],
             dtype='float32',
-            name='var_a')
+            name='var_a',
+        )
         cur_block.append_op(
             type="c_broadcast",
             inputs={"X": [var]},
             outputs={"Out": [var]},
-            attrs={'root': 0,
-                   'ring_id': 0,
-                   'use_calc_stream': False})
+            attrs={'root': 0, 'ring_id': 0, 'use_calc_stream': False},
+        )
         cur_block.append_op(
             type="c_sync_comm_stream",
             inputs={'X': [var]},
             outputs={'Out': [var]},
-            attrs={'ring_id': 0})
+            attrs={'ring_id': 0},
+        )
         var2 = cur_block.create_parameter(
             initializer=fluid.initializer.Constant(value=0.01),
             shape=[2, 2],
             dtype='float32',
-            name='var_a')
+            name='var_a',
+        )
 
 
 if __name__ == '__main__':

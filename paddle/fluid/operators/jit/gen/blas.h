@@ -28,8 +28,11 @@ namespace gen {
 // function: vec = Operand(vec(or scalar), vec(or scalar)) (maybe with relu)
 class VXXJitCode : public JitCode {
  public:
-  explicit VXXJitCode(int d, operand_type type, int scalar_index,
-                      bool with_relu, size_t code_size = 256 * 1024,
+  explicit VXXJitCode(int d,
+                      operand_type type,
+                      int scalar_index,
+                      bool with_relu,
+                      size_t code_size = 256 * 1024,
                       void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr),
         num_(d),
@@ -110,7 +113,8 @@ DECLARE_BLAS_JITCODE(VAddBias, operand_type::ADD, 1, false);
 class NCHW16CMulNCJitCode : public JitCode {
  public:
   DECLARE_JIT_CODE(NCHW16CMulNCJitCode);
-  explicit NCHW16CMulNCJitCode(int d /*unused*/, size_t code_size,
+  explicit NCHW16CMulNCJitCode(int d /*unused*/,
+                               size_t code_size,
                                void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr) {
     this->genCode();

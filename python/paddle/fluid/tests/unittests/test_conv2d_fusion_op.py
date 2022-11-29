@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+from op_test import OpTest
+from test_conv2d_op import conv2d_forward_naive
 
 import paddle.fluid.core as core
-from op_test import OpTest
-
-from test_conv2d_op import conv2d_forward_naive
 
 
 def create_test_padding_SAME_class(parent):
@@ -68,7 +66,7 @@ class TestConv2DFusionOp(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilation': self.dilations
+            'dilation': self.dilations,
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -76,22 +74,29 @@ class TestConv2DFusionOp(OpTest):
         bias = np.random.random(self.filter_size[0]).astype(self.dtype)
 
         self.output, _, _, _, _ = conv2d_forward_naive(
-            input, filter, self.groups, conv2d_param, self.padding_algorithm,
-            self.data_format)
+            input,
+            filter,
+            self.groups,
+            conv2d_param,
+            self.padding_algorithm,
+            self.data_format,
+        )
 
         self.output = self.output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
-            'Bias': OpTest.np_dtype_to_fluid_dtype(bias)
+            'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
         }
 
         if self.add_residual_data:
             residual_data = np.random.random(self.output.shape).astype(
-                self.dtype)
+                self.dtype
+            )
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                residual_data)
+                residual_data
+            )
             self.output += residual_data
 
         # Add bias
@@ -109,7 +114,7 @@ class TestConv2DFusionOp(OpTest):
             'data_format': self.data_format,
             'exhaustive_search': self.exhaustive_search,
             'activation': self.activation,
-            'padding_algorithm': self.padding_algorithm
+            'padding_algorithm': self.padding_algorithm,
         }
         if self.split_channels is not None:
             self.attrs['split_channels'] = self.split_channels
@@ -167,7 +172,7 @@ class TestIdentityActivation(TestConv2DFusionOp):
         self.activation = 'identity'
 
 
-class TestIdentityActivation(TestConv2DFusionOp):
+class TestIdentityActivation1(TestConv2DFusionOp):
     def init_activation(self):
         self.activation = 'identity'
         self.add_residual_data = False

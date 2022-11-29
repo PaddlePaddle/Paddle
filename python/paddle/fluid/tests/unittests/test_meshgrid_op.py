@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid as fluid
+from op_test import OpTest
+
 import paddle
-from paddle.fluid import compiler, Program, program_guard, core
+import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMeshgridOp(OpTest):
@@ -47,7 +47,7 @@ class TestMeshgridOp(OpTest):
         ins = []
         outs = []
         for i in range(len(self.shape)):
-            ins.append(np.random.random((self.shape[i], )).astype(self.dtype))
+            ins.append(np.random.random((self.shape[i],)).astype(self.dtype))
 
         for i in range(len(self.shape)):
             out_reshape = [1] * len(self.shape)
@@ -70,8 +70,20 @@ class TestMeshgridOp3(unittest.TestCase):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
-        input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
-        input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -80,11 +92,11 @@ class TestMeshgridOp3(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         grid_x, grid_y = paddle.tensor.meshgrid(x, y)
-        res_1, res_2 = exe.run(fluid.default_main_program(),
-                               feed={'x': input_1,
-                                     'y': input_2},
-                               fetch_list=[grid_x, grid_y])
-
+        res_1, res_2 = exe.run(
+            fluid.default_main_program(),
+            feed={'x': input_1, 'y': input_2},
+            fetch_list=[grid_x, grid_y],
+        )
         assert np.array_equal(res_1, out_1)
         assert np.array_equal(res_2, out_2)
 
@@ -94,8 +106,20 @@ class TestMeshgridOp4(unittest.TestCase):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
-        input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
-        input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -104,10 +128,11 @@ class TestMeshgridOp4(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         grid_x, grid_y = paddle.tensor.meshgrid([x, y])
-        res_1, res_2 = exe.run(fluid.default_main_program(),
-                               feed={'x': input_1,
-                                     'y': input_2},
-                               fetch_list=[grid_x, grid_y])
+        res_1, res_2 = exe.run(
+            fluid.default_main_program(),
+            feed={'x': input_1, 'y': input_2},
+            fetch_list=[grid_x, grid_y],
+        )
 
         assert np.array_equal(res_1, out_1)
         assert np.array_equal(res_2, out_2)
@@ -118,8 +143,20 @@ class TestMeshgridOp5(unittest.TestCase):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
-        input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
-        input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -128,10 +165,11 @@ class TestMeshgridOp5(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         grid_x, grid_y = paddle.tensor.meshgrid((x, y))
-        res_1, res_2 = exe.run(fluid.default_main_program(),
-                               feed={'x': input_1,
-                                     'y': input_2},
-                               fetch_list=[grid_x, grid_y])
+        res_1, res_2 = exe.run(
+            fluid.default_main_program(),
+            feed={'x': input_1, 'y': input_2},
+            fetch_list=[grid_x, grid_y],
+        )
 
         assert np.array_equal(res_1, out_1)
         assert np.array_equal(res_2, out_2)
@@ -139,8 +177,20 @@ class TestMeshgridOp5(unittest.TestCase):
 
 class TestMeshgridOp6(unittest.TestCase):
     def test_api_with_dygraph(self):
-        input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
-        input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
+        input_3 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_4 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
 
         with fluid.dygraph.guard():
             tensor_3 = fluid.dygraph.to_variable(input_3)
@@ -150,11 +200,27 @@ class TestMeshgridOp6(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_with_dygraph()
+
 
 class TestMeshgridOp7(unittest.TestCase):
     def test_api_with_dygraph_list_input(self):
-        input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
-        input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
+        input_3 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_4 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
 
         with fluid.dygraph.guard():
             tensor_3 = fluid.dygraph.to_variable(input_3)
@@ -164,11 +230,27 @@ class TestMeshgridOp7(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_with_dygraph_list_input()
 
-class TestMeshgridOp7(unittest.TestCase):
+
+class TestMeshgridOp8(unittest.TestCase):
     def test_api_with_dygraph_tuple_input(self):
-        input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
-        input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
+        input_3 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_4 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
 
         with fluid.dygraph.guard():
             tensor_3 = fluid.dygraph.to_variable(input_3)
@@ -178,6 +260,60 @@ class TestMeshgridOp7(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_with_dygraph_tuple_input()
+
+
+class TestMeshgridEager(unittest.TestCase):
+    def test_dygraph_api(self):
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
+
+        with fluid.dygraph.guard():
+            tensor_1 = fluid.dygraph.to_variable(input_1)
+            tensor_2 = fluid.dygraph.to_variable(input_2)
+            tensor_1.stop_gradient = False
+            tensor_2.stop_gradient = False
+            res_1, res_2 = paddle.tensor.meshgrid((tensor_1, tensor_2))
+            sum = paddle.add_n([res_1, res_2])
+            sum.backward()
+            with _test_eager_guard():
+                tensor_eager_1 = fluid.dygraph.to_variable(input_1)
+                tensor_eager_2 = fluid.dygraph.to_variable(input_2)
+                tensor_eager_1.stop_gradient = False
+                tensor_eager_2.stop_gradient = False
+                res_eager_1, res_eager_2 = paddle.tensor.meshgrid(
+                    (tensor_eager_1, tensor_eager_2)
+                )
+                sum_eager = paddle.add_n([res_eager_1, res_eager_2])
+                sum_eager.backward()
+                self.assertEqual(
+                    (
+                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
+                    ).all(),
+                    True,
+                )
+                self.assertEqual(
+                    (
+                        tensor_2.grad.numpy() == tensor_eager_2.grad.numpy()
+                    ).all(),
+                    True,
+                )
+
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

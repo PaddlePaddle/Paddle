@@ -12,22 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
+
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
-def nearest_neighbor_interp_np(X,
-                               out_h,
-                               out_w,
-                               out_size=None,
-                               actual_shape=None,
-                               align_corners=True,
-                               data_layout='NCHW'):
+def nearest_neighbor_interp_np(
+    X,
+    out_h,
+    out_w,
+    out_size=None,
+    actual_shape=None,
+    align_corners=True,
+    data_layout='NCHW',
+):
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
@@ -40,13 +42,13 @@ def nearest_neighbor_interp_np(X,
     n, c, in_h, in_w = X.shape
 
     ratio_h = ratio_w = 0.0
-    if (out_h > 1):
-        if (align_corners):
+    if out_h > 1:
+        if align_corners:
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
         else:
             ratio_h = 1.0 * in_h / out_h
-    if (out_w > 1):
-        if (align_corners):
+    if out_w > 1:
+        if align_corners:
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
             ratio_w = 1.0 * in_w / out_w
@@ -79,6 +81,7 @@ class TestNearestInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "nearest_interp"
+        self.check_eager = True
         input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
@@ -96,35 +99,45 @@ class TestNearestInterpOp(OpTest):
             out_w = self.out_w
 
         output_np = nearest_neighbor_interp_np(
-            input_np, out_h, out_w, self.out_size, self.actual_shape,
-            self.align_corners, self.data_layout)
+            input_np,
+            out_h,
+            out_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.data_layout,
+        )
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
+            self.check_eager = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
+            self.check_eager = False
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
             'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
-            'data_layout': self.data_layout
+            'data_layout': self.data_layout,
         }
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(
+            ['X'], 'Out', in_place=True, check_eager=self.check_eager
+        )
 
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [2, 3, 4, 5]
         self.out_h = 2
         self.out_w = 2
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
 
@@ -135,7 +148,7 @@ class TestNearestNeighborInterpCase1(TestNearestInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
-        self.scale = 0.
+        self.scale = 0.0
         self.align_corners = True
 
 
@@ -145,7 +158,7 @@ class TestNearestNeighborInterpCase2(TestNearestInterpOp):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
-        self.scale = 0.
+        self.scale = 0.0
         self.align_corners = True
 
 
@@ -155,7 +168,7 @@ class TestNearestNeighborInterpCase3(TestNearestInterpOp):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 0.
+        self.scale = 0.0
         self.align_corners = True
 
 
@@ -165,7 +178,7 @@ class TestNearestNeighborInterpCase4(TestNearestInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = True
 
@@ -176,7 +189,7 @@ class TestNearestNeighborInterpCase5(TestNearestInterpOp):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([11, 11]).astype("int32")
         self.align_corners = True
 
@@ -187,7 +200,7 @@ class TestNearestNeighborInterpCase6(TestNearestInterpOp):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([65, 129]).astype("int32")
         self.align_corners = True
 
@@ -198,7 +211,7 @@ class TestNearestNeighborInterpSame(TestNearestInterpOp):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
-        self.scale = 0.
+        self.scale = 0.0
         self.align_corners = True
 
 
@@ -208,7 +221,7 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
 
@@ -219,7 +232,7 @@ class TestNearestNeighborInterpDataLayout(TestNearestInterpOp):
         self.input_shape = [2, 4, 4, 5]
         self.out_h = 2
         self.out_w = 2
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([3, 8]).astype("int32")
         self.align_corners = True
         self.data_layout = "NHWC"
@@ -231,8 +244,10 @@ class TestNearestInterpOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "nearest_interp"
+        self.check_eager = True
         input_np = np.random.randint(
-            low=0, high=256, size=self.input_shape).astype("uint8")
+            low=0, high=256, size=self.input_shape
+        ).astype("uint8")
 
         if self.scale > 0:
             out_h = int(self.input_shape[2] * self.scale)
@@ -241,30 +256,38 @@ class TestNearestInterpOpUint8(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
-                                               self.out_size, self.actual_shape,
-                                               self.align_corners)
+        output_np = nearest_neighbor_interp_np(
+            input_np,
+            out_h,
+            out_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+        )
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
+            self.check_eager = False
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
             'scale': self.scale,
             'interp_method': self.interp_method,
-            'align_corners': self.align_corners
+            'align_corners': self.align_corners,
         }
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CPUPlace(), atol=1)
+        self.check_output_with_place(
+            place=core.CPUPlace(), atol=1, check_eager=self.check_eager
+        )
 
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [1, 3, 9, 6]
         self.out_h = 10
         self.out_w = 9
-        self.scale = 0.
+        self.scale = 0.0
         self.align_corners = True
 
 
@@ -274,7 +297,7 @@ class TestNearestNeighborInterpCase1Uint8(TestNearestInterpOpUint8):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 80
         self.out_w = 40
-        self.scale = 0.
+        self.scale = 0.0
         self.align_corners = True
 
 
@@ -284,7 +307,7 @@ class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 5
         self.out_w = 13
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([6, 15]).astype("int32")
         self.align_corners = True
 
@@ -300,7 +323,7 @@ class TestNearestNeighborInterpScale1(TestNearestInterpOp):
         self.input_shape = [3, 2, 7, 5]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 2.
+        self.scale = 2.0
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
 
@@ -322,7 +345,7 @@ class TestNearestNeighborInterpScale3(TestNearestInterpOp):
         self.input_shape = [3, 2, 7, 5]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 1.
+        self.scale = 1.0
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
 
@@ -339,6 +362,9 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
         }
+        # NOTE(dev): some AsDispensible input is not used under imperative mode.
+        # Skip check_eager while found them in Inputs.
+        self.check_eager = True
 
         input_np = np.random.random(self.input_shape).astype("float64")
         self.inputs = {'X': input_np}
@@ -355,32 +381,42 @@ class TestNearestInterpOp_attr_tensor(OpTest):
 
         if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
+            self.check_eager = False
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
-                size_tensor.append(("x" + str(index), np.ones(
-                    (1)).astype('int32') * ele))
+                size_tensor.append(
+                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                )
             self.inputs['SizeTensor'] = size_tensor
+            self.check_eager = False
 
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
-        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
-                                               self.out_size, self.actual_shape,
-                                               self.align_corners)
+        output_np = nearest_neighbor_interp_np(
+            input_np,
+            out_h,
+            out_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+        )
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(
+            ['X'], 'Out', in_place=True, check_eager=self.check_eager
+        )
 
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [2, 5, 4, 4]
         self.out_h = 3
         self.out_w = 3
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = [3, 3]
         self.align_corners = True
 
@@ -392,7 +428,7 @@ class TestNearestInterp_attr_tensor_Case1(TestNearestInterpOp_attr_tensor):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = [8, 12]
         self.align_corners = True
 
@@ -404,7 +440,7 @@ class TestNearestInterp_attr_tensor_Case2(TestNearestInterpOp_attr_tensor):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 0.
+        self.scale = 0.0
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
         self.shape_by_1Dtensor = True
@@ -432,14 +468,17 @@ class TestNearestAPI(unittest.TestCase):
         shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
         actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
         scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32")
+            name="scale_tensor", shape=[1], dtype="float32"
+        )
 
         out1 = fluid.layers.resize_nearest(
-            y, out_shape=[12, 12], data_format='NHWC')
+            y, out_shape=[12, 12], data_format='NHWC'
+        )
         out2 = fluid.layers.resize_nearest(x, out_shape=[12, dim])
         out3 = fluid.layers.resize_nearest(x, out_shape=shape_tensor)
         out4 = fluid.layers.resize_nearest(
-            x, out_shape=[4, 4], actual_shape=actual_size)
+            x, out_shape=[4, 4], actual_shape=actual_size
+        )
         out5 = fluid.layers.resize_nearest(x, scale=scale_tensor)
 
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
@@ -454,24 +493,28 @@ class TestNearestAPI(unittest.TestCase):
             place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        results = exe.run(fluid.default_main_program(),
-                          feed={
-                              "x": x_data,
-                              "y": np.transpose(x_data, (0, 2, 3, 1)),
-                              "dim": dim_data,
-                              "shape_tensor": shape_data,
-                              "actual_size": actual_size_data,
-                              "scale_tensor": scale_data
-                          },
-                          fetch_list=[out1, out2, out3, out4, out5],
-                          return_numpy=True)
+        results = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "x": x_data,
+                "y": np.transpose(x_data, (0, 2, 3, 1)),
+                "dim": dim_data,
+                "shape_tensor": shape_data,
+                "actual_size": actual_size_data,
+                "scale_tensor": scale_data,
+            },
+            fetch_list=[out1, out2, out3, out4, out5],
+            return_numpy=True,
+        )
 
         expect_res = nearest_neighbor_interp_np(
-            x_data, out_h=12, out_w=12, align_corners=True)
-        self.assertTrue(
-            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
+            x_data, out_h=12, out_w=12, align_corners=True
+        )
+        np.testing.assert_allclose(
+            results[0], np.transpose(expect_res, (0, 2, 3, 1)), rtol=1e-05
+        )
         for i in range(len(results) - 1):
-            self.assertTrue(np.allclose(results[i + 1], expect_res))
+            np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
 
 
 class TestNearestInterpException(unittest.TestCase):
@@ -481,7 +524,8 @@ class TestNearestInterpException(unittest.TestCase):
         def attr_data_format():
             # for 4-D input, data_format can only be NCHW or NHWC
             out = fluid.layers.resize_nearest(
-                input, out_shape=[4, 8], data_format='NDHWC')
+                input, out_shape=[4, 8], data_format='NDHWC'
+            )
 
         def attr_scale_type():
             out = fluid.layers.resize_nearest(input, scale='scale')
@@ -495,4 +539,7 @@ class TestNearestInterpException(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    import paddle
+
+    paddle.enable_static()
     unittest.main()

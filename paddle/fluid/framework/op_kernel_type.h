@@ -25,6 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+using DataLayout = phi::DataLayout;
+
 class OpKernelType {
  public:
   constexpr static int kDefaultCustomizedTypeValue = 0;
@@ -36,7 +38,8 @@ class OpKernelType {
   constexpr static int kLibBits = 4;
   constexpr static int kCustomizeBits = 4;
 
-  OpKernelType(proto::VarType::Type data_type, platform::Place place,
+  OpKernelType(proto::VarType::Type data_type,
+               platform::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -82,9 +85,9 @@ class OpKernelType {
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const OpKernelType& kernel_key) {
-  os << "data_type[" << kernel_key.data_type_ << "]:data_layout["
-     << kernel_key.data_layout_ << "]:place[" << kernel_key.place_
-     << "]:library_type[" << kernel_key.library_type_ << "]";
+  os << "{data_type[" << kernel_key.data_type_ << "]; data_layout["
+     << kernel_key.data_layout_ << "]; place[" << kernel_key.place_
+     << "]; library_type[" << kernel_key.library_type_ << "]}";
   return os;
 }
 
@@ -99,8 +102,8 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_MKLDNN
   // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
-  ret |= (l != DataLayout::kMKLDNN && r == DataLayout::kMKLDNN);
-  ret |= (l == DataLayout::kMKLDNN && r != DataLayout::kMKLDNN);
+  ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
+  ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
 #endif
   return ret;
 }

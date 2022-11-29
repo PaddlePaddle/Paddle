@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
 
 
 class TestMinusOp(OpTest):
@@ -24,7 +25,7 @@ class TestMinusOp(OpTest):
         self.op_type = "minus"
         self.inputs = {
             'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((32, 84)).astype("float32")
+            'Y': np.random.random((32, 84)).astype("float32"),
         }
         self.outputs = {'Out': (self.inputs['X'] - self.inputs['Y'])}
 
@@ -36,4 +37,5 @@ class TestMinusOp(OpTest):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

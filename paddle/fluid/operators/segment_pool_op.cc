@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/segment_pool_op.h"
 #include <memory>
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,22 +26,6 @@ namespace operators {
 class SegmentPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SegmentPool");
-    OP_INOUT_CHECK(ctx->HasInput("SegmentIds"), "Input", "SegmentIds",
-                   "SegmentPool");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SegmentPool");
-    auto dims = ctx->GetInputDim("X");
-    dims[0] = -1;
-    ctx->SetOutputDim("Out", dims);
-
-    if (ctx->Attrs().Get<std::string>("pooltype") == "MEAN") {
-      OP_INOUT_CHECK(ctx->HasOutput("SummedIds"), "Output", "SummedIds",
-                     "SegmentPool");
-      ctx->SetOutputDim("SummedIds", {-1, 1});
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -92,25 +80,33 @@ class SegmentPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SegmentPoolGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SegmentPoolGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SegmentPoolGrad");
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
+    PADDLE_ENFORCE_EQ(og_dims.size(),
+                      x_dims.size(),
                       platform::errors::InvalidArgument(
                           "The rank of output grad must equal to Input(X). But "
                           "received: input rank %u, input shape [%s].",
-                          og_dims.size(), og_dims));
+                          og_dims.size(),
+                          og_dims));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          og_dims[i], x_dims[i],
+          og_dims[i],
+          x_dims[i],
           platform::errors::InvalidArgument(
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "
               "input shape [%s].",
-              og_dims.size(), og_dims, x_dims.size(), x_dims));
+              og_dims.size(),
+              og_dims,
+              x_dims.size(),
+              x_dims));
     }
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
@@ -136,7 +132,7 @@ class SegmentPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("SegmentIds", this->Input("SegmentIds"));
     op_desc_ptr->SetInput("Out", this->Output("Out"));
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MEAN") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pooltype")) == "MEAN") {
       op_desc_ptr->SetInput("SummedIds", this->Output("SummedIds"));
     }
     op_desc_ptr->SetInput(framework::GradVarName("Out"),
@@ -150,17 +146,14 @@ class SegmentPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(segment_pool, ops::SegmentPoolOp, ops::SegmentPoolOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(segment_pool,
+                            SegmentPoolInferShapeFunctor,
+                            PD_INFER_META(phi::SegmentPoolInferMeta));
+
+REGISTER_OPERATOR(segment_pool,
+                  ops::SegmentPoolOp,
+                  ops::SegmentPoolOpMaker,
                   ops::SegmentPoolGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SegmentPoolGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SegmentPoolGradOpMaker<paddle::imperative::OpBase>,
+                  SegmentPoolInferShapeFunctor);
 REGISTER_OPERATOR(segment_pool_grad, ops::SegmentPoolGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    segment_pool,
-    ops::SegmentPoolKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SegmentPoolKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    segment_pool_grad,
-    ops::SegmentPoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SegmentPoolGradKernel<paddle::platform::CPUDeviceContext, double>);

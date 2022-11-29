@@ -13,13 +13,57 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/transpose_flatten_concat_fuse_pass.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
+TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int>>()
+      .End();
+  AddOpCompat(OpCompat("flatten2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(0)
+      .End();
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")  // Input("X"): vector<tensors>
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({0, 1})
+      .End();
+}
+
+void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
+    ir::Graph *graph, int times) const {
   const std::string pattern_name =
       "transpose_flatten" + std::to_string(times) + "_concat_fuse";
 
@@ -37,13 +81,20 @@ void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     const int kNumFields = 5;
     const int kTransOffset = 1;
     const int kTransOutOffset = 2;
     const int kFlattenOffset = 3;
     const int kFlattenOutOffset = 4;
-    std::vector<Node *> nodes;
 
+    std::vector<Node *> nodes;
+    std::vector<int> trans_axis0;
+    int flatten_axis0 = 0;
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))),
@@ -65,6 +116,35 @@ void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
           platform::errors::NotFound("Can not find %s in subgraph.",
                                      input_nodes[i]->name()));
 
+      if (i == 0) {
+        trans_axis0 = PADDLE_GET_CONST(
+            std::vector<int>,
+            subgraph.at(pattern.GetPDNode("transpose" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
+        flatten_axis0 = PADDLE_GET_CONST(
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
+      } else {
+        std::vector<int> trans_axis = PADDLE_GET_CONST(
+            std::vector<int>,
+            subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i)))
+                ->Op()
+                ->GetAttr("axis"));
+        // All axis of transpose should be the same
+        if (trans_axis0 != trans_axis) return;
+
+        int flatten_axis = PADDLE_GET_CONST(
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
+        // All axis of flatten should be the same
+        if (flatten_axis0 != flatten_axis) return;
+      }
+
       nodes.push_back(subgraph.at(input_nodes[i]));
       nodes.push_back(
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))));
@@ -79,11 +159,11 @@ void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
     Node *concat_op = subgraph.at(pattern.GetPDNode("concat"));
     Node *concat_out = subgraph.at(pattern.GetPDNode("concat_out"));
     std::vector<std::string> input_names;
-    std::vector<int> trans_axis = BOOST_GET_CONST(
+    std::vector<int> trans_axis = PADDLE_GET_CONST(
         std::vector<int>, nodes[kTransOffset]->Op()->GetAttr("axis"));
     int flatten_axis =
-        BOOST_GET_CONST(int, nodes[kFlattenOffset]->Op()->GetAttr("axis"));
-    int concat_axis = BOOST_GET_CONST(int, concat_op->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(int, nodes[kFlattenOffset]->Op()->GetAttr("axis"));
+    int concat_axis = PADDLE_GET_CONST(int, concat_op->Op()->GetAttr("axis"));
     std::string output_name = concat_out->Name();
 
     for (int i = 0; i < times; i++) {

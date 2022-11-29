@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -26,8 +25,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestShape(OpTest):
     def setUp(self):
         self.set_npu()
@@ -50,7 +47,27 @@ class TestShape(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
+
+
+class TestShape_fp16(TestShape):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestShape_double(TestShape):
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestShape_int32(TestShape):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestShape_int64(TestShape):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 if __name__ == '__main__':

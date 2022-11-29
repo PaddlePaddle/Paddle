@@ -12,8 +12,9 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -22,11 +23,11 @@ template <typename DeviceContext, typename T>
 class ShuffleChannelOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
-    auto* output = ctx.Output<framework::Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     int group = ctx.Attr<int>("group");
 
-    auto input_dims = input->dims();
+    const auto& input_dims = input->dims();
     auto num = input_dims[0];
     auto channel = input_dims[1];
     auto height = input_dims[2];
@@ -58,9 +59,9 @@ class ShuffleChannelGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* output_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     int group = ctx.Attr<int>("group");
 

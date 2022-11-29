@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestWhereIndexOp(OpTest):
@@ -32,7 +32,9 @@ class TestWhereIndexOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.inputs = {'Condition': np.array([True, False, True]), }
+        self.inputs = {
+            'Condition': np.array([True, False, True]),
+        }
 
         self.outputs = {'Out': np.array([[0], [2]], dtype='int64')}
 
@@ -70,7 +72,9 @@ class TestAllFalse(unittest.TestCase):
 
 class TestRank2(TestWhereIndexOp):
     def init_config(self):
-        self.inputs = {'Condition': np.array([[True, False], [False, True]]), }
+        self.inputs = {
+            'Condition': np.array([[True, False], [False, True]]),
+        }
 
         self.outputs = {'Out': np.array([[0, 0], [1, 1]], dtype='int64')}
 
@@ -78,15 +82,20 @@ class TestRank2(TestWhereIndexOp):
 class TestRank3(TestWhereIndexOp):
     def init_config(self):
         self.inputs = {
-            'Condition': np.array([[[True, False], [False, True]],
-                                   [[False, True], [True, False]],
-                                   [[False, False], [False, True]]]),
+            'Condition': np.array(
+                [
+                    [[True, False], [False, True]],
+                    [[False, True], [True, False]],
+                    [[False, False], [False, True]],
+                ]
+            ),
         }
 
         self.outputs = {
             'Out': np.array(
                 [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
-                dtype='int64')
+                dtype='int64',
+            )
         }
 
 

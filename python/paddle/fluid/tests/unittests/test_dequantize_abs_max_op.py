@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import math
+import unittest
+
+import numpy as np
 from op_test import OpTest
 
 
@@ -46,7 +45,7 @@ class TestDequantizeMaxAbsOp(OpTest):
 
         self.inputs = {
             'X': np.array(yq).astype(self.data_type),
-            'Scale': np.array(scale).astype('float32')
+            'Scale': np.array(scale).astype('float32'),
         }
         self.attrs = {'max_range': self.max_range}
         self.outputs = {'Out': ydq}
@@ -60,6 +59,13 @@ class TestDequantizeMaxAbsOp5Bits(TestDequantizeMaxAbsOp):
         self.num_bits = 5
         self.max_range = math.pow(2, self.num_bits - 1) - 1
         self.data_type = "int8"
+
+
+class TestDequantizeMaxAbsOpInt16(TestDequantizeMaxAbsOp):
+    def set_args(self):
+        self.num_bits = 16
+        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "int16"
 
 
 if __name__ == "__main__":

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.fluid import Program, program_guard
 
 
@@ -26,9 +26,17 @@ def set_input(input, rois, trans):
     return inputs
 
 
-def set_attrs(no_trans, spatial_scale, output_channels, group_size,
-              pooled_height, pooled_width, part_size, sample_per_part,
-              trans_std):
+def set_attrs(
+    no_trans,
+    spatial_scale,
+    output_channels,
+    group_size,
+    pooled_height,
+    pooled_width,
+    part_size,
+    sample_per_part,
+    trans_std,
+):
     attrs = {
         'no_trans': no_trans,
         'spatial_scale': spatial_scale,
@@ -38,7 +46,7 @@ def set_attrs(no_trans, spatial_scale, output_channels, group_size,
         'pooled_width': pooled_width,
         'part_size': part_size,
         'sample_per_part': sample_per_part,
-        'trans_std': trans_std
+        'trans_std': trans_std,
     }
     return attrs
 
@@ -46,7 +54,7 @@ def set_attrs(no_trans, spatial_scale, output_channels, group_size,
 def set_outputs(output, top_count):
     outputs = {
         'Output': output.astype('float32'),
-        'TopCount': top_count.astype('float32')
+        'TopCount': top_count.astype('float32'),
     }
     return outputs
 
@@ -78,9 +86,17 @@ class TestDeformablePSROIPoolOp(OpTest):
         sample_per_part = self.sample_per_part
         trans_std = self.trans_std
 
-        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
-                               group_size, pooled_height, pooled_width,
-                               part_size, sample_per_part, trans_std)
+        self.attrs = set_attrs(
+            no_trans,
+            spatial_scale,
+            output_channels,
+            group_size,
+            pooled_height,
+            pooled_width,
+            part_size,
+            sample_per_part,
+            trans_std,
+        )
 
         output = self.out.astype('float32')
         top_count = self.top_count.astype('float32')
@@ -106,9 +122,17 @@ class TestDeformablePSROIPoolOp(OpTest):
         sample_per_part = self.sample_per_part
         trans_std = self.trans_std
 
-        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
-                               group_size, pooled_height, pooled_width,
-                               part_size, sample_per_part, trans_std)
+        self.attrs = set_attrs(
+            no_trans,
+            spatial_scale,
+            output_channels,
+            group_size,
+            pooled_height,
+            pooled_width,
+            part_size,
+            sample_per_part,
+            trans_std,
+        )
 
         output = self.out.astype('float32')
         top_count = self.top_count.astype('float32')
@@ -134,9 +158,17 @@ class TestDeformablePSROIPoolOp(OpTest):
         sample_per_part = self.sample_per_part
         trans_std = self.trans_std
 
-        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
-                               group_size, pooled_height, pooled_width,
-                               part_size, sample_per_part, trans_std)
+        self.attrs = set_attrs(
+            no_trans,
+            spatial_scale,
+            output_channels,
+            group_size,
+            pooled_height,
+            pooled_width,
+            part_size,
+            sample_per_part,
+            trans_std,
+        )
 
         output = self.out.astype('float32')
         top_count = self.top_count.astype('float32')
@@ -162,9 +194,17 @@ class TestDeformablePSROIPoolOp(OpTest):
         sample_per_part = self.sample_per_part
         trans_std = self.trans_std
 
-        self.attrs = set_attrs(no_trans, spatial_scale, output_channels,
-                               group_size, pooled_height, pooled_width,
-                               part_size, sample_per_part, trans_std)
+        self.attrs = set_attrs(
+            no_trans,
+            spatial_scale,
+            output_channels,
+            group_size,
+            pooled_height,
+            pooled_width,
+            part_size,
+            sample_per_part,
+            trans_std,
+        )
 
         output = self.out.astype('float32')
         top_count = self.top_count.astype('float32')
@@ -176,7 +216,10 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.height = 12
         self.width = 12
         self.input_dim = [
-            self.batch_size, self.channels, self.height, self.width
+            self.batch_size,
+            self.channels,
+            self.height,
+            self.width,
         ]
         self.no_trans = False
         self.spatial_scale = 1.0 / 4.0
@@ -195,7 +238,10 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.height = 12
         self.width = 12
         self.input_dim = [
-            self.batch_size, self.channels, self.height, self.width
+            self.batch_size,
+            self.channels,
+            self.height,
+            self.width,
         ]
         self.no_trans = True
         self.spatial_scale = 1.0 / 2.0
@@ -214,7 +260,10 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.height = 12
         self.width = 12
         self.input_dim = [
-            self.batch_size, self.channels, self.height, self.width
+            self.batch_size,
+            self.channels,
+            self.height,
+            self.width,
         ]
         self.no_trans = False
         self.spatial_scale = 1.0 / 4.0
@@ -233,7 +282,10 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.height = 12
         self.width = 12
         self.input_dim = [
-            self.batch_size, self.channels, self.height, self.width
+            self.batch_size,
+            self.channels,
+            self.height,
+            self.width,
         ]
         self.no_trans = True
         self.spatial_scale = 1.0 / 2.0
@@ -253,13 +305,17 @@ class TestDeformablePSROIPoolOp(OpTest):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
                 x_1 = np.random.randint(
-                    0, self.width // self.spatial_scale - self.pooled_width)
+                    0, self.width // self.spatial_scale - self.pooled_width
+                )
                 y_1 = np.random.randint(
-                    0, self.height // self.spatial_scale - self.pooled_height)
-                x_2 = np.random.randint(x_1 + self.pooled_width,
-                                        self.width // self.spatial_scale)
-                y_2 = np.random.randint(y_1 + self.pooled_height,
-                                        self.height // self.spatial_scale)
+                    0, self.height // self.spatial_scale - self.pooled_height
+                )
+                x_2 = np.random.randint(
+                    x_1 + self.pooled_width, self.width // self.spatial_scale
+                )
+                y_2 = np.random.randint(
+                    y_1 + self.pooled_height, self.height // self.spatial_scale
+                )
                 roi = [bno, x_1, y_1, x_2, y_2]
                 rois.append(roi)
         self.rois_num = len(rois)
@@ -291,20 +347,38 @@ class TestDeformablePSROIPoolOp(OpTest):
         return val
 
     def calc_deformable_psroi_pooling(self):
-        output_shape = (self.rois_num, self.output_channels, self.pooled_height,
-                        self.pooled_width)
+        output_shape = (
+            self.rois_num,
+            self.output_channels,
+            self.pooled_height,
+            self.pooled_width,
+        )
         self.out = np.zeros(output_shape)
-        self.trans = np.random.rand(self.rois_num, 2, self.part_size[0],
-                                    self.part_size[1]).astype('float32')
+        self.trans = np.random.rand(
+            self.rois_num, 2, self.part_size[0], self.part_size[1]
+        ).astype('float32')
         self.top_count = np.random.random((output_shape)).astype('float32')
-        count = self.rois_num * self.output_channels * self.pooled_height * self.pooled_width
+        count = (
+            self.rois_num
+            * self.output_channels
+            * self.pooled_height
+            * self.pooled_width
+        )
         for index in range(count):
             p_w = int(index % self.pooled_width)
             p_h = int(index / self.pooled_width % self.pooled_height)
-            ctop = int(index / self.pooled_width / self.pooled_height %
-                       self.output_channels)
-            n_out = int(index / self.pooled_width / self.pooled_height /
-                        self.output_channels)
+            ctop = int(
+                index
+                / self.pooled_width
+                / self.pooled_height
+                % self.output_channels
+            )
+            n_out = int(
+                index
+                / self.pooled_width
+                / self.pooled_height
+                / self.output_channels
+            )
             roi = self.rois[n_out]
             roi_batch_id = int(roi[0])
             roi_start_w = int(np.round(roi[1])) * self.spatial_scale - 0.5
@@ -340,15 +414,22 @@ class TestDeformablePSROIPoolOp(OpTest):
                 for i_h in range(self.sample_per_part):
                     w_sample = wstart + i_w * sub_bin_size_w
                     h_sample = hstart + i_h * sub_bin_size_h
-                    if w_sample < -0.5 or w_sample > self.width - 0.5 or \
-                    h_sample < -0.5 or h_sample > self.height - 0.5:
+                    if (
+                        w_sample < -0.5
+                        or w_sample > self.width - 0.5
+                        or h_sample < -0.5
+                        or h_sample > self.height - 0.5
+                    ):
                         continue
-                    w_sample = min(max(w_sample, 0.), self.width - 1.)
-                    h_sample = min(max(h_sample, 0.), self.height - 1.)
-                    c_sample = int((ctop * self.group_size[0] + g_h) *
-                                   self.group_size[1] + g_w)
-                    val = self.dmc_bilinear(input_i[c_sample], h_sample,
-                                            w_sample)
+                    w_sample = min(max(w_sample, 0.0), self.width - 1.0)
+                    h_sample = min(max(h_sample, 0.0), self.height - 1.0)
+                    c_sample = int(
+                        (ctop * self.group_size[0] + g_h) * self.group_size[1]
+                        + g_w
+                    )
+                    val = self.dmc_bilinear(
+                        input_i[c_sample], h_sample, w_sample
+                    )
                     sum = sum + val
                     num_sample = num_sample + 1
             if num_sample == 0:
@@ -372,11 +453,14 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input1 = fluid.data(
-                name="input1", shape=[2, 192, 64, 64], dtype='float32')
+                name="input1", shape=[2, 192, 64, 64], dtype='float32'
+            )
             rois1 = fluid.data(
-                name="rois1", shape=[-1, 4], dtype='float32', lod_level=1)
+                name="rois1", shape=[-1, 4], dtype='float32', lod_level=1
+            )
             trans1 = fluid.data(
-                name="trans1", shape=[2, 384, 64, 64], dtype='float32')
+                name="trans1", shape=[2, 384, 64, 64], dtype='float32'
+            )
 
             # The `input` must be Variable and the data type of `input` Tensor must be one of float32 and float64.
             def test_input_type():
@@ -388,13 +472,15 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=(8, 8),
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_input_type)
 
             def test_input_tensor_dtype():
                 input2 = fluid.data(
-                    name="input2", shape=[2, 192, 64, 64], dtype='int32')
+                    name="input2", shape=[2, 192, 64, 64], dtype='int32'
+                )
                 fluid.layers.deformable_roi_pooling(
                     input=input2,
                     rois=rois1,
@@ -403,7 +489,8 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=(8, 8),
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_input_tensor_dtype)
 
@@ -417,13 +504,15 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=(8, 8),
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_rois_type)
 
             def test_rois_tensor_dtype():
                 rois2 = fluid.data(
-                    name="rois2", shape=[-1, 4], dtype='int32', lod_level=1)
+                    name="rois2", shape=[-1, 4], dtype='int32', lod_level=1
+                )
                 fluid.layers.deformable_roi_pooling(
                     input=input1,
                     rois=rois2,
@@ -432,7 +521,8 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=(8, 8),
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_rois_tensor_dtype)
 
@@ -446,13 +536,15 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=(8, 8),
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_trans_type)
 
             def test_trans_tensor_dtype():
                 trans2 = fluid.data(
-                    name="trans2", shape=[2, 384, 64, 64], dtype='int32')
+                    name="trans2", shape=[2, 384, 64, 64], dtype='int32'
+                )
                 fluid.layers.deformable_roi_pooling(
                     input=input1,
                     rois=rois1,
@@ -461,7 +553,8 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=(8, 8),
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_trans_tensor_dtype)
 
@@ -477,7 +570,8 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=(8, 8),
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_group_size_type)
 
@@ -492,7 +586,8 @@ class TestDeformablePSROIPoolOpError(unittest.TestCase):
                     pooled_width=8,
                     part_size=8,
                     sample_per_part=4,
-                    position_sensitive=True)
+                    position_sensitive=True,
+                )
 
             self.assertRaises(TypeError, test_part_size_type)
 

@@ -16,11 +16,12 @@
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/tracer.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/py_layer_op.h"
 
 namespace paddle {
@@ -32,7 +33,17 @@ bool RequiredGrad(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
       if (!var_base->OverridedStopGradient()) {
-        PassStopGradient(outs, var_base->OverridedStopGradient());
+        for (const auto& pair : outs) {
+          for (const auto& var : pair.second) {
+            if (var) {
+              var->SetOverridedStopGradient(false);
+              SetForwardDataTypeOfGradVar(var);
+              VLOG(3) << "Set output: " << var->Name()
+                      << "'s OverridedStopGradient as "
+                      << var->OverridedStopGradient();
+            }
+          }
+        }
         return true;
       }
     }
@@ -41,8 +52,10 @@ bool RequiredGrad(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 }
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const std::string& type, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const std::string& type,
+    const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs,
+    const framework::AttributeMap& attrs,
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map,
     const std::shared_ptr<operators::PyLayerContext>& py_context) {
@@ -63,46 +76,101 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
-                        const py::args args, const py::kwargs kwargs) {
+py::object PyLayerApply(const platform::Place& place,
+                        const py::handle& cls,
+                        const py::args args,
+                        const py::kwargs kwargs) {
   py::gil_scoped_acquire guard;
   auto bk_function = cls.attr("_backward_function");
   auto context = bk_function();
   auto forward = cls.attr("forward");
 
-  auto result_forward = forward(context, *args, **kwargs);
-  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
-      std::make_shared<operators::PyLayerContext>(context.ptr());
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
   if (!args.empty()) {
     for (auto ptr = args.begin(); ptr != args.end(); ptr++) {
-      try {
-        if (Py_None != ptr->ptr()) {
+      // Only collect Tensor type in 'args' and pass them to backward. Ignore
+      // other types of input temporarily.
+      if (py::isinstance<imperative::VarBase>(*ptr)) {
+        try {
           auto a = ptr->cast<std::shared_ptr<VarBase>>();
           input_vars.push_back(a);
+        } catch (py::cast_error& err) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
+              ptr->ptr()->ob_type->tp_name));
         }
-      } catch (py::cast_error& err) {
-        // Only collect Tensor type in 'args' and pass them to backward. Ignore
-        // other types of input temporarily.
+      } else if (py::isinstance<py::tuple>(*ptr) ||
+                 py::isinstance<py::list>(*ptr)) {
+        try {
+          auto tuple_arg = ptr->cast<py::tuple>();
+          for (auto iter = tuple_arg.begin(); iter != tuple_arg.end(); ++iter) {
+            try {
+              auto t = iter->cast<std::shared_ptr<VarBase>>();
+              input_vars.push_back(t);
+            } catch (py::cast_error& err) {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "The `PyLayer.forward` function contains invalid argument, "
+                  "the "
+                  "`%s` type argument can not be cast into `Tensor`.",
+                  ptr->ptr()->ob_type->tp_name));
+            }
+          }
+        } catch (py::cast_error& err) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
+              ptr->ptr()->ob_type->tp_name));
+        }
       }
     }
   }
   // process kwargs, only collect `imperative::VarBase`
   if (!kwargs.empty()) {
     for (auto ptr = kwargs.begin(); ptr != kwargs.end(); ptr++) {
-      try {
-        if (Py_None != ptr->second.ptr()) {
+      // Only collect Tensor type in 'kwargs' and pass them to backward.
+      // Ignore other types of input temporarily.
+      if (py::isinstance<imperative::VarBase>(*ptr->second)) {
+        try {
           auto a = ptr->second.cast<std::shared_ptr<VarBase>>();
           input_vars.push_back(a);
+        } catch (py::cast_error&) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
+              ptr->second.ptr()->ob_type->tp_name));
         }
-      } catch (py::cast_error&) {
-        // Only collect Tensor type in 'kwargs' and pass them to backward.
-        // Ignore other types of input temporarily.
+      } else if (py::isinstance<py::tuple>(*ptr->second) ||
+                 py::isinstance<py::list>(*ptr->second)) {
+        try {
+          auto tuple_arg = ptr->second.cast<py::tuple>();
+          for (auto iter = tuple_arg.begin(); iter != tuple_arg.end(); ++iter) {
+            try {
+              auto t = iter->cast<std::shared_ptr<VarBase>>();
+              input_vars.push_back(t);
+            } catch (py::cast_error& err) {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "The `PyLayer.forward` function contains invalid argument, "
+                  "the "
+                  "`%s` type argument can not be cast into `Tensor`.",
+                  ptr->second.ptr()->ob_type->tp_name));
+            }
+          }
+        } catch (py::cast_error& err) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
+              ptr->second.ptr()->ob_type->tp_name));
+        }
       }
     }
   }
+
+  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
+      std::make_shared<operators::PyLayerContext>(context.ptr());
+  auto result_forward = forward(context, *args, **kwargs);
   NameVarBaseMap ins = {{"X", input_vars}};
 
   std::vector<std::shared_ptr<imperative::VarBase>> output_vars;
@@ -110,33 +178,35 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       PyList_Check(result_forward.ptr())) {
     auto tuple_result = result_forward.cast<py::tuple>();
     for (size_t i = 0; i < tuple_result.size(); i++) {
-      if (Py_None != tuple_result[i].ptr()) {
+      // Only collect Tensor type of output and pass them to backward.
+      // Ignore other types of input temporarily.
+      if (py::isinstance<imperative::VarBase>(tuple_result[i])) {
         try {
           auto temp_out =
               tuple_result[i].cast<std::shared_ptr<imperative::VarBase>>();
           output_vars.push_back(temp_out);
         } catch (py::cast_error&) {
-          // Only collect Tensor type in 'kwargs' and pass them to backward.
-          // Ignore other types of input temporarily.
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The `PyLayer.forward` function returns invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
+              tuple_result[i].ptr()->ob_type->tp_name));
         }
-      } else {
-        // Only collect Tensor type in 'kwargs' and pass them to backward.
-        // Ignore other types of input temporarily.
       }
     }
   } else {
-    if (Py_None != result_forward.ptr()) {
+    // Only collect Tensor type of output and pass them to backward.
+    // Ignore other types of input temporarily.
+    if (py::isinstance<imperative::VarBase>(result_forward)) {
       try {
         auto temp_out =
             result_forward.cast<std::shared_ptr<imperative::VarBase>>();
         output_vars.push_back(temp_out);
       } catch (py::cast_error&) {
-        // Only collect Tensor type in 'kwargs' and pass them to backward.
-        // Ignore other types of input temporarily.
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The `PyLayer.forward` function returns invalid argument, the `%s` "
+            "type argument can not be cast into `Tensor`.",
+            result_forward.ptr()->ob_type->tp_name));
       }
-    } else {
-      // Only collect Tensor type in 'kwargs' and pass them to backward.
-      // Ignore other types of input temporarily.
     }
   }
   if (output_vars.size() == 0) {
@@ -161,11 +231,21 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       }
     }
     if (if_inplace) {
+      // when pylayer forward is inplace strategy, check whether tensor is leaf
+      for (auto& t : input_vars) {
+        PADDLE_ENFORCE_EQ(t->IsLeaf() && !t->OverridedStopGradient(),
+                          false,
+                          platform::errors::InvalidArgument(
+                              "Leaf Var (%s) that doesn't stop gradient can't "
+                              "use inplace strategy.",
+                              t->Name()));
+      }
+
       inplace_map["X"] = "Out";
     }
 
-    CreateGradOpNode("py_layer", ins, outs, {{}}, place, inplace_map,
-                     py_layer_ctx);
+    CreateGradOpNode(
+        "py_layer", ins, outs, {{}}, place, inplace_map, py_layer_ctx);
   } else {
     VLOG(3) << "No Grad to track for Op: py_layer_op";
   }

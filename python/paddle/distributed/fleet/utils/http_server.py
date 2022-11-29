@@ -13,20 +13,12 @@
 # limitations under the License.
 """Http Server."""
 
+import http.server as SimpleHTTPServer
 import logging
-
-import six
-# NOTE: HTTPServer has a different name in python2 and python3
-if six.PY2:
-    from BaseHTTPServer import HTTPServer
-    import SimpleHTTPServer
-else:
-    from http.server import HTTPServer
-    import http.server as SimpleHTTPServer
-
-import time
 import threading
-import socket
+
+# NOTE: HTTPServer has a different name in python2 and python3
+from http.server import HTTPServer
 
 __all__ = []
 
@@ -43,7 +35,8 @@ def get_logger(name, level, fmt):
 
 
 _http_server_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -134,14 +127,14 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-class KVHTTPServer(HTTPServer, object):
+class KVHTTPServer(HTTPServer):
     """
     it is a http server storing kv pairs.
     """
 
     def __init__(self, port, handler):
         """Init."""
-        super(KVHTTPServer, self).__init__(('', port), handler)
+        super().__init__(('', port), handler)
         self.delete_kv_lock = threading.Lock()
         self.delete_kv = {}
         self.kv_lock = threading.Lock()
@@ -173,7 +166,8 @@ class KVServer:
         start server until user calls stop to let it quit.
         """
         self.listen_thread = threading.Thread(
-            target=lambda: self.http_server.serve_forever())
+            target=lambda: self.http_server.serve_forever()
+        )
         self.listen_thread.start()
 
     def stop(self):

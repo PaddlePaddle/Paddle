@@ -13,7 +13,9 @@
  limitations under the License. */
 
 #include "paddle/fluid/operators/tdm_child_op.h"
+
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -31,7 +33,8 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
         "TreeInfo(Tensor), dtype support int32/int64, it stores the node "
         "information in the following format: item_id(shape=1), "
         "layer_id(shape=1), parent_id(shape=1), child_id(shape=child_nums)");
-    AddAttr<int>("child_nums", "child_nums(int)",
+    AddAttr<int>("child_nums",
+                 "child_nums(int)"
                  "The child nums of one node, if the node hasn't enough child, "
                  "it should padding 0 until child nums equal to child_nums");
     AddOutput("Child",
@@ -46,7 +49,7 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(2);
     AddComment(R"DOC("
      **Tdm Child**
-     According to the input node_id on the given tree, return the corresponding child node_id and 
+     According to the input node_id on the given tree, return the corresponding child node_id and
       whether child is a leaf node by LeafMask.")DOC");
   }
 };
@@ -55,16 +58,19 @@ class TDMChildOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Inputs(X) of TdmChild should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("TreeInfo"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("TreeInfo"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Inputs(TreeInfo) of TdmChild should not be null."));
 
     int child_nums = ctx->Attrs().Get<int>("child_nums");
     PADDLE_ENFORCE_GT(
-        child_nums, 0,
+        child_nums,
+        0,
         platform::errors::InvalidArgument(
             "ValueError: The value of the 'child_nums' must greater than 0. "
             "But received child_nums value = %d, ",
@@ -74,17 +80,19 @@ class TDMChildOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("X");
 
     PADDLE_ENFORCE_EQ(
-        info_dims.size(), 2,
+        info_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "ShapeError: The dimensions of the 'tree info' must be 2. "
             "But received tree info's dimensions = %d, "
             "tree info's shape = [%s].",
-            info_dims.size(), info_dims));
+            info_dims.size(),
+            info_dims));
 
-    auto output_dims = framework::vectorize(input_dims);
+    auto output_dims = phi::vectorize(input_dims);
     output_dims.push_back(child_nums);
-    ctx->SetOutputDim("Child", framework::make_ddim(output_dims));
-    ctx->SetOutputDim("LeafMask", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Child", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("LeafMask", phi::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Child")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
@@ -106,11 +114,14 @@ class TDMChildOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    tdm_child, ops::TDMChildOp, ops::TDMChildOpMaker,
+    tdm_child,
+    ops::TDMChildOp,
+    ops::TDMChildOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    tdm_child, ops::TDMChildKernel<paddle::platform::CPUPlace, float>,
+    tdm_child,
+    ops::TDMChildKernel<paddle::platform::CPUPlace, float>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, double>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, int>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, int64_t>);

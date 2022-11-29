@@ -14,10 +14,12 @@
 
 #pragma once
 #include <ThreadPool.h>
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -52,7 +54,8 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unordered_map<OpHandleBase *, int> op_deps_;
   std::vector<OpHandleBase *> bootstrap_ops_;
 
-  platform::DeviceContextPool fetch_ctxs_;
+  std::map<Place, std::shared_future<std::unique_ptr<platform::DeviceContext>>>
+      fetch_ctxs_;
   std::atomic<int> remaining_;
 
   std::future<
@@ -60,7 +63,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
       atomic_op_deps_;
   ExceptionHolder exception_;
 
-  ::ThreadPool pool_;
+  std::unique_ptr<::ThreadPool> pool_;
   ::ThreadPool prepare_pool_;
 
   std::vector<OpHandleBase *> traced_ops_;
@@ -84,12 +87,14 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   bool RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 
   void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
+      const std::vector<std::string> &fetch_tensors,
+      FetchResultType *fetches,
       std::unordered_map<std::string, std::vector<VarHandleBase *>>
           *fetched_vars,
       std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
       std::vector<OpHandleBase *> *fetch_ops,
-      std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
+      std::vector<OpHandleBase *> *ready_fetch_ops,
+      bool return_merged);
 };
 }  // namespace details
 }  // namespace framework

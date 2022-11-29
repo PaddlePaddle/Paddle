@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
+
 paddle.enable_static()
 
 import unittest
+
 import paddle.fluid as fluid
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 
 class EntryAttrChecks(unittest.TestCase):
@@ -35,13 +33,15 @@ class EntryAttrChecks(unittest.TestCase):
                     shape=[-1, 1],
                     dtype="int64",
                     lod_level=1,
-                    append_batch_size=False)
+                    append_batch_size=False,
+                )
                 emb = fluid.layers.embedding(
                     input=input,
                     size=[100, 10],
                     is_sparse=True,
                     is_distributed=True,
-                    param_attr=fluid.ParamAttr(name="deep_embedding"))
+                    param_attr=fluid.ParamAttr(name="deep_embedding"),
+                )
                 pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
                 predict = fluid.layers.fc(input=pool, size=2, act='softmax')
 

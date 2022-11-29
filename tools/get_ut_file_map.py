@@ -1,26 +1,25 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import sys
-import re
-import json
 
 
 def get_all_paddle_file(rootPath):
     """get all file in Paddle repo: paddle/fluild, python"""
-    traverse_files = ['%s/paddle/fluid' % rootPath, '%s/python' % rootPath]
+    traverse_files = ['%s' % rootPath]
     all_file_paddle = '%s/build/all_file_paddle' % rootPath
     all_file_paddle_list = []
     with open(all_file_paddle, 'w') as f:
@@ -35,8 +34,9 @@ def get_all_paddle_file(rootPath):
 def get_all_uts(rootPath):
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
     os.system(
-        'cd %s/build && ctest -N -V | grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > %s'
-        % (rootPath, all_uts_paddle))
+        r'cd %s/build && ctest -N -V | grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > %s'
+        % (rootPath, all_uts_paddle)
+    )
 
 
 def remove_useless_file(rootPath):
@@ -56,19 +56,39 @@ def remove_useless_file(rootPath):
 
 
 def handle_ut_file_map(rootPath):
-    utNotSuccess = ''
+    utNotSuccess_list = []
     ut_map_path = "%s/build/ut_map" % rootPath
     files = os.listdir(ut_map_path)
     ut_file_map = {}
     count = 0
     not_success_file = open("%s/build/prec_delta" % rootPath, 'w')
+    # if testdir is not made,write the test into prec_delta
+    get_all_uts(rootPath)
+    all_ut = '%s/build/all_uts_paddle' % rootPath
+    with open(all_ut, 'r') as f:
+        all_ut_list = []
+        for ut in f.readlines():
+            ut = ut.replace('\n', '')
+            all_ut_list.append(ut.strip())
+        f.close()
+    for ut in all_ut_list:
+        filedir = '%s/build/ut_map/%s' % (rootPath, ut)
+        if not os.path.exists(filedir):
+            not_success_file.write('%s\n' % ut)
+            utNotSuccess_list.append(ut)
+    # if fnda.tmp not exists,write the test into prec_delta
     for ut in files:
         count = count + 1
         print("ut %s: %s" % (count, ut))
-        coverage_info = '%s/%s/coverage.info.tmp' % (ut_map_path, ut)
+        coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
         if os.path.exists(coverage_info):
-            filename = '%s/%s/%s.txt' % (ut_map_path, ut, ut)
-            f = open(filename)
+            filename = '%s/%s/related_%s.txt' % (ut_map_path, ut, ut)
+            try:
+                f = open(filename)
+                print("oepn %s succesfully" % filename)
+            except FileNotFoundError:
+                print("%s is not found." % filename)
+                return
             lines = f.readlines()
             for line in lines:
                 line = line.replace('\n', '').strip()
@@ -76,28 +96,48 @@ def handle_ut_file_map(rootPath):
                     continue
                 elif line.startswith('/paddle/build'):
                     source_file = line.replace('/build', '')
-                    #source_file = re.sub('.pb.*', '.proto', source_file)
+                    # source_file = re.sub('.pb.*', '.proto', source_file)
                 elif 'precise test map fileeee:' in line:
                     source_file = line.split('precise test map fileeee:')[
-                        1].strip()
+                        1
+                    ].strip()
                 else:
                     source_file = line
                 if source_file not in ut_file_map:
                     ut_file_map[source_file] = []
                 if ut not in ut_file_map[source_file]:
                     ut_file_map[source_file].append(ut)
-
+            f.close()
         else:
             not_success_file.write('%s\n' % ut)
-            utNotSuccess = utNotSuccess + '^%s$|' % ut
-
+            utNotSuccess_list.append(ut)
     not_success_file.close()
 
+    print("utNotSuccess:")
+    print(utNotSuccess_list)
+
+    for ut in files:
+        if ut not in utNotSuccess_list:
+            filename = '%s/%s/notrelated_%s.txt' % (ut_map_path, ut, ut)
+            try:
+                f = open(filename)
+                print("oepn %s succesfully" % filename)
+            except FileNotFoundError:
+                print("%s is not found." % filename)
+            lines = f.readlines()
+            for line in lines:
+                line = line.replace('\n', '').strip()
+                if line == '':
+                    continue
+                elif line.startswith('/paddle/build'):
+                    source_file = line.replace('/build', '')
+                else:
+                    source_file = line
+                if source_file not in ut_file_map:
+                    ut_file_map[source_file] = []
+            f.close()
     with open("%s/build/ut_file_map.json" % rootPath, "w") as f:
         json.dump(ut_file_map, f, indent=4)
-
-    print("utNotSuccess:")
-    print(utNotSuccess)
 
 
 def notsuccessfuc(rootPath):
@@ -107,7 +147,7 @@ def notsuccessfuc(rootPath):
     count = 0
     # ut failed!!
     for ut in files:
-        coverage_info = '%s/%s/coverage.info.tmp' % (ut_map_path, ut)
+        coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
         if os.path.exists(coverage_info):
             pass
         else:
@@ -115,6 +155,7 @@ def notsuccessfuc(rootPath):
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
     # ut not exec
+
     get_all_uts(rootPath)
     with open("/paddle/build/all_uts_paddle", "r") as f:
         data = f.readlines()
@@ -134,54 +175,66 @@ def notsuccessfuc(rootPath):
 
 def ut_file_map_supplement(rootPath):
     ut_file_map_new = "%s/build/ut_file_map.json" % rootPath
-    os.system('mkdir /pre_test')
+    os.system('mkdir /pre_test_tmp')
     os.system(
-        'cd /pre_test && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
+        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
     )
-    ut_file_map_old = "/pre_test/ut_file_map.json"
-    ut_file_map_full = {}
+    ut_file_map_old = "/pre_test_tmp/ut_file_map.json"
     with open(ut_file_map_new, 'r') as load_f:
         load_dict_new = json.load(load_f)
     with open(ut_file_map_old, 'r') as f:
         load_dict_old = json.load(f)
 
-    for filename in load_dict_new:
-        ut_file_map_full[filename] = load_dict_new[filename]
-        if filename in load_dict_old:
-            for ut in load_dict_old[filename]:
-                if ut not in ut_file_map_full[filename]:
-                    ut_file_map_full[filename].append(ut)
-
-    for filename in load_dict_old:
-        if filename not in load_dict_new:
-            ut_file_map_full[filename] = load_dict_old[filename]
-
-    with open("/pre_test/ut_file_map.json", "w") as f:
-        json.dump(ut_file_map_full, f, indent=4)
-        print("ut_file_map_full success!!")
-
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
+
     with open(all_uts_paddle, 'r') as f:
-        all_uts_paddle_list = f.readlines()
+        all_uts_paddle_list = []
+        for ut in f.readlines():
+            all_uts_paddle_list.append(ut.strip())
         f.close()
+
+    with open("/pre_test_tmp/ut_file_map.json", "w") as f:
+        json.dump(load_dict_new, f, indent=4)
+        print("load_dict_new success!!")
+
     os.system(
-        'cd /pre_test && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta --no-check-certificate'
+        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta --no-check-certificate'
     )
-    prec_delta_old = '/pre_test/prec_delta'
+    prec_delta_old = '/pre_test_tmp/prec_delta'
     prec_delta_new = "%s/build/prec_delta" % rootPath
     with open(prec_delta_old, 'r') as f:
-        prec_delta_old_list = f.readlines()
+        prec_delta_old_list = []
+        for ut in f.readlines():
+            prec_delta_old_list.append(ut.strip())
         f.close()
     with open(prec_delta_new, 'r') as f:
-        prec_delta_new_list = f.readlines()
+        prec_delta_new_list = []
+        for ut in f.readlines():
+            prec_delta_new_list.append(ut.strip())
         f.close()
+
     for ut in prec_delta_old_list:
-        if ut not in prec_delta_new_list and ut not in all_uts_paddle_list:
-            prec_delta_new_list.append(ut)
-    prec_delta_file = open("/pre_test/prec_delta", 'w')
+        filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, ut)
+        if ut in all_uts_paddle_list:
+            if not os.path.exists(filename) and ut not in prec_delta_new_list:
+                prec_delta_new_list.append(ut)
+    prec_delta_new_list.append(
+        'test_py_reader_error_msg'
+    )  # add a python case for pycoverage
+    prec_delta_file = open("/pre_test_tmp/prec_delta", 'w')
     for ut in prec_delta_new_list:
-        prec_delta_file.write(ut)
+        prec_delta_file.write(ut + '\n')
+    print("prec_delta_file success!!")
     prec_delta_file.close()
+
+
+def utmap_analysis(rootPath):
+    ut_file_map_new = "%s/build/ut_file_map.json" % rootPath
+    with open(ut_file_map_new, 'r') as load_f:
+        load_dict_new = json.load(load_f)
+    print(len(load_dict_new))
+    for filename in load_dict_new:
+        print(filename, len(load_dict_new[filename]))
 
 
 if __name__ == "__main__":

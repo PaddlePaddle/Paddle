@@ -12,38 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/increment_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/platform/float16.h"
-
-namespace paddle {
-namespace framework {
-class OpDesc;
-class Variable;
-}  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-}  // namespace paddle
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class IncrementalNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x_tensor = context.Input<framework::Tensor>("X");
-    auto* out_tensor = context.Output<framework::Tensor>("Out");
+    auto* x_tensor = context.Input<phi::DenseTensor>("X");
+    auto* out_tensor = context.Output<phi::DenseTensor>("Out");
     float step = context.Attr<float>("step");
     out_tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor step_tensor(x_tensor->type());
+    Tensor step_tensor(x_tensor->dtype());
 
     step_tensor.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
 
-    auto runner =
+    const auto& runner =
         NpuOpRunner("Add", {*x_tensor, step_tensor}, {*out_tensor}, {});
 
     auto stream =
@@ -56,14 +45,12 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace plat = paddle::platform;
-namespace ops = paddle::operators;
-
 REGISTER_OP_NPU_KERNEL(
     increment,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext,
-                              plat::float16>)
+    paddle::operators::IncrementalNPUKernel<float>,
+    paddle::operators::IncrementalNPUKernel<double>,
+    paddle::operators::IncrementalNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    paddle::operators::IncrementalNPUKernel<int64_t>,
+#endif
+    paddle::operators::IncrementalNPUKernel<paddle::platform::float16>)

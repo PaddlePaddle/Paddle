@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest
 
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.op import Operator
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
 
 
 class TestSamplingIdShape(unittest.TestCase):
@@ -33,8 +31,7 @@ class TestSamplingIdShape(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         feed = {
-            'x': np.array(
-                [[0.2, 0.3, 0.5], [0.2, 0.3, 0.4]], dtype='float32')
+            'x': np.array([[0.2, 0.3, 0.5], [0.2, 0.3, 0.4]], dtype='float32')
         }
         output_np = exe.run(feed=feed, fetch_list=[output])[0]
 

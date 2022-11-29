@@ -18,9 +18,9 @@
 #include <vector>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/memory/allocation/buddy_allocator.h"
+#include "paddle/fluid/memory/allocation/system_allocator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace memory {
@@ -83,11 +83,11 @@ class ThreadLocalCUDAAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation* AllocateImpl(size_t size) override {
+  phi::Allocation* AllocateImpl(size_t size) override {
     return ThreadLocalCUDAAllocatorPool::Instance().Get(gpu_id_)->AllocateImpl(
         size);
   }
-  void FreeImpl(Allocation* allocation) override {
+  void FreeImpl(phi::Allocation* allocation) override {
     auto* tl_allocation = static_cast<ThreadLocalAllocation*>(allocation);
     auto allocator_impl = tl_allocation->GetAllocator();
     allocator_impl->FreeImpl(tl_allocation);

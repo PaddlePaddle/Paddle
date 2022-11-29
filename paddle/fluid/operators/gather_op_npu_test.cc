@@ -24,28 +24,27 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/gather_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
-USE_OP(gather);
+USE_OP_ITSELF(gather);
 USE_OP_DEVICE_KERNEL(gather, NPU);
-USE_OP(gather_grad);
+USE_OP_ITSELF(gather_grad);
 USE_OP_DEVICE_KERNEL(gather_grad, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   auto index = scope->Var("Index");
-  auto tensor_index = index->GetMutable<f::LoDTensor>();
+  auto tensor_index = index->GetMutable<phi::DenseTensor>();
 
   std::vector<T> init_x;
   for (int64_t i = 1; i < 7; ++i) {
@@ -54,17 +53,17 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   }
 
   // [[1, 2],[3, 4],[5, 6]]
-  TensorFromVector(init_x, ctx, tensor_x);
-  tensor_x->Resize(paddle::framework::make_ddim({3, 2}));
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
+  tensor_x->Resize(phi::make_ddim({3, 2}));
 
   std::vector<int> init_index = {1, 2};
   paddle::framework::TensorFromVector<int>(init_index, ctx, tensor_index);
-  tensor_index->Resize(paddle::framework::make_ddim({2}));
+  tensor_index->Resize(phi::make_ddim({2}));
 
   ctx.Wait();
 
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   // run
   f::AttributeMap attrs = {{"validate_indices", true}};
@@ -75,7 +74,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
@@ -97,46 +96,49 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 }
 
 template <typename T>
-void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
+void CompareGrad(f::Scope* scope,
+                 const p::DeviceContext& ctx,
                  std::string op_type) {
   // init
   auto index = scope->Var("Index");
-  auto tensor_index = index->GetMutable<f::LoDTensor>();
+  auto tensor_index = index->GetMutable<phi::DenseTensor>();
 
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   auto dout = scope->Var("DOut");
-  auto tensor_dout = dout->GetMutable<f::LoDTensor>();
+  auto tensor_dout = dout->GetMutable<phi::DenseTensor>();
 
   std::vector<int> init_index = {0, 1};
   paddle::framework::TensorFromVector<int>(init_index, ctx, tensor_index);
-  tensor_index->Resize(paddle::framework::make_ddim({2}));
+  tensor_index->Resize(phi::make_ddim({2}));
 
   std::vector<T> init_x = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-  TensorFromVector(init_x, ctx, tensor_x);
-  tensor_x->Resize(paddle::framework::make_ddim({3, 2}));
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
+  tensor_x->Resize(phi::make_ddim({3, 2}));
 
   std::vector<T> init_dout = {5.0, 10.0, 2.0, 3.0};
-  TensorFromVector(init_dout, ctx, tensor_dout);
-  tensor_dout->Resize(paddle::framework::make_ddim({2, 2}));
+  paddle::framework::TensorFromVector(init_dout, ctx, tensor_dout);
+  tensor_dout->Resize(phi::make_ddim({2, 2}));
 
   ctx.Wait();
 
   auto dx = scope->Var("DX");
-  auto tensor_dx = dx->GetMutable<f::LoDTensor>();
+  auto tensor_dx = dx->GetMutable<phi::DenseTensor>();
 
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
-      op_type, {{"X", {"X"}}, {"Index", {"Index"}}, {"Out@GRAD", {"DOut"}}},
-      {{"X@GRAD", {"DX"}}}, attrs);
+      op_type,
+      {{"X", {"X"}}, {"Index", {"Index"}}, {"Out@GRAD", {"DOut"}}},
+      {{"X@GRAD", {"DX"}}},
+      attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
 
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   ctx.Wait();
 

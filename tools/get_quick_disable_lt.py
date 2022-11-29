@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import ssl
+import sys
+
 import requests
+
+import paddle
 
 
 def download_file():
@@ -25,13 +28,16 @@ def download_file():
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
     else:
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
-    try:
-        import paddle.fluid.core as core
-        if core.is_compiled_with_rocm():
-            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
-                'disable_ut_rocm_ci')
-    except:
-        pass
+
+    if paddle.is_compiled_with_rocm():
+        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_rocm')
+
+    if paddle.is_compiled_with_npu():
+        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_npu')
+
+    if paddle.is_compiled_with_mlu():
+        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_mlu')
+
     f = requests.get(url)
     data = f.text
     status_code = f.status_code

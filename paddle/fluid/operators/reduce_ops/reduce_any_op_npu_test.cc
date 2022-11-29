@@ -27,38 +27,37 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
-using Tensor = paddle::framework::Tensor;
+using Tensor = phi::DenseTensor;
 
-USE_OP(reduce_any);
+USE_OP_ITSELF(reduce_any);
 USE_OP_DEVICE_KERNEL(reduce_any, NPU);
 
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
   std::vector<bool> init_x = {true, false, false, false};
   f::TensorFromVector<bool>(init_x, ctx, tensor_x);
-  tensor_x->Resize(paddle::framework::make_ddim({2}));
+  tensor_x->Resize(phi::make_ddim({2}));
 
   ctx.Wait();
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   // run
   std::vector<int> axes;
   f::AttributeMap attrs = {{"axes", axes}, {"keep_dims", true}};
-  auto op = f::OpRegistry::CreateOp("reduce_any", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "reduce_any", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
 

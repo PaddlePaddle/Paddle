@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -24,8 +23,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseFloorDiv(OpTest):
     def setUp(self):
         self.op_type = "elementwise_floordiv"
@@ -35,7 +32,7 @@ class TestElementwiseFloorDiv(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {}
         self.outputs = {'Out': self.out}
@@ -53,11 +50,9 @@ class TestElementwiseFloorDiv(OpTest):
         self.dtype = "int64"
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseFloorDiv2(TestElementwiseFloorDiv):
     def init_dtype(self):
         self.dtype = "int32"

@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import sys
+
 sys.path.append("..")
 import paddle
 import paddle.fluid as fluid
@@ -27,7 +26,6 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from paddle.fluid.executor import global_scope
 import numpy as np
-import six
 import pickle
 import os
 import errno
@@ -36,71 +34,79 @@ from test_static_save_load import *
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUSaveLoadBase(TestSaveLoadBase):
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUSaveLoadPartial(TestSaveLoadPartial):
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUSaveLoadSetStateDict(TestSaveLoadSetStateDict):
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUProgramStatePartial(TestProgramStatePartial):
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPULoadFromOldInterface(TestLoadFromOldInterface):
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPULoadFromOldInterfaceSingleFile(TestLoadFromOldInterfaceSingleFile):
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUProgramStateOldSave(TestProgramStateOldSave):
     def setUp(self):
         self.test_dygraph = False
 
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUProgramStateOldSaveSingleModel(TestProgramStateOldSaveSingleModel):
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return (
+            fluid.CPUPlace()
+            if not core.is_compiled_with_npu()
+            else paddle.NPUPlace(0)
+        )
 
 
 if __name__ == '__main__':

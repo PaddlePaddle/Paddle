@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTMatMulDims2Test(InferencePassTest):
@@ -31,13 +32,17 @@ class TensorRTMatMulDims2Test(InferencePassTest):
                 y=data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha)
+                alpha=self.alpha,
+            )
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
 
-        self.feeds = {"data": np.ones([24, 24]).astype("float32"), }
+        self.feeds = {
+            "data": np.ones([24, 24]).astype("float32"),
+        }
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulDims2Test.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -50,7 +55,8 @@ class TensorRTMatMulDims2Test(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTMatMulTest(InferencePassTest):
@@ -58,19 +64,24 @@ class TensorRTMatMulTest(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 6, 24, 24], dtype="float32")
+                name="data", shape=[-1, 6, 24, 24], dtype="float32"
+            )
             matmul_out = fluid.layers.matmul(
                 x=data,
                 y=data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha)
+                alpha=self.alpha,
+            )
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
 
-        self.feeds = {"data": np.ones([1, 6, 24, 24]).astype("float32"), }
+        self.feeds = {
+            "data": np.ones([1, 6, 24, 24]).astype("float32"),
+        }
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -83,7 +94,8 @@ class TensorRTMatMulTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTMatMulTransposeXTest(TensorRTMatMulTest):
@@ -105,6 +117,48 @@ class TensorRTMatMulScaleTest(TensorRTMatMulTest):
         self.transpose_x = False
         self.transpose_y = False
         self.alpha = 2.0
+
+
+class TensorRTMatMulBroadcastTest(InferencePassTest):
+    def setUp(self):
+        self.set_params()
+        place = fluid.CPUPlace()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data_x = fluid.data(
+                name="data_x", shape=[-1, 6, 24], dtype="float32"
+            )
+            data_y = fluid.data(name="data_y", shape=[24, 16], dtype="float32")
+            matmul_out = fluid.layers.matmul(
+                x=data_x,
+                y=data_y,
+                transpose_x=self.transpose_x,
+                transpose_y=self.transpose_y,
+                alpha=self.alpha,
+            )
+            out = fluid.layers.batch_norm(matmul_out, is_test=True)
+
+        self.feeds = {
+            "data_x": np.ones([2, 6, 24]).astype("float32"),
+            "data_y": np.ones([24, 16]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTMatMulBroadcastTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.fetch_list = [out]
+
+    def set_params(self):
+        self.transpose_x = False
+        self.transpose_y = False
+        self.alpha = 1.0
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

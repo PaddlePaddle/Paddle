@@ -12,22 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
-import math
-import paddle.fluid.core as core
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import random
 import sys
+import unittest
 
+import numpy as np
 from op_test import OpTest
+
+import paddle
+import paddle.fluid.core as core
+
 sys.path.append("./rnn")
-from rnn_numpy import SimpleRNN, LSTM, GRU
 from convert import get_params_for_net
+from rnn_numpy import LSTM
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -48,9 +45,11 @@ class TestRNNOp(OpTest):
     def setUp(self):
         self.op_type = "rnn"
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
-        self.sequence_length = None if core.is_compiled_with_rocm(
-        ) else np.array(
-            [12, 11, 10, 9, 8], dtype=np.int32)
+        self.sequence_length = (
+            None
+            if core.is_compiled_with_rocm()
+            else np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        )
         self.num_layers = 1
         self.is_bidirec = False
         self.mode = "LSTM"
@@ -66,8 +65,8 @@ class TestRNNOp(OpTest):
         hidden_size = 2
 
         input = np.random.uniform(
-            low=-0.1, high=0.1,
-            size=(seq_length, batch_size, input_size)).astype(self.dtype)
+            low=-0.1, high=0.1, size=(seq_length, batch_size, input_size)
+        ).astype(self.dtype)
         if self.sequence_length is not None:
             input[11][1:][:] = 0
             input[10][2:][:] = 0
@@ -81,11 +80,13 @@ class TestRNNOp(OpTest):
             time_major=True,
             direction=direction,
             dropout=self.dropout,
-            dtype=self.dtype)
+            dtype=self.dtype,
+        )
 
         flat_w = get_params_for_net(rnn1)
         output, (last_hidden, last_cell) = rnn1(
-            input, sequence_length=self.sequence_length)
+            input, sequence_length=self.sequence_length
+        )
 
         if core.is_compiled_with_rocm():
 
@@ -95,27 +96,19 @@ class TestRNNOp(OpTest):
 
             self._get_places = rocm_rnn_get_place
 
-            if self.is_bidirec:
-                for i in range(0, len(flat_w), 4):
-                    flat_w[i + 1], flat_w[i + 2] = flat_w[i + 2], flat_w[i + 1]
-
-            for i in range(len(flat_w)):
-                w = np.split(flat_w[i][1], 4, 0)
-                w = [w[0], w[1], w[3], w[2]]
-                w = np.concatenate(w)
-                flat_w[i] = (flat_w[i][0], w)
-
-        init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
-                           hidden_size)).astype(self.dtype)
-        init_c = np.zeros((self.num_layers * self.direction_num, batch_size,
-                           hidden_size)).astype(self.dtype)
+        init_h = np.zeros(
+            (self.num_layers * self.direction_num, batch_size, hidden_size)
+        ).astype(self.dtype)
+        init_c = np.zeros(
+            (self.num_layers * self.direction_num, batch_size, hidden_size)
+        ).astype(self.dtype)
         state_out = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
             'Input': input,
             'WeightList': flat_w,
             'PreState': [('init_h', init_h), ('init_c', init_c)],
-            'SequenceLength': self.sequence_length
+            'SequenceLength': self.sequence_length,
         }
         if self.sequence_length is None:
             self.inputs = {
@@ -130,13 +123,13 @@ class TestRNNOp(OpTest):
             'hidden_size': hidden_size,
             'num_layers': self.num_layers,
             'mode': self.mode,
-            'is_test': self.is_test
+            'is_test': self.is_test,
         }
         self.outputs = {
             'Out': output,
             "State": [('last_hidden', last_hidden), ('last_cell', last_cell)],
             'Reserve': np.ndarray((400)).astype("uint8"),
-            'DropoutState': state_out
+            'DropoutState': state_out,
         }
 
     def test_output(self):
@@ -151,7 +144,35 @@ class TestRNNOp(OpTest):
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell'])
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
+
+    def test_grad_only_input(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
+
+    def test_grad_only_h(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['init_h']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
+
+    def test_grad_only_c(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['init_c']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
 
 
 class TestRNNOp1(TestRNNOp):
@@ -176,6 +197,36 @@ class TestRNNOp4(TestRNNOp):
         self.is_test = True
         self.sequence_length = None
         self.is_bidirec = True
+
+
+class TestRNNOp5(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+
+
+class TestRNNOp6(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+
+
+class TestRNNOp7(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+        self.is_test = True
+
+
+class TestRNNOp8(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 2
+        self.is_bidirec = True
+        self.sequence_length = None
+
+
+class TestRNNOp9(TestRNNOp):
+    def set_attrs(self):
+        self.num_layers = 3
 
 
 if __name__ == '__main__':

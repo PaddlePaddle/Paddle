@@ -12,27 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import struct
+
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp, fc, ACTIVATION, fusion_lstm
-from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import (
+    ACTIVATION,
+    fusion_lstm,
+)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestFusionLSTMBF16ONEDNNOp(OpTest):
     def set_confs(self):
-        self.mkldnn_data_type = False
+        pass
 
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
+            self.check_output(
+                check_dygraph=False, no_check_set=["Cell"], atol=2e-2
+            )
 
     def setUp(self):
         self.op_type = 'fusion_lstm'
@@ -47,6 +51,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
         self.use_mkldnn = True
+        self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False
         self.weights_dtype = 'fp32'
         self.set_confs()
@@ -75,8 +80,8 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             b = np.random.normal(size=(1, 7 * self.D)).astype('float32')
         else:
             b = np.random.normal(size=(1, 4 * self.D)).astype('float32')
-        w_b = np.copy(b[:, 0:4 * self.D])
-        w_c = b[:, 4 * self.D:] if self.use_peepholes else None
+        w_b = np.copy(b[:, 0 : 4 * self.D])
+        w_c = b[:, 4 * self.D :] if self.use_peepholes else None
 
         wx = np.random.normal(size=(self.M, 4 * self.D)).astype('float32')
 
@@ -84,12 +89,23 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         wh_bf16 = convert_float_to_uint16(wh)
 
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
-        b[0, 0:4 * self.D] += bx[0, :]
+        b[0, 0 : 4 * self.D] += bx[0, :]
 
-        hidden, c = fusion_lstm(x, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
-                                self.is_reverse, ACTIVATION[self.act_gate],
-                                ACTIVATION[self.act_cell],
-                                ACTIVATION[self.act_cand])
+        hidden, c = fusion_lstm(
+            x,
+            self.lod,
+            wx,
+            bx,
+            h0,
+            c0,
+            wh,
+            w_b,
+            w_c,
+            self.is_reverse,
+            ACTIVATION[self.act_gate],
+            ACTIVATION[self.act_cell],
+            ACTIVATION[self.act_cand],
+        )
 
         hidden = hidden.astype('float32')
         hidden_bf16 = convert_float_to_uint16(hidden)
@@ -99,14 +115,14 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
                 'X': (x_bf16, self.lod),
                 'WeightX': wx_bf16,
                 'WeightH': wh_bf16,
-                'Bias': b
+                'Bias': b,
             }
         elif self.weights_dtype == 'fp32':
             self.inputs = {
                 'X': (x_bf16, self.lod),
                 'WeightX': wx,
                 'WeightH': wh,
-                'Bias': b
+                'Bias': b,
             }
 
         if self.has_initial_state:
@@ -129,7 +145,8 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
             'force_fp32_output': self.force_fp32_output,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
 
 
@@ -155,5 +172,6 @@ class TestFusionLSTMBF16ONEDNNBF16WeightsOp(TestFusionLSTMBF16ONEDNNOp):
 
 if __name__ == "__main__":
     from paddle import enable_static
+
     enable_static()
     unittest.main()

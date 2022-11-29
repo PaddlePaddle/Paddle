@@ -45,7 +45,9 @@ enum class ScaleAlgo {
   MAX_CH,    ///< Find scale based on the max absolute value per output channel
   MAX_CH_T,  ///< Find scale based on the max absolute value per output channel
              ///< of a transposed tensor
-  KL,        ///< Find scale based on KL Divergence
+  MAX_CH_GRU,  ///< Find scale based on the max absolute value per output
+               /// channel for fusion_gru/multi_gru operators
+  KL,          ///< Find scale based on KL Divergence
 };
 
 ///
@@ -76,7 +78,8 @@ struct PD_INFER_DECL MkldnnQuantizerConfig {
   /// operator.
   /// \param[in] algo the algorithm for computing scale.
   ///
-  void SetScaleAlgo(std::string op_type_name, std::string conn_name,
+  void SetScaleAlgo(std::string op_type_name,
+                    std::string conn_name,
                     ScaleAlgo algo) {
     rules_[op_type_name][conn_name] = algo;
   }

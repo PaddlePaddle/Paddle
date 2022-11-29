@@ -16,7 +16,6 @@
 #include <memory>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
@@ -25,14 +24,22 @@ namespace ir {
 ///
 /// Fuse quant + conv2d/depthwise_conv2d/mul/fc + dequant
 ///
-class Graph;
-
 class QuantDequantFusePass : public FusePassBase {
  public:
+  QuantDequantFusePass();
   virtual ~QuantDequantFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  void DeleteQuant(ir::Graph* graph,
+                   Scope* scope,
+                   const std::string& quant_type) const;
+  void FuseDequant(ir::Graph* graph,
+                   Scope* scope,
+                   const std::string& quantized_op_type,
+                   const std::string& dequant_type) const;
 };
 
 }  // namespace ir

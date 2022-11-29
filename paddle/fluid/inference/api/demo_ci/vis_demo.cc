@@ -17,6 +17,7 @@ limitations under the License. */
  */
 
 #include <glog/logging.h>
+
 #include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
@@ -25,7 +26,8 @@ DECLARE_double(fraction_of_gpu_memory_to_use);
 #endif
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(refer, "", "path to reference result for comparison.");
-DEFINE_string(data, "",
+DEFINE_string(data,
+              "",
               "path of data; each line is a record, format is "
               "'<space split floats as data>\t<space split ints as shape'");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
@@ -71,7 +73,7 @@ void Main(bool use_gpu) {
   auto& tensor = output.front();
 
   // compare with reference result
-  CheckOutput(FLAGS_refer, tensor);
+  CheckOutput(FLAGS_refer, tensor, 1e-4);
 
   // the analysis_output has some diff with native_output,
   // TODO(luotao): add CheckOutput for analysis_output later.

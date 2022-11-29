@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/hinge_loss_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -32,19 +33,23 @@ class HingeLossOp : public framework::OperatorWithKernel {
     auto label_dims = ctx->GetInputDim("Labels");
 
     PADDLE_ENFORCE_EQ(
-        pred_dims, label_dims,
+        pred_dims,
+        label_dims,
         platform::errors::InvalidArgument(
             "The Input(input) and Input(label) should have the same "
             "shape, but received input shape [%s] != label shape [%s]",
-            pred_dims, label_dims));
+            pred_dims,
+            label_dims));
 
     PADDLE_ENFORCE_EQ(
-        pred_dims.size(), 2,
+        pred_dims.size(),
+        2,
         platform::errors::InvalidArgument("Input(input) rank should be 2, "
                                           "but received input rank(%d) != 2",
                                           pred_dims.size()));
 
-    PADDLE_ENFORCE_EQ(pred_dims[1], 1,
+    PADDLE_ENFORCE_EQ(pred_dims[1],
+                      1,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(input) should be 1, "
                           "as each row of input contains a real value, "
@@ -77,7 +82,7 @@ take any values from (-inf, inf), but the labels should be either -1 or 1.
 Then, the hinge loss is computed as follows:
 
 $$
-L_(x, y) = max(1 - y.x, 0) 
+L_(x, y) = max(1 - y.x, 0)
 $$
 
 Note that the labels passed as input will have values as either 0 or 1.
@@ -93,20 +98,26 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "HingeLossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "HingeLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
-                   "Loss@GRAD", "HingeLossGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
-                   "Logits@GRAD", "HingeLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")),
+                   "Input",
+                   "Loss@GRAD",
+                   "HingeLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")),
+                   "Output",
+                   "Logits@GRAD",
+                   "HingeLossGrad");
 
     auto pred_dims = ctx->GetInputDim("Logits");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
 
-    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims,
+    PADDLE_ENFORCE_EQ(loss_grad_dims,
+                      pred_dims,
                       platform::errors::InvalidArgument(
                           "The shape of loss gradient should be the same as "
                           "the shape of Input(input), but received the loss "
                           "gradient shape [%s] != input shape [%s]",
-                          loss_grad_dims, pred_dims));
+                          loss_grad_dims,
+                          pred_dims));
 
     auto pred_grad_name = framework::GradVarName("Logits");
     ctx->SetOutputDim(pred_grad_name, pred_dims);
@@ -133,13 +144,18 @@ class HingeLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
+REGISTER_OPERATOR(hinge_loss,
+                  ops::HingeLossOp,
+                  ops::HingeLossOpMaker<float>,
                   ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    hinge_loss,
-    ops::HingeLossKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    hinge_loss_grad,
-    ops::HingeLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(hinge_loss,
+                       ops::HingeLossKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(hinge_loss_grad,
+                       ops::HingeLossGradKernel<phi::CPUContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(hinge_loss,
+                        ops::HingeLossKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(hinge_loss_grad,
+                        ops::HingeLossGradKernel<phi::GPUContext, float>);

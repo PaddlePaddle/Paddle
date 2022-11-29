@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -28,7 +26,7 @@ class TestFlattenOp(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.in_shape).astype("float32")
+            "XShape": np.random.random(self.in_shape).astype("float32"),
         }
 
     def test_check_output(self):
@@ -46,7 +44,7 @@ class TestFlattenOp(OpTest):
         self.attrs = {"axis": self.axis}
 
 
-class TestFlattenOp(TestFlattenOp):
+class TestFlattenOp1(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.axis = 0
@@ -67,26 +65,6 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4
         self.new_shape = (36, 16)
-
-
-class TestFlatten2OpError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_data = np.random.random((3, 2, 4, 5)).astype("float64")
-
-        def test_Variable():
-            # the input type must be Variable
-            fluid.layers.flatten(input_data, axis=1)
-
-        self.assertRaises(TypeError, test_Variable)
-
-        def test_type():
-            # dtype must be float32, float64, int8, int32, int64, uint8.
-            x2 = fluid.layers.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16')
-            fluid.layers.flatten(x2, axis=1)
-
-        self.assertRaises(TypeError, test_type)
 
 
 if __name__ == "__main__":

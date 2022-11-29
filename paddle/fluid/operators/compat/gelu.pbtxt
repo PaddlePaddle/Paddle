@@ -1,0 +1,28 @@
+type: "gelu"
+def {
+  inputs {
+    name: "X"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "approximate"
+    type: BOOLEAN
+  }
+}
+extra {
+  attrs {
+    name: "use_mkldnn"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "mkldnn_data_type"
+    type: STRING
+  }
+  attrs {
+    name: "use_cudnn"
+    type: BOOLEAN
+  }
+}
+

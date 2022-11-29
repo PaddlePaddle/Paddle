@@ -16,12 +16,15 @@
 
 #include <string>
 
+DECLARE_bool(allreduce_record_one_event);
+
 namespace paddle {
 namespace framework {
 namespace details {
 struct VarHandleBase;
 
-ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
+ComputationOpHandle::ComputationOpHandle(ir::Node *node,
+                                         Scope *scope,
                                          platform::Place place,
                                          size_t scope_idx)
     : OpHandleBase(node),
@@ -31,11 +34,13 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
       scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
-  WaitInputVarGenerated(place_);
+  if (!FLAGS_allreduce_record_one_event) {
+    WaitInputVarGenerated(place_);
+  }
 
   auto run_func = [this]() { op_->Run(*local_exec_scopes_[0], place_); };
 
-  if (is_lock_and_record_event_free_) {
+  if (is_lock_and_record_event_free_ || FLAGS_allreduce_record_one_event) {
     run_func();
   } else {
     this->RunAndRecordEvent(run_func);

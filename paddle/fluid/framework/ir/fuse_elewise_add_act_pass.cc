@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_elewise_add_act_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -58,8 +60,8 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddAct(
                      Graph *g) {
     VLOG(4) << "handle FuseElewiseAddAct fuse";
     GET_IR_NODE_FROM_SUBGRAPH(ele_y, ele_y, elewise_add_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_out, elewise_add_out,
-                              elewise_add_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_out, elewise_add_out, elewise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, elewise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, act, elewise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_add, ele_add, elewise_add_act_pattern);
@@ -111,8 +113,8 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAdd(
     VLOG(4) << "handle FuseElewiseAddAct fuse";
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_x, ele_x, act_elewise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_out, elewise_add_out,
-                              act_elewise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_out, elewise_add_out, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, act, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_add, ele_add, act_elewise_add_pattern);
 
@@ -163,11 +165,11 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
     VLOG(4) << "handle FuseElewiseAddActGrad1 fuse";
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_grad, act_grad, elewise_add_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(d_itermediate_out, d_itermediate_out,
-                              elewise_add_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        d_itermediate_out, d_itermediate_out, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_y, ele_y, elewise_add_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_add_grad, ele_add_grad,
-                              elewise_add_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_add_grad, ele_add_grad, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(d_ele_x, d_ele_x, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(d_ele_y, d_ele_y, elewise_add_act_grad_pattern);
 
@@ -219,8 +221,12 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
 }
 
 Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
-    Graph *g, const Node *op_1, const Node *op_2, const std::string &ele_x_n,
-    const std::string &ele_y_n, const std::string &ele_out_n,
+    Graph *g,
+    const Node *op_1,
+    const Node *op_2,
+    const std::string &ele_x_n,
+    const std::string &ele_y_n,
+    const std::string &ele_out_n,
     const std::string &act_out_n) const {
   OpDesc desc;
   desc.SetInput("X", std::vector<std::string>({ele_x_n}));
@@ -229,8 +235,9 @@ Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
   desc.SetOutput("IntermediateOut", std::vector<std::string>({ele_out_n}));
   desc.SetType("fused_elemwise_add_activation");
   desc.SetAttr("save_intermediate_out", true);
-  desc.SetAttr("functor_list", std::vector<std::string>(
-                                   {op_1->Op()->Type(), op_2->Op()->Type()}));
+  desc.SetAttr(
+      "functor_list",
+      std::vector<std::string>({op_1->Op()->Type(), op_2->Op()->Type()}));
 
   // Set attrs
   for (auto &n : {op_1->Op(), op_2->Op()}) {
@@ -248,11 +255,12 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
   for (auto &cur_node : graph->Nodes()) {
     if (cur_node->IsVar()) continue;
     if (cur_node->Name() == "fused_elemwise_add_activation") {
-      bool save_intermediate_out = BOOST_GET_CONST(
+      bool save_intermediate_out = PADDLE_GET_CONST(
           bool, cur_node->Op()->GetAttr("save_intermediate_out"));
       auto intermediate_out_args = cur_node->Op()->Output("IntermediateOut");
       PADDLE_ENFORCE_EQ(
-          (save_intermediate_out && !intermediate_out_args.empty()), true,
+          (save_intermediate_out && !intermediate_out_args.empty()),
+          true,
           platform::errors::InvalidArgument(
               "The %s should save the intermediate out in the fusing stage.",
               cur_node->Name()));
@@ -272,7 +280,8 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       auto intermediate_out_grad_args =
           cur_node->Op()->Output(GradVarName("IntermediateOut"));
       PADDLE_ENFORCE_EQ(
-          intermediate_out_grad_args.empty(), false,
+          intermediate_out_grad_args.empty(),
+          false,
           platform::errors::InvalidArgument(
               "The %s should save the intermediate out in the fusing stage.",
               cur_node->Name()));
@@ -288,12 +297,24 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       }
     }
   }
-  GraphSafeRemoveNodes(graph, need_removed_nodes);
+  details::RemovedVars *saved_removed_nodes = new details::RemovedVars;
+  GraphSafeRemoveNodes(graph, need_removed_nodes, saved_removed_nodes);
+  if (!saved_removed_nodes->empty()) {
+    // TODO(pangyoki): If kRemovedVars exists, merge saved_removed_nodes into
+    // RemovedVars.
+    PADDLE_ENFORCE_EQ(graph->Has(details::kRemovedVars),
+                      false,
+                      platform::errors::PreconditionNotMet(
+                          "Removed nodes are only saved for "
+                          "fuse_elewise_add_act_pass in temporary."));
+    graph->Set(details::kRemovedVars, saved_removed_nodes);
+  }
 }
 
 void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
                                         const Node *intermediate_out,
-                                        Node *op_1, Node *op_2,
+                                        Node *op_1,
+                                        Node *op_2,
                                         Node *fused_op) const {  // delete act
   for (auto &in : op_1->inputs) {
     fused_op->inputs.emplace_back(in);
@@ -304,7 +325,8 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
   for (auto &out : op_1->outputs) {
     if (out->IsCtrlVar()) {
       auto result_iter = std::find_if(
-          op_2->inputs.begin(), op_2->inputs.end(),
+          op_2->inputs.begin(),
+          op_2->inputs.end(),
           [&out](const Node *node) -> bool { return node == out; });
 
       if (result_iter == op_2->inputs.end()) {
@@ -313,11 +335,13 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
         nodes2delete.emplace(out);
       }
     } else {
-      PADDLE_ENFORCE_EQ(
-          out, intermediate_out,
-          platform::errors::InvalidArgument(
-              "Output of op(%s) must be %s, but not %s.", op_1->Name(),
-              intermediate_out->Name(), out->Name()));
+      PADDLE_ENFORCE_EQ(out,
+                        intermediate_out,
+                        platform::errors::InvalidArgument(
+                            "Output of op(%s) must be %s, but not %s.",
+                            op_1->Name(),
+                            intermediate_out->Name(),
+                            out->Name()));
       IR_OP_VAR_LINK(fused_op, out);
     }
   }
@@ -344,15 +368,16 @@ std::vector<Node *> FuseElewiseAddActPass::ReplaceNode(
     Node *cur_node, Node *new_node, const std::vector<Node *> &nodes) const {
   std::vector<Node *> new_list(nodes.size());
   bool has_replaced = false;
-  std::transform(nodes.begin(), nodes.end(), new_list.begin(),
-                 [&](Node *node) -> Node * {
-                   if (node == cur_node) {
-                     has_replaced = true;
-                     return new_node;
-                   }
-                   return node;
-                 });
-  PADDLE_ENFORCE_EQ(has_replaced, true,
+  std::transform(
+      nodes.begin(), nodes.end(), new_list.begin(), [&](Node *node) -> Node * {
+        if (node == cur_node) {
+          has_replaced = true;
+          return new_node;
+        }
+        return node;
+      });
+  PADDLE_ENFORCE_EQ(has_replaced,
+                    true,
                     platform::errors::NotFound("Not found %s in the node list.",
                                                cur_node->Name()));
   return new_list;
@@ -361,9 +386,10 @@ std::vector<Node *> FuseElewiseAddActPass::ReplaceNode(
 std::vector<Node *> FuseElewiseAddActPass::RemoveNode(
     Node *trg_node, const std::vector<Node *> &nodes) const {
   std::vector<Node *> new_list(nodes.size());
-  auto end_iter =
-      std::copy_if(nodes.begin(), nodes.end(), new_list.begin(),
-                   [&](Node *node) -> bool { return node != trg_node; });
+  auto end_iter = std::copy_if(
+      nodes.begin(), nodes.end(), new_list.begin(), [&](Node *node) -> bool {
+        return node != trg_node;
+      });
   new_list.resize(
       static_cast<uint64_t>(std::distance(new_list.begin(), end_iter)));
   return new_list;

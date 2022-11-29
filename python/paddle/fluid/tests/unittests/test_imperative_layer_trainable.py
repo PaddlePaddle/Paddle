@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
 
+import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeLayerTrainable(unittest.TestCase):
-    def test_set_trainable(self):
+    def func_set_trainable(self):
         with fluid.dygraph.guard():
             label = np.random.uniform(-1, 1, [10, 10]).astype(np.float32)
 
@@ -28,19 +30,24 @@ class TestImperativeLayerTrainable(unittest.TestCase):
 
             linear = dygraph.Linear(10, 10)
             y = linear(label)
-            self.assertTrue(y.stop_gradient == False)
+            self.assertFalse(y.stop_gradient)
 
             linear.weight.trainable = False
             linear.bias.trainable = False
 
-            self.assertTrue(linear.weight.trainable == False)
-            self.assertTrue(linear.weight.stop_gradient == True)
+            self.assertFalse(linear.weight.trainable)
+            self.assertTrue(linear.weight.stop_gradient)
 
             y = linear(label)
-            self.assertTrue(y.stop_gradient == True)
+            self.assertTrue(y.stop_gradient)
 
             with self.assertRaises(ValueError):
                 linear.weight.trainable = "1"
+
+    def test_set_trainable(self):
+        with _test_eager_guard():
+            self.func_set_trainable()
+        self.func_set_trainable()
 
 
 if __name__ == '__main__':

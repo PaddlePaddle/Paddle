@@ -14,29 +14,23 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-
-import unittest
 import paddle.fluid.core as core
-
-from paddle.fluid import compiler, Program, program_guard
+import paddle.fluid.layers as layers
+from paddle.fluid import Program, compiler, program_guard
 from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 from paddle.fluid.optimizer import MomentumOptimizer
-from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
 class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
-    def check_network_convergence(self,
-                                  use_cuda=True,
-                                  use_mem_opt=False,
-                                  iter_num=5):
+    def check_network_convergence(
+        self, use_cuda=True, use_mem_opt=False, iter_num=5
+    ):
         paddle.seed(100)
         paddle.framework.random._manual_program_seed(100)
         prog = Program()
@@ -64,18 +58,21 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
 
             prob = ie()
             loss = layers.cross_entropy(input=prob[0], label=label)
-            avg_loss = layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=200)
+                paddle.dataset.mnist.train(), batch_size=200
+            )
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
 
             exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy._use_device = core.DeviceType.CUDA if use_cuda else core.DeviceType.CPU
+            exec_strategy._use_device = (
+                core.DeviceType.CUDA if use_cuda else core.DeviceType.CPU
+            )
 
             build_strategy = fluid.BuildStrategy()
             build_strategy.memory_optimize = use_mem_opt
@@ -84,7 +81,8 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
             train_cp = train_cp.with_data_parallel(
                 loss_name=avg_loss.name,
                 exec_strategy=exec_strategy,
-                build_strategy=build_strategy)
+                build_strategy=build_strategy,
+            )
             fetch_list = [avg_loss.name]
 
             exe.run(startup_prog)
@@ -97,10 +95,11 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
                     y_data = np.array([x[1] for x in data]).astype("int64")
                     y_data = y_data.reshape((y_data.shape[0], 1))
 
-                    outs = exe.run(train_cp,
-                                   feed={'x': x_data,
-                                         'y': y_data},
-                                   fetch_list=[avg_loss])
+                    outs = exe.run(
+                        train_cp,
+                        feed={'x': x_data, 'y': y_data},
+                        fetch_list=[avg_loss],
+                    )
 
                     loop += 1
                     ret.append(outs[0])
@@ -113,14 +112,14 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
         print(ret1)
         ret2 = self.check_network_convergence(False, False)
         print(ret2)
-        self.assertTrue(np.allclose(ret1, ret2))
+        np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
         if fluid.core.is_compiled_with_cuda():
             ret1 = self.check_network_convergence(True, True)
             print(ret1)
             ret2 = self.check_network_convergence(True, False)
             print(ret2)
-            self.assertTrue(np.allclose(ret1, ret2))
+            np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ class NCCLCommunicator;
 }  // namespace paddle
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -98,6 +98,8 @@ class FusedGradMergeAllReduceOpHandle : public FusedAllReduceOpHandle {
 #endif
 
   std::string Name() const override;
+
+  std::string GradMergeCondName() { return grad_merge_cond_name_; }
 
  protected:
   void RunImpl() override;
