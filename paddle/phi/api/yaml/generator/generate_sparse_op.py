@@ -79,21 +79,23 @@ def main(
     forward_api_dict = to_named_dict(apis)
 
     with open(backward_yaml_path, "rt") as f:
-        backward_apis = yaml.safe_load(f)
-        backward_apis = [restruct_io(api) for api in backward_apis]
-    backward_api_dict = to_named_dict(backward_apis)
+        backward_ops = yaml.safe_load(f)
+        backward_ops = [restruct_io(op) for op in backward_ops]
+    backward_op_dict = to_named_dict(backward_ops)
 
-    for api in apis:
-        api['op_name'] = SPARSE_OP_PREFIX + api['name']
-        api['name'] = api['op_name']
-        if api["backward"] is not None:
-            api["backward"] = SPARSE_OP_PREFIX + api["backward"]
-    for bw_api in backward_apis:
-        bw_api['op_name'] = SPARSE_OP_PREFIX + bw_api['name']
-        bw_api['name'] = bw_api['op_name']
-        if 'invoke' in bw_api:
-            bw_api['invoke']['args'] = [
-                param.strip() for param in bw_api['invoke']['args'].split(',')
+    for op in ops:
+        if op['name'][-1] == '_':
+            op['name'] = op['name'][:-1]
+        op['op_name'] = SPARSE_OP_PREFIX + op['name']
+        op['name'] = op['op_name']
+        if op["backward"] is not None:
+            op["backward"] = SPARSE_OP_PREFIX + op["backward"]
+    for bw_op in backward_ops:
+        bw_op['op_name'] = SPARSE_OP_PREFIX + bw_op['name']
+        bw_op['name'] = bw_op['op_name']
+        if 'invoke' in bw_op:
+            bw_op['invoke']['args'] = [
+                param.strip() for param in bw_op['invoke']['args'].split(',')
             ]
 
     # prepare for invoke case
