@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.distributed.fleet as fleet
-import numpy as np
-import paddle.nn as nn
-from paddle.distributed.passes import new_pass, PassManager
 import unittest
+
+import numpy as np
 from dist_pass_test_base import DistPassTestBase
 
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.nn as nn
+from paddle.distributed.passes import PassManager, new_pass
+
 paddle.enable_static()
-paddle.seed(2022)
 np.random.seed(2022)
+paddle.seed(2022)
 
 
 def verify_op_count(op_types, op_name, target_count):
