@@ -31,7 +31,6 @@ class PReluOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    size_t input_num = op_desc.Input("X").size();
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get attrs
     std::string mode = PADDLE_GET_CONST(std::string, op_desc.GetAttr("mode"));
@@ -40,49 +39,44 @@ class PReluOpConverter : public OpConverter {
       data_format =
           PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_format"));
     }
-    auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
-    auto* alpha_tensor = alpha_var->GetMutable<phi::DenseTensor>();
+    auto* alpha_tensor = engine_->GetITensor(op_desc.Input("Alpha")[0]);
 
-    auto alpha_weight =
-        engine_->GetFp32TrtWeight(op_desc.Input("Alpha")[0], *alpha_tensor);
-
-    platform::CPUPlace cpu_place;
+    auto alpha_dims = alpha_tensor->getDimensions();
+    auto input_dims = input->getDimensions();
+    nvinfer1::ITensor* real_alpha_tensor = alpha_tensor;
+    if (alpha_dims.nbDims == 1 && alpha_dims.nbDims != input_dims.nbDims) {
+      auto* reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *alpha_tensor);
+      int c = alpha_dims.d[0];
+      if (engine_->with_dynamic_shape()) {
+        auto* n_tensor = Add1DConstantLayer(1);
+        auto* c_tensor = Add1DConstantLayer(c);
+        auto* hw_tensor = Add1DConstantLayer(std::vector<int32_t>{1, 1});
+        if (data_format == "NCHW") {
+          auto* shape_tensor = Concat(
+              std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor, hw_tensor});
+          reshape_layer->setInput(1, *shape_tensor);
+        } else {
+          auto* shape_tensor = Concat(
+              std::vector<nvinfer1::ITensor*>{n_tensor, hw_tensor, c_tensor});
+          reshape_layer->setInput(1, *shape_tensor);
+        }
+      } else {
+        nvinfer1::Dims3 reshape_dim{1, 1, 1};
+        if (data_format == "NCHW") {
+          reshape_dim.d[0] = c;
+        } else if (data_format == "NHWC") {
+          reshape_dim.d[input_dims.nbDims - 1] = c;
+        }
+        reshape_layer->setReshapeDimensions(reshape_dim);
+      }
+      real_alpha_tensor = reshape_layer->getOutput(0);
+    }
 
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
-          static_cast<const float*>(alpha_weight.get().values),
-          alpha_tensor->numel(),
-          mode,
-          data_format);
-      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
-    } else {
-#if IS_TRT_VERSION_GE(7000)
-      nvinfer1::Dims dims;
-      dims.nbDims = 0;
-      // jump batch dim
-      for (int i = 1; i < alpha_tensor->dims().size(); i++) {
-        dims.d[dims.nbDims++] = alpha_tensor->dims()[i];
-      }
-      for (; dims.nbDims < input->getDimensions().nbDims; dims.nbDims++) {
-        dims.d[dims.nbDims] = 1;
-      }
 
-      auto alpha_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Constant, dims, alpha_weight.get());
-      auto alpha_layer_output = alpha_layer->getOutput(0);
-
-      layer = TRT_ENGINE_ADD_LAYER(
-          engine_, ParametricReLU, *input, *alpha_layer_output);
-#else
-      plugin::PReluPlugin* plugin = new plugin::PReluPlugin(
-          static_cast<const float*>(alpha_weight.get().values),
-          alpha_tensor->numel(),
-          mode,
-          data_format);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
-#endif
-    }
+    layer = TRT_ENGINE_ADD_LAYER(
+        engine_, ParametricReLU, *input, *real_alpha_tensor);
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);
