@@ -6387,6 +6387,8 @@ class RecomputeOptimizer(Optimizer):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            paddle.enable_static()
+
             def gen_data():
                 return {"x": np.random.random(size=(32, 32)).astype('float32'),
                 "y": np.random.randint(2, size=(32, 1)).astype('int64')}
@@ -6394,7 +6396,7 @@ class RecomputeOptimizer(Optimizer):
                 print(input_x)
                 fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                 prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                cost = paddle.nn.functional.cross_entropyinput=prediction, label=input_y)
+                cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y)
                 sum_cost = fluid.layers.reduce_mean(cost)
                 return sum_cost, fc_1, prediction
             input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -6506,6 +6508,8 @@ class RecomputeOptimizer(Optimizer):
                 import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.framework as framework
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
@@ -6996,6 +7000,8 @@ class RecomputeOptimizer(Optimizer):
                 import paddle
                 import paddle.fluid as fluid
 
+                paddle.enable_static()
+
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
@@ -7072,6 +7078,8 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
                 import paddle
                 import paddle.fluid as fluid
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)

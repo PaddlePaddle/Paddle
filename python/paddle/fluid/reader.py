@@ -1681,6 +1681,8 @@ class PyReader(DataLoaderBase):
            import paddle.fluid as fluid
            import numpy as np
 
+           paddle.enable_static()
+
            EPOCH_NUM = 3
            ITER_NUM = 5
            BATCH_SIZE = 3
@@ -1734,6 +1736,8 @@ class PyReader(DataLoaderBase):
            import paddle
            import paddle.fluid as fluid
            import numpy as np
+
+           paddle.enable_static()
 
            EPOCH_NUM = 3
            ITER_NUM = 5

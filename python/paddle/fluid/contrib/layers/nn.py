@@ -1967,6 +1967,8 @@ def fused_bn_add_act(
             import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
+
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
                     x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
