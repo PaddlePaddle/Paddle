@@ -21,7 +21,8 @@ import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 import unittest
@@ -565,7 +566,7 @@ def train_mobilenet(args, to_static):
                 t_last = time.time()
                 if batch_id > args.train_step:
                     if to_static:
-                        fluid.dygraph.jit.save(net, args.model_save_prefix)
+                        paddle.jit.save(net, args.model_save_prefix)
                     else:
                         fluid.dygraph.save_dygraph(
                             net.state_dict(), args.dy_state_dict_save_path
@@ -618,7 +619,7 @@ def predict_dygraph(args, data):
 
 def predict_dygraph_jit(args, data):
     with fluid.dygraph.guard(args.place):
-        model = fluid.dygraph.jit.load(args.model_save_prefix)
+        model = paddle.jit.load(args.model_save_prefix)
         model.eval()
 
         pred_res = model(data)

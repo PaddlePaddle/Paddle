@@ -20,7 +20,7 @@ from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph import TracedLayer
+from paddle.jit import TracedLayer
 from test_imperative_base import new_program_scope
 import numpy as np
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
@@ -79,10 +79,10 @@ class SimpleLSTMRNN(fluid.Layer):
         self.hidden_array = []
 
         for i in range(self._num_layers):
-            pre_hidden = fluid.layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = fluid.layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
             pre_hidden = paddle.reshape(
@@ -94,7 +94,7 @@ class SimpleLSTMRNN(fluid.Layer):
 
         res = []
         for index in range(self._num_steps):
-            self._input = fluid.layers.slice(
+            self._input = paddle.slice(
                 input_embedding, axes=[1], starts=[index], ends=[index + 1]
             )
             self._input = paddle.reshape(

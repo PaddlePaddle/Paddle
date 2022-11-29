@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/kthvalue_kernel.h"
 
-#include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 
 namespace phi {
 inline int getBlockSize(int col) {
@@ -55,15 +55,13 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
                                : maxGridDimX;
-  paddle::operators::InitIndex<int64_t>
-      <<<grid_size, block_size, 0, cu_stream>>>(
-          input_indices.data<int64_t>(), num_rows, num_cols);
+  phi::funcs::InitIndex<int64_t><<<grid_size, block_size, 0, cu_stream>>>(
+      input_indices.data<int64_t>(), num_rows, num_cols);
   cub::CountingInputIterator<int64_t> counting_iter(0);
   cub::TransformInputIterator<int64_t,
-                              paddle::operators::SegmentOffsetIter,
+                              phi::funcs::SegmentOffsetIter,
                               cub::CountingInputIterator<int64_t>>
-      segment_offsets_t(counting_iter,
-                        paddle::operators::SegmentOffsetIter(num_cols));
+      segment_offsets_t(counting_iter, phi::funcs::SegmentOffsetIter(num_cols));
   T* sorted_values_ptr;
   int64_t* sorted_indices_ptr;
   DenseTensor temp_values, temp_indices;

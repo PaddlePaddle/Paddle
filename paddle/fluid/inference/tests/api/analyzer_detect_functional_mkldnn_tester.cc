@@ -79,8 +79,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 int GetNumCachedObjects(void) {
   auto &pool = platform::DeviceContextPool::Instance();
   platform::CPUPlace place;
-  auto onednn_dev_ctx =
-      dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
+  auto onednn_dev_ctx = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
   return onednn_dev_ctx->GetCachedObjectsNumber();
 }
 
