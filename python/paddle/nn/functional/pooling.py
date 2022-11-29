@@ -1690,7 +1690,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
-        x = x._use_cudnn(False)
+        x = x._use_gpudnn(False)
         pool_out = _C_ops.pool2d(
             x,
             pool_size,
@@ -1827,7 +1827,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size = utils._convert_to_tensor_list(output_size)
 
     if in_dygraph_mode():
-        x = x._use_cudnn(False)
+        x = x._use_gpudnn(False)
         return _C_ops.pool2d(
             x,
             output_size,
@@ -1972,7 +1972,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             output_size[2] = in_w
 
     if in_dygraph_mode():
-        x = x._use_cudnn(False)
+        x = x._use_gpudnn(False)
         return _C_ops.pool3d(
             x,
             output_size,

@@ -14,21 +14,20 @@
 
 import random
 import unittest
+
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 import paddle.nn as nn
 from paddle import Model, set_device
-from paddle.static import InputSpec as Input
 from paddle.fluid.dygraph import Layer
-from paddle.nn import BeamSearchDecoder, dynamic_decode
-
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import BeamSearchDecoder, dynamic_decode
+from paddle.static import InputSpec as Input
 
 paddle.enable_static()
 
