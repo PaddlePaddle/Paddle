@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/fluid/pybind/saved_tensors_hooks.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -528,8 +527,8 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
     PyTuple_SET_ITEM(saved_value, 0, value);
   }
 
-  auto pack_hook = SavedTensorsHooks::GetInstance().GetPackHook();
-  self->unpack_hook = SavedTensorsHooks::GetInstance().GetUnPackHook();
+  auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
+  self->unpack_hook = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
 
   auto saved_value_size = PyTuple_GET_SIZE(saved_value);
   PyObject* packed_value = PyTuple_New(saved_value_size);
@@ -595,7 +594,7 @@ int tensor_properties_set_container(PyLayerObject* self,
                                     PyObject* value,
                                     void* closure) {
   EAGER_TRY
-  if (SavedTensorsHooks::GetInstance().IsEnable()) {
+  if (egr::SavedTensorsHooks::GetInstance().IsEnable()) {
     call_pack_hook(self, value);
   } else {
     Py_XINCREF(value);

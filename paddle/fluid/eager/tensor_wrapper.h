@@ -73,7 +73,7 @@ class TensorWrapper {
       }
     } else {
 #ifndef PADDLE_NO_PYTHON
-      if (paddle::pybind::SavedTensorsHooks::GetInstance().IsEnable() &&
+      if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
           tensor.is_dense_tensor() && tensor.initialized()) {
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
@@ -81,10 +81,8 @@ class TensorWrapper {
             std::move(std::make_shared<phi::DenseTensor>(
                 std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
                 dense_tensor->meta())));
-        auto pack_hook =
-            paddle::pybind::SavedTensorsHooks::GetInstance().GetPackHook();
-        unpack_hook_ =
-            paddle::pybind::SavedTensorsHooks::GetInstance().GetUnPackHook();
+        auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
+        unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
         packed_value_ = (*pack_hook)(tensor);
       } else {
 #endif

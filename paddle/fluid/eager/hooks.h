@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/tensor.h"
 namespace egr {
 
