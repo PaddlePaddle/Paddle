@@ -131,7 +131,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
             logits, label, return_softmax=True
         )
         avg_cost = paddle.mean(cost)
-        acc = fluid.layers.accuracy(input=predict, label=label)
+        acc = paddle.metric.accuracy(input=predict, label=label)
 
         # Test program
         test_program = train_program.clone(for_test=True)
