@@ -15,14 +15,7 @@
 import os
 import random
 
-
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed as dist
-from paddle.nn import Linear
-
 import numpy as np
-
 from test_dist_base import (
     TestParallelDyGraphRunnerBase,
     print_to_err,
@@ -34,6 +27,7 @@ import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 
 seed = 90
 RUN_STEP = 20

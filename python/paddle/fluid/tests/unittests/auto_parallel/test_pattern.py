@@ -14,6 +14,7 @@
 
 import sys
 import unittest
+
 import numpy as np
 
 import paddle
@@ -22,8 +23,8 @@ import paddle.static as static
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 
@@ -111,13 +112,13 @@ class TestGroupOperators(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
-            RuleBasedTuner,
-            convert_to_graph,
-            _PATTERNS,
-        )
         from paddle.distributed.auto_parallel.dist_context import (
             DistributedContext,
+        )
+        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+            _PATTERNS,
+            RuleBasedTuner,
+            convert_to_graph,
         )
 
         dist_context = DistributedContext()

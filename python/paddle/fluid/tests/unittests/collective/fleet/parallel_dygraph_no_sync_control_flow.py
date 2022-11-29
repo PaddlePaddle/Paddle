@@ -18,13 +18,8 @@ from test_dist_base import runtime_main
 
 import paddle
 import paddle.fluid as fluid
-
-from paddle.nn import Linear
-from test_dist_base import runtime_main
-from parallel_dygraph_no_sync import TestNoSync
-
 from paddle.fluid.dygraph.nn import Linear
-
+from paddle.nn import Linear
 
 seed = 90
 RUN_STEP = 20

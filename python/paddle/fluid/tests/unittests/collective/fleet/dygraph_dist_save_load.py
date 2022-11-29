@@ -23,11 +23,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-
-from paddle.nn import Linear
-
 from paddle import distributed as dist
-
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
@@ -37,6 +33,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import
 )
 from paddle.fluid.dygraph.nn import Linear
 from paddle.incubate.distributed.utils.io import load, save
+from paddle.nn import Linear
 
 print(load)
 epoch = 2
