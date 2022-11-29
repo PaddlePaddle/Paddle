@@ -71,6 +71,8 @@ if(${len} GREATER_EQUAL 1)
       if(APPLE)
         target_link_libraries(${test_name}
                               "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}>")
+      else()
+        target_link_libraries(${test_name} ${PYTHON_LIBRARIES})
       endif()
       if(WITH_XPU)
         target_link_libraries(${test_name} xpulib)
