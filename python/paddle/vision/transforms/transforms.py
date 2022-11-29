@@ -1673,7 +1673,7 @@ class Grayscale(BaseTransform):
     """Converts image to grayscale.
 
     Args:
-        num_output_channels (int, optional): (1 or 3) number of channels desired for output image
+        num_output_channels (int, optional): (1 or 3) number of channels desired for output image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
