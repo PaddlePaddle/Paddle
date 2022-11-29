@@ -105,8 +105,8 @@ class TestAPICase(unittest.TestCase):
             y = layers.fill_constant(shape=[1], dtype='float32', value=1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=3)
 
-            pred_1 = layers.equal(x, y)  # true
-            pred_2 = layers.equal(x, z)  # false
+            pred_1 = paddle.equal(x, y)  # true
+            pred_2 = paddle.equal(x, z)  # false
 
             out = layers.case(((pred_1, fn_1), (pred_2, fn_2)), fn_3)
 
