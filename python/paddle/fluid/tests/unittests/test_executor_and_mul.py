@@ -15,8 +15,9 @@
 import unittest
 
 import numpy as np
+
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import mul, data, zeros, array_write, increment
+from paddle.fluid.layers import array_write, data, increment, mul, zeros
 
 
 class TestExecutor(unittest.TestCase):

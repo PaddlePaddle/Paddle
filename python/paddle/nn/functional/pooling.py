@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define pooling functions
-from ...fluid.layers import utils, LayerHelper
-from ...tensor.manipulation import unsqueeze, squeeze
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.framework import (
+    Variable,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    in_dygraph_mode,
+)
+
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, Variable
-from paddle.fluid.framework import in_dygraph_mode, _non_static_mode
+
+# TODO: define pooling functions
+from ...fluid.layers import LayerHelper, utils
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 

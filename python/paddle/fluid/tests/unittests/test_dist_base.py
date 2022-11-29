@@ -12,26 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
-
-import ast
-import unittest
-import os
-import sys
-import subprocess
 import argparse
+import ast
+import os
 import pickle
 import random
-import numpy as np
+import subprocess
+import sys
+import tempfile
 import time
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler
 import paddle.fluid.dygraph as dygraph
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid import compiler
+from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.incubate.fleet.collective import DistributedStrategy, fleet
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2

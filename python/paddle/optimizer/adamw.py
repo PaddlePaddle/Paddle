@@ -14,19 +14,18 @@
 
 import warnings
 from collections import defaultdict
-from .optimizer import Optimizer
-from .lr import LRScheduler
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.framework import Variable, Parameter
-from ..fluid import unique_name
-from ..fluid import layers
-from ..fluid.layer_helper import LayerHelper
+from collections.abc import Callable
+
+import paddle
+
+from .. import _C_ops, _legacy_C_ops
+from ..fluid import core, framework, layers, unique_name
 from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
-from collections.abc import Callable
-from .. import _C_ops, _legacy_C_ops
-import paddle
+from ..fluid.framework import Parameter, Variable
+from ..fluid.layer_helper import LayerHelper
+from .lr import LRScheduler
+from .optimizer import Optimizer
 
 __all__ = []
 

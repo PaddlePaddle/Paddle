@@ -12,29 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import inspect
 import unittest
 
-import contextlib
 import numpy as np
 from decorator_helper import prog_scope
-import inspect
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
-import paddle.fluid.nets as nets
-from paddle.fluid.framework import Program, program_guard, default_main_program
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid import core
-from paddle.fluid.initializer import Constant
 import paddle.fluid.layers as layers
-from test_imperative_base import new_program_scope
-from paddle.fluid.dygraph import nn
-from paddle.fluid.dygraph import base
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _test_eager_guard
-from paddle.tensor import random
+import paddle.fluid.nets as nets
 import paddle.nn.functional as F
+from paddle.fluid import core
+from paddle.fluid.dygraph import base, nn, to_variable
+from paddle.fluid.framework import (
+    Program,
+    _test_eager_guard,
+    default_main_program,
+    program_guard,
+)
+from paddle.fluid.initializer import Constant
+from paddle.fluid.layers.device import get_places
+from paddle.fluid.param_attr import ParamAttr
+from paddle.tensor import random
 
 
 class LayerTest(unittest.TestCase):
@@ -1064,7 +1066,7 @@ class TestLayer(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            out = layers.prelu(
+            out = paddle.static.nn.prelu(
                 data_t, mode, param_attr=ParamAttr(initializer=Constant(1.0))
             )
             static_rlt = self.get_static_graph_result(
@@ -2916,7 +2918,6 @@ class TestBook(LayerTest):
             {
                 "make_gaussian_random",
                 "make_kldiv_loss",
-                "make_prelu",
                 "make_sampling_id",
                 "make_uniform_random_batch_size_like",
             }
@@ -3480,22 +3481,6 @@ class TestBook(LayerTest):
                 name="shape",
             )
             out = tmp_pad(input)
-            return out
-
-    def make_prelu(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[5, 200, 100, 100], dtype="float32"
-            )
-            mode = 'channel'
-            out = layers.prelu(
-                input,
-                mode,
-                param_attr=ParamAttr(initializer=Constant(1.0)),
-                name='prelu',
-            )
             return out
 
     def make_mish(self):
