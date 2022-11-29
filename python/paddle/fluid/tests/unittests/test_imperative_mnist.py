@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid

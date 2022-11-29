@@ -16,15 +16,14 @@ import os
 
 os.environ["FLAGS_enable_eager_mode"] = "0"
 import math
+import tempfile
 import time
 import unittest
-import tempfile
 
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
-
-from predictor_utils import PredictorTools
 
 SEED = 2020
 IMAGENET1000 = 1281167

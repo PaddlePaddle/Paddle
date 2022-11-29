@@ -12,25 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import os
 import tempfile
+import unittest
+
+import numpy as np
+from test_basic_api_transformation import dyfunc_to_variable
+
 import paddle
 import paddle.fluid as fluid
-from paddle.static import InputSpec
-from paddle.fluid.dygraph import (
-    to_variable,
-    Layer,
-)
-from paddle.jit.api import declarative
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
 )
-
-from test_basic_api_transformation import dyfunc_to_variable
+from paddle.static import InputSpec
 
 program_trans = ProgramTranslator()
 

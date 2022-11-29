@@ -13,17 +13,21 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, Layer
 from paddle.nn import Linear
 from paddle.fluid.dygraph import to_variable, guard
-from paddle.jit import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid import core
 import numpy as np
 import paddle.nn.functional as F
+from paddle.jit import TracedLayer
 
 np.set_printoptions(suppress=True)
 

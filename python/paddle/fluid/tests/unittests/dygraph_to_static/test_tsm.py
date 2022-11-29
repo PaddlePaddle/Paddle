@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
 import os
 import random
 import sys
 import unittest
+
+import numpy as np
+from tsm_config_utils import merge_configs, parse_config, print_configs
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import BatchNorm

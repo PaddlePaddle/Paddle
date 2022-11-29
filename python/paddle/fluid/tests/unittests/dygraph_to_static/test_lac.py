@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import math
-import time
-import numpy as np
-import unittest
-
 import os
 import tempfile
+import time
+import unittest
+
+import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
@@ -26,12 +26,12 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, GRUUnit
-from paddle.jit.api import declarative
-from paddle.jit import ProgramTranslator
 
+from paddle import _legacy_C_ops
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
-from paddle import _legacy_C_ops
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 SEED = 2020
 
@@ -86,9 +86,7 @@ class DynamicGRU(fluid.dygraph.Layer):
                 j = i
 
             # input_ = inputs[:, j:j+1, :]  # original code
-            input_ = fluid.layers.slice(
-                inputs, axes=[1], starts=[j], ends=[j + 1]
-            )
+            input_ = paddle.slice(inputs, axes=[1], starts=[j], ends=[j + 1])
             input_ = paddle.reshape(input_, [-1, input_.shape[2]])
             hidden, reset, gate = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])

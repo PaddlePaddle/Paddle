@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import random
 import unittest
 from functools import partial
-import contextlib
+
 import numpy as np
-import random
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.fluid.regularizer as regularizer
 from paddle.fluid.backward import append_backward

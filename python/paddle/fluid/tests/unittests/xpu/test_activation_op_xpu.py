@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
-
-import paddle
 
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -175,6 +176,32 @@ class XPUTestSqrtOP(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('sqrt')
 for stype in support_types:
     create_test_class(globals(), XPUTestSqrtOP, stype)
+
+
+class XPUTestFloorOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'floor'
+        self.use_dynamic_create_class = False
+
+    class XPUTestSqrt(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "floor"
+            self.dtype = self.in_type
+
+            x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+            out = np.floor(x)
+
+            self.attrs = {'use_xpu': True}
+            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.outputs = {'Out': out}
+
+        def test_check_grad(self):
+            self.check_output_with_place(self.place)
+
+
+support_types = get_xpu_op_support_types('floor')
+for stype in support_types:
+    create_test_class(globals(), XPUTestFloorOP, stype)
 
 
 class XPUTestAbsOP(XPUOpTestWrapper):

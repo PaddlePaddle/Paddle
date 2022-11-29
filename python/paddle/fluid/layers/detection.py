@@ -1768,7 +1768,7 @@ def ssd_loss(
     target_label.stop_gradient = True
     conf_loss = softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
-    actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape = paddle.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.

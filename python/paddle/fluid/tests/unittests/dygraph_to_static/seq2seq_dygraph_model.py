@@ -14,15 +14,15 @@
 # limitations under the License.
 
 import numpy as np
+from seq2seq_utils import Seq2SeqModelHyperParams as args
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid import layers
+from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit.api import declarative
 from paddle.fluid.dygraph.nn import Embedding
-from seq2seq_utils import Seq2SeqModelHyperParams as args
+from paddle.jit.api import declarative
 
 INF = 1.0 * 1e5
 alpha = 0.6
@@ -203,7 +203,7 @@ class BaseModel(fluid.dygraph.Layer):
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     @declarative
     def forward(self, inputs):
@@ -494,7 +494,7 @@ class BaseModel(fluid.dygraph.Layer):
             next_finished = fluid.layers.cast(next_finished, "bool")
             next_finished = paddle.logical_or(
                 next_finished,
-                fluid.layers.equal(token_indices, end_token_tensor),
+                paddle.equal(token_indices, end_token_tensor),
             )
             next_finished = fluid.layers.cast(next_finished, "float32")
 
@@ -695,7 +695,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
         query = fluid.layers.unsqueeze(query, [1])

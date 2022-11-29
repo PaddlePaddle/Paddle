@@ -14,8 +14,10 @@
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 from paddle.fluid.dygraph import (
     Embedding,
     Layer,
@@ -23,10 +25,8 @@ from paddle.fluid.dygraph import (
     to_variable,
 )
 from paddle.nn import Linear
-from paddle.jit.api import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
-import paddle
-import paddle.nn.functional as F
+from paddle.jit.api import dygraph_to_static_func
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -769,7 +769,7 @@ class Transformer(Layer):
 
         def gather(input, indices, batch_pos):
             topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-            return layers.gather_nd(input, topk_coordinates)
+            return paddle.gather_nd(input, topk_coordinates)
 
         # run encoder
         enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)
@@ -872,7 +872,7 @@ class Transformer(Layer):
             log_probs = gather(log_probs, topk_indices, batch_pos)
             finished = gather(finished, beam_indices, batch_pos)
             finished = paddle.logical_or(
-                finished, layers.equal(token_indices, end_token_tensor)
+                finished, paddle.equal(token_indices, end_token_tensor)
             )
             trg_word = paddle.reshape(token_indices, [-1, 1])
 

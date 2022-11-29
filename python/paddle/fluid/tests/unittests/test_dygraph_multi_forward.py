@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
+from paddle.fluid.optimizer import SGDOptimizer
 
 SEED = 123123111
 

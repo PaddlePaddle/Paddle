@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import argparse
-from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import GetForwardFunctionName, IsVectorTensorType
-from codegen_utils import GetInplacedFunctionName
+import os
+
+from codegen_utils import (
+    FunctionGeneratorBase,
+    GeneratorBase,
+    GetForwardFunctionName,
+    GetInplacedFunctionName,
+    IsVectorTensorType,
+)
 
 #########################
 # Global Configurations #

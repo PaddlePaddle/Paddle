@@ -12,33 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import itertools
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
-    SGDOptimizer,
-    Adam,
-    MomentumOptimizer,
-    LarsMomentumOptimizer,
-    AdagradOptimizer,
-    AdamaxOptimizer,
-    DpsgdOptimizer,
-    DecayedAdagradOptimizer,
     AdadeltaOptimizer,
-    RMSPropOptimizer,
+    AdagradOptimizer,
+    Adam,
+    AdamaxOptimizer,
+    DecayedAdagradOptimizer,
+    DpsgdOptimizer,
+    ExponentialMovingAverage,
     FtrlOptimizer,
     LambOptimizer,
-)
-from paddle.fluid.optimizer import (
-    ModelAverage,
-    ExponentialMovingAverage,
-    PipelineOptimizer,
+    LarsMomentumOptimizer,
     LookaheadOptimizer,
+    ModelAverage,
+    MomentumOptimizer,
+    PipelineOptimizer,
     RecomputeOptimizer,
+    RMSPropOptimizer,
+    SGDOptimizer,
 )
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard

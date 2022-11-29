@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 
 
 class Policy(fluid.dygraph.Layer):

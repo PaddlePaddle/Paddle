@@ -16,9 +16,11 @@ TestCases for Dataset,
 including create, config, run, etc.
 """
 
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle.fluid as fluid
 
 
 class TestVarInfo(unittest.TestCase):

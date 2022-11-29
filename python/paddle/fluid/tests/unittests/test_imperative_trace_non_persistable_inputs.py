@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
 import os
 import paddle
+import paddle.fluid as fluid
 
 
 class SimpleFCLayer(fluid.dygraph.Layer):

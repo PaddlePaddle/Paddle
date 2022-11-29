@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
 from paddle.nn import Linear
+
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 
 

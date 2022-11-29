@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
+
 import numpy as np
 from test_imperative_base import new_program_scope
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 import paddle
 

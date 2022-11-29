@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
-
-import unittest
 
 
 class Test_Detach(unittest.TestCase):

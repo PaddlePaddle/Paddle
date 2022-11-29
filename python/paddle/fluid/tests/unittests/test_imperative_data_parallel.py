@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import unittest
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
 from paddle.nn import Linear
-import paddle.fluid.core as core
 
 
 class MLP(fluid.Layer):
