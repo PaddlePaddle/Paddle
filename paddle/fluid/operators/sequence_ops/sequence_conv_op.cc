@@ -147,7 +147,7 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "(phi::DenseTensor) the input(X) is a LodTensor, which supports "
         "variable-time length input sequence. The underlying tensor in "
-        "this LodTensor is a matrix with shape (T, N), where T is the "
+        "this phi::DenseTensor is a matrix with shape (T, N), where T is the "
         "total time steps in this mini-batch and N is the input_hidden_size.");
     AddInput("PaddingData",
              "(phi::DenseTensor, optional) the input(PaddingData) is an optional "
@@ -162,13 +162,13 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "Filter",
         "(phi::DenseTensor) the input(Filter) is an learnable parameter."
-        "This is a phi::DenseTensor with shape (K, M), where K is the "
+        "This is a tensor with shape (K, M), where K is the "
         "context_length * input_hidden_size, M is the output feature size.");
     AddOutput(
         "Out",
         "(phi::DenseTensor) the output(Out) is a LodTensor, which support "
         "variable-time length output sequence. The underlying tensor in "
-        "this LodTensor is a matrix with shape (T, M), where, T is the "
+        "this phi::DenseTensor is a matrix with shape (T, M), where, T is the "
         "total time steps in this mini-batch, M is the output feature size.");
 
     AddAttr<bool>("paddingTrainable",
