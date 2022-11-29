@@ -44,7 +44,7 @@ class TRTInstanceNormTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             shape = [-1, self.channel, self.height, self.width]
             data = fluid.data(name='in', shape=shape, dtype='float32')
-            instance_norm_out = fluid.layers.instance_norm(data)
+            instance_norm_out = nn.instance_norm(data)
             out = nn.batch_norm(instance_norm_out, is_test=True)
 
         shape[0] = self.bs

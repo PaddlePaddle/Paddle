@@ -98,8 +98,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     const bool is_test = ctx.Attr<bool>("is_test");
 
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto src_tz = phi::vectorize(x->dims());
@@ -125,7 +124,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto layer_norm_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC, *src_memory},
                                                   {DNNL_ARG_DST, *dst_memory}};
 
