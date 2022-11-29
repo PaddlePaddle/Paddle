@@ -205,8 +205,10 @@ def retinanet_target_assign(
 
     Examples:
         .. code-block:: python
-
+          import paddle
           import paddle.fluid as fluid
+          paddle.enable_static()
+
           bbox_pred = fluid.data(name='bbox_pred', shape=[1, 100, 4],
                             dtype='float32')
           cls_logits = fluid.data(name='cls_logits', shape=[1, 100, 10],

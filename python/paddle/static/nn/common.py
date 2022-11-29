@@ -1921,7 +1921,7 @@ def multi_box_head(
             stride=stride,
         )
         conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
-        conf_loc_flatten = nn.flatten(conf_loc, start_axis=1, stop_axis=-1)
+        conf_loc_flatten = paddle.flatten(conf_loc, start_axis=1, stop_axis=-1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
