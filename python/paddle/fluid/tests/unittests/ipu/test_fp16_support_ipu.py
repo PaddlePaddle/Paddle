@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -97,7 +98,7 @@ class TestIntInput(TestBase):
         y = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
         )
-        out = paddle.fluid.layers.gather(x, index=y)
+        out = paddle.gather(x, index=y)
         self.fetch_list = [out.name]
 
 

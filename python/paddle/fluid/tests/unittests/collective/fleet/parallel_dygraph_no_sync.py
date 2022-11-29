@@ -13,19 +13,20 @@
 # limitations under the License.
 
 import os
-import numpy as np
 import random
 
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed as dist
-from paddle.fluid.dygraph.nn import Linear
+import numpy as np
 from test_dist_base import (
+    TestParallelDyGraphRunnerBase,
     print_to_err,
     print_to_out,
     runtime_main,
-    TestParallelDyGraphRunnerBase,
 )
+
+import paddle
+import paddle.distributed as dist
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import Linear
 
 seed = 90
 RUN_STEP = 20

@@ -20,7 +20,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph import to_variable, Layer
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 
 import unittest
 
@@ -41,7 +42,7 @@ class Policy(Layer):
 
     @declarative
     def forward(self, x):
-        x = fluid.layers.reshape(x, shape=[1, 4])
+        x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
         x = fluid.layers.dropout(x, self.dropout_ratio)
         x = fluid.layers.relu(x)
@@ -123,7 +124,7 @@ def train(args, place, to_static):
 
             loss_probs = fluid.layers.log(loss_probs)
             loss_probs = fluid.layers.elementwise_mul(loss_probs, mask)
-            loss_probs = fluid.layers.reduce_sum(loss_probs, dim=-1)
+            loss_probs = paddle.sum(loss_probs, axis=-1)
 
             policy.saved_log_probs.append(loss_probs)
             return action, loss_probs
@@ -153,7 +154,7 @@ def train(args, place, to_static):
                 policy_loss.append(cur_loss)
 
             policy_loss = fluid.layers.concat(policy_loss)
-            policy_loss = fluid.layers.reduce_sum(policy_loss)
+            policy_loss = paddle.sum(policy_loss)
 
             policy_loss.backward()
             optimizer.minimize(policy_loss)

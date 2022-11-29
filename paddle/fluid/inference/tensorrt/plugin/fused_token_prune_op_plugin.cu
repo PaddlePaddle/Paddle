@@ -31,8 +31,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
-
 template <typename T>
 __global__ void ElementwiseMask(const T* a,
                                 const T* b,
@@ -177,14 +175,81 @@ __global__ void TakeAlongAxis(const T* src,
   }
 }
 
-__global__ void pos_id_prune_kernel(const int32_t* src,
-                                    int32_t* dst,
-                                    int pos_nums,
-                                    float scale) {
-  dst[0] = 0;
-  for (int i = 1; i < pos_nums; i++) {
-    dst[i] =
-        dst[i - 1] + max(static_cast<int>((src[i] - src[i - 1]) * scale), 2);
+__global__ void compute_token_length(const int32_t* src,
+                                     int32_t* dst,
+                                     float scale) {
+  int32_t it = threadIdx.x;
+  dst[it] = max(static_cast<int>((src[it + 1] - src[it]) * scale), 1);
+}
+
+__global__ void fill_index_padding_score(int32_t* token_index,
+                                         const half* scores,
+                                         int32_t scores_size,
+                                         half* padding_scores) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  token_index[tid] = threadIdx.x;
+  if (tid < scores_size) {
+    padding_scores[tid] = scores[tid];
+  } else {
+    padding_scores[tid] = 0;
+  }
+}
+
+template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD>
+__global__ void general_topk_pair_sort(T* in_keys, int32_t* in_out_values) {
+  typedef cub::BlockRadixSort<T, BLOCK_THREADS, ITEMS_PER_THREAD, int>
+      BlockRadixSort;
+  typedef cub::
+      BlockLoad<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
+          BlockLoadKey;
+  typedef cub::
+      BlockLoad<int, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
+          BlockLoadValue;
+  typedef cub::
+      BlockStore<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_STORE_TRANSPOSE>
+          BlockStoreKey;
+  typedef cub::BlockStore<int,
+                          BLOCK_THREADS,
+                          ITEMS_PER_THREAD,
+                          cub::BLOCK_STORE_TRANSPOSE>
+      BlockStoreValue;
+
+  __shared__ union {
+    typename BlockRadixSort::TempStorage sort;
+    typename BlockLoadKey::TempStorage loadkey;
+    typename BlockLoadValue::TempStorage loadvalue;
+    typename BlockStoreKey::TempStorage storekey;
+    typename BlockStoreValue::TempStorage storevalue;
+  } temp_storage;
+
+  int block_offset = blockIdx.x * BLOCK_THREADS * ITEMS_PER_THREAD;
+
+  T thread_keys[ITEMS_PER_THREAD];
+  int thread_values[ITEMS_PER_THREAD];
+  BlockLoadKey(temp_storage.loadkey).Load(in_keys + block_offset, thread_keys);
+  BlockLoadValue(temp_storage.loadvalue)
+      .Load(in_out_values + block_offset, thread_values);
+  __syncthreads();
+
+  BlockRadixSort(temp_storage.sort).SortDescending(thread_keys, thread_values);
+  __syncthreads();
+
+  BlockStoreValue(temp_storage.storevalue)
+      .Store(in_out_values + block_offset, thread_values);
+}
+
+__global__ void varlen_prune_token(const half* tokens,
+                                   const int32_t* token_pos,
+                                   const int32_t* token_index,
+                                   half* output) {
+  int batch = blockIdx.x;
+  int token_it = batch * gridDim.y + blockIdx.y;
+  int pre_value_it =
+      token_it * gridDim.z * blockDim.x + blockIdx.z * blockDim.x + threadIdx.x;
+
+  if (token_index[token_it] < token_pos[batch + 1] - token_pos[batch]) {
+    output[(token_index[token_it] + token_pos[batch]) * gridDim.z * blockDim.x +
+           blockIdx.z * blockDim.x + threadIdx.x] = tokens[pre_value_it];
   }
 }
 
@@ -195,9 +260,29 @@ nvinfer1::DimsExprs FusedTokenPrunePluginDynamic::getOutputDimensions(
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   auto x_dims = inputs[1], new_mask_dims = inputs[3];
   if (flag_varseqlen_) {
+    // max sum of seqlen: ceil(sum / scale) + n -1 >= for(i=0;i<n;i++) {sum +=
+    // floor(num(i) / scale)} auto
+    // pruned_sum_length=std::ceil(inputs[4].d[0]*new_mask_dims.d[2]/inputs[6].d[1])+
+    // inputs[1].d[0] - 1;
+    auto pruned_sum_length = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUB,
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUM,
+            *expr_builder.operation(
+                nvinfer1::DimensionOperation::kCEIL_DIV,
+                *expr_builder.operation(nvinfer1::DimensionOperation::kPROD,
+                                        *inputs[4].d[0],
+                                        *new_mask_dims.d[2]),
+                *inputs[6].d[1]),
+            *inputs[1].d[0]),
+        *expr_builder.constant(1));
     if (output_index == 0) {
-      nvinfer1::DimsExprs ret = x_dims;
-      ret.d[1] = new_mask_dims.d[2];
+      nvinfer1::DimsExprs ret;
+      ret.nbDims = 4;
+      ret.d[0] = pruned_sum_length;
+      ret.d[1] = x_dims.d[2];
+      ret.d[2] = expr_builder.constant(1);
+      ret.d[3] = expr_builder.constant(1);
       return ret;
     } else if (output_index == 1) {
       nvinfer1::DimsExprs ret;
@@ -209,18 +294,7 @@ nvinfer1::DimsExprs FusedTokenPrunePluginDynamic::getOutputDimensions(
       // word id
       nvinfer1::DimsExprs ret;
       ret.nbDims = 1;
-      // max sum of seqlen: pre_seqlen * new_mask[2] / mask[1] + 2 * batchs
-      const auto* two = expr_builder.constant(2);
-      ret.d[0] = expr_builder.operation(
-          nvinfer1::DimensionOperation::kSUM,
-          *expr_builder.operation(
-              nvinfer1::DimensionOperation::kFLOOR_DIV,
-              *expr_builder.operation(nvinfer1::DimensionOperation::kPROD,
-                                      *inputs[4].d[0],
-                                      *new_mask_dims.d[2]),
-              *inputs[6].d[1]),
-          *expr_builder.operation(
-              nvinfer1::DimensionOperation::kPROD, *two, *inputs[6].d[0]));
+      ret.d[0] = pruned_sum_length;
       return ret;
     } else if (output_index == 3) {
       // pos id
@@ -269,26 +343,18 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (flag_varseqlen_) {
-    if (pos == 0) {
+    if (pos <= 3 || pos == 7) {
       if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
-        return (in.type == nvinfer1::DataType::kFLOAT ||
-                in.type == nvinfer1::DataType::kHALF) &&
+        return (in.type == nvinfer1::DataType::kHALF) &&
                (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-        return (in.type == nvinfer1::DataType::kFLOAT) &&
-               (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
       } else {
-        return (in.type == nvinfer1::DataType::kFLOAT) &&
-               (in.format == nvinfer1::TensorFormat::kLINEAR);
+        PADDLE_THROW(platform::errors::Fatal(
+            "The FusedTokenPrune TRT Plugin's input type "
+            "should be half for varseqlen."));
       }
-    } else if (pos <= 3 || pos == 7) {
-      const nvinfer1::PluginTensorDesc& prev = in_out[0];
-      return in.type == prev.type && in.format == prev.format;
     } else if (pos == 6 || pos == 11) {  // mask_id, mask_id_out
-      return in.type == nvinfer1::DataType::kFLOAT &&
-             in.format == nvinfer1::TensorFormat::kLINEAR;
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
     } else {
       return in.type == nvinfer1::DataType::kINT32 &&
              in.format == nvinfer1::TensorFormat::kLINEAR;
@@ -296,14 +362,9 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
   } else {
     if (pos == 0) {
       if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
-        return (in.type == nvinfer1::DataType::kFLOAT ||
-                in.type == nvinfer1::DataType::kHALF) &&
+        return (in.type == nvinfer1::DataType::kHALF) &&
                (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-        return (in.type == nvinfer1::DataType::kFLOAT) &&
-               (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
+
       } else {
         return (in.type == nvinfer1::DataType::kFLOAT) &&
                (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -324,9 +385,9 @@ nvinfer1::DataType FusedTokenPrunePluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   if (flag_varseqlen_) {
     if (index == 0) {
-      return input_types[1];
-    } else if (index == 4) {
-      return nvinfer1::DataType::kFLOAT;
+      return nvinfer1::DataType::kHALF;
+    } else if (index == 4) {  // mask id
+      return input_types[6];
     } else {
       // index = 1,2,3
       return nvinfer1::DataType::kINT32;
@@ -557,14 +618,6 @@ inline void enqueueImpl(const nvinfer1::PluginTensorDesc* input_desc,
   }
 }
 
-inline void pos_id_prune(const int32_t* input,
-                         int32_t* output,
-                         int pos_nums,
-                         float scale,
-                         cudaStream_t stream) {
-  pos_id_prune_kernel<<<1, 1, 0, stream>>>(input, output, pos_nums, scale);
-}
-
 int FusedTokenPrunePluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc,
@@ -572,73 +625,153 @@ int FusedTokenPrunePluginDynamic::enqueue(
     void* const* outputs,
     void* workspace,
     cudaStream_t stream) TRT_NOEXCEPT {
-  auto input_type = input_desc[0].type;
-  auto attn_dims = input_desc[0].dims;
-  auto bsz = attn_dims.d[0], nb_head = attn_dims.d[1],
-       max_seq_len = attn_dims.d[2];
-  int device_id;
-  cudaGetDevice(&device_id);
-
-  if (input_type == nvinfer1::DataType::kFLOAT) {
-    VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp32";
-
-    float max = std::numeric_limits<float>::max();
-
-    enqueueImpl<float>(input_desc,
-                       output_desc,
-                       inputs,
-                       outputs,
-                       workspace,
-                       stream,
-                       device_id,
-                       max,
-                       keep_first_token_,
-                       keep_order_);
-
-  } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
-    VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp16";
-
-    half max = 65504.0;
-
-    enqueueImpl<half>(input_desc,
-                      output_desc,
-                      inputs,
-                      outputs,
-                      workspace,
-                      stream,
-                      device_id,
-                      max,
-                      keep_first_token_,
-                      keep_order_);
-
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The Ernie(Bert) TensorRT Plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recomplie it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
-  } else {
-    PADDLE_THROW(
-        platform::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
-                                "should be float or half."));
-  }
   if (flag_varseqlen_) {
+    if (!(input_desc[0].type == nvinfer1::DataType::kHALF &&
+          input_desc[1].type == nvinfer1::DataType::kHALF)) {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("Token_prune'type must half"));
+    }
     float scale =
         static_cast<float>(input_desc[3].dims.d[2]) / input_desc[6].dims.d[1];
-    // outputs[2]=inputs[4]; // word_id
-    const int32_t* inputs5 = static_cast<const int32_t*>(inputs[5]);
-    int32_t* outputs3 = static_cast<int32_t*>(outputs[3]);
-    pos_id_prune(
-        inputs5, outputs3, input_desc[5].dims.d[0], scale, stream);  // pos_id
-    // outputs[4]=inputs[6]; // new_mask
+    const int32_t* inputs5 =
+        static_cast<const int32_t*>(inputs[5]);             // pre pos id
+    int32_t* outputs3 = static_cast<int32_t*>(outputs[3]);  // new pos id
+    half* outputs0 = static_cast<half*>(outputs[0]);
+
+    const int32_t B = input_desc[1].dims.d[0];  // batchs
+    const int32_t max_sequnce_length =
+        input_desc[1].dims.d[1];                     // max sequnce length
+    const int32_t length = input_desc[1].dims.d[2];  // vector length
+    const half* scores = static_cast<const half*>(inputs[0]);  // reduce sum
+    const half* tokens = static_cast<const half*>(inputs[1]);
+    const int32_t scores_size = B * max_sequnce_length;
+    int32_t padding_token_length;
+    if (max_sequnce_length <= 128) {
+      padding_token_length = 128;
+    } else if (max_sequnce_length <= 256) {
+      padding_token_length = 256;
+    } else if (max_sequnce_length <= 384) {
+      padding_token_length = 384;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Token_prune'token_length must <= 384"));
+    }
+
+    // 1. Compute the token length after pruning.
+    compute_token_length<<<1, B, 0, stream>>>(
+        inputs5, pruned_token_lengths_, scale);
+
+    fill_index_padding_score<<<B, padding_token_length, 0, stream>>>(
+        token_index_, scores, scores_size, padding_scores_);
+
+    // Determine temporary device storage requirements
+    void* d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
+    cub::DeviceScan::ExclusiveSum(d_temp_storage,
+                                  temp_storage_bytes,
+                                  pruned_token_lengths_,
+                                  outputs3,
+                                  B + 1);
+    // Allocate temporary storage
+    cudaMalloc(&d_temp_storage, temp_storage_bytes);
+
+    // Run exclusive prefix sum
+    cub::DeviceScan::ExclusiveSum(d_temp_storage,
+                                  temp_storage_bytes,
+                                  pruned_token_lengths_,
+                                  outputs3,
+                                  B + 1);
+
+    if (padding_token_length == 128) {
+      general_topk_pair_sort<half, 32, 4>
+          <<<B, 32, 0, stream>>>(padding_scores_, token_index_);  // 128
+    } else if (padding_token_length == 256) {
+      general_topk_pair_sort<half, 64, 4>
+          <<<B, 64, 0, stream>>>(padding_scores_, token_index_);  // 256
+    } else {
+      general_topk_pair_sort<half, 96, 4>
+          <<<B, 96, 0, stream>>>(padding_scores_, token_index_);  // 384
+    }
+
+    int32_t num_threads;
+    if (length < 1024) {
+      num_threads = length;
+    } else {
+      if (length % 512 == 0) {
+        num_threads = 512;
+      } else if (length % 256 == 0) {
+        num_threads = 256;
+      } else if (length % 128 == 0) {
+        num_threads = 128;
+      } else if (length % 64 == 0) {
+        num_threads = 64;
+      } else if (length % 32 == 0) {
+        num_threads = 32;
+      } else if (length % 16 == 0) {
+        num_threads = 16;
+      } else if (length % 8 == 0) {
+        num_threads = 8;
+      } else if (length % 4 == 0) {
+        num_threads = 4;
+      } else if (length % 2 == 0) {
+        num_threads = 2;
+      } else {
+        num_threads = 1;
+      }
+    }
+    const dim3 num_blocks(
+        B,
+        max_sequnce_length,
+        length / num_threads);  //  batchs, max_sequnce_length, vector_ength/***
+    varlen_prune_token<<<num_blocks, num_threads, 0, stream>>>(
+        tokens, outputs3, token_index_, outputs0);
+  } else {
+    auto input_type = input_desc[0].type;
+    auto attn_dims = input_desc[0].dims;
+    auto bsz = attn_dims.d[0], nb_head = attn_dims.d[1],
+         max_seq_len = attn_dims.d[2];
+    int device_id;
+    cudaGetDevice(&device_id);
+
+    if (input_type == nvinfer1::DataType::kFLOAT) {
+      VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp32";
+
+      float max = std::numeric_limits<float>::max();
+
+      enqueueImpl<float>(input_desc,
+                         output_desc,
+                         inputs,
+                         outputs,
+                         workspace,
+                         stream,
+                         device_id,
+                         max,
+                         keep_first_token_,
+                         keep_order_);
+
+    } else if (input_type == nvinfer1::DataType::kHALF) {
+      VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp16";
+
+      half max = 65504.0;
+      enqueueImpl<half>(input_desc,
+                        output_desc,
+                        inputs,
+                        outputs,
+                        workspace,
+                        stream,
+                        device_id,
+                        max,
+                        keep_first_token_,
+                        keep_order_);
+    } else {
+      PADDLE_THROW(
+          platform::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
+                                  "should be float or half."));
+    }
   }
   return cudaGetLastError() != cudaSuccess;
 }
 
-#endif
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

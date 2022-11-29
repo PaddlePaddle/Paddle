@@ -179,8 +179,6 @@ void embedding_grad_impl(const Tensor& x,
   VLOG(6) << "embedding_grad API kernel key: [" << kernel_key.backend() << ", "
           << kernel_key.layout() << ", " << kernel_data_type << "]";
 
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-
   if (phi::DenseTensor::classof(weight.impl().get())) {
     std::string kernel_name =
         sparse ? "embedding_sparse_grad" : "embedding_grad";
@@ -190,6 +188,9 @@ void embedding_grad_impl(const Tensor& x,
             {kernel_key.backend(), kernel_key.layout(), kernel_data_type});
     const auto& kernel = kernel_result.kernel;
     VLOG(6) << kernel_name << " API kernel: " << kernel;
+
+    auto* dev_ctx = GetDeviceContextByBackend(
+        kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
     auto input_x = PrepareData(x, kernel.InputAt(0), {});
     auto input_weight = PrepareData(weight, kernel.InputAt(1), {});
@@ -242,6 +243,9 @@ void embedding_grad_impl(const Tensor& x,
             {kernel_key.backend(), kernel_key.layout(), kernel_data_type});
     const auto& kernel = kernel_result.kernel;
     VLOG(6) << kernel_name << " API kernel: " << kernel;
+
+    auto* dev_ctx = GetDeviceContextByBackend(
+        kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
     auto input_x = PrepareData(x, kernel.InputAt(0), {});
     auto input_weight = TensorToSelectedRows(weight);

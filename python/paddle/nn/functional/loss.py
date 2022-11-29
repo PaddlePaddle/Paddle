@@ -28,7 +28,6 @@ from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core, _non_static_mode
-from paddle.fluid.layers.layer_function_generator import templatedoc
 from ...fluid.framework import (
     _in_legacy_dygraph,
     in_dygraph_mode,
@@ -509,7 +508,6 @@ def edit_distance(
         input_length(Tensor): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         label_length(Tensor): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length should be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length should be [4,4,4]
-        NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
         Tuple:
@@ -889,7 +887,7 @@ def binary_cross_entropy_with_logits(
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
         logit, label, name=sigmoid_name
     )
 
@@ -1308,6 +1306,7 @@ def margin_ranking_loss(
 
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
+
     Computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
@@ -1339,7 +1338,7 @@ def l1_loss(input, label, reduction='mean', name=None):
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
-        If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+        If `reduction` is ``'none'``, the shape of output loss is :math:`[N, *]`, the same as ``input`` .
         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
@@ -1362,6 +1361,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             print(l1_loss.numpy())
             # [1.4]
+
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -1819,6 +1819,69 @@ def ctc_loss(
             #        [1.13760614])
 
     """
+
+    def warpctc(
+        input,
+        label,
+        blank=0,
+        norm_by_times=False,
+        input_length=None,
+        label_length=None,
+    ):
+        if in_dygraph_mode():
+            if input_length is None or label_length is None:
+                raise ValueError(
+                    "input_length and label_length must not be None in dygraph mode!"
+                )
+            loss_out = _C_ops.warpctc(
+                input, label, input_length, label_length, blank, norm_by_times
+            )
+            return loss_out
+        if _non_static_mode():
+            if input_length is None or label_length is None:
+                raise ValueError(
+                    "input_length and label_length must not be None in dygraph mode!"
+                )
+            grad, loss_out = _legacy_C_ops.warpctc(
+                input,
+                label,
+                input_length,
+                label_length,
+                'blank',
+                blank,
+                'norm_by_times',
+                norm_by_times,
+            )
+            return loss_out
+        helper = LayerHelper('warpctc', **locals())
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], "warpctc"
+        )
+        check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
+        this_inputs = {'Logits': [input], 'Label': [label]}
+        if input_length is not None and label_length is not None:
+            check_variable_and_dtype(
+                input_length, 'LogitsLength', ['int64'], "warpctc"
+            )
+            check_variable_and_dtype(
+                label_length, 'LabelLength', ['int64'], "warpctc"
+            )
+            this_inputs['LogitsLength'] = [input_length]
+            this_inputs['LabelLength'] = [label_length]
+
+        loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type='warpctc',
+            inputs=this_inputs,
+            outputs={'WarpCTCGrad': [grad_out], 'Loss': [loss_out]},
+            attrs={
+                'blank': blank,
+                'norm_by_times': norm_by_times,
+            },
+        )
+        return loss_out
 
     loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
@@ -2284,6 +2347,7 @@ def cross_entropy(
     name=None,
 ):
     r"""
+
     By default, this operator implements the cross entropy loss function with softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
@@ -2397,21 +2461,13 @@ def cross_entropy(
 
 
     Parameters:
-
-        - **input** (Tensor)
-
-            Input tensor, the data type is float32, float64. Shape is
-        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
+        input (Tensor): the data type is float32, float64. Shape is :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes, ``k >= 1`` .
 
             Note:
-
-                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
-                output of softmax operator, which will produce incorrect results.
-
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the output of softmax operator, which will produce incorrect results.
                 2. when use_softmax=False, it expects the output of softmax operator.
 
-        - **label** (Tensor)
-
+        label (Tensor):
             1. If soft_label=False, the shape is
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
@@ -2419,48 +2475,27 @@ def cross_entropy(
             2. If soft_label=True, the shape and data type should be same with ``input`` ,
             and the sum of the labels for each sample should be 1.
 
-        - **weight** (Tensor, optional)
-
-            a manual rescaling weight given to each class.
+        weight (Tensor, optional): a manual rescaling weight given to each class.
             If given, has to be a Tensor of size C and the data type is float32, float64.
             Default is ``'None'`` .
-
-        - **ignore_index** (int64, optional)
-
-            Specifies a target value that is ignored
+        ignore_index (int64, optional): Specifies a target value that is ignored
             and does not contribute to the loss. A negative value means that no label
             value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
-
-        - **reduction** (str, optional)
-
-            Indicate how to average the loss by batch_size,
+        reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-
-        - **soft_label** (bool, optional)
-
-            Indicate whether label is soft.
-            Default is ``False``.
-
-        - **axis** (int, optional)
-
-            The index of dimension to perform softmax calculations.
+        soft_label (bool, optional): Indicate whether label is soft. Default is ``False``.
+        axis (int, optional):The index of dimension to perform softmax calculations.
             It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the
             number of dimensions of input :attr:`input`.
             Default is ``-1`` .
-
-        - **use_softmax** (bool, optional)
-
-            Indicate whether compute softmax before cross_entropy.
+        use_softmax (bool, optional): Indicate whether compute softmax before cross_entropy.
             Default is ``True``.
-
-        - **name** (str, optional)
-
-            The name of the operator. Default is ``None`` .
+        name (str, optional): The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -2476,9 +2511,7 @@ def cross_entropy(
 
         2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` .
 
-
     Examples:
-
         .. code-block:: python
 
             # hard labels
@@ -3961,6 +3994,7 @@ def multi_margin_loss(
 
 def soft_margin_loss(input, label, reduction='mean', name=None):
     """
+
     The API measures the soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
 
@@ -3969,9 +4003,9 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
     Parameters:
 
-        input (Tensor): The input predications tensor with shape: [N, *],
+        input (Tensor): The input predications tensor with shape: ``[N, *]``,
             N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf.
-             Available dtype is float32, float64.
+            Available dtype is float32, float64.
 
         label (Tensor): The target labels tensor with the same shape as
             ``input``. The target labels which values should be numbers -1 or 1.
@@ -3989,8 +4023,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
     Returns:
 
-        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is [1].
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``input`` , else the shape of output is [1].
 
     Examples:
         .. code-block:: python
@@ -4016,6 +4049,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             #         [0.84367639, 0.74795729, 0.44629076, 0.55123353, 0.77659678],
             #         [0.39465919, 0.76651484, 0.54485321, 0.76609844, 0.77166790],
             #         [0.51283568, 0.84757161, 0.78913331, 1.05268764, 0.45318675]])
+
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -4047,245 +4081,3 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         return paddle.mean(out, name=name)
     else:
         return out
-
-
-def warpctc(
-    input,
-    label,
-    blank=0,
-    norm_by_times=False,
-    input_length=None,
-    label_length=None,
-):
-    """
-    An operator integrating the open source Warp-CTC library
-    (https://github.com/baidu-research/warp-ctc)
-    to compute Connectionist Temporal Classification (CTC) loss.
-    It can be aliased as softmax with CTC, since a native softmax activation is
-    interated to the Warp-CTC library to normalize values for each row of the
-    input tensor.
-
-    Args:
-       input (Variable): The unscaled probabilities of variable-length sequences,
-         which is a 2-D Tensor with LoD information, or a 3-D Tensor without Lod
-         information. When it is a 2-D LodTensor, its shape is
-         `[Lp, num_classes + 1]`, where `Lp` is the sum of all input
-         sequences' length and `num_classes` is the true number of classes.
-         (not including the blank label). When it is a 3-D Tensor, its shape
-         is `[max_logit_length, batch_size, num_classes + 1]`,
-         where `max_logit_length` is the longest length of
-         input logit sequence. The data type should be float32 or float64.
-       label (Variable): The ground truth of variable-length sequence,
-         which must be a 2-D Tensor with LoD information or a 3-D Tensor without
-         LoD information, needs to be consistent with the coressponding input.
-         When it is a 2-D LoDTensor, its shape is `[Lg, 1]`, where `Lg` is the sum
-         of all labels' length. When it is a 3-D Tensor, its shape is
-         `[batch_size, max_label_length]`, where `max_label_length` is the longest
-         length of label sequence. Data type must be int32.
-       blank (int, default 0): The blank label index of Connectionist
-         Temporal Classification (CTC) loss, which is in the
-         half-opened interval `[0, num_classes + 1)`. The data type must be int32.
-       norm_by_times(bool, default false): Whether to normalize the gradients
-         by the number of time-step, which is also the sequence's length.
-         There is no need to normalize the gradients if warpctc layer was
-         followed by a mean_op.
-       input_length(Variable): The length for each input sequence if it is
-         of Tensor type, it should have shape `[batch_size]` and dtype int64.
-       label_length(Variable): The length for each label sequence if it is
-         of Tensor type, it should have shape `[batch_size]` and dtype int64.
-
-    Returns:
-        Variable: The Connectionist Temporal Classification (CTC) loss,
-        which is a 2-D Tensor with the shape `[batch_size, 1]`.
-        The date type is the same as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            # using LoDTensor
-            import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-
-            # lengths of logit sequences
-            seq_lens = [2,6]
-            # lengths of label sequences
-            label_lens = [2,3]
-            # class num
-            class_num = 5
-
-            paddle.enable_static()
-            logits = fluid.data(name='logits',shape=[None, class_num+1],
-                                 dtype='float32',lod_level=1)
-            label = fluid.data(name='label', shape=[None, 1],
-                               dtype='int32', lod_level=1)
-            cost = paddle.nn.functional.warpctc(input=logits, label=label)
-            place = fluid.CPUPlace()
-            x = fluid.create_lod_tensor(
-                     np.random.rand(np.sum(seq_lens), class_num+1).astype("float32"),
-                     [seq_lens], place)
-            y = fluid.create_lod_tensor(
-                     np.random.randint(0, class_num, [np.sum(label_lens), 1]).astype("int32"),
-                     [label_lens], place)
-            exe = fluid.Executor(place)
-            output= exe.run(fluid.default_main_program(),
-                            feed={"logits": x,"label": y},
-                            fetch_list=[cost.name])
-            print(output)
-
-        .. code-block:: python
-
-            # using Tensor
-            import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-
-            # length of the longest logit sequence
-            max_seq_length = 5
-            #length of the longest label sequence
-            max_label_length = 3
-            # number of logit sequences
-            batch_size = 16
-            # class num
-            class_num = 5
-            paddle.enable_static()
-            logits = fluid.data(name='logits',
-                           shape=[max_seq_length, batch_size, class_num+1],
-                           dtype='float32')
-            logits_length = fluid.data(name='logits_length', shape=[None],
-                             dtype='int64')
-            label = fluid.data(name='label', shape=[batch_size, max_label_length],
-                           dtype='int32')
-            label_length = fluid.data(name='labels_length', shape=[None],
-                             dtype='int64')
-            cost = paddle.nn.functional.warpctc(input=logits, label=label,
-                            input_length=logits_length,
-                            label_length=label_length)
-            place = fluid.CPUPlace()
-            x = np.random.rand(max_seq_length, batch_size, class_num+1).astype("float32")
-            y = np.random.randint(0, class_num, [batch_size, max_label_length]).astype("int32")
-            exe = fluid.Executor(place)
-            output= exe.run(fluid.default_main_program(),
-                            feed={"logits": x,
-                                  "label": y,
-                                  "logits_length": np.array([max_seq_length]*batch_size).astype("int64"),
-                                  "labels_length": np.array([max_label_length]*batch_size).astype("int64")},
-                                  fetch_list=[cost.name])
-            print(output)
-    """
-    if in_dygraph_mode():
-        if input_length is None or label_length is None:
-            raise ValueError(
-                "input_length and label_length must not be None in dygraph mode!"
-            )
-        loss_out = _C_ops.warpctc(
-            input, label, input_length, label_length, blank, norm_by_times
-        )
-        return loss_out
-    if _non_static_mode():
-        if input_length is None or label_length is None:
-            raise ValueError(
-                "input_length and label_length must not be None in dygraph mode!"
-            )
-        grad, loss_out = _legacy_C_ops.warpctc(
-            input,
-            label,
-            input_length,
-            label_length,
-            'blank',
-            blank,
-            'norm_by_times',
-            norm_by_times,
-        )
-        return loss_out
-    helper = LayerHelper('warpctc', **locals())
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
-    check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
-    this_inputs = {'Logits': [input], 'Label': [label]}
-    if input_length is not None and label_length is not None:
-        check_variable_and_dtype(
-            input_length, 'LogitsLength', ['int64'], "warpctc"
-        )
-        check_variable_and_dtype(
-            label_length, 'LabelLength', ['int64'], "warpctc"
-        )
-        this_inputs['LogitsLength'] = [input_length]
-        this_inputs['LabelLength'] = [label_length]
-
-    loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
-
-    helper.append_op(
-        type='warpctc',
-        inputs=this_inputs,
-        outputs={'WarpCTCGrad': [grad_out], 'Loss': [loss_out]},
-        attrs={
-            'blank': blank,
-            'norm_by_times': norm_by_times,
-        },
-    )
-    return loss_out
-
-
-@templatedoc()
-def sigmoid_cross_entropy_with_logits(
-    x, label, ignore_index=kIgnoreIndex, name=None, normalize=False
-):
-    """
-
-    ${comment}
-
-    Args:
-        x(Tensor): a 2-D tensor with shape N x D, where N is the batch size and
-                D is the number of classes. This input is a tensor of logits computed
-                by the previous operator. Logits are unscaled log probabilities given
-                as log(p/(1-p)) The data type should be float32 or float64.
-        label (Tensor): a 2-D tensor of the same type and shape as X.
-                This input is a tensor of probabalistic labels for each logit.
-        ignore_index(int): Specifies a target value that is ignored and
-                does not contribute to the input gradient.
-        name(str|None): The default value is None.  Normally there is
-            no need for user to set this property.  For more information,
-            please refer to :ref:`api_guide_Name`
-        normalize(bool): If true, divide the output by the number of
-            targets != ignore_index.
-
-    Returns:
-        out(Tensor): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-
-            import paddle
-
-            input = paddle.rand(shape=[10], dtype='float32')
-            label = paddle.rand(shape=[10], dtype='float32')
-            loss = paddle.paddle.nn.functional.sigmoid_cross_entropy_with_logits(input, label,
-                                                            ignore_index=-1, normalize=True)
-            print(loss)
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.sigmoid_cross_entropy_with_logits(
-            x, label, normalize, int(ignore_index)
-        )
-    check_variable_and_dtype(
-        x,
-        'input',
-        ['float16', 'float32', 'float64'],
-        'sigmoid_cross_entropy_with_logits',
-    )
-
-    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="sigmoid_cross_entropy_with_logits",
-        inputs={"X": x, "Label": label},
-        attrs={"ignore_index": ignore_index, 'normalize': normalize},
-        outputs={"Out": out},
-    )
-    return out

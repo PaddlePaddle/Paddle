@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 from collections import OrderedDict
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import DataParallel
@@ -34,7 +35,7 @@ class MyLayer(fluid.Layer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
         x = fluid.layers.elementwise_mul(x, x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return [x]
 
 

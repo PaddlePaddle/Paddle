@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
+import unittest
+
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestProcessGroupFp32(unittest.TestCase):
@@ -42,7 +43,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             store = paddle.fluid.core.TCPStore(
                 "127.0.0.1", 6272, is_master, nranks, 30
             )
-            pg = paddle.fluid.core.ProcessGroupGloo(store, rank, nranks)
+            pg = paddle.fluid.core.ProcessGroupGloo.create(store, rank, nranks)
 
             # test allreduce sum
             # rank 0

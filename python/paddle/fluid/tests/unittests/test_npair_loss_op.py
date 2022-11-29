@@ -15,6 +15,7 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
+import paddle
 import paddle.fluid.core as core
 import numpy as np
 from paddle.fluid import Program, program_guard
