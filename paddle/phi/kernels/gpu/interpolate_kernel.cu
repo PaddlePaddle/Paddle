@@ -1458,7 +1458,6 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    double,
                    phi::dtype::float16,
                    int) {
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1472,7 +1471,6 @@ PD_REGISTER_KERNEL(nearest_interp,
                    phi::dtype::bfloat16,
                    int,
                    int64_t) {
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1484,7 +1482,6 @@ PD_REGISTER_KERNEL(trilinear_interp,
                    double,
                    phi::dtype::float16,
                    int) {
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1496,7 +1493,6 @@ PD_REGISTER_KERNEL(linear_interp,
                    double,
                    phi::dtype::float16,
                    int) {
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1508,7 +1504,6 @@ PD_REGISTER_KERNEL(bicubic_interp,
                    double,
                    phi::dtype::float16,
                    int) {
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
