@@ -39,8 +39,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         x->lod().empty(),
         false,
-        platform::errors::NotFound("Input(X) phi::DenseTensor of 
-                                    SequencePadOp does not " "contain LoD information."));
+        platform::errors::NotFound("Input(X) phi::DenseTensor of SequencePadOp does not " "contain LoD information."));
 
     const auto* pad_value = ctx.Input<phi::DenseTensor>("PadValue");
 
@@ -75,8 +74,7 @@ class SequencePadGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (d_x) {
-      const auto* d_out = 
-                      ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      const auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       d_x->mutable_data<T>(ctx.GetPlace());
 
       int padded_length = ctx.Attr<int>("padded_length");
