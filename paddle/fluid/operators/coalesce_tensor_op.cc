@@ -120,7 +120,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                           in_var_names.size(),
                           out_var_names.size()));
 
-    // Input & Output check: only support LoDTensor
+    // Input & Output check: only support phi::DenseTensor
     bool has_not_init_in_vars = false;
     for (size_t i = 0; i < in_tensors.size(); ++i) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -426,17 +426,17 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(vector<LoDTensor>) The input tensors of"
+             "(vector<phi::DenseTensor>) The input tensors of"
              " coalesce_tensor operator.")
         .AsDuplicable();
     AddOutput("Output",
-              "(vector<LoDTensor>) The output "
+              "(vector<phi::DenseTensor>) The output "
               "tensors of coalesce_tensor operator. And the address "
               "of output tensors are continuous, they are sliced from the "
               "tensor of FusedOutput.")
         .AsDuplicable();
     AddOutput("FusedOutput",
-              "(LoDTensor) The output tensor "
+              "(phi::DenseTensor) The output tensor "
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
     AddAttr<int>("dtype", "The output data type.");

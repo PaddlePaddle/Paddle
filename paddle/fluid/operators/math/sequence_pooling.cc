@@ -25,7 +25,6 @@ namespace operators {
 namespace math {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
