@@ -19,7 +19,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 class RankAttentionOp : public framework::OperatorWithKernel {
  public:
@@ -130,11 +129,12 @@ class RankAttentionGradOp : public framework::OperatorWithKernel {
 class RankAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) Input tensor of rank_attention_Op operator.");
+    AddInput("X",
+             "(phi::DenseTensor) Input tensor of rank_attention_Op operator.");
     AddInput("RankOffset",
-             "(Tensor) Input tensor of rank_attention_Op operator.");
+             "(phi::DenseTensor) Input tensor of rank_attention_Op operator.");
     AddInput("RankParam",
-             "(Tensor) Input tensor of rank_attention_Op operator.");
+             "(phi::DenseTensor) Input tensor of rank_attention_Op operator.");
     AddOutput("InputHelp", "Output tensor of rank_attention_Op operator.")
         .AsDispensable();
     AddOutput("Out", "Output tensor of rank_attention_Op operator.");

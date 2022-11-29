@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -67,7 +65,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "the input of ROIPoolOp. "
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
@@ -81,14 +79,14 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
-    AddInput("RoisNum", "(Tensor), The number of RoIs in each image.")
+    AddInput("RoisNum", "(phi::DenseTensor), The number of RoIs in each image.")
         .AsDispensable();
     AddOutput("Out",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output of ROIPoolOp is a 4-D tensor with shape "
               "(num_rois, channels, pooled_h, pooled_w).");
     AddOutput("Argmax",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
               "if arg \"is_test\" is false.")

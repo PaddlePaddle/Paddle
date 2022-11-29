@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
  public:
@@ -82,13 +80,14 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
                                   "The dimension of random tensor.")
         .SetDefault({});
     AddInput("ShapeTensor",
-             "(Tensor<int>), optional). The shape of the output."
+             "(phi::DenseTensor<int>), optional). The shape of the output."
              "It has a higher priority than Attr(shape).")
         .AsDispensable();
-    AddInput("ShapeTensorList",
-             "(vector<Tensor<int>>, optional). The shape of the output. "
-             "It has a higher priority than Attr(shape)."
-             "The shape of the element in vector must be [1].")
+    AddInput(
+        "ShapeTensorList",
+        "(vector<phi::DenseTensor<int>>, optional). The shape of the output. "
+        "It has a higher priority than Attr(shape)."
+        "The shape of the element in vector must be [1].")
         .AsDuplicable()
         .AsDispensable();
     AddAttr<float>("mean",
@@ -150,11 +149,13 @@ REGISTER_OP_VERSION(gaussian_random)
                and modify the attribute of [shape])ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("ShapeTensor",
-                      "The output shape supports Tensor type. ShapeTensor is "
+                      "The output shape supports phi::DenseTensor type. "
+                      "Shapephi::DenseTensor is "
                       "dispensable.")
-            .NewInput("ShapeTensorList",
-                      "The output shape supports list filled with Tensor. "
-                      "ShapeTensorList is dispensable.")
+            .NewInput(
+                "ShapeTensorList",
+                "The output shape supports list filled with phi::DenseTensor. "
+                "ShapeTensorList is dispensable.")
             .ModifyAttr("shape",
                         "The arg 'default_value' of attr 'shape' is changed: "
                         "from 'None' to '{}'.",

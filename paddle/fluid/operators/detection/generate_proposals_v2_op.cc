@@ -29,8 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class GenerateProposalsV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -47,28 +45,31 @@ class GenerateProposalsV2Op : public framework::OperatorWithKernel {
 class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Scores",
-             "(Tensor) The scores from conv is in shape (N, A, H, W), "
-             "N is batch size, A is number of anchors, "
-             "H and W are height and width of the feature map");
+    AddInput(
+        "Scores",
+        "(phi::DenseTensor) The scores from conv is in shape (N, A, H, W), "
+        "N is batch size, A is number of anchors, "
+        "H and W are height and width of the feature map");
     AddInput("BboxDeltas",
-             "(Tensor) Bounding box deltas from conv is in "
+             "(phi::DenseTensor) Bounding box deltas from conv is in "
              "shape (N, 4*A, H, W).");
     AddInput("ImShape",
-             "(Tensor) Image shape in shape (N, 2), "
+             "(phi::DenseTensor) Image shape in shape (N, 2), "
              "in format (height, width)");
     AddInput("Anchors",
-             "(Tensor) Bounding box anchors from anchor_generator_op "
+             "(phi::DenseTensor) Bounding box anchors from anchor_generator_op "
              "is in shape (A, H, W, 4).");
     AddInput("Variances",
-             "(Tensor) Bounding box variances with same shape as `Anchors`.");
+             "(phi::DenseTensor) Bounding box variances with same shape as "
+             "`Anchors`.");
 
     AddOutput("RpnRois",
               "(phi::DenseTensor), Output proposals with shape (rois_num, 4).");
     AddOutput(
         "RpnRoiProbs",
         "(phi::DenseTensor) Scores of proposals with shape (rois_num, 1).");
-    AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
+    AddOutput("RpnRoisNum",
+              "(phi::DenseTensor), The number of Rpn RoIs in each image")
         .AsDispensable();
     AddAttr<int>("pre_nms_topN",
                  "Number of top scoring RPN proposals to keep before "

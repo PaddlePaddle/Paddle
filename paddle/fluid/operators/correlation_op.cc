@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 inline std::vector<int64_t> CorrelationOutputSize(int batch,
                                                   int input_height,
                                                   int input_width,
@@ -54,10 +52,12 @@ inline std::vector<int64_t> CorrelationOutputSize(int batch,
 class CorrelationOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input1", "Input is a 4-D Tensor with shape [N, C, H, W]");
-    AddInput("Input2", "Input is a 4-D Tensor with shape [N, C, H, W]");
+    AddInput("Input1",
+             "Input is a 4-D phi::DenseTensor with shape [N, C, H, W]");
+    AddInput("Input2",
+             "Input is a 4-D phi::DenseTensor with shape [N, C, H, W]");
     AddOutput("Output",
-              "(Tensor) The output tensor of correlation operator. "
+              "(phi::DenseTensor) The output tensor of correlation operator. "
               "It has same data fromat and data type as the Input.");
     AddAttr<int>("pad_size", "pad size for input1 and input2");
     AddAttr<int>("kernel_size", "kernel size of input1 and input2");

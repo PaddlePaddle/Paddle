@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class MergedAdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -49,32 +47,48 @@ class MergedAdamOp : public framework::OperatorWithKernel {
 class MergedAdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Param", "(Tensor, default Tensor<float>) Input parameter")
+    AddInput(
+        "Param",
+        "(phi::DenseTensor, default phi::DenseTensor<float>) Input parameter")
         .AsDuplicable();
-    AddInput("Grad", "(Tensor, default Tensor<float>) Input gradient")
+    AddInput(
+        "Grad",
+        "(phi::DenseTensor, default phi::DenseTensor<float>) Input gradient")
         .AsDuplicable();
-    AddInput("LearningRate", "(Tensor, default Tensor<float>) Learning rate")
+    AddInput(
+        "LearningRate",
+        "(phi::DenseTensor, default phi::DenseTensor<float>) Learning rate")
         .AsDuplicable();
-    AddInput("Moment1", "(Tensor, default Tensor<float>) Input first moment")
+    AddInput("Moment1",
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Input first "
+             "moment")
         .AsDuplicable();
-    AddInput("Moment2", "(Tensor, default Tensor<float>) Input second moment")
+    AddInput("Moment2",
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Input second "
+             "moment")
         .AsDuplicable();
     AddInput("Beta1Pow",
-             "(Tensor, default Tensor<float>) Input beta1 power accumulator")
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Input beta1 "
+             "power accumulator")
         .AsDuplicable();
     AddInput("Beta2Pow",
-             "(Tensor, default Tensor<float>) Input beta2 power accumulator")
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Input beta2 "
+             "power accumulator")
         .AsDuplicable();
     AddInput("MasterParam", "FP32 master weight for AMP.")
         .AsDispensable()
         .AsDuplicable();
 
-    AddOutput("ParamOut", "(Tensor) Output parameter").AsDuplicable();
-    AddOutput("Moment1Out", "(Tensor) Output first moment").AsDuplicable();
-    AddOutput("Moment2Out", "(Tensor) Output second moment").AsDuplicable();
-    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator")
+    AddOutput("ParamOut", "(phi::DenseTensor) Output parameter").AsDuplicable();
+    AddOutput("Moment1Out", "(phi::DenseTensor) Output first moment")
         .AsDuplicable();
-    AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator")
+    AddOutput("Moment2Out", "(phi::DenseTensor) Output second moment")
+        .AsDuplicable();
+    AddOutput("Beta1PowOut",
+              "(phi::DenseTensor) Output beta1 power accumulator")
+        .AsDuplicable();
+    AddOutput("Beta2PowOut",
+              "(phi::DenseTensor) Output beta2 power accumulator")
         .AsDuplicable();
     AddOutput("MasterParamOut",
               "The updated FP32 master weight for AMP. "

@@ -28,8 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class FlattenOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -104,7 +102,7 @@ class FlattenOp : public framework::OperatorWithKernel {
 class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) A tensor of rank >= axis.");
+    AddInput("X", "(phi::DenseTensor) A tensor of rank >= axis.");
     AddOutput("Out",
               "A 2D tensor is reshaped input tensor. The input dimensions"
               "up to axis are flattened to the outer dimension of the output"
@@ -346,7 +344,7 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
 class FlattenContiguousRangeOpMaker : public FlattenOpMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) A tensor of rank >= axis.");
+    AddInput("X", "(phi::DenseTensor) A tensor of rank >= axis.");
     AddOutput("Out",
               "A 2D tensor is reshaped input tensor. The input dimensions"
               "up to axis are flattened to the outer dimension of the output"

@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class DpsgdOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -83,11 +82,11 @@ class DpsgdOp : public framework::OperatorWithKernel {
 class DpsgdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Param", "(Tensor) Input parameter");
-    AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("LearningRate", "(Tensor) Learning rate");
+    AddInput("Param", "(phi::DenseTensor) Input parameter");
+    AddInput("Grad", "(phi::DenseTensor) Input gradient");
+    AddInput("LearningRate", "(phi::DenseTensor) Learning rate");
 
-    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddOutput("ParamOut", "(phi::DenseTensor) Output parameter");
 
     AddAttr<float>("clip",
                    "(float, default 0.9) "

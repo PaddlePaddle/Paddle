@@ -24,7 +24,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
@@ -219,7 +218,7 @@ void MatchMatrixTensorOpMaker::Make() {
            "Y (phi::DenseTensor, default phi::DenseTensor<float>) Input "
            "variable which "
            "should contain lod information.");
-  AddInput("W", "W (Tensor), The weight of X and Y.");
+  AddInput("W", "W (phi::DenseTensor), The weight of X and Y.");
   AddAttr<int>("dim_t", "the dim of W").SetDefault(1);
   AddOutput("Out",
             "(phi::DenseTensor, default phi::DenseTensor<float>) Output "
@@ -230,7 +229,7 @@ void MatchMatrixTensorOpMaker::Make() {
             "which is "
             "used for X * W");
   AddComment(R"DOC(
-      Match Matrix Tensor Operator
+      Match Matrix phi::DenseTensor Operator
 
       This operator calculate X * W * Y, only support 2-D for X and Y.
       the output is a level-1 LodTensor:
@@ -353,7 +352,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* d_y = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
-    Tensor tmp_grad;
+    phi::DenseTensor tmp_grad;
     tmp_grad.Resize(tmp->dims());
     auto* d_tmp_data = tmp_grad.mutable_data<T>(ctx.GetPlace());
     auto* top_diff = d_out->data<T>();

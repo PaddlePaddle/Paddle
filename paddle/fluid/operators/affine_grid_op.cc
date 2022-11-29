@@ -28,8 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -144,13 +142,17 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Theta",
-        "(Tensor) A batch of affine transform parameters with shape [N, 2, 3]. "
+        "(phi::DenseTensor) A batch of affine transform parameters with shape "
+        "[N, 2, 3]. "
         "It is used to transform coordinate (x_0, y_0) to coordinate (x_1, "
         "y_1).");
     AddInput("OutputShape",
-             "(Tensor) The shape of target image with format [N, C, H, W].")
+             "(phi::DenseTensor) The shape of target image with format [N, C, "
+             "H, W].")
         .AsDispensable();
-    AddOutput("Output", "(Tensor) Output Tensor with shape [N, H, W, 2].");
+    AddOutput(
+        "Output",
+        "(phi::DenseTensor) Output phi::DenseTensor with shape [N, H, W, 2].");
     AddAttr<bool>("align_corners",
                   "(bool, default false) Whether to align the corners of input"
                   "and output.")

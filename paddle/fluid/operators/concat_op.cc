@@ -26,7 +26,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 class ConcatOp : public framework::OperatorWithKernel {
  public:
@@ -76,11 +75,12 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "i.e., axis + rank(X) th dimension.")
         .SetDefault(0)
         .SupportTensor();
-    AddInput("AxisTensor",
-             "(Tensor) The axis along which the input tensors will be "
-             "concatenated.  "
-             "It has higher priority than Attr(axis). "
-             "The shape of AxisTensor must be [1].")
+    AddInput(
+        "AxisTensor",
+        "(phi::DenseTensor) The axis along which the input tensors will be "
+        "concatenated.  "
+        "It has higher priority than Attr(axis). "
+        "The shape of AxisTensor must be [1].")
         .AsDispensable();
     AddComment(R"DOC(
 Concat Operator.

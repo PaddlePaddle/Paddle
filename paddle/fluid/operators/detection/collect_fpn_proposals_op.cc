@@ -16,7 +16,6 @@ limitations under the License.*/
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class CollectFpnProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -111,14 +110,15 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput(
         "MultiLevelRoIsNum",
-        "(List of Tensor) The RoIs' number of each image on multiple levels."
+        "(List of phi::DenseTensor) The RoIs' number of each image on multiple "
+        "levels."
         "The number on each level has the shape of (N), N is the number of "
         "images.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("FpnRois",
               "(phi::DenseTensor) All selected RoIs with highest scores");
-    AddOutput("RoisNum", "(Tensor), Number of RoIs in each images.")
+    AddOutput("RoisNum", "(phi::DenseTensor), Number of RoIs in each images.")
         .AsDispensable();
     AddAttr<int>("post_nms_topN",
                  "Select post_nms_topN RoIs from"

@@ -21,7 +21,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using phi::DataLayout;
 using phi::OneDNNContext;
 
@@ -37,8 +36,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& dnnl_engine = dev_ctx.GetEngine();
     std::vector<int> transpose_axis = ctx.Attr<std::vector<int>>("axis");
     int ndims = transpose_axis.size();
-    const phi::DenseTensor* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    const phi::Densephi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto& astream = OneDNNContext::tls().get_stream();
 
@@ -122,8 +121,9 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
 
-    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const auto* dout =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (!dx) return;
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& dnnl_engine = dev_ctx.GetEngine();

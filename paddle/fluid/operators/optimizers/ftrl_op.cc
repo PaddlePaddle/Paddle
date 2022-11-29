@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class FTRLOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -82,27 +81,27 @@ class FTRLOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input parameter value that has to be updated.");
     AddInput("SquaredAccumulator",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Accumulator that accumulates squared gradients.");
     AddInput("LinearAccumulator",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Accumulator that accumulates linear gradients.");
     AddInput("Grad",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input gradient of the parameter.");
     AddInput("LearningRate",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "The learning rate should be a tensor of size 1.");
 
-    AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
+    AddOutput("ParamOut", "(phi::DenseTensor) Output updated parameter value.");
     AddOutput("SquaredAccumOut",
-              "(Tensor) Output accumulated squared"
+              "(phi::DenseTensor) Output accumulated squared"
               " gradients.");
     AddOutput("LinearAccumOut",
-              "(Tensor) Output accumulated linear"
+              "(phi::DenseTensor) Output accumulated linear"
               " gradients.");
 
     AddAttr<float>("l1",

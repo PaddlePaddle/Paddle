@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class MatrixNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -39,13 +37,14 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("BBoxes",
-             "(Tensor) A 3-D Tensor with shape "
+             "(phi::DenseTensor) A 3-D phi::DenseTensor with shape "
              "[N, M, 4] represents the predicted locations of M bounding boxes"
              ", N is the batch size. "
              "Each bounding box has four coordinate values and the layout is "
              "[xmin, ymin, xmax, ymax], when box size equals to 4.");
     AddInput("Scores",
-             "(Tensor) A 3-D Tensor with shape [N, C, M] represents the "
+             "(phi::DenseTensor) A 3-D phi::DenseTensor with shape [N, C, M] "
+             "represents the "
              "predicted confidence predictions. N is the batch size, C is the "
              "class number, M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
@@ -100,7 +99,7 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
               "represents the "
               "index of selected bbox. The index is the absolute index cross "
               "batches.");
-    AddOutput("RoisNum", "(Tensor), Number of RoIs in each images.")
+    AddOutput("RoisNum", "(phi::DenseTensor), Number of RoIs in each images.")
         .AsDispensable();
     AddComment(R"DOC(
 This operator does multi-class matrix non maximum suppression (NMS) on batched

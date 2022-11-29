@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class AdamaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -35,19 +34,19 @@ class AdamaxOp : public framework::OperatorWithKernel {
 class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Param", "(Tensor) Input parameter");
-    AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("LearningRate", "(Tensor) Learning rate");
-    AddInput("Moment", "(Tensor) First moment");
+    AddInput("Param", "(phi::DenseTensor) Input parameter");
+    AddInput("Grad", "(phi::DenseTensor) Input gradient");
+    AddInput("LearningRate", "(phi::DenseTensor) Learning rate");
+    AddInput("Moment", "(phi::DenseTensor) First moment");
     AddInput("InfNorm",
-             "(Tensor) "
+             "(phi::DenseTensor) "
              "Input exponentially weighted infinity norm");
-    AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
+    AddInput("Beta1Pow", "(phi::DenseTensor) Input beta1 power accumulator");
 
-    AddOutput("ParamOut", "(Tensor) Output parameter");
-    AddOutput("MomentOut", "(Tensor) Output first moment");
+    AddOutput("ParamOut", "(phi::DenseTensor) Output parameter");
+    AddOutput("MomentOut", "(phi::DenseTensor) Output first moment");
     AddOutput("InfNormOut",
-              "(Tensor) "
+              "(phi::DenseTensor) "
               "Output exponentially weighted infinity norm");
 
     AddAttr<float>("beta1",

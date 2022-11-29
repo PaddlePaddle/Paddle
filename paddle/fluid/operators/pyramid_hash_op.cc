@@ -28,18 +28,18 @@ extern "C" {
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "X (Tensor, MUST be Tensor<!!!_int32_!!!>) Input variable which "
+             "X (phi::DenseTensor, MUST be phi::DenseTensor<!!!_int32_!!!>) "
+             "Input variable which "
              "should contain lod information.");
-    AddInput("W", "W (Tensor)");
-    AddInput("WhiteList", "WhiteList (Tensor)");
-    AddInput("BlackList", "BlackList (Tensor)");
+    AddInput("W", "W (phi::DenseTensor)");
+    AddInput("WhiteList", "WhiteList (phi::DenseTensor)");
+    AddInput("BlackList", "BlackList (phi::DenseTensor)");
     AddAttr<int>("num_emb", "num_emb").SetDefault(0).EqualGreaterThan(0);
     AddAttr<int>("space_len", "space_len").SetDefault(0).EqualGreaterThan(0);
     AddAttr<int>("pyramid_layer", "pyramid_layer (must be >= 2)")
@@ -67,9 +67,13 @@ class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
         "Decided which params should be updated in distribute training. "
         "Used in Distribute Transpiler to create a trainer/server program.")
         .SetDefault("");
-    AddOutput("Out", "Out (Tensor, default Tensor<float>) Output variable");
-    AddOutput("DropPos", "Out (Tensor, Tensor<int>) Output variable");
-    AddOutput("X_Temp_Out", "Out (Tensor, Tensor<int>) Output variable")
+    AddOutput("Out",
+              "Out (phi::DenseTensor, default phi::DenseTensor<float>) Output "
+              "variable");
+    AddOutput("DropPos",
+              "Out (phi::DenseTensor, phi::DenseTensor<int>) Output variable");
+    AddOutput("X_Temp_Out",
+              "Out (phi::DenseTensor, phi::DenseTensor<int>) Output variable")
         .AsIntermediate();
 
     AddComment(R"DOC(
