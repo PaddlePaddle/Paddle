@@ -1269,6 +1269,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "less_than" || op_type == "greater_than") {
+#if IS_TRT_VERSION_GE(8400)
       if (!with_dynamic_shape) {
         VLOG(3) << "the less_than and greater_than ops do not support static "
                    "shape yet";
@@ -1277,8 +1278,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
       if (out_dtype != 0) {
         VLOG(3) << "less_than and greater_than only supports outputs of BOOL";
-        return true;
+        return false;
       }
+      return true;
+#endif
+      VLOG(3)
+          << "less_than and greater_than is not supported when TensorRT < 8.4";
+      return false;
     }
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
