@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import random
 import unittest
 from functools import partial
-import contextlib
+
 import numpy as np
-import random
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def bow_net(
@@ -41,7 +43,7 @@ def bow_net(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
+    bow_tanh = paddle.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
@@ -133,8 +135,8 @@ class TestRegularizer(unittest.TestCase):
             param_list = fluid.default_main_program().block(0).all_parameters()
             para_sum = []
             for para in param_list:
-                para_mul = fluid.layers.square(x=para)
-                para_sum.append(fluid.layers.reduce_sum(input=para_mul))
+                para_mul = paddle.square(x=para)
+                para_sum.append(paddle.sum(para_mul))
             avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
@@ -171,7 +173,7 @@ class TestRegularizer(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = fluid.layers.uniform_random([2, 2, 3])
             out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
-            loss = fluid.layers.reduce_sum(out)
+            loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
             sgd.minimize(loss)
         with fluid.dygraph.guard():

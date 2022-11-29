@@ -20,15 +20,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
+using phi::funcs::RNNReorderType;
 
 template <typename T, typename T_out = T>
 class LSTMMKLDNNHandler
     : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> {
  public:
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                    const platform::MKLDNNDeviceContext& dev_ctx,
+                    const OneDNNContext& dev_ctx,
                     const dnnl::engine mkldnn_engine,
                     platform::Place cpu_place,
                     const phi::DenseTensor* input,
@@ -186,7 +188,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_layer_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -218,7 +220,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_iter_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -308,7 +310,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->src_iter_c_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_c0_memory, *memory_p)
           .execute(astream, user_c0_memory, *memory_p);
 
@@ -335,8 +337,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
@@ -444,7 +445,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
     auto lstm_forward_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     lstm_forward_p->execute(astream, lstm_args);
     astream.wait();
 
@@ -456,13 +457,13 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::NTC_PP);
+                             RNNReorderType::NTC_PP);
     } else {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::TNC_PP);
+                             RNNReorderType::TNC_PP);
     }
   }
 };

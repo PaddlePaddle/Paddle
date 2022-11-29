@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy
+import numpy as np
+
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid import framework
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
-from paddle.fluid import framework
-
-import numpy as np
 
 np.set_seed(123)
 

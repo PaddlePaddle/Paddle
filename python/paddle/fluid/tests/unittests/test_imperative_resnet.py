@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import Pool2D, BatchNorm, Linear
+from paddle.fluid import BatchNorm, Linear, Pool2D, core
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph import TracedLayer
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.jit import TracedLayer
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -241,7 +241,7 @@ class ResNet(fluid.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 

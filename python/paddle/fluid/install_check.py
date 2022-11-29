@@ -45,7 +45,7 @@ class SimpleLayer(Layer):
 
     def forward(self, inputs):
         x = self._linear1(inputs)
-        x = layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 

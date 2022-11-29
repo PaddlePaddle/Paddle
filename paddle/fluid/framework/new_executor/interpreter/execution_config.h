@@ -32,6 +32,7 @@ struct ExecutionConfig {
   size_t deivce_num_threads;
 
   std::set<std::string> skip_gc_vars;
+  std::set<std::string> jit_input_vars;
 
   ExecutionConfig(const phi::Place& place, size_t op_num);
   void Log(int log_level);

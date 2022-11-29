@@ -14,17 +14,18 @@
 
 import os
 import unittest
+
 import numpy as np
 from op_test import OpTest
+from test_attribute_var import UnittestBase
+
 import paddle
-import paddle.fluid.core as core
-import paddle
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
-
-from test_attribute_var import UnittestBase
+from paddle.fluid.op import Operator
+from paddle.tensor import random
 
 
 def output_hist(out):
@@ -382,7 +383,7 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
             ret_2 = fluid.layers.nn.uniform_random(
                 [2, 3, 2], min=_min, max=_max, seed=_seed
             )
-            res = fluid.layers.equal(ret, ret_2)
+            res = paddle.equal(ret, ret_2)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -481,7 +482,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
                 )
-                fluid.layers.uniform_random_batch_size_like(x1)
+                random.uniform_random_batch_size_like(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -489,7 +490,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 x1 = fluid.layers.data(
                     name='x2', shape=[100, 784], dtype='float32'
                 )
-                fluid.layers.uniform_random_batch_size_like(x1, shape="shape")
+                random.uniform_random_batch_size_like(x1, shape="shape")
 
             self.assertRaises(TypeError, test_shape)
 
@@ -497,7 +498,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 x2 = fluid.layers.data(
                     name='x2', shape=[100, 784], dtype='float32'
                 )
-                fluid.layers.uniform_random_batch_size_like(x2, 'int32')
+                random.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
 

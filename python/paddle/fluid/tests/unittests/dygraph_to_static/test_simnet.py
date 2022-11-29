@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import random
 import unittest
 
-from paddle.fluid.dygraph import ProgramTranslator
+import numpy as np
 from simnet_dygraph_model import BOW, HingeLoss
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit import ProgramTranslator
 
 SEED = 102
 random.seed(SEED)
@@ -145,9 +146,9 @@ def train(conf_dict, to_static):
         )
 
         for left, pos_right, neg_right in train_loader():
-            left = fluid.layers.reshape(left, shape=[-1, 1])
-            pos_right = fluid.layers.reshape(pos_right, shape=[-1, 1])
-            neg_right = fluid.layers.reshape(neg_right, shape=[-1, 1])
+            left = paddle.reshape(left, shape=[-1, 1])
+            pos_right = paddle.reshape(pos_right, shape=[-1, 1])
+            neg_right = paddle.reshape(neg_right, shape=[-1, 1])
             net.train()
             global_step += 1
             left_feat, pos_score = net(left, pos_right)

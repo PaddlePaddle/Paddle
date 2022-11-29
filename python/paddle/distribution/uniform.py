@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import numpy as np
+
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import (
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
 from paddle.fluid.layers import (
     elementwise_add,
@@ -28,6 +30,7 @@ from paddle.fluid.layers import (
     nn,
     tensor,
 )
+from paddle.tensor import random
 
 
 class Uniform(distribution.Distribution):
@@ -166,7 +169,7 @@ class Uniform(distribution.Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.dtype, 0.0
             )
-            uniform_random_tmp = nn.uniform_random_batch_size_like(
+            uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
                 dtype=self.dtype,
@@ -174,8 +177,8 @@ class Uniform(distribution.Distribution):
                 max=1.0,
                 seed=seed,
             )
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
-            uniform_random_tmp_reshape = nn.reshape(
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
+            uniform_random_tmp_reshape = paddle.reshape(
                 uniform_random_tmp, output_shape
             )
             output = uniform_random_tmp_reshape * (
@@ -193,7 +196,7 @@ class Uniform(distribution.Distribution):
             )
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 

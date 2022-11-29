@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
@@ -196,7 +199,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             output, output_index = fluid.layers.tensor_array_to_tensor(
                 input=array, **self.attrs
             )
-            loss = fluid.layers.reduce_sum(output)
+            loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
         self.output_vars = [output, output_index]
 

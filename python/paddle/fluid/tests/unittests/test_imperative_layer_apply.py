@@ -14,11 +14,11 @@
 
 import unittest
 
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -47,7 +47,7 @@ class LeNetDygraph(fluid.dygraph.Layer):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1, -1)
             x = self.fc(x)
         return x
 

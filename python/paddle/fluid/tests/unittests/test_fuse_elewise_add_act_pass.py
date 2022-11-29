@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from simple_nets import simple_fc_net, fc_with_batchnorm, init_data
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+import os
 import unittest
 import numpy
-import os
+
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestMNIST(TestParallelExecutorBase):
