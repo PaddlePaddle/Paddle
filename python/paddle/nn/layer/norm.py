@@ -41,7 +41,6 @@ from paddle.device import get_all_custom_device_type
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 from ...framework import ParamAttr, get_default_dtype, no_grad
 from .. import Layer
