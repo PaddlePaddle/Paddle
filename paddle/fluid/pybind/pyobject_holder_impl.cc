@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/pybind/pyobject_holder_impl.h"
 #include <Python.h>
+#include "pybind11/pybind11.h"
 
 namespace paddle {
 namespace pybind {

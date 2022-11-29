@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pybind/saved_tensors_hooks_impl.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "pybind11/pybind11.h"
 
 #if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 #include "paddle/fluid/pybind/eager.h"
