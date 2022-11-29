@@ -212,7 +212,7 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
             hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
             hidden1.stop_gradient = True
 
-            cond = fluid.layers.equal(true, true)
+            cond = paddle.equal(true, true)
 
             def true_fn():
                 hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
@@ -253,7 +253,7 @@ class TestCloneWithRaise(unittest.TestCase):
             hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
             hidden1.stop_gradient = True
 
-            cond = fluid.layers.equal(true, true)
+            cond = paddle.equal(true, true)
 
             def true_fn():
                 hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
