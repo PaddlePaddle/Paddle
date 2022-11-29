@@ -31,7 +31,7 @@ typedef struct {
 typedef struct {
   PyObject_HEAD PyObject* container;
   bool container_be_packed;
-  std::shared_ptr<UnPackHook> unpack_hook;
+  std::shared_ptr<egr::UnPackHookBase> unpack_hook;
   PyObject* non_differentiable;
   PyObject* not_inplace_tensors;
   bool materialize_grads;

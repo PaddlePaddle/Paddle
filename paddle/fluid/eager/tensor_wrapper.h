@@ -30,8 +30,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #ifndef PADDLE_NO_PYTHON
-#include "paddle/fluid/pybind/pyobject_holder.h"
-#include "paddle/fluid/pybind/saved_tensors_hooks.h"
+#include "paddle/fluid/eager/hooks.h"
 #endif
 
 namespace egr {
@@ -226,8 +225,8 @@ class TensorWrapper {
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
 #ifndef PADDLE_NO_PYTHON
-  std::shared_ptr<paddle::pybind::PyObjectHolder> packed_value_;
-  std::shared_ptr<paddle::pybind::UnPackHook> unpack_hook_;
+  std::shared_ptr<egr::PyObjectHolderBase> packed_value_;
+  std::shared_ptr<egr::UnPackHookBase> unpack_hook_;
 #else
   std::shared_ptr<void> packed_value_;
   std::shared_ptr<void> unpack_hook_;

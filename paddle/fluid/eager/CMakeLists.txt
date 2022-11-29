@@ -14,8 +14,7 @@ set(eager_deps
     grad_node_info
     grad_tensor_holder
     accumulation_node
-    custom_operator_node
-    python)
+    custom_operator_node)
 
 set(fluid_deps
     tracer
