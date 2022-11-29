@@ -277,7 +277,7 @@ class EagerUtils {
     } else {
       tensor_info_str += "Unknown";
     }
-    if (VLOG_IS_ON(10)) {
+    if (VLOG_IS_ON(11)) {
       const char* TENSOR_PRINT_TEMPLATE =
           "{Name: %s, Initialized: %d, Ptr: %d "
           "TensorInfo: [ %s ], Value:[ %s ], ADInfo:[ %s ]}";
