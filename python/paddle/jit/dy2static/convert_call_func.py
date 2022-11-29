@@ -154,7 +154,7 @@ def convert_call(func):
         .. code-block:: python
 
             import paddle
-            from paddle.jit.dy2static import convert_call
+            from paddle.jit.dy2static import Call
 
             paddle.enable_static()
             def dyfunc(x):
@@ -164,7 +164,7 @@ def convert_call(func):
                     x_v = x + 1
                 return x_v
 
-            new_func = convert_call(dyfunc)
+            new_func = Call(dyfunc)
             x = paddle.tensor.manipulation.fill_constant(shape=[3, 3], value=0, dtype='float64')
             x_v = new_func(x)
 
