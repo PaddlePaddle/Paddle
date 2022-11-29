@@ -137,9 +137,7 @@ class SimpleRNN(fluid.Layer):
         )
         pre_hidden = init_hidden
         for i in range(self.seq_len):
-            input = fluid.layers.slice(
-                inputs, axes=[1], starts=[i], ends=[i + 1]
-            )
+            input = paddle.slice(inputs, axes=[1], starts=[i], ends=[i + 1])
             input = paddle.reshape(input, shape=[1, 3])
             out_softmax, pre_hidden = self._cell(input, pre_hidden)
             outs.append(out_softmax)

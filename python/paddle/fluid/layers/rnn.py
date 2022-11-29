@@ -1167,7 +1167,7 @@ class BeamSearchDecoder(Decoder):
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
-        return nn.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     class OutputWrapper(
         collections.namedtuple(
@@ -1337,7 +1337,7 @@ class BeamSearchDecoder(Decoder):
         )
         next_finished = paddle.logical_or(
             next_finished,
-            control_flow.equal(token_indices, self.end_token_tensor),
+            paddle.equal(token_indices, self.end_token_tensor),
         )
 
         beam_search_output = self.OutputWrapper(
@@ -1722,7 +1722,7 @@ def _dynamic_decode_declarative(
         if max_step_num is not None:
             paddle.logical_and(
                 paddle.logical_not(nn.reduce_all(global_finished)),
-                control_flow.less_equal(step_idx, max_step_num),
+                paddle.less_equal(step_idx, max_step_num),
                 cond,
             )
         else:
@@ -2013,7 +2013,7 @@ class TrainingHelper(DecodeHelper):
                 variable[s], and the tensor's shape is `[batch_size, ...]`. \
                 `initial_finished` is a bool tensor with shape `[batch_size]`.
         """
-        init_finished = control_flow.equal(
+        init_finished = paddle.equal(
             self.sequence_length,
             tensor.fill_constant(
                 shape=[1], dtype=self.sequence_length.dtype, value=0
@@ -2084,12 +2084,12 @@ class TrainingHelper(DecodeHelper):
         if self.sequence_length.dtype != time.dtype:
             self.sequence_length = tensor.cast(self.sequence_length, time.dtype)
         next_time = time + 1
-        finished = control_flow.less_equal(self.sequence_length, next_time)
+        finished = paddle.less_equal(self.sequence_length, next_time)
 
         def _slice(x):  # TODO: use Variable.__getitem__
             axes = [0 if self.time_major else 1]
             return paddle.squeeze(
-                nn.slice(
+                paddle.slice(
                     x, axes=axes, starts=[next_time], ends=[next_time + 1]
                 ),
                 axis=axes,
@@ -2227,7 +2227,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
                 argument `states`. `finished` is a `bool` Tensor with \
                 shape `[batch_size]`.
         """
-        finished = control_flow.equal(sample_ids, self.end_token)
+        finished = paddle.equal(sample_ids, self.end_token)
         next_inputs = self.embedding_fn(sample_ids)
         return finished, next_inputs, states
 
