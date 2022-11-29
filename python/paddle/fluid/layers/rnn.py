@@ -1991,7 +1991,7 @@ class TrainingHelper(DecodeHelper):
         # extend inputs to avoid to slice out of range in `next_inputs`
         # may be easier and have better performance than condition_op
         self.inputs_ = map_structure(
-            lambda x: paddle.pad(
+            lambda x: paddle.nn.functional.pad(
                 x,
                 pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
                 if time_major
