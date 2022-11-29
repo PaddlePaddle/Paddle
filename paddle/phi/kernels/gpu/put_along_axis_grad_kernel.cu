@@ -50,7 +50,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   }
   if (value_grad) {
     value_grad->Resize(index.dims());
-    value_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(value_grad);
     if (index_type == DataType::INT32) {
       paddle::operators::gpu_gather_kernel<T, int32_t>(
           out_grad,

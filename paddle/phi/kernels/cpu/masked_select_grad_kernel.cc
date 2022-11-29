@@ -27,7 +27,8 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             DenseTensor* x_grad) {
   auto* mask_data = mask.data<bool>();
   auto* input_data = out_grad.data<T>();
-  auto* out_data = x_grad->mutable_data<T>(dev_ctx.GetPlace());
+
+  auto* out_data = dev_ctx.template Alloc<T>(x_grad);
   int mask_size = mask.numel();
 
   int index = 0;

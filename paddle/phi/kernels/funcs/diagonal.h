@@ -104,7 +104,8 @@ DenseTensor Diagonal(const DeviceContext& context,
     DenseTensor diag;
     DDim diag_dims = phi::make_ddim(ret_dims);
     auto dig_stride = phi::stride(diag_dims);
-    auto diag_data = diag.mutable_data<T>(diag_dims, context.GetPlace());
+    diag.Resize(diag_dims);
+    auto diag_data = context.template Alloc<T>(&diag);
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();

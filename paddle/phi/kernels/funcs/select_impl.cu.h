@@ -451,7 +451,7 @@ void SelectKernel(const KPDevice &dev_ctx,
     out_dim.push_back(static_cast<int64_t>(rank));
     out->Resize(phi::make_ddim(out_dim));
   }
-  auto out_data = out->mutable_data<OutT>(cuda_place);
+  auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data
   if (total_true_num <= 0) return;
   SelectKernel<MT, InT, CT, OutT, Functor, kVecSize, SelectData>

@@ -314,9 +314,9 @@ void GraphReindexKernel(const Context& dev_ctx,
     const auto* ph_index = hashtable_index.get_ptr();
     hashtable_index_out.ShareDataWith(*ph_index);
     int* hashtable_value_data =
-        hashtable_value_out.mutable_data<int>(dev_ctx.GetPlace());
+        dev_ctx.template Alloc<int>(&hashtable_value_out);
     int* hashtable_index_data =
-        hashtable_index_out.mutable_data<int>(dev_ctx.GetPlace());
+        dev_ctx.template Alloc<int>(&hashtable_index_out);
     BufferReindex<T, Context>(dev_ctx,
                               x_data,
                               src_outputs,

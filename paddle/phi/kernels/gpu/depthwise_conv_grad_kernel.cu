@@ -75,7 +75,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
-    input_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(input_grad);
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (fuse_relu) {
@@ -106,7 +106,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   }
 
   if (filter_grad) {
-    filter_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(filter_grad);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     if (fuse_relu) {
       paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, true>

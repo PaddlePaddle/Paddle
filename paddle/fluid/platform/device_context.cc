@@ -163,7 +163,7 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
     if (!disable_setting_default_stream_for_allocator) {
       instance.SetDefaultStream(CUDAPlace(p.GetDeviceId()), cuda_ctx->stream());
     }
-    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetAllocator(instance.GetAllocator(p, cuda_ctx->stream()).get());
     dev_ctx->SetPinnedAllocator(
         instance.GetAllocator(paddle::platform::CUDAPinnedPlace()).get());
 

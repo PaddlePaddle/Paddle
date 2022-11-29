@@ -120,8 +120,8 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
       (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
                                         : phi::make_ddim({nt, h, w, c}));
   const T* output_grad_data = output_grad->data<T>();
-  T* input_grad_data =
-      input_grad->mutable_data<T>(in_grad_dims, dev_ctx.GetPlace());
+  input_grad->Resize(in_grad_dims);
+  T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
   int pixelNum = nt * chw;
   int threads = 1024;

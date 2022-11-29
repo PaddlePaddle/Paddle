@@ -117,7 +117,7 @@ class ColwiseSum<phi::CPUContext, T> {
             size,
             out->numel()));
 
-    T* out_buf = out->mutable_data<T>(out->place());
+    T* out_buf = context.template Alloc<T>(out);
     const T* in_buf = input.data<T>();
 
     for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
@@ -185,7 +185,7 @@ class RowwiseMean<phi::CPUContext, T> {
             height,
             out->numel()));
     auto inv_size = 1.0 / size;
-    T* out_buf = out->mutable_data<T>(out->place());
+    T* out_buf = context.template Alloc<T>(out);
     const T* in_buf = input.data<T>();
 
     for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
@@ -251,7 +251,7 @@ class RowwiseSum<phi::CPUContext, T> {
             height,
             out->numel()));
 
-    T* out_buf = out->mutable_data<T>(out->place());
+    T* out_buf = context.template Alloc<T>(out);
     const T* in_buf = input.data<T>();
 
     for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
