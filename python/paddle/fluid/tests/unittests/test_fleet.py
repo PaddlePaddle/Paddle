@@ -32,9 +32,10 @@ class TestFleet1(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
+        import paddle
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -66,7 +67,9 @@ class TestFleet1(unittest.TestCase):
                 param_attr=fluid.ParamAttr(name="embedding"),
             )
             bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-            bow = fluid.layers.data_norm(input=bow, epsilon=1e-4, name="norm")
+            bow = paddle.static.nn.data_norm(
+                input=bow, epsilon=1e-4, name="norm"
+            )
             fc = fluid.layers.fc(input=bow, size=1, act=None)
             label = fluid.layers.data(
                 name="click",

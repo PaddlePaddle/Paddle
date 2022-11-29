@@ -14,13 +14,14 @@
 
 import unittest
 
-import paddle
-import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 import numpy
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
+from paddle.fluid.executor import Executor
 
 
 class TestLoDArrayLength(unittest.TestCase):

@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-from paddle.fluid import core
+
+import paddle
 from paddle.device.cuda import (
     device_count,
-    memory_allocated,
     max_memory_allocated,
+    memory_allocated,
 )
+from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
 

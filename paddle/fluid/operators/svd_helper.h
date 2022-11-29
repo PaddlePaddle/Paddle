@@ -744,7 +744,7 @@ struct DeviceIndependenceTensorOperations {
       const framework::AttributeMap& attrs,
       std::vector<int> out_shape,
       NameOutTensor out_str = {"Out"}) {
-    // varialble set dims must be LoDTensor / SelectedRowTensor
+    // varialble set dims must be phi::DenseTensor / SelectedRowTensor
     framework::Scope& local_scope = context.scope().NewScope();
     framework::VariableNameMap op_outputs;
     for (auto out_name : out_str) {

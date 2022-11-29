@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Pool2D, Linear
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.framework import _test_eager_guard
 
 

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import paddle
+
 from ..fluid.core import LoDTensor
-from ..fluid.framework import _non_static_mode
 from ..fluid.data_feeder import check_type
+from ..fluid.framework import _non_static_mode
 
 __all__ = [
     'to_dlpack',

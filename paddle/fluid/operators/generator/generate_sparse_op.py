@@ -17,25 +17,25 @@ import os
 from pathlib import Path
 
 import yaml
-from jinja2 import Environment, FileSystemLoader, StrictUndefined
-
 from filters import (
+    cartesian_prod_mapping,
+    to_input_name,
     to_op_attr_type,
     to_opmaker_name,
     to_opmaker_name_cstr,
     to_pascal_case,
 )
+from generate_op import process_invoke_op
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from parse_utils import to_named_dict
 from tests import (
     is_base_op,
-    is_vec,
-    is_scalar,
     is_initializer_list,
+    is_scalar,
+    is_vec,
     supports_inplace,
     supports_no_need_buffer,
 )
-from filters import to_input_name, cartesian_prod_mapping
-from parse_utils import to_named_dict
-from generate_op import process_invoke_op
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
 env = Environment(
@@ -82,6 +82,8 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
     backward_op_dict = to_named_dict(backward_ops)
 
     for op in ops:
+        if op['name'][-1] == '_':
+            op['name'] = op['name'][:-1]
         op['op_name'] = SPARSE_OP_PREFIX + op['name']
         op['name'] = op['op_name']
         if op["backward"] is not None:

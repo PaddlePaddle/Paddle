@@ -21,8 +21,8 @@ import unittest
 
 import paddle
 from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 
 def fake_text():
@@ -257,9 +257,7 @@ class SkipGram(fluid.dygraph.Layer):
 
         # center_words_emb = [batch_size, embedding_size]
         # target_words_emb = [batch_size, embedding_size]
-        word_sim = fluid.layers.elementwise_mul(
-            center_words_emb, target_words_emb
-        )
+        word_sim = paddle.multiply(center_words_emb, target_words_emb)
         word_sim = paddle.sum(word_sim, axis=-1)
 
         pred = paddle.nn.functional.sigmoid(word_sim)

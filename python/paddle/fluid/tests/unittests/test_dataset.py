@@ -16,12 +16,13 @@ TestCases for Dataset,
 including create, config, run, etc.
 """
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import os
 import tempfile
 import unittest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestDataset(unittest.TestCase):

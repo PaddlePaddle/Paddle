@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 SEED = 2020
 

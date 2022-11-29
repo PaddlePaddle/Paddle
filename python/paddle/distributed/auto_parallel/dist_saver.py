@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import re
-import os
 import errno
-import pickle
 import logging
-import numpy as np
-import paddle
+import os
+import pickle
+import re
 
+import numpy as np
+
+import paddle
 from paddle import fluid
 from paddle.fluid import core
-from .utils import get_dist_attr
-from .process_group import _g_process_group_map
+
 from ..utils.log_utils import get_logger
+from .process_group import _g_process_group_map
+from .utils import get_dist_attr
 
 
 def check_filename(re_exp, filename):

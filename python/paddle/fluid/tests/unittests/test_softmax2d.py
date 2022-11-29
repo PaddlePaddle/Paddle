@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_softmax_op import ref_softmax
+
 import paddle
 import paddle.fluid.core as core
-from test_softmax_op import ref_softmax
 
 
 class TestSoftmax2DAPI(unittest.TestCase):

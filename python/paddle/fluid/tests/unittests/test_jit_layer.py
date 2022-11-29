@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import os
-import paddle
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
-from paddle.static import InputSpec
+
+import paddle
 from paddle.fluid.framework import _dygraph_place_guard
+from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.jit.layer import Layer
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    ProgramTranslator,
-)
+from paddle.static import InputSpec
 
 paddle.seed(1)
 

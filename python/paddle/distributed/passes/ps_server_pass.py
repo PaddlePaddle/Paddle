@@ -15,6 +15,20 @@
 import logging
 
 import paddle
+from paddle.fluid.layers.learning_rate_scheduler import (
+    exponential_decay,
+    inverse_time_decay,
+    natural_exp_decay,
+    noam_decay,
+)
+from paddle.optimizer.lr import (
+    ExponentialDecay,
+    InverseTimeDecay,
+    LRScheduler,
+    NaturalExpDecay,
+    NoamDecay,
+)
+
 from ..ps.utils.public import (
     get_optimize_ops,
     get_ps_endpoint,
@@ -22,19 +36,6 @@ from ..ps.utils.public import (
     get_trainers,
 )
 from .pass_base import PassBase, register_pass
-from paddle.optimizer.lr import LRScheduler
-from paddle.optimizer.lr import (
-    ExponentialDecay,
-    InverseTimeDecay,
-    NaturalExpDecay,
-    NoamDecay,
-)
-from paddle.fluid.layers.learning_rate_scheduler import (
-    exponential_decay,
-    inverse_time_decay,
-    natural_exp_decay,
-    noam_decay,
-)
 
 
 @register_pass("add_lr_decay_table_pass")

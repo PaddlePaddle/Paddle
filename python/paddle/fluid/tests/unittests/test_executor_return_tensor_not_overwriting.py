@@ -15,8 +15,9 @@
 import unittest
 import paddle
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
+
+import paddle.fluid as fluid
 
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
