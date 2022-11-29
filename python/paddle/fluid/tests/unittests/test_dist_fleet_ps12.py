@@ -19,9 +19,9 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -41,7 +41,7 @@ class TestPSPassWithBow(unittest.TestCase):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
             cond = fluid.layers.cast(cond, dtype='float64')
-            cond_3 = fluid.layers.reduce_sum(cond)
+            cond_3 = paddle.sum(cond)
             acc = fluid.layers.elementwise_div(
                 cond_3,
                 fluid.layers.fill_constant(
@@ -83,10 +83,10 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=emb_lr,
             ),
         )
-        q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
+        q_emb = paddle.reshape(q_emb, [-1, emb_dim])
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
-        q_ss = fluid.layers.softsign(q_sum)
+        q_ss = paddle.nn.functional.softsign(q_sum)
         # fc layer after conv
         q_fc = fluid.layers.fc(
             input=q_ss,
@@ -111,10 +111,10 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=emb_lr,
             ),
         )
-        pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
+        pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
         # vsum
         pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
-        pt_ss = fluid.layers.softsign(pt_sum)
+        pt_ss = paddle.nn.functional.softsign(pt_sum)
         # fc layer
         pt_fc = fluid.layers.fc(
             input=pt_ss,
@@ -138,10 +138,10 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=emb_lr,
             ),
         )
-        nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
+        nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
         # vsum
         nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
-        nt_ss = fluid.layers.softsign(nt_sum)
+        nt_ss = paddle.nn.functional.softsign(nt_sum)
         # fc layer
         nt_fc = fluid.layers.fc(
             input=nt_ss,

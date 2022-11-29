@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle.fluid as fluid
 import os
-
-import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-from paddle.fluid.framework import program_guard
-from paddle.fluid import unique_name
+import unittest
 
 import numpy as np
+
+import paddle.fluid as fluid
+import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.fluid import unique_name
+from paddle.fluid.framework import program_guard
 
 BATCH_NUM = 4
 BATCH_SIZE = 1

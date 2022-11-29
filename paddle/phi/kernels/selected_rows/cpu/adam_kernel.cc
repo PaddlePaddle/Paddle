@@ -15,10 +15,10 @@
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/threadpool.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
@@ -201,12 +201,12 @@ void AdamDenseParamSparseGradKernel(
       if (end > static_cast<int64_t>(param_row_count)) {
         end = static_cast<int64_t>(param_row_count);
       }
-      fs.push_back(paddle::framework::Async([&functor,
-                                             &row_id_to_grad_row_offset,
-                                             &grad_data,
-                                             row_numel,
-                                             start,
-                                             end]() {
+      fs.push_back(phi::Async([&functor,
+                               &row_id_to_grad_row_offset,
+                               &grad_data,
+                               row_numel,
+                               start,
+                               end]() {
         for (int64_t row_id = start; row_id < end; ++row_id) {
           auto iter = row_id_to_grad_row_offset.find(row_id);
           if (iter != row_id_to_grad_row_offset.end()) {

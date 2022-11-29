@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
+
 import paddle
-from paddle.fluid import Program, program_guard
 
 
 def huber_loss_forward(val, delta):
@@ -31,7 +31,6 @@ def huber_loss_forward(val, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
-        self.python_api = paddle.fluid.layers.huber_loss
         self.python_out_sig = ["Out"]
         self.delta = 1.0
         self.init_input()
@@ -54,10 +53,10 @@ class TestHuberLossOp(OpTest):
         return (100, 1)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -83,29 +82,6 @@ def TestHuberLossOp2(TestHuberLossOp):
 def TestHuberLossOp3(TestHuberLossOp):
     def set_shape(self):
         return (6, 6, 1)
-
-
-class TestHuberLossOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input and label must be Variable
-            xw = np.random.random((6, 6)).astype("float32")
-            xr = fluid.data(name='xr', shape=[None, 6], dtype="float32")
-            lw = np.random.random((6, 6)).astype("float32")
-            lr = fluid.data(name='lr', shape=[None, 6], dtype="float32")
-            delta = 1.0
-            self.assertRaises(TypeError, fluid.layers.huber_loss, xr, lw, delta)
-            self.assertRaises(TypeError, fluid.layers.huber_loss, xw, lr, delta)
-
-            # the dtype of input and label must be float32 or float64
-            xw2 = fluid.data(name='xw2', shape=[None, 6], dtype="int32")
-            lw2 = fluid.data(name='lw2', shape=[None, 6], dtype="int32")
-            self.assertRaises(
-                TypeError, fluid.layers.huber_loss, xw2, lr, delta
-            )
-            self.assertRaises(
-                TypeError, fluid.layers.huber_loss, xr, lw2, delta
-            )
 
 
 if __name__ == '__main__':

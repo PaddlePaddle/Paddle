@@ -16,12 +16,13 @@ import os
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
-import paddle.fluid.core as core
 
 BATCH_SIZE = 1
 INPUT_SIZE = 784
@@ -97,7 +98,7 @@ def static(
 
         id = fluid.data('id', [1], 'int32')
         two = layers.fill_constant([1], 'int32', 2)
-        mod_two = layers.elementwise_mod(id, two) == 0
+        mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
             avg_loss = layers.case(

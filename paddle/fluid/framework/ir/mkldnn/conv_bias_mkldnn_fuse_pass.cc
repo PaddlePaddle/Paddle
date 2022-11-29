@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -315,6 +316,12 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_conv_bias_count);
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_conv_bias_count > 0) {
+    string::PrettyLogDetail("---    fused %d %s with elementwise_add as bias",
+                            found_conv_bias_count,
+                            type());
+  }
 }
 }  // namespace ir
 }  // namespace framework

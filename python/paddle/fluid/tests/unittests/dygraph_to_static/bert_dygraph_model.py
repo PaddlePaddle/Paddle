@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer, Linear
-from paddle.fluid.dygraph.jit import declarative
-
-from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+from paddle.jit.api import declarative
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -276,10 +276,10 @@ class BertModelLayer(Layer):
         self_attn_mask = fluid.layers.matmul(
             x=input_mask, y=input_mask, transpose_y=True
         )
-        self_attn_mask = fluid.layers.scale(
+        self_attn_mask = paddle.scale(
             x=self_attn_mask, scale=10000.0, bias=-1.0, bias_after_scale=False
         )
-        n_head_self_attn_mask = fluid.layers.stack(
+        n_head_self_attn_mask = paddle.stack(
             x=[self_attn_mask] * self._n_head, axis=1
         )
         n_head_self_attn_mask.stop_gradient = True
@@ -291,11 +291,11 @@ class BertModelLayer(Layer):
         #
         # if not self.return_pooled_out:
         #    return enc_output
-        next_sent_feat = fluid.layers.slice(
+        next_sent_feat = paddle.slice(
             input=enc_output, axes=[1], starts=[0], ends=[1]
         )
         next_sent_feat = self.pooled_fc(next_sent_feat)
-        next_sent_feat = fluid.layers.reshape(
+        next_sent_feat = paddle.reshape(
             next_sent_feat, shape=[-1, self._emb_size]
         )
 
@@ -391,11 +391,11 @@ class PretrainModelLayer(Layer):
         enc_output, next_sent_feat = self.bert_layer(
             src_ids, position_ids, sentence_ids, input_mask
         )
-        reshaped_emb_out = fluid.layers.reshape(
+        reshaped_emb_out = paddle.reshape(
             x=enc_output, shape=[-1, self._emb_size]
         )
 
-        mask_feat = fluid.layers.gather(input=reshaped_emb_out, index=mask_pos)
+        mask_feat = paddle.gather(reshaped_emb_out, index=mask_pos)
         mask_trans_feat = self.pooled_fc(mask_feat)
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 

@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import numpy as np
-from ..fluid.layer_helper import LayerHelper
+
+from paddle import _C_ops, _legacy_C_ops
+
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layers import nn, utils
-from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
-from ..fluid.initializer import Normal
 from ..fluid.framework import (
     Variable,
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
-from paddle import _C_ops, _legacy_C_ops
+from ..fluid.initializer import Normal
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.layers import nn, utils
 from ..framework import _current_expected_place
+from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 
 __all__ = [  # noqa
     'yolo_loss',
@@ -1296,15 +1298,17 @@ def distribute_fpn_proposals(
     name=None,
 ):
     r"""
-        In Feature Pyramid Networks (FPN) models, it is needed to distribute
+
+    In Feature Pyramid Networks (FPN) models, it is needed to distribute
     all proposals into different FPN level, with respect to scale of the proposals,
     the referring scale and the referring level. Besides, to restore the order of
     proposals, we return an array which indicates the original index of rois
     in current proposals. To compute FPN level for each roi, the formula is given as follows:
 
     .. math::
-        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
-        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)} \\
+        level &= floor(\log(\frac{roi\_scale}{refer\_scale}) + refer\_level)
+
     where BBoxArea is a function to compute the area of each roi.
 
     Args:
@@ -1328,13 +1332,13 @@ def distribute_fpn_proposals(
             None by default.
 
     Returns:
-        multi_rois (List) : The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
-            and data type is same as `fpn_rois` . The length is max_level-min_level+1.
-        restore_ind (Tensor): The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
-            , where N is the number of total rois. The data type is int32.
-        rois_num_per_level (List): A list of 1-D Tensor and each Tensor is
-            the RoIs' number in each image on the corresponding level. The shape
-            is [B] and data type of int32, where B is the number of images.
+        - multi_rois (List), The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
+          and data type is same as `fpn_rois` . The length is max_level-min_level+1.
+        - restore_ind (Tensor), The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
+          , where N is the number of total rois. The data type is int32.
+        - rois_num_per_level (List), A list of 1-D Tensor and each Tensor is
+          the RoIs' number in each image on the corresponding level. The shape
+          is [B] and data type of int32, where B is the number of images.
 
     Examples:
         .. code-block:: python
@@ -1351,6 +1355,7 @@ def distribute_fpn_proposals(
                 refer_level=4,
                 refer_scale=224,
                 rois_num=rois_num)
+
     """
     num_lvl = max_level - min_level + 1
 
@@ -2438,6 +2443,7 @@ def matrix_nms(
     name=None,
 ):
     """
+
     This operator does matrix non maximum suppression (NMS).
     First selects a subset of candidate bounding boxes that have higher scores
     than score_threshold (if provided), then the top k candidate is selected if
@@ -2445,6 +2451,7 @@ def matrix_nms(
     decayed according to the Matrix NMS scheme.
     Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
+
     Args:
         bboxes (Tensor): A 3-D Tensor with shape [N, M, 4] represents the
                            predicted locations of M bounding bboxes,
@@ -2468,29 +2475,32 @@ def matrix_nms(
                          on score_threshold.
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
-        use_gaussian (bool): Use Gaussian as the decay function. Default: False
-        gaussian_sigma (float): Sigma for Gaussian decay function. Default: 2.0
-        background_label (int): The index of background label, the background
+        use_gaussian (bool, optional): Use Gaussian as the decay function. Default: False
+        gaussian_sigma (float, optional): Sigma for Gaussian decay function. Default: 2.0
+        background_label (int, optional): The index of background label, the background
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
-        normalized (bool): Whether detections are normalized. Default: True
-        return_index(bool): Whether return selected index. Default: False
-        return_rois_num(bool): whether return rois_num. Default: True
-        name(str): Name of the matrix nms op. Default: None.
+        normalized (bool, optional): Whether detections are normalized. Default: True
+        return_index(bool, optional): Whether return selected index. Default: False
+        return_rois_num(bool, optional): whether return rois_num. Default: True
+        name(str, optional): Name of the matrix nms op. Default: None.
     Returns:
-        A tuple with three Tensor: (Out, Index, RoisNum) if return_index is True,
-        otherwise, a tuple with two Tensor (Out, RoisNum) is returned.
-        Out (Tensor): A 2-D Tensor with shape [No, 6] containing the
-             detection results.
-             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-        Index (Tensor): A 2-D Tensor with shape [No, 1] containing the
-            selected indices, which are absolute values cross batches.
-        rois_num (Tensor): A 1-D Tensor with shape [N] containing
-            the number of detected boxes in each image.
+        - A tuple with three Tensor, (Out, Index, RoisNum) if return_index is True,
+          otherwise, a tuple with two Tensor (Out, RoisNum) is returned.
+        - Out (Tensor), A 2-D Tensor with shape [No, 6] containing the
+          detection results.
+          Each row has 6 values, [label, confidence, xmin, ymin, xmax, ymax]
+        - Index (Tensor), A 2-D Tensor with shape [No, 1] containing the
+          selected indices, which are absolute values cross batches.
+        - rois_num (Tensor), A 1-D Tensor with shape [N] containing
+          the number of detected boxes in each image.
+
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.ops import matrix_nms
+
             boxes = paddle.rand([4, 1, 4])
             boxes[..., 2] = boxes[..., 0] + boxes[..., 2]
             boxes[..., 3] = boxes[..., 1] + boxes[..., 3]
@@ -2498,6 +2508,7 @@ def matrix_nms(
             out = matrix_nms(bboxes=boxes, scores=scores, background_label=0,
                                  score_threshold=0.5, post_threshold=0.1,
                                  nms_top_k=400, keep_top_k=200, normalized=False)
+
     """
     check_variable_and_dtype(
         bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
