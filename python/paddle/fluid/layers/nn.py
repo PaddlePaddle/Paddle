@@ -7935,7 +7935,7 @@ def mish(x, threshold=20, name=None):
 
     .. code-block:: python
 
-        import
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
 
