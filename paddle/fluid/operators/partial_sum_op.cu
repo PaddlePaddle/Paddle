@@ -23,7 +23,6 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <class T>
@@ -153,8 +152,8 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const Tensor *out_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<LoDTensor>("X");
-    auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(
         ins[0] != nullptr,

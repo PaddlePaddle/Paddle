@@ -100,9 +100,9 @@ class MemcpyKernel {
 class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input variable ");
+    AddInput("X", "(phi::DenseTensor) The input variable ");
     AddOutput("Out",
-              "(LoDTensor) The type of output "
+              "(phi::DenseTensor) The type of output "
               "is the same as input X.");
     AddAttr<int>("dst_place_type",
                  "Determine the dst place of tensor copy. "
@@ -122,7 +122,7 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     NPUPlace <-> CPUPlace, and used as an internal op by Recompute-Offload.
     You would have to update it if you want other more capacities.
 
-Out = X,  when type in [LoDTensor]
+Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.
 )DOC");
   }
