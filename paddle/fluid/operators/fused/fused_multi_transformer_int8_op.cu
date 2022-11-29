@@ -233,12 +233,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
         n_max = std::max({output_size, dim_embed, dim_ffn});
 
-    // input_workspace.Resize(
-    //     {{32 * ((m_max + 32 - 1) / 32), (k_max + 31) / 32 * 32}});
     input_workspace.Resize({{(m_max * k_max + 31) / 32 * 32}});
     dev_ctx.Alloc<int8_t>(&input_workspace,
                           input_workspace.numel() * sizeof(int8_t));
-    // output_workspace.Resize({{n_max, (m_max + 31) / 32 * 32}});
+
     output_workspace.Resize({{(n_max * m_max + 31) / 32 * 32}});
     dev_ctx.Alloc<int32_t>(&output_workspace,
                            output_workspace.numel() * sizeof(int32_t));

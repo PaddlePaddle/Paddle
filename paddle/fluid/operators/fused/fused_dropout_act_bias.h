@@ -202,44 +202,6 @@ __global__ void FusedActBias(Functor act,
   }
 }
 
-// __global__ void FusedActBias(Functor act,
-//                              const uint64_t elem_cnt,
-//                              const uint64_t cols,
-//                              const InType *__restrict__ src,
-//                              const T *__restrict__ bias,
-//                              OutType *dst) {
-//   const int32_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
-//   using LoadT = phi::AlignedVector<T, VecSize>;
-//   using LoadInType = phi::AlignedVector<InType, VecSize>;
-//   using LoadFloat = phi::AlignedVector<float, VecSize>;
-//   using StoreOutType = phi::AlignedVector<OutType, VecSize>;
-
-//   LoadInType src_vec;
-//   LoadT bias_vec;
-//   StoreOutType out_vec;
-//   for (int32_t idx = global_thread_idx * VecSize,
-//                step = blockDim.x * gridDim.x * VecSize;
-//        idx < elem_cnt;
-//        idx += step) {
-//     const int32_t col_idx = idx % cols;
-//     phi::Load<InType, VecSize>(&src[idx], &src_vec);
-//     if (bias) {
-//       phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
-//     }
-// #pragma unroll
-//     for (int32_t unroll_idx = 0; unroll_idx < VecSize; unroll_idx++) {
-//       if (bias) {
-//         out_vec[unroll_idx] = static_cast<OutType>(
-//             act(static_cast<T>(src_vec[unroll_idx]) + bias_vec[unroll_idx]));
-//       } else {
-//         out_vec[unroll_idx] =
-//             static_cast<OutType>(act(static_cast<T>(src_vec[unroll_idx])));
-//       }
-//     }
-//     phi::Store<OutType, VecSize>(out_vec, &dst[idx]);
-//   }
-// }
-
 /**
  * @brief dst = dropout(activation(src + bias));
  */
