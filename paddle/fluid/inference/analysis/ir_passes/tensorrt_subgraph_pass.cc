@@ -328,7 +328,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
-  if (trt_tuned_dynamic_shape) {
+  if (trt_tuned_dynamic_shape && shape_range_info_path != "") {
     VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
     inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                          &min_input_shape,
@@ -551,6 +551,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                        Get<std::string>("model_opt_cache_dir"), engine_key);
       return;
     }
+  }
+
+  // 如果开启了动态shape，但没有给 shape_info
+  // 表明要在运行时边 run 边 build
+  if (Get<bool>("with_dynamic_shape") && min_input_shape == {}) {
+    return;
   }
 
   // the following code will NOT run in following situation:

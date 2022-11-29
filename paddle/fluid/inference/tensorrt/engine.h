@@ -422,6 +422,9 @@ class TensorRTEngine {
   void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
   void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
+  void SetWithDynamicShape(bool with_dynamic_shape) {
+    with_dynamic_shape_ = with_dynamic_shape;
+  }
   void SetWithInterleaved(bool with_interleaved) {
     with_interleaved_ = with_interleaved;
   }
@@ -464,36 +467,47 @@ class TensorRTEngine {
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
-      PADDLE_ENFORCE_EQ(
-          min_input_shape_.count(name),
-          true,
-          platform::errors::InvalidArgument(
-              "TRT dynamic_shape min_input_shape %s not found.", name));
-      PADDLE_ENFORCE_EQ(min_input_shape_[name].size(),
-                        input_shape.size(),
-                        platform::errors::InvalidArgument(
-                            "TRT dynamic_shape min_input_shape %s size not "
-                            "equal, the min_input_shape[%s].size()=%d"
-                            ", but the runtime_input_shape[%s].size()=%d.",
-                            name,
-                            name,
-                            min_input_shape_[name].size(),
-                            name,
-                            input_shape.size()));
-      auto bak_min_shape = min_input_shape_[name];
-      auto bak_max_shape = max_input_shape_[name];
+      // PADDLE_ENFORCE_EQ(
+      //     min_input_shape_.count(name),
+      //     true,
+      //     platform::errors::InvalidArgument(
+      //         "TRT dynamic_shape min_input_shape %s not found.", name));
+
       bool min_change = false;
       bool max_change = false;
-      for (size_t d = 0; d < input_shape.size(); ++d) {
-        if (input_shape[d] < min_input_shape_[name][d]) {
-          ret = true;
-          min_change = true;
-          min_input_shape_[name][d] = input_shape[d];
-        }
-        if (input_shape[d] > max_input_shape_[name][d]) {
-          ret = true;
-          max_change = true;
-          max_input_shape_[name][d] = input_shape[d];
+      // 如果当前的 shape_info 中没有目前的 runtime_input，进行添加
+      if (!min_input_shape_.count(name)) {
+        min_input_shape_[name] = input_shape;
+        max_input_shape_[name] = input_shape;
+        min_change = true;
+        max_change = true;
+        ret = true;
+      } else {
+        PADDLE_ENFORCE_EQ(min_input_shape_[name].size(),
+                          input_shape.size(),
+                          platform::errors::InvalidArgument(
+                              "TRT dynamic_shape min_input_shape %s size not "
+                              "equal, the min_input_shape[%s].size()=%d"
+                              ", but the runtime_input_shape[%s].size()=%d.",
+                              name,
+                              name,
+                              min_input_shape_[name].size(),
+                              name,
+                              input_shape.size()));
+
+        auto bak_min_shape = min_input_shape_[name];
+        auto bak_max_shape = max_input_shape_[name];
+        for (size_t d = 0; d < input_shape.size(); ++d) {
+          if (input_shape[d] < min_input_shape_[name][d]) {
+            ret = true;
+            min_change = true;
+            min_input_shape_[name][d] = input_shape[d];
+          }
+          if (input_shape[d] > max_input_shape_[name][d]) {
+            ret = true;
+            max_change = true;
+            max_input_shape_[name][d] = input_shape[d];
+          }
         }
       }
 
