@@ -17,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
@@ -88,9 +89,9 @@ class NaiveExecutor {
   HookFunc hookfunc_{nullptr};
 
   // Record information that tensor_a should ShareBufferWith tensor_b.
-  std::unordered_map<OperatorBase*,
-                     std::unordered_map<phi::DenseTensor*, phi::DenseTensor*>>
-      reuse_tensor_cache;
+  std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>
+      reuse_cache_;
+  std::vector<phi::DenseTensor*> cluster_buffer_;
 };
 
 }  // namespace framework

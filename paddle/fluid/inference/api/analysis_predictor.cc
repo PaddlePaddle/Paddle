@@ -561,15 +561,6 @@ bool AnalysisPredictor::PrepareProgram(
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
-  if (config_.enable_memory_optim_) {
-    auto *pass_res_info =
-        inference::analysis::PassResultInfoForRuntime::Instance();
-    auto reuse_table =
-        pass_res_info->Get<std::unordered_map<std::string, std::string>>(
-            parent_predictor_id_, "memory_optimize_pass");
-    executor_->MakeReusePlan(reuse_table);
-  }
-
   return true;
 }
 
@@ -628,6 +619,15 @@ bool AnalysisPredictor::PrepareExecutor() {
 
   executor_->Prepare(
       sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
+
+  if (config_.enable_memory_optim_) {
+    auto *pass_res_info =
+        inference::analysis::PassResultInfoForRuntime::Instance();
+    auto reuse_table =
+        pass_res_info->Get<std::unordered_map<std::string, std::string>>(
+            parent_predictor_id_, "memory_optimize_pass");
+    executor_->MakeReusePlan(reuse_table);
+  }
 
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::PreconditionNotMet(
