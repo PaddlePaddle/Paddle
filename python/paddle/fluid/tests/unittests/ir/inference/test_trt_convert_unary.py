@@ -45,6 +45,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "log",
                     "sqrt",
                     "abs",
+                    "neg",
                     "sin",
                     "cos",
                     "tan",
@@ -54,11 +55,14 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "acos",
                     "atan",
                     "asinh",
+                    "acosh",
                     "atanh",
                     "ceil",
                     "floor",
                     "rsqrt",
                     "reciprocal",
+                    "sign",
+                    "round",
                 ]:
                     self.dims = dims
                     dics = [{}]
