@@ -115,7 +115,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&
-          (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+          (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
            phi::DataLayout::kNHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
@@ -177,8 +177,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // then we also need to rotate shape NHWC -> NCWH
       if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
-          paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+              phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
                                        phi::DataLayout::kNHWC);

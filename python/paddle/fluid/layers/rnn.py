@@ -1167,7 +1167,7 @@ class BeamSearchDecoder(Decoder):
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
-        return nn.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     class OutputWrapper(
         collections.namedtuple(

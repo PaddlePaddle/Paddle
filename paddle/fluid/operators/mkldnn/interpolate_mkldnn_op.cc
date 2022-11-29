@@ -130,8 +130,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto& dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -155,7 +154,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     auto resampling_prim = handler.AcquireForwardPrimitive();
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
 
     resampling_prim->execute(astream, args);
     astream.wait();

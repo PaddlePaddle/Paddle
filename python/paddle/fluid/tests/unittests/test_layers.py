@@ -3220,18 +3220,6 @@ class TestBook(LayerTest):
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
 
-    def make_space_to_depth(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data',
-                shape=[32, 9, 6, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            return layers.space_to_depth(data, 3)
-
     def make_get_places(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3841,16 +3829,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_psroi_pool(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[4], dtype="float32", lod_level=1
-            )
-            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
-            return output
-
     def test_sequence_expand(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -3990,81 +3968,11 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_roi_pool(self):
-        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
-        rois_np = np.random.rand(3, 4).astype('float32')
-        rois_num_np = np.array([1, 2]).astype('int32')
-
-        with self.static_graph():
-            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
-            rois = layers.data(name="rois", shape=[4], dtype="float32")
-            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
-            output = layers.roi_pool(x, rois, 4, 4, 0.5, rois_num=rois_num)
-            static_res = self.get_static_graph_result(
-                feed={'x': x_np, 'rois': rois_np, 'rois_num': rois_num_np},
-                fetch_list=[output],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                x_dy = base.to_variable(x_np)
-                rois_dy = base.to_variable(rois_np)
-                rois_num_dy = base.to_variable(rois_num_np)
-                dy_eager_res = layers.roi_pool(
-                    x_dy, rois_dy, 4, 4, 0.5, rois_num=rois_num_dy
-                )
-                dy_eager_res_value = dy_eager_res[0].numpy()
-
-            x_dy = base.to_variable(x_np)
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
-            dy_res = layers.roi_pool(
-                x_dy, rois_dy, 4, 4, 0.5, rois_num=rois_num_dy
-            )
-            dy_res_value = dy_res[0].numpy()
-        np.testing.assert_array_equal(static_res, dy_res_value)
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
-
     def test_sequence_enumerate(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
-
-    def test_roi_align(self):
-        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
-        rois_np = np.random.rand(3, 4).astype('float32')
-        rois_num_np = np.array([1, 2]).astype('int32')
-
-        with self.static_graph():
-            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
-            rois = layers.data(name="rois", shape=[4], dtype="float32")
-            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
-            output = layers.roi_align(x, rois, 4, 4, 0.5, 2, rois_num=rois_num)
-            static_res = self.get_static_graph_result(
-                feed={'x': x_np, 'rois': rois_np, 'rois_num': rois_num_np},
-                fetch_list=[output],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                x_dy = base.to_variable(x_np)
-                rois_dy = base.to_variable(rois_np)
-                rois_num_dy = base.to_variable(rois_num_np)
-                dy_eager_res = layers.roi_align(
-                    x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-                )
-                dy_eager_res_value = dy_eager_res.numpy()
-
-            x_dy = base.to_variable(x_np)
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
-            dy_res = layers.roi_align(
-                x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-            )
-            dy_res_value = dy_res.numpy()
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
-        np.testing.assert_array_equal(static_res, dy_res_value)
 
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now
