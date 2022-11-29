@@ -16,8 +16,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import numpy as np
-from paddle.fluid import Program, program_guard
-from paddle import fluid
 
 
 class Segment:
@@ -281,51 +279,6 @@ class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
             'Label': pad_label,
             'SeqLength': lod,
         }
-
-
-class TestChunkEvalOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-
-            def test_input():
-                input_data = np.random.random(1, 1).astype("int64")
-                label_data = np.random.random(1).astype("int64")
-                fluid.layers.chunk_eval(
-                    input=input_data,
-                    label=label_data,
-                    chunk_scheme="IOB",
-                    num_chunk_types=3,
-                )
-
-            self.assertRaises(TypeError, test_input)
-
-            def test_label():
-                input_ = fluid.data(
-                    name="input", shape=[None, 1], dtype="int64"
-                )
-                label_data = np.random.random(1).astype("int64")
-                fluid.layers.chunk_eval(
-                    input=input_,
-                    label=label_data,
-                    chunk_scheme="IOB",
-                    num_chunk_types=3,
-                )
-
-            self.assertRaises(TypeError, test_label)
-
-            def test_type():
-                in_data = fluid.data(
-                    name="input_", shape=[None, 1], dtype="int32"
-                )
-                label = fluid.data(name="label_", shape=[1], dtype="int64")
-                fluid.layers.chunk_eval(
-                    input=in_data,
-                    label=label,
-                    chunk_scheme="IOB",
-                    num_chunk_types=3,
-                )
-
-            self.assertRaises(TypeError, test_type)
 
 
 if __name__ == '__main__':

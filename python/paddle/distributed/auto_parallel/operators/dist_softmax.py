@@ -79,7 +79,6 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(

@@ -19,10 +19,10 @@ from ...utils.hybrid_parallel_util import (
     sharding_reduce_gradients,
 )
 from ...base.topology import ParallelMode
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import framework
+from paddle.autograd import no_grad
+from paddle import framework
 from ...utils.log_util import logger
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.fluid import layers
 
 __all__ = []
@@ -47,7 +47,7 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
 
-    @imperative_base.no_grad
+    @no_grad()
     def _dygraph_clip(self, params_grads):
         sum_square_dist_fp16 = []
         sum_square_dist_fp32 = []
@@ -63,8 +63,8 @@ class HybridParallelClipGrad:
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-            square = layers.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
+            square = paddle.square(merge_grad)
+            sum_square = paddle.sum(square)
 
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
                 hasattr(p, 'is_firstly_shared')
@@ -89,8 +89,8 @@ class HybridParallelClipGrad:
                 [0.0], dtype=paddle.float32
             )
         else:
-            global_norm_dist_fp16 = layers.concat(sum_square_dist_fp16)
-            global_norm_dist_fp16 = layers.reduce_sum(global_norm_dist_fp16)
+            global_norm_dist_fp16 = paddle.concat(sum_square_dist_fp16)
+            global_norm_dist_fp16 = paddle.sum(global_norm_dist_fp16)
             global_norm_dist_fp16 = paddle.cast(
                 global_norm_dist_fp16, dtype=paddle.float32
             )
@@ -101,29 +101,27 @@ class HybridParallelClipGrad:
                 [0.0], dtype=paddle.float32
             )
         else:
-            global_norm_not_dist_fp16 = layers.concat(sum_square_not_dist_fp16)
-            global_norm_not_dist_fp16 = layers.reduce_sum(
-                global_norm_not_dist_fp16
-            )
+            global_norm_not_dist_fp16 = paddle.concat(sum_square_not_dist_fp16)
+            global_norm_not_dist_fp16 = paddle.sum(global_norm_not_dist_fp16)
             global_norm_not_dist_fp16 = paddle.cast(
                 global_norm_not_dist_fp16, dtype=paddle.float32
             )
 
         # global norm of distributed FP32 params_and_grads
         global_norm_dist_fp32 = (
-            layers.concat(sum_square_dist_fp32)
+            paddle.concat(sum_square_dist_fp32)
             if len(sum_square_dist_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_norm_dist_fp32 = layers.reduce_sum(global_norm_dist_fp32)
+        global_norm_dist_fp32 = paddle.sum(global_norm_dist_fp32)
 
         # global norm of non-distributed FP32 params_and_grads
         global_norm_not_dist_fp32 = (
-            layers.concat(sum_square_not_dist_fp32)
+            paddle.concat(sum_square_not_dist_fp32)
             if len(sum_square_not_dist_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_norm_not_dist_fp32 = layers.reduce_sum(global_norm_not_dist_fp32)
+        global_norm_not_dist_fp32 = paddle.sum(global_norm_not_dist_fp32)
 
         global_norm_var_dist = global_norm_dist_fp16 + global_norm_dist_fp32
         global_norm_var_not_dist = (
@@ -151,14 +149,16 @@ class HybridParallelClipGrad:
                 group=self._hcg.get_sharding_parallel_group(),
             )
 
-        global_norm_var_fp32 = layers.sqrt(
+        global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
         )
 
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var_fp32.dtype, value=self.clip_norm
+        max_global_norm = paddle.full(
+            shape=[1],
+            dtype=global_norm_var_fp32.dtype,
+            fill_value=self.clip_norm,
         )
-        clip_var = layers.elementwise_div(
+        clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm),
         )
@@ -229,7 +229,7 @@ class HybridParallelOptimizer:
                                 self._inner_opt._grad_clip, hcg
                             )
 
-    @imperative_base.no_grad
+    @no_grad()
     @framework.dygraph_only
     def step(self):
         parameters_list = _obtain_optimizer_parameters_list(self._inner_opt)
@@ -241,7 +241,7 @@ class HybridParallelOptimizer:
 
         self._inner_opt.step()
 
-    @imperative_base.no_grad
+    @no_grad()
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):

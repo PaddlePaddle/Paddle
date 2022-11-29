@@ -15,16 +15,16 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
-from paddle.fluid.framework import _test_eager_guard
-
-from paddle.distributed.fleet.utils.internal_storage import GradStorage
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import (
     ShardingOptimizerStage2,
 )
+from paddle.distributed.fleet.utils.internal_storage import GradStorage
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
 
 base_lr = 0.1
 momentum_rate = 0.9

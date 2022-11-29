@@ -68,16 +68,6 @@ class ParallelEnvArgs:
         self.selected_devices = None
 
 
-def _py_supported_check():
-    if not sys.version_info >= (3, 4):
-        raise RuntimeError(
-            "Use `paddle.distributed.spawn` to start parallel training "
-            "requires python version greater than 3.4, if your python "
-            "is lower than this version, please use "
-            "`paddle.distributed.launch` instead."
-        )
-
-
 def _options_valid_check(options):
     # `print_config` keeped as a debug options, not show to users
     supported_options = [
@@ -414,7 +404,6 @@ def _func_wrapper(func, args, error_queue, return_queue, env_dict, backend):
 
 class MultiprocessContext:
     def __init__(self, processes, error_queues, return_queues):
-        _py_supported_check()
         self.error_queues = error_queues
         # NOTE(chenweihang): The `spawn` method is mainly used
         # to wrap the outermost execution function of the program for
@@ -531,7 +520,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -598,13 +587,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             if __name__ == '__main__':
                 dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
     """
-    # NOTE(chenweihang): [ why only supports python3.4+ ? ]
-    # Python supported setting the child process startup method
-    # since 3.4. The previous version can only use the default startup
-    # method, while the default startup method of Unix is fork, which
-    # cannot support CUDA runtime multi-process
-    _py_supported_check()
-
     # Give an error hint when the users enter a configuration option
     # that does not exist
     _options_valid_check(options)

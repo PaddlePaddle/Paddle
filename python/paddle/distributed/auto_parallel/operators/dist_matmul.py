@@ -316,10 +316,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         kwargs['Y@GRAD']
     )
 
-    X_var = main_block.var(kwargs['X'][0])
+    X_var = main_block._var_recursive(kwargs['X'][0])
     Y_var = main_block._var_recursive(kwargs['Y'][0])
-    Out_grad = main_block.var(kwargs['Out@GRAD'][0])
-    Y_grad = main_block.var(kwargs['Y@GRAD'][0])
+    Out_grad = main_block._var_recursive(kwargs['Out@GRAD'][0])
+    Y_grad = main_block._var_recursive(kwargs['Y@GRAD'][0])
 
     assert not is_parameter_related(
         X_var.name, main_block
@@ -433,7 +433,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             has_x_grad = len(kwargs['X@GRAD']) > 0
             if has_x_grad:
                 assert len(kwargs['X@GRAD']) == 1
-                X_grad = main_block.var(kwargs['X@GRAD'][0])
+                X_grad = main_block._var_recursive(kwargs['X@GRAD'][0])
                 intermediate_var_0 = main_block.create_var(
                     name=unique_name.generate_with_ignorable_key(
                         ".".join(["c_identity", 'tmp'])
@@ -572,7 +572,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
         Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Y")[0]
         )
@@ -647,7 +646,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
         # calc comm op cost
         serial_op = dist_op.serial_op
-        vars = serial_op.block.vars
         parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
             serial_op.input("Y")[0]
         )[-1]
@@ -762,9 +760,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Weight_var = main_block.var(kwargs['Y'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Weight_var = main_block._var_recursive(kwargs['Y'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
         trans_x = src_op.attr("transpose_X")
         trans_y = src_op.attr("transpose_Y")
 
@@ -906,7 +904,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                     input_varname, input_dist_attr
                 )
             else:
-                input_var = main_block.var(input_varname)
+                input_var = main_block._var_recursive(input_varname)
                 tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
                     input_var
                 )
@@ -958,7 +956,6 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
         Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Y")[0]
         )
@@ -1023,8 +1020,6 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 
         # calc comm op cost
         serial_op = dist_op.serial_op
-        vars = serial_op.block.vars
-
         parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
             serial_op.input("Y")[0]
         )[-2]
@@ -1147,9 +1142,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Weight_var = main_block.var(kwargs['Y'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Weight_var = main_block._var_recursive(kwargs['Y'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
         trans_x = src_op.attr('transpose_X')
         trans_y = src_op.attr('transpose_Y')
 
@@ -1268,7 +1263,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block.var(input_varname)
+            input_var = main_block._var_recursive(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(
@@ -1316,7 +1311,6 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
 
         # calc comp op cost
         desc_mapping = build_comp_desc_from_dist_op(
@@ -1469,7 +1463,6 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
         Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Y")[0]
         )
@@ -1549,8 +1542,6 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 
         # calc comm op cost
         serial_op = dist_op.serial_op
-        vars = serial_op.block.vars
-
         parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
             serial_op.input("Y")[0]
         )[-1]
@@ -1665,9 +1656,9 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
         trans_x = src_op.attr('trans_x')
         trans_y = src_op.attr('trans_y')
 
@@ -1808,7 +1799,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                     input_varname, input_dist_attr
                 )
             else:
-                input_var = main_block.var(input_varname)
+                input_var = main_block._var_recursive(input_varname)
                 tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
                     input_var
                 )
@@ -1858,7 +1849,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
+
         Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Y")[0]
         )
@@ -1924,8 +1915,6 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 
         # calc comm op cost
         serial_op = dist_op.serial_op
-        vars = serial_op.block.vars
-
         parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
             serial_op.input("Y")[0]
         )[-2]
@@ -2047,9 +2036,9 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
         trans_x = src_op.attr('trans_x')
         trans_y = src_op.attr('trans_y')
 
@@ -2167,7 +2156,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block.var(input_varname)
+            input_var = main_block._var_recursive(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(
@@ -2215,7 +2204,6 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
         process_mesh = dist_attr.process_mesh
 
         # calc comp op cost
@@ -2370,7 +2358,6 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
         Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Y")[0]
         )
@@ -2445,7 +2432,6 @@ class DistributedMulImpl0(DistributedOperatorImpl):
 
         # calc comm op cost
         serial_op = dist_op.serial_op
-        vars = serial_op.block.vars
         parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
             serial_op.input("Y")[0]
         )[-1]
@@ -2555,9 +2541,9 @@ class DistributedMulImpl0(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
         matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -2712,7 +2698,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
                     input_varname, input_dist_attr
                 )
             else:
-                input_var = main_block.var(input_varname)
+                input_var = main_block._var_recursive(input_varname)
                 tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
                     input_var
                 )
@@ -2763,7 +2749,6 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         main_block = backward_op.block
-        vars = main_block.vars
         Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Y")[0]
         )
@@ -2827,8 +2812,6 @@ class DistributedMulImpl1(DistributedOperatorImpl):
 
         # calc comm op cost
         serial_op = dist_op.serial_op
-        vars = serial_op.block.vars
-
         parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
             serial_op.input("Y")[0]
         )[-2]
@@ -2947,9 +2930,9 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
         Weight_var = main_block._var_recursive(kwargs['Y'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
         matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -3082,7 +3065,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block.var(input_varname)
+            input_var = main_block._var_recursive(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(
@@ -3130,7 +3113,6 @@ class DistributedMulImpl2(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
         main_block = backward_op.block
-        vars = main_block.vars
 
         # calc comp op cost
         desc_mapping = build_comp_desc_from_dist_op(

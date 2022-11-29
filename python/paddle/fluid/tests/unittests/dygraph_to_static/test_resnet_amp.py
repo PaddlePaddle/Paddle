@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from test_resnet import ResNet, optimizer_setting, SEED
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.

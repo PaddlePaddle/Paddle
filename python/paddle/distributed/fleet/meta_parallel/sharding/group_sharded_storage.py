@@ -26,7 +26,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from .group_sharded_utils import Type, device_guard
+from .group_sharded_utils import Type, device_guard, cvt_to_device
 
 
 class InternalStorage:
@@ -76,8 +76,8 @@ class InternalStorage:
 
         if self._device != device:
             tmp_buffer = (
-                self.buffer.cuda(self.dev_id)
-                if device == "gpu"
+                cvt_to_device(self.buffer, self.dev_id)
+                if device in ["gpu", "xpu", "npu"]
                 else self.buffer.cpu()
             )
             for param in self._params:
@@ -133,7 +133,7 @@ class ParamStorage(InternalStorage):
 
         if convert_gpu:
             # buffer convert from cpu to cuda
-            self.buffer = self.buffer.cuda(self.dev_id)
+            self.buffer = cvt_to_device(self.buffer, self.dev_id)
 
         self._fill = 0
 

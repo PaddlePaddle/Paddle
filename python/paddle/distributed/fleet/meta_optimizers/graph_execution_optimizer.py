@@ -13,8 +13,7 @@
 
 import copy
 import paddle
-from paddle.fluid.framework import core
-from paddle.fluid import compiler
+from paddle.framework import core
 from .meta_optimizer_base import MetaOptimizerBase
 from ..base.private_helper_function import wait_server_ready
 import logging
@@ -247,7 +246,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 
-        self._compiled_program = compiler.CompiledProgram(main_program)
+        self._compiled_program = paddle.static.CompiledProgram(main_program)
 
         self._compiled_program.with_data_parallel(
             loss_name=loss.name,

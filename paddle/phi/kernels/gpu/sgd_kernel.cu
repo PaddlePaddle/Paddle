@@ -15,10 +15,10 @@
 #include "paddle/phi/kernels/sgd_kernel.h"
 
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -72,7 +72,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
   //   bool has_master =
@@ -109,7 +109,7 @@ void SGDDenseParamSparseGradKernel(
     bool multi_precision,
     DenseTensor* param_out,
     DenseTensor* master_param_out) {
-  using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
   //   bool has_master =

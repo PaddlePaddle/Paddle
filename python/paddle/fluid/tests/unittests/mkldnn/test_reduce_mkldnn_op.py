@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
     skip_check_grad_ci,
 )
-import paddle
 
 
 class TestReduceSumDefaultOneDNNOp(OpTest):

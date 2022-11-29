@@ -20,7 +20,7 @@ from paddle.jit import to_static, not_to_static
 from paddle.fluid.framework import Parameter
 from paddle.fluid.framework import program_guard
 from paddle.fluid.executor import global_scope
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     StaticFunction,
 )
 

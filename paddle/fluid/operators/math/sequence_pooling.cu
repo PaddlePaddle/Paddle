@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/math/sequence_pooling.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

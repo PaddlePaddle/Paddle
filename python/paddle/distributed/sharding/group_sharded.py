@@ -117,6 +117,12 @@ def group_sharded_parallel(
             optimizer.step()
             optimizer.clear_grad()
     """
+
+    device = paddle.get_device().split(":")[0]
+    assert device in [
+        "gpu",
+        "xpu",
+    ], "group_sharded_parallel only support gpu and xpu now"
     # check optition type
     assert isinstance(
         model, paddle.nn.Layer
@@ -148,6 +154,7 @@ def group_sharded_parallel(
                 group=group,
                 offload=offload,
                 dp_group=dp_group,
+                device=device,
             )
             model = GroupShardedStage2(
                 model,
@@ -156,6 +163,7 @@ def group_sharded_parallel(
                 sync_buffers=sync_buffers,
                 buffer_max_size=buffer_max_size,
                 dp_group=dp_group,
+                device=device,
             )
         else:
             optimizer = ShardingOptimizerStage2(
@@ -163,6 +171,7 @@ def group_sharded_parallel(
                 optim=optimizer,
                 group=group,
                 offload=offload,
+                device=device,
             )
             model = ShardingStage2(
                 model,
@@ -170,6 +179,7 @@ def group_sharded_parallel(
                 group=group,
                 sync_buffers=sync_buffers,
                 buffer_max_size=buffer_max_size,
+                device=device,
             )
     elif level == 'p_g_os':
         if in_dygraph_mode():
@@ -181,6 +191,7 @@ def group_sharded_parallel(
                 segment_size=segment_size,
                 offload=offload,
                 sync_comm=sync_comm,
+                device=device,
             )
         else:
             model = ShardingStage3(
@@ -191,6 +202,7 @@ def group_sharded_parallel(
                 segment_size=segment_size,
                 offload=offload,
                 sync_comm=sync_comm,
+                device=device,
             )
     else:
         raise ValueError("Please enter the correct level.")

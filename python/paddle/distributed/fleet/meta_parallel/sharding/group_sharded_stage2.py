@@ -418,17 +418,6 @@ class GroupShardedStage2(nn.Layer):
                         )
                     )
 
-                    if self._dp_group and self._dp_group.nranks > 1:
-                        assert (
-                            not self._reduce_overlap
-                        ), 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
-                        # TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
-                        dist.all_reduce(
-                            tensor=param.grad,
-                            group=self._dp_group,
-                            sync_op=True,
-                        )
-
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
 
@@ -484,17 +473,6 @@ class GroupShardedStage2(nn.Layer):
                                 sync_op=not self._reduce_overlap,
                             )
                         )
-
-                        if self._dp_group and self._dp_group.nranks > 1:
-                            assert (
-                                not self._reduce_overlap
-                            ), 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
-                            # TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
-                            dist.all_reduce(
-                                tensor=grad_storage.buffer,
-                                group=self._dp_group,
-                                sync_op=True,
-                            )
 
                         cleanup()
 
@@ -648,8 +626,34 @@ class GroupShardedStage2(nn.Layer):
             )
         return rank_buffer_size
 
+    def _dp_allreduce(self):
+        # do dp allreduce here for gradient merge.
+        if self._dp_group and self._dp_group.nranks > 1:
+            for dtype in self._grad_storages.keys():
+                for rank, g in sorted(
+                    self._grad_storages[dtype].items(), key=lambda x: x[0]
+                ):
+                    if g.destination == self._rank:
+                        assert g.buffer._is_initialized()
+                        dist.all_reduce(
+                            tensor=g.buffer,
+                            group=self._dp_group,
+                            sync_op=True,
+                        )
+            for param in self._trainable_params:
+                if param.name in self._param_grads and param.grad is not None:
+                    dst_rank = self._trainable_param2rank[param.name]
+                    if dst_rank == self._rank:
+                        dist.all_reduce(
+                            tensor=param.grad,
+                            group=self._dp_group,
+                            sync_op=True,
+                        )
+
     def _redefine_opt_step(self):
         grad_func = self._grad_scale
+        dp_allreduce_func = self._dp_allreduce
+
         for opt in self._sharding_optimizers:
             opt_step = opt.step
 
@@ -658,7 +662,9 @@ class GroupShardedStage2(nn.Layer):
                     # Wait for the last reduce task. This wait must before grad scale function.
                     assert self._comm_task is not None
                     self._comm_task.wait()
+
                 grad_func()
+                dp_allreduce_func()
                 opt_step()
 
             opt.step = MethodType(_opt_step, opt)

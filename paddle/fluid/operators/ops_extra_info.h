@@ -37,7 +37,7 @@ enum class ExtraAttrProperty : uint8_t {
   SCHEDULE,
   // The attributes for ONEDNN only, can be saved in OneDNNContext
   ONEDNN,
-  // The attributes for ONEDNN only, can be saved in GPUContext
+  // The attributes for GPUDNN only, can be saved in GPUContext
   GPUDNN,
   // Add necessary properties as needed
 };
@@ -88,7 +88,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
         {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
-        {"Bias", ExtraAttrProperty::ONEDNN},
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
@@ -99,6 +98,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fuse_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_relu", ExtraAttrProperty::ONEDNN},
+        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
         {"fused_reshape_Out", ExtraAttrProperty::ONEDNN},
@@ -108,7 +108,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
         {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
-        {"ResidualData", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
         {"scale_out", ExtraAttrProperty::ONEDNN},
@@ -222,7 +221,9 @@ class ExtraInfoUtils {
   // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
       g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
-                                  {"conv2d_grad", {"Bias"}}};
+                                  {"conv2d_transpose", {"Bias"}},
+                                  {"conv2d_grad", {"Bias"}},
+                                  {"matmul_v2", {"ResidualData"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

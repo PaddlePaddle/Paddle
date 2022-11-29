@@ -17,7 +17,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 
 
 def call_lambda_as_func(x):

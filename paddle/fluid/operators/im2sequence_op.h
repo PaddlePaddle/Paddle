@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -101,7 +101,8 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
                                   kernels[1]});
         offset_out += output_height[i] * output_width[i];
 
-        math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+        phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
+            f;
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
@@ -135,7 +136,8 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
                                                   kernels[0],
                                                   kernels[1]});
 
-        math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+        phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
+            f;
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
@@ -190,7 +192,8 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
           d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
       const Tensor src = d_out->Slice(i, i + 1).Resize(
           {output_height, output_width, img_channels, kernels[0], kernels[1]});
-      math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+      phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
+          f;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }

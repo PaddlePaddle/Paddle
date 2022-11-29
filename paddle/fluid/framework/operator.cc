@@ -384,10 +384,13 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           std::string dtype = is_no_need_buffer_var
                                   ? "unknown_dtype"
                                   : GetDtype(*scope, var_name);
+          std::string place = is_no_need_buffer_var
+                                  ? "unknown_place"
+                                  : GetPlace(*scope, var_name);
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
-          ss << "(" << GetPlace(*scope, var_name) << ")";
+          ss << "(" << place << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -511,7 +514,7 @@ void OperatorBase::CheckAllInputOutputSet() const {
   }
 
   for (auto& out : info_->Proto().outputs()) {
-    if (!out.dispensable() && !out.extra()) {
+    if (!out.dispensable() && !out.extra() && !out.intermediate()) {
       PADDLE_ENFORCE_NE(
           outputs_.find(out.name()),
           outputs_.end(),
@@ -1802,7 +1805,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     this->Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
-        Type(), Attrs(), infer_shape_ctx, *runtime_ctx);
+        Type(), Attrs(), infer_shape_ctx, *runtime_ctx, Id());
   }
 
   if (FLAGS_enable_unused_var_check) {
@@ -2301,8 +2304,8 @@ Scope* OperatorWithKernel::PrepareData(
         if ((tensor_in->layout() == DataLayout::ONEDNN) &&
             (var->IsType<phi::DenseTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
-            (paddle::platform::MKLDNNDeviceContext::tls()
-                 .get_cur_paddle_data_layout() == DataLayout::kNHWC) &&
+            (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+             DataLayout::kNHWC) &&
             (tensor_in->dims().size() >= 3)) {
           // Mixed execution : oneDNN and GPU is not supported!
           if (!new_scope) {
@@ -2754,8 +2757,8 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
   // then we also need to rotate shape NHWC -> NCWH
   if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN) &&
-      paddle::platform::MKLDNNDeviceContext::tls()
-              .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+      phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+          phi::DataLayout::kNHWC) {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(),
                                    phi::DataLayout::kNHWC);
@@ -3230,6 +3233,29 @@ void OperatorWithKernel::BuildPhiKernelContext(
   }
   VLOG(4) << "Done attributes";
 
+// Clear All old attrs before add new attrs,
+// because sometimes old attrs may be misused.
+#if defined(PADDLE_WITH_MKLDNN)
+  if (phi::OneDNNContext::classof(dev_ctx)) {
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    one_dnn_ctx->ClearDnnAttr();
+  }
+#endif
+
+  // Note(YuanRisheng): Now, we can't open code below.
+  // Because some unittest run OLD dygraph and ExtraAttr is not supported in OLD
+  // dygraph. So, here we use trick that dev_ctx is a global object. We can
+  // store ExtraAttr in static graph and when unittest run OLD dygraph, it can
+  // obtain these ExtraAttr. We can open this code when OLD dygraph is no longer
+  // used.
+  /*
+  #if defined(PADDLE_WITH_CUDA)
+    if(phi::GPUContext::classof(dev_ctx)) {
+      phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+      gpu_dnn_ctx->ClearDnnAttr();
+    }
+  #endif
+  */
   // For compatible with Op with extra attrs for specific backend
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();

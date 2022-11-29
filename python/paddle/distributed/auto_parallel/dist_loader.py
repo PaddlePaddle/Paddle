@@ -134,7 +134,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             raise StopIteration
 
     def _infer_steps(self):
-        if isinstance(self.steps_per_epoch, int) and self.steps_per_epoch > 1:
+        if isinstance(self.steps_per_epoch, int) and self.steps_per_epoch > 0:
             return self.steps_per_epoch
         try:
             if isinstance(self.dataset, IterableDataset):

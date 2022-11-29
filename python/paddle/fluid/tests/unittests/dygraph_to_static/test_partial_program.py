@@ -16,7 +16,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 
 from test_fetch_feed import Linear
 
@@ -186,7 +187,7 @@ class GPT2LMHeadModel(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, x):
-        x = fluid.layers.reshape(x, shape=[-1, 6])
+        x = paddle.reshape(x, shape=[-1, 6])
         x1, x2, x3 = fluid.layers.split(input=x, dim=1, num_or_sections=3)
         return x1
 

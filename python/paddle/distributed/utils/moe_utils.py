@@ -71,7 +71,6 @@ def global_scatter(
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
             init_parallel_env()
@@ -79,17 +78,14 @@ def global_scatter(
             world_size = 2
             d_model = 2
             in_feat = d_model
-            local_input_buf = np.array([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]], \
-            dtype=np.float32)
+            local_input_buf = paddle.to_tensor([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]], \
+                                            dtype='float32', stop_gradient=False)
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                local_count = np.array([2, 1, 1, 1])
-                global_count = np.array([2, 1, 1, 1])
+                local_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
+                global_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
             else:
-                local_count = np.array([1, 1, 2, 1])
-                global_count = np.array([1, 1, 2, 1])
-            local_input_buf = paddle.to_tensor(local_input_buf, dtype="float32", stop_gradient=False)
-            local_count = paddle.to_tensor(local_count, dtype="int64")
-            global_count = paddle.to_tensor(global_count, dtype="int64")
+                local_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
+                global_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
             a = paddle.distributed.utils.global_scatter(local_input_buf, \
             local_count, global_count)
             a.stop_gradient = False
@@ -193,7 +189,6 @@ def global_gather(
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
             init_parallel_env()
@@ -201,17 +196,15 @@ def global_gather(
             world_size = 2
             d_model = 2
             in_feat = d_model
-            local_input_buf = np.array([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],\
-                                        dtype=np.float32)
+            local_input_buf = paddle._to_tensor([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],\
+                                        dtype='float32', stop_gradient=False)
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                local_count = np.array([2, 1, 1, 1])
-                global_count = np.array([2, 1, 1, 1])
+                local_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
+                global_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
             else:
-                local_count = np.array([1, 1, 2, 1])
-                global_count = np.array([1, 1, 2, 1])
-            local_input_buf = paddle.to_tensor(local_input_buf, dtype="float32", stop_gradient=False)
-            local_count = paddle.to_tensor(local_count, dtype="int64")
-            global_count = paddle.to_tensor(global_count, dtype="int64")
+                local_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
+                global_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
+
             a = paddle.distributed.utils.global_gather(local_input_buf, local_count, global_count)
             print(a)
             # out for rank 0: [[1, 2], [3, 4], [7, 8], [1, 2], [7, 8]]

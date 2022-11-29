@@ -29,13 +29,13 @@ np.random.seed(10)
 
 def mean_wrapper(x, axis=None, keepdim=False, reduce_all=False):
     if reduce_all:
-        return paddle.mean(x, range(len(x.shape)), keepdim)
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
     return paddle.mean(x, axis, keepdim)
 
 
 def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
     if reduce_all:
-        return paddle.mean(x, range(len(x.shape)), keepdim)
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
     return paddle.mean(x, axis, keepdim)
 
 

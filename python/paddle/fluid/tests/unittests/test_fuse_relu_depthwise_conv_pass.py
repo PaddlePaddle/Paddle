@@ -54,7 +54,7 @@ def simple_depthwise_net(use_feed):
     assert use_feed
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = fluid.layers.reshape(img, (-1, 1, 28, 28))
+    hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
         hidden = fluid.layers.relu(hidden)

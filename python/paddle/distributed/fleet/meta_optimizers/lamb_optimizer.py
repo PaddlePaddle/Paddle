@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.optimizer import LambOptimizer as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
+from paddle.fluid.optimizer import AdamOptimizer
 import logging
 
 __all__ = []

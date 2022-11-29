@@ -18,9 +18,9 @@ from collections import Counter
 import paddle
 import paddle.fluid as fluid
 
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.dy2static import convert_to_static
 
 from test_fetch_feed import Pool2D, Linear
 

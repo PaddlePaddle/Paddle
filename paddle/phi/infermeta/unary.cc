@@ -17,11 +17,11 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -133,12 +133,9 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
           "received [%s]",
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT64),
-          paddle::framework::DataTypeToString(
-              static_cast<paddle::framework::proto::VarType::Type>(dtype))));
+          phi::DataTypeToString(DataType::INT32),
+          phi::DataTypeToString(DataType::INT64),
+          phi::DataTypeToString(phi::TransToPhiDataType(dtype))));
 
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
@@ -180,11 +177,10 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   auto x_rank = x_dims.size();
   if (int_axis < 0) int_axis += x_rank;
   if (config.is_runtime) {
-    if (dtype == paddle::framework::proto::VarType::INT32) {
+    if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
       int64_t all_element_num = 0;
       if (flatten) {
         all_element_num = phi::product(x_dims);
-
       } else {
         all_element_num = x_dims[int_axis];
       }
@@ -1882,8 +1878,8 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool use_default_tol,
                          bool hermitian,
+                         bool use_default_tol,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   PADDLE_ENFORCE_GE(dim_x.size(),
@@ -4156,10 +4152,10 @@ void UnbindInferMeta(const MetaTensor& x,
   }
 }
 
-void TrilInferMeta(const MetaTensor& x,
-                   int diagonal,
-                   bool lower,
-                   MetaTensor* out) {
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out) {
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
                     2,
@@ -4168,6 +4164,14 @@ void TrilInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void TrilInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
+  TrilTriuInferMeta(x, diagonal, true, out);
+}
+
+void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
+  TrilTriuInferMeta(x, diagonal, false, out);
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {

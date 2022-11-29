@@ -36,7 +36,7 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        y = paddle.static.nn.conv2d_transpose(
             x, 2, filter_size=1, groups=1, bias_attr=False
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -92,7 +92,7 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -145,7 +145,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -198,7 +198,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,
@@ -251,7 +251,7 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d_transpose(
+        y = paddle.static.nn.conv2d_transpose(
             input=x,
             num_filters=2,
             filter_size=1,

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.optimizer import Optimizer
-import paddle.fluid.core as core
+from paddle.optimizer import Optimizer
+import paddle.framework.core as core
 from . import ascend_parser
 from paddle.distributed import fleet
 import hccl.manage.api as hccl

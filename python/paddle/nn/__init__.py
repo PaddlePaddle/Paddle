@@ -15,9 +15,9 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 from ..fluid.dygraph.layers import Layer  # noqa: F401
-from ..fluid.dygraph.container import LayerList  # noqa: F401
-from ..fluid.dygraph.container import ParameterList  # noqa: F401
-from ..fluid.dygraph.container import Sequential  # noqa: F401
+from .layer.container import LayerList  # noqa: F401
+from .layer.container import ParameterList  # noqa: F401
+from .layer.container import Sequential  # noqa: F401
 
 from .clip import ClipGradByGlobalNorm  # noqa: F401
 from .clip import ClipGradByNorm  # noqa: F401

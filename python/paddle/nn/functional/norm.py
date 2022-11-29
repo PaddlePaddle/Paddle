@@ -385,7 +385,7 @@ def layer_norm(
             pre_act,
             _,
             _,
-        ) = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis, False)
+        ) = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
 
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
