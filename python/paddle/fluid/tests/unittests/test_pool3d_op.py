@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from op_test import OpTest
-import paddle.fluid as fluid
 
 
 def adaptive_start_index(index, input_size, output_size):
