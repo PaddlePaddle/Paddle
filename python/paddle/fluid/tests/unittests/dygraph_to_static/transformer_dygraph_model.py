@@ -756,13 +756,12 @@ class Transformer(Layer):
 
         def mask_probs(probs, finished, noend_mask_tensor):
             finished = layers.cast(finished, dtype=probs.dtype)
-            probs = layers.elementwise_mul(
+            probs = paddle.multiply(
                 paddle.expand(
                     layers.unsqueeze(finished, [2]),
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
-                axis=-1,
             ) - layers.elementwise_mul(probs, (finished - 1), axis=0)
             return probs
 
