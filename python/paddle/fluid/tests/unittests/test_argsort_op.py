@@ -437,7 +437,7 @@ class TestArgsortImperative(unittest.TestCase):
             self.place = core.CPUPlace()
 
     def test_api(self):
-        paddle.enable_static(self.place)
+        paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.argsort(var_x, axis=self.axis)
         expect = np.argsort(self.input_data, axis=self.axis)
@@ -481,7 +481,7 @@ class TestArgsortWithInputNaN(unittest.TestCase):
             self.place = core.CPUPlace()
 
     def test_api(self):
-        paddle.enable_static(self.place)
+        paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.argsort(var_x, axis=self.axis)
         self.assertEqual((out.numpy() == np.array([0, 3, 2, 1])).all(), True)
