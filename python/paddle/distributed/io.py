@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.framework import dygraph_not_support, core
+from paddle.fluid.framework import dygraph_not_support, core
 from paddle.fluid.framework import Program
 
 
