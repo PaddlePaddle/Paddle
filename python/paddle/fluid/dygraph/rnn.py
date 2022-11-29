@@ -220,8 +220,8 @@ class LSTMCell(Layer):
             hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
             hgates = elementwise_add(hgates, self._bias_hh)
 
-            chunked_igates = split(igates, num_or_sections=4, dim=1)
-            chunked_hgates = split(hgates, num_or_sections=4, dim=1)
+            chunked_igates = paddle.split(igates, num_or_sections=4, axis=1)
+            chunked_hgates = paddle.split(hgates, num_or_sections=4, axis=1)
 
             ingate = elementwise_add(chunked_igates[0], chunked_hgates[0])
             ingate = self._gate_activation(ingate)
@@ -244,7 +244,7 @@ class LSTMCell(Layer):
             gate_input = matmul(x=concat_input_hidden, y=self._weight)
 
             gate_input = elementwise_add(gate_input, self._bias)
-            i, j, f, o = split(gate_input, num_or_sections=4, dim=-1)
+            i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
             new_cell = elementwise_add(
                 elementwise_mul(
                     pre_cell,
@@ -469,8 +469,8 @@ class GRUCell(Layer):
             hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
             hgates = elementwise_add(hgates, self._bias_hh)
 
-            chunked_igates = split(igates, num_or_sections=3, dim=1)
-            chunked_hgates = split(hgates, num_or_sections=3, dim=1)
+            chunked_igates = paddle.split(igates, num_or_sections=3, axis=1)
+            chunked_hgates = paddle.split(hgates, num_or_sections=3, axis=1)
 
             reset_gate = elementwise_add(chunked_igates[0], chunked_hgates[0])
             reset_gate = self._gate_activation(reset_gate)
@@ -492,7 +492,7 @@ class GRUCell(Layer):
 
             gate_input = elementwise_add(gate_input, self._gate_bias)
             gate_input = self._gate_activation(gate_input)
-            r, u = split(gate_input, num_or_sections=2, dim=1)
+            r, u = paddle.split(gate_input, num_or_sections=2, axis=1)
 
             r_hidden = r * pre_hidden
 
