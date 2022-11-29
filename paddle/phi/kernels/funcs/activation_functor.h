@@ -1272,7 +1272,7 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
             d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
         d_ddx.device(*d) = -static_cast<T>(2) * out * dout * d_dOutNew;
       } else {
-        d_ddx.device(*d) = static_cast<T>(0) * out;
+        d_ddx.device(*d) = static_cast<T>(0) * ddx;
       }
     }
   }

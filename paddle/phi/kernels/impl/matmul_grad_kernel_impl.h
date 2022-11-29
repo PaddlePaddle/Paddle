@@ -482,16 +482,14 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                             DenseTensor* ddout) {
   paddle::optional<DenseTensor> ddx;
   paddle::optional<DenseTensor> ddy;
-  if (!ddx_opt && dy) {
-    DenseTensor ddx_tmp =
-        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
+  if (!ddx_opt && (dy || ddout)) {
+    DenseTensor ddx_tmp = phi::FullLike<T, Context>(dev_ctx, x, Scalar(0.0));
     ddx = paddle::make_optional<DenseTensor>(ddx_tmp);
   } else {
     ddx = ddx_opt;
   }
-  if (!ddy_opt && dx) {
-    DenseTensor ddy_tmp =
-        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0));
+  if (!ddy_opt && (dx || ddout)) {
+    DenseTensor ddy_tmp = phi::FullLike<T, Context>(dev_ctx, y, Scalar(0.0));
     ddy = paddle::make_optional<DenseTensor>(ddy_tmp);
   } else {
     ddy = ddy_opt;
@@ -889,43 +887,44 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             DenseTensor* out_d_ddy) {
   paddle::optional<DenseTensor> ddx;
   paddle::optional<DenseTensor> ddy;
-  paddle::optional<DenseTensor> d_ddout;
   paddle::optional<DenseTensor> d_dx;
   paddle::optional<DenseTensor> d_dy;
+  paddle::optional<DenseTensor> d_ddout;
+
   if (!ddx_opt && (out_d_y || out_d_dout)) {
     DenseTensor ddx_tmp =
-        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
+        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0.0));
     ddx = paddle::make_optional<DenseTensor>(ddx_tmp);
   } else {
     ddx = ddx_opt;
   }
   if (!ddy_opt && (out_d_x || out_d_dout)) {
     DenseTensor ddy_tmp =
-        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0));
+        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0.0));
     ddy = paddle::make_optional<DenseTensor>(ddy_tmp);
   } else {
     ddy = ddy_opt;
   }
 
-  if (!d_ddout_opt && (out_d_y || out_d_x)) {
+  if (!d_ddout_opt && (out_d_y || out_d_x || out_d_ddy || out_d_ddx)) {
     DenseTensor d_ddout_tmp =
-        phi::FullLike<T, Context>(dev_ctx, dout, static_cast<T>(0));
+        phi::FullLike<T, Context>(dev_ctx, dout, static_cast<T>(0.0));
     d_ddout = paddle::make_optional<DenseTensor>(d_ddout_tmp);
   } else {
     d_ddout = d_ddout_opt;
   }
 
-  if (!d_dx_opt && out_d_ddy) {
+  if (!d_dx_opt && (out_d_ddy || out_d_dout)) {
     DenseTensor d_dx_tmp =
-        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
+        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0.0));
     d_dx = paddle::make_optional<DenseTensor>(d_dx_tmp);
   } else {
     d_dx = d_dx_opt;
   }
 
-  if (!d_dy_opt && out_d_ddx) {
+  if (!d_dy_opt && (out_d_ddx || out_d_dout)) {
     DenseTensor d_dy_tmp =
-        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0));
+        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0.0));
     d_dy = paddle::make_optional<DenseTensor>(d_dy_tmp);
   } else {
     d_dy = d_dy_opt;

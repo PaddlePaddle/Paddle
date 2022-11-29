@@ -102,7 +102,7 @@ void GradTensorHolder::add(size_t slot_id,
   if (!t.initialized()) {
     VLOG(3) << "No need to do accumulate for uninitialized t.";
     return;
-  }
+  }  // TODO(jiabin): Remove this when we fix all kernel.
 
   PADDLE_ENFORCE(slot_id < buffer_.size(),
                  paddle::platform::errors::Fatal(
