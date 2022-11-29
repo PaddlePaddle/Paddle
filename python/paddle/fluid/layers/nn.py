@@ -7312,30 +7312,40 @@ class PyFuncRegistry:
         return self._id
 
     def __call__(self, *args):
-        if self._named_args is None:
-            func_ret = self._func()
-        else:
-            kwargs = dict()
-            idx = 0
-            for arg in self._named_args:
-                kwargs[arg] = args[idx]
-                idx += 1
-            func_ret = self._func(*args[idx:], **kwargs)
+        try:
+            if self._named_args is None:
+                func_ret = self._func()
+            else:
+                kwargs = dict()
+                idx = 0
+                for arg in self._named_args:
+                    kwargs[arg] = args[idx]
+                    idx += 1
+                func_ret = self._func(*args[idx:], **kwargs)
+        except Exception as e:
+            # exception is thrown in hook function.
+            warnings.warn(
+                "Exception is thrown in PyFuncOp, return None): {}".format(e)
+            )
+
+            return None
 
         if not isinstance(func_ret, (list, tuple)):
             func_ret = (func_ret,)
 
         ret = []
         for each_ret in func_ret:
-            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+            if each_ret is None or isinstance(each_ret, core.eager.Tensor):
                 ret.append(each_ret)
                 continue
 
             if not isinstance(each_ret, np.ndarray):
                 each_ret = np.array(each_ret)
 
-            tensor = core.LoDTensor()
-            tensor.set(each_ret, core.CPUPlace())
+            tensor = paddle.to_tensor()
+            assert isinstance(
+                tensor, core.eager.Tensor
+            ), "tensor must be eager.Tensor, but gets {}".format(type(tensor))
             ret.append(tensor)
 
         return tuple(ret)
