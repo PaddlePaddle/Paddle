@@ -108,7 +108,7 @@ def _elementwise_mul_flops(input_shapes, attrs):
 
 
 @register_flops("elementwise_div")
-def _elementwise_mul_flops(input_shapes, attrs):
+def _elementwise_div_flops(input_shapes, attrs):
     """FLOPs computation for elementwise_div op.
     For elementwise_div(input,other):
         input_shapes = [shape_of_input, shape_of_ohther]

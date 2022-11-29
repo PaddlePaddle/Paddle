@@ -17,7 +17,7 @@
 import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import _non_static_mode, core
+from paddle.framework import core
 from paddle.utils import deprecated
 
 from ...fluid.data_feeder import check_variable_and_dtype

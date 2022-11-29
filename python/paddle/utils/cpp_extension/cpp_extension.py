@@ -56,7 +56,6 @@ from .extension_utils import (
     IS_WINDOWS,
     OS_NAME,
     MSVC_COMPILE_FLAGS,
-    MSVC_COMPILE_FLAGS,
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 

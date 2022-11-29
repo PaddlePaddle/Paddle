@@ -732,7 +732,7 @@ class TestMatmulop(unittest.TestCase):
 
         paddle.enable_static()
 
-    def func_dygraph_matmul(self):
+    def test_func_dygraph_matmul(self):
         with _test_eager_guard():
             self.func_dygraph_matmul()
 

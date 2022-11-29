@@ -295,11 +295,11 @@ class TestFftn(unittest.TestCase):
         ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError),
     ],
 )
-class TestRfftnException(unittest.TestCase):
-    def test_static_rfftn(self):
+class TestFftnException(unittest.TestCase):
+    def test_static_fftn(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(
-                paddle.fft.rfftn,
+                paddle.fft.fftn,
                 self.place,
                 self.x,
                 self.n,

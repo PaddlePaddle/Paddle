@@ -542,7 +542,7 @@ class TestCUDNNLstmOp(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestCUDNNlstmAPI(unittest.TestCase):
+class TestCUDNNlstmAPI1(unittest.TestCase):
     def test_lstm(self):
         seq_len = 20
         batch_size = 5
@@ -584,7 +584,7 @@ class TestCUDNNlstmAPI(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestCUDNNlstmAPI(unittest.TestCase):
+class TestCUDNNlstmAPI2(unittest.TestCase):
     def test_lstm(self):
         seq_len = 20
         batch_size = 5
