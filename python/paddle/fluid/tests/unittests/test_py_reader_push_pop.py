@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import numpy as np
 from threading import Thread
+
+import numpy as np
+
+import paddle.fluid as fluid
 
 
 def feed_data(feed_queue, inputs):

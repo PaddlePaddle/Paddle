@@ -14,8 +14,9 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 
 SEED = 2020
 np.random.seed(SEED)
