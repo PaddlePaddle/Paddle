@@ -14,14 +14,11 @@
 
 import os
 import shutil
-import unittest
 import tempfile
+import unittest
 
 import numpy as np
-
 from test_dist_base import TestDistBase
-
-import os
 
 flag_name = os.path.splitext(__file__)[0]
 

@@ -14,16 +14,15 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
+import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-
-import unittest
 import paddle.fluid.core as core
-
-from paddle.fluid import compiler, Program, program_guard
+import paddle.fluid.layers as layers
+from paddle.fluid import Program, compiler, program_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import MomentumOptimizer
 

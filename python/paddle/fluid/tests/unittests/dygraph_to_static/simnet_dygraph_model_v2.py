@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from functools import reduce
+
 import paddle
 from paddle.static import Variable
 
@@ -186,7 +187,7 @@ class ElementwiseSubLayer:
         """
         operation
         """
-        sub = paddle.fluid.layers.elementwise_sub(x, y)
+        sub = paddle.subtract(x, y)
         return sub
 
 
