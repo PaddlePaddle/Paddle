@@ -143,7 +143,7 @@ class BaseTransform:
 
     calling logic:
 
-        ..code-block:: python
+        ..code-block:: test
 
             if keys is None:
                 _get_params -> _apply_image()
@@ -443,18 +443,18 @@ class RandomResizedCrop(BaseTransform):
         ratio (list|tuple, optional): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'. when use pil backend,
             support method are as following:
-                - "nearest": Image.NEAREST,
-                - "bilinear": Image.BILINEAR,
-                - "bicubic": Image.BICUBIC,
-                - "box": Image.BOX,
-                - "lanczos": Image.LANCZOS,
-                - "hamming": Image.HAMMING
+            - "nearest": Image.NEAREST,
+            - "bilinear": Image.BILINEAR,
+            - "bicubic": Image.BICUBIC,
+            - "box": Image.BOX,
+            - "lanczos": Image.LANCZOS,
+            - "hamming": Image.HAMMING
             when use cv2 backend, support method are as following:
-                - "nearest": cv2.INTER_NEAREST,
-                - "bilinear": cv2.INTER_LINEAR,
-                - "area": cv2.INTER_AREA,
-                - "bicubic": cv2.INTER_CUBIC,
-                - "lanczos": cv2.INTER_LANCZOS4
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
+            - "area": cv2.INTER_AREA,
+            - "bicubic": cv2.INTER_CUBIC,
+            - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
