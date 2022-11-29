@@ -31,7 +31,8 @@ PackHookImpl::~PackHookImpl() {
   Py_DECREF(hook_);
 }
 
-void* PackHookImpl::operator()(const paddle::experimental::Tensor& tensor) {
+std::shared_ptr<PyObjectHolder> PackHookImpl::operator()(
+    const paddle::experimental::Tensor& tensor) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
@@ -43,7 +44,7 @@ void* PackHookImpl::operator()(const paddle::experimental::Tensor& tensor) {
                               pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
-  return reinterpret_cast<void*>(ret);
+  return std::make_shared<PyObjectHolderImpl>(ret);
 }
 
 void* PackHookImpl::operator()(void* py_tensor) {
@@ -62,8 +63,7 @@ void* PackHookImpl::operator()(void* py_tensor) {
   return reinterpret_cast<void*>(ret);
 }
 
-UnPackHookImpl::UnPackHookImpl(paddle::pybind::PyObjectHolder hook)
-    : hook_(hook) {
+UnPackHookImpl::UnPackHookImpl(PyObject* hook) : hook_(hook) {
   Py_INCREF(hook_);
 }
 
@@ -72,13 +72,14 @@ UnPackHookImpl::~UnPackHookImpl() {
   Py_DECREF(hook_);
 }
 
-paddle::experimental::Tensor UnPackHookImpl::operator()(void* packed_value) {
+paddle::experimental::Tensor UnPackHookImpl::operator()(
+    std::shared_ptr<PyObjectHolder> packed_value) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
   auto args = PyTuple_New(1);
-  Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
-  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
+  Py_INCREF(reinterpret_cast<PyObject*>(packed_value->get()));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value - get()));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
   PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(

@@ -8,8 +8,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#pragma once
-
 #include "paddle/fluid/pybind/pyobject_holder_impl.h"
 #include <Python.h>
 
@@ -17,18 +15,6 @@ namespace paddle {
 namespace pybind {
 
 PyObjectHolderImpl::PyObjectHolderImpl(void* ptr) { ptr_ = ptr; }
-
-PyObjectHolderImpl::PyObjectHolderImpl(const PyObjectHolderImpl& other) {
-  ptr_ = other.ptr_;
-  ::pybind11::gil_scoped_acquire gil;
-  Py_XINCREF(ptr_);
-}
-
-PyObjectHolderImpl& operator=(const PyObjectHolderImpl& other) {
-  ptr_ = other.ptr_;
-  ::pybind11::gil_scoped_acquire gil;
-  Py_XINCREF(ptr_);
-}
 
 PyObjectHolderImpl::~PyObjectHolderImpl() {
   ::pybind11::gil_scoped_acquire gil;

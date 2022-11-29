@@ -48,8 +48,7 @@ class UnPackHookImpl : public UnPackHook {
   ~UnPackHookImpl();
 
   paddle::experimental::Tensor operator()(
-      const paddle::pybind::std::shared_ptr<PyObjectHolder>& packed_value)
-      override;
+      std::shared_ptr<PyObjectHolder> packed_value) override;
 
   void* operator()(void* packed_value, void* other) override;
 
