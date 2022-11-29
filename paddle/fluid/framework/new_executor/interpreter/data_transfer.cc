@@ -494,8 +494,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           if ((tensor_in->layout() == DataLayout::ONEDNN) &&
               (var->IsType<phi::DenseTensor>() == true) &&
               (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
-              (paddle::platform::MKLDNNDeviceContext::tls()
-                   .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
+              (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+               DataLayout::kNHWC)) {
             VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
                        "phi::DenseTensor , "
                        "but kNHWC layout"

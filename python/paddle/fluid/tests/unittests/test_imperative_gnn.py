@@ -96,7 +96,7 @@ class TestDygraphGNN(unittest.TestCase):
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss = fluid.layers.softmax_with_cross_entropy(logits, labels)
-            loss = fluid.layers.reduce_sum(loss)
+            loss = paddle.sum(loss)
 
             adam = AdamOptimizer(learning_rate=1e-3)
             adam.minimize(loss)
@@ -136,7 +136,7 @@ class TestDygraphGNN(unittest.TestCase):
             loss = fluid.layers.softmax_with_cross_entropy(
                 logits, to_variable(labels)
             )
-            loss = fluid.layers.reduce_sum(loss)
+            loss = paddle.sum(loss)
             loss.backward()
             adam = AdamOptimizer(
                 learning_rate=1e-3, parameter_list=model.parameters()
@@ -164,7 +164,7 @@ class TestDygraphGNN(unittest.TestCase):
             loss2 = fluid.layers.softmax_with_cross_entropy(
                 logits2, to_variable(labels2)
             )
-            loss2 = fluid.layers.reduce_sum(loss2)
+            loss2 = paddle.sum(loss2)
             loss2.backward()
             adam2 = AdamOptimizer(
                 learning_rate=1e-3, parameter_list=model2.parameters()

@@ -16,7 +16,7 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 
 SEED = 2020
 np.random.seed(SEED)

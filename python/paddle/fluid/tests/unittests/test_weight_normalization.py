@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 import collections
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.initializer import ConstantInitializer
@@ -46,7 +47,7 @@ class TestWeightNormalization(unittest.TestCase):
             bias_attr=False,
             act=None,
         )
-        loss = fluid.layers.reduce_sum(out)
+        loss = paddle.sum(out)
         fluid.backward.append_backward(loss=loss)
         cls.fetch_list = [
             'weight_norm_param_g',

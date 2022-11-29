@@ -29,14 +29,12 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers import (
     assign,
     fill_constant,
-    slice,
     reduce_all,
     reduce_any,
 )
 from paddle.fluid.layers import (
     cast,
     control_flow,
-    logical_and,
     nn,
 )
 from paddle.fluid.layers.control_flow import (
@@ -233,7 +231,7 @@ def convert_logical_and(x_func, y_func):
 def _run_paddle_logical_and(x, y):
     x = cast_bool_if_necessary(x)
     y = cast_bool_if_necessary(y)
-    return logical_and(x, y)
+    return paddle.logical_and(x, y)
 
 
 def _run_py_logical_and(x_func, y_func):
@@ -820,7 +818,7 @@ def _slice_tensor_array(array, start, end):
         return null_array
 
     def false_fn(array, start, end):
-        new_array = slice(array, starts=[start], ends=[end], axes=[0])
+        new_array = paddle.slice(array, starts=[start], ends=[end], axes=[0])
         return new_array
 
     new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))

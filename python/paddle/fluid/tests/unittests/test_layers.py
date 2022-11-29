@@ -1314,7 +1314,7 @@ class TestLayer(LayerTest):
 
             embs = layers.concat(input=embs, axis=1)
             wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
-            nce_loss = layers.nce(
+            nce_loss = paddle.static.nn.nce(
                 input=embs,
                 label=wl,
                 num_total_classes=dict_size,
@@ -1880,7 +1880,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            ret = layers.group_norm(
+            ret = paddle.static.nn.group_norm(
                 input=X,
                 groups=2,
                 param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
@@ -1953,7 +1953,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            ret = layers.instance_norm(input=X)
+            ret = paddle.static.nn.instance_norm(input=X)
             static_ret = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
             )[0]
@@ -1962,7 +1962,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             ret = instanceNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
@@ -1970,21 +1970,21 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value2 = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
@@ -1997,7 +1997,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
             def test_Variable():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret1 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_Variable)
@@ -2005,7 +2005,7 @@ class TestLayer(LayerTest):
             # the input dtype of InstanceNorm must be float32 or float64
             def test_type():
                 input = np.random.random(shape).astype('int32')
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
@@ -2482,7 +2482,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a1 = layers.data(name='a1', shape=[1], dtype='int64')
             b1 = layers.data(name='b1', shape=[1], dtype='int64')
-            cond1 = layers.less_equal(x=a1, y=b1)
+            cond1 = paddle.less_equal(x=a1, y=b1)
             static_ret1 = self.get_static_graph_result(
                 feed={"a1": value_a, "b1": value_b}, fetch_list=[cond1]
             )[0]
@@ -2490,14 +2490,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da1 = base.to_variable(value_a)
                 db1 = base.to_variable(value_b)
-                dcond1 = layers.less_equal(x=da1, y=db1)
+                dcond1 = paddle.less_equal(x=da1, y=db1)
 
                 for i in range(len(static_ret1)):
                     self.assertTrue(dcond1.numpy()[i] == static_ret1[i])
 
             da1 = base.to_variable(value_a)
             db1 = base.to_variable(value_b)
-            dcond1 = layers.less_equal(x=da1, y=db1)
+            dcond1 = paddle.less_equal(x=da1, y=db1)
 
             for i in range(len(static_ret1)):
                 self.assertTrue(dcond1.numpy()[i] == static_ret1[i])
@@ -2506,7 +2506,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a2 = layers.data(name='a2', shape=[1], dtype='int64')
             b2 = layers.data(name='b2', shape=[1], dtype='int64')
-            cond2 = layers.greater_than(x=a2, y=b2)
+            cond2 = paddle.greater_than(x=a2, y=b2)
             static_ret2 = self.get_static_graph_result(
                 feed={"a2": value_a, "b2": value_b}, fetch_list=[cond2]
             )[0]
@@ -2514,14 +2514,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da2 = base.to_variable(value_a)
                 db2 = base.to_variable(value_b)
-                dcond2 = layers.greater_than(x=da2, y=db2)
+                dcond2 = paddle.greater_than(x=da2, y=db2)
 
                 for i in range(len(static_ret2)):
                     self.assertTrue(dcond2.numpy()[i] == static_ret2[i])
 
             da2 = base.to_variable(value_a)
             db2 = base.to_variable(value_b)
-            dcond2 = layers.greater_than(x=da2, y=db2)
+            dcond2 = paddle.greater_than(x=da2, y=db2)
 
             for i in range(len(static_ret2)):
                 self.assertTrue(dcond2.numpy()[i] == static_ret2[i])
@@ -2530,7 +2530,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a3 = layers.data(name='a3', shape=[1], dtype='int64')
             b3 = layers.data(name='b3', shape=[1], dtype='int64')
-            cond3 = layers.greater_equal(x=a3, y=b3)
+            cond3 = paddle.greater_equal(x=a3, y=b3)
             static_ret3 = self.get_static_graph_result(
                 feed={"a3": value_a, "b3": value_b}, fetch_list=[cond3]
             )[0]
@@ -2538,14 +2538,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da3 = base.to_variable(value_a)
                 db3 = base.to_variable(value_b)
-                dcond3 = layers.greater_equal(x=da3, y=db3)
+                dcond3 = paddle.greater_equal(x=da3, y=db3)
 
                 for i in range(len(static_ret3)):
                     self.assertTrue(dcond3.numpy()[i] == static_ret3[i])
 
             da3 = base.to_variable(value_a)
             db3 = base.to_variable(value_b)
-            dcond3 = layers.greater_equal(x=da3, y=db3)
+            dcond3 = paddle.greater_equal(x=da3, y=db3)
 
             for i in range(len(static_ret3)):
                 self.assertTrue(dcond3.numpy()[i] == static_ret3[i])
@@ -2554,7 +2554,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a4 = layers.data(name='a4', shape=[1], dtype='int64')
             b4 = layers.data(name='b4', shape=[1], dtype='int64')
-            cond4 = layers.equal(x=a4, y=b4)
+            cond4 = paddle.equal(x=a4, y=b4)
             static_ret4 = self.get_static_graph_result(
                 feed={"a4": value_a, "b4": value_b}, fetch_list=[cond4]
             )[0]
@@ -2562,14 +2562,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da4 = base.to_variable(value_a)
                 db4 = base.to_variable(value_b)
-                dcond4 = layers.equal(x=da4, y=db4)
+                dcond4 = paddle.equal(x=da4, y=db4)
 
                 for i in range(len(static_ret4)):
                     self.assertTrue(dcond4.numpy()[i] == static_ret4[i])
 
             da4 = base.to_variable(value_a)
             db4 = base.to_variable(value_b)
-            dcond4 = layers.equal(x=da4, y=db4)
+            dcond4 = paddle.equal(x=da4, y=db4)
 
             for i in range(len(static_ret4)):
                 self.assertTrue(dcond4.numpy()[i] == static_ret4[i])
@@ -2578,7 +2578,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a5 = layers.data(name='a5', shape=[1], dtype='int64')
             b5 = layers.data(name='b5', shape=[1], dtype='int64')
-            cond5 = layers.equal(x=a5, y=b5)
+            cond5 = paddle.equal(x=a5, y=b5)
             static_ret5 = self.get_static_graph_result(
                 feed={"a5": value_a, "b5": value_b}, fetch_list=[cond5]
             )[0]
@@ -2586,14 +2586,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da5 = base.to_variable(value_a)
                 db5 = base.to_variable(value_b)
-                dcond5 = layers.equal(x=da5, y=db5)
+                dcond5 = paddle.equal(x=da5, y=db5)
 
                 for i in range(len(static_ret5)):
                     self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
 
             da5 = base.to_variable(value_a)
             db5 = base.to_variable(value_b)
-            dcond5 = layers.equal(x=da5, y=db5)
+            dcond5 = paddle.equal(x=da5, y=db5)
 
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
@@ -2692,7 +2692,7 @@ class TestLayer(LayerTest):
 
             pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
             pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+            pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -2715,7 +2715,7 @@ class TestLayer(LayerTest):
 
                 pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
                 pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-                pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+                pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
                 out_1 = layers.case(
                     pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -2732,7 +2732,7 @@ class TestLayer(LayerTest):
 
             pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
             pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+            pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -2863,15 +2863,9 @@ class TestLayer(LayerTest):
             )
             crop_offsets3 = [0, dim1, dim2, 0]
 
-            out1 = fluid.layers.crop_tensor(
-                x, shape=crop_shape1, offsets=crop_offsets1
-            )
-            out2 = fluid.layers.crop_tensor(
-                x, shape=crop_shape2, offsets=crop_offsets2
-            )
-            out3 = fluid.layers.crop_tensor(
-                x, shape=crop_shape3, offsets=crop_offsets3
-            )
+            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
 
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
@@ -2921,7 +2915,6 @@ class TestBook(LayerTest):
         self.not_compare_static_dygraph_set = set(
             {
                 "make_gaussian_random",
-                "make_gaussian_random_batch_size_like",
                 "make_kldiv_loss",
                 "make_prelu",
                 "make_sampling_id",
@@ -3185,20 +3178,6 @@ class TestBook(LayerTest):
                 x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
             )
 
-    def make_pool3d(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(
-                name='x', shape=[3, 244, 244, 244], dtype='float32'
-            )
-            return layers.pool3d(
-                x,
-                pool_size=[5, 3, 2],
-                pool_stride=[1, 2, 3],
-                pool_padding=(2, 1, 1),
-            )
-
     def make_lstm_unit(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3226,18 +3205,6 @@ class TestBook(LayerTest):
             data = self._get_data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
-
-    def make_space_to_depth(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data',
-                shape=[32, 9, 6, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            return layers.space_to_depth(data, 3)
 
     def make_get_places(self):
         with program_guard(
@@ -3274,7 +3241,7 @@ class TestBook(LayerTest):
             embs.append(emb)
 
         embs = layers.concat(input=embs, axis=1)
-        loss = layers.nce(
+        loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],
             num_total_classes=dict_size,
@@ -3580,19 +3547,6 @@ class TestBook(LayerTest):
             out = layers.sampling_id(x)
             return out
 
-    def make_gaussian_random_batch_size_like(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32'
-            )
-
-            out = layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0
-            )
-            return out
-
     def make_sum(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3616,7 +3570,7 @@ class TestBook(LayerTest):
                 name="input", shape=[3, 4, 5, 6], dtype='float32'
             )
 
-            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+            out = paddle.slice(input, axes=axes, starts=starts, ends=ends)
             return out
 
     def make_scale_variable(self):
@@ -3839,7 +3793,7 @@ class TestBook(LayerTest):
         strides = [1, 1, 1]
         with self.static_graph():
             x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            out = layers.strided_slice(
+            out = paddle.strided_slice(
                 x, axes=axes, starts=starts, ends=ends, strides=strides
             )
             return out
@@ -3853,16 +3807,6 @@ class TestBook(LayerTest):
                 input=like, shape=[2, 3300], value=1315454564656, dtype='int64'
             )
             return out
-
-    def test_psroi_pool(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[4], dtype="float32", lod_level=1
-            )
-            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
-            return output
 
     def test_sequence_expand(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -4003,81 +3947,11 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_roi_pool(self):
-        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
-        rois_np = np.random.rand(3, 4).astype('float32')
-        rois_num_np = np.array([1, 2]).astype('int32')
-
-        with self.static_graph():
-            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
-            rois = layers.data(name="rois", shape=[4], dtype="float32")
-            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
-            output = layers.roi_pool(x, rois, 4, 4, 0.5, rois_num=rois_num)
-            static_res = self.get_static_graph_result(
-                feed={'x': x_np, 'rois': rois_np, 'rois_num': rois_num_np},
-                fetch_list=[output],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                x_dy = base.to_variable(x_np)
-                rois_dy = base.to_variable(rois_np)
-                rois_num_dy = base.to_variable(rois_num_np)
-                dy_eager_res = layers.roi_pool(
-                    x_dy, rois_dy, 4, 4, 0.5, rois_num=rois_num_dy
-                )
-                dy_eager_res_value = dy_eager_res[0].numpy()
-
-            x_dy = base.to_variable(x_np)
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
-            dy_res = layers.roi_pool(
-                x_dy, rois_dy, 4, 4, 0.5, rois_num=rois_num_dy
-            )
-            dy_res_value = dy_res[0].numpy()
-        np.testing.assert_array_equal(static_res, dy_res_value)
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
-
     def test_sequence_enumerate(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
-
-    def test_roi_align(self):
-        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
-        rois_np = np.random.rand(3, 4).astype('float32')
-        rois_num_np = np.array([1, 2]).astype('int32')
-
-        with self.static_graph():
-            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
-            rois = layers.data(name="rois", shape=[4], dtype="float32")
-            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
-            output = layers.roi_align(x, rois, 4, 4, 0.5, 2, rois_num=rois_num)
-            static_res = self.get_static_graph_result(
-                feed={'x': x_np, 'rois': rois_np, 'rois_num': rois_num_np},
-                fetch_list=[output],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                x_dy = base.to_variable(x_np)
-                rois_dy = base.to_variable(rois_np)
-                rois_num_dy = base.to_variable(rois_num_np)
-                dy_eager_res = layers.roi_align(
-                    x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-                )
-                dy_eager_res_value = dy_eager_res.numpy()
-
-            x_dy = base.to_variable(x_np)
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
-            dy_res = layers.roi_align(
-                x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-            )
-            dy_res_value = dy_res.numpy()
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
-        np.testing.assert_array_equal(static_res, dy_res_value)
 
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -4110,7 +3984,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support layers with param now
         with self.static_graph():
             x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
-            out = layers.squeeze(input=x, axes=[2])
+            out = paddle.squeeze(x, axis=[2])
             return out
 
     def test_flatten(self):
@@ -4122,7 +3996,7 @@ class TestBook(LayerTest):
                 shape=[4, 4, 3],
                 dtype="float32",
             )
-            out = layers.flatten(x, axis=1, name="flatten")
+            out = paddle.flatten(x, 1, -1, name="flatten")
             return out
 
     def test_linspace(self):
@@ -4336,21 +4210,24 @@ class TestBook(LayerTest):
     def test_warpctc_with_padding(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            input_length = layers.data(
+            input_length = paddle.static.data(
                 name='logits_length', shape=[11], dtype='int64'
             )
-            label_length = layers.data(
+            label_length = paddle.static.data(
                 name='labels_length', shape=[12], dtype='int64'
             )
-            label = layers.data(name='label', shape=[12, 1], dtype='int32')
-            predict = layers.data(
+            label = paddle.static.data(
+                name='label', shape=[12, 1], dtype='int32'
+            )
+            predict = paddle.static.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = layers.warpctc(
-                input=predict,
-                label=label,
-                input_length=input_length,
-                label_length=label_length,
+            output = paddle.nn.functional.ctc_loss(
+                log_probs=predict,
+                labels=label,
+                input_lengths=input_length,
+                label_lengths=label_length,
+                reduction='none',
             )
             return output
 

@@ -254,9 +254,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
-            loss = fluid.layers.reduce_sum(
-                paddle.nn.functional(prediction, labels)
-            )
+            loss = paddle.sum(fluid.layers.log_loss(prediction, labels))
             adam = fluid.optimizer.AdamOptimizer(0.01)
             adam.minimize(loss)
 
@@ -309,8 +307,8 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(users_np[slice : slice + self.batch_size]),
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
-                    loss = fluid.layers.reduce_sum(
-                        paddle.nn.functional(
+                    loss = paddle.sum(
+                        fluid.layers.log_loss(
                             prediction,
                             to_variable(
                                 labels_np[slice : slice + self.batch_size]
@@ -343,8 +341,8 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(users_np[slice : slice + self.batch_size]),
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
-                    loss2 = fluid.layers.reduce_sum(
-                        paddle.nn.functional(
+                    loss2 = paddle.sum(
+                        fluid.layers.log_loss(
                             prediction2,
                             to_variable(
                                 labels_np[slice : slice + self.batch_size]
@@ -386,8 +384,8 @@ class TestDygraphDeepCF(unittest.TestCase):
                                 items_np[slice : slice + self.batch_size]
                             ),
                         )
-                        loss = fluid.layers.reduce_sum(
-                            paddle.nn.functional(
+                        loss = paddle.sum(
+                            fluid.layers.log_loss(
                                 prediction,
                                 to_variable(
                                     labels_np[slice : slice + self.batch_size]

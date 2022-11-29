@@ -13,23 +13,23 @@
 # limitations under the License.
 
 import numpy as np
-from ..framework import LayerHelper
-from ..framework import _non_static_mode, in_dygraph_mode
-from ..fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-)
-from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph
-from .manipulation import cast
-from .math import multiply, add
-from .logic import logical_not
-from .creation import full
 
 import paddle
-from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import VarDesc
+
+from ..fluid.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+)
+from ..fluid.framework import _in_legacy_dygraph
+from ..framework import LayerHelper, _non_static_mode, in_dygraph_mode
+from ..static import Variable
+from .creation import full
+from .logic import logical_not
+from .manipulation import cast
+from .math import add, multiply
 
 __all__ = []
 

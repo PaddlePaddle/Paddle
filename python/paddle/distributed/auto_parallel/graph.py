@@ -123,6 +123,8 @@ class Graph:
         else:
             self._nodes[node_id].attrs.update(attrs)
 
+        return self._nodes[node_id]
+
     def add_edge(self, src_id, tgt_id, **attrs):
         # add nodes
         if src_id is None:
@@ -140,6 +142,7 @@ class Graph:
         # add the edge
         edge = Edge(src_id, tgt_id, **attrs)
         self._adjs[src_id][tgt_id] = edge
+        return edge
 
     def __len__(self):
         return len(self._nodes)

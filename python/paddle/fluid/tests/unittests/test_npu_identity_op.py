@@ -41,15 +41,15 @@ class TestNPUIdentityOp(unittest.TestCase):
             main_program, feed={x_data.name: self.x}, fetch_list=[output]
         )
 
-        np.testing.assert_allclose(result[0].shape, self.shape, rtol=1e-08)
+        np.testing.assert_allclose(result[0], self.x, rtol=1e-08)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
 
-        x_tensor = paddle.to_tensor(self.x)
-        out = paddle.incubate._npu_identity(x_tensor, self.format)
+        x = paddle.to_tensor(self.x)
+        out = paddle.incubate._npu_identity(x, self.format)
 
-        np.testing.assert_allclose(out.shape, self.shape, rtol=1e-08)
+        np.testing.assert_allclose(out.numpy(), self.x, rtol=1e-08)
         paddle.enable_static()
 
 

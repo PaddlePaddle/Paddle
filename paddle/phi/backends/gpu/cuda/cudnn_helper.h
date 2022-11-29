@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,16 +17,20 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/macros.h"
 
 DECLARE_bool(cudnn_deterministic);
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace backends {
+namespace gpu {
 
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
@@ -68,7 +72,7 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
       return CUDNN_POOLING_MAX;
     default:
       PADDLE_THROW(
-          platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
+          phi::errors::Unimplemented("Unexpected CUDNN pooling mode."));
   }
 }
 
@@ -88,7 +92,7 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
   } else if (str == "bandpass") {
     return ActivationMode::kBandPass;
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unknown CUDNN activation string: %s.", str));
   }
 }
@@ -99,7 +103,7 @@ class CudnnDataType;
 // CUDNN_DATA_BFLOAT16 is not valid before cudnn8.1
 #if CUDNN_VERSION_MIN(8, 1, 0)
 template <>
-class CudnnDataType<bfloat16> {
+class CudnnDataType<phi::dtype::bfloat16> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_BFLOAT16;
   using ScalingParamType = const float;
@@ -116,7 +120,7 @@ class CudnnDataType<bfloat16> {
 #endif
 
 template <>
-class CudnnDataType<float16> {
+class CudnnDataType<phi::dtype::float16> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_HALF;
   // The scaling param type is float for HALF and FLOAT tensors
@@ -176,7 +180,7 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
     case DataLayout::kNDHWC:
       return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "CUDNN has no equivalent dataLayout for input order."));
   }
   return CUDNN_TENSOR_NCHW;
@@ -185,10 +189,12 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateTensorDescriptor(&desc_));
   }
   ~ScopedTensorDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyTensorDescriptor(desc_));
   }
 
   inline cudnnTensorDescriptor_t descriptor(const cudnnTensorFormat_t format,
@@ -211,25 +217,25 @@ class ScopedTensorDescriptor {
     if (dims.size() == 4) {
       if (format == CUDNN_TENSOR_NCHW) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cudnnSetTensorNdDescriptor(desc_,
-                                                type,
-                                                dims_with_group.size(),
-                                                dims_with_group.data(),
-                                                strides.data()));
+            phi::dynload::cudnnSetTensorNdDescriptor(desc_,
+                                                     type,
+                                                     dims_with_group.size(),
+                                                     dims_with_group.data(),
+                                                     strides.data()));
       } else {  // CUDNN_TENSOR_NHWC
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensor4dDescriptor(
             desc_, format, type, dims[0], dims[3], dims[1], dims[2]));
       }
     } else if (dims.size() == 5) {
       if (format == CUDNN_TENSOR_NCHW) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cudnnSetTensorNdDescriptor(desc_,
-                                                type,
-                                                dims_with_group.size(),
-                                                dims_with_group.data(),
-                                                strides.data()));
+            phi::dynload::cudnnSetTensorNdDescriptor(desc_,
+                                                     type,
+                                                     dims_with_group.size(),
+                                                     dims_with_group.data(),
+                                                     strides.data()));
       } else {  // CUDNN_TENSOR_NHWC
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptorEx(
             desc_, format, type, dims.size(), dims.data()));
       }
     }
@@ -247,7 +253,7 @@ class ScopedTensorDescriptor {
   inline cudnnTensorDescriptor_t descriptor(const cudnnDataType_t cudnn_type,
                                             const std::vector<int>& dim,
                                             const std::vector<int>& stride) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
         desc_, cudnn_type, dim.size(), dim.data(), stride.data()));
     return desc_;
   }
@@ -269,11 +275,13 @@ class ScopedTensorDescriptor {
 class ScopedRNNTensorDescriptor {
  public:
   ScopedRNNTensorDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateRNNDataDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateRNNDataDescriptor(&desc_));
   }
 
   ~ScopedRNNTensorDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyRNNDataDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyRNNDataDescriptor(desc_));
   }
 
   inline cudnnRNNDataDescriptor_t descriptor(
@@ -292,15 +300,15 @@ class ScopedRNNTensorDescriptor {
       layout = CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED;
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnSetRNNDataDescriptor(desc_,
-                                           cudnn_type,
-                                           layout,
-                                           max_seq_length,
-                                           batch_size,
-                                           input_size,
-                                           seq_length.data(),
-                                           static_cast<void*>(&padding_fill)));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDataDescriptor(
+        desc_,
+        cudnn_type,
+        layout,
+        max_seq_length,
+        batch_size,
+        input_size,
+        seq_length.data(),
+        static_cast<void*>(&padding_fill)));
 
     return desc_;
   }
@@ -331,14 +339,16 @@ class ScopedRNNTensorDescriptor {
 class ScopedDropoutDescriptor {
  public:
   ScopedDropoutDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateDropoutDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateDropoutDescriptor(&desc_));
   }
   ~ScopedDropoutDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyDropoutDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyDropoutDescriptor(desc_));
   }
 
   inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
-                                             const platform::Place& place,
+                                             const phi::Place& place,
                                              bool initialized,
                                              float dropout_prob_,
                                              phi::DenseTensor* dropout_state_,
@@ -346,22 +356,22 @@ class ScopedDropoutDescriptor {
                                              size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
       PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cudnnSetDropoutDescriptor(desc_,
-                                             handle,
-                                             0 /* dropout */,
-                                             nullptr,
-                                             0 /* state_size */,
-                                             0 /* seed */));
+          phi::dynload::cudnnSetDropoutDescriptor(desc_,
+                                                  handle,
+                                                  0 /* dropout */,
+                                                  nullptr,
+                                                  0 /* state_size */,
+                                                  0 /* seed */));
       return desc_;
     }
     auto* dropout_state_data = dropout_state_->data<uint8_t>();
     if (!initialized) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetDropoutDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, seed));
     } else {
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnRestoreDropoutDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRestoreDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, 0));
     }
     return desc_;
@@ -376,10 +386,10 @@ class ScopedDropoutDescriptor {
 class ScopedRNNDescriptor {
  public:
   ScopedRNNDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateRNNDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnCreateRNNDescriptor(&desc_));
   }
   ~ScopedRNNDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyRNNDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroyRNNDescriptor(desc_));
   }
 
   inline cudnnRNNDescriptor_t desc() { return desc_; }
@@ -392,10 +402,12 @@ class ScopedRNNDescriptor {
 class ScopedFilterDescriptor {
  public:
   ScopedFilterDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateFilterDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateFilterDescriptor(&desc_));
   }
   ~ScopedFilterDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyFilterDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyFilterDescriptor(desc_));
   }
 
   inline cudnnFilterDescriptor_t descriptor(const cudnnTensorFormat_t format,
@@ -412,11 +424,11 @@ class ScopedFilterDescriptor {
       // NOTE: input filter(C) of the filter is already asserted to be C/groups.
     }
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnSetFilterNdDescriptor(desc_,
-                                            type,
-                                            format,
-                                            kernel_with_group.size(),
-                                            kernel_with_group.data()));
+        phi::dynload::cudnnSetFilterNdDescriptor(desc_,
+                                                 type,
+                                                 format,
+                                                 kernel_with_group.size(),
+                                                 kernel_with_group.data()));
     return desc_;
   }
 
@@ -439,11 +451,11 @@ class ScopedConvolutionDescriptor {
  public:
   ScopedConvolutionDescriptor() {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnCreateConvolutionDescriptor(&desc_));
+        phi::dynload::cudnnCreateConvolutionDescriptor(&desc_));
   }
   ~ScopedConvolutionDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnDestroyConvolutionDescriptor(desc_));
+        phi::dynload::cudnnDestroyConvolutionDescriptor(desc_));
   }
 
   inline cudnnConvolutionDescriptor_t descriptor(
@@ -453,7 +465,7 @@ class ScopedConvolutionDescriptor {
       const std::vector<int>& dilations) {
     PADDLE_ENFORCE_EQ(pads.size(),
                       strides.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of pads and strides should be equal. But "
                           "received size of pads is %d, size of strides is %d.",
                           pads.size(),
@@ -461,7 +473,7 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_EQ(
         pads.size(),
         dilations.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
             pads.size(),
@@ -470,13 +482,13 @@ class ScopedConvolutionDescriptor {
     cudnnDataType_t compute_type =
         (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnSetConvolutionNdDescriptor(desc_,
-                                                 pads.size(),
-                                                 pads.data(),
-                                                 strides.data(),
-                                                 dilations.data(),
-                                                 CUDNN_CROSS_CORRELATION,
-                                                 compute_type));
+        phi::dynload::cudnnSetConvolutionNdDescriptor(desc_,
+                                                      pads.size(),
+                                                      pads.data(),
+                                                      strides.data(),
+                                                      dilations.data(),
+                                                      CUDNN_CROSS_CORRELATION,
+                                                      compute_type));
     return desc_;
   }
 
@@ -496,10 +508,12 @@ class ScopedConvolutionDescriptor {
 class ScopedPoolingDescriptor {
  public:
   ScopedPoolingDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreatePoolingDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreatePoolingDescriptor(&desc_));
   }
   ~ScopedPoolingDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyPoolingDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyPoolingDescriptor(desc_));
   }
 
   inline cudnnPoolingDescriptor_t descriptor(const PoolingMode& mode,
@@ -508,7 +522,7 @@ class ScopedPoolingDescriptor {
                                              const std::vector<int>& strides) {
     PADDLE_ENFORCE_EQ(kernel.size(),
                       pads.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of kernel and pads should be equal. But "
                           "received size of kernel is %d, size of pads is %d.",
                           kernel.size(),
@@ -516,12 +530,12 @@ class ScopedPoolingDescriptor {
     PADDLE_ENFORCE_EQ(
         kernel.size(),
         strides.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of kernel and strides should be equal. But "
             "received size of kernel is %d, size of strides is %d.",
             kernel.size(),
             strides.size()));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetPoolingNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetPoolingNdDescriptor(
         desc_,
         (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
@@ -541,18 +555,23 @@ class ScopedSpatialTransformerDescriptor {
  public:
   ScopedSpatialTransformerDescriptor() {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
+        phi::dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
   }
   ~ScopedSpatialTransformerDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
+        phi::dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
   }
 
   template <typename T>
   inline cudnnSpatialTransformerDescriptor_t descriptor(const int nbDims,
                                                         const int dimA[]) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetSpatialTransformerNdDescriptor(
-        desc_, CUDNN_SAMPLER_BILINEAR, CudnnDataType<T>::type, nbDims, dimA));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetSpatialTransformerNdDescriptor(
+            desc_,
+            CUDNN_SAMPLER_BILINEAR,
+            CudnnDataType<T>::type,
+            nbDims,
+            dimA));
     return desc_;
   }
 
@@ -565,11 +584,11 @@ class ScopedActivationDescriptor {
  public:
   ScopedActivationDescriptor() {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnCreateActivationDescriptor(&desc_));
+        phi::dynload::cudnnCreateActivationDescriptor(&desc_));
   }
   ~ScopedActivationDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnDestroyActivationDescriptor(desc_));
+        phi::dynload::cudnnDestroyActivationDescriptor(desc_));
   }
 
   template <typename T>
@@ -602,11 +621,11 @@ class ScopedActivationDescriptor {
         mode = CUDNN_ACTIVATION_TANH;
         break;
       default:
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unrecognized CUDNN activation mode: %d.",
             static_cast<int>(activation_mode)));
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetActivationDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetActivationDescriptor(
         desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
     return desc_;
   }
@@ -620,16 +639,18 @@ class ScopedActivationDescriptor {
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateCTCLossDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateCTCLossDescriptor(&desc_));
   }
   ~ScopedCTCLossDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyCTCLossDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyCTCLossDescriptor(desc_));
   }
 
   template <typename T>
   inline cudnnCTCLossDescriptor_t descriptor() {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cudnnSetCTCLossDescriptor(desc_, CudnnDataType<T>::type));
+        phi::dynload::cudnnSetCTCLossDescriptor(desc_, CudnnDataType<T>::type));
     return desc_;
   }
 
@@ -639,5 +660,6 @@ class ScopedCTCLossDescriptor {
 };
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi

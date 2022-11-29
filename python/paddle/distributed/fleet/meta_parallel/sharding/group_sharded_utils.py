@@ -69,7 +69,7 @@ class GroupShardedClipGrad:
                     layers.merge_selected_rows(g)
                 )
             square = paddle.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
+            sum_square = paddle.sum(square)
 
             if p.dtype == paddle.float16:
                 if p_slice:
@@ -87,7 +87,7 @@ class GroupShardedClipGrad:
             global_norm_fp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
         else:
             global_norm_fp16 = layers.concat(sum_square_fp16)
-            global_norm_fp16 = layers.reduce_sum(global_norm_fp16)
+            global_norm_fp16 = paddle.sum(global_norm_fp16)
             global_norm_fp16 = paddle.cast(
                 global_norm_fp16, dtype=paddle.float32
             )
@@ -97,7 +97,7 @@ class GroupShardedClipGrad:
             global_unslice_fp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
         else:
             global_unslice_fp16 = layers.concat(unslice_params_fp16)
-            global_unslice_fp16 = layers.reduce_sum(global_unslice_fp16)
+            global_unslice_fp16 = paddle.sum(global_unslice_fp16)
             global_unslice_fp16 = paddle.cast(
                 global_unslice_fp16, dtype=paddle.float32
             )
@@ -108,7 +108,7 @@ class GroupShardedClipGrad:
             if len(sum_square_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_norm_fp32 = layers.reduce_sum(global_norm_fp32)
+        global_norm_fp32 = paddle.sum(global_norm_fp32)
 
         # global norm of non-distributed FP32 params_and_grads for unslice parameters
         global_unslice_fp32 = (
@@ -116,7 +116,7 @@ class GroupShardedClipGrad:
             if len(unslice_params_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_unslice_fp32 = layers.reduce_sum(global_unslice_fp32)
+        global_unslice_fp32 = paddle.sum(global_unslice_fp32)
         global_unslice_var = global_unslice_fp16 + global_unslice_fp32
 
         global_norm_var = (

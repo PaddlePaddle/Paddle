@@ -269,7 +269,7 @@ class TestMNISTWithToStatic(TestMNIST):
             model_save_prefix = os.path.join(model_save_dir, 'mnist')
             model_filename = "mnist" + INFER_MODEL_SUFFIX
             params_filename = "mnist" + INFER_PARAMS_SUFFIX
-            fluid.dygraph.jit.save(
+            paddle.jit.save(
                 layer=model,
                 path=model_save_prefix,
                 input_spec=input_spec,
@@ -325,7 +325,7 @@ class TestMNISTWithToStatic(TestMNIST):
         return np.array(results[0])
 
     def jit_load_and_run_inference_dygraph(self, model_path, inputs):
-        infer_net = fluid.dygraph.jit.load(model_path)
+        infer_net = paddle.jit.load(model_path)
         pred = infer_net(inputs[0])
         return pred.numpy()
 

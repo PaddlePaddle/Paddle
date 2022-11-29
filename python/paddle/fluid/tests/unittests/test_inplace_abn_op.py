@@ -73,9 +73,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 # may have same name, multiply 1. to generate
                 # a new Variable for fetch
                 bn = bn * 1.0
-
                 sigmoid = paddle.nn.functional.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                out = paddle.sum(sigmoid)
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
