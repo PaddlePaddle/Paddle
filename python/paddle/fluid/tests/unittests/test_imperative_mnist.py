@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.dygraph.nn import Linear, Pool2D
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Pool2D, Linear
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -103,7 +104,7 @@ class MNIST(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
         return x
 

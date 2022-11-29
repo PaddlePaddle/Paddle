@@ -13,16 +13,20 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
 import os
 import random
 import sys
 import unittest
+
+import numpy as np
+from tsm_config_utils import merge_configs, parse_config, print_configs
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
+from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
-from tsm_config_utils import merge_configs, parse_config, print_configs
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 random.seed(0)
 np.random.seed(0)
@@ -129,7 +133,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
             short = inputs
         else:
             short = self.short(inputs)
-        y = fluid.layers.elementwise_add(x=short, y=conv2, act="relu")
+        y = paddle.nn.functional.relu(paddle.add(x=short, y=conv2))
         return y
 
 
@@ -200,16 +204,16 @@ class TSM_ResNet(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, inputs):
-        y = fluid.layers.reshape(inputs, [-1] + self.reshape_list)
+        y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
         y = self.pool2d_max(y)
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
         y = fluid.layers.dropout(y, dropout_prob=0.5)
-        y = fluid.layers.reshape(y, [-1, self.seg_num, y.shape[1]])
-        y = fluid.layers.reduce_mean(y, dim=1)
-        y = fluid.layers.reshape(y, shape=[-1, 2048])
+        y = paddle.reshape(y, [-1, self.seg_num, y.shape[1]])
+        y = paddle.mean(y, axis=1)
+        y = paddle.reshape(y, shape=[-1, 2048])
         y = self.out(y)
         return y
 

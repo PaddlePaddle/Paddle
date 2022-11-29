@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle
-from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard
 
 paddle.enable_static()
 
@@ -716,7 +717,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                     slice_arr, axis=self.axis, use_stack=True
                 )
 
-            loss = fluid.layers.reduce_sum(output)
+            loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
             g_vars = list(
                 map(

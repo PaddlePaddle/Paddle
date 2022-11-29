@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
@@ -213,7 +214,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
                 ),
                 is_sparse=is_sparse,
             )
-            y = fluid.layers.reduce_sum(emb, dim=-1)
+            y = paddle.sum(emb, axis=-1)
 
             loss = fluid.layers.square_error_cost(input=y, label=y_)
             loss = paddle.mean(loss)

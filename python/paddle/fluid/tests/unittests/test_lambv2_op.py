@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid import core
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 class LAMBOptimizer(paddle.optimizer.Lamb):

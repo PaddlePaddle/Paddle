@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import sys
+import unittest
 
 sys.path.append("..")
+
+import warnings
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import warnings
 
 paddle.enable_static()
 
@@ -58,7 +59,7 @@ class TestDeviceGuard(unittest.TestCase):
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("xpu"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -84,7 +85,7 @@ class TestDeviceGuard(unittest.TestCase):
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("xpu:1"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()

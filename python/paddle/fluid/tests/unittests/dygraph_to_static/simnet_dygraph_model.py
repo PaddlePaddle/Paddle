@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
-
-from functools import reduce
-from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import Embedding, Layer, Linear
+from paddle.jit.api import declarative
 from paddle.static import Variable
 
 
@@ -171,7 +171,7 @@ class ElementwiseAddLayer:
         """
         operation
         """
-        add = fluid.layers.elementwise_add(x, y)
+        add = paddle.add(x, y)
         return add
 
 
@@ -190,7 +190,7 @@ class ElementwiseSubLayer:
         """
         operation
         """
-        sub = fluid.layers.elementwise_sub(x, y)
+        sub = paddle.subtract(x, y)
         return sub
 
 
@@ -503,15 +503,15 @@ class BOW(Layer):
         # embedding layer
         left_emb = self.emb_layer(left)
         right_emb = self.emb_layer(right)
-        left_emb = fluid.layers.reshape(
+        left_emb = paddle.reshape(
             left_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
-        right_emb = fluid.layers.reshape(
+        right_emb = paddle.reshape(
             right_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
 
-        bow_left = fluid.layers.reduce_sum(left_emb, dim=1)
-        bow_right = fluid.layers.reduce_sum(right_emb, dim=1)
+        bow_left = paddle.sum(left_emb, axis=1)
+        bow_right = paddle.sum(right_emb, axis=1)
         softsign_layer = SoftsignLayer()
         left_soft = softsign_layer.ops(bow_left)
         right_soft = softsign_layer.ops(bow_right)

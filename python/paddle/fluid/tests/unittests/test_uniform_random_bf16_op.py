@@ -13,16 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_uint16_to_float
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.test_uniform_random_op import (
     output_hist,
     output_hist_diag,
 )
+from paddle.tensor import random
 
 
 class TestUniformRandomOpBF16(OpTest):
@@ -192,7 +195,7 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
             ret_2 = fluid.layers.nn.uniform_random(
                 [2, 3, 2], min=_min, max=_max, seed=_seed
             )
-            res = fluid.layers.equal(ret, ret_2)
+            res = paddle.equal(ret, ret_2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
@@ -262,7 +265,7 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             input = fluid.data(name="input", shape=[1, 3], dtype='uint16')
-            out_1 = fluid.layers.uniform_random_batch_size_like(
+            out_1 = random.uniform_random_batch_size_like(
                 input, [2, 4], dtype=np.uint16
             )  # out_1.shape=[1, 4]
 
