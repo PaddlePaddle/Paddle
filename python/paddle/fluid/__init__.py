@@ -16,6 +16,11 @@ import os
 import sys
 import atexit
 
+# fix conda install error
+if os.path.isdir(os.path.join(sys.prefix, 'conda-meta')):
+    os.environ['LD_LIBRARY_PATH'] += ":" + os.path.join(sys.prefix, "lib")
+
+
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepadde without -U option
 core_suffix = 'so'
