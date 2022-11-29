@@ -15,7 +15,6 @@
 from ...fluid.dygraph.dygraph_to_static.convert_operators import (  # noqa: F401
     cast_bool_if_necessary,
     convert_assert,
-    convert_attr,
     convert_ifelse,
     convert_len,
     convert_logical_and,
@@ -23,12 +22,13 @@ from ...fluid.dygraph.dygraph_to_static.convert_operators import (  # noqa: F401
     convert_logical_or,
     convert_pop,
     convert_print,
-    convert_shape,
     convert_shape_compare,
     convert_var_dtype,
+    convert_shape,
     convert_while_loop,
-    indexable,
     unpack_by_structure,
+    indexable,
+    convert_attr,
 )
 
 __all__ = []
