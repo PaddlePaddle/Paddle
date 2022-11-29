@@ -584,7 +584,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
               << GetTrtEngineSerializedPath(
                      Get<std::string>("model_opt_cache_dir"), engine_key);
   }
-  return trt_engine;
+  return;
 }
 
 }  // namespace analysis
