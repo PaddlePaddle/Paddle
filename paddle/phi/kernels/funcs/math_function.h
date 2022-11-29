@@ -29,6 +29,12 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+void cutlass_nchw_nhwc(
+    const half* input, half* output, int batch, int ic, int ih, int iw);
+
+void cutlass_nhwc_nchw(
+    const half* input, half* output, int batch, int ic, int ih, int iw);
+
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation

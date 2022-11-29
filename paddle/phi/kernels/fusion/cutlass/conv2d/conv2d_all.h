@@ -52,21 +52,14 @@ typedef struct {
   int pad_w;
   int stride_h;
   int stride_w;
+  float alpha;  // for leaky_relu use
 } ConvAllParams;
-
-#define COMMON_CONV_PARAMS                                                  \
-  const half *input, const half *weight, const half *bias, half *output,    \
-      int batch, int ic, int ih, int iw, int kh, int kw, int oc, int pad_h, \
-      int pad_w, int stride_h, int stride_w
-
-#define COMMON_CONV_ARGS                                                    \
-  input, weight, bias, output, batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, \
-      stride_h, stride_w
 
 // Below functions are provided by cutlass , these are called by phi.
 void cutlass_conv2d_bias_add_relu(ConvAllParams params);
 void cutlass_conv2d_bias_relu_few_channels(ConvAllParams params);
 void cutlass_conv2d_bias_relu(ConvAllParams params);
+void cutlass_conv2d_bias_leaky_relu(ConvAllParams params);
 void cutlass_conv2d_bias_silu(ConvAllParams params);
 void cutlass_conv2d_bias(ConvAllParams params);
 

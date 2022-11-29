@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
-
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -55,11 +55,19 @@ void CastDataLayout(const Context& dev_ctx,
 template <typename Context>
 void TransferLayoutGeneral(const Context& dev_ctx,
                            const DenseTensor& x,
+                           DataLayout src_layout,
                            DataLayout dst_layout,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
-  auto axis = GetAxis(x.layout(), dst_layout);
+  // PADDLE_ENFORCE_EQ(
+  //     x.layout(),
+  //     src_layout,
+  //     phi::errors::InvalidArgument(
+  //         "Layout obtained from the src_layout attribute of transfer_layout
+  //         op" "should be equal to the layout of the input tensor"));
+
+  auto axis = GetAxis(src_layout, dst_layout);
 
   std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
@@ -70,9 +78,29 @@ void TransferLayoutGeneral(const Context& dev_ctx,
   out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 
+  if (src_layout == DataLayout::NCHW && dst_layout == DataLayout::NHWC) {
+    funcs::cutlass_nchw_nhwc(
+        reinterpret_cast<const half*>(x.data<phi::dtype::float16>()),
+        reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+        src_dim[0],
+        src_dim[1],
+        src_dim[2],
+        src_dim[3]);
+    return;
+  } else if (src_layout == DataLayout::NHWC && dst_layout == DataLayout::NCHW) {
+    funcs::cutlass_nhwc_nchw(
+        reinterpret_cast<const half*>(x.data<phi::dtype::float16>()),
+        reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+        src_dim[0],
+        src_dim[3],
+        src_dim[1],
+        src_dim[2]);
+    return;
+  }
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
+  out->set_layout(dst_layout);
 }
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -140,7 +168,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "No layout transform needed between two oneDNN OPKernels."));
   } else {
-    TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
+    TransferLayoutGeneral<Context>(dev_ctx, x, src_layout, dst_layout, out);
   }
 }
 #endif
@@ -159,7 +187,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
            << " -> " << static_cast<DataLayout>(dst_layout);
 
   VLOG_IF(10, x.initialized()) << "TransDataLayout from " << x.layout();
-  if (x.layout() == static_cast<DataLayout>(dst_layout)) {
+  if (x.layout() == static_cast<DataLayout>(dst_layout) && 0) {
     VLOG(10) << "No need to transform, already is " << x.layout();
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
@@ -172,8 +200,11 @@ void TransferLayoutKernel(const Context& dev_ctx,
                                 static_cast<DataLayout>(dst_layout),
                                 out);
 #else
-  TransferLayoutGeneral<Context>(
-      dev_ctx, x, static_cast<DataLayout>(dst_layout), out);
+  TransferLayoutGeneral<Context>(dev_ctx,
+                                 x,
+                                 static_cast<DataLayout>(src_layout),
+                                 static_cast<DataLayout>(dst_layout),
+                                 out);
 #endif
 }
 

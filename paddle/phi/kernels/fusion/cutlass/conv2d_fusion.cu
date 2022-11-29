@@ -36,6 +36,7 @@ void Conv2dFusionKernel(const Context& ctx,
                         const std::vector<int>& dilations,
                         const std::string& data_format,
                         const std::string& activation,
+                        float fuse_alpha,
                         DenseTensor* output) {
   ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
@@ -86,6 +87,9 @@ void Conv2dFusionKernel(const Context& ctx,
     cutlass_conv2d_bias_silu(params);
   } else if (activation == "identity") {
     cutlass_conv2d_bias(params);
+  } else if (activation == "leaky_relu") {
+    params.alpha = fuse_alpha;
+    cutlass_conv2d_bias_leaky_relu(params);
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));

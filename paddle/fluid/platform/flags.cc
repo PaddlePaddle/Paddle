@@ -282,7 +282,7 @@ PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
 // haha
 PADDLE_DEFINE_EXPORTED_bool(
     cudnn_exhaustive_search,
-    false,
+    true,
     "Whether enable exhaustive search for cuDNN convolution or "
     "not, default is False.");
 

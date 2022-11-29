@@ -20,7 +20,7 @@
 namespace phi {
 namespace fusion {
 
-template <typename TShape, typename WShape, int aligment = 1>
+template <typename TShape, typename WShape, int Aligment = 1>
 cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
     ConvAllParams params) {
   using ElementAccumulator = float;
@@ -41,11 +41,11 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
   constexpr int NumStages = 2;
   static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
       cutlass::conv::IteratorAlgorithm::kFewChannels;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationRelu<
-      ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
-      float,
-      ElementComputeEpilogue>;
+  using EpilogueOp =
+      cutlass::epilogue::thread::LinearCombinationRelu<ElementOutput,
+                                                       Aligment,
+                                                       float,
+                                                       ElementComputeEpilogue>;
 
   using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
       ElementInputA,
@@ -66,8 +66,8 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
       cutlass::arch::OpMultiplyAdd,
       IteratorAlgorithm,
       cutlass::conv::StrideSupport::kStrided,
-      aligment,
-      aligment>::Kernel;
+      Aligment,
+      Aligment>::Kernel;
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
 

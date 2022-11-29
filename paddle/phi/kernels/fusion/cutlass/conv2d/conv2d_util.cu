@@ -53,7 +53,8 @@ void naive_conv_cpu(const half *input,
                     int stride_h,
                     int stride_w,
                     OpType op_type,
-                    const half *residual = nullptr) {
+                    const half *residual,
+                    float alpha) {
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
   struct logical_struct input_shape = {batch, ic, ih, iw};
@@ -85,13 +86,16 @@ void naive_conv_cpu(const half *input,
             }
           }
           sum += __half2float(*(bias + oc_i));
+          float x = sum;
           if (op_type == CONV2D_BIAS) {
-            *out_ptr = sum;
+            *out_ptr = x;
           } else if (op_type == CONV2D_BIAS_RELU) {
-            *out_ptr = sum > 0 ? sum : 0.f;
+            *out_ptr = x > 0 ? x : 0.f;
           } else if (op_type == CONV2D_BIAS_ADD_RELU) {
-            sum += __half2float(*(residual + nhwc(output_shape, output_index)));
-            *out_ptr = sum > 0 ? sum : 0.f;
+            x += __half2float(*(residual + nhwc(output_shape, output_index)));
+            *out_ptr = x > 0 ? x : 0.f;
+          } else if (op_type == CONV2D_BIAS_LEAKY_RELU) {
+            *out_ptr = x > 0 ? x : (x * alpha);
           }
         }
       }
@@ -171,7 +175,8 @@ float conv2d_diff_cpu(ConvAllParams params, OpType op_type) {
                  stride_h,
                  stride_w,
                  op_type,
-                 residual);
+                 residual,
+                 params.alpha);
   float max_diff = diff(output_from_cutlass, cpu_output, output_size);
   free(cpu_output);
   free(cpu_input);
@@ -205,6 +210,7 @@ __global__ void naive_conv2d_kernel(const half *input,
                                     int oh,
                                     int ow,
                                     const half *residual,
+                                    float alpha,  // for leaky_relu
                                     OpType op_type) {
   int M = batch * oh * ow;
   int N = oc;
@@ -245,15 +251,26 @@ __global__ void naive_conv2d_kernel(const half *input,
 
   sum += __half2float(*(bias + oc_i));
   float x = sum;
-  if (op_type == CONV2D_BIAS) {
-    *out_ptr = x;
-  } else if (op_type == CONV2D_BIAS_RELU) {
-    *out_ptr = x > 0 ? x : 0;
-  } else if (op_type == CONV2D_BIAS_SILU) {
-    *out_ptr = x * (1.f / (1 + exp(-x)));
-  } else if (op_type == CONV2D_BIAS_ADD_RELU) {
-    x += __half2float(*(residual + out_offset));
-    *out_ptr = x > 0 ? x : 0;
+
+  switch (op_type) {
+    case CONV2D_BIAS:
+      *out_ptr = x;
+      break;
+    case CONV2D_BIAS_RELU:
+      *out_ptr = x > 0 ? x : 0;
+      break;
+    case CONV2D_BIAS_SILU:
+      *out_ptr = x * (1.f / (1 + exp(-x)));
+      break;
+    case CONV2D_BIAS_ADD_RELU:
+      x += __half2float(*(residual + out_offset));
+      *out_ptr = x > 0 ? x : 0;
+      break;
+    case CONV2D_BIAS_LEAKY_RELU:
+      *out_ptr = x > 0 ? x : (x * alpha);
+      break;
+    default:
+      break;
   }
 }
 
@@ -313,6 +330,7 @@ float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
                                        oh,
                                        ow,
                                        residual,
+                                       params.alpha,
                                        op_type);
   float *output_from_gpu =
       reinterpret_cast<float *>(malloc(sizeof(float) * output_size));

@@ -36,7 +36,8 @@ framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc,
     const std::string& bias,
     const std::string& activation,
-    const std::string& output) {
+    const std::string& output,
+    float alpha) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
   desc.SetType("conv2d_fusion");
@@ -46,6 +47,8 @@ framework::proto::OpDesc PrepareOpDesc(
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
   desc.SetAttr("use_cudnn", false);
+  // for leaky_relu use
+  desc.SetAttr("fuse_alpha", alpha);
   desc.Flush();
   return *desc.Proto();
 }
@@ -126,6 +129,17 @@ ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+
+  AddOpCompat(OpCompat("leaky_relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsType<float>()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
 }
 
 void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -139,19 +153,28 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
                 ->AsInput();
 
 #if CUDNN_VERSION >= 8000
-  std::unordered_set<std::string> conv_act_set(
+  std::unordered_set<std::string> cudnn_act_set(
       {"identity", "relu", "sigmoid", "tanh"});
 #else
-  std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+  std::unordered_set<std::string> cudnn_act_set({"identity", "relu"});
 #endif
 
-  std::unordered_set<std::string> cutlass_only_act_set = {"swish"};
+  std::unordered_set<std::string> cutlass_act_set;
+  std::unordered_set<std::string> all_act_set = cudnn_act_set;
   if (Get<bool>("use_cutlass")) {
-    conv_act_set.insert("swish");
+    cutlass_act_set.insert("swish");
+    cutlass_act_set.insert("relu");
+    cutlass_act_set.insert("identity");
+    cutlass_act_set.insert("leaky_relu");
+
+    all_act_set.insert("swish");
+    all_act_set.insert("relu");
+    all_act_set.insert("identity");
+    all_act_set.insert("leaky_relu");
   }
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
-  pattern(x, conv_act_set);
+  pattern(x, all_act_set);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -168,16 +191,22 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* scope = param_scope();
     auto* filter_var = scope->FindLocalVar(conv_filter->Name());
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-    // when this conv2d_fusion problem size is not supported by cutlass
-    // and cuDNN does not support this activation, we should not apply this pass
-    if (((filter_tensor->dims()[0] % 8 != 0) ||
-         (filter_tensor->dims()[1] % 8 != 0)) &&
-        cutlass_only_act_set.count(act_op_type)) {
+    // when this conv2d_fusion problem size is not supported by cutlass and not
+    // supported by cuDNN, we should not apply this pass
+    int oc = filter_tensor->dims()[0];
+    int ic = filter_tensor->dims()[1];
+    bool cutlass_fuse =
+        oc % 4 == 0 && ic % 4 == 0 && cutlass_act_set.count(act_op_type);
+    bool cudnn_fuse = cudnn_act_set.count(act_op_type);
+    if (!cutlass_fuse && !cudnn_fuse) {
       return;
     }
 
+    float alpha = 0.f;
+    alpha = act_op->Op()->GetAttrIfExists<float>("alpha");
+
     auto new_op_proto =
-        PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out);
+        PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
 
     // Create a new node for the fused op.
@@ -219,4 +248,5 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .EQ("sigmoid", 0)
             .EQ("tanh", 0)
             .EQ("identity", 0)
+            .EQ("leaky_relu", 0)
             .EQ("swish", 0));

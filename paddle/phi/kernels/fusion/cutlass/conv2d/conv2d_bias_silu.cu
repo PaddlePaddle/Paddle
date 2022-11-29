@@ -40,11 +40,11 @@ cutlass::Status cutlass_nhwc_conv2d_bias_silu(ConvAllParams params) {
   constexpr int NumStages = 2;
   static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
       cutlass::conv::IteratorAlgorithm::kOptimized;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationSilu<
-      ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
-      float,
-      ElementComputeEpilogue>;
+  using EpilogueOp =
+      cutlass::epilogue::thread::LinearCombinationSilu<ElementOutput,
+                                                       aligment,
+                                                       float,
+                                                       ElementComputeEpilogue>;
 
   using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
       ElementInputA,

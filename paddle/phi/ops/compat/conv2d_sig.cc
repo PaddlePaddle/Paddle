@@ -62,7 +62,8 @@ KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
                           "groups",
                           "dilations",
                           "data_format",
-                          "activation"},
+                          "activation",
+                          "fuse_alpha"},
                          {"Output"});
 }
 }  // namespace phi

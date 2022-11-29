@@ -14,6 +14,8 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "cutlass/util/device_nchw_to_nhwc.h"
+#include "cutlass/util/device_nhwc_to_nchw.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -26,6 +28,30 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
+
+void cutlass_nchw_nhwc(
+    const half* input, half* output, int batch, int ic, int ih, int iw) {
+  cutlass::Tensor4DCoord a = cutlass::Tensor4DCoord(batch, iw, ic, ih);
+  cutlass::Tensor4DCoord b = cutlass::Tensor4DCoord(batch, ih, iw, ic);
+  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNCHW> c{
+      (cutlass::half_t*)input, cutlass::make_Coord(iw, ih * iw, ic * ih * iw)};
+  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNHWC> d{
+      (cutlass::half_t*)output, cutlass::make_Coord(iw, iw * ih, ic * iw * ih)};
+
+  cutlass::nchw_to_nhwc(a, b, c, d, nullptr);
+}
+
+void cutlass_nhwc_nchw(
+    const half* input, half* output, int batch, int ic, int ih, int iw) {
+  cutlass::Tensor4DCoord a = cutlass::Tensor4DCoord(batch, ih, iw, ic);
+  cutlass::Tensor4DCoord b = cutlass::Tensor4DCoord(batch, iw, ic, ih);
+  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNHWC> c{
+      (cutlass::half_t*)input, cutlass::make_Coord(iw, ih * iw, ic * ih * iw)};
+  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNCHW> d{
+      (cutlass::half_t*)output, cutlass::make_Coord(iw, iw * ih, ic * iw * ih)};
+
+  cutlass::nhwc_to_nchw(a, b, c, d, nullptr);
+}
 
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;

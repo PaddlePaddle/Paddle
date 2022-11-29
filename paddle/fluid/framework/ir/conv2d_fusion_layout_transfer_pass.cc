@@ -175,7 +175,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     auto filter_names = op_node->Op()->Input("Filter");
     auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
     std::unordered_set<std::string> cutlass_act_set = {
-        "relu", "swish", "identity"};
+        "relu", "swish", "identity", "leaky_relu"};
     if (!cutlass_act_set.count(act_type)) {
       return false;
     }
@@ -184,13 +184,14 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
-      if (filter_tensor.dims().size() == 4 &&
-          (filter_tensor.dims()[0] % 8 != 0 ||
-           filter_tensor.dims()[1] % 8 != 0)) {
-        return false;
+      int oc = filter_tensor.dims()[0];
+      int ic = filter_tensor.dims()[1];
+      bool cutlass_support = oc % 4 == 0 && ic % 4 == 0;
+      if (filter_tensor.dims().size() == 4 && cutlass_support) {
+        return true;
       }
     }
-    return true;
+    return false;
   };
 
   // # ifdef 0

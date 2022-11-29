@@ -24,7 +24,8 @@ typedef enum {
   CONV2D_BIAS,
   CONV2D_BIAS_RELU,
   CONV2D_BIAS_ADD_RELU,
-  CONV2D_BIAS_SILU
+  CONV2D_BIAS_SILU,
+  CONV2D_BIAS_LEAKY_RELU
 } OpType;
 
 // This two functions calculate diff of cutlass output and baseline output, you

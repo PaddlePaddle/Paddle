@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-
-#include <iostream>
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
-#include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
+#include "cutlass/epilogue/thread/linear_combination_leaky_relu.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
@@ -23,7 +21,7 @@ namespace phi {
 namespace fusion {
 
 template <typename TShape, typename WShape, int aligment = 4>
-cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
+cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu(ConvAllParams params) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
   using ElementInputA = cutlass::half_t;
@@ -42,11 +40,11 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
   constexpr int NumStages = 2;
   static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
       cutlass::conv::IteratorAlgorithm::kOptimized;
-  using EpilogueOp =
-      cutlass::epilogue::thread::LinearCombinationRelu<ElementOutput,
-                                                       aligment,
-                                                       float,
-                                                       ElementComputeEpilogue>;
+  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationLeakyRelu<
+      ElementOutput,
+      aligment,
+      float,
+      ElementComputeEpilogue>;
 
   using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
       ElementInputA,
@@ -87,12 +85,12 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
   int pad_w = params.pad_w;
   int stride_h = params.stride_h;
   int stride_w = params.stride_w;
+  float alpha = params.alpha;
 
   int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
   const int dilationh = 1;
   const int dilationw = 1;
-
   cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
   cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
                                                 {oc, kh, kw, ic},
@@ -109,7 +107,7 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
       {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
       {(cutlass::half_t *)(bias), {0, 0, 0}},
       {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
-      {1.f, 1.f}};
+      {1.f, 1.f, alpha}};
 
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
@@ -127,65 +125,75 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
 }
 
 // config 1
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<64, 64, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 2
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<64, 32, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 3
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<128, 32, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 4
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<128, 64, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 5
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<64, 64, 32>,
     cutlass::gemm::GemmShape<32, 32, 32>>(ConvAllParams);
 // config6
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<64, 128, 32>,
     cutlass::gemm::GemmShape<32, 64, 32>>(ConvAllParams);
 // config 7
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<64, 128, 64>,
     cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
 // config 8
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<64, 256, 32>,
     cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
 // config 9
-template cutlass::Status cutlass_nhwc_conv2d_bias_relu<
+template cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu<
     cutlass::gemm::GemmShape<128, 64, 32>,
     cutlass::gemm::GemmShape<64, 32, 32>>(ConvAllParams);
 
 std::vector<std::function<cutlass::Status(ConvAllParams)>>
-    cutlass_conv2d_bias_relu_all_func = {
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<64, 64, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<64, 32, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<128, 32, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<128, 64, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<64, 64, 32>,
-                                      cutlass::gemm::GemmShape<32, 32, 32>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<64, 128, 32>,
-                                      cutlass::gemm::GemmShape<32, 64, 32>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<64, 128, 64>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<64, 256, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-        cutlass_nhwc_conv2d_bias_relu<cutlass::gemm::GemmShape<128, 64, 32>,
-                                      cutlass::gemm::GemmShape<64, 32, 32>>};
-std::map<std::vector<int>, int> map_problem_conv2d_bias_relu;
+    cutlass_conv2d_bias_leaky_relu_all_func = {
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<64, 64, 64>,
+            cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<64, 32, 64>,
+            cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<128, 32, 64>,
+            cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<128, 64, 64>,
+            cutlass::gemm::GemmShape<32, 32, 64>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<64, 64, 32>,
+            cutlass::gemm::GemmShape<32, 32, 32>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<64, 128, 32>,
+            cutlass::gemm::GemmShape<32, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<64, 128, 64>,
+            cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<64, 256, 32>,
+            cutlass::gemm::GemmShape<64, 64, 32>>,
+        cutlass_nhwc_conv2d_bias_leaky_relu<
+            cutlass::gemm::GemmShape<128, 64, 32>,
+            cutlass::gemm::GemmShape<64, 32, 32>>};
 
-void cutlass_conv2d_bias_relu(ConvAllParams params) {
+std::map<std::vector<int>, int> map_problem_conv2d_bias_leaky_relu;
+
+void cutlass_conv2d_bias_leaky_relu(ConvAllParams params) {
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -201,18 +209,18 @@ void cutlass_conv2d_bias_relu(ConvAllParams params) {
   std::vector<int> problem_size = {
       batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, stride_h, stride_w};
 
-  if (map_problem_conv2d_bias_relu.count(problem_size)) {
-    cutlass_conv2d_bias_relu_all_func[map_problem_conv2d_bias_relu.at(
-        problem_size)](params);
+  if (map_problem_conv2d_bias_leaky_relu.count(problem_size)) {
+    cutlass_conv2d_bias_leaky_relu_all_func[map_problem_conv2d_bias_leaky_relu
+                                                .at(problem_size)](params);
     return;
   } else {
-    map_problem_conv2d_bias_relu[problem_size] = -1;
+    map_problem_conv2d_bias_leaky_relu[problem_size] = -1;
   }
 
   float min_time = 100000.f;
-  for (int i = 0; i < cutlass_conv2d_bias_relu_all_func.size(); i++) {
+  for (int i = 0; i < cutlass_conv2d_bias_leaky_relu_all_func.size(); i++) {
     cutlass::Status status;
-    auto func = cutlass_conv2d_bias_relu_all_func[i];
+    auto func = cutlass_conv2d_bias_leaky_relu_all_func[i];
     for (int ii = 0; ii < WARMUP; ii++) {
       status = func(params);
     }
@@ -231,12 +239,13 @@ void cutlass_conv2d_bias_relu(ConvAllParams params) {
     cudaEventElapsedTime(&elapsed_time, beg, end);
     if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
       min_time = elapsed_time;
-      map_problem_conv2d_bias_relu[problem_size] = i;
+      map_problem_conv2d_bias_leaky_relu[problem_size] = i;
     }
+
     // debug code
-    // conv2d_diff_cpu(params, CONV2D_BIAS_RELU);
-    std::cout << conv2d_diff_gpu(params, CONV2D_BIAS_RELU) << std::endl;
+    std::cout << conv2d_diff_gpu(params, CONV2D_BIAS_LEAKY_RELU) << std::endl;
   }
 }
+
 }  // namespace fusion
 }  // namespace phi
