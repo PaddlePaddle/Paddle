@@ -333,7 +333,7 @@ def get_value_for_bool_tensor(var, item):
     def idx_not_empty(var, item):
         from ..tensor import gather_nd
 
-        bool_2_idx = paddle.where(item == True)
+        bool_2_idx = paddle.nonzero(item == True)
         return gather_nd(var, bool_2_idx)
 
     def idx_empty(var):
@@ -868,7 +868,7 @@ def set_value_for_bool_tensor(var, item, value):
         if not isinstance(value, Variable):
             value = assign(value).cast(var.dtype)
 
-        idx = paddle.where(item)
+        idx = paddle.nonzero(item)
         gather_val = gather_nd(var, idx)
         gather_val_new = value - gather_val
         out = scatter_nd_add(var, idx, gather_val_new)
