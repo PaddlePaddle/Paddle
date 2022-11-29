@@ -21,12 +21,11 @@ namespace {
 using dnnl::memory;
 using paddle::framework::ExecutionContext;
 using paddle::platform::MatMulV2MKLDNNHandler;
-using paddle::platform::MKLDNNDeviceContext;
+using phi::OneDNNContext;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using Tensor = phi::DenseTensor;
 using paddle::framework::GradVarName;
-using phi::make_ddim;
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
@@ -43,7 +42,7 @@ static Tensor FoldOuterDims(const Tensor &input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename T>
-static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
+static Tensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
                                    const Tensor *input) {
   auto input_dims = vectorize(input->dims());
   if (input_dims.size() != 3) {
@@ -55,8 +54,7 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
 
   auto output_dims = vectorize(output.dims());
 
-  memory::data_type input_type = paddle::framework::ToMKLDNNDataType(
-      paddle::framework::TransToProtoVarType(input->dtype()));
+  memory::data_type input_type = phi::funcs::ToOneDNNDataType(input->dtype());
   phi::funcs::ReorderOneDNNHandler reorder_handler(
       output_dims, input->dtype(), input_type, dev_ctx.GetEngine());
 
@@ -67,7 +65,7 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                   reorder_dst_memory_p);
 
-  auto &astream = MKLDNNDeviceContext::tls().get_stream();
+  auto &astream = OneDNNContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
@@ -153,7 +151,7 @@ class MatMulMKLDNNHandler
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
 
-    auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto &astream = OneDNNContext::tls().get_stream();
 
     // Simulate batch matmul by processing in loop
     void *x_ptr = src_memory_p->get_data_handle();
@@ -366,7 +364,7 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
                         *residual_data_memory_p});
   }
 
-  auto &astream = MKLDNNDeviceContext::tls().get_stream();
+  auto &astream = OneDNNContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
@@ -402,7 +400,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
                                        : false;
     constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
 
-    const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+    const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
     auto *x = ctx.Input<phi::DenseTensor>("X");
@@ -531,8 +529,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
               ctx.Attr<int>("head_number")));
     }
 
-    const auto &dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
     auto x = *ctx.Input<phi::DenseTensor>("X");
@@ -639,7 +636,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
  private:
   void ExecuteMatMulGrad(const ExecutionContext &ctx,
-                         const MKLDNNDeviceContext &dev_ctx,
+                         const OneDNNContext &dev_ctx,
                          const dnnl::engine &engine,
                          phi::DenseTensor *x,
                          bool trans_x,
@@ -685,7 +682,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
 
-    auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto &astream = OneDNNContext::tls().get_stream();
     matmul_p->execute(astream, matmul_args);
     astream.wait();
 

@@ -16,7 +16,6 @@
 import os
 import pickle
 import warnings
-import functools
 from collections import OrderedDict
 import inspect
 import threading
@@ -44,7 +43,7 @@ from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
     set_code_level,
     set_verbosity,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
     unwrap_decorators,
@@ -102,7 +101,7 @@ def _extract_vars(inputs, result_list, err_tag='inputs'):
             _extract_vars(var, result_list, err_tag)
     else:
         raise TypeError(
-            "The type of 'each element of {}' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".format(
+            "The type of 'each element of {}' in paddle.jit.TracedLayer.trace must be fluid.Variable, but received {}.".format(
                 err_tag, type(inputs)
             )
         )
@@ -139,7 +138,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
           import paddle.fluid as fluid
           import numpy as np
-          from paddle.fluid.dygraph.jit import dygraph_to_static_func
+          from paddle.jit.api import dygraph_to_static_func
 
           @dygraph_to_static_func
           def func(x):
@@ -1569,6 +1568,8 @@ class TracedLayer:
         Examples:
             .. code-block:: python:
 
+                import os
+                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import paddle
 
                 class ExampleLayer(paddle.nn.Layer):
@@ -1596,7 +1597,7 @@ class TracedLayer:
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in fluid.dygraph.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
@@ -1619,6 +1620,8 @@ class TracedLayer:
         Examples:
             .. code-block:: python:
 
+                import os
+                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import paddle
 
                 class ExampleLayer(paddle.nn.Layer):
@@ -1647,12 +1650,12 @@ class TracedLayer:
         assert self._compiled_program is None, "Cannot set strategy after run"
         assert isinstance(
             build_strategy, (type(None), BuildStrategy)
-        ), "The type of 'build_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received {}.".format(
+        ), "The type of 'build_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received {}.".format(
             type(build_strategy)
         )
         assert isinstance(
             exec_strategy, (type(None), ExecutionStrategy)
-        ), "The type of 'exec_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received {}.".format(
+        ), "The type of 'exec_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received {}.".format(
             type(exec_strategy)
         )
         self._build_strategy = build_strategy
@@ -1723,6 +1726,8 @@ class TracedLayer:
         Examples:
             .. code-block:: python:
 
+                import os
+                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import numpy as np
                 import paddle
 
@@ -1755,13 +1760,13 @@ class TracedLayer:
             path,
             "path",
             str,
-            "fluid.dygraph.jit.TracedLayer.save_inference_model",
+            "paddle.jit.TracedLayer.save_inference_model",
         )
         check_type(
             feed,
             "feed",
             (type(None), list),
-            "fluid.dygraph.jit.TracedLayer.save_inference_model",
+            "paddle.jit.TracedLayer.save_inference_model",
         )
         if isinstance(feed, list):
             for f in feed:
@@ -1769,13 +1774,13 @@ class TracedLayer:
                     f,
                     "each element of feed",
                     int,
-                    "fluid.dygraph.jit.TracedLayer.save_inference_model",
+                    "paddle.jit.TracedLayer.save_inference_model",
                 )
         check_type(
             fetch,
             "fetch",
             (type(None), list),
-            "fluid.dygraph.jit.TracedLayer.save_inference_model",
+            "paddle.jit.TracedLayer.save_inference_model",
         )
         if isinstance(fetch, list):
             for f in fetch:
@@ -1783,7 +1788,7 @@ class TracedLayer:
                     f,
                     "each element of fetch",
                     int,
-                    "fluid.dygraph.jit.TracedLayer.save_inference_model",
+                    "paddle.jit.TracedLayer.save_inference_model",
                 )
         clip_extra = kwargs.get('clip_extra', True)
         # path check

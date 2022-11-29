@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph.jit import _SaveLoadConfig
+from paddle.jit.api import _SaveLoadConfig
 from paddle.fluid.dygraph.io import TranslatedLayer
 
 

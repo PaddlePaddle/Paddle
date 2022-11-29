@@ -1089,7 +1089,6 @@ set_tests_properties(test_parallel_executor_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_transpose_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_prroi_pool_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
