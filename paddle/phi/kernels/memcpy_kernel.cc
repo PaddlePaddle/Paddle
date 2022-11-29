@@ -51,10 +51,6 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   switch (dst_place_type) {
     case 0:
-      // NOTE(lvyongkang): phi::Copy will use DeviceContext.zero_allocator to
-      // alloc and assign DeviceContext.place to out, which causes place check
-      // fails. So we specify out's place here.
-      out->mutable_data(CPUPlace());
       Copy(dev_ctx, x, CPUPlace(), false, out);
       // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
       // block of 64 KB or less are asynchronous. See
@@ -65,10 +61,6 @@ void MemcpyD2HKernel(const Context& dev_ctx,
       break;
 
     case 1:
-      // NOTE(lvyongkang): phi::Copy will use DeviceContext.zero_allocator to
-      // alloc and assign DeviceContext.place to out, which causes place check
-      // fails. So we specify out's place here.
-      out->mutable_data(GPUPinnedPlace());
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       // paddle::memory::Copy use async copy for GPUPinnedPlace
       dev_ctx.Wait();
