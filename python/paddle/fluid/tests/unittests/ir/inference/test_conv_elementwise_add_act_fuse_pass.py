@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import unittest
 import os
+import unittest
+
 import hypothesis.strategies as st
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 

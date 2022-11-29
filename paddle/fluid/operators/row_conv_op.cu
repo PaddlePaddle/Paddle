@@ -12,7 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -242,7 +242,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::CudaShuffleDownSync(mask, val, offset);
+          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -307,7 +307,7 @@ __global__ void RowConvGradFilter(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::CudaShuffleDownSync(mask, val, offset);
+          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 

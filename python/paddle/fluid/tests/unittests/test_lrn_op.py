@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
@@ -104,56 +106,6 @@ class TestLRNOp(OpTest):
 class TestLRNOpAttrDataFormat(TestLRNOp):
     def init_test_case(self):
         self.data_format = 'NHWC'
-
-
-class TestLRNAPI(unittest.TestCase):
-    def test_case(self):
-        data1 = fluid.data(name='data1', shape=[2, 4, 5, 5], dtype='float32')
-        data2 = fluid.data(name='data2', shape=[2, 5, 5, 4], dtype='float32')
-        out1 = fluid.layers.lrn(data1, data_format='NCHW')
-        out2 = fluid.layers.lrn(data2, data_format='NHWC')
-        data1_np = np.random.random((2, 4, 5, 5)).astype("float32")
-        data2_np = np.transpose(data1_np, [0, 2, 3, 1])
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={"data1": data1_np, "data2": data2_np},
-            fetch_list=[out1, out2],
-            return_numpy=True,
-        )
-
-        np.testing.assert_allclose(
-            results[0], np.transpose(results[1], (0, 3, 1, 2)), rtol=1e-05
-        )
-
-    def test_exception(self):
-        input1 = fluid.data(name="input1", shape=[2, 4, 5, 5], dtype="float32")
-        input2 = fluid.data(
-            name="input2", shape=[2, 4, 5, 5, 5], dtype="float32"
-        )
-
-        def _attr_data_fromat():
-            out = fluid.layers.lrn(input1, data_format='NDHW')
-
-        def _input_dim_size():
-            out = fluid.layers.lrn(input2)
-
-        self.assertRaises(ValueError, _attr_data_fromat)
-        self.assertRaises(ValueError, _input_dim_size)
-
-
-class TestLRNOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input must be float32
-            in_w = fluid.data(name="in_w", shape=[None, 3, 3, 3], dtype="int64")
-            self.assertRaises(TypeError, fluid.layers.lrn, in_w)
 
 
 class TestLocalResponseNormFAPI(unittest.TestCase):

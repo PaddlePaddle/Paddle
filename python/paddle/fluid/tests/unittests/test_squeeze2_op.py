@@ -97,7 +97,7 @@ class TestSqueeze2AxesTensor(UnittestBase):
             # axes is a Variable
             axes = paddle.assign([0, 2])
             out = paddle.squeeze(feat, axes)
-            out2 = paddle.fluid.layers.squeeze(feat, axes)
+            out2 = paddle.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -136,7 +136,7 @@ class TestSqueeze2AxesTensorList(UnittestBase):
                 paddle.full([1], 2, dtype='int32'),
             ]
             out = paddle.squeeze(feat, axes)
-            out2 = paddle.fluid.layers.squeeze(feat, axes)
+            out2 = paddle.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
-
 
 __all__ = []
 
@@ -52,7 +51,7 @@ def _npu_identity(x, format=-1):
         return _C_ops.npu_identity(x, format)
 
     if _in_legacy_dygraph():
-        return _legacy_C_ops.npu_identity(x, format)
+        return _legacy_C_ops.npu_identity(x, 'format', format)
 
     check_variable_and_dtype(
         x,

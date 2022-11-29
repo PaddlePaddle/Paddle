@@ -12,31 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: define functions to manipulate a tensor
+
+import warnings
 from collections import Counter
 
-from ..static import Variable
-from ..framework import core, in_dygraph_mode
-from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
-from ..framework import LayerHelper
-from ..framework import convert_np_dtype_to_dtype_, dygraph_only
-from ..fluid.data_feeder import (
-    convert_dtype,
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-)
-from ..fluid.layers import utils
 import numpy as np
 
-# TODO: define functions to manipulate a tensor
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from ..common_ops_import import dygraph_utils, fill_constant, _varbase_creator
-import warnings
-from .creation import zeros
-from .creation import _complex_to_real_dtype
-from .creation import _real_to_complex_dtype
+
+from ..common_ops_import import _varbase_creator, dygraph_utils, fill_constant
+from ..fluid.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+    convert_dtype,
+)
+from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
+from ..fluid.layers import utils
+from ..framework import (
+    LayerHelper,
+    convert_np_dtype_to_dtype_,
+    core,
+    dygraph_only,
+    in_dygraph_mode,
+)
+from ..static import Variable
+from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
 

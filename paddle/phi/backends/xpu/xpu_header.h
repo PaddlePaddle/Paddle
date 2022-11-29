@@ -19,9 +19,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/enforce.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"

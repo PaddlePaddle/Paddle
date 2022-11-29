@@ -94,8 +94,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     bn = fluid.layers.cast(bn, 'float32')
                 else:
                     bn = fluid.layers.cast(bn, 'float64')
-                sigmoid = fluid.layers.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                sigmoid = paddle.nn.functional.sigmoid(bn)
+                out = paddle.sum(sigmoid)
                 if not sync_bn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:

@@ -12,42 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import inspect
 import os
 import pickle
-import numpy as np
-import warnings
-import time
 import socket
-import contextlib
+import time
+import warnings
+
+import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.framework import Variable
-from paddle.fluid.framework import _get_paddle_place
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.executor import global_scope
-from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
-from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers import collective
-
-from paddle.io import DataLoader
-from paddle.io import Dataset
-from paddle.io import DistributedBatchSampler
-from paddle.metric import Metric
-from paddle.static import InputSpec as Input
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.base import role_maker
+from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed.fleet.base import role_maker
+from paddle.fluid import core
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import Variable
+from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.framework import _get_paddle_place, _non_static_mode
+from paddle.fluid.io import is_belong_to_optimizer
+from paddle.fluid.layers import collective
+from paddle.fluid.layers.utils import flatten
+from paddle.io import DataLoader, Dataset, DistributedBatchSampler
+from paddle.metric import Metric
+from paddle.static import InputSpec as Input
 
-from .callbacks import config_callbacks, EarlyStopping
+from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
 
 __all__ = []
@@ -94,10 +90,7 @@ def restore_flatten_list(l, splits):
 
 
 def extract_args(func):
-    if hasattr(inspect, 'getfullargspec'):
-        return inspect.getfullargspec(func)[0]
-    else:
-        return inspect.getargspec(func)[0]
+    return inspect.getfullargspec(func).args
 
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
@@ -261,7 +254,9 @@ def _update_input_info(inputs):
 
 class StaticGraphAdapter:
     """
+
     Model traning/inference with a static graph.
+
     """
 
     def __init__(self, model):
@@ -1008,6 +1003,7 @@ class DynamicGraphAdapter:
 
 class Model:
     """
+
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
     switched by `paddle.enable_static()`. The usage is as follows.
@@ -1148,6 +1144,7 @@ class Model:
 
     def train_batch(self, inputs, labels=None, update=True):
         """
+
         Run one training step on one batch of data. And using `update` indicates
         whether optimizer update gradients computing by this batch.
 
@@ -1193,6 +1190,7 @@ class Model:
                 loss = model.train_batch([data], [label])
                 print(loss)
                 # [array([2.192784], dtype=float32)]
+
         """
         loss = self._adapter.train_batch(inputs, labels, update)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1202,6 +1200,7 @@ class Model:
     @no_grad()
     def eval_batch(self, inputs, labels=None):
         """
+
         Run one evaluating step on a batch of data.
 
         Args:
@@ -1245,6 +1244,7 @@ class Model:
                 loss, acc = model.eval_batch([data], [label])
                 print(loss, acc)
                 # [array([2.8825705], dtype=float32)] [0.0]
+
         """
         loss = self._adapter.eval_batch(inputs, labels)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1254,6 +1254,7 @@ class Model:
     @no_grad()
     def predict_batch(self, inputs):
         """
+
         Run one predicting step on a batch of data.
 
         Args:
@@ -1292,6 +1293,7 @@ class Model:
                 # [array([[0.08189095, 0.16740078, 0.06889386, 0.05085445, 0.10729759,
                 #          0.02217775, 0.14518553, 0.1591538 , 0.01808308, 0.17906217]],
                 #          dtype=float32)]
+
         """
         loss = self._adapter.predict_batch(inputs)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1300,6 +1302,7 @@ class Model:
 
     def save(self, path, training=True):
         """
+
         This function saves parameters, optimizer information or model and
         paramters only for inference to path. It depends on the parameter
         `training`.
@@ -1367,6 +1370,7 @@ class Model:
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
+
         """
 
         if ParallelEnv().local_rank == 0:
@@ -1377,6 +1381,7 @@ class Model:
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
         """
+
         Load from files storing the model states and optimizer states. The file
         for optimizer states is not necessary if no need to restore the optimizer.
 
@@ -1424,6 +1429,7 @@ class Model:
 
                 model.save('checkpoint/test')
                 model.load('checkpoint/test')
+
         """
 
         def _load_state_from_path(path):
@@ -1494,6 +1500,7 @@ class Model:
 
     def parameters(self, *args, **kwargs):
         """
+
         Returns a list of parameters of the model.
 
         Returns:
@@ -1516,6 +1523,7 @@ class Model:
                     nn.Linear(200, 10)), input)
 
                 params = model.parameters()
+
         """
         return self._adapter.parameters()
 
@@ -1612,6 +1620,7 @@ class Model:
         self, optimizer=None, loss=None, metrics=None, amp_configs=None
     ):
         """
+
         Configures the model before runing.
 
         Args:
@@ -1643,6 +1652,7 @@ class Model:
 
         Returns:
             None
+
         """
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
@@ -1702,6 +1712,7 @@ class Model:
         num_iters=None,
     ):
         """
+
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
 
@@ -1713,7 +1724,7 @@ class Model:
                 evaluation at the end of epoch. If None, will not do evaluation.
                 An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended. Default: None.
-            batch_size (int, optional): The batch size of train_data and eval_data. When
+            batch_size (int|list, optional): The batch size of train_data and eval_data. When
                 train_data and eval_data are both the instance of Dataloader, this
                 parameter will be ignored. Default: 1.
             epochs (int, optional): The number of epochs to train the model. Default: 1.
@@ -1756,7 +1767,7 @@ class Model:
                How to make a batch is done internally.
 
             .. code-block:: python
-              :name: code-example1
+              :name: code-example3
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1796,7 +1807,7 @@ class Model:
                DataLoader.
 
             .. code-block:: python
-              :name: code-example2
+              :name: code-example4
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1833,13 +1844,24 @@ class Model:
                             val_loader,
                             epochs=2,
                             save_dir='mnist_checkpoint')
+
         """
         assert train_data is not None, "train_data must be given!"
+
+        if isinstance(batch_size, (tuple, list)) and all(
+            [isinstance(x, int) for x in batch_size]
+        ):
+            assert (
+                len(batch_size) == 2
+            ), "batch_size length error, expected train_batch_size and eval_batch_size."
+            train_batch_size, eval_batch_size = batch_size
+        elif isinstance(batch_size, int):
+            train_batch_size, eval_batch_size = batch_size, batch_size
 
         if isinstance(train_data, Dataset):
             train_sampler = DistributedBatchSampler(
                 train_data,
-                batch_size=batch_size,
+                batch_size=train_batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
             )
@@ -1855,7 +1877,7 @@ class Model:
 
         if eval_data is not None and isinstance(eval_data, Dataset):
             eval_sampler = DistributedBatchSampler(
-                eval_data, batch_size=batch_size
+                eval_data, batch_size=eval_batch_size
             )
             eval_loader = DataLoader(
                 eval_data,

@@ -12,18 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from .common import is_parameter_related
-from ..utils import is_dim_shard
-from ..utils import compute_compatible_and_update_dim_mapping
-from .dist_default import DistributedDefaultImpl0
-from ..cost import build_comp_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
-from ..cost import SoftmaxOpCost, SoftmaxGradOpCost
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    SoftmaxGradOpCost,
+    SoftmaxOpCost,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..utils import compute_compatible_and_update_dim_mapping, is_dim_shard
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedSoftmax(DistributedOperatorImplContainer):
@@ -79,7 +85,6 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(

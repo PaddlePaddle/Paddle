@@ -77,23 +77,11 @@ class XPUEventManager {
                           device_index_));
 
     platform::XPUDeviceGuard guard(device_index_);
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_event_record(event_, ctx.stream()));
+    // TODO(zhangxiaoci) temporary solution: xpu::event seems buggy
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(ctx.stream()));
   }
 
-  void Block(const XPUContext& ctx) const {
-    if (is_created_) {
-      auto device_index = ctx.GetPlace().device;
-      PADDLE_ENFORCE_EQ(device_index,
-                        device_index_,
-                        platform::errors::PreconditionNotMet(
-                            "XPUContext's device %d does not match"
-                            "Event's device %d",
-                            device_index,
-                            device_index_));
-      platform::XPUDeviceGuard guard(device_index_);
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_wait_event(ctx.stream(), event_));
-    }
-  }
+  void Block(const XPUContext& ctx) const {}
 
  private:
   bool is_created_{false};
