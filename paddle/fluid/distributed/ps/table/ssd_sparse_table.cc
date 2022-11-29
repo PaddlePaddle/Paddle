@@ -197,7 +197,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
     float data_buffer[value_size];
     float* data_buffer_ptr = data_buffer;
 
-    for (int i = 0; i < num; ++i) {
+    for (size_t i = 0; i < num; ++i) {
       uint64_t key = pull_keys[i];
       auto itr = local_shard.find(key);
       if (itr == local_shard.end()) {
@@ -750,10 +750,10 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
       _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
     }
   }
-  for (int i = 0; i < threads.size(); i++) {
+  for (size_t i = 0; i < threads.size(); i++) {
     threads[i].join();
   }
-  for (int i = 0; i < fs_channel.size(); i++) {
+  for (size_t i = 0; i < fs_channel.size(); i++) {
     fs_channel[i].reset();
   }
   fs_channel.clear();
@@ -829,7 +829,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
                     &free_channel,
                     &busy_channel](int file_num) {
     int err_no = 0;
-    int split_num = 0;
+    //int split_num = 0;
     int shard_num = file_num;
     int part_num = 0;
     shard_num = file_num;
@@ -917,14 +917,12 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (size_t i = 0; i < (size_t)_real_local_shard_num; ++i) {
     std::shared_ptr<MemRegion> region = nullptr;
     std::vector<std::shared_ptr<MemRegion>> regions;
     free_channel[i]->Put(std::make_shared<MemRegion>());
     free_channel[i]->Put(std::make_shared<MemRegion>());
     free_channel[i]->Get(region);
-    int retry_num = 0;
-    bool is_write_failed = false;
     int feasign_size = 0;
     auto& shard = _local_shards[i];
     int file_idx = 0;
@@ -1034,10 +1032,10 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
   for (auto& channel : busy_channel) {
     channel->Close();
   }
-  for (int i = 0; i < threads.size(); i++) {
+  for (size_t i = 0; i < threads.size(); i++) {
     threads[i].join();
   }
-  for (int i = 0; i < busy_channel.size(); i++) {
+  for (size_t i = 0; i < busy_channel.size(); i++) {
     busy_channel[i].reset();
     free_channel[i].reset();
   }
@@ -1116,7 +1114,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
                     &free_channel,
                     &busy_channel](int file_num) {
     int err_no = 0;
-    int split_num = 0;
+    //int split_num = 0;
     int shard_num = file_num;
     int part_num = 0;
     shard_num = file_num;
@@ -1228,14 +1226,12 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (size_t i = 0; i < (size_t)_real_local_shard_num; ++i) {
     std::shared_ptr<MemRegion> region = nullptr;
     std::vector<std::shared_ptr<MemRegion>> regions;
     free_channel[i]->Put(std::make_shared<MemRegion>());
     free_channel[i]->Put(std::make_shared<MemRegion>());
     free_channel[i]->Get(region);
-    int retry_num = 0;
-    bool is_write_failed = false;
     int feasign_size = 0;
     auto& shard = _local_shards[i];
     region->_file_idx = 0;
@@ -1327,10 +1323,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
   for (auto& channel : busy_channel) {
     channel->Close();
   }
-  for (int i = 0; i < threads.size(); i++) {
+  for (size_t i = 0; i < threads.size(); i++) {
     threads[i].join();
   }
-  for (int i = 0; i < busy_channel.size(); i++) {
+  for (size_t i = 0; i < busy_channel.size(); i++) {
     busy_channel[i].reset();
     free_channel[i].reset();
   }
@@ -1703,10 +1699,10 @@ int32_t SSDSparseTable::LoadWithString(
             << "] SSD_MF[" << ssd_mf_count << "] FILTERED[" << filtered_count
             << "] filter_time cost:" << filter_time / 1000 << " s";
   }
-  for (int i = 0; i < threads.size(); i++) {
+  for (size_t i = 0; i < threads.size(); i++) {
     threads[i].join();
   }
-  for (int i = 0; i < _fs_channel.size(); i++) {
+  for (size_t i = 0; i < _fs_channel.size(); i++) {
     _fs_channel[i].reset();
   }
   _fs_channel.clear();
@@ -1726,7 +1722,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
   // task pool _file_num_one_shard default 7
   auto task_pool = std::make_shared<::ThreadPool>(_real_local_shard_num * 7);
-  int thread_num = _real_local_shard_num;
+  //int thread_num = _real_local_shard_num;
   // omp_set_num_threads(thread_num);
   auto filelists = _afs_client.list(
       paddle::string::format_string("%s/part-%03d*", path.c_str(), _shard_idx));
@@ -1834,9 +1830,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
           convert_cursor = convert_buf;
           ret += remain;
           do {
-            if (ret >= sizeof(uint32_t)) {
+            if (ret >= (int)sizeof(uint32_t)) {
               uint32_t len = *(uint32_t*)cursor;
-              if (ret >= len) {
+              if (ret >= (int)len) {
                 ret -= sizeof(uint32_t);
                 len -= sizeof(uint32_t);
                 cursor += sizeof(uint32_t);
@@ -1847,7 +1843,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                 len -= sizeof(uint64_t);
 
                 float* value = (float*)cursor;
-                int dim = len / sizeof(float);
+                size_t dim = len / sizeof(float);
 
                 // copy value to convert_buf
                 memcpy(convert_cursor, cursor, len);
@@ -1955,7 +1951,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
   std::lock_guard<std::mutex> guard(_table_mutex);
   VLOG(0) << "cache_table";
   std::atomic<uint32_t> count{0};
-  auto thread_num = _real_local_shard_num;
+  //auto thread_num = _real_local_shard_num;
   std::vector<std::future<int>> tasks;
 
   double show_threshold = 10000000;
@@ -1975,7 +1971,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
   VLOG(0) << "Table>> origin mem feasign size:" << LocalSize();
   static int cache_table_count = 0;
   ++cache_table_count;
-  for (size_t shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
+  for (size_t shard_id = 0; shard_id < (size_t)_real_local_shard_num; ++shard_id) {
     // from mem to ssd
     auto fut = _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
         [shard_id, this, &count, show_threshold, pass_id]() -> int {
@@ -2012,7 +2008,6 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
             using DataType = shard_type::map_type::iterator;
             std::vector<DataType> datas;
             datas.reserve(shard.size() * 0.8);
-            size_t idx = 0;
             for (auto it = shard.begin(); it != shard.end(); ++it) {
               if (!_value_accesor->SaveMemCache(
                       it.value().data(), 0, show_threshold, pass_id)) {
