@@ -445,11 +445,14 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   if (outputs_size == 1) {
-    Py_XDECREF(outputs);
-    outputs = PyTuple_GetItem(outputs_tuple, 0);
-    Py_INCREF(outputs);
-    Py_XDECREF(outputs_tuple);
+    if (!PyTuple_Check(outputs) && !PyList_Check(outputs)) {
+      Py_XDECREF(outputs);
+      outputs = PyTuple_GetItem(outputs_tuple, 0);
+      // Py_INCREF(outputs);
+      Py_XDECREF(outputs_tuple);
+    }
   }
+
   Py_XDECREF(forward_args);
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);
