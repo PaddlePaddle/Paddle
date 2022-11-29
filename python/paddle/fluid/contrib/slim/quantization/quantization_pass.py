@@ -27,10 +27,10 @@ from .... import unique_name
 
 from ....framework import Program, program_guard, default_startup_program
 from ....data import data
-from ....layers import mean
 from ....executor import scope_guard
 from ....framework import _get_paddle_place
 from . import utils
+import paddle
 
 __all__ = [
     'QuantizationTransformPass',
@@ -927,7 +927,7 @@ class QuantizationTransformPass:
                 out_node = func(in_node)
                 graph.out_node_mapping_table[out_node.name] = var_node.name()
                 # loss shape must be 1 when minimize
-                loss = mean(out_node)
+                loss = paddle.mean(out_node)
                 if not graph._for_test:
                     assert (
                         self._optimizer
