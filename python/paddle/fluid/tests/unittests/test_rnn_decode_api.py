@@ -311,7 +311,7 @@ class PolicyGradient:
         """
         update policy model self.model with policy gradient algorithm
         """
-        self.reward = fluid.layers.py_func(
+        self.reward = paddle.static.py_func(
             func=reward_func, x=[action, length], out=reward
         )
         neg_log_prob = layers.cross_entropy(act_prob, action)
