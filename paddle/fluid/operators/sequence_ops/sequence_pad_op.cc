@@ -59,7 +59,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
             pad_value_dims == time_step_dims,
         true,
         platform::errors::InvalidArgument(
-            "The SequencePadOp Input(PadValue) must be a scalar or a phi::DenseTensor "
+            "The SequencePadOp Input(PadValue) must be a scalar or a tensor "
             "whose shape equals to time steps in sequences"));
 
     int out_dim_0 = -1;
@@ -86,9 +86,9 @@ class SequencePadOp : public framework::OperatorWithKernel {
                         static_cast<int64_t>(x_lod_0.back()),
                         platform::errors::InvalidArgument(
                             "The SequencePadOp Input(X)'s lod info mismatches "
-                            "the actual phi::DenseTensor shape. The 1st dimension of "
+                            "the actual tensor shape. The 1st dimension of "
                             "Input(X)'s lod info is %d, the 1st dimension of "
-                            "actual phi::DenseTensor shape is %d",
+                            "actual tensor shape is %d",
                             x_dims[0],
                             static_cast<int64_t>(x_lod_0.back())));
 
