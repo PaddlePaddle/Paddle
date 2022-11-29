@@ -14,7 +14,6 @@
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
