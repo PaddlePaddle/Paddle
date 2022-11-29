@@ -53,7 +53,7 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
       return expected_kernel_type;
     }
     return framework::OpKernelType(
-        expected_kernel_type.data_type_, phi::DenseTensor.place(), phi::DenseTensor.layout());
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
