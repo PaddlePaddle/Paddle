@@ -14,42 +14,29 @@
 
 #pragma once
 
-#include <Python.h>
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/hooks.h"
+#include "paddle/fluid/pybind/pyobject_holder.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-namespace egr {
-#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
-class PackHook : public PackHookBase {
+namespace paddle {
+namespace pybind {
+
+class PackHook {
  public:
-  explicit PackHook(PyObject* hook);
-
-  ~PackHook();
-
-  void* operator()(const paddle::experimental::Tensor& tensor) override;
-
-  void* operator()(void* py_tensor) override;
-
- private:
-  PyObject* hook_;
+  virtual ~PackHook() = default;
+  virtual std::shared_ptr<PyObjectHolder> operator()(
+      const paddle::experimental::Tensor& tensor) = 0;
+  virtual void* operator()(void* py_tensor) = 0;
 };
 
-class UnPackHook : public UnPackHookBase {
+class UnPackHook {
  public:
-  explicit UnPackHook(PyObject* hook);
-
-  ~UnPackHook();
-
-  paddle::experimental::Tensor operator()(void* packed_value) override;
-
-  void* operator()(void* packed_value, void* other) override;
-
- private:
-  PyObject* hook_;
+  virtual ~UnPackHook() = default;
+  virtual paddle::experimental::Tensor operator()(
+      std::shared_ptr<PyObjectHolder> packed_value) = 0;
+  virtual void* operator()(void* packed_value, void* other) = 0;
 };
-#endif
 
 class SavedTensorsHooks {
  public:
@@ -57,31 +44,28 @@ class SavedTensorsHooks {
 
   ~SavedTensorsHooks() {}
 
-  void SetHooks(PyObject* pack_hook, PyObject* unpack_hook) {
-#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
+  void SetHooks(std::shared_ptr<PackHook> pack_hook,
+                std::shared_ptr<UnPackHook> unpack_hook) {
     PADDLE_ENFORCE_EQ(pack_hook_ == nullptr && unpack_hook_ == nullptr,
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "paddle.autograd.saved_tensors_hooks only one pair "
                           "of hooks is allowed at a time."));
-    pack_hook_ = std::make_shared<PackHook>(pack_hook);
-    unpack_hook_ = std::make_shared<UnPackHook>(unpack_hook);
+    pack_hook_ = pack_hook;
+    unpack_hook_ = unpack_hook;
     is_enable_ = true;
-#endif
   }
 
   void ResetHooks() {
-#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
     pack_hook_ = nullptr;
     unpack_hook_ = nullptr;
     is_enable_ = false;
-#endif
   }
 
   bool IsEnable() { return is_enable_; }
 
-  std::shared_ptr<PackHookBase> GetPackHook() { return pack_hook_; }
-  std::shared_ptr<UnPackHookBase> GetUnPackHook() { return unpack_hook_; }
+  std::shared_ptr<PackHook> GetPackHook() { return pack_hook_; }
+  std::shared_ptr<UnPackHook> GetUnPackHook() { return unpack_hook_; }
 
   static SavedTensorsHooks& GetInstance() {
     static SavedTensorsHooks instance;
@@ -89,9 +73,10 @@ class SavedTensorsHooks {
   }
 
  private:
-  std::shared_ptr<PackHookBase> pack_hook_;
-  std::shared_ptr<UnPackHookBase> unpack_hook_;
+  std::shared_ptr<PackHook> pack_hook_;
+  std::shared_ptr<UnPackHook> unpack_hook_;
   bool is_enable_{false};
 };
 
-}  // namespace egr
+}  // namespace pybind
+}  // namespace paddle

@@ -77,15 +77,3 @@ cc_library(
        scale_op
        autograd_meta
        hook_utils)
-
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  target_link_libraries(utils ${PYTHON_LIBRARIES})
-endif()
-
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  cc_library(
-    saved_tensors_hooks
-    SRCS saved_tensors_hooks.cc
-    DEPS hook_utils)
-  add_subdirectory(tests)
-endif()

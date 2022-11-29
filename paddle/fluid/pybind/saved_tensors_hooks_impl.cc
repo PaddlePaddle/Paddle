@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/saved_tensors_hooks.h"
+#include "paddle/fluid/pybind/saved_tensors_hooks_impl.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 
 #if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
@@ -20,16 +20,18 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #endif
 
-namespace egr {
-#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
-PackHook::PackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
+namespace paddle {
+namespace pybind {
 
-PackHook::~PackHook() {
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
+PackHookImpl::PackHookImpl(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
+
+PackHookImpl::~PackHookImpl() {
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
 
-void* PackHook::operator()(const paddle::experimental::Tensor& tensor) {
+void* PackHookImpl::operator()(const paddle::experimental::Tensor& tensor) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
@@ -44,7 +46,7 @@ void* PackHook::operator()(const paddle::experimental::Tensor& tensor) {
   return reinterpret_cast<void*>(ret);
 }
 
-void* PackHook::operator()(void* py_tensor) {
+void* PackHookImpl::operator()(void* py_tensor) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
@@ -60,14 +62,17 @@ void* PackHook::operator()(void* py_tensor) {
   return reinterpret_cast<void*>(ret);
 }
 
-UnPackHook::UnPackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
+UnPackHookImpl::UnPackHookImpl(paddle::pybind::PyObjectHolder hook)
+    : hook_(hook) {
+  Py_INCREF(hook_);
+}
 
-UnPackHook::~UnPackHook() {
+UnPackHookImpl::~UnPackHookImpl() {
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
 
-paddle::experimental::Tensor UnPackHook::operator()(void* packed_value) {
+paddle::experimental::Tensor UnPackHookImpl::operator()(void* packed_value) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
@@ -92,7 +97,7 @@ paddle::experimental::Tensor UnPackHook::operator()(void* packed_value) {
   return tensor;
 }
 
-void* UnPackHook::operator()(void* packed_value, void* other) {
+void* UnPackHookImpl::operator()(void* packed_value, void* other) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
@@ -116,4 +121,5 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
 }
 #endif
 
-}  // namespace egr
+}  // namespace pybind
+}  // namespace paddle

@@ -25,7 +25,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
-#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
@@ -39,6 +38,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/saved_tensors_hooks_impl.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -715,7 +715,9 @@ static PyObject* eager_api_register_saved_tensors_hooks(PyObject* self,
   if (egr::Controller::Instance().HasGrad()) {
     auto pack_hook = PyTuple_GET_ITEM(args, 0);
     auto unpack_hook = PyTuple_GET_ITEM(args, 1);
-    egr::SavedTensorsHooks::GetInstance().SetHooks(pack_hook, unpack_hook);
+    egr::SavedTensorsHooks::GetInstance().SetHooks(
+        std::make_shared<PackHookImpl>(pack_hook),
+        std::make_shared<UnPackHookImpl>(unpack_hook));
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

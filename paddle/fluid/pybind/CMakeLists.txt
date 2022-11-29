@@ -292,10 +292,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
   endif()
 
-  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
-  endif()
-
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_legacy_op_function_generator
@@ -589,6 +585,8 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS pyobject_holder_impl.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS saved_tensors_hooks_impl.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)
@@ -605,7 +603,6 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
-    list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
@@ -650,13 +647,5 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
-
-  if(APPLE)
-    string(REGEX REPLACE ".+/(.+)" "\\1" PYTHON_LIBRARY_NAME
-                         ${PYTHON_LIBRARIES})
-    # target_link_libraries(${SHARD_LIB_NAME} "-Wl,-rpath,${PYTHON_LIBRARY_NAME}")
-  else()
-    target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
-  endif()
 
 endif()
