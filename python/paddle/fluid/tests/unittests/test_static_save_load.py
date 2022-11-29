@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 
 import unittest
 import paddle
@@ -86,10 +85,10 @@ class SimpleLSTMRNN(fluid.Layer):
         self.hidden_array = []
 
         for i in range(self._num_layers):
-            pre_hidden = fluid.layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = fluid.layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
             pre_hidden = paddle.reshape(
@@ -101,7 +100,7 @@ class SimpleLSTMRNN(fluid.Layer):
 
         res = []
         for index in range(self._num_steps):
-            self._input = fluid.layers.slice(
+            self._input = paddle.slice(
                 input_embedding, axes=[1], starts=[index], ends=[index + 1]
             )
             self._input = paddle.reshape(
@@ -1798,11 +1797,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
             with self.assertRaises(ValueError):
                 paddle.fluid.save(prog, path, 5)
 
-            protocols = [
-                2,
-            ]
-            if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
-                protocols += [3, 4]
+            protocols = [2, 3, 4]
             for protocol in protocols:
                 paddle.fluid.save(prog, path, protocol)
                 # set var to zero
