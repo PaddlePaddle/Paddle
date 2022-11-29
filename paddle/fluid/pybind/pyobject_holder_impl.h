@@ -19,11 +19,11 @@ class PyObjectHolderImpl : public PyObjectHolder {
  public:
   PyObjectHolderImpl() { ptr_ = nullptr; }
   explicit PyObjectHolderImpl(void* ptr);
-  PyObjectHolderImpl(const PyObjectHolderImpl& other) override;
-  ~PyObjectHolderImpl();
+  ~PyObjectHolderImpl() override;
   void* get() override;
   void reset(void* ptr) override;
-  PyObjectHolderImpl& operator=(const PyObjectHolderImpl& other) override;
+  void inc_ref() override;
+  void dec_ref() override;
 
  private:
   void* ptr_{nullptr};

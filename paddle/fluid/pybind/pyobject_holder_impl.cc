@@ -45,5 +45,14 @@ void PyObjectHolderImpl::reset(void* ptr) {
   ptr_ = ptr;
 }
 
+void inc_ref() {
+  ::pybind11::gil_scoped_acquire gil;
+  Py_XINCREF(ptr_);
+}
+void dec_ref() {
+  ::pybind11::gil_scoped_acquire gil;
+  Py_XDECREF(ptr_);
+}
+
 }  // namespace pybind
 }  // namespace paddle

@@ -15,12 +15,11 @@ namespace pybind {
 
 class PyObjectHolder {
  public:
-  PyObjectHolder() = default;
-  virtual PyObjectHolder(const PyObjectHolder& other) = 0;
   virtual ~PyObjectHolder() = 0;
   virtual void* get() = 0;
   virtual void reset(void* ptr) = 0;
-  virtual PyObjectHolder& operator=(const PyObjectHolder& other) = 0;
+  virtual void inc_ref() = 0;
+  virtual void dec_ref() = 0;
 };
 
 }  // namespace pybind
