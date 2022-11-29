@@ -31,11 +31,11 @@ void PyObjectHolderImpl::reset(void* ptr) {
   ptr_ = reinterpret_cast<PyObject*>(ptr);
 }
 
-void inc_ref() {
+void PyObjectHolderImpl::inc_ref() {
   ::pybind11::gil_scoped_acquire gil;
   Py_XINCREF(ptr_);
 }
-void dec_ref() {
+void PyObjectHolderImpl::dec_ref() {
   ::pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ptr_);
 }

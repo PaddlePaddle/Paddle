@@ -715,7 +715,7 @@ static PyObject* eager_api_register_saved_tensors_hooks(PyObject* self,
   if (egr::Controller::Instance().HasGrad()) {
     auto pack_hook = PyTuple_GET_ITEM(args, 0);
     auto unpack_hook = PyTuple_GET_ITEM(args, 1);
-    egr::SavedTensorsHooks::GetInstance().SetHooks(
+    SavedTensorsHooks::GetInstance().SetHooks(
         std::make_shared<PackHookImpl>(pack_hook),
         std::make_shared<UnPackHookImpl>(unpack_hook));
   }
@@ -727,7 +727,7 @@ static PyObject* eager_api_reset_saved_tensors_hooks(PyObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
   EAGER_TRY
-  egr::SavedTensorsHooks::GetInstance().ResetHooks();
+  SavedTensorsHooks::GetInstance().ResetHooks();
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
