@@ -23,7 +23,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 bool GT_E(T a, T b) {
@@ -504,7 +503,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
             "rois dims is %d",
             rois_dims.size()));
@@ -512,7 +511,7 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
         rois_dims[1],
         8,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
             rois_dims[1]));
 
@@ -608,9 +607,9 @@ class ROIPerspectiveTransformOpMaker
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to be transformed. "
-             "should be a 2-D LoDTensor of shape (num_rois, 8)"
+             "should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
              "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the top right coordinates, and"

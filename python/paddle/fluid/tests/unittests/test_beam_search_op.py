@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.op import Operator
-import paddle.fluid.core as core
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 def create_tensor(scope, name, np_data):
@@ -312,7 +315,7 @@ class TestBeamSearchOpError(unittest.TestCase):
             topk_scores, topk_indices = fluid.layers.topk(probs, k=4)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
-                y=fluid.layers.reshape(pre_scores, shape=[-1]),
+                y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
 

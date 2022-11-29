@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import math
+import os
+import struct
+import sys
+import tempfile
+import unittest
+
+import numpy
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp as amp
-
-import contextlib
-import numpy
-import unittest
-import math
-import sys
-import os
-import struct
-import tempfile
 
 paddle.enable_static()
 

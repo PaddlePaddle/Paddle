@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-from functools import partial
 import unittest
+from functools import partial
 
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import ProgramConfig, TensorConfig
 
 
 class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):

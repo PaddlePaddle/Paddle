@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+from test_distribution import DistributionNumpy
+
 import paddle
 from paddle import fluid
 from paddle.distribution import Uniform
 from paddle.fluid import layers
 from paddle.fluid.framework import _test_eager_guard
-
-from test_distribution import DistributionNumpy
 
 np.random.seed(2022)
 

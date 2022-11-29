@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from collections import OrderedDict
+
 
 class Node:
     def __init__(self, id, **attrs):
@@ -100,6 +102,8 @@ class Graph:
         # Attributes for Graph
         self._attrs = {}
         self._attrs.update(attrs)
+        self._reverse_adjs = {}
+        self._attr_to_nodes = {}
 
     @property
     def nodes(self):
@@ -120,8 +124,11 @@ class Graph:
             node = Node(node_id, **attrs)
             self._nodes[node_id] = node
             self._adjs[node_id] = {}
+            self._reverse_adjs[node_id] = []
         else:
             self._nodes[node_id].attrs.update(attrs)
+
+        return self._nodes[node_id]
 
     def add_edge(self, src_id, tgt_id, **attrs):
         # add nodes
@@ -132,14 +139,22 @@ class Graph:
         if src_id not in self._nodes:
             src_node = Node(src_id)
             self._nodes[src_id] = src_node
-            self._adjs[src_id] = {}
+            # for one tensor to multiple ops
+            self._adjs[src_id] = OrderedDict()
+            self._reverse_adjs[src_id] = []
         if tgt_id not in self._nodes:
             tgt_node = Node(tgt_id)
             self._nodes[tgt_id] = tgt_node
-            self._adjs[tgt_id] = {}
+            # for one tensor to multiple ops
+            self._adjs[tgt_id] = OrderedDict()
+            self._reverse_adjs[tgt_id] = []
         # add the edge
         edge = Edge(src_id, tgt_id, **attrs)
         self._adjs[src_id][tgt_id] = edge
+
+        # add the reverse adj
+        self._reverse_adjs[tgt_id].append(self.nodes[src_id])
+        return edge
 
     def __len__(self):
         return len(self._nodes)

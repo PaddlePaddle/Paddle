@@ -33,6 +33,10 @@ inline HOSTDEVICE phi::dtype::float16 real_log(phi::dtype::float16 x) {
   return static_cast<phi::dtype::float16>(::logf(static_cast<float>(x)));
 }
 
+inline HOSTDEVICE phi::dtype::bfloat16 real_log(phi::dtype::bfloat16 x) {
+  return static_cast<phi::dtype::bfloat16>(::logf(static_cast<float>(x)));
+}
+
 inline HOSTDEVICE float real_log(float x) { return ::logf(x); }
 
 inline HOSTDEVICE double real_log(double x) { return ::log(x); }

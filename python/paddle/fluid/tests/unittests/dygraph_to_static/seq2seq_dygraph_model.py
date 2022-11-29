@@ -14,15 +14,15 @@
 # limitations under the License.
 
 import numpy as np
+from seq2seq_utils import Seq2SeqModelHyperParams as args
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid import layers
+from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Embedding
-from seq2seq_utils import Seq2SeqModelHyperParams as args
+from paddle.jit.api import declarative
 
 INF = 1.0 * 1e5
 alpha = 0.6
@@ -176,19 +176,19 @@ class BaseModel(fluid.dygraph.Layer):
         )
 
     def _transpose_batch_time(self, x):
-        return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        return paddle.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
-        expand_times = [1] * len(x.shape)
-        expand_times[1] = self.beam_size
-        x = fluid.layers.expand(x, expand_times)
+        expand_shape = [-1] * len(x.shape)
+        expand_shape[1] = self.beam_size * x.shape[1]
+        x = paddle.expand(x, expand_shape)
         return x
 
     def _real_state(self, state, new_state, step_mask):
@@ -199,7 +199,7 @@ class BaseModel(fluid.dygraph.Layer):
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     @declarative
     def forward(self, inputs):
@@ -234,7 +234,7 @@ class BaseModel(fluid.dygraph.Layer):
         enc_len_mask = fluid.layers.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
-        enc_len_mask = fluid.layers.transpose(enc_len_mask, [1, 0])
+        enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
 
         # TODO: Because diff exits if call while_loop in static graph.
         # In while block, a Variable created in parent block participates in the calculation of gradient,
@@ -295,14 +295,14 @@ class BaseModel(fluid.dygraph.Layer):
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = fluid.layers.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axes=[2])
         max_tar_seq_len = fluid.layers.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss
 
@@ -336,7 +336,7 @@ class BaseModel(fluid.dygraph.Layer):
         enc_len_mask = fluid.layers.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
-        enc_len_mask = fluid.layers.transpose(enc_len_mask, [1, 0])
+        enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
 
         for k in range(args.max_seq_len):
             enc_step_input = src_emb[k]
@@ -386,25 +386,26 @@ class BaseModel(fluid.dygraph.Layer):
                 [[0.0] + [-self.kinf] * (self.beam_size - 1)], dtype="float32"
             )
         )
-        beam_state_log_probs = fluid.layers.expand(
-            beam_state_log_probs, [self.batch_size, 1]
+        beam_state_log_probs = paddle.expand(
+            beam_state_log_probs,
+            [self.batch_size * beam_state_log_probs.shape[0], -1],
         )
         dec_hidden, dec_cell = enc_hidden, enc_cell
         dec_hidden = [self._expand_to_beam_size(ele) for ele in dec_hidden]
         dec_cell = [self._expand_to_beam_size(ele) for ele in dec_cell]
 
-        batch_pos = fluid.layers.expand(
+        batch_pos = paddle.expand(
             fluid.layers.unsqueeze(
                 to_variable(np.arange(0, self.batch_size, 1, dtype="int64")),
                 [1],
             ),
-            [1, self.beam_size],
+            [-1, self.beam_size],
         )
         predicted_ids = []
         parent_ids = []
 
         for step_idx in range(paddle.to_tensor(self.beam_max_step_num)):
-            if fluid.layers.reduce_sum(1 - beam_finished).numpy()[0] == 0:
+            if paddle.sum(1 - beam_finished).numpy()[0] == 0:
                 break
             step_input = self._merge_batch_beams(step_input)
             new_dec_hidden, new_dec_cell = [], []
@@ -442,9 +443,9 @@ class BaseModel(fluid.dygraph.Layer):
             )
 
             step_log_probs = fluid.layers.elementwise_mul(
-                fluid.layers.expand(
+                paddle.expand(
                     fluid.layers.unsqueeze(beam_finished, [2]),
-                    [1, 1, self.tar_vocab_size],
+                    [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
                 axis=-1,
@@ -454,7 +455,7 @@ class BaseModel(fluid.dygraph.Layer):
             log_probs = fluid.layers.elementwise_add(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
-            scores = fluid.layers.reshape(
+            scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
             topk_scores, topk_indices = fluid.layers.topk(
@@ -487,9 +488,9 @@ class BaseModel(fluid.dygraph.Layer):
             ]
             next_finished = self._gather(beam_finished, beam_indices, batch_pos)
             next_finished = fluid.layers.cast(next_finished, "bool")
-            next_finished = fluid.layers.logical_or(
+            next_finished = paddle.logical_or(
                 next_finished,
-                fluid.layers.equal(token_indices, end_token_tensor),
+                paddle.equal(token_indices, end_token_tensor),
             )
             next_finished = fluid.layers.cast(next_finished, "float32")
 
@@ -643,36 +644,36 @@ class AttentionModel(fluid.dygraph.Layer):
         )
 
     def _transpose_batch_time(self, x):
-        return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        return paddle.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def tile_beam_merge_with_batch(self, x):
         x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
-        expand_times = [1] * len(x.shape)
-        expand_times[1] = self.beam_size
-        x = fluid.layers.expand(x, expand_times)  # [batch_size, beam_size, ...]
-        x = fluid.layers.transpose(
+        expand_shape = [-1] * len(x.shape)
+        expand_shape[1] = self.beam_size * x.shape[1]
+        x = paddle.expand(x, expand_shape)  # [batch_size, beam_size, ...]
+        x = paddle.transpose(
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
-        x = fluid.layers.reshape(
+        x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
-        x = fluid.layers.transpose(
+        x = paddle.transpose(
             x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
         )  # [batch_size * beam_size, ...]
         return x
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
-        expand_times = [1] * len(x.shape)
-        expand_times[1] = self.beam_size
-        x = fluid.layers.expand(x, expand_times)
+        expand_shape = [-1] * len(x.shape)
+        expand_shape[1] = self.beam_size * x.shape[1]
+        x = paddle.expand(x, expand_shape)
         return x
 
     def _real_state(self, state, new_state, step_mask):
@@ -683,7 +684,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
         query = fluid.layers.unsqueeze(query, [1])
@@ -691,9 +692,9 @@ class AttentionModel(fluid.dygraph.Layer):
         attn = fluid.layers.matmul(query, memory, transpose_y=True)
 
         if mask is not None:
-            attn = fluid.layers.transpose(attn, [1, 0, 2])
+            attn = paddle.transpose(attn, [1, 0, 2])
             attn = fluid.layers.elementwise_add(attn, mask * 1000000000, -1)
-            attn = fluid.layers.transpose(attn, [1, 0, 2])
+            attn = paddle.transpose(attn, [1, 0, 2])
         weight = fluid.layers.softmax(attn)
         weight_memory = fluid.layers.matmul(weight, memory)
 
@@ -743,7 +744,7 @@ class AttentionModel(fluid.dygraph.Layer):
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_padding_mask = enc_len_mask - 1.0
-        enc_len_mask = fluid.layers.transpose(enc_len_mask, [1, 0])
+        enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
 
         enc_outputs = []
         # TODO: Because diff exits if call while_loop in static graph.
@@ -810,7 +811,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 else:
                     step_input = new_hidden
             dec_att = self.attention(step_input, enc_outputs, enc_padding_mask)
-            dec_att = fluid.layers.squeeze(dec_att, [1])
+            dec_att = paddle.squeeze(dec_att, [1])
             concat_att_out = fluid.layers.concat([dec_att, step_input], 1)
             out = self.concat_fc(concat_att_out)
             input_feed = out
@@ -822,13 +823,13 @@ class AttentionModel(fluid.dygraph.Layer):
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = fluid.layers.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axes=[2])
         max_tar_seq_len = fluid.layers.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss

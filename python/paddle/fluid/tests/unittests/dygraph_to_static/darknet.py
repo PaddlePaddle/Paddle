@@ -14,10 +14,9 @@
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from paddle.fluid.dygraph.nn import BatchNorm
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -65,7 +64,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         out = self.conv(inputs)
         out = self.batch_norm(out)
         if self.act == 'leaky':
-            out = fluid.layers.leaky_relu(x=out, alpha=0.1)
+            out = paddle.nn.functional.leaky_relu(out, 0.1)
         return out
 
 

@@ -12,38 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import itertools
+import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
+from paddle.fluid.dygraph import Linear
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import (
-    SGDOptimizer,
-    Adam,
-    MomentumOptimizer,
-    LarsMomentumOptimizer,
-    AdagradOptimizer,
-    AdamaxOptimizer,
-    DpsgdOptimizer,
-    DecayedAdagradOptimizer,
     AdadeltaOptimizer,
-    RMSPropOptimizer,
+    AdagradOptimizer,
+    Adam,
+    AdamaxOptimizer,
+    DecayedAdagradOptimizer,
+    DpsgdOptimizer,
+    ExponentialMovingAverage,
     FtrlOptimizer,
     LambOptimizer,
-)
-from paddle.fluid.optimizer import (
-    ModelAverage,
-    DGCMomentumOptimizer,
-    ExponentialMovingAverage,
-    PipelineOptimizer,
+    LarsMomentumOptimizer,
     LookaheadOptimizer,
+    ModelAverage,
+    MomentumOptimizer,
+    PipelineOptimizer,
     RecomputeOptimizer,
+    RMSPropOptimizer,
+    SGDOptimizer,
 )
-from paddle.fluid.dygraph import Linear
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -141,7 +140,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
-                img = fluid.layers.reshape(img, shape=[batch_size, -1])
+                img = paddle.reshape(img, shape=[batch_size, -1])
                 cost = mlp(img)
                 avg_loss = fluid.layers.reduce_mean(cost)
                 dy_out = avg_loss.numpy()
@@ -180,7 +179,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 name='pixel', shape=[1, 28, 28], dtype='float32'
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            img = fluid.layers.reshape(img, shape=[batch_size, 784])
+            img = paddle.reshape(img, shape=[batch_size, 784])
             cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             optimizer.minimize(avg_loss)

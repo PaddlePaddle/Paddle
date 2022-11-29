@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
 
 
 class TestMultiheadAttention(unittest.TestCase):
@@ -50,7 +53,7 @@ class TestMultiheadAttention(unittest.TestCase):
             num_heads=8,
             dropout_rate=0.0,
         )
-        out = fluid.layers.reduce_sum(contexts, dim=None)
+        out = paddle.sum(contexts, axis=None)
         fluid.backward.append_backward(loss=out)
 
         self.fetch_list = [contexts]

@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
-from test_imperative_base import new_program_scope
+from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.layer_helper import LayerHelper
 
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -123,7 +124,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
     def forward(self, input):
         y = self._pool(input)
-        y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
+        y = paddle.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
         y = self._excitation(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
@@ -318,7 +319,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 

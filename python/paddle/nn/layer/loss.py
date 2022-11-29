@@ -13,20 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 # TODO: define loss functions of neural network
 import paddle.fluid as fluid
-import paddle
-from .. import functional as F
-from paddle.fluid.framework import in_dygraph_mode
-from .. import Layer
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
+
+from .. import Layer
+from .. import functional as F
 
 __all__ = []
 
 
 class BCEWithLogitsLoss(Layer):
     r"""
-    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+
+    This operator combines the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
 
@@ -49,7 +52,7 @@ class BCEWithLogitsLoss(Layer):
     For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
-    .. math::
+        .. math::
            Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
@@ -81,21 +84,21 @@ class BCEWithLogitsLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
-            N is batch_size, `*` means number of additional dimensions. The ``logit``
-            is usually the output of Linear layer. Available dtype is float32, float64.
-        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-            ``logit``. The target labels which values should be numbers between 0 and 1.
-            Available dtype is float32, float64.
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``logit`` , else the shape of output is scalar.
+        - logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, `*`],
+          N is batch_size, `*` means number of additional dimensions. The ``logit``
+          is usually the output of Linear layer. Available dtype is float32, float64.
+        - label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+          ``logit``. The target labels which values should be numbers between 0 and 1.
+          Available dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``logit`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCEWithLogitsLoss.
 
     Examples:
-
         .. code-block:: python
+
             import paddle
             logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
@@ -134,6 +137,7 @@ class BCEWithLogitsLoss(Layer):
 
 class CrossEntropyLoss(Layer):
     r"""
+
     By default, this operator implements the cross entropy loss function with softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
@@ -246,67 +250,41 @@ class CrossEntropyLoss(Layer):
 
 
     Parameters:
-
-        - **weight** (Tensor, optional)
-
-            a manual rescaling weight given to each class.
+        weight (Tensor, optional): a manual rescaling weight given to each class.
             If given, has to be a Tensor of size C and the data type is float32, float64.
             Default is ``'None'`` .
-
-        - **ignore_index** (int64, optional)
-
-            Specifies a target value that is ignored
+        ignore_index (int64, optional): Specifies a target value that is ignored
             and does not contribute to the loss. A negative value means that no label
             value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
-
-        - **reduction** (str, optional)
-
-            Indicate how to average the loss by batch_size,
+        reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-
-        - **soft_label** (bool, optional)
-
-            Indicate whether label is soft.
+        soft_label (bool, optional): Indicate whether label is soft.
             If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
             Default is ``False``.
-
-        - **axis** (int, optional)
-
-            The index of dimension to perform softmax calculations.
+        axis (int, optional): The index of dimension to perform softmax calculations.
             It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the number
             of dimensions of input :attr:`input`.
             Default is ``-1`` .
-
-        - **use_softmax** (bool, optional)
-
-            Indicate whether compute softmax before cross_entropy.
+        use_softmax (bool, optional): Indicate whether compute softmax before cross_entropy.
             Default is ``True``.
-
-        - **name** (str, optional)
-
-            The name of the operator. Default is ``None`` .
+        name (str, optional): The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
 
 
     Shape:
-
-        - **input** (Tensor)
-
-            Input tensor, the data type is float32, float64. Shape is
-        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
-
+        - **input** (Tensor), the data type is float32, float64. Shape is
+          :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
             Note:
 
                 1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
-
 
         - **label** (Tensor)
 
@@ -317,15 +295,10 @@ class CrossEntropyLoss(Layer):
             2. If soft_label=True, the shape and data type should be same with ``input`` ,
             and the sum of the labels for each sample should be 1.
 
-        - **output** (Tensor)
-
-            Return the softmax cross_entropy loss of ``input`` and ``label``.
-
-            The data type is the same as input.
-
-            If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the dimension of return value is ``1``.
-
-            If :attr:`reduction` is ``'none'``:
+        - **output** (Tensor), Return the softmax cross_entropy loss of ``input`` and ``label``.
+          The data type is the same as input.
+          If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the dimension of return value is ``1``.
+          If :attr:`reduction` is ``'none'``:
 
             1. If soft_label = False, the dimension of return value is the same with ``label`` .
 
@@ -622,13 +595,15 @@ class MSELoss(Layer):
 
         reduce_op = 'reduce_mean'
         if self.reduction == 'sum':
-            reduce_op = 'reduce_sum'
+            square_out = paddle.sum(square_out)
+            return square_out
 
         return getattr(fluid.layers, reduce_op)(square_out)
 
 
 class L1Loss(Layer):
     r"""
+
     Construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
@@ -658,11 +633,11 @@ class L1Loss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
-        output (Tensor): The L1 Loss of ``input`` and ``label``.
-            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
-            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+        - input (Tensor): The input tensor. The shapes is ``[N, *]``, where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
+        - label (Tensor): label. The shapes is ``[N, *]``, same shape as ``input`` . It's data type should be float32, float64, int32, int64.
+        - output (Tensor): The L1 Loss of ``input`` and ``label``.
+          If `reduction` is ``'none'``, the shape of output loss is ``[N, *]``, the same as ``input`` .
+          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
         .. code-block:: python
@@ -687,6 +662,7 @@ class L1Loss(Layer):
             print(output)
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
+
     """
 
     def __init__(self, reduction='mean', name=None):
@@ -707,6 +683,7 @@ class L1Loss(Layer):
 
 class BCELoss(Layer):
     """
+
     This interface is used to construct a callable object of the ``BCELoss`` class.
     The BCELoss layer measures the binary_cross_entropy loss between input predictions ``input``
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
@@ -750,14 +727,14 @@ class BCELoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
-            number of additional dimensions. The input ``input`` should always
-            be the output of sigmod.  Available dtype is float32, float64.
-        label (Tensor): 2-D tensor with the same shape as ``input``. The target
-            labels which values should be numbers between 0 and 1. Available
-            dtype is float32, float64.
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is scalar.
+        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means
+          number of additional dimensions. The input ``input`` should always
+          be the output of sigmod.  Available dtype is float32, float64.
+        - label (Tensor): 2-D tensor with the same shape as ``input``. The target
+          labels which values should be numbers between 0 and 1. Available
+          dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``input`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCELoss.
@@ -850,7 +827,7 @@ class NLLLoss(Layer):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
-         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         - input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
@@ -909,6 +886,7 @@ class NLLLoss(Layer):
 
 class KLDivLoss(Layer):
     r"""
+
     Generate a callable object of 'KLDivLoss' to calculate the
     Kullback-Leibler divergence loss between Input(X) and
     Input(Target). Notes that Input(X) is the log-probability
@@ -928,13 +906,9 @@ class KLDivLoss(Layer):
              Default is ``'mean'``.
 
     Shape:
-
-        - input (Tensor): (N, *), where * means, any number of additional dimensions.
-
-        - label (Tensor): (N, *), same shape as input.
-
+        - input (Tensor): ``(N, *)``, where ``*`` means, any number of additional dimensions.
+        - label (Tensor): ``(N, *)``, same shape as input.
         - output (Tensor): tensor with shape: [1] by default.
-
 
     Examples:
         .. code-block:: python
@@ -965,6 +939,7 @@ class KLDivLoss(Layer):
             kldiv_criterion = nn.KLDivLoss(reduction='none')
             pred_loss = kldiv_criterion(x, target)
             # shape=[5, 20]
+
     """
 
     def __init__(self, reduction='mean'):
@@ -1817,6 +1792,7 @@ class MultiMarginLoss(Layer):
 
 class SoftMarginLoss(Layer):
     r"""
+
     Creates a criterion that measures a two-class soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
 
@@ -1835,17 +1811,14 @@ class SoftMarginLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-
-        Input (Tensor): The input tensor with shape: [N, *],
-        N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
-        Available dtype is float32, float64.
-
-        Label (Tensor): The target labels tensor with the same shape as
-        ``input``. The target labels which values should be numbers -1 or 1.
-        Available dtype is int32, int64, float32, float64.
-
-        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is [1].
+        - Input (Tensor): The input tensor with shape: ``[N, *]``,
+          N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
+          Available dtype is float32, float64.
+        - Label (Tensor): The target labels tensor with the same shape as
+          ``input``. The target labels which values should be numbers -1 or 1.
+          Available dtype is int32, int64, float32, float64.
+        - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``input`` , else the shape of output is [1].
 
     Returns:
         A callable object of SoftMarginLoss.
@@ -1877,6 +1850,7 @@ class SoftMarginLoss(Layer):
             #         [0.55476735, 1.10505384, 0.89923519, 0.45018155, 1.06587511],
             #         [0.37998142, 0.48067240, 0.47791212, 0.55664053, 0.98581399],
             #         [0.78571653, 0.59319711, 0.39701841, 0.76172109, 0.83781742]])
+
     """
 
     def __init__(self, reduction='mean', name=None):

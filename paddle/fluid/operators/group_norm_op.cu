@@ -21,7 +21,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/operators/group_norm_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {

@@ -96,21 +96,6 @@ FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
 RE_PYNAME = '[a-zA-Z0-9_]+'
 RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
 
-# FullArgSpec is valid from Python3. Defined a Namedtuple to
-# to make it available in Python2.
-FullArgSpec = collections.namedtuple(
-    'FullArgSpec',
-    [
-        'args',
-        'varargs',
-        'varkw',
-        'defaults',
-        'kwonlyargs',
-        'kwonlydefaults',
-        'annotations',
-    ],
-)
-
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
@@ -160,7 +145,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
 
 
 def create_undefined_variable():
-    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+    from paddle.jit.dy2static.return_transformer import (
         RETURN_NO_VALUE_MAGIC_NUM,
     )
 
@@ -199,27 +184,11 @@ def saw(x):
         return x
 
 
-def getfullargspec(target):
-    if hasattr(inspect, "getfullargspec"):
-        return inspect.getfullargspec(target)
-    else:
-        argspec = inspect.getargspec(target)
-        return FullArgSpec(
-            args=argspec.args,
-            varargs=argspec.varargs,
-            varkw=argspec.keywords,
-            defaults=argspec.defaults,
-            kwonlyargs=[],
-            kwonlydefaults=None,
-            annotations={},
-        )
-
-
 def parse_arg_and_kwargs(function):
     """
     Returns full argument names as list. e.g ['x', 'y', 'z']
     """
-    fullargspec = getfullargspec(function)
+    fullargspec = inspect.getfullargspec(function)
     arg_names = fullargspec.args
     if arg_names and 'self' == arg_names[0]:
         arg_names = fullargspec.args[1:]
@@ -239,7 +208,7 @@ def parse_varargs_name(function):
     """
     Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
     """
-    fullargspec = getfullargspec(function)
+    fullargspec = inspect.getfullargspec(function)
     varargs = fullargspec.varargs
     return varargs
 
@@ -354,7 +323,7 @@ def _delete_keywords_from(node):
     func_src = astor.to_source(gast.gast_to_ast(node.func))
     import paddle.fluid as fluid
 
-    full_args = eval("inspect.getargspec({})".format(func_src))
+    full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
@@ -438,9 +407,7 @@ def update_args_of_func(node, dygraph_node, method_name):
     if method_name == "__init__" or eval(
         "issubclass({}, fluid.dygraph.Layer)".format(class_src)
     ):
-        full_args = eval(
-            "inspect.getargspec({}.{})".format(class_src, method_name)
-        )
+        full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
             arg_name for arg_name in full_args[0] if arg_name != "self"
         ]
@@ -1245,13 +1212,13 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             """NOTE: why we need merge w_vars and push_pop_vars here ?
             because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
-            from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import (
+            from paddle.jit.dy2static.loop_transformer import (
                 WHILE_CONDITION_PREFIX,
                 WHILE_BODY_PREFIX,
                 FOR_CONDITION_PREFIX,
                 FOR_BODY_PREFIX,
             )
-            from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import (
+            from paddle.jit.dy2static.ifelse_transformer import (
                 TRUE_FUNC_PREFIX,
                 FALSE_FUNC_PREFIX,
             )

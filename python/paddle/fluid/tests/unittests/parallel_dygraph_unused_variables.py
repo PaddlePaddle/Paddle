@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
-from paddle.nn import Layer, Embedding
+import paddle
+from paddle.nn import Embedding, Layer
 
 
 class SimpleNet(Layer):

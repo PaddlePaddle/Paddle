@@ -651,5 +651,12 @@ if(WITH_PYTHON)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
 
-  target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
+  if(APPLE)
+    string(REGEX REPLACE ".+/(.+)" "\\1" PYTHON_LIBRARY_NAME
+                         ${PYTHON_LIBRARIES})
+    # target_link_libraries(${SHARD_LIB_NAME} "-Wl,-rpath,${PYTHON_LIBRARY_NAME}")
+  else()
+    target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
+  endif()
+
 endif()

@@ -60,7 +60,7 @@ def dyfunc_with_if_else2(x, col=100):
     if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
-        x_pow = fluid.layers.pow(x, 2)
+        x_pow = paddle.pow(x, 2)
         y = paddle.tanh(x_pow)
     return y
 
@@ -173,7 +173,7 @@ def nested_if_else(x_v):
 
 
 def nested_if_else_2(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     if b < 1:
         # var `z` is not visible for outer scope
@@ -196,7 +196,7 @@ def nested_if_else_2(x):
 
 
 def nested_if_else_3(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     # var `z` is visible for func.body
     if b < 1:

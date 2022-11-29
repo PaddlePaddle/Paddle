@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
+import collections
+import glob
+import hashlib
+import json
+import logging
 import os
 import re
-import sys
-import json
-import glob
-import atexit
-import hashlib
-import logging
-import collections
-import textwrap
-import warnings
 import subprocess
+import sys
+import textwrap
 import threading
-
-from importlib import machinery
+import warnings
 from contextlib import contextmanager
+from importlib import machinery
+
 from setuptools.command import bdist_egg
 
 try:
