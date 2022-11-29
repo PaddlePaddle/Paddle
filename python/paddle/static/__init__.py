@@ -58,7 +58,7 @@ from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 from ..fluid.io import save  # noqa: F401
-from ..fluid.io import load  # noqa: F401
+from ..framework.io import static_load as load  # noqa: F401
 from ..fluid.io import load_program_state  # noqa: F401
 from ..fluid.io import set_program_state  # noqa: F401
 
