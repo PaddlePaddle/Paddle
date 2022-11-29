@@ -267,14 +267,6 @@ class TestFftn(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
-            'test_x_complex',
-            rand_x(4, complex=True),
-            None,
-            None,
-            'backward',
-            TypeError,
-        ),
-        (
             'test_n_nagative',
             rand_x(4),
             (-1, -1),
