@@ -88,14 +88,16 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
-    def forward(self, x):
-        return super().forward(x)
+    def forward(self, tensors):
+        stable, x = tensors
+        return stable, super().forward(x)
 
 
 class TransformerNetPipe(TransformerNet):
-    def forward(self, x):
+    def forward(self, tensors):
+        stable, x = tensors
         output = super().forward(x)
-        return output
+        return stable, output
 
 
 class CriterionPipe(Layer):
@@ -103,6 +105,7 @@ class CriterionPipe(Layer):
         super().__init__()
 
     def forward(self, out, label):
+        out = out[-1]
         loss = out.mean()
         return loss
 
@@ -171,7 +174,7 @@ class TestDistPPTraning(unittest.TestCase):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
-            loss = model.train_batch([x, x], optimizer, scheduler)
+            loss = model.train_batch([(x, x), x], optimizer, scheduler)
             # TODO(shenliang03) add utest for loss
             print("loss: ", loss)
 
