@@ -1405,11 +1405,11 @@ class CosineEmbeddingLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+        input1 (Tensor): tensor with shape: [N, M], N means batch size,which can be zero, M means the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+        input2 (Tensor): tensor with shape: [N, M], N means batch size,which can be zero, M means the length of input array.
                          Available dtypes are float32, float64.
-        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+        label (Tensor): tensor with shape: [N], N means the length of input array.
                          Available dtypes are int32, int64, float32, float64.
         output (Tensor): Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
                          If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
