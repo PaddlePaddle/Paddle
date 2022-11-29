@@ -15,8 +15,7 @@
 import os
 import unittest
 
-from paddle.utils.download import get_weights_path_from_url
-from paddle.utils.download import get_path_from_url
+from paddle.utils.download import get_path_from_url, get_weights_path_from_url
 
 
 class TestDownload(unittest.TestCase):
@@ -142,6 +141,7 @@ class TestDownload(unittest.TestCase):
         ]
 
         import sys
+
         from paddle.utils.download import _download
 
         if sys.platform == 'linux':

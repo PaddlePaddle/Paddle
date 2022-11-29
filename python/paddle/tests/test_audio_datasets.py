@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import unittest
 
 import numpy as np
-import paddle
-import itertools
 from parameterized import parameterized
+
+import paddle
 
 
 def parameterize(*params):
