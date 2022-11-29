@@ -13,8 +13,7 @@
 # limitations under the License.
 # Modified from librosa(https://github.com/librosa/librosa)
 import math
-from typing import Optional
-from typing import Union
+from typing import Optional, Union
 
 import paddle
 from paddle import Tensor

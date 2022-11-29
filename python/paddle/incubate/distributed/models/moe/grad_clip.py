@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import paddle
-
 import paddle.distributed as dist
+from paddle.fluid import core, layers
 from paddle.fluid.clip import ClipGradBase, _squared_l2_norm
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import core, layers
 
 
 class ClipGradForMOEByGlobalNorm(ClipGradBase):

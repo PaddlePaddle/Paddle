@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
-from test_imperative_base import new_program_scope
+from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.layer_helper import LayerHelper
 
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
