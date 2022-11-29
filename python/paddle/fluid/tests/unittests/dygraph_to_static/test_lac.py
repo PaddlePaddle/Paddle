@@ -13,24 +13,23 @@
 # limitations under the License.
 
 import math
-import time
-import numpy as np
-import unittest
-
 import os
 import tempfile
+import time
+import unittest
+
+import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
-from paddle.jit.api import declarative
-from paddle.jit import ProgramTranslator
+from paddle import _legacy_C_ops
+from paddle.fluid.dygraph import Embedding, GRUUnit, Linear, to_variable
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
-from paddle import _legacy_C_ops
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 SEED = 2020
 

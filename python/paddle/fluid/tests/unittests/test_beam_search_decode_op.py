@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestBeamSearchDecodeOp(unittest.TestCase):

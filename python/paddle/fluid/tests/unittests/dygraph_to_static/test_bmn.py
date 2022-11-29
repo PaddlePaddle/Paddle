@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import math
-import numpy as np
-import unittest
-import paddle
+import os
 import tempfile
-from paddle.jit import to_static
+import unittest
+
+import numpy as np
+from predictor_utils import PredictorTools
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-from predictor_utils import PredictorTools
+from paddle.jit import ProgramTranslator, to_static
 
 SEED = 2000
 DATATYPE = 'float32'
@@ -330,11 +330,11 @@ def bmn_loss_func(
             coef_1 = 0.5 * ratio
             epsilon = 0.000001
             # temp = fluid.layers.log(pred_score + epsilon)
-            loss_pos = fluid.layers.elementwise_mul(
+            loss_pos = paddle.multiply(
                 fluid.layers.log(pred_score + epsilon), pmask
             )
             loss_pos = coef_1 * fluid.layers.reduce_mean(loss_pos)
-            loss_neg = fluid.layers.elementwise_mul(
+            loss_neg = paddle.multiply(
                 fluid.layers.log(1.0 - pred_score + epsilon), (1.0 - pmask)
             )
             loss_neg = coef_0 * fluid.layers.reduce_mean(loss_neg)
@@ -348,14 +348,14 @@ def bmn_loss_func(
 
     def pem_reg_loss_func(pred_score, gt_iou_map, mask):
 
-        gt_iou_map = fluid.layers.elementwise_mul(gt_iou_map, mask)
+        gt_iou_map = paddle.multiply(gt_iou_map, mask)
 
         u_hmask = fluid.layers.cast(x=gt_iou_map > 0.7, dtype=DATATYPE)
         u_mmask = paddle.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
         u_mmask = fluid.layers.cast(x=u_mmask, dtype=DATATYPE)
         u_lmask = paddle.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
         u_lmask = fluid.layers.cast(x=u_lmask, dtype=DATATYPE)
-        u_lmask = fluid.layers.elementwise_mul(u_lmask, mask)
+        u_lmask = paddle.multiply(u_lmask, mask)
 
         num_h = fluid.layers.cast(paddle.sum(u_hmask), dtype=DATATYPE)
         num_m = fluid.layers.cast(paddle.sum(u_mmask), dtype=DATATYPE)
@@ -367,7 +367,7 @@ def bmn_loss_func(
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)
         )
-        u_smmask = fluid.layers.elementwise_mul(u_mmask, u_smmask)
+        u_smmask = paddle.multiply(u_mmask, u_smmask)
         u_smmask = fluid.layers.cast(x=(u_smmask > (1.0 - r_m)), dtype=DATATYPE)
 
         r_l = num_h / num_l
@@ -376,23 +376,23 @@ def bmn_loss_func(
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)
         )
-        u_slmask = fluid.layers.elementwise_mul(u_lmask, u_slmask)
+        u_slmask = paddle.multiply(u_lmask, u_slmask)
         u_slmask = fluid.layers.cast(x=(u_slmask > (1.0 - r_l)), dtype=DATATYPE)
 
         weights = u_hmask + u_smmask + u_slmask
         weights.stop_gradient = True
         loss = fluid.layers.square_error_cost(pred_score, gt_iou_map)
-        loss = fluid.layers.elementwise_mul(loss, weights)
+        loss = paddle.multiply(loss, weights)
         loss = 0.5 * paddle.sum(loss) / paddle.sum(weights)
 
         return loss
 
     def pem_cls_loss_func(pred_score, gt_iou_map, mask):
-        gt_iou_map = fluid.layers.elementwise_mul(gt_iou_map, mask)
+        gt_iou_map = paddle.multiply(gt_iou_map, mask)
         gt_iou_map.stop_gradient = True
         pmask = fluid.layers.cast(x=(gt_iou_map > 0.9), dtype=DATATYPE)
         nmask = fluid.layers.cast(x=(gt_iou_map <= 0.9), dtype=DATATYPE)
-        nmask = fluid.layers.elementwise_mul(nmask, mask)
+        nmask = paddle.multiply(nmask, mask)
 
         num_positive = paddle.sum(pmask)
         num_entries = num_positive + paddle.sum(nmask)
@@ -400,11 +400,11 @@ def bmn_loss_func(
         coef_0 = 0.5 * ratio / (ratio - 1)
         coef_1 = 0.5 * ratio
         epsilon = 0.000001
-        loss_pos = fluid.layers.elementwise_mul(
+        loss_pos = paddle.multiply(
             fluid.layers.log(pred_score + epsilon), pmask
         )
         loss_pos = coef_1 * paddle.sum(loss_pos)
-        loss_neg = fluid.layers.elementwise_mul(
+        loss_neg = paddle.multiply(
             fluid.layers.log(1.0 - pred_score + epsilon), nmask
         )
         loss_neg = coef_0 * paddle.sum(loss_neg)
