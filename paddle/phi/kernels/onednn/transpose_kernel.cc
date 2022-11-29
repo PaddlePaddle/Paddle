@@ -80,7 +80,7 @@ void TransposeKernel(const Context& dev_ctx,
       dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
 
   if (axis.size() == 1) {
-    paddle::framework::TensorCopy(x, x.place(), out);
+    Copy<Context>(dev_ctx, x, x.place(), false, out);
     out->set_mem_desc(x.mem_desc());
     return;
   }
