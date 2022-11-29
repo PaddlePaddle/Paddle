@@ -248,11 +248,12 @@ void ArgMaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arg_min,
+PD_REGISTER_KERNEL(argmin,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int32_t,
@@ -260,11 +261,12 @@ PD_REGISTER_KERNEL(arg_min,
                    int16_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(arg_max,
+PD_REGISTER_KERNEL(argmax,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int32_t,
