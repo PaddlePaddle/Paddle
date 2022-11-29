@@ -44,7 +44,7 @@ class TestBase:
     @paddle.no_grad()
     def test_inter_result(self):
 
-        inp = paddle.randn([32, 3, 224, 224])
+        inp = paddle.randn([1, 3, 224, 224])
         inter_oup = self.new_model(inp)
 
         for layer_name, layer in self.model.named_children():

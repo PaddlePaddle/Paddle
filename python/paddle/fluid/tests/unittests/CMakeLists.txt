@@ -1230,7 +1230,7 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
 endif()
 if(NOT WITH_GPU)
-  set_tests_properties(test_IntermediateLayerGetter PROPERTIES TIMEOUT 900)
+  set_tests_properties(test_IntermediateLayerGetter PROPERTIES TIMEOUT 100)
 endif()
 
 if($ENV{USE_STANDALONE_EXECUTOR})
