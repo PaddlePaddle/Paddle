@@ -14,10 +14,11 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
+from paddle import in_dynamic_mode
+from paddle.nn import Layer
+
 from ...fluid.dygraph import Flatten  # noqa: F401
 from .. import functional as F
-from paddle.nn import Layer
-from paddle import in_dynamic_mode
 
 __all__ = []
 

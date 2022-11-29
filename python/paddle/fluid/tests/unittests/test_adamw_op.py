@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import random
-import numpy as np
-import paddle.fluid as fluid
-from op_test import OpTest
+import unittest
 from functools import partial
-from paddle.framework import core
+
+import numpy as np
+from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.framework import core
 
 
 def adamw_step(inputs, attributes):
