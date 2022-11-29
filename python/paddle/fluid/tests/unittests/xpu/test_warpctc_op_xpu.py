@@ -16,18 +16,20 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-from test_softmax_op import stable_softmax
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import paddle
-import paddle.nn.functional as F
 from op_test_xpu import XPUOpTest
+from test_softmax_op import stable_softmax
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 

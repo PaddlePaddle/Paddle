@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import math
+import numbers
 import random
+import traceback
+from collections.abc import Iterable, Sequence
 
 import numpy as np
-import numbers
-import traceback
 
 import paddle
-from . import functional as F
 
-from collections.abc import Sequence, Iterable
+from . import functional as F
 
 __all__ = []
 

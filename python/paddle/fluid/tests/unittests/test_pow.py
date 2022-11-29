@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.static import Program, program_guard
 import paddle.fluid.core as core
+from paddle.static import Program, program_guard
 
 DYNAMIC = 1
 STATIC = 2

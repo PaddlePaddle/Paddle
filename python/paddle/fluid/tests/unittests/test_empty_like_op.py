@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
 import paddle.fluid.core as core
-from paddle.static import program_guard, Program
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.static import Program, program_guard
 
 
 class TestEmptyLikeAPICommon(unittest.TestCase):

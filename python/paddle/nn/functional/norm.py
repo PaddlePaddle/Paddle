@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
+
 # TODO: define normalization api
 import paddle
 import paddle.fluid as fluid
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid.layer_helper import LayerHelper
-from ...fluid import dygraph_utils
-import numbers
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ...fluid import dygraph_utils
+from ...fluid.data_feeder import check_type, check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
 
 __all__ = []
 

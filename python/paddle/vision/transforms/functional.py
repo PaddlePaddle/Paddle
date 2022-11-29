@@ -17,10 +17,11 @@ import numbers
 
 import numpy as np
 from PIL import Image
+
 import paddle
 
-from . import functional_pil as F_pil
 from . import functional_cv2 as F_cv2
+from . import functional_pil as F_pil
 from . import functional_tensor as F_t
 
 __all__ = []
