@@ -49,8 +49,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
                        "255 and greater or equal to 0, but got %f",
                        quantization_shift));
 
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
 
     auto x_tz = phi::vectorize<int64_t>(x->dims());
     auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
@@ -78,7 +77,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     auto reorder_p = reorder_handler.AcquireReorder(
         reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 

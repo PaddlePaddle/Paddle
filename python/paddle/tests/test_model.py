@@ -31,10 +31,10 @@ from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
 import paddle.vision.models as models
-import paddle.fluid.dygraph.jit as jit
+import paddle.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
 )
 
@@ -61,7 +61,7 @@ class LeNetDygraph(paddle.nn.Layer):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1, -1)
             x = self.fc(x)
         return x
 

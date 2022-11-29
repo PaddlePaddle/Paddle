@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
@@ -40,7 +41,7 @@ class TRTFlattenTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_flatten(self, data):
-        return fluid.layers.flatten(data, axis=1)
+        return paddle.flatten(data, 1, -1)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -75,7 +76,7 @@ class TRTFlattenDynamicTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_flatten(self, data):
-        return fluid.layers.flatten(data, axis=1)
+        return paddle.flatten(data, 1, -1)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

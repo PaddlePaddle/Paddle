@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
 from parallel_dygraph_mnist import TestMnist
@@ -64,7 +63,7 @@ class TestParallelDygraphMnistXPU(TestDistBase):
 
 class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
     def test_mnist_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+        if fluid.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
 
 
