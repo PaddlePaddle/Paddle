@@ -250,27 +250,23 @@ class CrossEntropyLoss(Layer):
 
 
     Parameters:
-        weight (Tensor, optional): a manual rescaling weight given to each class.
-            If given, has to be a Tensor of size C and the data type is float32, float64.
-            Default is ``'None'`` .
+        weight (Tensor, optional): a manual rescaling weight given to each class,Default is ``'None'`` .
+            If given, has to be a Tensor of size C and the data type is float32, float64.   
         ignore_index (int64, optional): Specifies a target value that is ignored
             and does not contribute to the loss. A negative value means that no label
             value needs to be ignored. Only valid when soft_label = False.
-            Default is ``-100`` .
-        reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
-            Default is ``'mean'``.
+            Default is ``-100`` and the data type is int64.
+        reduction (str, optional): Specifies the calculation to apply to the output result,the data type is string
+            the candicates are ``'none'``,``'mean'``,``'sum'``.
+            Default is ``'mean'``,the mean value of mini-batch loss is calculated;
+            If :attr:`reduction` is ``'sum'``, the sum of mini-batch loss is calculated;
+            If :attr:`reduction` is ``'none'``, the loss Tensor is returned.
         soft_label (bool, optional): Indicate whether label is soft.
-            If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
-            Default is ``False``.
+            Default is ``False``, the label is hard.  If soft_label=True, the label is soft.
         axis (int, optional): The index of dimension to perform softmax calculations.
-            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the number
-            of dimensions of input :attr:`input`.
-            Default is ``-1`` .
-        use_softmax (bool, optional): Indicate whether compute softmax before cross_entropy.
+            It should be in range :math:`[-1, dim - 1]`, where :math:`dim` is the number
+            of dimensions of input :attr:`input`. Default is ``-1`` .
+        use_softmax (bool, optional): Specifies whether the input is normalized to softmax.
             Default is ``True``.
         name (str, optional): The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
