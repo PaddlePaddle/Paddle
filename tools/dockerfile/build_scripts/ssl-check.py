@@ -21,14 +21,9 @@ import sys
 
 print("Testing SSL certificate checking for Python:", sys.version)
 
-if sys.version_info[0] >= 3:
-    from urllib.request import urlopen
+from urllib.request import urlopen
 
-    EXC = OSError
-else:
-    from urllib import urlopen
-
-    EXC = IOError
+EXC = OSError
 
 print("Connecting to %s should work" % (GOOD_SSL,))
 urlopen(GOOD_SSL)
