@@ -210,6 +210,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_eltwiseadd_bn_fuse_pass",                                 //
         "embedding_eltwise_layernorm_fuse_pass",                        //
         "multihead_matmul_fuse_pass_v2",                                //
+        "vit_attention_fuse_pass",                                      //
         "fused_multi_transformer_encoder_pass",                         //
         "fused_multi_transformer_decoder_pass",                         //
         "fused_multi_transformer_encoder_fuse_qkv_pass",                //
