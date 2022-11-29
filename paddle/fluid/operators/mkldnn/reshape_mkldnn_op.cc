@@ -30,26 +30,6 @@ enum class ReshapeKernelOpName {
 namespace paddle {
 namespace operators {
 
-static std::vector<int> extract_shape(
-    const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
-  std::vector<int> vec_new_shape;
-  vec_new_shape.reserve(list_new_shape_tensor.size());
-
-  for (const auto& tensor : list_new_shape_tensor) {
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(),
-        phi::make_ddim({1}),
-        platform::errors::InvalidArgument(
-            "If the element type of 'shape' in ReshapeOp is Tensor, "
-            "the element's shape must be [1]. But received the element's shape "
-            "is [%s]",
-            tensor->dims()));
-    vec_new_shape.emplace_back(*tensor->data<int32_t>());
-  }
-
-  return vec_new_shape;
-}
-
 template <typename T, ReshapeKernelOpName op_name>
 class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
  public:
@@ -151,7 +131,9 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     auto list_new_shape_tensor =
         ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     if (list_new_shape_tensor.size() > 0) {
-      auto new_shape = extract_shape(list_new_shape_tensor);
+      const auto shape = phi::IntArray(list_new_shape_tensor);
+      const auto new_shape = shape.GetData();
+
       out_dims = ValidateShape(new_shape, x_dims);
     } else if (ctx.HasInput("Shape")) {
       auto* shape_tensor = ctx.Input<phi::DenseTensor>("Shape");
