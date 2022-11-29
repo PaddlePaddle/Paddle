@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid as fluid
@@ -1168,96 +1169,76 @@ class TestPool2DAPI(unittest.TestCase):
         )
 
         ksize = [3, 3]
-        out_1 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="max",
-            pool_padding=[1, 1],
-            use_cudnn=False,
+        out_1 = paddle.nn.functional.max_pool2d(
+            x=input_NHWC,
+            kernel_size=ksize,
+            padding=[1, 1],
             data_format="NHWC",
         )
 
-        out_2 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="avg",
+        out_2 = paddle.nn.functional.avg_pool2d(
+            x=input_NHWC,
+            kernel_size=ksize,
             pool_padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
-            use_cudnn=False,
             data_format="NHWC",
         )
 
-        out_3 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
+        out_3 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=ksize,
             pool_padding=[[0, 0], [0, 0], [1, 1], [1, 1]],
-            use_cudnn=False,
             data_format="NCHW",
         )
 
-        out_4 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
+        out_4 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=ksize,
             pool_padding=[1, 2, 1, 0],
-            use_cudnn=False,
             data_format="NCHW",
         )
         # test VALID
-        out_5 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
+        out_5 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=ksize,
             pool_padding="VALID",
-            use_cudnn=False,
             data_format="NCHW",
         )
 
-        out_6 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="max",
+        out_6 = paddle.nn.functional.max_pool2d(
+            x=input_NHWC,
+            kernel_size=ksize,
             pool_padding="VALID",
-            use_cudnn=False,
             data_format="NHWC",
         )
 
         # test SAME
-        out_7 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=[4, 4],
-            pool_type="avg",
+        out_7 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=[4, 4],
             pool_padding="SAME",
-            use_cudnn=False,
             data_format="NCHW",
         )
 
-        out_8 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=[4, 4],
-            pool_type="max",
+        out_8 = paddle.nn.functional.max_pool2d(
+            x=input_NHWC,
+            kernel_size=[4, 4],
             pool_padding="SAME",
-            use_cudnn=False,
             data_format="NHWC",
         )
 
         # test negetive
-        out_9 = fluid.layers.pool2d(
-            input=input_NHWC_negetive,
-            pool_size=ksize,
-            pool_type="avg",
+        out_9 = paddle.nn.functional.avg_pool2d(
+            x=input_NHWC_negetive,
+            kernel_size=ksize,
             pool_padding=[0, 0],
-            use_cudnn=False,
             data_format="NHWC",
         )
         assert out_9.shape == (2, -1, 3, 3)
 
-        out_10 = fluid.layers.pool2d(
-            input=input_NCHW_negetive,
-            pool_size=ksize,
-            pool_type="avg",
+        out_10 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW_negetive,
+            kernel_size=ksize,
             pool_padding=[0, 0],
-            use_cudnn=False,
             data_format="NCHW",
         )
         assert out_10.shape == (2, 3, -1, -1)
@@ -1392,27 +1373,12 @@ class TestPool2DAPI_Error(unittest.TestCase):
         )
         ksize = [3, 3]
 
-        # cudnn type error
-        def run_1():
-            out_1 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding=[1, 1],
-                use_cudnn=[0],
-                data_format="NHWC",
-            )
-
-        self.assertRaises(TypeError, run_1)
-
         # data_format value error
         def run_2():
-            out_2 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
+            out_2 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
                 pool_padding=[1, 1],
-                use_cudnn=False,
                 data_format="NHWCC",
             )
 
@@ -1420,12 +1386,10 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         # padding str value error
         def run_3():
-            out_3 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
+            out_3 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
                 pool_padding="VALIDSAME",
-                use_cudnn=False,
                 data_format="NHWC",
             )
 
@@ -1433,12 +1397,10 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         # padding str valid and ceil_mode value error
         def run_4():
-            out_4 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
+            out_4 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
                 pool_padding="VALID",
-                use_cudnn=False,
                 ceil_mode=True,
                 data_format="NHWC",
             )
@@ -1447,12 +1409,10 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         # padding with 8 ele. value error
         def run_5():
-            out_5 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
+            out_5 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
                 pool_padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
-                use_cudnn=False,
                 data_format="NHWC",
             )
 

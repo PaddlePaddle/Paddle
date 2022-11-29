@@ -59,12 +59,11 @@ class SE_ResNeXt:
             conv = self.conv_bn_layer(
                 input=input, num_filters=64, filter_size=7, stride=2, act='relu'
             )
-            conv = fluid.layers.pool2d(
-                input=conv,
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max',
+            conv = paddle.nn.functional.max_pool2d(
+                x=conv,
+                kernel_size=3,
+                stride=2,
+                padding=1,
             )
         elif layers == 101:
             cardinality = 32
@@ -75,12 +74,11 @@ class SE_ResNeXt:
             conv = self.conv_bn_layer(
                 input=input, num_filters=64, filter_size=7, stride=2, act='relu'
             )
-            conv = fluid.layers.pool2d(
-                input=conv,
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max',
+            conv = paddle.nn.functional.max_pool2d(
+                x=conv,
+                kernel_size=3,
+                stride=2,
+                padding=1,
             )
         elif layers == 152:
             cardinality = 64
@@ -97,12 +95,11 @@ class SE_ResNeXt:
             conv = self.conv_bn_layer(
                 input=conv, num_filters=128, filter_size=3, stride=1, act='relu'
             )
-            conv = fluid.layers.pool2d(
-                input=conv,
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max',
+            conv = paddle.nn.functional.max_pool2d(
+                x=conv,
+                kernel_size=3,
+                stride=2,
+                padding=1,
             )
 
         for block in range(len(depth)):
@@ -115,9 +112,7 @@ class SE_ResNeXt:
                     reduction_ratio=reduction_ratio,
                 )
 
-        pool = fluid.layers.pool2d(
-            input=conv, pool_size=7, pool_type='avg', global_pooling=True
-        )
+        pool = paddle.nn.functional.avg_pool2d(x=conv, kernel_size=7)
         drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
         out = fluid.layers.fc(
@@ -185,9 +180,7 @@ class SE_ResNeXt:
         return fluid.layers.batch_norm(input=conv, act=act)
 
     def squeeze_excitation(self, input, num_channels, reduction_ratio):
-        pool = fluid.layers.pool2d(
-            input=input, pool_size=0, pool_type='avg', global_pooling=True
-        )
+        pool = paddle.nn.functional.avg_pool2d(x=input, kernel_size=0)
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
         squeeze = fluid.layers.fc(
             input=pool,

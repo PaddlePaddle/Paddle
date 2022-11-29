@@ -430,7 +430,7 @@ class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
         )
 
         input_NCHW.persistable = True
-        y = layers.pool2d(input_NCHW, pool_size=2, pool_type="avg")
+        y = paddle.nn.functional.avg_pool2d(input_NCHW, kernel_size=2)
         x_arr = np.random.uniform(-1, 1, [2, 3, 5, 5]).astype(np.float32)
 
         gradient_checker.double_grad_check(
@@ -532,7 +532,6 @@ class TestAvgPool2DDoubleGradCheckCase4(unittest.TestCase):
         )
 
         input_NCHW.persistable = True
-        y = layers.pool2d(input_NCHW, pool_size=[4, 4], pool_type="avg")
         y = paddle.nn.functional.avg_pool2d(input_NCHW, kernel_size=[4, 4])
         x_arr = np.random.uniform(-1, 1, [2, 3, 5, 5]).astype(np.float32)
 
