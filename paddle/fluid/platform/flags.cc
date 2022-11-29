@@ -1041,6 +1041,23 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "Predictor",
                               "Choose default funciton type in JitLayer.");
 
+/*
+ * XPU Kernel related FLAG
+ * Name: FLAGS_enable_xpu_fast_mode
+ * Since Version: 2.5
+ * Value Range: bool, default=true
+ * Example: When FLAGS_enable_xpu_fast_mode=false, the environment variable
+ * XPU_BLACK_LIST and the XPU operator support list will be combined to
+ * determine whether to fallback to the CPU Kernel, but this determination
+ * process will introduce performance loss.
+ * When FLAGS_enable_xpu_fast_mode=true, it will fallback to the CPU Kernel
+ * by default when the XPU kernel cannot be found, and no additional judgment
+ * will be made to improve scheduling performance.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_xpu_fast_mode,
+                            true,
+                            "Whether to enable xpu fast mode.");
+
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 /**
  * CUDNNv8 related FLAG

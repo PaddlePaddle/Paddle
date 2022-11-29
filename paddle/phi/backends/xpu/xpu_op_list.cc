@@ -16,13 +16,20 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "paddle/phi/core/compat/convert_utils.h"
+
+DECLARE_bool(enable_xpu_fast_mode);
+
 namespace phi {
 namespace backends {
 namespace xpu {
 
+// declaration
+XPUOpMap& GetKL2Ops();
+
 // ops_string contains op_list(e.g., 'mul,mul_grad'), parse the op string and
 // insert op to op set
-static void tokenize(const std::string& ops,
+static void Tokenize(const std::string& ops,
                      char delim,
                      std::unordered_set<std::string>* op_set) {
   std::string::size_type beg = 0;
@@ -35,8 +42,10 @@ static void tokenize(const std::string& ops,
   op_set->insert(ops.substr(beg));
 }
 
-bool is_in_xpu_black_list(const std::string& op_name) {
+bool IsInXPUBlackList(const std::string& kernel_name) {
   static bool inited = false;
+  auto& op_name = TransToFluidOpName(kernel_name);
+  VLOG(6) << "fluid_op_name: " << op_name;
   static std::unordered_set<std::string> xpu_black_list;
   static std::mutex s_mtx;
   if (!inited) {
@@ -44,7 +53,7 @@ bool is_in_xpu_black_list(const std::string& op_name) {
     if (!inited) {
       if (std::getenv("XPU_BLACK_LIST") != nullptr) {
         std::string ops(std::getenv("XPU_BLACK_LIST"));
-        tokenize(ops, ',', &xpu_black_list);
+        Tokenize(ops, ',', &xpu_black_list);
       }
       inited = true;
       VLOG(3) << "XPU Black List: ";
@@ -57,7 +66,25 @@ bool is_in_xpu_black_list(const std::string& op_name) {
   if (xpu_black_list.find(op_name) != xpu_black_list.end()) {
     return true;
   }
+#endif
   return false;
+}
+
+bool IsXPUSupportKernel(const std::string& kernel_name) {
+  auto& op_name = TransToFluidOpName(kernel_name);
+  auto& ops = GetKL2Ops();
+  if (ops.find(op_name) != ops.end() &&
+      ops[op_name].find(type) != ops[op_name].end()) {
+    return true;
+  }
+  return false;
+}
+
+bool IsXPUFallbackToCPU(const std::string& kernel_name, bool kernel_not_exist) {
+  if (!FLAGS_enable_xpu_fast_mode) {
+    return !IsXPUSupportKernel(kernel_name) || IsInXPUBlackList(kernel_name);
+  }
+  return kernel_not_exist;
 }
 
 }  // namespace xpu
