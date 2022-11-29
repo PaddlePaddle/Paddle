@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import unittest
-
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-from testsuite import create_op
 
-import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+from op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.framework import _test_eager_guard
+from testsuite import create_op
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
