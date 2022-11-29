@@ -150,8 +150,8 @@ class TestPSPassWithBow(unittest.TestCase):
             ),
             bias_attr=fluid.ParamAttr(name="__fc_b__"),
         )
-        cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
-        cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
+        cos_q_pt = paddle.nn.functional.cosine_similarity(q_fc, pt_fc)
+        cos_q_nt = paddle.nn.functional.cosine_similarity(q_fc, nt_fc)
         # loss
         avg_cost = get_loss(cos_q_pt, cos_q_nt)
         # acc

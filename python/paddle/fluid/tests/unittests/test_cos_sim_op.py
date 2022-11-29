@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -129,12 +130,16 @@ class TestCosSimOpError(unittest.TestCase):
             x2 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.cos_sim, x1, x2)
+            self.assertRaises(
+                TypeError, paddle.nn.functional.cosine_similarity, x1, x2
+            )
 
             # the input dtype of batch_norm must be float32
             x3 = fluid.layers.data(name='x3', shape=[3, 4, 5, 6], dtype="int32")
             x4 = fluid.layers.data(name='x4', shape=[3, 4, 5, 6], dtype="int64")
-            self.assertRaises(TypeError, fluid.layers.cos_sim, x3, x4)
+            self.assertRaises(
+                TypeError, paddle.nn.functional.cosine_similarity, x3, x4
+            )
 
 
 if __name__ == '__main__':
