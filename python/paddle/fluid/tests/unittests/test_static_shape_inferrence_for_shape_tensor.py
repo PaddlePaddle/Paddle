@@ -23,7 +23,7 @@ class StaticShapeInferrenceTest(unittest.TestCase):
             name="x", shape=[-1, 2], dtype='float32'
         )
         shape = paddle.fluid.layers.shape(data)  # shape should be [-1, 2]
-        x = paddle.uniform(shape)
+        x = paddle.uniform(shape, dtype="float32")
         self.assertEqual(x.shape, data.shape)
         paddle.disable_static()
 
