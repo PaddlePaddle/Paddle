@@ -1852,7 +1852,7 @@ def pool2d(
 
     pool_padding = update_padding(pool_padding, data_format)
     if in_dygraph_mode():
-        input = input._use_cudnn(use_cudnn)
+        input = input._use_gpudnn(use_cudnn)
         return _C_ops.pool2d(
             input,
             pool_size,
