@@ -168,6 +168,8 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
         {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
+        {"less_than", nvinfer1::ElementWiseOperation::kLESS},
+        {"greater_than", nvinfer1::ElementWiseOperation::kGREATER},
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -204,7 +206,16 @@ class ElementwiseTensorPowOpConverter : public ElementwiseTensorOpConverter {
  public:
   ElementwiseTensorPowOpConverter() { op_type_ = "pow"; }
 };
-
+class ElementwiseTensorLessThanOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLessThanOpConverter() { op_type_ = "less_than"; }
+};
+class ElementwiseTensorGreaterThanOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorGreaterThanOpConverter() { op_type_ = "greater_than"; }
+};
 class ElementwiseTensorFloorDivOpConverter
     : public ElementwiseTensorOpConverter {
  public:
@@ -232,6 +243,9 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_weight,
                           ElementwiseTensorFloorDivOpConverter);
 
+REGISTER_TRT_OP_CONVERTER(less_than, ElementwiseTensorLessThanOpConverter);
+REGISTER_TRT_OP_CONVERTER(greater_than,
+                          ElementwiseTensorGreaterThanOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_sub_tensor,

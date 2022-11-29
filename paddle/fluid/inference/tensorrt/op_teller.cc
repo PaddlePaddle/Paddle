@@ -1268,6 +1268,23 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "less_than" || op_type == "greater_than") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3)
+          << "less_than and greater_than is not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the less_than and greater_than ops do not support static "
+                   "shape yet";
+        return false;
+      }
+      int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
+      if (out_dtype != 0) {
+        VLOG(3) << "less_than and greater_than only supports outputs of BOOL";
+        return true;
+      }
+    }
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
@@ -2329,6 +2346,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
       "dropout",
       "fill_any_like",
       "prelu",
@@ -2457,6 +2476,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
       "dropout",
       "fill_any_like",
       "prelu",
