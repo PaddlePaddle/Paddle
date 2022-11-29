@@ -610,7 +610,7 @@ class Engine:
         if mode != "train":
             serial_main_prog = serial_main_prog.clone(for_test=True)
 
-        self._set_recompute_ckpts()
+        auto_utils.set_recompute_ckpts(self._model, self._strategy)
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
@@ -1517,35 +1517,6 @@ class Engine:
     def _is_local_var(self, var):
         var_name = _to_name_str(var)
         return var_name in self.main_program.global_block().vars
-
-    def _set_recompute_ckpts(self):
-        # NOTE hack to enable recompute in engine api for GPT-3
-        # TODO support more PaddleNLP/CV models here
-
-        recompute = self._strategy.recompute
-
-        # extract ckpts by specific model
-        if isinstance(self._model, paddle.nn.Layer):
-            if hasattr(
-                self._model, "gpt"
-            ) and self._model.__class__.__name__ in [
-                'GPTForPretraining',
-                'GPTForPretrainingAuto',
-            ]:
-                exact_ckpts = self._model.gpt.checkpoints
-            else:
-                exact_ckpts = recompute.checkpoints
-        else:
-            exact_ckpts = recompute.checkpoints
-
-        # modify strategy
-        if recompute.enable:
-            recompute.checkpoints = exact_ckpts[:]
-            logs = {
-                'Model Class': self._model.__class__.__name__,
-                'Applied Recompute ckpts': exact_ckpts,
-            }
-            self._logger.info(logs)
 
     def _reset_metrics(self):
         for metric in self._metrics:

@@ -223,6 +223,7 @@ class AvgPool2D(Layer):
 
 class AvgPool3D(Layer):
     """
+
     This operation applies 3D max pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCDHW format, where N is batch size, C is the number of channels,
@@ -263,6 +264,7 @@ class AvgPool3D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of avg pool3d  operator, which is a 5-D tensor.
           The data type is same as input x.
+
     Examples:
         .. code-block:: python
 

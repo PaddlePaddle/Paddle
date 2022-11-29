@@ -97,6 +97,7 @@ def _check_var_exists(var_name):
 
 def init_parallel_env():
     """
+
     Initialize parallel training environment in dynamic graph mode.
 
     Note:
@@ -112,6 +113,7 @@ def init_parallel_env():
 
     Examples:
         .. code-block:: python
+
             # required: gpu
             import paddle
             import paddle.nn as nn
@@ -152,6 +154,7 @@ def init_parallel_env():
 
             if __name__ == '__main__':
                 dist.spawn(train)
+
     """
 
     # 0. get env & check world size
@@ -176,6 +179,7 @@ def init_parallel_env():
         or core.is_compiled_with_xpu()
         or core.is_compiled_with_npu()
         or core.is_compiled_with_mlu()
+        or backend == "xccl"
     ):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend"

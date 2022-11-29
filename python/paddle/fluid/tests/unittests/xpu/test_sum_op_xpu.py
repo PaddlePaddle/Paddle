@@ -197,6 +197,91 @@ class TestSumOpError(unittest.TestCase):
         self.assertRaises(Exception, test_list_of_none_input)
 
 
+class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
+    def setUp(self):
+        self.height = 10
+        self.row_numel = 12
+        self.rows = [0, 1, 2, 3, 4, 5, 6]
+        self.dtype = np.float32
+        self.init_kernel_type()
+
+    def check_with_place(self, place, inplace):
+        self.check_input_and_optput(place, inplace, True, True, True)
+
+    def init_kernel_type(self):
+        pass
+
+    def _get_array(self, rows, row_numel):
+        array = np.ones((len(rows), row_numel)).astype(self.dtype)
+        for i in range(len(rows)):
+            array[i] *= rows[i]
+        return array
+
+    def check_input_and_optput(
+        self,
+        place,
+        inplace,
+        w1_has_data=False,
+        w2_has_data=False,
+        w3_has_data=False,
+    ):
+        paddle.disable_static()
+        w1 = self.create_lod_tensor(place)
+        w2 = self.create_selected_rows(place, w2_has_data)
+
+        x = [w1, w2]
+        out = paddle.add_n(x)
+
+        result = np.ones((1, self.height)).astype(np.int32).tolist()[0]
+        for ele in self.rows:
+            result[ele] += 1
+
+        out_t = np.array(out)
+        self.assertEqual(out_t.shape[0], self.height)
+        np.testing.assert_array_equal(
+            out_t,
+            self._get_array([i for i in range(self.height)], self.row_numel)
+            * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
+        )
+
+        paddle.enable_static()
+
+    def create_selected_rows(self, place, has_data):
+        # create and initialize W Variable
+        if has_data:
+            rows = self.rows
+        else:
+            rows = []
+
+        w_array = self._get_array(self.rows, self.row_numel)
+        var = core.eager.Tensor(
+            core.VarDesc.VarType.FP32,
+            w_array.shape,
+            "selected_rows",
+            core.VarDesc.VarType.SELECTED_ROWS,
+            True,
+        )
+
+        w_selected_rows = var.value().get_selected_rows()
+        w_selected_rows.set_height(self.height)
+        w_selected_rows.set_rows(rows)
+        w_tensor = w_selected_rows.get_tensor()
+        w_tensor.set(w_array, place)
+
+        return var
+
+    def create_lod_tensor(self, place):
+        w_array = self._get_array(
+            [i for i in range(self.height)], self.row_numel
+        )
+        return paddle.to_tensor(w_array)
+
+    def test_w_is_selected_rows(self):
+        places = [core.XPUPlace(0)]
+        for place in places:
+            self.check_with_place(place, True)
+
+
 support_types = get_xpu_op_support_types('sum')
 for stype in support_types:
     create_test_class(globals(), XPUTestSumOp, stype)

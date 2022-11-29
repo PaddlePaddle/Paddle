@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/gpu_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 

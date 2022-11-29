@@ -45,7 +45,7 @@ class TestGeluOp(unittest.TestCase):
         place = fluid.CPUPlace()
         with dg.guard(place) as g:
             x_var = dg.to_variable(x)
-            y_var = fluid.layers.gelu(x_var, approximate)
+            y_var = F.gelu(x_var, approximate)
             y_test = y_var.numpy()
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05, atol=1e-08)
 
@@ -56,7 +56,7 @@ class TestGeluOp(unittest.TestCase):
         place = fluid.CUDAPlace(0)
         with dg.guard(place) as g:
             x_var = dg.to_variable(x)
-            y_var = fluid.layers.gelu(x_var, approximate)
+            y_var = F.gelu(x_var, approximate)
             y_test = y_var.numpy()
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05, atol=1e-08)
 

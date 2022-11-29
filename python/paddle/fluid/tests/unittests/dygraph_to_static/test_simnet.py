@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 import random
 import unittest
 
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from simnet_dygraph_model import BOW, HingeLoss
 
 SEED = 102
@@ -145,9 +145,9 @@ def train(conf_dict, to_static):
         )
 
         for left, pos_right, neg_right in train_loader():
-            left = fluid.layers.reshape(left, shape=[-1, 1])
-            pos_right = fluid.layers.reshape(pos_right, shape=[-1, 1])
-            neg_right = fluid.layers.reshape(neg_right, shape=[-1, 1])
+            left = paddle.reshape(left, shape=[-1, 1])
+            pos_right = paddle.reshape(pos_right, shape=[-1, 1])
+            neg_right = paddle.reshape(neg_right, shape=[-1, 1])
             net.train()
             global_step += 1
             left_feat, pos_score = net(left, pos_right)

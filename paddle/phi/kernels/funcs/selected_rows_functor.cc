@@ -320,11 +320,75 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
   }
 };
 
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+struct SelectedRowsAddToTensor<phi::XPUContext, T> {
+  void operator()(const phi::XPUContext& context,
+                  const phi::SelectedRows& input1,
+                  phi::DenseTensor* input2) {
+    if (UNLIKELY(input1.rows().size() == 0)) {
+      LOG(WARNING) << "input selected rows is empty!";
+      return;
+    }
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    auto in1_height = input1.height();
+    const auto& in2_dims = input2->dims();
+    PADDLE_ENFORCE_EQ(
+        in1_height,
+        in2_dims[0],
+        phi::errors::InvalidArgument("The two inputs height must be equal."
+                                     "But received first input height = "
+                                     "[%d], second input height = [%d]",
+                                     in1_height,
+                                     in2_dims[0]));
+
+    auto& in1_value = input1.value();
+    auto& in1_rows = input1.rows();
+    int64_t* in1_rows_data = nullptr;
+    xpu::VectorParam<int64_t> in1_rows_vec{
+        in1_rows.data(), static_cast<int>(in1_rows.size()), in1_rows_data};
+
+    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel,
+        input2->numel() / in1_height,
+        phi::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But received first input width = [%d], second input width = [%d]",
+            in1_row_numel,
+            input2->numel() / in1_height));
+
+    auto* in1_data = in1_value.data<T>();
+    auto* out_data = input2->data<T>();
+
+    int h = in1_rows.size();
+    int w = in1_row_numel;
+    const std::vector<int> xshape{h, w};
+
+    int r = xpu::scatter<XPUType, int64_t>(
+        context.x_context(),
+        nullptr,
+        reinterpret_cast<const XPUType*>(in1_data),
+        reinterpret_cast<XPUType*>(out_data),
+        in1_rows_vec,
+        xshape,
+        0,
+        false);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter");
+  }
+};
+
+#endif
+
 template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
+
+#ifdef PADDLE_WITH_XPU
+template struct SelectedRowsAddToTensor<phi::XPUContext, float>;
+#endif
 // This is a separated namespace for manipulate SelectedRows typed
 // data. Like merge duplicated rows, adding two SelectedRows etc.
 //

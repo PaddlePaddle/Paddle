@@ -427,6 +427,10 @@ void AnalysisPredictor::InitDeviceContexts() {
               memory::allocation::AllocatorFacade::Instance()
                   .GetZeroAllocator(place_)
                   .get());
+          gpu_context->SetHostZeroAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetZeroAllocator(platform::CPUPlace())
+                  .get());
           gpu_context->SetGenerator(
               framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
@@ -864,13 +868,12 @@ void AnalysisPredictor::MkldnnPreSet(
     const std::vector<std::vector<int>> &inputs_shape) {
 #ifdef PADDLE_WITH_MKLDNN
   VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
-          << platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id();
+          << phi::OneDNNContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
-    platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNDeviceContextThreadLocals::
-            kMKLDNNSessionID_CacheClearing);
+    phi::OneDNNContext::tls().set_cur_mkldnn_session_id(
+        phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs_shape.size(); ++i) {
@@ -879,9 +882,9 @@ void AnalysisPredictor::MkldnnPreSet(
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str(ss.str());
+    phi::OneDNNContext::tls().set_cur_input_shape_str(ss.str());
   }
-  platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
+  phi::OneDNNContext::tls().set_cur_input_shape_cache_capacity(
       config_.mkldnn_cache_capacity_);
 
 #endif
@@ -891,11 +894,11 @@ void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
-      static_cast<platform::MKLDNNDeviceContext *>(
+      static_cast<phi::OneDNNContext *>(
           (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
-      auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
+      auto shape_blob_size = static_cast<phi::OneDNNContext *>(
                                  (&platform::DeviceContextPool::Instance())
                                      ->Get(platform::CPUPlace()))
                                  ->GetShapeBlobSize();
@@ -1185,6 +1188,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuEnableModelRuntimeExecutor(
+      config_.ipu_enable_model_runtime_executor_);
   argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
   argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
@@ -2225,6 +2230,7 @@ USE_TRT_CONVERTER(elementwise_div_weight);
 USE_TRT_CONVERTER(elementwise_min_weight);
 USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
+USE_TRT_CONVERTER(elementwise_floordiv_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
 USE_TRT_CONVERTER(elementwise_div_tensor);
@@ -2232,6 +2238,7 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
+USE_TRT_CONVERTER(elementwise_floordiv_tensor);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
@@ -2239,6 +2246,7 @@ USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(bmm);
+USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(exp);
@@ -2255,6 +2263,7 @@ USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
+USE_TRT_CONVERTER(fill_any_like);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);

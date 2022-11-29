@@ -52,7 +52,9 @@ class AffineGridTestCase(unittest.TestCase):
                 theta_var = fluid.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
-                y_var = fluid.layers.affine_grid(theta_var, self.output_shape)
+                y_var = paddle.nn.functional.affine_grid(
+                    theta_var, self.output_shape
+                )
         feed_dict = {"input": self.theta}
         exe = fluid.Executor(place)
         exe.run(start)

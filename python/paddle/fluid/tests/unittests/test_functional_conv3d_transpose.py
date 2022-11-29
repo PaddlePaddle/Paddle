@@ -89,7 +89,7 @@ class TestFunctionalConv3DTranspose(TestCase):
                         (-1, self.in_channels, -1, -1, -1),
                         dtype=self.dtype,
                     )
-                y = fluid.layers.conv3d_transpose(
+                y = paddle.static.nn.conv3d_transpose(
                     x,
                     self.out_channels,
                     output_size=self.output_size,
@@ -550,7 +550,7 @@ class TestFunctionalConv3DTransposeErrorCase10(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 x = fluid.data("input", self.input.shape, dtype=paddle.float32)
-                y = fluid.layers.conv3d_transpose(
+                y = paddle.static.nn.conv3d_transpose(
                     x,
                     self.num_filters,
                     self.filter_size,

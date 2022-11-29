@@ -55,6 +55,7 @@ from ..fluid.framework import (
     _get_paddle_place,
 )  # noqa: F401
 from ..fluid.framework import dygraph_only  # noqa: F401
+from ..fluid.framework import dygraph_not_support  # noqa: F401
 from ..fluid.framework import (
     convert_np_dtype_to_dtype_,
     _varbase_creator,
@@ -65,5 +66,8 @@ from ..fluid.framework import _dygraph_tracer  # noqa: F401
 from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from ..fluid.framework import in_dygraph_mode  # noqa: F401
 from ..fluid.framework import _in_legacy_dygraph  # noqa: F401
+from ..fluid.framework import _global_flags  # noqa: F401
+from ..fluid.framework import _apply_pass  # noqa: F401
+from ..fluid.framework import switch_main_program
 
 __all__ = []

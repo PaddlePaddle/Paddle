@@ -37,7 +37,7 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
             fc1 = fluid.Linear(10, 3)
             fc2 = fluid.Linear(3, 10, bias_attr=False)
             custom = MyLayer(3, 10)
-            model = fluid.dygraph.Sequential(fc1, fc2, custom)
+            model = paddle.nn.Sequential(fc1, fc2, custom)
             named_sublayers = model.named_sublayers()
             list_named_sublayers = list(named_sublayers)
 

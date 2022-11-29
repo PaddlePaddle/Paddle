@@ -210,7 +210,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
             )
         )
 
-        cost = fluid.layers.nce(
+        cost = paddle.static.nn.nce(
             input=input,
             label=label,
             num_total_classes=num_total_classes,
@@ -291,7 +291,9 @@ class TestNCE_OpError(unittest.TestCase):
                 name='label1', shape=[-1, 4], dtype="int64"
             )
             # the input(input) of nce layer must be Variable.
-            self.assertRaises(TypeError, fluid.layers.nce, input1, label1, 5)
+            self.assertRaises(
+                TypeError, paddle.static.nn.nce, input1, label1, 5
+            )
 
             input2 = fluid.layers.data(
                 name='input2', shape=[-1, 4], dtype="float32"
@@ -300,7 +302,9 @@ class TestNCE_OpError(unittest.TestCase):
                 np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace()
             )
             # the input(label) of nce layer must be Variable.
-            self.assertRaises(TypeError, fluid.layers.nce, input2, label2, 5)
+            self.assertRaises(
+                TypeError, paddle.static.nn.nce, input2, label2, 5
+            )
 
             input3 = fluid.layers.data(
                 name='input3', shape=[-1, 4], dtype="float16"
@@ -309,7 +313,9 @@ class TestNCE_OpError(unittest.TestCase):
                 name='label3', shape=[-1, 1], dtype="int64"
             )
             # the data type of input(input) must be float32 or float64.
-            self.assertRaises(TypeError, fluid.layers.nce, input3, label3, 5)
+            self.assertRaises(
+                TypeError, paddle.static.nn.nce, input3, label3, 5
+            )
 
             input4 = fluid.layers.data(
                 name='input4', shape=[-1, 4], dtype="float32"
@@ -318,7 +324,9 @@ class TestNCE_OpError(unittest.TestCase):
                 name='label4', shape=[-1, 1], dtype="int32"
             )
             # the data type of input(label) must be int64.
-            self.assertRaises(TypeError, fluid.layers.nce, input4, label4, 5)
+            self.assertRaises(
+                TypeError, paddle.static.nn.nce, input4, label4, 5
+            )
 
 
 class TestDygraphNCE_OpError(unittest.TestCase):

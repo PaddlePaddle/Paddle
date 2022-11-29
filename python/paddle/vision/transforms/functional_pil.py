@@ -12,20 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import numbers
-import collections
 from PIL import Image, ImageOps, ImageEnhance
 
 import numpy as np
 import paddle
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
+from collections.abc import Sequence, Iterable
 
 try:
     # PIL version >= "9.1.0"

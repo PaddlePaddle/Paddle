@@ -353,6 +353,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_custom_patterns,
                       IpuCustomPatterns,
                       std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_enable_model_runtime_executor,
+                      IpuEnableModelRuntimeExecutor,
+                      bool);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

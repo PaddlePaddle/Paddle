@@ -1449,15 +1449,16 @@ class Maxout(Layer):
 
 class Softmax2D(Layer):
     r"""
+
     Softmax2D Activation.
     Given a Tensor with shape (B, C, H, W) or (C, H, W), it will apply Softmax to each location (C, h_i, w_j).
     The sum of result in each location (C, H_i, W_j) will be one.
 
     Shape:
         - Input: :math:`(B, C, H, W)` or :math:`(C, H, W)`
-        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)`(same as input)
+        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)` (same as input)
 
-    Return:
+    Returns:
         A Tensor of the same shape and dtype as input with value in range [0, 1].
 
     Examples:
@@ -1482,6 +1483,7 @@ class Softmax2D(Layer):
             #   [[0.42368975 0.51082766 0.47752273 0.5258871 ]
             #    [0.66754097 0.47182566 0.5187628  0.5402329 ]
             #    [0.49014282 0.46369177 0.50340754 0.5289428 ]]]]
+
     """
 
     def __init__(self, name=None):

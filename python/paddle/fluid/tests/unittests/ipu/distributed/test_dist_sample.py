@@ -54,8 +54,10 @@ python3.7 python/paddle/fluid/tests/unittests/ipu/distributed/test_dist_sample.p
 
 import os
 import sys
-import paddle
+
 import numpy as np
+
+import paddle
 
 mpi_comm = None
 

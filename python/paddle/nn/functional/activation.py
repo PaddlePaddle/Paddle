@@ -35,17 +35,19 @@ def celu(x, alpha=1.0, name=None):
     r"""
     celu activation.
 
+    Apply the following operation to each element of the input Tensor accroding to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
+
     .. math::
 
-        celu(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
+        \operatorname{celu}(x) = \max(0, x) + \min(0, \alpha * (\mathrm{e}^{x/\alpha}-1))
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
+        x (Tensor): The input Tensor with data type float16, float32, or float64.
+        alpha (float, optional): The 'alpha' value of the CELU formula. Default is 1.0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type and shape as ``x`` .
+        A ``Tensor`` with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python

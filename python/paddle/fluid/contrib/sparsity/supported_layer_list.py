@@ -82,15 +82,17 @@ supported_layers_and_prune_func_map = {}
 
 def add_supported_layer(layer, pruning_func=None):
     r"""
+
     Add supported layers and its corresponding pruning function.
 
     Args:
         name (string|Layer): The name or type of layer, needed to support. If layer is `Layer` then
-        it would be turn to string internally. ASP would use this name to match parameter's name and call
-        its the corresponding pruning function.
+                             it would be turn to string internally. ASP would use this name to match parameter's name and call
+                             its the corresponding pruning function.
         pruning_func (function, optional): a function type which receives five argument (weight_nparray,
-        m, n, func_name, param_name), weight_nparray is a nparray of weight, param_name is the name of weight,
-        m, n, and func_name, please see `prune_model` for details.
+                                           m, n, func_name, param_name), weight_nparray is a nparray of weight, param_name is the name of weight,
+                                           m, n, and func_name, please see `prune_model` for details.
+
     """
     name = None
     if isinstance(layer, str):

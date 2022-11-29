@@ -25,6 +25,7 @@ list(
   multihead_matmul_op.cc
   multihead_matmul_roformer_op.cc
   shuffle_channel_op.cc
+  fill_any_like_op.cc
   where_op.cc
   swish_op.cc
   silu_op.cc

@@ -15,14 +15,14 @@
 #include "paddle/phi/kernels/pad3d_grad_kernel.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void Pad3DGradConstNCDHW(const int in_size,
@@ -133,7 +133,7 @@ __global__ void Pad3DGradReflectNCDHW(const int out_size,
     in_h = min(in_h, 2 * in_height - in_h - 2);
     in_w = min(in_w, 2 * in_width - in_w - 2);
 
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[nc * in_depth * in_height * in_width +
                    in_d * in_height * in_width + in_h * in_width + in_w],
         d_out_data[out_index]);
@@ -176,7 +176,7 @@ __global__ void Pad3DGradReflectNDHWC(const int out_size,
     in_d = min(in_d, in_depth * 2 - in_d - 2);
     in_h = min(in_h, in_height * 2 - in_h - 2);
     in_w = min(in_w, in_width * 2 - in_w - 2);
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[n * in_depth * in_height * in_width * channels +
                    in_d * in_height * in_width * channels +
                    in_h * in_width * channels + in_w * channels + c],
@@ -211,7 +211,7 @@ __global__ void Pad3DGradReplicateNCDHW(const int out_size,
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
 
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[nc * in_depth * in_height * in_width +
                    in_d * in_height * in_width + in_h * in_width + in_w],
         d_out_data[out_index]);
@@ -247,7 +247,7 @@ __global__ void Pad3DGradReplicateNDHWC(const int out_size,
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
 
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[n * in_depth * in_height * in_width * channels +
                    in_d * in_height * in_width * channels +
                    in_h * in_width * channels + in_w * channels + c],
@@ -282,7 +282,7 @@ __global__ void Pad3DGradCircularNCDHW(const int out_size,
     int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
     int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
 
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[nc * in_depth * in_height * in_width +
                    in_d * in_height * in_width + in_h * in_width + in_w],
         d_out_data[out_index]);
@@ -318,7 +318,7 @@ __global__ void Pad3DGradCircularNDHWC(const int out_size,
     int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
     int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
 
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[n * in_depth * in_height * in_width * channels +
                    in_d * in_height * in_width * channels +
                    in_h * in_width * channels + in_w * channels + c],

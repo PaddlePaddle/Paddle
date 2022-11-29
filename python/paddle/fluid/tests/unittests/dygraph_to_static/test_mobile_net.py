@@ -21,7 +21,8 @@ import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 import unittest
@@ -80,7 +81,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         y = self._conv(inputs)
         y = self._batch_norm(y)
         if if_act:
-            y = fluid.layers.relu6(y)
+            y = paddle.nn.functional.relu6(y)
         return y
 
 
@@ -271,7 +272,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         for dws in self.dwsl:
             y = dws(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, 1024])
+        y = paddle.reshape(y, shape=[-1, 1024])
         y = self.out(y)
         return y
 
@@ -438,7 +439,7 @@ class MobileNetV2(fluid.dygraph.Layer):
             y = inv(y)
         y = self._conv9(y, if_act=True)
         y = self._pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self._out_c])
+        y = paddle.reshape(y, shape=[-1, self._out_c])
         y = self._fc(y)
         return y
 
@@ -565,7 +566,7 @@ def train_mobilenet(args, to_static):
                 t_last = time.time()
                 if batch_id > args.train_step:
                     if to_static:
-                        fluid.dygraph.jit.save(net, args.model_save_prefix)
+                        paddle.jit.save(net, args.model_save_prefix)
                     else:
                         fluid.dygraph.save_dygraph(
                             net.state_dict(), args.dy_state_dict_save_path
@@ -618,7 +619,7 @@ def predict_dygraph(args, data):
 
 def predict_dygraph_jit(args, data):
     with fluid.dygraph.guard(args.place):
-        model = fluid.dygraph.jit.load(args.model_save_prefix)
+        model = paddle.jit.load(args.model_save_prefix)
         model.eval()
 
         pred_res = model(data)

@@ -557,7 +557,7 @@ class ModelAverage(Optimizer):
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
-        layers.ops._elementwise_div(x=sum, y=tmp, out=param)
+        paddle.tensor.ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)

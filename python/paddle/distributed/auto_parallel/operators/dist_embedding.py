@@ -370,9 +370,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['Out']
         )
 
-        Ids_var = main_block.var(kwargs['Ids'][0])
+        Ids_var = main_block._var_recursive(kwargs['Ids'][0])
         Weight_var = main_block._var_recursive(kwargs['W'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
 
         # support lookup_table_v1
         if src_op.type == 'lookup_table':
@@ -507,7 +507,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block.var(input_varname)
+            input_var = main_block._var_recursive(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(
@@ -607,10 +607,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['W@GRAD']
         )
 
-        Ids_var = main_block.var(kwargs['Ids'][0])
-        Weight_var = main_block.var(kwargs['W'][0])
-        Out_grad = main_block.var(kwargs['Out@GRAD'][0])
-        Weight_grad = main_block.var(kwargs['W@GRAD'][0])
+        Ids_var = main_block._var_recursive(kwargs['Ids'][0])
+        Weight_var = main_block._var_recursive(kwargs['W'][0])
+        Out_grad = main_block._var_recursive(kwargs['Out@GRAD'][0])
+        Weight_grad = main_block._var_recursive(kwargs['W@GRAD'][0])
 
         embedding_row_dim_mapping = dist_attr.get_input_dims_mapping(
             Weight_var.name

@@ -13,23 +13,16 @@
 # limitations under the License.
 
 import math
-import sys
 import random
 
 import numpy as np
 import numbers
-import collections
 import traceback
 
 import paddle
 from . import functional as F
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
+from collections.abc import Sequence, Iterable
 
 __all__ = []
 

@@ -17,6 +17,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -25,6 +27,8 @@ void AddNKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   size_t in_num = x.size();
+  dev_ctx.template Alloc<T>(out);
+
   bool in_place = false;
   if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor*>(x[0]))->Holder() == out->Holder()) {
@@ -33,26 +37,61 @@ void AddNKernel(const Context& dev_ctx,
   }
 
   if (!in_place) {
-    dev_ctx.template Alloc<T>(out);
+    int r = xpu::constant(dev_ctx.x_context(),
+                          reinterpret_cast<XPUType*>(out->data<T>()),
+                          out->numel(),
+                          XPUType(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   }
+
   std::vector<const XPUType*> ptrs;
+  phi::funcs::SelectedRowsAddToTensor<Context, float> functor;
   for (size_t i = 0; i < in_num; ++i) {
-    PADDLE_ENFORCE_EQ(DenseTensor::classof(x[i]),
-                      true,
-                      errors::InvalidArgument("XPU only support DensorTensor"));
+    if (DenseTensor::classof(x[i])) {
+      auto& in_t = *(static_cast<const DenseTensor*>(x[i]));
+      if (!in_t.initialized() || in_t.numel() == 0) {
+        continue;
+      }
+      ptrs.push_back(reinterpret_cast<const XPUType*>(in_t.data<T>()));
+    } else if (SelectedRows::classof(x[i])) {
+      PADDLE_ENFORCE_EQ(x[i]->dtype(),
+                        DataType::FLOAT32,
+                        errors::InvalidArgument("SelectedRowsAdd(scatter) only",
+                                                "supports float type"));
 
-    auto& in_t = *(static_cast<const DenseTensor*>(x[i]));
-    if (in_t.numel() == 0) {
-      continue;
+      auto& in_t = *(static_cast<const SelectedRows*>(x[i]));
+      functor(dev_ctx, in_t, out);
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Expected type of Input(X) of %d-th must be Tensor, "
+          "SelectedRows. But got "
+          "unsupport type: %s.",
+          x[i]->type_info().name()));
     }
-    ptrs.push_back(reinterpret_cast<const XPUType*>(in_t.data<T>()));
   }
-  int r = xpu::sum(dev_ctx.x_context(),
-                   ptrs,
-                   reinterpret_cast<XPUType*>(out->data<T>()),
-                   out->numel());
 
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "sum");
+  if (ptrs.empty()) {
+    return;
+  } else if (ptrs.size() < x.size()) {
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    XPUType* out_t = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
+    int r = xpu::sum(dev_ctx.x_context(), ptrs, out_t, out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sum");
+
+    r = xpu::add(dev_ctx.x_context(),
+                 reinterpret_cast<const XPUType*>(out->data<T>()),
+                 out_t,
+                 reinterpret_cast<XPUType*>(out->data<T>()),
+                 out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+  } else {
+    int r = xpu::sum(dev_ctx.x_context(),
+                     ptrs,
+                     reinterpret_cast<XPUType*>(out->data<T>()),
+                     out->numel());
+
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sum");
+  }
 }
 
 template <typename T, typename Context>

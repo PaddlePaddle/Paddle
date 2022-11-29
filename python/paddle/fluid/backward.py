@@ -26,10 +26,7 @@ import paddle.fluid
 from .data_feeder import check_type
 import warnings
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 __all__ = [
     'append_backward',

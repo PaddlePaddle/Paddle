@@ -36,8 +36,6 @@ from .checkpoint import *
 from . import learning_rate_scheduler
 from .learning_rate_scheduler import *
 
-from . import jit
-from .jit import *
 
 from . import io
 from .io import *
@@ -46,7 +44,6 @@ from . import static_runner
 from .static_runner import StaticModelRunner
 
 from . import dygraph_to_static
-from .dygraph_to_static import ProgramTranslator
 
 from . import rnn
 from .rnn import *
@@ -66,8 +63,6 @@ __all__ += nn.__all__
 __all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
-__all__ += jit.__all__
 __all__ += io.__all__
 __all__ += rnn.__all__
-__all__ += ['ProgramTranslator']
 __all__ += amp.__all__

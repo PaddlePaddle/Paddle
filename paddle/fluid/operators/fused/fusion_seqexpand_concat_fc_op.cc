@@ -110,12 +110,13 @@ framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
 
 void FusionSeqExpandConcatFCOpMaker::Make() {
   AddInput("X",
-           "(LoDTensor) input LodDTensors, the first one must be have ref lod "
+           "(phi::DenseTensor) input LodDTensors, the first one must be have "
+           "ref lod "
            "for sequence expand, and the rest input should have same lod.")
       .AsDuplicable();
   AddInput("FCWeight", "(Tensor) the weights of fc.");
   AddInput("FCBias", "(Tensor, optional) the bias of fc.").AsDispensable();
-  AddOutput("Out", "(LoDTensor) Output LodTensor.");
+  AddOutput("Out", "(phi::DenseTensor) Output LodTensor.");
   AddOutput(
       "FCOut",
       "(Tensor) the intermediate tensor to keep the result of fc."
@@ -150,10 +151,10 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
-    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("FCWeight");
     auto* b = ctx.Input<phi::DenseTensor>("FCBias");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* fc_out = ctx.Output<phi::DenseTensor>("FCOut");
 
     auto* ref_in = ins[0];

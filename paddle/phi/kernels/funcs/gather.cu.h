@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 // TODO(paddle-dev): move gpu_primitives.h to phi
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -217,7 +217,7 @@ __global__ void GatherGradGPUKernel(const T* input,
     int64_t out_index =
         inner_dim_index * (outer_dim_size * out_index_dim_size) +
         index[index_dim_index] * outer_dim_size + out_dim_index;
-    paddle::platform::CudaAtomicAdd(out + out_index, *(input + idx));
+    phi::CudaAtomicAdd(out + out_index, *(input + idx));
   }
 }
 

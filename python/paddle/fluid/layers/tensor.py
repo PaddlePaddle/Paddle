@@ -64,15 +64,10 @@ __all__ = [
     'zeros',
     'reverse',
     'has_inf',
-    'has_nan',
-    'isfinite',
-    'range',
     'linspace',
     'zeros_like',
     'ones_like',
     'diag',
-    'eye',
-    'triu',
 ]
 
 
@@ -571,8 +566,9 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
         assert isinstance(
             input, list
         ), "The 'input' in tensor_array_to_tensor must be list"
-        from .nn import stack, concat
+        from .nn import concat
         from ..dygraph import to_variable
+        from paddle import stack
 
         op = stack if use_stack else concat
         res = op(input, axis=axis)
@@ -1572,170 +1568,6 @@ def has_inf(x):
     return out
 
 
-def has_nan(x):
-    """
-    Test if any of x contains a NAN
-
-    Args:
-       x (Tensor): The Tensor to be checked.
-
-    Returns:
-       Tensor: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          data = paddle.randn(shape=[2,3], dtype="float32")
-          res = paddle.fluid.layers.has_nan(data)
-          # [False]
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.isnan(x)
-
-    check_type(x, 'x', (Variable), 'has_nan')
-    helper = LayerHelper("isnan", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def isfinite(x):
-    """
-
-    Test if any of x contains an infinity/NAN number. If all the elements are finite,
-    returns true, else false.
-
-    Args:
-        x(Tensor): The Tensor to be checked.
-
-    Returns:
-        Tensor: The tensor storing the output, contains a bool value.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand(shape=[4, 6], dtype='float32')
-            y = paddle.fluid.layers.isfinite(x)
-            print(y)
-
-    """
-    check_variable_and_dtype(
-        x, "x", ["float32", "float64", "int32", "int64"], "isfinite"
-    )
-    helper = LayerHelper("isfinite", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype='bool')
-    helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def range(start, end, step, dtype, name=None):
-    """
-    This OP returns a 1-D Tensor with spaced values within a given interval.
-
-    Values are generated into the half-open interval [``start``, ``end``) with
-    the ``step``. (the interval including ``start`` but excluding ``end``).
-
-    If ``dtype`` is float32 or float64, we advise adding a small epsilon to
-    ``end`` to avoid floating point rounding errors when comparing against ``end``.
-
-    Parameters:
-        start(float|int|Tensor): Start of interval. The interval includes this
-            value. If ``start`` is a Tensor, it is a 1-D Tensor with shape [1],
-            with data type int32, int64, float32, float64.
-        end(float|int|Tensor): End of interval. The interval does not include
-            this value. If ``end`` is a Tensor, it is a 1-D Tensor with shape
-            [1], with data type int32, int64, float32, float64.
-        step(float|int|Tensor): Spacing between values. For any out, it is
-            the istance between two adjacent values, out[i+1] - out[i]. If
-            ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with data
-            type int32, int64, float32, float64.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
-            output tensor. Supported data types: int32, int64, float32, float64.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
-            taken with common difference ``step`` beginning from ``start``. Its
-            data type is set by ``dtype``.
-
-    Raises:
-        TypeError: If ``dtype`` is not int32, int64, float32, float64.
-
-    examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            out1 = fluid.layers.range(0, 10, 2, 'int32')
-            # [0, 2, 4, 6, 8]
-
-            start_var = fluid.layers.fill_constant([1], 'int64', 3)
-            out2 = fluid.layers.range(start_var, 7, 1, 'int64')
-            # [3, 4, 5, 6]
-
-    """
-    out_shape = None
-    if (
-        not isinstance(start, Variable)
-        and not isinstance(end, Variable)
-        and not isinstance(step, Variable)
-    ):
-        out_shape = [int(math.ceil((end - start) / step))]
-
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if not isinstance(start, Variable):
-        with device_guard("cpu"):
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
-        start = cast(start, dtype)
-
-    if not isinstance(end, Variable):
-        with device_guard("cpu"):
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
-        end = cast(end, dtype)
-
-    if not isinstance(step, Variable):
-        with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = cast(step, dtype)
-
-    if in_dygraph_mode():
-        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
-
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.range(start, end, step)
-        out.stop_gradient = True
-        return out
-
-    check_dtype(
-        dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'range/arange'
-    )
-    helper = LayerHelper('range', **locals())
-    out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
-    helper.append_op(
-        type='range',
-        inputs={'Start': start, 'End': end, 'Step': step},
-        outputs={'Out': out},
-    )
-    out.stop_gradient = True
-    if out_shape is not None:
-        out.desc.set_shape(out_shape)
-    return out
-
-
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
     This OP return fixed number of evenly spaced values within a given interval.
@@ -1953,112 +1785,6 @@ def diag(diagonal):
     return out
 
 
-def eye(
-    num_rows, num_columns=None, batch_shape=None, dtype='float32', name=None
-):
-    """
-    This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere.
-
-    Args:
-        num_rows(int): the number of rows in each batch tensor.
-        num_columns(int, optional): the number of columns in each batch tensor.
-            If None, default: num_rows.
-        batch_shape(list, optional): If provided, the returned tensor will have a leading
-            batch size of this shape, the data type of ``batch_shape`` is int. Default is None.
-        dtype(np.dtype|str, optional): The data type of the returned tensor.
-            It should be int32, int64, float16, float32, float64, default is 'float32'.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data = fluid.layers.eye(3, dtype='int32')
-          # [[1, 0, 0]
-          #  [0, 1, 0]
-          #  [0, 0, 1]]
-
-          data = fluid.layers.eye(2, 3, dtype='int32')
-          # [[1, 0, 0]
-          #  [0, 1, 0]]
-
-          data = fluid.layers.eye(2, batch_shape=[3])
-          # Construct a batch of 3 identity tensors, each 2 x 2.
-          # data[i, :, :] is a 2 x 2 identity tensor, i = 0, 1, 2.
-
-    """
-
-    def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.VarBase, core.eager.Tensor))):
-            assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
-        elif not isinstance(attr, int) or attr < 0:
-            raise TypeError("{} should be a non-negative int.".format(message))
-
-    _check_attr(num_rows, "num_rows")
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-    if num_columns is not None:
-        _check_attr(num_columns, "num_columns")
-    else:
-        num_columns = num_rows
-
-    if in_dygraph_mode():
-        out = _C_ops.eye(
-            num_rows, num_columns, dtype, _current_expected_place()
-        )
-    elif _in_legacy_dygraph():
-        out = _legacy_C_ops.eye(
-            'dtype', dtype, 'num_rows', num_rows, 'num_columns', num_columns
-        )
-    else:
-        helper = LayerHelper("eye", **locals())
-        check_dtype(
-            dtype,
-            'dtype',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'eye',
-        )
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type='eye',
-            inputs={},
-            outputs={'Out': [out]},
-            attrs={
-                'num_rows': num_rows,
-                'num_columns': num_columns,
-                'dtype': dtype,
-            },
-            stop_gradient=True,
-        )
-
-    if batch_shape is not None:
-        re_shape = [1] * len(batch_shape)
-        re_shape = re_shape + [num_rows, num_columns]
-        expand_times = batch_shape + [1, 1]
-        if _non_static_mode():
-            out, _ = _legacy_C_ops.reshape2(out, None, 'shape', re_shape)
-            return _legacy_C_ops.expand(out, None, 'expand_times', expand_times)
-
-        if not isinstance(batch_shape, list):
-            raise TypeError("batch_shape should be a list")
-        for batch_val in batch_shape:
-            if batch_val <= 0:
-                raise TypeError("batch_shape should be a positive int list")
-
-        from .nn import reshape, expand
-
-        out = reshape(x=out, shape=re_shape)
-        out = expand(x=out, expand_times=expand_times)
-
-    out.stop_gradient = True
-    return out
-
-
 def ones_like(x, out=None):
     """
     **ones_like**
@@ -2103,10 +1829,3 @@ def ones_like(x, out=None):
         outputs={'Out': [out]},
     )
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.triu")
-def triu(input, diagonal=0, name=None):
-    import paddle
-
-    return paddle.tensor.triu(x=input, diagonal=diagonal, name=name)

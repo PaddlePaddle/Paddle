@@ -51,10 +51,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
         conv3d_in = fluid.data(
             name='conv3d_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
-        conv3d_out_1 = fluid.layers.conv3d(
+        conv3d_out_1 = paddle.static.nn.conv3d(
             input=conv3d_in, num_filters=2, filter_size=3, act="relu"
         )
-        conv3d_out_2 = fluid.layers.conv3d(
+        conv3d_out_2 = paddle.static.nn.conv3d(
             input=conv3d_in, num_filters=2, filter_size=3, act="relu"
         )
 
@@ -76,8 +76,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         nce_label = fluid.data(
             name="nce_label", shape=[None, 10], dtype='int64'
         )
-        nce_out_1 = fluid.layers.nce(nce_in, nce_label, 10000)
-        nce_out_2 = fluid.layers.nce(nce_in, nce_label, 10000)
+        nce_out_1 = paddle.static.nn.nce(nce_in, nce_label, 10000)
+        nce_out_2 = paddle.static.nn.nce(nce_in, nce_label, 10000)
 
         prelu_in = fluid.data(
             name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'
@@ -103,28 +103,32 @@ class TestDygraphLoadStatic(unittest.TestCase):
             name="conv2d_trans_in", shape=[None, 10, 10, 10]
         )
 
-        conv2d_trans_out_1 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_1 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv2d_trans_out_2 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_2 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
 
         conv3d_trans_in = fluid.data(
             name='conv3d_trans_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
-        conv3d_trans_out_1 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_1 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
-        conv3d_trans_out_2 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_2 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
 
         groupnorm_in = fluid.data(
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
-        groupnorm_out1 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
-        groupnorm_out2 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
+        groupnorm_out1 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4
+        )
+        groupnorm_out2 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4
+        )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
         spe_norm_out_1 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)

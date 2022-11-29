@@ -18,9 +18,9 @@
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
@@ -30,7 +30,7 @@
 namespace phi {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input,
                                          T* output,
@@ -81,9 +81,8 @@ void RepeatInterleaveKernel(const Context& ctx,
     output_dim[dim] = index_size;
     out->Resize(phi::make_ddim(output_dim));
     phi::IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
-  }
 #if defined(__NVCC__) || defined(__HIPCC__)
-  else {
+  } else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
     paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
@@ -104,6 +103,8 @@ void RepeatInterleaveKernel(const Context& ctx,
            0,
            stream>>>(
             x.data<T>(), out_data, index_data, numel, stride, size, delta);
+  }
+#else
   }
 #endif
 }
@@ -163,9 +164,8 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
       out->Resize(phi::make_ddim(output_dim));
       IndexSelectInner<Context, T, int64_t>(ctx, &x_copy, index, out, dim);
     }
-  }
 #if defined(__NVCC__) || defined(__HIPCC__)
-  else {
+  } else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
     auto stream = ctx.stream();
@@ -208,6 +208,8 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
              stream>>>(
               in_data, out_data, index_data, numel, stride, size, delta);
     }
+  }
+#else
   }
 #endif
 }

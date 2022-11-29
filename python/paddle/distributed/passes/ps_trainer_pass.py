@@ -17,10 +17,10 @@ import paddle
 from ..ps.utils.public import *  # noqa: F403
 from paddle.framework import core
 from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+from ..ps.utils.collective_transpiler import SingleProcessMultiThread
 from _collections import defaultdict
-from paddle.fluid.framework import Program, Parameter
+from paddle.static import Program
+from paddle.fluid.framework import Parameter
 
 
 @register_pass("append_send_ops_pass")

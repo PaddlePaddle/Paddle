@@ -117,7 +117,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
             if (
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)
+                    main_block._var_recursive(varname)
                 ).process_mesh.processes
             ):
                 filter_vars.append(varname)
@@ -132,7 +132,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         # sync result
         group = new_process_group(world_process_group.ranks)
 
-        inf_var = main_block.var(kwargs['FoundInfinite'][0])
+        inf_var = main_block._var_recursive(kwargs['FoundInfinite'][0])
         inf_var_int32 = main_block.create_var(
             name=inf_var.name + "@cast_int32",
             shape=inf_var.shape,
@@ -179,7 +179,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
             new_op_dist_attr = OperatorDistributedAttribute()
             for varname in op.input_arg_names:
                 var_dist_attr = ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)
+                    main_block._var_recursive(varname)
                 )
                 assert var_dist_attr is not None
                 new_op_dist_attr.set_input_dims_mapping(
@@ -187,7 +187,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 )
             for varname in op.output_arg_names:
                 var_dist_attr = ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)
+                    main_block._var_recursive(varname)
                 )
                 new_op_dist_attr.set_output_dims_mapping(
                     varname, var_dist_attr.dims_mapping

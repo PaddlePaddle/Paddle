@@ -156,7 +156,7 @@ class TestVariable(unittest.TestCase):
             var3 = var[0:1]
             var4 = var[::-1]
             var5 = var[1, 1:, 1:]
-            var_reshape = fluid.layers.reshape(var, [3, -1, 3])
+            var_reshape = paddle.reshape(var, [3, -1, 3])
             var6 = var_reshape[:, :, -1]
             var7 = var[:, :, :-1]
             var8 = var[:1, :1, :1]

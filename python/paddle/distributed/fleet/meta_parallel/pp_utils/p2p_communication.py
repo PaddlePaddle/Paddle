@@ -164,7 +164,11 @@ class SendRecvMeta:
                 [d.shape for d in tensor if not d.stop_gradient]
             )
             self.send_dtype_message = tuple(
-                [paddle_2_number(d.dtype) for d in tensor]
+                [
+                    paddle_2_number(d.dtype)
+                    for d in tensor
+                    if not d.stop_gradient
+                ]
             )
 
 

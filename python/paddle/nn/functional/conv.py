@@ -24,11 +24,13 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.layer_helper import LayerHelper
 from ...tensor.manipulation import unsqueeze, squeeze
 from ...fluid.layers import nn
+from ...framework import no_grad
 from paddle import _C_ops, _legacy_C_ops
 from paddle import get_flags
 from paddle import in_dynamic_mode
 from paddle.device import is_compiled_with_cuda
 from paddle.device import is_compiled_with_npu
+from paddle.device import get_all_custom_device_type
 from paddle import in_dynamic_mode
 from paddle import get_flags
 from paddle.device import is_compiled_with_rocm
@@ -150,15 +152,20 @@ def _conv_nd(
             if isinstance(bias, tuple):
                 bias = bias[0]
             if len(bias.shape) < len(x.shape):
-                tmp_bias = _C_ops.reshape(
+                bias = _C_ops.reshape(
                     bias,
                     [1 for i in range(channel_dim)]
                     + bias.shape
                     + [1 for i in range(len(x.shape) - channel_dim - 1)],
                 )
-                return _C_ops.add(pre_bias, tmp_bias)
-            else:
-                return _C_ops.add(pre_bias, bias)
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if 'npu' in get_all_custom_device_type():
+                with no_grad():
+                    bias_storage = _C_ops.npu_identity(
+                        bias, 3
+                    )  # ACL_FORMAT_NC1HWC0 = 3
+                    bias_storage._share_underline_tensor_to(bias)
+            return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
 
@@ -172,7 +179,6 @@ def _conv_nd(
             groups,
             dilation,
             data_format,
-            use_cudnn,
         )
         if bias is not None:
             channel_dim = (
@@ -484,7 +490,7 @@ def conv1d(
                 conv2d_data_format,
             )
         else:
-            out = getattr(_C_ops, l_type)(
+            out = _C_ops.depthwise_conv2d(
                 x,
                 weight,
                 stride,
@@ -497,7 +503,6 @@ def conv1d(
                 -1,
                 False,
                 False,
-                use_cudnn,
             )
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
@@ -749,8 +754,26 @@ def conv2d(
                 data_format,
             )
             if bias is not None:
-                out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-                return out
+                channel_dim = (
+                    channel_dim + len(x.shape)
+                    if channel_dim < 0
+                    else channel_dim
+                )
+                if len(bias.shape) < len(x.shape):
+                    bias = _C_ops.reshape(
+                        bias,
+                        [1 for i in range(channel_dim)]
+                        + bias.shape
+                        + [1 for i in range(len(x.shape) - channel_dim - 1)],
+                    )
+                # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+                if 'npu' in get_all_custom_device_type():
+                    with no_grad():
+                        bias_storage = _C_ops.npu_identity(
+                            bias, 3
+                        )  # ACL_FORMAT_NC1HWC0 = 3
+                        bias_storage._share_underline_tensor_to(bias)
+                return _C_ops.add(pre_bias, bias)
             else:
                 return pre_bias
 

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -123,17 +124,17 @@ class TestMean(IPUOpTest):
 
 class TestMax(TestMean):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_max
+        self.op = paddle.max
 
 
 class TestMin(TestMean):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_min
+        self.op = paddle.min
 
 
 class TestSum(TestMean):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_sum
+        self.op = paddle.paddle.sum
 
 
 class TestLogsumexp(TestMean):

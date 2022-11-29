@@ -54,7 +54,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
             return False
 
         output_name = outputs[0]
-        output_var = dist_op.serial_op.block.var(output_name)
+        output_var = dist_op.serial_op.block._var_recursive(output_name)
         if output_var.shape != (1,):
             return False
 
@@ -124,7 +124,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
         )
 
         # dist attr
-        var = main_block.var(var_name)
+        var = main_block._var_recursive(var_name)
         tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         new_op_attr = OperatorDistributedAttribute()

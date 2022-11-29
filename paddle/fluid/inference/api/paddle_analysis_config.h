@@ -297,7 +297,8 @@ struct PD_INFER_DECL AnalysisConfig {
     ipu_available_memory_proportion,
     ipu_enable_half_partial,
     ipu_custom_ops_info,
-    ipu_custom_patterns
+    ipu_custom_patterns,
+    ipu_enable_model_runtime_executor,
   };
 
   ///
@@ -323,11 +324,14 @@ struct PD_INFER_DECL AnalysisConfig {
   /// matmul/conv.
   /// \param ipu_enable_half_partial enable fp16 partial for matmul, only work
   /// with fp16.
+  /// \param ipu_enable_model_runtime_executor whether to use model_runtime
+  /// executor.
   ///
   void SetIpuConfig(bool ipu_enable_fp16 = false,
                     int ipu_replica_num = 1,
                     float ipu_available_memory_proportion = 1.0,
-                    bool ipu_enable_half_partial = false);
+                    bool ipu_enable_half_partial = false,
+                    bool ipu_enable_model_runtime_executor = false);
 
   ///
   /// \brief Set IPU custom ops and patterns.
@@ -1176,6 +1180,7 @@ struct PD_INFER_DECL AnalysisConfig {
   int ipu_replica_num_{1};
   float ipu_available_memory_proportion_{1.0};
   bool ipu_enable_half_partial_{false};
+  bool ipu_enable_model_runtime_executor_{false};
 
   std::vector<std::vector<std::string>> ipu_custom_ops_info_;
   std::vector<std::vector<std::string>> ipu_custom_patterns_;
@@ -1190,6 +1195,8 @@ struct PD_INFER_DECL AnalysisConfig {
       {"ipu_available_memory_proportion",
        ipu_config_code::ipu_available_memory_proportion},
       {"ipu_enable_half_partial", ipu_config_code::ipu_enable_half_partial},
+      {"ipu_enable_model_runtime_executor",
+       ipu_config_code::ipu_enable_model_runtime_executor},
       {"ipu_custom_ops_info", ipu_config_code::ipu_custom_ops_info},
       {"ipu_custom_patterns", ipu_config_code::ipu_custom_patterns}};
 

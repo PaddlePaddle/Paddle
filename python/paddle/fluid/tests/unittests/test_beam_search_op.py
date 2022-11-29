@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
+import paddle
 
 
 def create_tensor(scope, name, np_data):
@@ -312,7 +313,7 @@ class TestBeamSearchOpError(unittest.TestCase):
             topk_scores, topk_indices = fluid.layers.topk(probs, k=4)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
-                y=fluid.layers.reshape(pre_scores, shape=[-1]),
+                y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
 

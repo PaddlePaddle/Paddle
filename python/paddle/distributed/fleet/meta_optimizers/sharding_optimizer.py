@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import os
-from paddle.fluid import unique_name, core
-import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.utils import unique_name
+from paddle.fluid.optimizer import PipelineOptimizer
 from paddle.static import default_startup_program, device_guard
-from paddle.fluid import layers
+from paddle.static import create_global_var
 
 from .common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper, OP_ROLE_KEY
 from .common import is_backward_op, is_optimizer_op, is_update_op
@@ -275,7 +276,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             )
 
         if self.pp_degree > 1:
-            pp_optimizer = fluid.optimizer.PipelineOptimizer(
+            pp_optimizer = PipelineOptimizer(
                 self.inner_opt, self._gradient_merge_acc_step
             )
             self._pp_optimizer = pp_optimizer
@@ -1916,7 +1917,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _create_gm_cond(self, main_block):
         # Add const var
-        acc_step_var = layers.create_global_var(
+        acc_step_var = create_global_var(
             name="gradient_merge_acc_step",
             shape=[1],
             value=int(self._gradient_merge_acc_step),
@@ -1925,7 +1926,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             force_cpu=True,
         )
 
-        zero_var = layers.create_global_var(
+        zero_var = create_global_var(
             name="gradient_merge_zero",
             shape=[1],
             value=int(0),
@@ -1935,7 +1936,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         )
 
         # Add step var & cond var
-        current_step_var = layers.create_global_var(
+        current_step_var = create_global_var(
             name="gradient_merge_current_step",
             shape=[1],
             value=int(0),

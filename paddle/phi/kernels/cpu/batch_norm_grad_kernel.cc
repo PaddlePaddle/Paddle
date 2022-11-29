@@ -16,9 +16,9 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 namespace phi {
 
@@ -36,7 +36,6 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& ctx,
-
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,

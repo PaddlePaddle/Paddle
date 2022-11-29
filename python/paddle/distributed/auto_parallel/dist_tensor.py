@@ -306,7 +306,7 @@ class DistributedTensor:
         def _copy_kwargs(serial_tensor):
             kwargs = {}
             no_need_copy_args = ["self", "block", "shape", "name"]
-            arg_spec = inspect.getargspec(Variable.__init__)
+            arg_spec = inspect.getfullargspec(Variable.__init__)
 
             for key in arg_spec.args:
                 # TODO: Check the copied attribute from serial tensor whether valid
