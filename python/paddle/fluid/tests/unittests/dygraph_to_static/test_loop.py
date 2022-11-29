@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.utils import gast
 import inspect
-import unittest
-
 import numpy as np
-
 import paddle
 import paddle.fluid as fluid
+import unittest
+
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
 from paddle.jit.api import declarative
-from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)
