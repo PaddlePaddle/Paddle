@@ -490,7 +490,7 @@ class BaseModel(fluid.dygraph.Layer):
             next_finished = fluid.layers.cast(next_finished, "bool")
             next_finished = paddle.logical_or(
                 next_finished,
-                fluid.layers.equal(token_indices, end_token_tensor),
+                paddle.equal(token_indices, end_token_tensor),
             )
             next_finished = fluid.layers.cast(next_finished, "float32")
 
