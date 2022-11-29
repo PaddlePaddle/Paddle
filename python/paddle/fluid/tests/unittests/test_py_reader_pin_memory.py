@@ -61,7 +61,7 @@ class TestPyReader(unittest.TestCase):
             )
             executor = fluid.Executor(place)
 
-            data_file = fluid.layers.py_reader(
+            data_file = paddle.framework.io.py_reader(
                 capacity=self.capacity,
                 dtypes=self.dtypes,
                 lod_levels=self.lod_levels,

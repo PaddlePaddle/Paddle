@@ -95,14 +95,14 @@ def simple_fc_net(
     in_data = fluid.layers.data(name="data", dtype='float32', shape=[in_size])
     label = fluid.layers.data(name='label', dtype='int64', shape=[1])
     if use_feed_list:
-        py_reader = fluid.layers.create_py_reader_by_data(
+        py_reader = paddle.framework.io.create_py_reader_by_data(
             capacity=queue_capacity,
             use_double_buffer=use_double_buffer,
             feed_list=[in_data, label],
             name=unique_name.generate('py_reader_name'),
         )
     else:
-        py_reader = fluid.layers.py_reader(
+        py_reader = paddle.framework.io.py_reader(
             capacity=queue_capacity,
             shapes=[in_data.shape, label.shape],
             dtypes=['float32', 'int64'],

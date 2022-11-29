@@ -16,6 +16,7 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 from threading import Thread
+import paddle
 
 
 def feed_data(feed_queue, inputs):
@@ -48,7 +49,7 @@ class TestPyReader(unittest.TestCase):
             )
             executor = fluid.Executor(place)
 
-            data_file = fluid.layers.py_reader(
+            data_file = paddle.framework.io.py_reader(
                 capacity=self.capacity,
                 dtypes=self.dtypes,
                 lod_levels=self.lod_levels,

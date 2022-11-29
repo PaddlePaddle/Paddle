@@ -107,7 +107,7 @@ class TestProgram(unittest.TestCase):
 
     def test_program_inference_optimize(self):
         def net():
-            reader = fluid.layers.py_reader(
+            reader = paddle.framework.io.py_reader(
                 capacity=10,
                 shapes=[[-1, 10], [-1, 1]],
                 lod_levels=[0, 0],
@@ -174,7 +174,7 @@ class TestProgram(unittest.TestCase):
 
     def test_remove_training_info(self):
         def net():
-            reader = fluid.layers.py_reader(
+            reader = paddle.framework.io.py_reader(
                 capacity=10,
                 shapes=[[-1, 10], [-1, 1]],
                 lod_levels=[0, 0],

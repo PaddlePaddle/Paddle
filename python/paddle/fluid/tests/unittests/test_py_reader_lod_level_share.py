@@ -14,6 +14,7 @@
 
 import paddle.fluid as fluid
 import unittest
+import paddle
 
 
 class TestLoDLevelShare(unittest.TestCase):
@@ -21,7 +22,7 @@ class TestLoDLevelShare(unittest.TestCase):
         self.use_double_buffer = False
 
     def test_lod_level_share(self):
-        reader = fluid.layers.py_reader(
+        reader = paddle.framework.io.py_reader(
             capacity=16,
             shapes=([-1, 256], [-1, 512], [-1, 100]),
             dtypes=('float32', 'int64', 'double'),
