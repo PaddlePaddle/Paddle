@@ -14,9 +14,7 @@ limitations under the License. */
 #ifndef POLY_UTIL_CC_
 #define POLY_UTIL_CC_
 
-#include "paddle/fluid/operators/detection/poly_util.h"
-
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/detection/poly_util.h"
 
 namespace paddle {
 namespace operators {

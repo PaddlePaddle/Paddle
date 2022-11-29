@@ -17,7 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/operators/detection/poly_util.h"
+#include "paddle/phi/kernels/funcs/detection/poly_util.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 

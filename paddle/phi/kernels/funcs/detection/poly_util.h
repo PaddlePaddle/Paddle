@@ -15,7 +15,6 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/gpc.h"
 
 namespace paddle {
@@ -73,4 +72,4 @@ T PolyOverlapArea(const T* box1,
 }  // namespace operators
 }  // namespace paddle
 
-#include "paddle/fluid/operators/detection/poly_util.cc"
+#include "paddle/phi/kernels/funcs/detection/poly_util.cc"
