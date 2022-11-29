@@ -877,6 +877,7 @@ class Linear(layers.Layer):
             pre_activation = tmp
         return self._helper.append_activation(pre_activation, act=self._act)
 
+
 class Dropout(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Dropout`` class.

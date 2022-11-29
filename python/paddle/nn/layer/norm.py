@@ -29,6 +29,7 @@
 
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 from ...fluid.dygraph import dygraph_utils
+from ...fluid.dygraph import layers
 from ...framework import get_default_dtype, _global_flags
 
 from ..initializer import Constant
@@ -751,7 +752,7 @@ class _BatchNormBase(Layer):
         return main_str
 
 
-class BatchNorm(_BatchNormBase):
+class BatchNorm(layers.Layer):
     r"""
     This interface is used to construct a callable object of the ``BatchNorm`` class.
     For more details, refer to code examples.
