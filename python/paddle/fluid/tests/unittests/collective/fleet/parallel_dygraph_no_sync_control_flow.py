@@ -13,12 +13,18 @@
 # limitations under the License.
 
 import numpy as np
+from parallel_dygraph_no_sync import TestNoSync
+from test_dist_base import runtime_main
 
 import paddle
 import paddle.fluid as fluid
+
 from paddle.nn import Linear
 from test_dist_base import runtime_main
 from parallel_dygraph_no_sync import TestNoSync
+
+from paddle.fluid.dygraph.nn import Linear
+
 
 seed = 90
 RUN_STEP = 20

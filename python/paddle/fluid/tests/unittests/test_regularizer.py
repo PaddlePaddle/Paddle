@@ -226,7 +226,7 @@ class TestRegularizer(unittest.TestCase):
             para_sum = []
             for para in param_list:
                 para_mul = paddle.square(x=para)
-                para_sum.append(fluid.layers.reduce_sum(input=para_mul))
+                para_sum.append(paddle.sum(para_mul))
             avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
@@ -262,10 +262,8 @@ class TestRegularizer(unittest.TestCase):
         )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = fluid.layers.uniform_random([2, 2, 3])
-            out = fluid.layers.fc(
-                x, 5, param_attr=fluid.ParamAttr(regularizer=l1)
-            )
-            loss = fluid.layers.reduce_sum(out)
+            out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
+            loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
             sgd.minimize(loss)
         with fluid.dygraph.guard():

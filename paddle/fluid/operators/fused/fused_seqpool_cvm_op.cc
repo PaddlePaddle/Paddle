@@ -95,7 +95,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto inputs = ctx.MultiInput<LoDTensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto* input : inputs) {
@@ -121,7 +121,7 @@ class FusedSeqpoolCVMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) The input tensors of"
+             "(vector<phi::DenseTensor>) The input tensors of"
              " operator.")
         .AsDuplicable();
     AddInput("CVM",

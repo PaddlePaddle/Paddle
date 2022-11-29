@@ -22,8 +22,9 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
+
 from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
@@ -308,9 +309,7 @@ class ResNetHelper:
                         )
                     if batch_id == 10:
                         if to_static:
-                            fluid.dygraph.jit.save(
-                                resnet, self.model_save_prefix
-                            )
+                            paddle.jit.save(resnet, self.model_save_prefix)
                         else:
                             fluid.dygraph.save_dygraph(
                                 resnet.state_dict(),
@@ -361,7 +360,7 @@ class ResNetHelper:
 
     def predict_dygraph_jit(self, data):
         with fluid.dygraph.guard(place):
-            resnet = fluid.dygraph.jit.load(self.model_save_prefix)
+            resnet = paddle.jit.load(self.model_save_prefix)
             resnet.eval()
 
             pred_res = resnet(data)

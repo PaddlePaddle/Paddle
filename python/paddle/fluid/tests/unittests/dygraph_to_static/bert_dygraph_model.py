@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer
 from paddle.nn import Linear
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 
 from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
@@ -275,7 +275,7 @@ class BertModelLayer(Layer):
         self_attn_mask = fluid.layers.matmul(
             x=input_mask, y=input_mask, transpose_y=True
         )
-        self_attn_mask = fluid.layers.scale(
+        self_attn_mask = paddle.scale(
             x=self_attn_mask, scale=10000.0, bias=-1.0, bias_after_scale=False
         )
         n_head_self_attn_mask = paddle.stack(

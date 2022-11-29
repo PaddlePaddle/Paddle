@@ -33,6 +33,8 @@ from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
+import paddle.nn.functional as F
 
 
 class LayerTest(unittest.TestCase):
@@ -1314,7 +1316,7 @@ class TestLayer(LayerTest):
 
             embs = layers.concat(input=embs, axis=1)
             wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
-            nce_loss = layers.nce(
+            nce_loss = paddle.static.nn.nce(
                 input=embs,
                 label=wl,
                 num_total_classes=dict_size,
@@ -1689,7 +1691,9 @@ class TestLayer(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32'
             )
-            ret = layers.conv3d(input=images, num_filters=3, filter_size=2)
+            ret = paddle.static.nn.conv3d(
+                input=images, num_filters=3, filter_size=2
+            )
             static_ret = self.get_static_graph_result(
                 feed={'pixel': np.ones([2, 3, 6, 6, 6], dtype='float32')},
                 fetch_list=[ret],
@@ -1968,7 +1972,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             ret = instanceNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
@@ -1976,21 +1980,21 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value2 = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
@@ -2003,7 +2007,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
             def test_Variable():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret1 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_Variable)
@@ -2011,7 +2015,7 @@ class TestLayer(LayerTest):
             # the input dtype of InstanceNorm must be float32 or float64
             def test_type():
                 input = np.random.random(shape).astype('int32')
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
@@ -2864,15 +2868,9 @@ class TestLayer(LayerTest):
             )
             crop_offsets3 = [0, dim1, dim2, 0]
 
-            out1 = fluid.layers.crop_tensor(
-                x, shape=crop_shape1, offsets=crop_offsets1
-            )
-            out2 = fluid.layers.crop_tensor(
-                x, shape=crop_shape2, offsets=crop_offsets2
-            )
-            out3 = fluid.layers.crop_tensor(
-                x, shape=crop_shape3, offsets=crop_offsets3
-            )
+            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
 
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
@@ -2922,7 +2920,6 @@ class TestBook(LayerTest):
         self.not_compare_static_dygraph_set = set(
             {
                 "make_gaussian_random",
-                "make_gaussian_random_batch_size_like",
                 "make_kldiv_loss",
                 "make_prelu",
                 "make_sampling_id",
@@ -3275,7 +3272,7 @@ class TestBook(LayerTest):
             embs.append(emb)
 
         embs = layers.concat(input=embs, axis=1)
-        loss = layers.nce(
+        loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],
             num_total_classes=dict_size,
@@ -3349,7 +3346,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 dtype='float32',
             )
-            out = layers.scatter(input=x, index=idx, updates=updates)
+            out = paddle.scatter(x, index=idx, updates=updates)
             return out
 
     def make_one_hot(self):
@@ -3364,9 +3361,7 @@ class TestBook(LayerTest):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
             one_hot_label = layers.one_hot(input=label, depth=10)
-            smooth_label = layers.label_smooth(
-                label=one_hot_label, epsilon=0.1, dtype="int32"
-            )
+            smooth_label = F.label_smooth(label=one_hot_label, epsilon=0.1)
             return smooth_label
 
     def make_topk(self):
@@ -3482,13 +3477,6 @@ class TestBook(LayerTest):
             output = layers.l2_normalize(x, axis=1)
             return output
 
-    def make_mean_iou(self):
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name='x', shape=[16], dtype='int32')
-            y = self._get_data(name='label', shape=[16], dtype='int32')
-            iou = layers.mean_iou(x, y, self._high_data_bound)
-            return iou
-
     def make_argsort(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3515,23 +3503,15 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
             )
-            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
-            out = layers.pad2d(
-                input,
-                paddings=[1, 2, 3, 4],
+
+            tmp_pad = paddle.nn.Pad2D(
+                padding=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape",
             )
-            out_1 = layers.pad2d(
-                input,
-                paddings=paddings,
-                mode='reflect',
-                data_format='NCHW',
-                name="shape",
-            )
+            out = tmp_pad(input)
             return out
-            return out_1
 
     def make_prelu(self):
         with program_guard(
@@ -3567,14 +3547,6 @@ class TestBook(LayerTest):
             out = layers.cross_entropy(x, label, False, 4)
             return out
 
-    def make_expand(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = layers.expand(x, [1, 2])
-            return out
-
     def make_uniform_random_batch_size_like(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3582,7 +3554,7 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[13, 11], dtype='float32'
             )
-            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            out = random.uniform_random_batch_size_like(input, [-1, 11])
             return out
 
     def make_gaussian_random(self):
@@ -3604,19 +3576,6 @@ class TestBook(LayerTest):
             )
 
             out = layers.sampling_id(x)
-            return out
-
-    def make_gaussian_random_batch_size_like(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32'
-            )
-
-            out = layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0
-            )
             return out
 
     def make_sum(self):
@@ -3658,7 +3617,7 @@ class TestBook(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            out = layers.scale(input, scale=scale_var)
+            out = paddle.scale(input, scale=scale_var)
             return out
 
     def make_iou_similarity(self):
@@ -3715,34 +3674,6 @@ class TestBook(LayerTest):
             out = layers.batch_norm(data, momentum=momentum)
             return out
 
-    def make_inplace_abn(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data', shape=[32, 128, 128], dtype="float32"
-            )
-            out = layers.inplace_abn(data, act='leaky_relu', act_alpha=0.2)
-            return out
-
-    def make_inplace_abn_momentum_variable(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data', shape=[32, 128, 128], dtype="float32"
-            )
-            momentum = self._get_data(
-                name='momentum',
-                shape=[1],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            out = layers.inplace_abn(
-                data, momentum=momentum, act='elu', act_alpha=2.0
-            )
-            return out
-
     def make_range(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3785,7 +3716,9 @@ class TestBook(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            loss = paddle.nn.functional.kl_div(
+                input=x, label=target, reduction='batchmean'
+            )
             return loss
 
     def make_temporal_shift(self):
@@ -3794,14 +3727,6 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
             out = layers.temporal_shift(x, seg_num=2, shift_ratio=0.2)
-            return out
-
-    def make_shuffle_channel(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.shuffle_channel(x, group=4)
             return out
 
     def make_fsp_matrix(self):
@@ -3827,7 +3752,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.mse_loss(input=x, label=y)
+            out = paddle.nn.functional.mse_loss(input=x, label=y)
             return out
 
     def make_square_error_cost(self):
@@ -3906,7 +3831,7 @@ class TestBook(LayerTest):
         strides = [1, 1, 1]
         with self.static_graph():
             x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            out = layers.strided_slice(
+            out = paddle.strided_slice(
                 x, axes=axes, starts=starts, ends=ends, strides=strides
             )
             return out
@@ -4177,7 +4102,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support layers with param now
         with self.static_graph():
             x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
-            out = layers.squeeze(input=x, axes=[2])
+            out = paddle.squeeze(x, axis=[2])
             return out
 
     def test_flatten(self):
@@ -4189,7 +4114,7 @@ class TestBook(LayerTest):
                 shape=[4, 4, 3],
                 dtype="float32",
             )
-            out = layers.flatten(x, axis=1, name="flatten")
+            out = paddle.flatten(x, 1, -1, name="flatten")
             return out
 
     def test_linspace(self):
@@ -4403,21 +4328,24 @@ class TestBook(LayerTest):
     def test_warpctc_with_padding(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            input_length = layers.data(
+            input_length = paddle.static.data(
                 name='logits_length', shape=[11], dtype='int64'
             )
-            label_length = layers.data(
+            label_length = paddle.static.data(
                 name='labels_length', shape=[12], dtype='int64'
             )
-            label = layers.data(name='label', shape=[12, 1], dtype='int32')
-            predict = layers.data(
+            label = paddle.static.data(
+                name='label', shape=[12, 1], dtype='int32'
+            )
+            predict = paddle.static.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = layers.warpctc(
-                input=predict,
-                label=label,
-                input_length=input_length,
-                label_length=label_length,
+            output = paddle.nn.functional.ctc_loss(
+                log_probs=predict,
+                labels=label,
+                input_lengths=input_length,
+                label_lengths=label_length,
+                reduction='none',
             )
             return output
 
