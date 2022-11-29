@@ -466,7 +466,9 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
       }
     }
 #endif
-    if (var_name == "OutSize" || var_name == "SizeTensor" || var_name == "Scale") {
+
+    if (var_name == "OutSize" || var_name == "SizeTensor" ||
+        var_name == "Scale") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(
