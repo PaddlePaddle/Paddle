@@ -56,7 +56,7 @@ class TestBase(IPUOpTest):
         y = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
-        out = paddle.fluid.layers.equal(x, y, **self.attrs)
+        out = paddle.equal(x, y)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

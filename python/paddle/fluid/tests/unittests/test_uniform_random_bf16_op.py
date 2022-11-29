@@ -193,7 +193,7 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
             ret_2 = fluid.layers.nn.uniform_random(
                 [2, 3, 2], min=_min, max=_max, seed=_seed
             )
-            res = fluid.layers.equal(ret, ret_2)
+            res = paddle.equal(ret, ret_2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 

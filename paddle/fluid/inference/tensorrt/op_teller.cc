@@ -1744,13 +1744,19 @@ struct SimpleOpTypeSetTeller : public Teller {
                               input_shape[1] == biasqk_shape[3];
         bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
                                 input_shape[1] == biasqk_shape[3];
+        is_broadcastable =
+            is_broadcastable || (biasqk_shape[0] == 1 && biasqk_shape[1] == 1 &&
+                                 input_shape[1] == biasqk_shape[2] &&
+                                 input_shape[1] == biasqk_shape[3]);
         if (!(has_same_shape || is_broadcastable)) {
           VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
-                  << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
-                  << ", " << head_number << ", " << input_shape[1] << ", "
-                  << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
-                  << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
-                  << biasqk_shape[3] << "].";
+                  << ", 1, 1, " << input_shape[1] << "] "
+                  << "or [" << input_shape[0] << ", " << head_number << ", "
+                  << input_shape[1] << ", " << input_shape[1] << "] "
+                  << "or [" << input_shape[0] << "/1, " << 1 << ", "
+                  << input_shape[1] << ", " << input_shape[1] << "] "
+                  << "but got [" << biasqk_shape[0] << ", " << biasqk_shape[1]
+                  << ", " << biasqk_shape[2] << ", " << biasqk_shape[3] << "].";
           return false;
         }
       } else {
@@ -2304,6 +2310,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "rsqrt",
       "reciprocal",
       "erf",
       "softmax",
@@ -2432,6 +2439,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "rsqrt",
       "reciprocal",
       "erf",
       "softmax",
