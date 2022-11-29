@@ -25,8 +25,13 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
+DECLARE_bool(enable_exit_when_partial_worker);
+
 namespace paddle {
 namespace framework {
+
+std::atomic<uint64_t> HogwildWorker::worker_num_stat_(0);
+Barrier g_barrier;
 
 void HogwildWorker::Initialize(const TrainerDesc &desc) {
   fetch_config_ = desc.fetch_config();
@@ -141,9 +146,13 @@ void HogwildWorker::TrainFilesWithProfiler() {
   double read_time = 0.0;
   int cur_batch;
   int batch_cnt = 0;
+  if (thread_id_ == 0) {
+    worker_num_stat_.store(0);
+  }
+  g_barrier.wait();
+  bool train_mode = device_reader_->IsTrainMode();
   timeline.Start();
   uint64_t total_inst = 0;
-  bool train_mode = device_reader_->IsTrainMode();
   device_reader_->InitGraphTrainResource();
   while (1) {
     cur_batch = device_reader_->Next();
@@ -252,6 +261,10 @@ void HogwildWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+  if (thread_id_ == 0) {
+    worker_num_stat_.store(0);
+  }
+  g_barrier.wait();
 
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_CUDA)
   platform::SetDeviceId(thread_id_);

@@ -304,7 +304,7 @@ int32_t PsLocalClient::Initialize() {
   std::pair<int64_t, int64_t> ret = table_ptr->PrintTableStat();
   VLOG(0) << "table id: " << table_id << ", feasign size: " << ret.first
           << ", mf size: " << ret.second;
-  if (ret.first > threshold) {
+  if (ret.first > (int64_t)threshold) {
     VLOG(0) << "run cache table";
     table_ptr->CacheTable(pass_id);
   }
