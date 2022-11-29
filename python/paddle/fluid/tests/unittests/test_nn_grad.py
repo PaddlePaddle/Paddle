@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-import gradient_checker
-from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -30,7 +31,7 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         self.config()
 
-        out = fluid.layers.slice(
+        out = paddle.slice(
             self.inputs, axes=self.axes, starts=self.starts, ends=self.ends
         )
         gradient_checker.double_grad_check(

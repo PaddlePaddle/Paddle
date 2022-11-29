@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 import paddle.fluid as fluid
 
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.fluid.optimizer import AdamOptimizer
 from test_fetch_feed import Linear
 

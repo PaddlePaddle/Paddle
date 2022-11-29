@@ -868,13 +868,12 @@ void AnalysisPredictor::MkldnnPreSet(
     const std::vector<std::vector<int>> &inputs_shape) {
 #ifdef PADDLE_WITH_MKLDNN
   VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
-          << platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id();
+          << phi::OneDNNContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
-    platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNDeviceContextThreadLocals::
-            kMKLDNNSessionID_CacheClearing);
+    phi::OneDNNContext::tls().set_cur_mkldnn_session_id(
+        phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs_shape.size(); ++i) {
@@ -883,9 +882,9 @@ void AnalysisPredictor::MkldnnPreSet(
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str(ss.str());
+    phi::OneDNNContext::tls().set_cur_input_shape_str(ss.str());
   }
-  platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
+  phi::OneDNNContext::tls().set_cur_input_shape_cache_capacity(
       config_.mkldnn_cache_capacity_);
 
 #endif
@@ -895,11 +894,11 @@ void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
-      static_cast<platform::MKLDNNDeviceContext *>(
+      static_cast<phi::OneDNNContext *>(
           (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
-      auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
+      auto shape_blob_size = static_cast<phi::OneDNNContext *>(
                                  (&platform::DeviceContextPool::Instance())
                                      ->Get(platform::CPUPlace()))
                                  ->GetShapeBlobSize();
@@ -2247,6 +2246,7 @@ USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(bmm);
+USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(exp);
@@ -2341,6 +2341,7 @@ USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
+USE_TRT_CONVERTER(take_along_axis)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

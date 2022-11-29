@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import Linear
-from paddle.fluid.layer_helper import LayerHelper
+import numpy as np
 from test_imperative_base import new_program_scope
-import paddle.fluid.dygraph_utils as dygraph_utils
-from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.dygraph_utils as dygraph_utils
+from paddle.fluid import Linear, core
+from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.layer_helper import LayerHelper
 
 
 class MyLayer(fluid.Layer):
@@ -137,9 +137,7 @@ class SimpleRNN(fluid.Layer):
         )
         pre_hidden = init_hidden
         for i in range(self.seq_len):
-            input = fluid.layers.slice(
-                inputs, axes=[1], starts=[i], ends=[i + 1]
-            )
+            input = paddle.slice(inputs, axes=[1], starts=[i], ends=[i + 1])
             input = paddle.reshape(input, shape=[1, 3])
             out_softmax, pre_hidden = self._cell(input, pre_hidden)
             outs.append(out_softmax)

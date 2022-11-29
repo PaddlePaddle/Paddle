@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.core as core
-import numpy as np
 
 
 class TestLoDTensorArray(unittest.TestCase):

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+
 from paddle.framework import _apply_pass as _apply_cpp_pass
 
 

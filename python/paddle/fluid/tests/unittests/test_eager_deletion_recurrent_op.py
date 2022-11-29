@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import os
+import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import unittest
-
 from paddle.fluid import ParamAttr
-from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
-import paddle
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, grad_var_name
 
 paddle.enable_static()
 

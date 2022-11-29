@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer, Linear
-from paddle.fluid.dygraph.jit import declarative
-
-from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+from paddle.jit.api import declarative
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -291,7 +291,7 @@ class BertModelLayer(Layer):
         #
         # if not self.return_pooled_out:
         #    return enc_output
-        next_sent_feat = fluid.layers.slice(
+        next_sent_feat = paddle.slice(
             input=enc_output, axes=[1], starts=[0], ends=[1]
         )
         next_sent_feat = self.pooled_fc(next_sent_feat)
