@@ -88,6 +88,7 @@ class HeterPsBase {
                            const OptimizerConfig& sgd_config,
                            const OptimizerConfig& embedx_config,
                            bool infer_mode) = 0;
+  virtual void set_mode(bool infer_mode) = 0;
 };
 
 }  // end namespace framework

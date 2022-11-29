@@ -70,6 +70,7 @@ class HeterComm {
                    const OptimizerConfig& sgd_config,
                    const OptimizerConfig& embedx_config,
                    bool infer_mode);
+  void set_mode(bool infer_mode);
   template <typename StreamType>
   size_t merge_keys(const int gpu_num,
                     const KeyType* d_keys,

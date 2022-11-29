@@ -276,6 +276,22 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::reset_table(
     table->set_mode(infer_mode);
   }
 }
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::set_mode(
+    bool infer_mode) {
+  if (!multi_mf_dim_) {
+    for (auto &table : tables_) {
+      table->set_mode(infer_mode);
+    }
+  } else {
+    for (auto &table : ptr_tables_) {
+      table->set_mode(infer_mode);
+    }
+  }
+}
 // debug time
 template <typename KeyType,
           typename ValType,
