@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 
