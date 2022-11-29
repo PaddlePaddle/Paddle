@@ -1405,9 +1405,9 @@ class CosineEmbeddingLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input1 (Tensor): tensor with shape: [N, M], N means batch size,which can be zero, M means the length of input array.
+        input1 (Tensor): tensor with shape: [N, M], N means batch size,which can be 0, M means the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): tensor with shape: [N, M], N means batch size,which can be zero, M means the length of input array.
+        input2 (Tensor): tensor with shape: [N, M], N means batch size,which can be , M means the length of input array.
                          Available dtypes are float32, float64.
         label (Tensor): tensor with shape: [N], N means the length of input array.
                          Available dtypes are int32, int64, float32, float64.
