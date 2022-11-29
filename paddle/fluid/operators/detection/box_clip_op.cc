@@ -66,15 +66,15 @@ class BoxClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(LoDTensor) "
-             "Input is a LoDTensor with shape [..., 4] holds 4 points"
+             "(phi::DenseTensor) "
+             "Input is a phi::DenseTensor with shape [..., 4] holds 4 points"
              "in last dimension in format [xmin, ymin, xmax, ymax]");
     AddInput("ImInfo",
              "(Tensor) Information for image reshape is in shape (N, 3), "
              "in format (height, width, im_scale)");
     AddOutput("Output",
-              "(LoDTensor) "
-              "Output is a LoDTensor with the same shape as Input"
+              "(phi::DenseTensor) "
+              "Output is a phi::DenseTensor with the same shape as Input"
               "and it is the result after clip");
     AddComment(R"DOC(
 This operator clips input boxes to original input images.
