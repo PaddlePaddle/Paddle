@@ -58,7 +58,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(phi::DenseTensor) The output of SequencePoolOp does not contain LoD "
               "information.");
     AddOutput("MaxIndex",
-              "(phi::DenseTensor<int>) This phi::DenseTensor is used for the sequence max-pooling "
+              "(phi::DenseTensor<int>) This tensor is used for the sequence max-pooling "
               "to record the max indexes.")
         .AsIntermediate();
     AddAttr<bool>("is_test",
