@@ -38,7 +38,7 @@ function make_ubuntu_dockerfile(){
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
     RUN dpkg -i nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
-    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libsndfile1 libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
+    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y ninja-build libsndfile1 libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
 function make_ubuntu_trt7_dockerfile(){
@@ -57,7 +57,7 @@ function make_ubuntu_trt7_dockerfile(){
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh ubuntu1604-7234#g' ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y ninja-build libcurl4-openssl-dev gettext zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
     tar -xvf git-2.17.1.tar.gz \&\& \
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
@@ -82,7 +82,7 @@ function make_centos_dockerfile(){
   sed "s/<baseimg>/11.0-cudnn8-devel-centos7/g" Dockerfile.centos >${dockerfile_name}
   sed -i "s#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts  ./build_scripts#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
-  sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz zstd libsndfile" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN yum install -y ninja-build pigz graphviz zstd libsndfile" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip3.7 install distro" ${dockerfile_name}
   sed -i "${dockerfile_line}i ENV LD_LIBRARY_PATH /opt/_internal/cpython-3.7.0/lib:/usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 " ${dockerfile_name}
   sed -i "${dockerfile_line}i ENV PATH /opt/_internal/cpython-3.7.0/bin:/usr/local/ssl:/usr/local/gcc-8.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin " ${dockerfile_name}
@@ -108,7 +108,7 @@ function make_cinn_dockerfile(){
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y ninja-build libcurl4-openssl-dev gettext pigz zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
     tar -xvf git-2.17.1.tar.gz \&\& \
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
@@ -124,7 +124,7 @@ function make_ce_framework_dockcerfile(){
   sed -i "7i RUN chmod 777 /tmp" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name} 
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y zstd pigz libcurl4-openssl-dev gettext \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y zstd pigz ninja-build libcurl4-openssl-dev gettext \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
     tar -xvf git-2.17.1.tar.gz \&\& \
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
@@ -156,7 +156,7 @@ function make_unbuntu18_cu117_dockerfile(){
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y ninja-build libcurl4-openssl-dev gettext pigz zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
     tar -xvf git-2.17.1.tar.gz \&\& \
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
