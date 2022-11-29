@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 import os
-import sys
 from io import BytesIO
 import tempfile
 
@@ -149,11 +148,7 @@ class TestSaveLoadPickle(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.save(save_dict, path, 5)
 
-        protocols = [
-            2,
-        ]
-        if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
-            protocols += [3, 4]
+        protocols = [2, 3, 4]
         for protocol in protocols:
             paddle.save(save_dict, path, pickle_protocol=protocol)
             dict_load = paddle.load(path)
