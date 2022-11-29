@@ -296,7 +296,10 @@ class TestFLOPSAPI(unittest.TestCase):
         self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
-        self.assertTrue(flops('c_embedding', {'Ids': [[12, 12]], 'W':[[12, 12, 3]]},{}) == 0)
+        self.assertTrue(
+            flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
+            == 0
+        )
 
 
 if __name__ == '__main__':
