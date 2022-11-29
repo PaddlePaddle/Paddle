@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_conv3d_transpose_op import TestConv3DTransposeOp
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-from test_conv3d_transpose_op import TestConv3DTransposeOp
+import paddle.fluid.core as core
 
 
 class TestWithSymmetricPad_NHWC(TestConv3DTransposeOp):
