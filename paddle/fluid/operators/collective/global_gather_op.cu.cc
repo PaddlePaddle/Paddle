@@ -82,8 +82,8 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     } else {
       stream = comm->stream();
     }

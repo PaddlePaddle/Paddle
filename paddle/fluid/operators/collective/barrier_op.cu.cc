@@ -39,8 +39,8 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    auto stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+    // should ExecutionContext for calc stream.
+    auto stream = ctx.cuda_device_context().stream();
     ncclRedOp_t nccl_red_type = ncclSum;
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
