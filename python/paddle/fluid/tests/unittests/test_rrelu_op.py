@@ -347,7 +347,7 @@ class RReluTrainingTest(RReluTest):
     def setUp(self):
         self.op_type = "rrelu"
         self.lower = 0.3
-        self.upper = 0.3000009
+        self.upper = 0.300000009
         self.is_test = False
         self.init_params()
 
