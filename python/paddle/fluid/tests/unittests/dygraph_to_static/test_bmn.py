@@ -137,7 +137,7 @@ class Conv1D(fluid.dygraph.Layer):
     def forward(self, x):
         x = fluid.layers.unsqueeze(input=x, axes=[2])
         x = self._conv2d(x)
-        x = fluid.layers.squeeze(input=x, axes=[2])
+        x = paddle.squeeze(x, axis=[2])
         return x
 
 
@@ -275,10 +275,10 @@ class BMN(fluid.dygraph.Layer):
         # TEM
         xs = paddle.nn.functional.relu(self.ts_conv1(x))
         xs = paddle.nn.functional.relu(self.ts_conv2(xs))
-        xs = fluid.layers.squeeze(xs, axes=[1])
+        xs = paddle.squeeze(xs, axis=[1])
         xe = paddle.nn.functional.relu(self.te_conv1(x))
         xe = paddle.nn.functional.relu(self.te_conv2(xe))
-        xe = fluid.layers.squeeze(xe, axes=[1])
+        xe = paddle.squeeze(xe, axis=[1])
 
         # PEM
         xp = paddle.nn.functional.relu(self.p_conv1(x))
@@ -287,7 +287,7 @@ class BMN(fluid.dygraph.Layer):
         xp = paddle.reshape(xp, shape=[0, 0, -1, self.dscale, self.tscale])
 
         xp = self.p_conv3d1(xp)
-        xp = fluid.layers.squeeze(xp, axes=[2])
+        xp = paddle.squeeze(xp, axis=[2])
         xp = paddle.nn.functional.relu(self.p_conv2d1(xp))
         xp = paddle.nn.functional.relu(self.p_conv2d2(xp))
         xp = paddle.nn.functional.relu(self.p_conv2d3(xp))
@@ -411,11 +411,11 @@ def bmn_loss_func(
         loss = -1 * (loss_pos + loss_neg) / num_entries
         return loss
 
-    pred_bm_reg = fluid.layers.squeeze(
-        fluid.layers.slice(pred_bm, axes=[1], starts=[0], ends=[1]), axes=[1]
+    pred_bm_reg = paddle.squeeze(
+        paddle.slice(pred_bm, axes=[1], starts=[0], ends=[1]), axis=[1]
     )
-    pred_bm_cls = fluid.layers.squeeze(
-        fluid.layers.slice(pred_bm, axes=[1], starts=[1], ends=[2]), axes=[1]
+    pred_bm_cls = paddle.squeeze(
+        paddle.slice(pred_bm, axes=[1], starts=[1], ends=[2]), axis=[1]
     )
 
     bm_mask = _get_mask(cfg)

@@ -13,22 +13,23 @@
 # limitations under the License.
 
 import logging
-import numpy as np
-from types import MethodType
 from collections import OrderedDict
+from types import MethodType
+
+import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import nn
-from paddle.autograd import PyLayer
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.fluid.framework import EagerParamBase
-from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle import nn
+from paddle.autograd import PyLayer
 from paddle.distributed import collective
+from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.fluid.framework import EagerParamBase
 
 from .group_sharded_storage import GradStorage
-from .group_sharded_utils import Type, GroupShardedClipGrad, device_guard
+from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
 
 
 def _all_gather(tensor, buffer_size, group):

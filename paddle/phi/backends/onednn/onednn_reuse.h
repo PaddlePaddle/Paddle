@@ -1874,9 +1874,11 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
+    const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
+                                    ? dev_ctx.GetDnnInput("ResidualData")
+                                    : nullptr;
 
-    if (dev_ctx.HasDnnInput("ResidualData")) {
-      auto* residual_data = dev_ctx.GetDnnInput("ResidualData");
+    if (residual_data) {
       auto residual_data_tz = vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
                                            OneDNNGetDataType<OT>(),
@@ -1893,9 +1895,11 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
 
     AppendActivation(dev_ctx, post_operations);
 
-    if (dev_ctx.HasDnnAttr("fused_output_scale")) {
-      float scale_alpha =
-          PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
+    const float scale_alpha =
+        dev_ctx.HasDnnAttr("fused_output_scale")
+            ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"))
+            : 1.0f;
+    if (scale_alpha != 1.0f) {
       post_operations.append_eltwise(
           1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
@@ -2014,8 +2018,11 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  if (dev_ctx.HasDnnInput("ResidualData")) {
-    auto* residual_data = dev_ctx.GetDnnInput("ResidualData");
+  const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
+                                  ? dev_ctx.GetDnnInput("ResidualData")
+                                  : nullptr;
+
+  if (residual_data) {
     const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});

@@ -12,23 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import time
-import os
-import signal
 import copy
-import sys
-import subprocess
-import tempfile
-import shutil
-from contextlib import closing
+import json
+import logging
 import multiprocessing
+import os
+import shutil
+import signal
 import socket
 import struct
-import json
+import subprocess
+import sys
+import tempfile
+import time
+from contextlib import closing
+from distutils.util import strtobool
 
 import paddle.framework as framework
-from distutils.util import strtobool
 import paddle.utils.cpp_extension.extension_utils as utils
 
 logger = logging.getLogger("root")
