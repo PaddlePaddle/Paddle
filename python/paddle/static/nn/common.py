@@ -1665,6 +1665,67 @@ def conv3d_transpose(
     return out
 
 
+def continuous_value_model(
+    input,
+    cvm,
+    use_cvm=True,
+):
+    r"""
+
+    **continuous_value_model layers**
+
+    Now, this OP is used in CTR project to remove or dispose show and click value in :attr:`input`.
+
+    :attr:`input` is an embedding vector including show and click value, whose shape is :math:`[N, D]` (N is batch size. D is `2 + embedding dim` ).
+    Show and click at first two dims of embedding vector D.
+    If :attr:`use_cvm` is True, it will calculate :math:`log(show)` and :math:`log(click)` , and output shape is :math:`[N, D]` .
+    If :attr:`use_cvm` is False, it will remove show and click from :attr:`input` , and output shape is :math:`[N, D - 2]` .
+    :attr:`cvm` is show_click info, whose shape is :math:`[N, 2]` .
+
+    Args:
+        input (Variable): The input variable. A 2-D LoDTensor with shape :math:`[N, D]` , where N is the batch size, D is `2 + the embedding dim` . `lod level = 1` .
+        A Tensor with type float32, float64.
+        cvm (Variable): Show and click variable. A 2-D Tensor with shape :math:`[N, 2]` , where N is the batch size, 2 is show and click.
+        A Tensor with type float32, float64.
+        use_cvm  (bool):  Use show_click or not. if use, the output dim is the same as input.
+                          if not use, the output dim is `input dim - 2` (remove show and click)
+
+    Returns:
+
+        Variable: A 2-D LodTensor with shape :math:`[N, M]` . if :attr:`use_cvm` = True, M is equal to input dim D. if False, M is equal to `D - 2`. \
+        A Tensor with same type as input.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          input = fluid.data(name="input", shape=[64, 1], dtype="int64")
+          label = fluid.data(name="label", shape=[64, 1], dtype="int64")
+          embed = fluid.layers.embedding(
+                            input=input,
+                            size=[100, 11],
+                            dtype='float32')
+          ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+          show_clk = fluid.layers.cast(fluid.layers.concat([ones, label], axis=1), dtype='float32')
+          show_clk.stop_gradient = True
+          input_with_cvm = fluid.layers.continuous_value_model(embed, show_clk, True)
+
+    """
+    helper = LayerHelper('cvm', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64'], 'cvm'
+    )
+    helper.append_op(
+        type='cvm',
+        inputs={'X': [input], 'CVM': [cvm]},
+        outputs={'Y': [out]},
+        attrs={"use_cvm": use_cvm},
+    )
+    return out
+
+
 def deformable_conv(
     input,
     offset,
