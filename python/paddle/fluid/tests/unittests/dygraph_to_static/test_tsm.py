@@ -133,7 +133,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
             short = inputs
         else:
             short = self.short(inputs)
-        y = fluid.layers.elementwise_add(x=short, y=conv2, act="relu")
+        y = paddle.nn.functional.relu(paddle.add(x=short, y=conv2))
         return y
 
 
