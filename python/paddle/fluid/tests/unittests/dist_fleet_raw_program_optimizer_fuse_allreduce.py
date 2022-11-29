@@ -84,7 +84,7 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
+        batch_acc = paddle.metric.accuracy(
             input=predict, label=label, total=batch_size_tensor
         )
 

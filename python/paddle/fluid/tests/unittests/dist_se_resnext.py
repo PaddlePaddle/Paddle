@@ -224,8 +224,8 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         cost = fluid.layers.cross_entropy(input=out, label=label)
 
         avg_cost = paddle.mean(x=cost)
-        acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-        acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+        acc_top1 = paddle.metric.accuracy(input=out, label=label, k=1)
+        acc_top5 = paddle.metric.accuracy(input=out, label=label, k=5)
 
         # Evaluator
         test_program = fluid.default_main_program().clone(for_test=True)

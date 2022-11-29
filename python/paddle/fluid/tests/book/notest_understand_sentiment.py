@@ -49,7 +49,7 @@ def convolution_net(
     )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    accuracy = paddle.metric.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
 
@@ -95,7 +95,7 @@ def dyn_rnn_lstm(
     prediction = fluid.layers.fc(input=last, size=class_dim, act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    accuracy = paddle.metric.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
 
@@ -130,7 +130,7 @@ def stacked_lstm_net(
     )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    accuracy = paddle.metric.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
 

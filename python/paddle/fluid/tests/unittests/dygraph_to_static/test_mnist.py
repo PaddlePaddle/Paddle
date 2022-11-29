@@ -114,7 +114,7 @@ class MNIST(fluid.dygraph.Layer):
     def forward(self, inputs, label=None):
         x = self.inference(inputs)
         if label is not None:
-            acc = fluid.layers.accuracy(input=x, label=label)
+            acc = paddle.metric.accuracy(input=x, label=label)
             loss = fluid.layers.cross_entropy(x, label)
             avg_loss = paddle.mean(loss)
 

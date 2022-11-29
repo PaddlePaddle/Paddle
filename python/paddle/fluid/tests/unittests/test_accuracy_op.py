@@ -67,14 +67,14 @@ class TestAccuracyOpError(unittest.TestCase):
             label = fluid.layers.data(
                 name='label', shape=[-1, 1], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.accuracy, x1, label)
+            self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
             self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
             # The input dtype of accuracy_op must be float32 or float64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.accuracy, x2, label)
+            self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
             self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
             x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
-            fluid.layers.accuracy(input=x3, label=label)
+            paddle.metric.accuracy(input=x3, label=label)
             paddle.metric.accuracy(input=x3, label=label)
 
 
@@ -86,7 +86,7 @@ class TestAccuracyAPI1(unittest.TestCase):
         self.label = paddle.static.data(
             shape=[2, 1], name="labels", dtype="int64"
         )
-        self.result = paddle.static.accuracy(
+        self.result = paddle.metric.accuracy(
             input=self.predictions, label=self.label, k=1
         )
         self.input_predictions = np.array(
@@ -116,7 +116,7 @@ class TestAccuracyAPI2(unittest.TestCase):
                 dtype='float32',
             )
             label = paddle.to_tensor([[2], [0]], dtype="int64")
-            result = paddle.static.accuracy(input=predictions, label=label, k=1)
+            result = paddle.metric.accuracy(input=predictions, label=label, k=1)
             expect_value = np.array([0.5], dtype='float32')
             self.assertEqual((result.numpy() == expect_value).all(), True)
 
