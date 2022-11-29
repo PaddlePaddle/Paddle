@@ -88,7 +88,9 @@ class HeterPs : public HeterPsBase {
                    bool infer_mode) {
     comm_->reset_table(dev_id, capacity, sgd_config, embedx_config, infer_mode);
   }
-
+  void set_mode(bool infer_mode) {
+    comm_->set_mode(infer_mode);
+  }
  private:
   std::shared_ptr<HeterComm<FeatureKey, float*, float*, GPUAccessor>> comm_;
 #if defined(PADDLE_WITH_CUDA)

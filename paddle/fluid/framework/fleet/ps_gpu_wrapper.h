@@ -221,6 +221,9 @@ class PSGPUWrapper {
   // set mode
   void SetMode(bool infer_mode) {
     infer_mode_ = infer_mode;
+    if (HeterPs_ != NULL) {
+      HeterPs_->set_mode(infer_mode);
+    }
     VLOG(0) << "set infer mode=" << infer_mode;
   }
 
