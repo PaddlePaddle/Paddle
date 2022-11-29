@@ -11,19 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy as np
+
+import paddle
+from paddle.fluid import core
+from paddle.fluid.core import VarDesc
+from paddle.fluid.dygraph import no_grad
+from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
-import paddle
+from paddle.nn.initializer import Constant
 from paddle.nn.layer.transformer import (
     _convert_attention_mask,
     _convert_param_attr_to_list,
 )
-from paddle.nn.initializer import Constant
-from paddle.fluid.dygraph import no_grad
-from paddle.fluid.framework import convert_np_dtype_to_dtype_, _non_static_mode
-from paddle.fluid.core import VarDesc
-from paddle.fluid import core
-import numpy as np
 
 
 # for distributed tensor model parallel

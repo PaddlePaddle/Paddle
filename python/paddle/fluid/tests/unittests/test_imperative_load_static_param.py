@@ -12,23 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import (
+    NCE,
     BatchNorm,
     Conv3D,
     Embedding,
     GroupNorm,
     LayerNorm,
     Linear,
-    NCE,
     PRelu,
 )
-import numpy as np
-import os
-import tempfile
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -82,8 +84,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         prelu_in = fluid.data(
             name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'
         )
-        prelu_out_1 = fluid.layers.prelu(prelu_in, "channel")
-        prelu_out_2 = fluid.layers.prelu(prelu_in, "channel")
+        prelu_out_1 = paddle.static.nn.prelu(prelu_in, "channel")
+        prelu_out_2 = paddle.static.nn.prelu(prelu_in, "channel")
 
         bilinear_tensor_pro_x = fluid.data(
             "t1", shape=[None, 5], dtype="float32"
@@ -123,8 +125,12 @@ class TestDygraphLoadStatic(unittest.TestCase):
         groupnorm_in = fluid.data(
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
-        groupnorm_out1 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
-        groupnorm_out2 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
+        groupnorm_out1 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4
+        )
+        groupnorm_out2 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4
+        )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
         spe_norm_out_1 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)

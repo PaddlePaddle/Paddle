@@ -23,25 +23,23 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import numpy as np
 from collections import OrderedDict
+
+import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.collective import _get_global_group, new_group
+from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.framework import core
 from paddle.optimizer import Optimizer
-from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed.collective import (
-    _get_global_group,
-    new_group,
-)
 
-from ...utils.internal_storage import ParamStorage, GradStorage
 from ...meta_parallel.sharding.sharding_utils import (
+    ShardingClipGrad,
     Type,
     device_guard,
-    ShardingClipGrad,
 )
+from ...utils.internal_storage import GradStorage, ParamStorage
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
 alignment = {"gpu": 256, "cpu": 4096}
