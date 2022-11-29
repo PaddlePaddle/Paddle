@@ -24,12 +24,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.nn import Linear
-
 from paddle import distributed as dist
-
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel import engine
 from paddle.distributed.fleet.layers.mpu.mp_layers import (
@@ -44,8 +39,9 @@ from paddle.distributed.fleet.meta_parallel.parallel_layers.pp_layers import (
 from paddle.distributed.sharding.group_sharded import group_sharded_parallel
 from paddle.distributed.utils.log_utils import get_logger
 from paddle.fluid.dataloader.dataset import IterableDataset
-from paddle.fluid.dygraph.nn import Embedding, Linear
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.incubate.distributed.utils.io import save_for_auto_inference
+from paddle.nn import Linear
 
 logger = get_logger("INFO", __file__)
 
