@@ -60,10 +60,10 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
 class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input phi::DenseTensor of sequence_mask op.");
+    AddInput("X", "The input tensor of sequence_mask op.");
     AddOutput("Y", "The output mask of sequence_mask op.");
     AddInput("MaxLenTensor",
-             "Max length phi::DenseTensor"
+             "Max length tensor"
              "have higher priority than maxlen attribute")
         .AsDispensable();
     AddAttr<int>("maxlen",
