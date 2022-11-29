@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
-import paddle.fluid.core as core
 import paddle.distributed.communication.stream as stream
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
 
 
 class ReduceOp:

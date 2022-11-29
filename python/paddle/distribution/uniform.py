@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import numpy as np
+
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
-from paddle.tensor import random
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import (
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
 from paddle.fluid.layers import (
     elementwise_add,
@@ -30,8 +31,8 @@ from paddle.fluid.layers import (
     tensor,
 )
 
-
 import paddle
+from paddle.tensor import random
 
 
 class Uniform(distribution.Distribution):

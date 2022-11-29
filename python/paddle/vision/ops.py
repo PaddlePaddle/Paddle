@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import numpy as np
-from ..fluid.layer_helper import LayerHelper
+
+from paddle import _C_ops, _legacy_C_ops
+
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layers import nn, utils
-from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
-from ..fluid.initializer import Normal
 from ..fluid.framework import (
     Variable,
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
-from paddle import _C_ops, _legacy_C_ops
+from ..fluid.initializer import Normal
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.layers import nn, utils
 from ..framework import _current_expected_place
+from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 
 __all__ = [  # noqa
     'yolo_loss',
