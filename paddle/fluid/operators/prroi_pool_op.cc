@@ -19,13 +19,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "the input of PRROIPoolOp. "
              "The format of input tensor is NCHW. Where N is the batch size, "
              "C is the number of input channels, "
@@ -40,13 +38,13 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "(x2, y2) is the bottom right coordinates. "
              "The roi batch index can be calculated from LoD.");
     AddInput("BatchRoINums",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "1-D tensor with shape [N], the number of"
              " rois for each image in batch, where N is the batch size")
         .AsDispensable();
     AddOutput("Out",
-              "(Tensor), "
-              "the output of PRROIPoolOp is a 4-D Tensor with shape "
+              "(phi::DenseTensor), "
+              "the output of PRROIPoolOp is a 4-D phi::DenseTensor with shape "
               "(num_rois, output_channels, pooled_h, pooled_w).");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "

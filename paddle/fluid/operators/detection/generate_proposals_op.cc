@@ -27,8 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -115,7 +113,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
                               context.GetPlace());
     rpn_roi_probs->mutable_data<T>({scores->numel(), 1}, context.GetPlace());
 
-    Tensor bbox_deltas_swap, scores_swap;
+    phi::DenseTensor bbox_deltas_swap, scores_swap;
     bbox_deltas_swap.mutable_data<T>({num, h_bbox, w_bbox, c_bbox},
                                      dev_ctx.GetPlace());
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
@@ -136,14 +134,14 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
-      Tensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
-      Tensor scores_slice = scores_swap.Slice(i, i + 1);
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
+      phi::DenseTensor scores_slice = scores_swap.Slice(i, i + 1);
 
       bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
-      std::pair<Tensor, Tensor> tensor_pair =
+      std::pair<phi::DenseTensor, phi::DenseTensor> tensor_pair =
           ProposalForOneImage(dev_ctx,
                               im_info_slice,
                               anchors,
@@ -155,8 +153,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
                               nms_thresh,
                               min_size,
                               eta);
-      Tensor &proposals = tensor_pair.first;
-      Tensor &scores = tensor_pair.second;
+      phi::DenseTensor &proposals = tensor_pair.first;
+      phi::DenseTensor &scores = tensor_pair.second;
 
       AppendProposals(rpn_rois, 4 * num_proposals, proposals);
       AppendProposals(rpn_roi_probs, num_proposals, scores);
@@ -179,13 +177,13 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     rpn_roi_probs->Resize({num_proposals, 1});
   }
 
-  std::pair<Tensor, Tensor> ProposalForOneImage(
+  std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
       const phi::CPUContext &ctx,
-      const Tensor &im_info_slice,
-      const Tensor &anchors,
-      const Tensor &variances,
-      const Tensor &bbox_deltas_slice,  // [M, 4]
-      const Tensor &scores_slice,       // [N, 1]
+      const phi::DenseTensor &im_info_slice,
+      const phi::DenseTensor &anchors,
+      const phi::DenseTensor &variances,
+      const phi::DenseTensor &bbox_deltas_slice,  // [M, 4]
+      const phi::DenseTensor &scores_slice,       // [N, 1]
       int pre_nms_top_n,
       int post_nms_top_n,
       float nms_thresh,
@@ -194,7 +192,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores_data = scores_slice.data<T>();
 
     // Sort index
-    Tensor index_t;
+    phi::DenseTensor index_t;
     index_t.Resize({scores_slice.numel()});
     int *index = index_t.mutable_data<int>(ctx.GetPlace());
     for (int i = 0; i < scores_slice.numel(); ++i) {
@@ -212,7 +210,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       index_t.Resize({pre_nms_top_n});
     }
 
-    Tensor scores_sel, bbox_sel, anchor_sel, var_sel;
+    phi::DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
     scores_sel.mutable_data<T>({index_t.numel(), 1}, ctx.GetPlace());
     bbox_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     anchor_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
@@ -223,26 +221,26 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     phi::funcs::CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
     phi::funcs::CPUGather<T>(ctx, variances, index_t, &var_sel);
 
-    Tensor proposals;
+    phi::DenseTensor proposals;
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
     ClipTiledBoxes<T>(ctx, im_info_slice, proposals, &proposals, false);
 
-    Tensor keep;
+    phi::DenseTensor keep;
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, true, &keep);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
       phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
       bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
       set_zero(ctx, &bbox_sel, static_cast<T>(0));
-      Tensor scores_filter;
+      phi::DenseTensor scores_filter;
       scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
       set_zero(ctx, &scores_filter, static_cast<T>(0));
       return std::make_pair(bbox_sel, scores_filter);
     }
 
-    Tensor scores_filter;
+    phi::DenseTensor scores_filter;
     bbox_sel.mutable_data<T>({keep.numel(), 4}, ctx.GetPlace());
     scores_filter.mutable_data<T>({keep.numel(), 1}, ctx.GetPlace());
     phi::funcs::CPUGather<T>(ctx, proposals, keep, &bbox_sel);
@@ -251,7 +249,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       return std::make_pair(bbox_sel, scores_filter);
     }
 
-    Tensor keep_nms =
+    phi::DenseTensor keep_nms =
         phi::funcs::NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
     if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
@@ -270,28 +268,32 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Scores",
-             "(Tensor) The scores from conv is in shape (N, A, H, W), "
-             "N is batch size, A is number of anchors, "
-             "H and W are height and width of the feature map");
+    AddInput(
+        "Scores",
+        "(phi::DenseTensor) The scores from conv is in shape (N, A, H, W), "
+        "N is batch size, A is number of anchors, "
+        "H and W are height and width of the feature map");
     AddInput("BboxDeltas",
-             "(Tensor) Bounding box deltas from conv is in "
+             "(phi::DenseTensor) Bounding box deltas from conv is in "
              "shape (N, 4*A, H, W).");
-    AddInput("ImInfo",
-             "(Tensor) Information for image reshape is in shape (N, 3), "
-             "in format (height, width, scale)");
+    AddInput(
+        "ImInfo",
+        "(phi::DenseTensor) Information for image reshape is in shape (N, 3), "
+        "in format (height, width, scale)");
     AddInput("Anchors",
-             "(Tensor) Bounding box anchors from anchor_generator_op "
+             "(phi::DenseTensor) Bounding box anchors from anchor_generator_op "
              "is in shape (H, W, A, 4).");
     AddInput("Variances",
-             "(Tensor) Bounding box variances with same shape as `Anchors`.");
+             "(phi::DenseTensor) Bounding box variances with same shape as "
+             "`Anchors`.");
 
     AddOutput("RpnRois",
               "(phi::DenseTensor), Output proposals with shape (rois_num, 4).");
     AddOutput(
         "RpnRoiProbs",
         "(phi::DenseTensor) Scores of proposals with shape (rois_num, 1).");
-    AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
+    AddOutput("RpnRoisNum",
+              "(phi::DenseTensor), The number of Rpn RoIs in each image")
         .AsDispensable();
     AddAttr<int>("pre_nms_topN",
                  "Number of top scoring RPN proposals to keep before "

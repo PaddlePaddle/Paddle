@@ -26,8 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class StridedSliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -69,7 +67,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
@@ -95,44 +93,46 @@ class StridedSliceOpVarTypeInference : public framework::VarTypeInference {
 class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "Tensor of data to extract slices from.");
+    AddInput("Input", "phi::DenseTensor of data to extract slices from.");
     AddOutput("Out", "Strided Sliced data tensor.");
 
-    AddInput("StartsTensor",
-             "(Tensor<int32>, optional) If provided, slice will use this."
-             "It has the highest priority of StartsTensor, StartsTensorList "
-             "and attr(starts).")
-        .AsDispensable();
-    AddInput("EndsTensor",
-             "(Tensor<int32>, optional) If provided, slice will use this."
-             "It has the highest priority of EndsTensor, EndsTensorList and "
-             "attr(ends).")
+    AddInput(
+        "StartsTensor",
+        "(phi::DenseTensor<int32>, optional) If provided, slice will use this."
+        "It has the highest priority of StartsTensor, StartsTensorList "
+        "and attr(starts).")
         .AsDispensable();
     AddInput(
-        "StridesTensor",
-        "(Tensor<int32>, optional) If provided, slice will use this."
-        "It has the highest priority of StridesTensor, StridesTensorList and "
+        "EndsTensor",
+        "(phi::DenseTensor<int32>, optional) If provided, slice will use this."
+        "It has the highest priority of EndsTensor, EndsTensorList and "
         "attr(ends).")
         .AsDispensable();
     AddInput(
-        "StartsTensorList",
-        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
-        "The shape of the tensor in vector MUST BE [1]."
-        "It has higher priority compare with attr(starts).")
+        "StridesTensor",
+        "(phi::DenseTensor<int32>, optional) If provided, slice will use this."
+        "It has the highest priority of StridesTensor, StridesTensorList and "
+        "attr(ends).")
+        .AsDispensable();
+    AddInput("StartsTensorList",
+             "(vector<phi::DenseTensor<int32>>, optional) If provided, slice "
+             "will use this."
+             "The shape of the tensor in vector MUST BE [1]."
+             "It has higher priority compare with attr(starts).")
         .AsDuplicable()
         .AsDispensable();
-    AddInput(
-        "EndsTensorList",
-        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
-        "The shape of the tensor in vector MUST BE [1]."
-        "It has higher priority compare with attr(ends).")
+    AddInput("EndsTensorList",
+             "(vector<phi::DenseTensor<int32>>, optional) If provided, slice "
+             "will use this."
+             "The shape of the tensor in vector MUST BE [1]."
+             "It has higher priority compare with attr(ends).")
         .AsDuplicable()
         .AsDispensable();
-    AddInput(
-        "StridesTensorList",
-        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
-        "The shape of the tensor in vector MUST BE [1]."
-        "It has higher priority compare with attr(strides).")
+    AddInput("StridesTensorList",
+             "(vector<phi::DenseTensor<int32>>, optional) If provided, slice "
+             "will use this."
+             "The shape of the tensor in vector MUST BE [1]."
+             "It has higher priority compare with attr(strides).")
         .AsDuplicable()
         .AsDispensable();
     AddAttr<std::vector<int>>(
@@ -174,7 +174,7 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {

@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -234,7 +232,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       auto lod = dist_mat->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
         if (lod[i + 1] > lod[i]) {
-          Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+          phi::DenseTensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
           BipartiteMatch(one_ins, indices + i * col, dist + i * col);
           if (type == "per_prediction") {
             ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
@@ -250,7 +248,8 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "DistMat",
-        "(phi::DenseTensor or Tensor) this input is a 2-D phi::DenseTensor "
+        "(phi::DenseTensor or phi::DenseTensor) this input is a 2-D "
+        "phi::DenseTensor "
         "with shape "
         "[K, M]. It is pair-wise distance matrix between the entities "
         "represented by each row and each column. For example, assumed one "
@@ -274,14 +273,16 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
         "the extra matching bboxes based on the maximum distance.")
         .SetDefault(0.5);
     AddOutput("ColToRowMatchIndices",
-              "(Tensor) A 2-D Tensor with shape [N, M] in int type. "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [N, M] in "
+              "int type. "
               "N is the batch size. If ColToRowMatchIndices[i][j] is -1, it "
               "means B[j] does not match any entity in i-th instance. "
               "Otherwise, it means B[j] is matched to row "
               "ColToRowMatchIndices[i][j] in i-th instance. The row number of "
               "i-th instance is saved in ColToRowMatchIndices[i][j].");
     AddOutput("ColToRowMatchDist",
-              "(Tensor) A 2-D Tensor with shape [N, M] in float type. "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [N, M] in "
+              "float type. "
               "N is batch size. If ColToRowMatchIndices[i][j] is -1, "
               "ColToRowMatchDist[i][j] is also -1.0. Otherwise, assumed "
               "ColToRowMatchIndices[i][j] = d, and the row offsets of each "
@@ -302,9 +303,9 @@ row entity to the column entity and the matched indices are not duplicated
 in each row of ColToRowMatchIndices. If the column entity is not matched
 any row entity, set -1 in ColToRowMatchIndices.
 
-Please note that the input DistMat can be phi::DenseTensor (with LoD) or Tensor.
+Please note that the input DistMat can be phi::DenseTensor (with LoD) or phi::DenseTensor.
 If phi::DenseTensor with LoD, the height of ColToRowMatchIndices is batch size.
-If Tensor, the height of ColToRowMatchIndices is 1.
+If phi::DenseTensor, the height of ColToRowMatchIndices is 1.
 
 )DOC");
   }

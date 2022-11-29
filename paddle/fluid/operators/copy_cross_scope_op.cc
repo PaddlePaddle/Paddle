@@ -30,8 +30,6 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
-using Tensor = phi::DenseTensor;
-
 namespace paddle {
 namespace operators {
 
@@ -130,10 +128,12 @@ class CopyCrossScopeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), The first input tensor of copy_cross_scope op, which "
+             "(phi::DenseTensor), The first input tensor of copy_cross_scope "
+             "op, which "
              "is copying micro scope.");
     AddInput("Id",
-             "(Tensor), The second input tensor of copy_cross_scope op, which "
+             "(phi::DenseTensor), The second input tensor of copy_cross_scope "
+             "op, which "
              "is a id of the current micro scope.");
     AddAttr<bool>("to_main_scope", "Return current scope to main scope.")
         .SetDefault(false);

@@ -25,7 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class AdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -40,13 +39,13 @@ class AdagradOp : public framework::OperatorWithKernel {
 class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Param", "(Tensor) Input parameter");
-    AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("Moment", "(Tensor) Second moment");
-    AddInput("LearningRate", "(Tensor) Learning rate");
+    AddInput("Param", "(phi::DenseTensor) Input parameter");
+    AddInput("Grad", "(phi::DenseTensor) Input gradient");
+    AddInput("Moment", "(phi::DenseTensor) Second moment");
+    AddInput("LearningRate", "(phi::DenseTensor) Learning rate");
 
-    AddOutput("ParamOut", "(Tensor) Output parameter");
-    AddOutput("MomentOut", "(Tensor) Output second moment");
+    AddOutput("ParamOut", "(phi::DenseTensor) Output parameter");
+    AddOutput("MomentOut", "(phi::DenseTensor) Output second moment");
 
     AddAttr<float>("epsilon",
                    "(float, default 1.0e-6) "

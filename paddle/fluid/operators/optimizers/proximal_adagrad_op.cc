@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class ProximalAdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -84,20 +83,20 @@ class ProximalAdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input parameter that has to be updated.");
     AddInput("Moment",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Moment parameter that has to be updated.");
     AddInput("Grad",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input gradient of the parameter.");
     AddInput("LearningRate",
-             "(Tensor, default Tensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "The learning rate should be a tensor of size 1.");
 
-    AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
-    AddOutput("MomentOut", "(Tensor) Output updated moment value.");
+    AddOutput("ParamOut", "(phi::DenseTensor) Output updated parameter value.");
+    AddOutput("MomentOut", "(phi::DenseTensor) Output updated moment value.");
 
     AddAttr<float>("l1",
                    "(float, default 0.0) "

@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class MultiplexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -42,7 +40,8 @@ class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "Tensor<int32>, index variable which is a 2-D tensor with shape "
+             "phi::DenseTensor<int32>, index variable which is a 2-D tensor "
+             "with shape "
              "[M, 1] where M is the batch size.");
     AddInput("X",
              "A list of variables to gather from. All variables have the same "

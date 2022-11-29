@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class ROIAlignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -65,7 +63,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "The input of ROIAlignOp. The data type is float32 or float64."
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
@@ -79,11 +77,11 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
     AddInput("RoisNum",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "The number of RoIs in each image.")
         .AsDispensable();
     AddOutput("Out",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
               "(num_rois, channels, pooled_h, pooled_w). The data type is "
               "float32 or float64.");

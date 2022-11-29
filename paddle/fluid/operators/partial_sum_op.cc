@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 class PartialSumOp : public framework::OperatorWithKernel {
  public:
@@ -163,7 +162,7 @@ class PartialSumOpMaker : public framework::OpProtoAndCheckerMaker {
 PartialSum Operator.
 This Op can sum the vars by specifying the initial position(start_index) and length(length).
 This OP exists in contrib, which means that it is not shown to the public.
-Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
+Only 2-D phi::DenseTensor or LodTensor input is supported. Slice and concat can only be
 performed along the second dimension.
 
 Examples:

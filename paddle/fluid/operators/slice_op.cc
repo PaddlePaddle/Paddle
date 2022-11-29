@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class SliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -181,7 +179,7 @@ class SliceOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
       return expected_kernel_type;
@@ -217,29 +215,33 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
 class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(Tensor) Tensor of data to extract slices from.");
-    AddInput("StartsTensor",
-             "(Tensor<int32>, optional) If provided, slice will use this."
-             "It has the highest priority of StartsTensor, StartsTensorList "
-             "and attr(starts).")
-        .AsDispensable();
-    AddInput("EndsTensor",
-             "(Tensor<int32>, optional) If provided, slice will use this."
-             "It has the highest priority of EndsTensor, EndsTensorList and "
-             "attr(ends).")
+    AddInput(
+        "Input",
+        "(phi::DenseTensor) phi::DenseTensor of data to extract slices from.");
+    AddInput(
+        "StartsTensor",
+        "(phi::DenseTensor<int32>, optional) If provided, slice will use this."
+        "It has the highest priority of StartsTensor, StartsTensorList "
+        "and attr(starts).")
         .AsDispensable();
     AddInput(
-        "StartsTensorList",
-        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
-        "The shape of the tensor in vector MUST BE [1]."
-        "It has higher priority compare with attr(starts).")
+        "EndsTensor",
+        "(phi::DenseTensor<int32>, optional) If provided, slice will use this."
+        "It has the highest priority of EndsTensor, EndsTensorList and "
+        "attr(ends).")
+        .AsDispensable();
+    AddInput("StartsTensorList",
+             "(vector<phi::DenseTensor<int32>>, optional) If provided, slice "
+             "will use this."
+             "The shape of the tensor in vector MUST BE [1]."
+             "It has higher priority compare with attr(starts).")
         .AsDuplicable()
         .AsDispensable();
-    AddInput(
-        "EndsTensorList",
-        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
-        "The shape of the tensor in vector MUST BE [1]."
-        "It has higher priority compare with attr(ends).")
+    AddInput("EndsTensorList",
+             "(vector<phi::DenseTensor<int32>>, optional) If provided, slice "
+             "will use this."
+             "The shape of the tensor in vector MUST BE [1]."
+             "It has higher priority compare with attr(ends).")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out", "Sliced data tensor.");
@@ -349,7 +351,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
       return expected_kernel_type;

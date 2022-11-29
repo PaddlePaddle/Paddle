@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class AdadeltaOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -36,17 +34,18 @@ class AdadeltaOp : public framework::OperatorWithKernel {
 class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Param", "(Tensor) Input parameter");
-    AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("AvgSquaredGrad", "(Tensor) Input average of squared gradient");
+    AddInput("Param", "(phi::DenseTensor) Input parameter");
+    AddInput("Grad", "(phi::DenseTensor) Input gradient");
+    AddInput("AvgSquaredGrad",
+             "(phi::DenseTensor) Input average of squared gradient");
     AddInput("AvgSquaredUpdate",
-             "(Tensor) Input average of squared parameter updates");
+             "(phi::DenseTensor) Input average of squared parameter updates");
 
-    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddOutput("ParamOut", "(phi::DenseTensor) Output parameter");
     AddOutput("AvgSquaredGradOut",
-              "(Tensor) Output average of squared gradient");
+              "(phi::DenseTensor) Output average of squared gradient");
     AddOutput("AvgSquaredUpdateOut",
-              "(Tensor) Output average of squared parameter updates");
+              "(phi::DenseTensor) Output average of squared parameter updates");
 
     AddAttr<float>("rho",
                    "(float, default 0.95) Exponential decay rate "

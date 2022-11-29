@@ -41,8 +41,6 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
   ReshapeOp(const std::string &type,
@@ -64,14 +62,14 @@ class ReshapeOp : public framework::OperatorWithKernel {
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");
-      PADDLE_ENFORCE_GT(
-          ShapeTensor.size(),
-          0,
-          platform::errors::InvalidArgument(
-              "When `shape` in ReshapeOp is a list or tuple "
-              "which contains Tensor, the shape's size can't be zero. "
-              "But received shape's size is %d.",
-              ShapeTensor.size()));
+      PADDLE_ENFORCE_GT(ShapeTensor.size(),
+                        0,
+                        platform::errors::InvalidArgument(
+                            "When `shape` in ReshapeOp is a list or tuple "
+                            "which contains phi::DenseTensor, the shape's size "
+                            "can't be zero. "
+                            "But received shape's size is %d.",
+                            ShapeTensor.size()));
       auto infer_shape = ctx->Attrs().Get<std::vector<int>>("shape");
       const int64_t copy_dim_val = 0;
       auto in_dims = ctx->GetInputDim("X");
@@ -272,7 +270,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return expected_kernel_type;
@@ -285,22 +283,24 @@ class ReshapeOp : public framework::OperatorWithKernel {
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor). The input tensor of reshape operator.");
+    AddInput("X", "(phi::DenseTensor). The input tensor of reshape operator.");
     AddInput("Shape",
-             "(Tensor<int32>, optional). Target shape of reshape operator. "
+             "(phi::DenseTensor<int32>, optional). Target shape of reshape "
+             "operator. "
              "It has a higher priority than Attr(shape) but a lower priority "
              "than Input(ShapeTensor). The Attr(shape) still should be "
              "set correctly to guarantee shape inference in compile time.")
         .AsDispensable();
-    AddInput(
-        "ShapeTensor",
-        "(vector<Tensor<int32>>, optional). Target shape of reshape operator. "
-        "It has the highest priority compare with Input(Shape) and "
-        "Attr(shape)."
-        "The shape of the element in vector must be [1].")
+    AddInput("ShapeTensor",
+             "(vector<phi::DenseTensor<int32>>, optional). Target shape of "
+             "reshape operator. "
+             "It has the highest priority compare with Input(Shape) and "
+             "Attr(shape)."
+             "The shape of the element in vector must be [1].")
         .AsDuplicable()
         .AsDispensable();
-    AddOutput("Out", "(Tensor). The output tensor of reshape operator.");
+    AddOutput("Out",
+              "(phi::DenseTensor). The output tensor of reshape operator.");
     AddAttr<std::vector<int>>(
         "shape",
         "(std::vector<int>) Target shape of reshape operator."
@@ -638,7 +638,7 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return expected_kernel_type;
@@ -666,7 +666,7 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return expected_kernel_type;

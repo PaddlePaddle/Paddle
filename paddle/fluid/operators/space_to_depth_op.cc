@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class SpaceToDepthOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -143,12 +141,14 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
 class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(Tensor). The input should be a 4D tensor B * C * W * H of "
-             "SpaceToDepthOp "
-             "operator.");
+    AddInput(
+        "X",
+        "(phi::DenseTensor). The input should be a 4D tensor B * C * W * H of "
+        "SpaceToDepthOp "
+        "operator.");
     AddOutput("Out",
-              "(Tensor), The output should be a 4D tensor B * C2 * W2 * H2 of "
+              "(phi::DenseTensor), The output should be a 4D tensor B * C2 * "
+              "W2 * H2 of "
               "SpaceToDepthOp operator.");
     AddAttr<int64_t>(
         "blocksize",

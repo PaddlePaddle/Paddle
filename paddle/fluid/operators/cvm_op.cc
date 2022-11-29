@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class CVMOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -132,7 +130,8 @@ class CVMOpMaker : public framework::OpProtoAndCheckerMaker {
              "[N x D],"
              " where N is the batch size and D is the emebdding dim. ");
     AddInput("CVM",
-             "(Tensor),  a 2-D Tensor with shape [N x 2], where N is the batch "
+             "(phi::DenseTensor),  a 2-D phi::DenseTensor with shape [N x 2], "
+             "where N is the batch "
              "size, 2 is show and click.");
     AddOutput("Y",
               "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
