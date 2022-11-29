@@ -18,7 +18,7 @@ import unittest
 import paddle
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.layers.utils import map_structure
 
 SEED = 2020

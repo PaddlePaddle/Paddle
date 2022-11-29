@@ -26,7 +26,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
 from paddle import _legacy_C_ops
@@ -84,9 +85,7 @@ class DynamicGRU(fluid.dygraph.Layer):
                 j = i
 
             # input_ = inputs[:, j:j+1, :]  # original code
-            input_ = fluid.layers.slice(
-                inputs, axes=[1], starts=[j], ends=[j + 1]
-            )
+            input_ = paddle.slice(inputs, axes=[1], starts=[j], ends=[j + 1])
             input_ = paddle.reshape(input_, [-1, input_.shape[2]])
             hidden, reset, gate = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
@@ -621,7 +620,7 @@ class TestLACModel(unittest.TestCase):
                     step += 1
             # save inference model
             if to_static:
-                fluid.dygraph.jit.save(
+                paddle.jit.save(
                     layer=model,
                     path=self.model_save_prefix,
                     input_spec=[input_specs[0], input_specs[-1]],
@@ -706,7 +705,7 @@ class TestLACModel(unittest.TestCase):
     def predict_dygraph_jit(self, batch):
         words, targets, length = batch
         with fluid.dygraph.guard(self.place):
-            model = fluid.dygraph.jit.load(self.model_save_prefix)
+            model = paddle.jit.load(self.model_save_prefix)
             model.eval()
 
             pred_res = model(to_variable(words), to_variable(length))

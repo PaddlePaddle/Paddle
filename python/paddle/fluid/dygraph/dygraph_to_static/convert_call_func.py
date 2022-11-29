@@ -36,15 +36,7 @@ from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
     TranslatorLogger,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    StaticFunction,
-)
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    convert_to_static,
-)
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    unwrap_decorators,
-)
+
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
@@ -185,6 +177,13 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
+    # NOTE(Aurelius84): Fix it after all files migrating into jit.
+    from paddle.jit.dy2static.program_translator import (
+        convert_to_static,
+        unwrap_decorators,
+        StaticFunction,
+    )
+
     translator_logger.log(
         1, "Convert callable object: convert {}.".format(func)
     )

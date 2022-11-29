@@ -17,7 +17,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, Linear, Layer
 from paddle.fluid.dygraph import to_variable, guard
-from paddle.fluid.dygraph import TracedLayer
+from paddle.jit import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid import core

@@ -691,16 +691,12 @@ class IpuDynamicPatcher:
         Returns:
             None
         """
-        from ..fluid.dygraph.dygraph_to_static.program_translator import (
-            ProgramCache,
-        )
-        from ..fluid.dygraph.dygraph_to_static.program_translator import (
+        from paddle.jit.dy2static.program_translator import (
             CacheKey,
-        )
-        from ..fluid.dygraph.dygraph_to_static import logging_utils
-        from ..fluid.dygraph.dygraph_to_static.program_translator import (
+            ProgramCache,
             MAX_TRACED_PROGRAM_COUNT,
         )
+        from ..fluid.dygraph.dygraph_to_static import logging_utils
         from ..fluid.dygraph.dygraph_to_static.partial_program import (
             partial_program_from,
         )

@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from bert_dygraph_model import PretrainModelLayer
@@ -118,7 +118,7 @@ class TestBert(unittest.TestCase):
                 step_idx += 1
                 if step_idx == STEP_NUM:
                     if to_static:
-                        fluid.dygraph.jit.save(bert, self.model_save_prefix)
+                        paddle.jit.save(bert, self.model_save_prefix)
                     else:
                         fluid.dygraph.save_dygraph(
                             bert.state_dict(), self.dy_state_dict_save_path
@@ -194,7 +194,7 @@ class TestBert(unittest.TestCase):
 
     def predict_dygraph_jit(self, data):
         with fluid.dygraph.guard(place):
-            bert = fluid.dygraph.jit.load(self.model_save_prefix)
+            bert = paddle.jit.load(self.model_save_prefix)
             bert.eval()
 
             (

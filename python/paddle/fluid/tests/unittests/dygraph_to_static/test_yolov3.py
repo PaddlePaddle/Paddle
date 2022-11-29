@@ -19,7 +19,7 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
 
 from yolov3 import cfg, YOLOv3

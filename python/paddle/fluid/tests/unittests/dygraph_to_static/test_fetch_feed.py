@@ -16,8 +16,8 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
 
 SEED = 2020
 

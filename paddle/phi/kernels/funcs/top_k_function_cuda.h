@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,21 +23,21 @@ limitations under the License. */
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 #endif
-#include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
-#include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #define FINAL_MASK 0xffffffff
 #ifdef __HIPCC__
 namespace rocprim {
 namespace detail {
 template <>
-struct radix_key_codec_base<paddle::platform::float16>
-    : radix_key_codec_integral<paddle::platform::float16, uint16_t> {};
+struct radix_key_codec_base<phi::dtype::float16>
+    : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 namespace cub = hipcub;
@@ -45,17 +45,13 @@ namespace cub = hipcub;
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
-struct NumericTraits<paddle::platform::float16>
-    : BaseTraits<FLOATING_POINT,
-                 true,
-                 false,
-                 uint16_t,
-                 paddle::platform::float16> {};
+struct NumericTraits<phi::dtype::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
 }  // namespace cub
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 using Tensor = phi::DenseTensor;
 
@@ -553,10 +549,10 @@ struct RadixTypeConfig<int64_t> {
 };
 
 template <>
-struct RadixTypeConfig<platform::float16> {
+struct RadixTypeConfig<phi::dtype::float16> {
   typedef uint32_t RadixType;
 
-  static inline __device__ RadixType Convert(platform::float16 v) {
+  static inline __device__ RadixType Convert(phi::dtype::float16 v) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     half v_h = v.to_half();
     RadixType x = __half_as_ushort(v_h);
@@ -568,13 +564,13 @@ struct RadixTypeConfig<platform::float16> {
 #endif
   }
 
-  static inline __device__ platform::float16 Deconvert(RadixType v) {
+  static inline __device__ phi::dtype::float16 Deconvert(RadixType v) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     RadixType mask = (v & 0x00008000) ? 0x00008000 : 0x0000ffff;
-    return static_cast<platform::float16>(__ushort_as_half(v ^ mask));
+    return static_cast<phi::dtype::float16>(__ushort_as_half(v ^ mask));
 #else
     assert(false);
-    return static_cast<platform::float16>(0);
+    return static_cast<phi::dtype::float16>(0);
 #endif
   }
 };
@@ -819,7 +815,6 @@ __global__ void RadixTopK(const T* input,
                           int slice_size,
                           T* output,
                           int64_t* indices) {
-  namespace kps = paddle::operators::kernel_primitives;
   __shared__ int shared_mem[32];
 
   // 1. Find the k-th value
@@ -1152,23 +1147,22 @@ bool SortTopk(const phi::GPUContext& ctx,
     // copy sliced data to output.
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
-    auto e_indices =
-        framework::EigenMatrix<int64_t>::From(*indices_tensor, dim);
-    auto e_tmp_indices = framework::EigenMatrix<int64_t>::From(
+    auto e_indices = phi::EigenMatrix<int64_t>::From(*indices_tensor, dim);
+    auto e_tmp_indices = phi::EigenMatrix<int64_t>::From(
         static_cast<const Tensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
     auto dim = phi::make_ddim(odims);
-    auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
+    auto e_values = phi::EigenMatrix<T>::From(*out_tensor, dim);
     auto e_tmp_values =
-        framework::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));
+        phi::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));
 
-    EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
+    phi::funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
         dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
-    EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
+    phi::funcs::EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
         dev, e_values, e_tmp_values, slice_indices, slice_sizes);
   }
   return true;
 }
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

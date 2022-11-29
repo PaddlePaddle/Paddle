@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,20 +17,24 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/platform/dynload/miopen.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/backends/dynload/miopen.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/macros.h"
 
 // MIOPEN do not have epslion definition
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
 DECLARE_bool(cudnn_deterministic);
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace backends {
+namespace gpu {
+
 inline const char* miopenGetErrorString(miopenStatus_t status) {
   switch (status) {
     case miopenStatusSuccess:
@@ -95,7 +99,7 @@ inline miopenPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
       return miopenPoolingMax;
     default:
       PADDLE_THROW(
-          platform::errors::Unimplemented("Unexpected MIOPEN pooling mode."));
+          phi::errors::Unimplemented("Unexpected MIOPEN pooling mode."));
   }
 }
 
@@ -115,7 +119,7 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
   } else if (str == "bandpass") {
     return ActivationMode::kBandPass;
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unknown MIOPEN activation string: %s.", str));
   }
 }
@@ -124,7 +128,7 @@ template <typename T>
 class CudnnDataType;
 
 template <>
-class CudnnDataType<float16> {
+class CudnnDataType<phi::dtype::float16> {
  public:
   static const miopenDataType_t type = miopenHalf;
   // The scaling param type is float for HALF and FLOAT tensors
@@ -141,7 +145,7 @@ class CudnnDataType<float16> {
 };
 
 template <>
-class CudnnDataType<bfloat16> {
+class CudnnDataType<phi::dtype::bfloat16> {
  public:
   static const miopenDataType_t type = miopenBFloat16;
   // The scaling param type is float for HALF and FLOAT tensors
@@ -184,7 +188,7 @@ inline miopenTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
     case DataLayout::kNDHWC:
       return MIOPEN_TENSOR_NHWC;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "MIOPEN has no equivalent dataLayout for input order."));
   }
   return MIOPEN_TENSOR_NCHW;
@@ -193,10 +197,12 @@ inline miopenTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenCreateTensorDescriptor(&desc_));
   }
   ~ScopedTensorDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenDestroyTensorDescriptor(desc_));
   }
 
   inline miopenTensorDescriptor_t descriptor(const miopenTensorFormat_t format,
@@ -217,19 +223,19 @@ class ScopedTensorDescriptor {
     }
 
     // MIOPEN ONLY support data layout of NCHW
-    PADDLE_ENFORCE_EQ(format,
-                      MIOPEN_TENSOR_NCHW,
-                      platform::errors::InvalidArgument(
-                          "format should ONLY be NCHW in MIOPEN."));
+    PADDLE_ENFORCE_EQ(
+        format,
+        MIOPEN_TENSOR_NCHW,
+        phi::errors::InvalidArgument("format should ONLY be NCHW in MIOPEN."));
     if (dims.size() == 4) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
           desc_,
           type,
           dims_with_group.size(),
           const_cast<int*>(dims_with_group.data()),
           const_cast<int*>(strides.data())));
     } else if (dims.size() == 5) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
           desc_,
           type,
           dims_with_group.size(),
@@ -250,12 +256,12 @@ class ScopedTensorDescriptor {
   inline miopenTensorDescriptor_t descriptor(const miopenDataType_t miopen_type,
                                              const std::vector<int>& dim,
                                              const std::vector<int>& stride) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::miopenSetTensorDescriptor(desc_,
-                                           miopen_type,
-                                           dim.size(),
-                                           const_cast<int*>(dim.data()),
-                                           const_cast<int*>(stride.data())));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
+        desc_,
+        miopen_type,
+        dim.size(),
+        const_cast<int*>(dim.data()),
+        const_cast<int*>(stride.data())));
     return desc_;
   }
 
@@ -275,14 +281,16 @@ class ScopedTensorDescriptor {
 class ScopedDropoutDescriptor {
  public:
   ScopedDropoutDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateDropoutDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenCreateDropoutDescriptor(&desc_));
   }
   ~ScopedDropoutDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyDropoutDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenDestroyDropoutDescriptor(desc_));
   }
 
   inline miopenDropoutDescriptor_t descriptor(const miopenHandle_t& handle,
-                                              const platform::Place& place,
+                                              const phi::Place& place,
                                               bool initialized,
                                               float dropout_prob_,
                                               phi::DenseTensor* dropout_state_,
@@ -290,42 +298,42 @@ class ScopedDropoutDescriptor {
                                               size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
       PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::miopenSetDropoutDescriptor(desc_,
-                                              handle,
-                                              0 /* dropout */,
-                                              nullptr,
-                                              0 /* state_size */,
-                                              0 /* seed */,
-                                              false,
-                                              false,
-                                              MIOPEN_RNG_PSEUDO_XORWOW));
+          phi::dynload::miopenSetDropoutDescriptor(desc_,
+                                                   handle,
+                                                   0 /* dropout */,
+                                                   nullptr,
+                                                   0 /* state_size */,
+                                                   0 /* seed */,
+                                                   false,
+                                                   false,
+                                                   MIOPEN_RNG_PSEUDO_XORWOW));
       return desc_;
     }
     auto* dropout_state_data = dropout_state_->data<uint8_t>();
     if (!initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::miopenSetDropoutDescriptor(desc_,
-                                              handle,
-                                              dropout_prob_,
-                                              dropout_state_data,
-                                              state_size,
-                                              seed,
-                                              false,
-                                              false,
-                                              MIOPEN_RNG_PSEUDO_XORWOW));
+          phi::dynload::miopenSetDropoutDescriptor(desc_,
+                                                   handle,
+                                                   dropout_prob_,
+                                                   dropout_state_data,
+                                                   state_size,
+                                                   seed,
+                                                   false,
+                                                   false,
+                                                   MIOPEN_RNG_PSEUDO_XORWOW));
     } else {
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::miopenRestoreDropoutDescriptor(desc_,
-                                                  handle,
-                                                  dropout_prob_,
-                                                  dropout_state_data,
-                                                  state_size,
-                                                  0,
-                                                  false,
-                                                  false,
-                                                  MIOPEN_RNG_PSEUDO_XORWOW));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenRestoreDropoutDescriptor(
+          desc_,
+          handle,
+          dropout_prob_,
+          dropout_state_data,
+          state_size,
+          0,
+          false,
+          false,
+          MIOPEN_RNG_PSEUDO_XORWOW));
     }
     return desc_;
   }
@@ -339,10 +347,10 @@ class ScopedDropoutDescriptor {
 class ScopedRNNDescriptor {
  public:
   ScopedRNNDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateRNNDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenCreateRNNDescriptor(&desc_));
   }
   ~ScopedRNNDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyRNNDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDestroyRNNDescriptor(desc_));
   }
 
   inline miopenRNNDescriptor_t desc() { return desc_; }
@@ -355,10 +363,12 @@ class ScopedRNNDescriptor {
 class ScopedFilterDescriptor {
  public:
   ScopedFilterDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenCreateTensorDescriptor(&desc_));
   }
   ~ScopedFilterDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenDestroyTensorDescriptor(desc_));
   }
 
   inline miopenTensorDescriptor_t descriptor(const miopenTensorFormat_t format,
@@ -379,7 +389,7 @@ class ScopedFilterDescriptor {
     for (int k = kernel_with_group.size() - 2; k >= 0; k--) {
       stride_dim[k] = stride_dim[k + 1] * kernel_with_group[k + 1];
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         desc_,
         type,
         kernel_with_group.size(),
@@ -407,11 +417,11 @@ class ScopedConvolutionDescriptor {
  public:
   ScopedConvolutionDescriptor() {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::miopenCreateConvolutionDescriptor(&desc_));
+        phi::dynload::miopenCreateConvolutionDescriptor(&desc_));
   }
   ~ScopedConvolutionDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::miopenDestroyConvolutionDescriptor(desc_));
+        phi::dynload::miopenDestroyConvolutionDescriptor(desc_));
   }
 
   inline miopenConvolutionDescriptor_t descriptor(
@@ -421,7 +431,7 @@ class ScopedConvolutionDescriptor {
       const std::vector<int>& dilations) {
     PADDLE_ENFORCE_EQ(pads.size(),
                       strides.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of pads and strides should be equal. But "
                           "received size of pads is %d, size of strides is %d.",
                           pads.size(),
@@ -429,12 +439,12 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_EQ(
         pads.size(),
         dilations.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
             pads.size(),
             dilations.size()));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenInitConvolutionNdDescriptor(
         desc_,
         pads.size(),
         const_cast<int*>(pads.data()),
@@ -460,10 +470,12 @@ class ScopedConvolutionDescriptor {
 class ScopedPoolingDescriptor {
  public:
   ScopedPoolingDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreatePoolingDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenCreatePoolingDescriptor(&desc_));
   }
   ~ScopedPoolingDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyPoolingDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenDestroyPoolingDescriptor(desc_));
   }
 
   inline miopenPoolingDescriptor_t descriptor(const PoolingMode& mode,
@@ -472,7 +484,7 @@ class ScopedPoolingDescriptor {
                                               const std::vector<int>& strides) {
     PADDLE_ENFORCE_EQ(kernel.size(),
                       pads.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of kernel and pads should be equal. But "
                           "received size of kernel is %d, size of pads is %d.",
                           kernel.size(),
@@ -480,12 +492,12 @@ class ScopedPoolingDescriptor {
     PADDLE_ENFORCE_EQ(
         kernel.size(),
         strides.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of kernel and strides should be equal. But "
             "received size of kernel is %d, size of strides is %d.",
             kernel.size(),
             strides.size()));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetNdPoolingDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetNdPoolingDescriptor(
         desc_,
         GetPoolingMode(mode),
         kernel.size(),
@@ -504,11 +516,11 @@ class ScopedActivationDescriptor {
  public:
   ScopedActivationDescriptor() {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::miopenCreateActivationDescriptor(&desc_));
+        phi::dynload::miopenCreateActivationDescriptor(&desc_));
   }
   ~ScopedActivationDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::miopenDestroyActivationDescriptor(desc_));
+        phi::dynload::miopenDestroyActivationDescriptor(desc_));
   }
 
   template <typename T>
@@ -539,11 +551,11 @@ class ScopedActivationDescriptor {
         mode = miopenActivationTANH;
         break;
       default:
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unrecognized MIOPEN activation mode: %d.",
             static_cast<int>(activation_mode)));
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetActivationDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetActivationDescriptor(
         desc_, mode, relu_ceiling, 0.0, 0.0));
     return desc_;
   }
@@ -556,15 +568,17 @@ class ScopedActivationDescriptor {
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreateCTCLossDescriptor(&desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenCreateCTCLossDescriptor(&desc_));
   }
   ~ScopedCTCLossDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroyCTCLossDescriptor(desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenDestroyCTCLossDescriptor(desc_));
   }
 
   template <typename T>
   inline miopenCTCLossDescriptor_t descriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetCTCLossDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetCTCLossDescriptor(
         desc_, CudnnDataType<T>::type, 0, false));
     return desc_;
   }
@@ -574,5 +588,6 @@ class ScopedCTCLossDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi
