@@ -648,4 +648,6 @@ if(WITH_PYTHON)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
 
+  target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
+
 endif()

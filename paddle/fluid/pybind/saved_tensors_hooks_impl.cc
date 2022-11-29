@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pybind/saved_tensors_hooks_impl.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/pybind/pyobject_holder.h"
+#include "paddle/fluid/pybind/pyobject_holder_impl.h"
 #include "pybind11/pybind11.h"
 
 #if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
@@ -81,7 +81,7 @@ paddle::experimental::Tensor UnPackHookImpl::operator()(
   ::pybind11::gil_scoped_acquire gil;
   auto args = PyTuple_New(1);
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value->get()));
-  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value - get()));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value->get()));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
   PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
