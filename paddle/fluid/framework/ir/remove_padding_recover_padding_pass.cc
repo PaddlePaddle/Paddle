@@ -428,7 +428,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     }
     if ((fc_input_shape[2] != multihead_matmul_input_shape[2]) &&
         (fc_input_shape[2] != 4 * multihead_matmul_input_shape[2]) && 
-        !(fc_input_shape[2] == 320 && multihead_matmul_input_shape[2] == 1248)) {
+        !(fc_input_shape[2] == 1248 && multihead_matmul_input_shape[2] == 320)) {
       check_flag = false;
     }
 
