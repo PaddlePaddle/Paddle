@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <Python.h>
 #include "paddle/fluid/pybind/pyobject_holder.h"
 
 namespace paddle {
@@ -18,7 +19,7 @@ namespace pybind {
 class PyObjectHolderImpl : public PyObjectHolder {
  public:
   PyObjectHolderImpl() { ptr_ = nullptr; }
-  explicit PyObjectHolderImpl(void* ptr);
+  explicit PyObjectHolderImpl(PyObject* ptr);
   ~PyObjectHolderImpl() override;
   void* get() override;
   void reset(void* ptr) override;
@@ -26,7 +27,7 @@ class PyObjectHolderImpl : public PyObjectHolder {
   void dec_ref() override;
 
  private:
-  void* ptr_{nullptr};
+  PyObject* ptr_{nullptr};
 };
 
 }  // namespace pybind
