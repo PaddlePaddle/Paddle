@@ -563,6 +563,16 @@
     func : leaky_relu
   backward : leaky_relu_grad
 
+- op : lerp
+  args : (Tensor x, Tensor y, Tensor weight)
+  output : Tensor(out)
+  infer_meta :
+    func : LerpInferMeta
+  kernel :
+    func : lerp
+  inplace : (x -> out)
+  backward : lerp_grad
+
 - op : lgamma
   args : (Tensor x)
   output : Tensor(out)
