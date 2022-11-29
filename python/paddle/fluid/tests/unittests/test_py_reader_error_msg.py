@@ -51,7 +51,7 @@ class TestDoubleBufferAPI(unittest.TestCase):
             reader = paddle.framework.io.double_buffer(
                 reader, place=fluid.core.CUDAPlace(0)
             )
-            image, label = fluid.layers.read_file(reader)
+            image, label = paddle.framework.io.read_file(reader)
 
 
 if __name__ == '__main__':

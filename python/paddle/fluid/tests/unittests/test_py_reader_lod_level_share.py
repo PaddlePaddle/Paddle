@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
 import paddle
 
@@ -30,7 +29,7 @@ class TestLoDLevelShare(unittest.TestCase):
             use_double_buffer=self.use_double_buffer,
         )
 
-        x, y, z = fluid.layers.read_file(reader)
+        x, y, z = paddle.framework.io.read_file(reader)
         self.assertEqual(x.lod_level, 1)
         self.assertEqual(y.lod_level, 2)
         self.assertEqual(z.lod_level, 0)

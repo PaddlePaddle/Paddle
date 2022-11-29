@@ -110,7 +110,7 @@ def simple_fc_net(
             use_double_buffer=use_double_buffer,
         )
 
-    in_data, label = fluid.layers.read_file(py_reader)
+    in_data, label = paddle.framework.io.read_file(py_reader)
 
     feed_queue = py_reader.queue
 

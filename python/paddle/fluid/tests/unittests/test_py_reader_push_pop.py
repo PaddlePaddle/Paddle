@@ -56,7 +56,7 @@ class TestPyReader(unittest.TestCase):
                 shapes=self.shapes,
             )
             feed_queue = data_file.queue
-            read_out_data = fluid.layers.read_file(data_file)
+            read_out_data = paddle.framework.io.read_file(data_file)
             self.inputs = []
 
             for i in range(self.iterations):
