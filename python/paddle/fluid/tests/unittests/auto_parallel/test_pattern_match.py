@@ -116,18 +116,26 @@ class TestGroupOperators(unittest.TestCase):
             DistributedContext,
         )
         from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+            _PATTERNS,
             RuleBasedTuner,
+            convert_to_graph,
+            match,
         )
 
         dist_context = DistributedContext()
         tuner = RuleBasedTuner(dist_context)
         layers = tuner.cluster_operators(train_program.global_block().ops)
-        op_types = []
-        for layer in layers:
-            tmp = []
-            for op in layer:
-                tmp.append(op.type)
-            op_types.append(tmp)
+        layer = layers[0]
+        graph = convert_to_graph(layer, train_program.global_block())
+        results = match(_PATTERNS["qkv"], graph)
+        shard_tensor_infos = _PATTERNS["qkv"].attrs["shard_spec"]
+        tensor_ids = shard_tensor_infos[0][0]
+        if results:
+            for result in results:
+                for node_id in result:
+                    if node_id in tensor_ids:
+                        print(graph.attrs["id_to_var"][result[node_id]])
+        print("shard_spec: ", shard_tensor_infos[0][1])
 
 
 if __name__ == "__main__":
