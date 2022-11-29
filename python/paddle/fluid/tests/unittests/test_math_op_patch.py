@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
-from decorator_helper import prog_scope
-import paddle
-import paddle.fluid as fluid
+
 import numpy
 import numpy as np
+from decorator_helper import prog_scope
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestMathOpPatches(unittest.TestCase):

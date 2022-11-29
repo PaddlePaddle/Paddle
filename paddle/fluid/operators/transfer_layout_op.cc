@@ -94,8 +94,9 @@ class TransferLayoutKernel {
 class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input Tensor");
-    AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
+    AddInput("X", "(phi::DenseTensor) The input Tensor");
+    AddOutput("Out",
+              "(phi::DenseTensor) The Output Tensor with desired layout");
     // NOTE(zhiqiu): in most case, the src_layout is not needed, the op can use
     // the layout
     // of input X. However, in some mkldnn kernel, the src layout computed by

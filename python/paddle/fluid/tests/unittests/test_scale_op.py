@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
 
 
 class TestScaleOp(OpTest):
