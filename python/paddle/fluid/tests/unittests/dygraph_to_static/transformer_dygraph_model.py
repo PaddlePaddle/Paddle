@@ -23,7 +23,7 @@ from paddle.fluid.dygraph import (
     Linear,
     to_variable,
 )
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.jit.api import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
 import paddle
 import paddle.nn.functional as F
@@ -768,7 +768,7 @@ class Transformer(Layer):
 
         def gather(input, indices, batch_pos):
             topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-            return layers.gather_nd(input, topk_coordinates)
+            return paddle.gather_nd(input, topk_coordinates)
 
         # run encoder
         enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)

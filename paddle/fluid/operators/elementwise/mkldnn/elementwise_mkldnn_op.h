@@ -28,6 +28,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
 using phi::DataLayout;
+using phi::OneDNNContext;
 using phi::funcs::BinaryOneDNNHandler;
 
 inline std::vector<int64_t> CalculateBroadcastedDims(
@@ -63,9 +64,8 @@ inline void AddSubNonBroadcast(
   auto reorder_p =
       reorder_handler->AcquireReorder(dst_memory, src_memory, reorder_attr);
 
-  reorder_p->execute(platform::MKLDNNDeviceContext::tls().get_stream(),
-                     *src_memory,
-                     *dst_memory);
+  reorder_p->execute(
+      OneDNNContext::tls().get_stream(), *src_memory, *dst_memory);
 }
 
 template <typename T>
@@ -99,7 +99,7 @@ inline void BroadcastReduction(const framework::ExecutionContext& ctx,
   dst_memory = reduction_handler.AcquireDstMemory(grad_tensor);
 
   auto reduction_p = reduction_handler.AcquireForwardPrimitive();
-  auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  auto astream = OneDNNContext::tls().get_stream();
   reduction_p->execute(astream,
                        {
                            {DNNL_ARG_SRC, *src_memory},
@@ -116,13 +116,17 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
   dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
     dnnl::post_ops post_operations;
     platform::AppendActivation(ctx, post_operations);
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
     return post_operations;
   }
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto& dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -183,7 +187,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
 
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC_0, *src_x_memory},
@@ -212,8 +216,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
 
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -252,7 +255,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     std::shared_ptr<dnnl::memory> dst_memory;
     std::shared_ptr<dnnl::memory> broadcast_src_memory = reorder_src_memory;
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     if (dx) {
       // elementwise_add & elementwise_sub
       if (BINARY_OP == dnnl::algorithm::binary_add ||

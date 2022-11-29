@@ -117,7 +117,7 @@ class SimpleLayer(paddle.nn.Layer):
     def forward(self, x, target=None):
         x = self.conv(x)
         print(x)
-        x = paddle.fluid.layers.flatten(x, axis=1)
+        x = paddle.flatten(x, 1, -1)
         if target is not None:
             x = paddle.fluid.layers.softmax(x)
             loss = paddle.fluid.layers.cross_entropy(x, target)
