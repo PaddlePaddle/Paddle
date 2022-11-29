@@ -84,6 +84,8 @@ def main(
     backward_api_dict = to_named_dict(backward_apis)
 
     for api in apis:
+        if api['name'][-1] == '_':
+            api['name'] = api['name'][:-1]
         api['op_name'] = SPARSE_OP_PREFIX + api['name']
         api['name'] = api['op_name']
         if api["backward"] is not None:
