@@ -19,9 +19,9 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import (
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.partial_program import (
     partial_program_from,
 )
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -81,7 +81,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             infer_model_dir = os.path.join(
                 self.temp_dir.name, "test_dy2stat_inference_in_guard"
             )
-            fluid.dygraph.jit.save(
+            paddle.jit.save(
                 layer=layer,
                 path=infer_model_prefix,
                 input_spec=[x],
@@ -111,7 +111,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         )
         model_filename = "model" + INFER_MODEL_SUFFIX
         params_filename = "model" + INFER_PARAMS_SUFFIX
-        fluid.dygraph.jit.save(
+        paddle.jit.save(
             layer=model,
             path=infer_model_prefix,
             input_spec=feed if feed else None,

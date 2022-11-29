@@ -14,9 +14,9 @@
 
 import argparse
 import inspect
-import sys
-import re
 import logging
+import re
+import sys
 
 logger = logging.getLogger()
 if logger.handlers:

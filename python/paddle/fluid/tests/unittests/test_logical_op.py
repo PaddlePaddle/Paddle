@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-from paddle.static import Program, program_guard, Executor
-from paddle.framework import _non_static_mode
 from paddle.fluid.framework import _test_eager_guard
+from paddle.framework import _non_static_mode
+from paddle.static import Executor, Program, program_guard
 
 SUPPORTED_DTYPES = [
     bool,

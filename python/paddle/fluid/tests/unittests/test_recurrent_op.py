@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import numpy as np
 import paddle.fluid.core as core
-
+import paddle.fluid.layers as layers
 from paddle.fluid import ParamAttr
-from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, grad_var_name
 
 np.random.seed(123)
 
@@ -633,7 +634,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             new_h = layers.matmul(concat_in, w2)
             new_h = layers.unsqueeze(new_h, [1])
             new_h, _ = dot_attention(new_h, y)
-            new_h = layers.squeeze(new_h, [1])
+            new_h = paddle.squeeze(new_h, [1])
 
             rnn.update_memory(pre_h, new_h)
             rnn.step_output(new_h)
