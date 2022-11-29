@@ -45,7 +45,6 @@
 namespace paddle {
 namespace operators::details {
 
-using LoDTensor = phi::DenseTensor;
 using framework::ParallelExecutor;
 using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
@@ -268,7 +267,8 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
   // assign external malloc/free callbacks of cinn_buffer_t
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, var_name](void* ctx, cinn_buffer_t* buffer) {
-        auto* tensor = cached_scope_->GetVar(var_name)->GetMutable<LoDTensor>();
+        auto* tensor =
+            cached_scope_->GetVar(var_name)->GetMutable<phi::DenseTensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
             *cached_place_,
@@ -294,7 +294,7 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
       [this, var_name](void* ctx, cinn_buffer_t* buffer) {
         auto* tensor =
-            cached_temp_scope_->Var(var_name)->GetMutable<LoDTensor>();
+            cached_temp_scope_->Var(var_name)->GetMutable<phi::DenseTensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
             *cached_place_,
@@ -306,8 +306,8 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
   // if no instruction use it
   cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
       [this, var_name](void* ctx, cinn_buffer_t* buffer) {
-        auto* tensor =
-            cached_temp_scope_->GetVar(var_name)->GetMutable<LoDTensor>();
+        auto* tensor = cached_temp_scope_->GetVar(var_name)
+                           ->GetMutable<phi::DenseTensor>();
         tensor->clear();
         return 0;
       });
@@ -438,8 +438,8 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
     auto* var = scope->GetVar(var_name);
     auto* buffer = GetCinnBufferOfVar(var_name);
     auto dim = framework::DDim(buffer->dims, buffer->dimensions);
-    var->GetMutable<LoDTensor>()->Resize(dim);
-    var->GetMutable<LoDTensor>()->mutable_data(
+    var->GetMutable<phi::DenseTensor>()->Resize(dim);
+    var->GetMutable<phi::DenseTensor>()->mutable_data(
         place, framework::paddle2cinn::TransToPaddleDataType(buffer->type));
   }
   return parallel_executor_.get();

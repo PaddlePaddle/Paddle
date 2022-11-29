@@ -17,7 +17,7 @@ import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 
 from functools import reduce
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.static import Variable
 
