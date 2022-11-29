@@ -131,6 +131,10 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     auto list_new_shape_tensor =
         ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     if (list_new_shape_tensor.size() > 0) {
+      std::vector<phi::DenseTensor> pt_vec_shape;
+      for (auto& tensor : list_new_shape_tensor) {
+        pt_vec_shape.push_back(*tensor);
+      }
       const auto shape = phi::IntArray(list_new_shape_tensor);
       const auto new_shape = shape.GetData();
 
