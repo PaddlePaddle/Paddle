@@ -716,7 +716,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                     slice_arr, axis=self.axis, use_stack=True
                 )
 
-            loss = fluid.layers.reduce_sum(output)
+            loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
             g_vars = list(
                 map(

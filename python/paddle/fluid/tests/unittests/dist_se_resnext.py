@@ -14,9 +14,10 @@
 
 import math
 
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 paddle.enable_static()
 

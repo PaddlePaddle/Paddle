@@ -16,11 +16,13 @@ import paddle.fluid as fluid
 
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
+import os
+
+from seresnext_test_base import DeviceType
+from simple_nets import init_data
+
 import paddle
 from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
-from simple_nets import init_data
-from seresnext_test_base import DeviceType
-import os
 
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)

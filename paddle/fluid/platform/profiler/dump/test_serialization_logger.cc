@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 
+using paddle::framework::AttributeMap;
 using paddle::platform::CudaRuntimeTraceEventNode;
 using paddle::platform::DeserializationReader;
 using paddle::platform::DeviceTraceEvent;
@@ -82,8 +84,9 @@ TEST(SerializationLoggerTest, dump_case0) {
   input_shapes[std::string("X")].push_back(std::vector<int64_t>{4, 5, 6, 7});
   dtypes[std::string("X")].push_back(std::string("int8"));
   dtypes[std::string("X")].push_back(std::string("float32"));
+  AttributeMap attrs;
   op_supplement_events.push_back(OperatorSupplementEvent(
-      11600, "op1", input_shapes, dtypes, "op1()", 10, 10));
+      11600, "op1", input_shapes, dtypes, "op1()", attrs, 0, 10, 10));
   runtime_events.push_back(RuntimeTraceEvent(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(

@@ -586,6 +586,16 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(out.shape, [])
 
+    def test_searchsorted(self):
+        x = paddle.to_tensor([1, 3, 5, 7, 9])
+        y = paddle.rand([])
+
+        # only has forward kernel
+        out = paddle.searchsorted(x, y)
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 0)
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -655,6 +665,17 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0].shape, ())
+
+    @prog_scope()
+    def test_searchsorted(self):
+        x = paddle.full([10], 1.0, 'float32')
+        y = paddle.full([], 1.0, 'float32')
+        out = paddle.searchsorted(x, y)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 0)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

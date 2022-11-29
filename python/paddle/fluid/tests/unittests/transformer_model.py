@@ -158,10 +158,10 @@ def multi_head_attention(
 
         def __softmax(x, eps=1e-9):
             exp_out = paddle.exp(x=x)
-            sum_out = layers.reduce_sum(exp_out, dim=-1, keep_dim=False)
+            sum_out = paddle.sum(exp_out, axis=-1, keepdim=False)
             return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
 
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         weights = __softmax(layers.elementwise_add(x=product, y=attn_bias))
         if dropout_rate:
@@ -595,4 +595,4 @@ def transformer(
 
     cost = layers.cross_entropy(input=predict, label=gold)
     weighted_cost = cost * weights
-    return layers.reduce_sum(weighted_cost)
+    return paddle.sum(weighted_cost)

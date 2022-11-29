@@ -444,7 +444,21 @@ struct XPUTanhFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUFloorFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int r = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::floor<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "floor");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Log, XPULogFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Reciprocal, XPUReciprocalFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Relu, XPUReluFunctor)
@@ -500,11 +514,15 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
+PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish_raw, HardSwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
@@ -513,4 +531,3 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(square, SquareKernel)

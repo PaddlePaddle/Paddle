@@ -12,19 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import MomentumOptimizer
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.layers.control_flow import split_lod_tensor
-from paddle.fluid.layers.control_flow import merge_lod_tensor
-from paddle.fluid.layers.control_flow import ConditionalBlock
-
 import unittest
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.layers.control_flow import (
+    ConditionalBlock,
+    merge_lod_tensor,
+    split_lod_tensor,
+)
+from paddle.fluid.optimizer import MomentumOptimizer
 
 paddle.enable_static()
 
@@ -183,7 +186,7 @@ class TestIfElse(unittest.TestCase):
                 false_target = paddle.tanh(false_target)
                 ie.output(false_target)
             if_out = ie()
-            out = layers.reduce_sum(if_out[0])
+            out = paddle.sum(if_out[0])
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())

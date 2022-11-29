@@ -34,7 +34,7 @@ class MyLayer(fluid.Layer):
         x = fluid.layers.relu(inputs)
         self._x_for_debug = x
         x = fluid.layers.elementwise_mul(x, x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return [x]
 
 
@@ -65,7 +65,7 @@ class MLP(fluid.Layer):
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 
@@ -108,7 +108,7 @@ class SimpleRNNCell(fluid.Layer):
         hidden = self._helper.append_activation(hidden, act='tanh')
         out = paddle.fluid.layers.nn.mul(hidden, self._h2o_w)
         softmax_out = paddle.nn.functional.softmax(out)
-        reduce_out = paddle.fluid.layers.nn.reduce_sum(softmax_out)
+        reduce_out = paddle.sum(softmax_out)
         return reduce_out, hidden
 
 
@@ -137,9 +137,7 @@ class SimpleRNN(fluid.Layer):
         )
         pre_hidden = init_hidden
         for i in range(self.seq_len):
-            input = fluid.layers.slice(
-                inputs, axes=[1], starts=[i], ends=[i + 1]
-            )
+            input = paddle.slice(inputs, axes=[1], starts=[i], ends=[i + 1])
             input = paddle.reshape(input, shape=[1, 3])
             out_softmax, pre_hidden = self._cell(input, pre_hidden)
             outs.append(out_softmax)
@@ -342,7 +340,7 @@ class TestImperative(unittest.TestCase):
                 tmp.stop_gradient = False
                 inputs.append(tmp)
             ret = paddle.add_n(inputs)
-            loss = fluid.layers.reduce_sum(ret)
+            loss = paddle.sum(ret)
             loss.backward()
         with fluid.dygraph.guard():
             inputs2 = []
@@ -351,7 +349,7 @@ class TestImperative(unittest.TestCase):
                 tmp.stop_gradient = False
                 inputs2.append(tmp)
             ret2 = paddle.add_n(inputs2)
-            loss2 = fluid.layers.reduce_sum(ret2)
+            loss2 = paddle.sum(ret2)
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             loss2.backward()
 
@@ -739,11 +737,11 @@ class TestImperative(unittest.TestCase):
             )
 
             a = paddle.expand(
-                paddle.reshape(fluid.layers.reduce_sum(inp_data1), [1, 1]),
+                paddle.reshape(paddle.sum(inp_data1), [1, 1]),
                 [4, -1],
             )
             b = paddle.expand(
-                paddle.reshape(fluid.layers.reduce_sum(inp_data2), [1, 1]),
+                paddle.reshape(paddle.sum(inp_data2), [1, 1]),
                 [4, -1],
             )
             cond = fluid.layers.less_than(x=a, y=b)

@@ -538,13 +538,13 @@ class Categorical(Distribution):
         )
         e_logits = paddle.exp(logits)
         other_e_logits = paddle.exp(other_logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
-        other_z = nn.reduce_sum(other_e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+        other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
-        kl = nn.reduce_sum(
+        kl = paddle.sum(
             prob * (logits - nn.log(z) - other_logits + nn.log(other_z)),
-            dim=-1,
-            keep_dim=True,
+            axis=-1,
+            keepdim=True,
         )
 
         return kl
@@ -558,10 +558,11 @@ class Categorical(Distribution):
         """
         logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
         e_logits = paddle.exp(logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+
         prob = e_logits / z
-        entropy = -1.0 * nn.reduce_sum(
-            prob * (logits - nn.log(z)), dim=-1, keep_dim=True
+        entropy = -1.0 * paddle.sum(
+            prob * (logits - nn.log(z)), axis=-1, keepdim=True
         )
 
         return entropy
@@ -703,7 +704,7 @@ class MultivariateNormalDiag(Distribution):
         """
         check_type(other, 'other', MultivariateNormalDiag, 'kl_divergence')
 
-        tr_cov_matmul = nn.reduce_sum(self._inv(other.scale) * self.scale)
+        tr_cov_matmul = paddle.sum(self._inv(other.scale) * self.scale)
         loc_matmul_cov = nn.matmul(
             (other.loc - self.loc), self._inv(other.scale)
         )

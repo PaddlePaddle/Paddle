@@ -58,7 +58,7 @@ class TestDeviceGuard(unittest.TestCase):
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("xpu"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -84,7 +84,7 @@ class TestDeviceGuard(unittest.TestCase):
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("xpu:1"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()

@@ -363,13 +363,14 @@ class ConditionalBlockGradOp : public ConditionalOp {
       }
 
       if (input_var->IsType<phi::DenseTensor>()) {
-        PADDLE_ENFORCE_EQ(outside_var->IsType<phi::DenseTensor>(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Type of outside_var %s is NOT LoDTensor, which "
-                              "doesn't match input_var %s.",
-                              outside_grad_name,
-                              input_name));
+        PADDLE_ENFORCE_EQ(
+            outside_var->IsType<phi::DenseTensor>(),
+            true,
+            platform::errors::InvalidArgument(
+                "Type of outside_var %s is NOT phi::DenseTensor, which "
+                "doesn't match input_var %s.",
+                outside_grad_name,
+                input_name));
         AssignZeroToOutsideTensor(place,
                                   scope,
                                   input_var->Get<phi::DenseTensor>(),
@@ -402,7 +403,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
       } else {
         // TODO(huihuangzheng): add support for SelectedRows
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Conditional block grad op doesn't support non-LoDTensor output "
+            "Conditional block grad op doesn't support non-phi::DenseTensor "
+            "output "
             "now."));
       }
     }
@@ -475,9 +477,9 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
 class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // NOTE(Aurelius84): VarType of Output is LoDTensor by default. In case of
-    // Input is {Tensor, LoDTensorArray}, we need synchronous the Input's
-    // VarType into Input@GRAD to avoid generating {Tensor, Tensor} as
+    // NOTE(Aurelius84): VarType of Output is phi::DenseTensor by default. In
+    // case of Input is {Tensor, LoDTensorArray}, we need synchronous the
+    // Input's VarType into Input@GRAD to avoid generating {Tensor, Tensor} as
     // Input@GRAD.
     auto input_size = ctx->InputSize(ConditionalOp::kInputs);
     auto output_size =

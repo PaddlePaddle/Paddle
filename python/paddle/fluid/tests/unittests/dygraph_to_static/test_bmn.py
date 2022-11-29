@@ -22,7 +22,7 @@ from paddle.jit import to_static
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
@@ -137,7 +137,7 @@ class Conv1D(fluid.dygraph.Layer):
     def forward(self, x):
         x = fluid.layers.unsqueeze(input=x, axes=[2])
         x = self._conv2d(x)
-        x = fluid.layers.squeeze(input=x, axes=[2])
+        x = paddle.squeeze(x, axis=[2])
         return x
 
 
@@ -275,10 +275,10 @@ class BMN(fluid.dygraph.Layer):
         # TEM
         xs = paddle.nn.functional.relu(self.ts_conv1(x))
         xs = paddle.nn.functional.relu(self.ts_conv2(xs))
-        xs = fluid.layers.squeeze(xs, axes=[1])
+        xs = paddle.squeeze(xs, axis=[1])
         xe = paddle.nn.functional.relu(self.te_conv1(x))
         xe = paddle.nn.functional.relu(self.te_conv2(xe))
-        xe = fluid.layers.squeeze(xe, axes=[1])
+        xe = paddle.squeeze(xe, axis=[1])
 
         # PEM
         xp = paddle.nn.functional.relu(self.p_conv1(x))
@@ -287,7 +287,7 @@ class BMN(fluid.dygraph.Layer):
         xp = paddle.reshape(xp, shape=[0, 0, -1, self.dscale, self.tscale])
 
         xp = self.p_conv3d1(xp)
-        xp = fluid.layers.squeeze(xp, axes=[2])
+        xp = paddle.squeeze(xp, axis=[2])
         xp = paddle.nn.functional.relu(self.p_conv2d1(xp))
         xp = paddle.nn.functional.relu(self.p_conv2d2(xp))
         xp = paddle.nn.functional.relu(self.p_conv2d3(xp))
@@ -324,9 +324,7 @@ def bmn_loss_func(
             num_entries = fluid.layers.cast(
                 fluid.layers.shape(pmask), dtype=DATATYPE
             )
-            num_positive = fluid.layers.cast(
-                fluid.layers.reduce_sum(pmask), dtype=DATATYPE
-            )
+            num_positive = fluid.layers.cast(paddle.sum(pmask), dtype=DATATYPE)
             ratio = num_entries / num_positive
             coef_0 = 0.5 * ratio / (ratio - 1)
             coef_1 = 0.5 * ratio
@@ -353,21 +351,15 @@ def bmn_loss_func(
         gt_iou_map = fluid.layers.elementwise_mul(gt_iou_map, mask)
 
         u_hmask = fluid.layers.cast(x=gt_iou_map > 0.7, dtype=DATATYPE)
-        u_mmask = fluid.layers.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
+        u_mmask = paddle.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
         u_mmask = fluid.layers.cast(x=u_mmask, dtype=DATATYPE)
-        u_lmask = fluid.layers.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
+        u_lmask = paddle.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
         u_lmask = fluid.layers.cast(x=u_lmask, dtype=DATATYPE)
         u_lmask = fluid.layers.elementwise_mul(u_lmask, mask)
 
-        num_h = fluid.layers.cast(
-            fluid.layers.reduce_sum(u_hmask), dtype=DATATYPE
-        )
-        num_m = fluid.layers.cast(
-            fluid.layers.reduce_sum(u_mmask), dtype=DATATYPE
-        )
-        num_l = fluid.layers.cast(
-            fluid.layers.reduce_sum(u_lmask), dtype=DATATYPE
-        )
+        num_h = fluid.layers.cast(paddle.sum(u_hmask), dtype=DATATYPE)
+        num_m = fluid.layers.cast(paddle.sum(u_mmask), dtype=DATATYPE)
+        num_l = fluid.layers.cast(paddle.sum(u_lmask), dtype=DATATYPE)
 
         r_m = num_h / num_m
         u_smmask = fluid.layers.assign(
@@ -391,11 +383,7 @@ def bmn_loss_func(
         weights.stop_gradient = True
         loss = fluid.layers.square_error_cost(pred_score, gt_iou_map)
         loss = fluid.layers.elementwise_mul(loss, weights)
-        loss = (
-            0.5
-            * fluid.layers.reduce_sum(loss)
-            / fluid.layers.reduce_sum(weights)
-        )
+        loss = 0.5 * paddle.sum(loss) / paddle.sum(weights)
 
         return loss
 
@@ -406,8 +394,8 @@ def bmn_loss_func(
         nmask = fluid.layers.cast(x=(gt_iou_map <= 0.9), dtype=DATATYPE)
         nmask = fluid.layers.elementwise_mul(nmask, mask)
 
-        num_positive = fluid.layers.reduce_sum(pmask)
-        num_entries = num_positive + fluid.layers.reduce_sum(nmask)
+        num_positive = paddle.sum(pmask)
+        num_entries = num_positive + paddle.sum(nmask)
         ratio = num_entries / num_positive
         coef_0 = 0.5 * ratio / (ratio - 1)
         coef_1 = 0.5 * ratio
@@ -415,19 +403,19 @@ def bmn_loss_func(
         loss_pos = fluid.layers.elementwise_mul(
             fluid.layers.log(pred_score + epsilon), pmask
         )
-        loss_pos = coef_1 * fluid.layers.reduce_sum(loss_pos)
+        loss_pos = coef_1 * paddle.sum(loss_pos)
         loss_neg = fluid.layers.elementwise_mul(
             fluid.layers.log(1.0 - pred_score + epsilon), nmask
         )
-        loss_neg = coef_0 * fluid.layers.reduce_sum(loss_neg)
+        loss_neg = coef_0 * paddle.sum(loss_neg)
         loss = -1 * (loss_pos + loss_neg) / num_entries
         return loss
 
-    pred_bm_reg = fluid.layers.squeeze(
-        fluid.layers.slice(pred_bm, axes=[1], starts=[0], ends=[1]), axes=[1]
+    pred_bm_reg = paddle.squeeze(
+        paddle.slice(pred_bm, axes=[1], starts=[0], ends=[1]), axis=[1]
     )
-    pred_bm_cls = fluid.layers.squeeze(
-        fluid.layers.slice(pred_bm, axes=[1], starts=[1], ends=[2]), axes=[1]
+    pred_bm_cls = paddle.squeeze(
+        paddle.slice(pred_bm, axes=[1], starts=[1], ends=[2]), axis=[1]
     )
 
     bm_mask = _get_mask(cfg)
@@ -763,7 +751,7 @@ class TestTrain(unittest.TestCase):
 
                     if batch_id == args.train_batch_num:
                         if to_static:
-                            fluid.dygraph.jit.save(bmn, self.model_save_prefix)
+                            paddle.jit.save(bmn, self.model_save_prefix)
                         else:
                             fluid.dygraph.save_dygraph(
                                 bmn.state_dict(), self.dy_param_path
@@ -877,7 +865,7 @@ class TestTrain(unittest.TestCase):
 
     def predict_dygraph_jit(self, data):
         with fluid.dygraph.guard(self.place):
-            bmn = fluid.dygraph.jit.load(self.model_save_prefix)
+            bmn = paddle.jit.load(self.model_save_prefix)
             bmn.eval()
 
             x = to_variable(data)

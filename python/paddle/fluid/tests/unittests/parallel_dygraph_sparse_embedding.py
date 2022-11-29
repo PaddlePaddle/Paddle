@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.dygraph.base import to_variable
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.fluid.dygraph.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
@@ -74,7 +73,7 @@ class SimpleNet(fluid.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss
 

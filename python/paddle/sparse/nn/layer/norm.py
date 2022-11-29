@@ -138,7 +138,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         data_format = 'NCHW' if self._data_format[1] == 'C' else 'NHWC'
 
         if in_dynamic_mode():
-            batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
+            batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm_(
                 input,
                 self._mean,
                 self._variance,

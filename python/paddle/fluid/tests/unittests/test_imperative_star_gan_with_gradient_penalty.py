@@ -120,7 +120,7 @@ class InstanceNorm(fluid.dygraph.Layer):
             )
             return out
         else:
-            return fluid.layers.instance_norm(
+            return paddle.static.nn.instance_norm(
                 input,
                 epsilon=self.epsilon,
                 param_attr=fluid.ParamAttr(self.scale.name),
@@ -379,9 +379,7 @@ def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
     cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
-        fluid.layers.reduce_sum(
-            fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
-        )
+        paddle.sum(fluid.layers.sigmoid_cross_entropy_with_logits(cls, label))
         / cfg.batch_size
     )
 

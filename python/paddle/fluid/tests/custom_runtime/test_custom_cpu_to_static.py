@@ -14,10 +14,11 @@
 
 import os
 import sys
+import tempfile
 import time
 import unittest
+
 import numpy as np
-import tempfile
 
 EPOCH_NUM = 1
 BATCH_SIZE = 1024

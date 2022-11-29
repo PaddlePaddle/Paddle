@@ -914,10 +914,10 @@ class TestReduceSumOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_sum, x1)
+            self.assertRaises(TypeError, paddle.sum, x1)
             # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
+            self.assertRaises(TypeError, paddle.sum, x2)
 
 
 class API_TestSumOp(unittest.TestCase):
