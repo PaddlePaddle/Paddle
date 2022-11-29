@@ -52,7 +52,7 @@ class Uniform(distribution.Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    Boardcasting` (e.g., `high - low` is a valid operation).
+    `Boardcasting` (e.g., `high - low` is a valid operation).
 
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
