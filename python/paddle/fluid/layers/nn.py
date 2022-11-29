@@ -70,7 +70,6 @@ __all__ = [
     'cos_sim',
     'conv2d',
     'pool2d',
-    'pool3d',
     'batch_norm',
     'reduce_mean',
     'reduce_all',
@@ -91,7 +90,6 @@ __all__ = [
     'autoincreased_step_counter',
     'unsqueeze',
     'lod_reset',
-    'lod_append',
     'pad',
     'image_resize',
     'resize_bilinear',
@@ -1754,6 +1752,7 @@ def pool2d(
     return pool_out
 
 
+<<<<<<< HEAD
 @templatedoc()
 def pool3d(
     input,
@@ -1994,6 +1993,8 @@ def pool3d(
     return pool_out
 
 
+=======
+>>>>>>> f080521289400153c9501f469024d10859a8000e
 def batch_norm(
     input,
     act=None,
@@ -4215,71 +4216,6 @@ def lod_reset(x, y=None, target_lod=None):
         )
     else:
         raise ValueError("y and target_lod should not be both none.")
-    return out
-
-
-def lod_append(x, level):
-    """
-    Append level to LoD of :attr:`x`.
-
-    .. code-block:: text
-
-        * Example 1:
-
-            given a 1-level LoDTensor x:
-                x.lod =  [[ 2,           3,                   1 ]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-            level: [1, 1, 1, 1, 1, 1, 1]
-
-            then we get a 2-level LoDTensor:
-                x.lod =  [[ 2, 3, 1 ], [1, 1, 1, 1, 1, 1]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-    Args:
-        x (Variable): Input variable which could be a tensor or LoDTensor.
-                      The data type should be int32, int64, float32 or float64.
-        level (list|tuple|Variable, optional): The LoD level to be appended into LoD of x.
-                                               If level is variable and its lod level>0, the data type can be any type.
-                                               If level is variable and its lod level=0, the data type should be int32.
-    Returns:
-        Variable: Output variable with new LoD level.
-
-    Raises:
-        ValueError: If :attr:`y` is None or and :attr:`level` is not Iterator.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
-            out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
-    """
-    if x is None:
-        raise ValueError("Input(x) can't be None.")
-    if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
-        raise ValueError("Input(level) must be list, tuple or Variable.")
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'lod_append'
-    )
-
-    helper = LayerHelper("lod_append", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    inputs = {'X': x}
-    attrs = {'append': True}
-
-    if isinstance(level, Variable):
-        inputs['Y'] = level
-        # TODO: check y.lod_level = 0 dtype
-    else:
-        attrs['target_lod'] = level
-    helper.append_op(
-        type="lod_reset", inputs=inputs, attrs=attrs, outputs={'Out': out}
-    )
     return out
 
 
