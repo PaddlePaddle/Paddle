@@ -58,7 +58,8 @@ using Attribute = paddle::variant<paddle::blank,
                                   std::vector<int64_t>,
                                   std::vector<double>,
                                   VarDesc*,
-                                  std::vector<VarDesc*>>;
+                                  std::vector<VarDesc*>,
+                                  double>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL

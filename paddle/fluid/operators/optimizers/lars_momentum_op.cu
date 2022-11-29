@@ -484,7 +484,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     bool multi_precision = ctx.Attr<bool>("multi_precision");
     auto& cuda_ctx = ctx.template device_context<phi::GPUContext>();
     int sm_num = cuda_ctx.GetSMCount();
-    framework::Tensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+    phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
         {LARS_BLOCK_SIZE << 1}, cuda_ctx);
     auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
@@ -495,15 +495,14 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
-    auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
-    auto param = ctx.MultiInput<framework::LoDTensor>("Param");
-    auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
-    auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
-    auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
-    auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
-    auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
-    auto master_param_out =
-        ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
+    auto grad = ctx.MultiInput<phi::DenseTensor>("Grad");
+    auto param = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto velocity = ctx.MultiInput<phi::DenseTensor>("Velocity");
+    auto param_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
+    auto learning_rate = ctx.MultiInput<phi::DenseTensor>("LearningRate");
+    auto master_param = ctx.MultiInput<phi::DenseTensor>("MasterParam");
+    auto master_param_out = ctx.MultiOutput<phi::DenseTensor>("MasterParamOut");
 
     int op_num = grad.size();
 #if CUDA_VERSION >= 11000

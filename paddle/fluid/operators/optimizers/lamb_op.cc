@@ -37,7 +37,7 @@ class LambOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
       return expected_kernel_type;
@@ -52,10 +52,10 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input parameter that has to be updated.");
     AddInput("Grad",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input gradient of the parameter.");
     AddInput("LearningRate", "(Tensor) Learning rate.");
     AddInput("Moment1", "(Tensor) Input first moment.");
@@ -63,7 +63,7 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator.");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator.");
     AddInput("MasterParam",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input master parameter that has to be updated.")
         .AsDispensable();
     AddInput(
@@ -101,8 +101,8 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
-LAMB Optimizer is designed to scale up the batch size of training without losing 
-accuracy, which supports adaptive element-wise updating and accurate layer-wise 
+LAMB Optimizer is designed to scale up the batch size of training without losing
+accuracy, which supports adaptive element-wise updating and accurate layer-wise
 correction. For more information, please refer to https://arxiv.org/abs/1904.00962.
 
 The updating of parameters follows:
@@ -121,7 +121,7 @@ r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon} \\
 w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
 $$
 
-where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 
+where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the
 learning rate, $\lambda$ the weight decay rate.
 )DOC");
   }

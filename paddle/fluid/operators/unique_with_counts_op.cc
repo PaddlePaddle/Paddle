@@ -64,7 +64,7 @@ class UniqueWithCountsOpMaker : public framework::OpProtoAndCheckerMaker {
               "the attr `dtype`");
     AddOutput("Count", "A subsequence for the count of unique index");
     AddComment(R"DOC(
-    Return a unique subsequence for 1-D input tensor, index tensor pointing to this unique subsequence, 
+    Return a unique subsequence for 1-D input tensor, index tensor pointing to this unique subsequence,
     and the subsequence for the count of unique index.
 )DOC");
   }

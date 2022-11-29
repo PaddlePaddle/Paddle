@@ -40,18 +40,18 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     in_param_type = framework::proto::VarType::FP64;
   }
   if (ctx.HasInput("Scale")) {
-    PADDLE_ENFORCE_EQ(
-        in_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
-        platform::errors::InvalidArgument(
-            "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
-    PADDLE_ENFORCE_EQ(
-        in_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
-        platform::errors::InvalidArgument(
-            "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
   }
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
@@ -108,8 +108,8 @@ framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
@@ -129,8 +129,8 @@ framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

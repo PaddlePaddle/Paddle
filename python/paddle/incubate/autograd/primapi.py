@@ -22,14 +22,14 @@ from paddle.incubate.autograd import primx, utils
 def forward_grad(outputs, inputs, grad_inputs=None):
     """Forward mode of automatic differentiation.
 
-    .. note::
+    Note:
         **ONLY available in the static mode and primitive operators.**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
         inputs(Tensor|Sequence[Tensor]): The input tensor or tensors.
-        grad_inputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or 
-            Tensors of inputs which has the same shape with inputs, Defaults to 
+        grad_inputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or
+            Tensors of inputs which has the same shape with inputs, Defaults to
             None, in this case is equivalent to all ones.
 
     Returns:
@@ -50,7 +50,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
             with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data('x', shape=[1], dtype='float32')
-                y = x * x 
+                y = x * x
                 y_grad = paddle.incubate.autograd.forward_grad(y, x)
                 paddle.incubate.autograd.prim2orig()
 
@@ -64,25 +64,35 @@ def forward_grad(outputs, inputs, grad_inputs=None):
             paddle.disable_static()
     """
     if not utils.prim_enabled():
-        raise RuntimeError('forward_grad must be running on primitive'
-                           'operators, use enable_prim to turn it on.')
+        raise RuntimeError(
+            'forward_grad must be running on primitive'
+            'operators, use enable_prim to turn it on.'
+        )
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(outputs)}.')
+        raise TypeError(
+            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(outputs)}.'
+        )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(inputs)}.')
+        raise TypeError(
+            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(inputs)}.'
+        )
 
-    ys, xs, xs_dot = utils.as_tensors(outputs), utils.as_tensors(
-        inputs), utils.as_tensors(grad_inputs)
+    ys, xs, xs_dot = (
+        utils.as_tensors(outputs),
+        utils.as_tensors(inputs),
+        utils.as_tensors(grad_inputs),
+    )
 
     block = framework.default_main_program().current_block()
     if any(x.block != block for x in xs + ys):
         raise RuntimeError(
             'Variable in inputs and targets should exist in current block of '
-            'main program.')
+            'main program.'
+        )
 
     primx.orig2prim(block)
     ad = primx.Transform(ys[0].block)
@@ -95,18 +105,18 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 def grad(outputs, inputs, grad_outputs=None):
     """Reverse mode of automatic differentiation.
 
-    .. note::
+    Note:
         **ONLY available in the static mode and primitive operators**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
         inputs(Tensor|Sequence[Tensor]): The input Tensor or Tensors.
-        grad_outputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or 
-            Tensors of outputs which has the same shape with outputs, Defaults 
+        grad_outputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or
+            Tensors of outputs which has the same shape with outputs, Defaults
             to None, in this case is equivalent to all ones.
 
     Returns:
-        grad_inputs(Tensor|Tensors): The gradients for inputs. 
+        grad_inputs(Tensor|Tensors): The gradients for inputs.
 
     Examples:
 
@@ -123,7 +133,7 @@ def grad(outputs, inputs, grad_outputs=None):
             with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data('x', shape=[1], dtype='float32')
                 x.stop_gradients = False
-                y = x * x 
+                y = x * x
                 x_grad = paddle.incubate.autograd.grad(y, x)
                 paddle.incubate.autograd.prim2orig()
 
@@ -132,7 +142,7 @@ def grad(outputs, inputs, grad_outputs=None):
             x_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[x_grad])
             print(x_grad)
             # [array([4.], dtype=float32)]
-            
+
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
@@ -141,22 +151,32 @@ def grad(outputs, inputs, grad_outputs=None):
         # backward.gradients returns a list though the inputs is a signle Tensor.
         # The follow code snippet fixes the problem by return the first element
         # of grad_inputs when the inputs is a signle Tensor.
-        if isinstance(inputs, framework.Variable) and isinstance(
-                grad_inputs, typing.Sequence) and len(grad_inputs) > 0:
+        if (
+            isinstance(inputs, framework.Variable)
+            and isinstance(grad_inputs, typing.Sequence)
+            and len(grad_inputs) > 0
+        ):
             return grad_inputs[0]
         else:
             return grad_inputs
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(outputs)}.')
+        raise TypeError(
+            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(outputs)}.'
+        )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(inputs)}.')
+        raise TypeError(
+            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(inputs)}.'
+        )
 
-    ys, xs, ys_bar = utils.as_tensors(outputs), utils.as_tensors(
-        inputs), utils.as_tensors(grad_outputs)
+    ys, xs, ys_bar = (
+        utils.as_tensors(outputs),
+        utils.as_tensors(inputs),
+        utils.as_tensors(grad_outputs),
+    )
     block = framework.default_main_program().current_block()
     if any((x is not None and x.block != block) for x in xs + ys):
         raise RuntimeError(

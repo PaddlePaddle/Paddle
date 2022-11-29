@@ -246,11 +246,13 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
+  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_program_resnet50)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
   list(REMOVE_ITEM TEST_OPS test_imperative_ptq)
   list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
   list(REMOVE_ITEM TEST_OPS test_quantize_transpiler_v2)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
+  list(REMOVE_ITEM TEST_OPS test_imperative_qat_lsq)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -504,6 +506,7 @@ if(WIN32)
       test_moving_average_abs_max_scale_op
       test_imperative_qat_channelwise
       test_imperative_qat
+      test_imperative_qat_lsq
       test_imperative_out_scale
       test_graph)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
@@ -520,8 +523,10 @@ endforeach()
 if(NOT WIN32)
   set_tests_properties(test_post_training_quantization_lstm_model
                        PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_post_training_quantization_program_resnet50
+                       PROPERTIES TIMEOUT 240)
   set_tests_properties(test_post_training_quantization_mobilenetv1
-                       PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
+                       PROPERTIES TIMEOUT 900 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_resnet50
                        PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
@@ -541,6 +546,7 @@ set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 
 if(LINUX AND WITH_MKLDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT

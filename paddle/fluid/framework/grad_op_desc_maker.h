@@ -56,7 +56,7 @@ using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
   operator fwd_op. After it is called (through operator()), the pairs of
   (gradient variable, corresponding input variable of fwd_op) will be added to
   grad_to_var. If an input variable of fwd_op is contained in no_grad_set, its
-  gradient varialbe will be ignored or kEmptyVarName depending on the template
+  gradient variable will be ignored or kEmptyVarName depending on the template
   argument DropEmptyIG in the derived classes.
  */
 class GradOpDescMakerBase {
@@ -161,6 +161,10 @@ class GradOpDescMakerBase {
     return fwd_op_.GetAttrMap();
   }
 
+  const std::unordered_map<std::string, Attribute>& RuntimeAttrs() const {
+    return fwd_op_.GetRuntimeAttrMap();
+  }
+
   const Attribute& GetAttr(const std::string& name) const {
     auto& map = fwd_op_.GetAttrMap();
     auto it = map.find(name);
@@ -177,6 +181,7 @@ class GradOpDescMakerBase {
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
+  const BlockDesc* GetForwardOpBlock() const { return fwd_op_.Block(); }
 
  protected:
   bool HasInput(const std::string& name) const {
@@ -208,6 +213,7 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(new OpDesc());
     try {
+      retv.front()->SetRuntimeAttrMap(this->RuntimeAttrs());
       this->Apply(retv.front().get());
     } catch (platform::EnforceNotMet& exception) {
       framework::AppendErrorOpHint(retv.front().get()->Type(), &exception);

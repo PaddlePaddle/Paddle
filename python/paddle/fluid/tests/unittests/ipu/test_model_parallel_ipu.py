@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -59,19 +59,17 @@ class TestBase(IPUOpTest):
         bs = self.ipu_bs if run_ipu else self.cpu_bs
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(name='image',
-                                           shape=[bs, 3, 10, 10],
-                                           dtype='float32')
+                image = paddle.static.data(
+                    name='image', shape=[bs, 3, 10, 10], dtype='float32'
+                )
                 with paddle.static.ipu_shard_guard(index=0):
-                    conv1 = paddle.static.nn.conv2d(image,
-                                                    num_filters=3,
-                                                    filter_size=3,
-                                                    bias_attr=False)
+                    conv1 = paddle.static.nn.conv2d(
+                        image, num_filters=3, filter_size=3, bias_attr=False
+                    )
                 with paddle.static.ipu_shard_guard(index=1):
-                    conv2 = paddle.static.nn.conv2d(conv1,
-                                                    num_filters=3,
-                                                    filter_size=3,
-                                                    bias_attr=False)
+                    conv2 = paddle.static.nn.conv2d(
+                        conv1, num_filters=3, filter_size=3, bias_attr=False
+                    )
                     # should consider influence of bs
                     loss = paddle.mean(conv2)
 
@@ -101,11 +99,12 @@ class TestBase(IPUOpTest):
                 ipu_strategy.set_graph_config(
                     num_ipus=2 * self.ipu_options['replicated_graph_count'],
                     is_training=self.is_training,
-                    enable_manual_shard=True)
+                    enable_manual_shard=True,
+                )
                 ipu_strategy.set_options(self.ipu_options)
                 program = paddle.static.IpuCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+                    main_prog, ipu_strategy=ipu_strategy
+                ).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
@@ -126,14 +125,12 @@ class TestBase(IPUOpTest):
         cpu_outputs = self._test_base(False)
         ipu_outputs = self._test_base(True)
 
-        np.testing.assert_allclose(cpu_outputs,
-                                   ipu_outputs,
-                                   rtol=1e-05,
-                                   atol=self.atol)
+        np.testing.assert_allclose(
+            cpu_outputs, ipu_outputs, rtol=1e-05, atol=self.atol
+        )
 
 
 class TestReplicaInference(TestBase):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -150,14 +147,13 @@ class TestReplicaInference(TestBase):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np_image}
         self.feed_ipu = {
-            "image":
-            np.tile(np_image,
-                    [self.ipu_options['replicated_graph_count'], 1, 1, 1])
+            "image": np.tile(
+                np_image, [self.ipu_options['replicated_graph_count'], 1, 1, 1]
+            )
         }
 
 
 class TestReplicaCollectiveInference(TestBase):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -166,13 +162,11 @@ class TestReplicaCollectiveInference(TestBase):
             "accumulation_factor": 1,
             "enable_replicated_graphs": True,
             "replicated_graph_count": 2,
-            "accumulate_outer_fragment": {
-                0: []
-            },
+            "accumulate_outer_fragment": {0: []},
             "replicated_collectives_settings": {
                 "prepare_schedule_for_merging_collectives": True,
-                "merge_all_reduce_collectives": True
-            }
+                "merge_all_reduce_collectives": True,
+            },
         }
         self.cpu_bs = 1
         self.ipu_bs = 1
@@ -181,14 +175,13 @@ class TestReplicaCollectiveInference(TestBase):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np_image}
         self.feed_ipu = {
-            "image":
-            np.tile(np_image,
-                    [self.ipu_options['replicated_graph_count'], 1, 1, 1])
+            "image": np.tile(
+                np_image, [self.ipu_options['replicated_graph_count'], 1, 1, 1]
+            )
         }
 
 
 class TestPipelineInference(TestBase):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 2,
@@ -205,13 +198,13 @@ class TestPipelineInference(TestBase):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np_image}
         self.feed_ipu = {
-            "image":
-            np.tile(np_image, [self.ipu_options['batches_per_step'], 1, 1, 1])
+            "image": np.tile(
+                np_image, [self.ipu_options['batches_per_step'], 1, 1, 1]
+            )
         }
 
 
 class TestTrainBase(TestBase):
-
     def set_training(self):
         self.is_training = True
         self.epoch = 10
@@ -231,41 +224,6 @@ class TestTrainBase(TestBase):
 
 
 class TestReplicaTrain(TestTrainBase):
-
-    def set_attrs(self):
-        self.ipu_options = {
-            "batches_per_step": 1,
-            "enable_pipelining": False,
-            "enable_gradient_accumulation": False,
-            "accumulation_factor": 1,
-            "enable_replicated_graphs": True,
-            "replicated_graph_count": 2
-        }
-        self.cpu_bs = 2
-        self.ipu_bs = 1
-        self.optimizer = 'sgd'
-
-    def set_data_feed(self):
-        np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
-        self.feed_cpu = {"image": np.tile(np_image, [self.cpu_bs, 1, 1, 1])}
-        self.feed_ipu = {
-            "image":
-            np.tile(np_image,
-                    [self.ipu_options['replicated_graph_count'], 1, 1, 1])
-        }
-
-    def test(self):
-        cpu_outputs = self._test_base(False)
-        ipu_outputs = self._test_base(True)[::2]
-
-        np.testing.assert_allclose(cpu_outputs,
-                                   ipu_outputs,
-                                   rtol=1e-05,
-                                   atol=self.atol)
-
-
-class TestReplicaCollectiveTrain(TestTrainBase):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -274,13 +232,6 @@ class TestReplicaCollectiveTrain(TestTrainBase):
             "accumulation_factor": 1,
             "enable_replicated_graphs": True,
             "replicated_graph_count": 2,
-            "accumulate_outer_fragment": {
-                0: []
-            },
-            "replicated_collectives_settings": {
-                "prepare_schedule_for_merging_collectives": True,
-                "merge_all_reduce_collectives": True
-            }
         }
         self.cpu_bs = 2
         self.ipu_bs = 1
@@ -290,23 +241,58 @@ class TestReplicaCollectiveTrain(TestTrainBase):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np.tile(np_image, [self.cpu_bs, 1, 1, 1])}
         self.feed_ipu = {
-            "image":
-            np.tile(np_image,
-                    [self.ipu_options['replicated_graph_count'], 1, 1, 1])
+            "image": np.tile(
+                np_image, [self.ipu_options['replicated_graph_count'], 1, 1, 1]
+            )
         }
 
     def test(self):
         cpu_outputs = self._test_base(False)
         ipu_outputs = self._test_base(True)[::2]
 
-        np.testing.assert_allclose(cpu_outputs,
-                                   ipu_outputs,
-                                   rtol=1e-05,
-                                   atol=self.atol)
+        np.testing.assert_allclose(
+            cpu_outputs, ipu_outputs, rtol=1e-05, atol=self.atol
+        )
+
+
+class TestReplicaCollectiveTrain(TestTrainBase):
+    def set_attrs(self):
+        self.ipu_options = {
+            "batches_per_step": 1,
+            "enable_pipelining": False,
+            "enable_gradient_accumulation": False,
+            "accumulation_factor": 1,
+            "enable_replicated_graphs": True,
+            "replicated_graph_count": 2,
+            "accumulate_outer_fragment": {0: []},
+            "replicated_collectives_settings": {
+                "prepare_schedule_for_merging_collectives": True,
+                "merge_all_reduce_collectives": True,
+            },
+        }
+        self.cpu_bs = 2
+        self.ipu_bs = 1
+        self.optimizer = 'sgd'
+
+    def set_data_feed(self):
+        np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
+        self.feed_cpu = {"image": np.tile(np_image, [self.cpu_bs, 1, 1, 1])}
+        self.feed_ipu = {
+            "image": np.tile(
+                np_image, [self.ipu_options['replicated_graph_count'], 1, 1, 1]
+            )
+        }
+
+    def test(self):
+        cpu_outputs = self._test_base(False)
+        ipu_outputs = self._test_base(True)[::2]
+
+        np.testing.assert_allclose(
+            cpu_outputs, ipu_outputs, rtol=1e-05, atol=self.atol
+        )
 
 
 class TestPipelineTrain(TestTrainBase):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,
@@ -323,22 +309,22 @@ class TestPipelineTrain(TestTrainBase):
     def set_data_feed(self):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np.tile(np_image, [self.cpu_bs, 1, 1, 1])}
-        bps_acc = self.ipu_options['batches_per_step'] * self.ipu_options[
-            'accumulation_factor']
+        bps_acc = (
+            self.ipu_options['batches_per_step']
+            * self.ipu_options['accumulation_factor']
+        )
         self.feed_ipu = {"image": np.tile(np_image, [bps_acc, 1, 1, 1])}
 
     def test(self):
         cpu_outputs = self._test_base(False)
         ipu_outputs = self._test_base(True)[::3]
 
-        np.testing.assert_allclose(cpu_outputs,
-                                   ipu_outputs,
-                                   rtol=1e-05,
-                                   atol=self.atol)
+        np.testing.assert_allclose(
+            cpu_outputs, ipu_outputs, rtol=1e-05, atol=self.atol
+        )
 
 
 class TestAdamTrain(TestTrainBase):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -354,7 +340,6 @@ class TestAdamTrain(TestTrainBase):
 
 
 class TestAdamReplicaTrain(TestReplicaTrain):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -370,7 +355,6 @@ class TestAdamReplicaTrain(TestReplicaTrain):
 
 
 class TestAdamPipelineTrain(TestPipelineTrain):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,
@@ -386,7 +370,6 @@ class TestAdamPipelineTrain(TestPipelineTrain):
 
 
 class TestAdamRecomputationTrain(TestPipelineTrain):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,
@@ -403,7 +386,6 @@ class TestAdamRecomputationTrain(TestPipelineTrain):
 
 
 class TestLambTrain(TestAdamTrain):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -419,7 +401,6 @@ class TestLambTrain(TestAdamTrain):
 
 
 class TestLambReplicaTrain(TestAdamReplicaTrain):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 1,
@@ -435,7 +416,6 @@ class TestLambReplicaTrain(TestAdamReplicaTrain):
 
 
 class TestLambPipelineTrain(TestAdamPipelineTrain):
-
     def set_attrs(self):
         self.ipu_options = {
             "batches_per_step": 3,

@@ -70,7 +70,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     DataType dtype,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  auto value = val.to<float>();
+  auto value = val.to<double>();
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
       float,

@@ -24,10 +24,15 @@ cc_test(
   test_op_utils
   SRCS test_op_utils.cc
   DEPS op_compat_infos)
-cc_test(
+cc_test_old(
   test_meta_fn_utils
-  SRCS test_meta_fn_utils.cc
-  DEPS dense_tensor wrapped_infermeta infermeta infermeta_utils)
+  SRCS
+  test_meta_fn_utils.cc
+  DEPS
+  dense_tensor
+  wrapped_infermeta
+  infermeta
+  infermeta_utils)
 
 cc_test(
   test_ddim
@@ -60,3 +65,8 @@ cc_test(
   SRCS test_string_tensor.cc
   DEPS string_tensor)
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
+
+cc_test(
+  test_tensor_array
+  SRCS test_tensor_array.cc
+  DEPS tensor_array)

@@ -68,22 +68,18 @@ void MaxPoolCooGradGPUKernel(const GPUContext& dev_ctx,
   const int* counter_ptr = counter.data<int>();
   phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
 
-  const T* in_features_ptr = x.non_zero_elements().data<T>();
-  const T* out_features_ptr = out.non_zero_elements().data<T>();
-  const T* out_grad_ptr = out_grad.non_zero_elements().data<T>();
+  const T* in_features_ptr = x.values().data<T>();
+  const T* out_features_ptr = out.values().data<T>();
+  const T* out_grad_ptr = out_grad.values().data<T>();
   // TODO(zhangkaihuo): call phi::sparse::EmptyLike
-  DenseTensor x_grad_indices =
-      phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
   T* x_grad_ptr = x_grad_values.data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &x_grad_values, static_cast<T>(0.0f));
-  phi::Copy<GPUContext>(dev_ctx,
-                        x.non_zero_indices(),
-                        dev_ctx.GetPlace(),
-                        false,
-                        &x_grad_indices);
+  phi::Copy<GPUContext>(
+      dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
 
   for (int i = 0; i < kernel_size; i++) {
     if (counter_ptr[i] <= 0) {
@@ -117,7 +113,7 @@ void MaxPoolCooGradKernel(const Context& dev_ctx,
                           const std::vector<int>& kernel_sizes,
                           SparseCooTensor* x_grad) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "MaxPoolCooGradGPUKernel", ([&] {
+      x.indices().dtype(), "MaxPoolCooGradGPUKernel", ([&] {
         MaxPoolCooGradGPUKernel<T, data_t>(
             dev_ctx, x, rulebook, counter, out, out_grad, kernel_sizes, x_grad);
       }));

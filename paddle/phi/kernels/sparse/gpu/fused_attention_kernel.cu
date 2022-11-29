@@ -99,7 +99,7 @@ void FusedAttentionCsrKernel(
     const paddle::optional<DenseTensor>& attn_mask,
     DenseTensor* out,
     SparseCsrTensor* softmax) {
-#if CUDA_VERSION >= 11070
+#if CUDA_VERSION >= 11080
   /* Check Shape */
   auto q_dim = query.dims();
   auto q_rank = q_dim.size();
@@ -200,12 +200,12 @@ void FusedAttentionCsrKernel(
 
   int batch_nnz = sdd_result.nnz() / batch_num;
   AttnSoftmaxGpuKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      sdd_result.non_zero_crows().data<int64_t>(),
-      sdd_result.non_zero_cols().data<int64_t>(),
-      sdd_result.non_zero_elements().data<T>(),
+      sdd_result.crows().data<int64_t>(),
+      sdd_result.cols().data<int64_t>(),
+      sdd_result.values().data<T>(),
       kp_mask_ptr ? kp_mask_ptr->data<T>() : nullptr,
       attn_mask_ptr ? attn_mask_ptr->data<T>() : nullptr,
-      softmax->mutable_non_zero_elements()->data<T>(),
+      softmax->mutable_values()->data<T>(),
       M,
       total_row_num,
       q_dim[1],
@@ -217,7 +217,7 @@ void FusedAttentionCsrKernel(
   PADDLE_THROW(
       phi::errors::Unimplemented("forward of 'sparse.nn.functional.attention' "
                                  "use 'cusparseCsrSetStridedBatch', which is "
-                                 "completed supported from CUDA 11.7"));
+                                 "completed supported from CUDA 11.8"));
 #endif
 }
 

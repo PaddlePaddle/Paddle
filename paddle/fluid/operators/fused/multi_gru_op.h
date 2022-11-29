@@ -20,8 +20,6 @@ namespace paddle {
 namespace operators {
 
 using framework::ExecutionContext;
-using framework::LoDTensor;
-using framework::Tensor;
 
 class MultiGRUOp : public framework::OperatorWithKernel {
  public:

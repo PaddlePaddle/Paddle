@@ -13,20 +13,21 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
 import os
+import shutil
+import tempfile
 import unittest
-import paddle.fluid.generator as generator
 
-import time  # temp for debug
-import paddle.fluid as fluid
 import numpy as np
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Only test cuda Random Generator")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "Only test cuda Random Generator"
+)
 class TestGeneratorSeed(unittest.TestCase):
     """
     Test cases for cpu generator seed.
@@ -40,18 +41,15 @@ class TestGeneratorSeed(unittest.TestCase):
         gen.manual_seed(111111111)
         st = paddle.get_cuda_rng_state()
 
-        x = fluid.layers.uniform_random([2, 10],
-                                        dtype="float32",
-                                        min=0.0,
-                                        max=1.0)
-        x_again = fluid.layers.uniform_random([2, 10],
-                                              dtype="float32",
-                                              min=0.0,
-                                              max=1.0)
-        x_third = fluid.layers.uniform_random([2, 10],
-                                              dtype="float32",
-                                              min=0.0,
-                                              max=1.0)
+        x = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0
+        )
+        x_again = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0
+        )
+        x_third = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0
+        )
         print("x: {}".format(x.numpy()))
         print("x_again: {}".format(x_again.numpy()))
         x = x + x_again + x_third
@@ -59,18 +57,15 @@ class TestGeneratorSeed(unittest.TestCase):
 
         paddle.set_cuda_rng_state(st)
 
-        x1 = fluid.layers.uniform_random([2, 10],
-                                         dtype="float32",
-                                         min=0.0,
-                                         max=1.0)
-        x1_again = fluid.layers.uniform_random([2, 10],
-                                               dtype="float32",
-                                               min=0.0,
-                                               max=1.0)
-        x1_third = fluid.layers.uniform_random([2, 10],
-                                               dtype="float32",
-                                               min=0.0,
-                                               max=1.0)
+        x1 = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0
+        )
+        x1_again = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0
+        )
+        x1_third = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0
+        )
         x1 = x1 + x1_again + x1_third
         y1 = fluid.layers.dropout(x1, 0.5)
         y_np = y.numpy()
@@ -137,26 +132,30 @@ class TestGeneratorSeed(unittest.TestCase):
             result_1 = fluid.layers.fc(
                 input=x,
                 size=10,
-                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
-                                                             scale=2.0))
+                param_attr=fluid.initializer.TruncatedNormal(
+                    loc=0.0, scale=2.0
+                ),
+            )
             result_2 = fluid.layers.fc(
                 input=x,
                 size=10,
-                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
-                                                             scale=2.0))
+                param_attr=fluid.initializer.TruncatedNormal(
+                    loc=0.0, scale=2.0
+                ),
+            )
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
-            out1 = exe.run(train_program,
-                           feed={},
-                           fetch_list=[result_1, result_2])
+            out1 = exe.run(
+                train_program, feed={}, fetch_list=[result_1, result_2]
+            )
 
         paddle.seed(123123143)
         with fluid.program_guard(train_program, startup_program):
             exe.run(startup_program)
-            out2 = exe.run(train_program,
-                           feed={},
-                           fetch_list=[result_1, result_2])
+            out2 = exe.run(
+                train_program, feed={}, fetch_list=[result_1, result_2]
+            )
 
         out1_res1 = np.array(out1[0])
         out1_res2 = np.array(out1[1])
@@ -168,6 +167,41 @@ class TestGeneratorSeed(unittest.TestCase):
             np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
             np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
             self.assertTrue(not np.allclose(out1_res2, out1_res1))
+
+    def test_generator_pickle(self):
+        output_dir = tempfile.mkdtemp()
+        random_file = os.path.join(output_dir, "random.pdmodel")
+
+        fluid.enable_dygraph()
+        x0 = paddle.randn([120], dtype="float32")
+
+        st = paddle.get_cuda_rng_state()
+        st_dict = {"random_state": st}
+        print("state: ", st[0])
+
+        paddle.save(st_dict, random_file)
+        x1 = paddle.randn([120], dtype="float32")
+
+        lt_dict = paddle.load(random_file)
+        st = lt_dict["random_state"]
+
+        paddle.set_cuda_rng_state(st)
+        x2 = paddle.randn([120], dtype="float32")
+
+        lt_dict = paddle.load(random_file)
+        st = lt_dict["random_state"]
+        paddle.set_cuda_rng_state(st)
+        x3 = paddle.randn([120], dtype="float32")
+
+        x1_np = x1.numpy()
+        x2_np = x2.numpy()
+        x3_np = x3.numpy()
+
+        print(">>>>>>> gaussian random dygraph state load/save >>>>>>>")
+        np.testing.assert_equal(x1_np, x2_np)
+        np.testing.assert_equal(x1_np, x2_np)
+
+        shutil.rmtree(output_dir)
 
 
 if __name__ == "__main__":

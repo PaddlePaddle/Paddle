@@ -51,9 +51,9 @@ class OverflowOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
-    if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = framework::TransToProtoVarType(
-          x_var->Get<framework::LoDTensor>().type());
+    if (x_var->IsType<phi::DenseTensor>()) {
+      dtype =
+          framework::TransToProtoVarType(x_var->Get<phi::DenseTensor>().type());
     } else if (x_var->IsType<phi::SelectedRows>()) {
       dtype = framework::TransToProtoVarType(
           x_var->Get<phi::SelectedRows>().value().type());
@@ -121,14 +121,6 @@ namespace ops = paddle::operators;
       ops::_##op_type##OverflowOpMaker,                               \
       paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
       paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
-
-#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)             \
-  REGISTER_OP_CPU_KERNEL(                                          \
-      op_type,                                                     \
-      ops::OverflowKernel<phi::CPUContext, int, ops::functor>,     \
-      ops::OverflowKernel<phi::CPUContext, int64_t, ops::functor>, \
-      ops::OverflowKernel<phi::CPUContext, float, ops::functor>,   \
-      ops::OverflowKernel<phi::CPUContext, double, ops::functor>);
 
 REGISTER_OP_MAKER(isinf, "isinf(X)");
 REGISTER_OP_MAKER(isnan, "isnan(X)");

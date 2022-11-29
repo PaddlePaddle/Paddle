@@ -46,15 +46,6 @@ void DivideRawKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
-  int axis = -1;
-  DivideRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -67,16 +58,6 @@ PD_REGISTER_KERNEL(divide_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::DivideRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
-PD_REGISTER_KERNEL(divide,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::DivideKernel,
                    float,
                    double,
                    int,

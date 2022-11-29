@@ -19,21 +19,17 @@
 
 namespace phi {
 
-template <typename T, typename Context, typename Functor>
-inline void IsfiniteSRImpl(const Context& ctx,
-                           const SelectedRows& x,
-                           SelectedRows* out);
-
-#define DEFINE_ISFINITE_SR(isfinite_sr, functor)                      \
+#define DEFINE_ISFINITE_SR(isfinite)                                  \
   template <typename T, typename Context>                             \
-  void isfinite_sr(                                                   \
+  void isfinite##SR(                                                  \
       const Context& ctx, const SelectedRows& x, SelectedRows* out) { \
-    IsfiniteSRImpl<T, Context, functor>(ctx, x, out);                 \
+    ctx.template Alloc<bool>(out);                                    \
+    Isinf##Kernel<T, Context>(ctx, x.value(), out->mutable_value());  \
   }
 
-DEFINE_ISFINITE_SR(IsinfSR, funcs::InfinityV2Functor)
-DEFINE_ISFINITE_SR(IsnanSR, funcs::NANV2Functor)
-DEFINE_ISFINITE_SR(IsfiniteSR, funcs::IsfiniteV2Functor)
+DEFINE_ISFINITE_SR(Isinf)
+DEFINE_ISFINITE_SR(Isnan)
+DEFINE_ISFINITE_SR(Isfinite)
 #undef DEFINE_ISFINITE_SR
 
 }  // namespace phi

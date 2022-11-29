@@ -12,33 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test_xpu import XPUOpTest
-from paddle.fluid import Program, program_guard
 from test_conv2d_op_xpu import XPUTestConv2DOp, XPUTestConv2DOp_v2
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 
 class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'depthwise_conv2d'
         self.use_dynamic_create_class = False
 
     class TestDepthwiseConv(XPUTestConv2DOp.TestConv2DOp):
-
         def init_test_case(self):
             self.use_cuda = False
             self.pad = [1, 1]
@@ -51,7 +48,6 @@ class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
             self.op_type = "depthwise_conv2d"
 
     class TestDepthwiseConv2(XPUTestConv2DOp.TestConv2DOp):
-
         def init_test_case(self):
             self.use_cuda = False
             self.pad = [1, 1]
@@ -64,7 +60,6 @@ class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
             self.op_type = "depthwise_conv2d"
 
     class TestDepthwiseConv3(XPUTestConv2DOp.TestConv2DOp):
-
         def init_test_case(self):
             self.use_cuda = False
             self.pad = [1, 1]
@@ -77,7 +72,6 @@ class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
             self.op_type = "depthwise_conv2d"
 
     class TestDepthwiseConvWithDilation(XPUTestConv2DOp.TestConv2DOp):
-
         def init_test_case(self):
             self.use_cuda = False
             self.pad = [1, 1]
@@ -91,7 +85,6 @@ class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
             self.op_type = "depthwise_conv2d"
 
     class TestDepthwiseConvWithDilation2(XPUTestConv2DOp.TestConv2DOp):
-
         def init_test_case(self):
             self.use_cuda = False
             self.pad = [1, 1]
@@ -106,13 +99,11 @@ class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
 
 
 class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'depthwise_conv2d'
         self.use_dynamic_create_class = False
 
     class TestDepthwiseConv_AsyPadding(XPUTestConv2DOp_v2.TestConv2DOp_v2):
-
         def init_test_case(self):
             self.use_cuda = False
             self.stride = [2, 2]
@@ -128,7 +119,6 @@ class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
             self.padding_algorithm = "EXPLICIT"
 
     class TestDepthwiseConv2_AsyPadding(XPUTestConv2DOp_v2.TestConv2DOp_v2):
-
         def init_test_case(self):
             self.use_cuda = False
             self.stride = [1, 1]
@@ -144,7 +134,6 @@ class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
             self.padding_algorithm = "EXPLICIT"
 
     class TestDepthwiseConv3_AsyPadding(XPUTestConv2DOp_v2.TestConv2DOp_v2):
-
         def init_test_case(self):
             self.use_cuda = False
             self.stride = [1, 1]
@@ -160,8 +149,8 @@ class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
             self.padding_algorithm = "EXPLICIT"
 
     class TestDepthwiseConvWithDilation_AsyPadding(
-            XPUTestConv2DOp_v2.TestConv2DOp_v2):
-
+        XPUTestConv2DOp_v2.TestConv2DOp_v2
+    ):
         def init_test_case(self):
             self.use_cuda = False
             self.pad = [1, 1]
@@ -179,8 +168,8 @@ class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
             self.padding_algorithm = "EXPLICIT"
 
     class TestDepthwiseConvWithDilation2_AsyPadding(
-            XPUTestConv2DOp_v2.TestConv2DOp_v2):
-
+        XPUTestConv2DOp_v2.TestConv2DOp_v2
+    ):
         def init_test_case(self):
             self.use_cuda = True
             self.pad = [1, 1]
@@ -203,7 +192,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestDepthwiseConv2DOp, stype)
     create_test_class(globals(), XPUTestDepthwiseConv2DOp_v2, stype)
 
-#### depthwise conv2d
+# depthwise conv2d
 
 # create_test_padding_SAME_class(TestDepthwiseConv_AsyPadding)
 # create_test_padding_SAME_class(TestDepthwiseConvWithDilation_AsyPadding)
@@ -215,7 +204,7 @@ for stype in support_types:
 # create_test_padding_VALID_class(TestDepthwiseConvandFuse_AsyPadding)
 # create_test_padding_VALID_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
 
-#### channel last
+# channel last
 
 # create_test_channel_last_class(TestDepthwiseConv_AsyPadding)
 # create_test_channel_last_class(TestDepthwiseConvWithDilation2_AsyPadding)

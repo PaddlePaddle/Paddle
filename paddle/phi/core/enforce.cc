@@ -44,7 +44,8 @@ using Attribute = paddle::variant<paddle::blank,
                                   std::vector<int64_t>,
                                   std::vector<double>,
                                   VarDesc*,
-                                  std::vector<VarDesc*>>;
+                                  std::vector<VarDesc*>,
+                                  double>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 namespace imperative {

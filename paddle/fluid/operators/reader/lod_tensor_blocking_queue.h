@@ -34,16 +34,16 @@ class LoDTensorBlockingQueue {
 
   ~LoDTensorBlockingQueue() { VLOG(10) << "Destruct LoDTensorBlockingQueue"; }
 
-  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+  bool Push(const paddle::framework::LoDTensorArray& lod_tensor_vec) {
     return queue_.Send(lod_tensor_vec);
   }
 
-  bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
+  bool Push(paddle::framework::LoDTensorArray&& lod_tensor_vec) {
     return queue_.Send(std::move(lod_tensor_vec));
   }
 
-  std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
-    std::vector<framework::LoDTensor> lod_tensor_vec;
+  paddle::framework::LoDTensorArray Pop(bool* ok = nullptr) {
+    paddle::framework::LoDTensorArray lod_tensor_vec;
     bool success = queue_.Receive(&lod_tensor_vec);
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
@@ -67,7 +67,7 @@ class LoDTensorBlockingQueue {
   inline bool WaitForInited(size_t) { return true; }
 
  private:
-  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  BlockingQueue<paddle::framework::LoDTensorArray> queue_;
 };
 
 class OrderedMultiDeviceLoDTensorBlockingQueue {
@@ -123,7 +123,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
     return queues_[idx];
   }
 
-  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+  bool Push(const paddle::framework::LoDTensorArray& lod_tensor_vec) {
     return CurQueue()->Push(lod_tensor_vec);
   }
 

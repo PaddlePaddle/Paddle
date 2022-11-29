@@ -129,9 +129,9 @@ void YoloBoxKernel(const Context& dev_ctx,
   int input_size_w = downsample_ratio * w;
 
   int bytes = sizeof(int) * anchors.size();
-  auto anchors_ptr =
-      paddle::memory::Alloc(dev_ctx, sizeof(int) * anchors.size());
-  int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
+  DenseTensor tmp_anchors;
+  tmp_anchors.Resize(phi::make_dim(anchors.size()));
+  int* anchors_data = dev_ctx.template Alloc<int>(&tmp_anchors);
   const auto gplace = dev_ctx.GetPlace();
   const auto cplace = phi::CPUPlace();
   paddle::memory::Copy(

@@ -55,7 +55,7 @@ class RunProgramOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -65,18 +65,18 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "The input tensors of RunProgram operator, also the feed targets "
              "of loaded program.")
         .AsDuplicable();
     AddInput("Params",
-             "(vector<LoDTensor or SelecetedRows>)"
+             "(vector<phi::DenseTensor or SelecetedRows>)"
              "The input parameter of RunProgram operator, also the parameters "
              "of the loaded program.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out",
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "The output tensors of RunProgram operator, also the fetch "
               "targets of the loaded program.")
         .AsDuplicable();
@@ -87,7 +87,7 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "NOTE: Do not use Scope directly because Scope output is not "
               "currently supported.");
     AddOutput("DOut",
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "The output tensors for GRAD Tensors in RunProgram forward "
               "operator, the forward operator contains GRAD Tensors when it "
               "computes double grad.")
@@ -119,17 +119,28 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("cuda_graph_pool_id",
                      "(int64_t, default 0) The CUDA Graph memory pool ID.")
         .SetDefault(0);
+    AddAttr<bool>("use_interpretorcore",
+                  "(bool, default false) Set to true for use interpretercore.")
+        .SetDefault(false);
+    AddAttr<BlockDesc*>("forward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed forward program desc.")
+        .SetDefault(nullptr);
+    AddAttr<BlockDesc*>("backward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed backward program desc.")
+        .SetDefault(nullptr);
     AddComment(R"DOC(
 RunProgram operator.
 
-The RunProgram operator receives a program's feed targets, fetch targets, 
-and parameters, and receives the forward and backward program desc 
+The RunProgram operator receives a program's feed targets, fetch targets,
+and parameters, and receives the forward and backward program desc
 as attributes, and then executes the program by executor.
 
-NOTE: This operator is added so that the inference model stored by 
-`fluid.io.save_inference_model` under the static graph mode can be loaded 
+NOTE: This operator is added so that the inference model stored by
+`fluid.io.save_inference_model` under the static graph mode can be loaded
 under the dynamic graph mode for fine-tuning or inferencing.
-      
+
 )DOC");
   }
 };
@@ -162,7 +173,7 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }

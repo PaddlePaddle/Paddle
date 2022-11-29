@@ -38,6 +38,7 @@ USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(feed);
 USE_OP_ITSELF(fetch);
 USE_OP_ITSELF(scale);
+USE_OP_ITSELF(transfer_layout);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
@@ -67,6 +68,11 @@ std::vector<Tensor> PrepareInputs(const phi::Place& place) {
   phi::funcs::set_constant(dev_ctx, &t, 2.);
 
   return utils::ToTensors({t});
+}
+
+TEST(CpuLayerTest, Function) {
+  auto func_null = Function();
+  EXPECT_TRUE(!func_null.IsValid());
 }
 
 TEST(CpuLayerTest, Construct) {
@@ -103,6 +109,7 @@ TEST(CpuLayerTest, Construct) {
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
+  EXPECT_TRUE(func.IsValid());
   outs = func(inputs);
   out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
@@ -128,6 +135,7 @@ TEST(GpuLayerTest, Construct) {
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
+  EXPECT_TRUE(func.IsValid());
   outs = func(inputs);
   gpu_tensor = outs[0];
   cpu_tensor = paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);

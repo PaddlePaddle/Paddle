@@ -241,7 +241,7 @@ void LiteSubgraphPass::SetUpEngine(
           scope->FindVar(param),
           platform::errors::NotFound(
               "Block should already have a '%s' variable", param));
-      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+      auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
       framework::SerializeToStream(os, *tensor, ctx);
     }
     *str = os.str();
@@ -252,12 +252,14 @@ void LiteSubgraphPass::SetUpEngine(
   bool use_xpu = Get<bool>("use_xpu");
   int xpu_device_id = Get<int>("xpu_device_id");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
+  bool use_opencl = Get<bool>("use_opencl");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
   bool locked = Get<bool>("locked");
   bool autotune = Get<bool>("autotune");
   std::string autotune_file = Get<std::string>("autotune_file");
   std::string precision = Get<std::string>("precision");
   bool adaptive_seqlen = Get<bool>("adaptive_seqlen");
+  bool enable_multi_stream = Get<bool>("enable_multi_stream");
   // NNAdapter Related
   bool use_nnadapter = Get<bool>("use_nnadapter");
   std::string nnadapter_model_cache_dir =
@@ -284,6 +286,8 @@ void LiteSubgraphPass::SetUpEngine(
 #ifdef LITE_WITH_NNADAPTER
     target_type = TARGET(kNNAdapter);
 #endif
+  } else if (use_opencl) {
+    target_type = TARGET(kOpenCL);
   } else {
 #ifdef PADDLE_WITH_ARM
     target_type = TARGET(kARM);
@@ -302,7 +306,6 @@ void LiteSubgraphPass::SetUpEngine(
       // input tensor of the Lite engine is located, and then affects
       // whether tensor sharing is feasible.
       paddle::lite_api::Place({target_type, precision_type}),
-      paddle::lite_api::Place({target_type, PRECISION(kInt64)}),
       paddle::lite_api::Place({target_type, PRECISION(kFloat)}),
 #ifdef PADDLE_WITH_ARM
       paddle::lite_api::Place({TARGET(kARM), precision_type}),
@@ -313,6 +316,33 @@ void LiteSubgraphPass::SetUpEngine(
 #endif
       paddle::lite_api::Place({TARGET(kHost), PRECISION(kFloat)}),
   };
+
+  // opencl has no int64, and has bugs with image io.
+  if (use_opencl) {
+    config.valid_places = {
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFP16), DATALAYOUT(kImageDefault)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFP16), DATALAYOUT(kImageFolder)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFloat), DATALAYOUT(kNCHW)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kImageDefault)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kImageFolder)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kNCHW)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kInt32), DATALAYOUT(kNCHW)},
+#ifdef PADDLE_WITH_ARM
+        paddle::lite_api::Place{TARGET(kARM), PRECISION(kFloat)},
+#else
+        paddle::lite_api::Place{TARGET(kX86), PRECISION(kFloat)},
+#endif
+        paddle::lite_api::Place{TARGET(kHost), PRECISION(kFloat)},
+    };
+  }
+
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
   config.xpu_l3_workspace_size = xpu_l3_workspace_size;
   config.device_id = xpu_device_id;
@@ -321,6 +351,7 @@ void LiteSubgraphPass::SetUpEngine(
   config.autotune_file = autotune_file;
   config.precision = precision;
   config.adaptive_seqlen = adaptive_seqlen;
+  config.enable_multi_stream = enable_multi_stream;
   // NNAdapter Related
   config.nnadapter_model_cache_dir = nnadapter_model_cache_dir;
   config.nnadapter_device_names = nnadapter_device_names;

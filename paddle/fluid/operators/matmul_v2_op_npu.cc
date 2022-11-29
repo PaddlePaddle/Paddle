@@ -21,15 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
-                     const Tensor& X,
-                     const Tensor& Y,
-                     Tensor* Out,
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
                      const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
@@ -44,9 +44,9 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
 template <typename T>
 static void MatMulND(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
-                     const Tensor& X,
-                     const Tensor& Y,
-                     Tensor* Out,
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
                      const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
@@ -57,13 +57,65 @@ static void MatMulND(const framework::ExecutionContext& ctx,
   runner.Run(stream);
 }
 
+#if (CANN_VERSION_CODE < 504000)
+template <>
+void MatMulND<phi::dtype::float16>(const framework::ExecutionContext& ctx,
+                                   const aclrtStream& stream,
+                                   const phi::DenseTensor& X,
+                                   const phi::DenseTensor& Y,
+                                   phi::DenseTensor* Out,
+                                   const bool trans_x,
+                                   const bool trans_y) {
+  Out->mutable_data<phi::dtype::float16>(ctx.GetPlace());
+  Tensor x_fp32, y_fp32, out_fp32;
+  x_fp32.Resize(X.dims());
+  y_fp32.Resize(Y.dims());
+  out_fp32.Resize(Out->dims());
+  x_fp32.mutable_data<float>(ctx.GetPlace());
+  y_fp32.mutable_data<float>(ctx.GetPlace());
+  out_fp32.mutable_data<float>(ctx.GetPlace());
+
+  const auto& cast_x =
+      NpuOpRunner("Cast",
+                  {X},
+                  {x_fp32},
+                  {{"dst_type",
+                    static_cast<int>(ConvertToNpuDtype(
+                        framework::TransToProtoVarType(x_fp32.type())))}});
+  cast_x.Run(stream);
+  const auto& cast_y =
+      NpuOpRunner("Cast",
+                  {Y},
+                  {y_fp32},
+                  {{"dst_type",
+                    static_cast<int>(ConvertToNpuDtype(
+                        framework::TransToProtoVarType(y_fp32.type())))}});
+  cast_y.Run(stream);
+
+  const auto& runner = NpuOpRunner("BatchMatMul",
+                                   {x_fp32, y_fp32},
+                                   {out_fp32},
+                                   {{"adj_x1", trans_x}, {"adj_x2", trans_y}});
+  runner.Run(stream);
+
+  const auto& cast_out = NpuOpRunner(
+      "Cast",
+      {out_fp32},
+      {*Out},
+      {{"dst_type",
+        static_cast<int>(
+            ConvertToNpuDtype(framework::TransToProtoVarType(Out->type())))}});
+  cast_out.Run(stream);
+}
+#endif
+
 template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
                        const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& brd_dims,
-                       const Tensor& in,
-                       Tensor* out) {
+                       const phi::DenseTensor& in,
+                       phi::DenseTensor* out) {
   std::vector<int64_t> axes;
   int64_t size = brd_dims.size();
   int64_t diff = brd_dims.size() - dims.size();
@@ -86,9 +138,9 @@ template <typename T>
 class MatMulV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* Out = ctx.Output<Tensor>("Out");
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* Out = ctx.Output<phi::DenseTensor>("Out");
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
@@ -224,11 +276,11 @@ template <typename T>
 class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dY = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 

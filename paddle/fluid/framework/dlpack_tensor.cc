@@ -134,7 +134,7 @@ struct DLDeviceVisitor
 };
 }  // namespace internal
 
-DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
+DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes) {
   // init data, data buffer
   t_.data = const_cast<void *>(tensor.data());
 

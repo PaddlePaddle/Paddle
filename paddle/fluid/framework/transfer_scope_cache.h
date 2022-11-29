@@ -31,6 +31,9 @@ std::unordered_map<size_t, Scope*>& global_transfer_data_cache();
 
 std::unordered_set<Scope*>& global_transfer_scope_cache();
 
+std::unordered_map<const Scope*, std::unordered_set<size_t>>&
+global_transfer_scope_key();
+
 // Combine two hash values to a single hash.
 static size_t CombineHash(size_t seed, size_t a) {
   return (seed ^ a) + 0x9e3779b9 + (seed << 6) + (seed >> 2);

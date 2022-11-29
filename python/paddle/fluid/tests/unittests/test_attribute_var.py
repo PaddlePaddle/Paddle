@@ -13,19 +13,19 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.inference as paddle_infer
-from paddle.fluid.framework import program_guard, Program
-from paddle.fluid.framework import OpProtoHolder
-import numpy as np
+from paddle.fluid.framework import OpProtoHolder, Program, program_guard
 
 paddle.enable_static()
 
 
 class UnittestBase(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.init_info()
@@ -37,26 +37,35 @@ class UnittestBase(unittest.TestCase):
         self.shapes = None
         self.save_path = None
 
+    def path_prefix(self):
+        return type(self).__name__
+
     def infer_prog(self):
-        config = paddle_infer.Config(self.save_path + '.pdmodel',
-                                     self.save_path + '.pdiparams')
+        config = paddle_infer.Config(
+            self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+        )
         predictor = paddle_infer.create_predictor(config)
         input_names = predictor.get_input_names()
         for i, shape in enumerate(self.shapes):
             input_handle = predictor.get_input_handle(input_names[i])
-            fake_input = np.random.randn(*shape).astype("float32")
+            self.fake_input = np.random.randn(*shape).astype("float32")
             input_handle.reshape(shape)
-            input_handle.copy_from_cpu(fake_input)
+            input_handle.copy_from_cpu(self.fake_input)
         predictor.run()
         output_names = predictor.get_output_names()
-        output_handle = predictor.get_output_handle(output_names[0])
-        output_data = output_handle.copy_to_cpu()
+        res = []
+        for out_name in output_names:
+            output_handle = predictor.get_output_handle(out_name)
+            output_data = output_handle.copy_to_cpu()
+            res.append(output_data)
 
-        return output_data
+        if len(output_names) == 1:
+            res = res[0]
+
+        return res
 
 
 class TestDropout(UnittestBase):
-
     def init_info(self):
         self.shapes = [[10, 10]]
         self.save_path = os.path.join(self.temp_dir.name, 'dropout')
@@ -87,9 +96,13 @@ class TestDropout(UnittestBase):
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (10, 10))
 
+            self.assertEqual(
+                main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
+                p.name,
+            )
+
 
 class TestTileTensorList(UnittestBase):
-
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensors')
@@ -123,7 +136,6 @@ class TestTileTensorList(UnittestBase):
 
 
 class TestTileTensor(UnittestBase):
-
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensor')
@@ -156,13 +168,12 @@ class TestTileTensor(UnittestBase):
 
 
 class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
-
     def setUp(self):
         self.all_protos = OpProtoHolder.instance()
         self.support_tensor_attrs = {
             'dropout': ['dropout_prob'],
             'tile': ['repeat_times'],
-            'concat': ['axis']
+            'concat': ['axis'],
         }
         # Just add a op example to test not support tensor
         self.not_support_tensor_attrs = {'svd': ['full_matrices']}
@@ -176,8 +187,9 @@ class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
         # All Attribute not tagged with .SupportTensor() in OpMaker will return False
         for op_type, attr_names in self.not_support_tensor_attrs.items():
             for attr_name in attr_names:
-                self.assertFalse(self.is_support_tensor_attr(
-                    op_type, attr_name))
+                self.assertFalse(
+                    self.is_support_tensor_attr(op_type, attr_name)
+                )
 
     def is_support_tensor_attr(self, op_type, attr_name):
         proto = self.all_protos.get_op_proto(op_type)

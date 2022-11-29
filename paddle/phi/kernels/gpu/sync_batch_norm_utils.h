@@ -30,17 +30,16 @@ namespace cub = hipcub;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace phi {
 
 template <typename T>
-using CudnnDataType = paddle::platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -295,8 +294,7 @@ void SyncBatchNormGradFunctor(
     DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 
@@ -365,7 +363,10 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+  auto alloc_ptr = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
 
   const int block = 512;
@@ -429,17 +430,16 @@ void SyncBatchNormGradFunctor(
   }
 
   if (comm) {
-    int dtype = paddle::platform::ToNCCLDataType(
-        paddle::framework::TransToProtoVarType(scale.dtype()));
+    int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
     // In-place operation
-    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
-        stats,
-        stats,
-        2 * C + 1,
-        static_cast<ncclDataType_t>(dtype),
-        ncclSum,
-        comm,
-        stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::ncclAllReduce(stats,
+                                    stats,
+                                    2 * C + 1,
+                                    static_cast<ncclDataType_t>(dtype),
+                                    ncclSum,
+                                    comm,
+                                    stream));
     VLOG(3) << "Sync result using all reduce";
   }
 #endif

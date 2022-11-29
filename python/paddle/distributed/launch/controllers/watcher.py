@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..utils.nvsmi import get_gpu_process, get_gpu_util, get_gpu_info
-import time
 import os
-
+import time
 from threading import Thread
 
+from ..utils.nvsmi import get_gpu_info, get_gpu_process, get_gpu_util
 
-class Watcher(object):
 
+class Watcher:
     def __init__(self, ctx):
         self.ctx = ctx
 
@@ -31,8 +30,9 @@ class Watcher(object):
         # gpu log file
         self.gpus = self.ctx.args.devices or self.ctx.node.device.labels
         if len(self.gpus) > 0:
-            fn = os.path.join(self.ctx.args.log_dir,
-                              "{}.gpu.log".format(self.ctx.args.job_id))
+            fn = os.path.join(
+                self.ctx.args.log_dir, "{}.gpu.log".format(self.ctx.args.job_id)
+            )
             os.makedirs(os.path.dirname(fn), exist_ok=True)
             self.gpu_fd = open(fn, 'w')
         else:

@@ -12,28 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import _legacy_C_ops
 
 paddle.disable_static()
 
 
 def clear_grad(w, a):
-
     @paddle.no_grad()
     def warp(*_):
         assert w.grad is not None
-        _C_ops.scale_(w.grad, 'scale', 0.5)
+        _legacy_C_ops.scale_(w.grad, 'scale', 0.5)
         w.clear_gradient(False)
 
     return warp
 
 
 class TestInplaceAndClearGradient(unittest.TestCase):
-
     def test(self):
         paddle.set_device('cpu')
 
@@ -44,7 +43,7 @@ class TestInplaceAndClearGradient(unittest.TestCase):
         w._register_backward_hook(_clear_grad)
 
         for i in range(10):
-            out = _C_ops.scale(w, 'scale', 0.1)
+            out = _legacy_C_ops.scale(w, 'scale', 0.1)
             out.backward()
 
 

@@ -21,14 +21,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class ReduceAnyNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");

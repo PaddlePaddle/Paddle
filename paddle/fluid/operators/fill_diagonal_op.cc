@@ -73,9 +73,9 @@ class FillIDiagonalGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    // Note: don't get data type from ctx.Input<framework::Tensor>("Input");
+    // Note: don't get data type from ctx.Input<phi::DenseTensor>("Input");
     auto dtype = framework::TransToProtoVarType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type());
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))->type());
     return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };

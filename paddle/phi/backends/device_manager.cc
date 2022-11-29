@@ -254,14 +254,11 @@ DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
 
   auto& dev_impl_map = Instance().device_impl_map_;
-  if (dev_impl_map.find(device_type) != dev_impl_map.end()) {
-    return dev_impl_map.at(device_type).get();
-  } else {
-    LOG(ERROR) << "GetDeviceInterfaceWithType - " << device_type << " Failed\n";
-    PADDLE_THROW(
-        phi::errors::Fatal("Unregistered device type %s.", device_type));
-    return nullptr;
-  }
+  PADDLE_ENFORCE_NE(
+      dev_impl_map.find(device_type),
+      dev_impl_map.end(),
+      phi::errors::NotFound("%s interface not found.", device_type));
+  return dev_impl_map.at(device_type).get();
 }
 
 Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
@@ -536,11 +533,12 @@ void DeviceManager::CCLReduce(const std::string& device_type,
                               size_t num,
                               ccl::CCLDataType data_type,
                               ccl::CCLReduceOp reduce_op,
+                              size_t root_id,
                               const ccl::CCLComm& ccl_comm,
                               const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLReduce(
-      in_data, out_data, num, data_type, reduce_op, ccl_comm, stream);
+      in_data, out_data, num, data_type, reduce_op, root_id, ccl_comm, stream);
 }
 
 void DeviceManager::CCLAllGather(const std::string& device_type,
@@ -597,6 +595,56 @@ void DeviceManager::CCLRecv(const std::string& device_type,
                             const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLRecv(recvbuf, num, data_type, src_rank, ccl_comm, stream);
+}
+
+// profiler
+void DeviceManager::ProfilerInitialize(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void** context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerInitialize(collector, context);
+}
+
+void DeviceManager::ProfilerFinalize(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerFinalize(collector, context);
+}
+
+void DeviceManager::ProfilerPrepareTracing(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerPrepareTracing(collector, context);
+}
+
+void DeviceManager::ProfilerStartTracing(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerStartTracing(collector, context);
+}
+
+void DeviceManager::ProfilerStopTracing(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerStopTracing(collector, context);
+}
+
+void DeviceManager::ProfilerCollectTraceData(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    uint64_t start_ns,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerCollectTraceData(collector, start_ns, context);
 }
 
 DeviceManager& DeviceManager::Instance() {

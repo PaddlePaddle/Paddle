@@ -42,7 +42,7 @@ void Compare(fw::Scope* scope,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<fw::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   const int num = 10;
   std::vector<T> init_x;
@@ -54,7 +54,7 @@ void Compare(fw::Scope* scope,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<fw::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   fw::AttributeMap attrs;
   auto op = fw::OpRegistry::CreateOp(
@@ -94,9 +94,9 @@ void CompareGrad(fw::Scope* scope,
                  const plat::DeviceContext& ctx,
                  std::string op_type) {
   auto dout = scope->Var("DOut");
-  auto tensor_dout = dout->GetMutable<fw::LoDTensor>();
+  auto tensor_dout = dout->GetMutable<phi::DenseTensor>();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<fw::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   const int num = 10;
   std::vector<T> init_dout;
@@ -115,7 +115,7 @@ void CompareGrad(fw::Scope* scope,
   tensor_out->Resize({num, num});
 
   auto dx = scope->Var("DX");
-  auto tensor_dx = dx->GetMutable<fw::LoDTensor>();
+  auto tensor_dx = dx->GetMutable<phi::DenseTensor>();
 
   // run
   auto place = ctx.GetPlace();

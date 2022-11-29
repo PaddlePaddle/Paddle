@@ -169,9 +169,16 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   input_slots->push_back(std::move(response_mask_tensor));
 }
 
+/*
+ * this model is unreasonable, it set a output tensor persistable, so
+ * ridiculous! so I disable constant_folding_pass
+ */
+
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   cfg->SwitchSpecifyInputNames();
+  auto pass_builder = cfg->pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   cfg->SwitchIrOptim(true);
 }
 
@@ -207,8 +214,6 @@ void profile(bool use_mkldnn = false) {
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu", "fc"};
     cfg.SetMKLDNNOp(op_list);
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -269,8 +274,6 @@ void compare(bool use_mkldnn = false) {
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu"};
     cfg.SetMKLDNNOp(op_list);
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

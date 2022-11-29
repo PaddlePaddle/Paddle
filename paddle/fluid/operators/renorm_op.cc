@@ -39,15 +39,6 @@ class RenormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "int,the dimension to slice over to get the sub-tensors");
     AddAttr<float>("max_norm", "(float, the norm upper-bound");
-    AddAttr<bool>("use_cudnn",
-                  "(bool, default false) Only used in cudnn kernel, need "
-                  "install cudnn")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Renorm Operator.
 

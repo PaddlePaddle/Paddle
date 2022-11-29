@@ -7,8 +7,8 @@ body:
   attributes:
     value: >
       #### 安装请参考[官网文档](https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/develop/install/pip/linux-pip.html)，若未能解决你的问题，你可以在这里提issue。
-      
-      #### Before submitting a Build/Installation Issue, please make sure you have visited the [official website](https://www.paddlepaddle.org.cn/documentation/docs/en/install/index_en.html).     
+
+      #### Before submitting a Build/Installation Issue, please make sure you have visited the [official website](https://www.paddlepaddle.org.cn/documentation/docs/en/install/index_en.html).
 
 - type: textarea
   id: error
@@ -19,7 +19,7 @@ body:
       Please describe your problem in detail, and synchronously post the error message, key log/code snippet, and reproduction steps, so that we can quickly troubleshoot the problem.
   validations:
     required: true
-    
+
 - type: textarea
   id: environment
   attributes:
@@ -41,24 +41,24 @@ body:
       6. （可选）若安装过程遇到问题，请提供安装方式（pip/conda/docker/源码编译）和相应的安装命令。
       7. （可选）若使用paddle过程中，遇到了无法使用gpu相关问题，请在命令行中键入`nvidia-smi`和`nvcc -V`，提供这两个命令输出的截图。
       8. （可选）若使用特殊硬件，请单独注明。
-      
-     
+
+
     placeholder: |
       ****************************************
-      Paddle version: 
-      Paddle With CUDA: 
-    
-      OS: 
-      Python version: 
-    
-      CUDA version: 
-      cuDNN version: 
-      Nvidia driver version: 
+      Paddle version:
+      Paddle With CUDA:
+
+      OS:
+      Python version:
+
+      CUDA version:
+      cuDNN version:
+      Nvidia driver version:
       ****************************************
   validations:
     required: true
-    
-    
+
+
 - type: markdown
   attributes:
     value: >

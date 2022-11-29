@@ -61,7 +61,8 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"max"});
     AddAttr<std::vector<int>>("output_size",
                               "(vector, optional). The shape of output.")
-        .SetDefault({0, 0});
+        .SetDefault({0, 0})
+        .SupportTensor();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "

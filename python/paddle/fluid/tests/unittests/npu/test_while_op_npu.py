@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid.layers as layers
@@ -28,20 +26,16 @@ paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):
-
     def simple_net(self):
-        d0 = layers.data("d0",
-                         shape=[10],
-                         append_batch_size=False,
-                         dtype='float32')
-        d1 = layers.data("d1",
-                         shape=[10],
-                         append_batch_size=False,
-                         dtype='float32')
-        d2 = layers.data("d2",
-                         shape=[10],
-                         append_batch_size=False,
-                         dtype='float32')
+        d0 = layers.data(
+            "d0", shape=[10], append_batch_size=False, dtype='float32'
+        )
+        d1 = layers.data(
+            "d1", shape=[10], append_batch_size=False, dtype='float32'
+        )
+        d2 = layers.data(
+            "d2", shape=[10], append_batch_size=False, dtype='float32'
+        )
         # fill_constant npu op doesn't support int64
         i = layers.zeros(shape=[1], dtype='int32')
         i = layers.cast(i, 'int64')
@@ -67,7 +61,7 @@ class TestWhileOp(unittest.TestCase):
         array_len2 = layers.fill_constant(shape=[1], dtype='int32', value=3)
         array_len2 = layers.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
-        cond2 = layers.logical_or(x=j, y=array_len2)
+        cond2 = paddle.logical_or(x=j, y=array_len2)
         cond2 = layers.ones(shape=[1], dtype='int32')
         cond2 = layers.cast(cond2, 'bool')
         while_op = layers.While(cond=cond)
@@ -109,12 +103,10 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
-            outs = exe.run(feed={
-                'd0': d[0],
-                'd1': d[1],
-                'd2': d[2]
-            },
-                           fetch_list=[sum_result])
+            outs = exe.run(
+                feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
+                fetch_list=[sum_result],
+            )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
     def test_simple_net_forward(self):

@@ -83,10 +83,10 @@ Graph Learning Send_Recv combine operator.
 
 $Out = Recv(Send(X, Src_index), Dst_index, reduce_op)$
 
-This operator is mainly used in Graph Learning domain, and the main purpose is to reduce 
-intermediate memory consumption in the process of message passing. 
-Take `x` as the input tensor, we first use `src_index` to gather corresponding data, 
-and then use `dst_index` to update the corresponding position of output tensor in different 
+This operator is mainly used in Graph Learning domain, and the main purpose is to reduce
+intermediate memory consumption in the process of message passing.
+Take `x` as the input tensor, we first use `src_index` to gather corresponding data,
+and then use `dst_index` to update the corresponding position of output tensor in different
 pooling types, like sum, mean, max, or min.
 
 )DOC");
@@ -127,7 +127,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(graph_send_recv,
                             GraphSendRecvInferShapeFunctor,
-                            PD_INFER_META(phi::GraphSendRecvInferMeta));
+                            PD_INFER_META(phi::SendURecvInferMeta));
 REGISTER_OPERATOR(graph_send_recv,
                   ops::GraphSendRecvOP,
                   ops::GraphSendRecvOpMaker,

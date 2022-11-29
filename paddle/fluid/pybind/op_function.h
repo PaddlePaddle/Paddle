@@ -126,45 +126,6 @@ CastPyHandleToVarBaseList(const std::string& op_type,
   return result;
 }  // namespace pybind
 
-static inline void ConstructAttrMapFromPyArgs(const std::string& op_type,
-                                              int start_idx,
-                                              framework::AttributeMap* attrs,
-                                              const py::args& args) {
-  PADDLE_ENFORCE_EQ(
-      args.size() % 2,
-      0,
-      platform::errors::InvalidArgument(
-          "The number of arguments for arributes should be even."));
-  for (size_t i = 0; i < args.size(); i += 2) {
-    std::string name;
-    framework::Attribute value;
-    try {
-      name = args[i].cast<std::string>();
-    } catch (std::exception& e) {
-      PyObject* py_obj = args[i].ptr();  // get underlying PyObject
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be str, but got "
-          "%s",
-          op_type,
-          start_idx + i,
-          Py_TYPE(py_obj)->tp_name));
-    }
-    try {
-      value = args[i + 1].cast<framework::Attribute>();
-    } catch (std::exception& e) {
-      PyObject* py_obj = args[i + 1].ptr();  // get underlying PyObject
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be "
-          "Attribute type (one of str, bool, int, int64, float, or list of "
-          "them), but got %s",
-          op_type,
-          start_idx + i + 1,
-          Py_TYPE(py_obj)->tp_name));
-    }
-    (*attrs)[name] = value;
-  }
-}
-
 static inline std::vector<std::shared_ptr<imperative::VarBase>>
 ConstructDuplicableOutput(const size_t num) {
   auto tracer = imperative::GetCurrentTracer();
@@ -186,8 +147,8 @@ static inline void HandleViewBetweenInputAndOutput(
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         input_var->Name()));
 
-  if (input_var->Var().IsType<framework::LoDTensor>()) {
-    const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
+  if (input_var->Var().IsType<phi::DenseTensor>()) {
+    const auto& input_tensor = input_var->Var().Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         input_tensor.IsInitialized(),
         true,
@@ -195,7 +156,7 @@ static inline void HandleViewBetweenInputAndOutput(
             "LoDTensor %s has not been initialized!", input_var->Name()));
 
     auto* view_output_tensor =
-        view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
+        view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
     view_output_tensor->ShareBufferWith(input_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 

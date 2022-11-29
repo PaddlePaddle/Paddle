@@ -41,24 +41,22 @@ TEST(op_debug_str, test_unknown_dtype) {
   desc.SetOutput(framework::GradVarName("Y"), {framework::GradVarName("Y")});
   desc.SetAttr("axis", -1);
   desc.SetAttr("use_mkldnn", false);
-  desc.SetAttr("x_data_format", "");
-  desc.SetAttr("y_data_format", "");
 
-  auto x_tensor = scope.Var("X")->GetMutable<framework::LoDTensor>();
+  auto x_tensor = scope.Var("X")->GetMutable<phi::DenseTensor>();
   x_tensor->Resize(dim);
   x_tensor->mutable_data<float>(place);
 
-  auto y_tensor = scope.Var("Y")->GetMutable<framework::LoDTensor>();
+  auto y_tensor = scope.Var("Y")->GetMutable<phi::DenseTensor>();
   y_tensor->Resize(dim);
   y_tensor->mutable_data<float>(place);
 
-  auto out_grad_tensor = scope.Var(framework::GradVarName("Out"))
-                             ->GetMutable<framework::LoDTensor>();
+  auto out_grad_tensor =
+      scope.Var(framework::GradVarName("Out"))->GetMutable<phi::DenseTensor>();
   out_grad_tensor->Resize(dim);
   out_grad_tensor->mutable_data<float>(place);
 
-  scope.Var(framework::GradVarName("X"))->GetMutable<framework::LoDTensor>();
-  scope.Var(framework::GradVarName("Y"))->GetMutable<framework::LoDTensor>();
+  scope.Var(framework::GradVarName("X"))->GetMutable<phi::DenseTensor>();
+  scope.Var(framework::GradVarName("Y"))->GetMutable<phi::DenseTensor>();
 
   auto op = framework::OpRegistry::CreateOp(desc);
 

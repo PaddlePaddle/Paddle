@@ -27,6 +27,13 @@ std::unordered_set<Scope*>& global_transfer_scope_cache() {
   return *x;
 }
 
+std::unordered_map<const Scope*, std::unordered_set<size_t>>&
+global_transfer_scope_key() {
+  thread_local auto* x =
+      new std::unordered_map<const Scope*, std::unordered_set<size_t>>;
+  return *x;
+}
+
 Scope* TryCreateTransferScope(OpKernelType type0,
                               OpKernelType type1,
                               const Scope* scope) {
@@ -35,6 +42,8 @@ Scope* TryCreateTransferScope(OpKernelType type0,
       CombineHash(OpKernelType::Hash()(type0), OpKernelType::Hash()(type1));
   infer_cache_key =
       CombineHash(infer_cache_key, std::hash<const Scope*>()(scope));
+
+  global_transfer_scope_key()[scope].insert(infer_cache_key);
 
   auto it = global_transfer_data_cache().find(infer_cache_key);
   if (it != global_transfer_data_cache().end()) {

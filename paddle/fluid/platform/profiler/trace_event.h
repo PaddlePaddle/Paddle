@@ -18,6 +18,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/type_defs.h"
+
 namespace paddle {
 namespace platform {
 
@@ -105,10 +107,11 @@ struct KernelEventInfo {
   uint64_t submitted;
   // The completed timestamp for the kernel execution, in ns.
   uint64_t completed;
-#ifdef PADDLE_WITH_HIP
-  void* kernelFunc;
-  uint8_t launchType;
-#endif
+
+  float blocks_per_sm;
+  float warps_per_sm;
+  // theoretical achieved occupancy
+  float occupancy;
 };
 
 static constexpr size_t kMemKindMaxLen = 50;
@@ -146,6 +149,8 @@ struct OperatorSupplementEvent {
           input_shapes,
       const std::map<std::string, std::vector<std::string>>& dtypes,
       const std::string& callstack,
+      const framework::AttributeMap& attributes,
+      uint64_t op_id,
       uint64_t process_id,
       uint64_t thread_id)
       : timestamp_ns(timestamp_ns),
@@ -153,6 +158,8 @@ struct OperatorSupplementEvent {
         input_shapes(input_shapes),
         dtypes(dtypes),
         callstack(callstack),
+        attributes(attributes),
+        op_id(op_id),
         process_id(process_id),
         thread_id(thread_id) {}
   // timestamp of the record
@@ -164,6 +171,10 @@ struct OperatorSupplementEvent {
   std::map<std::string, std::vector<std::string>> dtypes;
   // call stack
   std::string callstack;
+  // op attributes
+  framework::AttributeMap attributes;
+  // op id
+  uint64_t op_id;
   // process id of the record
   uint64_t process_id;
   // thread id of the record

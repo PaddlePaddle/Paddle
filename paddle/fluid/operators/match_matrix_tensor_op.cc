@@ -24,8 +24,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
@@ -92,7 +91,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
-    const auto& x_lod = x_var->Get<LoDTensor>().lod();
+    const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(),
                       false,
                       platform::errors::InvalidArgument(
@@ -117,7 +116,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 
     framework::Variable* y_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
-    const auto& y_lod = y_var->Get<LoDTensor>().lod();
+    const auto& y_lod = y_var->Get<phi::DenseTensor>().lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(),
                       false,
                       platform::errors::InvalidArgument(
@@ -213,26 +212,30 @@ void MatchMatrixTensorOpGrad::InferShape(
 
 void MatchMatrixTensorOpMaker::Make() {
   AddInput("X",
-           "X (LoDTensor, default LoDTensor<float>) Input variable which "
+           "X (phi::DenseTensor, default phi::DenseTensor<float>) Input "
+           "variable which "
            "should contain lod information.");
   AddInput("Y",
-           "Y (LoDTensor, default LoDTensor<float>) Input variable which "
+           "Y (phi::DenseTensor, default phi::DenseTensor<float>) Input "
+           "variable which "
            "should contain lod information.");
   AddInput("W", "W (Tensor), The weight of X and Y.");
   AddAttr<int>("dim_t", "the dim of W").SetDefault(1);
   AddOutput("Out",
-            "(LoDTensor, default LoDTensor<float>) Output variable which "
+            "(phi::DenseTensor, default phi::DenseTensor<float>) Output "
+            "variable which "
             "is X * W * Y");
   AddOutput("Tmp",
-            "(LoDTensor, default LoDTensor<float>) tmp variable which is "
+            "(phi::DenseTensor, default phi::DenseTensor<float>) tmp variable "
+            "which is "
             "used for X * W");
   AddComment(R"DOC(
       Match Matrix Tensor Operator
 
       This operator calculate X * W * Y, only support 2-D for X and Y.
-      the output is a level-1 LodTensor: 
+      the output is a level-1 LodTensor:
         level_0: dim_t
-      
+
       NOTE: only support 'float32' data type now.
 
     )DOC");
@@ -242,11 +245,11 @@ template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* y = ctx.Input<LoDTensor>("Y");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* out = ctx.Output<LoDTensor>("Out");
-    auto* tmp = ctx.Output<LoDTensor>("Tmp");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* tmp = ctx.Output<phi::DenseTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
     int64_t dim_in = x->dims()[1];
@@ -322,10 +325,10 @@ template <typename DeviceContext, typename T>
 class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* y = ctx.Input<LoDTensor>("Y");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* tmp = ctx.Input<LoDTensor>("Tmp");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* tmp = ctx.Input<phi::DenseTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
     int64_t dim_in = x->dims()[1];
@@ -346,9 +349,9 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* bottom_r_data = y->data<T>();
     auto* bottom_l_trans_data = tmp->data<T>();
 
-    auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* d_x = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* d_y = ctx.Output<LoDTensor>(framework::GradVarName("Y"));
+    auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_y = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     Tensor tmp_grad;
     tmp_grad.Resize(tmp->dims());
@@ -391,7 +394,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
     auto* t_data = w->data<T>();
-    auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
+    auto* d_w = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
     auto* t_diff = d_w->mutable_data<T>(ctx.GetPlace());
     memset(t_diff, 0.0, w->dims()[0] * w->dims()[1] * w->dims()[2] * sizeof(T));
     // bottom_diff

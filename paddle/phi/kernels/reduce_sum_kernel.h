@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -21,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
+                  const IntArray& dims,
                   bool keep_dim,
                   bool reduce_all,
                   DataType out_dtype,
@@ -30,7 +31,7 @@ void SumRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const std::vector<int64_t>& dims,
+               const IntArray& dims,
                DataType out_dtype,
                bool keep_dim,
                DenseTensor* out);
@@ -38,7 +39,7 @@ void SumKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor Sum(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& axis,
+                const IntArray& axis,
                 DataType dtype,
                 bool keep_dim) {
   DenseTensor dense_out;

@@ -21,6 +21,8 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/impl/amp_kernel_impl.h"
+#include "paddle/phi/kernels/isfinite_kernel.h"
+#include "paddle/phi/kernels/reduce_all_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
 
@@ -85,7 +87,13 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     auto* out = outs[i];
     dev_ctx.template Alloc<T>(out);
     if (!(*found_inf_data)) {
-      paddle::framework::TensorIsfinite(*x, &is_finite);
+      DenseTensor tmp;
+      tmp.Resize(x->dims());
+      phi::IsfiniteKernel<T, Context>(dev_ctx, *x, &tmp);
+
+      std::vector<int64_t> dims(x->dims().size());
+      std::iota(dims.begin(), dims.end(), 0);
+      phi::AllKernel<bool, Context>(dev_ctx, tmp, dims, false, &is_finite);
       *found_inf_data = !(*is_finite_data);
     }
     auto eigen_out = EigenVector<T>::Flatten(*out);

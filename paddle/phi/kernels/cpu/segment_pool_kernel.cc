@@ -25,4 +25,5 @@ PD_REGISTER_KERNEL(segment_pool,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16) {}

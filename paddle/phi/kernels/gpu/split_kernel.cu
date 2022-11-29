@@ -14,58 +14,28 @@
 
 #include "paddle/phi/kernels/split_kernel.h"
 
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-namespace phi {
-
-template <typename T, typename Context>
-void SplitKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const IntArray& num_or_sections,
-                 const Scalar& axis_scalar,
-                 std::vector<DenseTensor*> outs) {
-  // need to infershape output
-  if (num_or_sections.FromTensor() || axis_scalar.FromTensor()) {
-    std::vector<MetaTensor> out_metas;
-    out_metas.reserve(outs.size());
-    std::vector<MetaTensor*> out_metas_ptr;
-    for (size_t i = 0; i < outs.size(); ++i) {
-      out_metas.push_back(outs[i]);
-      out_metas_ptr.push_back(&out_metas.back());
-    }
-
-    phi::SplitInferMeta(x, num_or_sections, axis_scalar, out_metas_ptr);
-
-    for (size_t i = 0; i < out_metas.size(); ++i) {
-      outs[i]->Resize(out_metas[i].dims());
-    }
-  }
-
-  std::vector<const DenseTensor*> shape_refer;
-  for (size_t j = 0; j < outs.size(); ++j) {
-    dev_ctx.template Alloc<T>(outs[j]);
-    shape_refer.emplace_back(outs[j]);
-  }
-
-  int axis = axis_scalar.to<int>();
-  // Sometimes direct copies will be faster, this maybe need deeply analysis.
-  if (axis == 0 && outs.size() < 10) {
-    paddle::operators::StridedMemcpyWithAxis0<T>(
-        dev_ctx, x, shape_refer, &outs);
-  } else {
-    phi::funcs::SplitFunctor<Context, T> functor;
-    functor(dev_ctx, x, shape_refer, axis, &outs);
-  }
-}
-
-}  // namespace phi
+#include "paddle/phi/kernels/impl/split_kernel_impl.h"
 
 PD_REGISTER_KERNEL(split,
                    GPU,
                    ALL_LAYOUT,
                    phi::SplitKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(split_with_num,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SplitWithNumKernel,
                    float,
                    double,
                    int64_t,

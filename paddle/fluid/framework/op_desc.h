@@ -144,6 +144,10 @@ class OpDesc {
   // Only be used in C++
   void SetAttrMap(const AttributeMap &attr_map);
 
+  void SetRuntimeAttrMap(const AttributeMap &attr_map);
+
+  const AttributeMap &GetRuntimeAttrMap() const;
+
   std::vector<std::string> InputNames(bool with_attr_var = false) const {
     return MapKeys(inputs_);
   }
@@ -192,6 +196,7 @@ class OpDesc {
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+  const OperatorDistAttr *DistAttr() const;
   OperatorDistAttr *MutableDistAttr();
   void SetDistAttr(const OperatorDistAttr &dist_attr);
 
@@ -212,7 +217,7 @@ class OpDesc {
     return ret_val;
   }
 
-  // it it really needed? or just mantain a ptr from block?
+  // it it really needed? or just maintain a ptr from block?
   proto::OpDesc desc_;
   BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names
@@ -221,6 +226,12 @@ class OpDesc {
   VariableNameMap outputs_;
   // attribute name => all original attrs
   AttributeMap attrs_;
+  // runtime_attrs_ contains the attributes which used for dispatching kernel
+  // (use_mkldnn, use_cudnn, ...) or passing additional configuration for
+  // special heterogeneous kernel (workspace_size_MB, ...).
+  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // and not in the python api.
+  AttributeMap runtime_attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

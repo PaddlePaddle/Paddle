@@ -31,7 +31,9 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/backends/dynload/port.h"
 
@@ -420,6 +422,45 @@ static bool IsFileExists(const std::string &path) {
 }
 
 void RegisterAllCustomOperator();
+
+static inline double ToMegaBytes(size_t bytes) {
+  return static_cast<double>(bytes) / (1 << 20);
+}
+
+static inline void DisplayMemoryInfo(platform::Place place,
+                                     const std::string &hint) {
+#ifdef PADDLE_WITH_CUDA
+  // size_t free, total;
+  // cudaSetDevice(place.GetDeviceId());
+  // cudaMemGetInfo(&free, &total);
+  // VLOG(1) << "[" << ToMegaBytes(total - free) << "MB/" << ToMegaBytes(total)
+  // << "MB]";
+
+  VLOG(1) << hint << " : [gpu current allocated memory: "
+          << ToMegaBytes(paddle::memory::DeviceMemoryStatCurrentValue(
+                 "Allocated", place.GetDeviceId()))
+          << "MB], [gpu current reserved memory: "
+          << ToMegaBytes(paddle::memory::DeviceMemoryStatCurrentValue(
+                 "Reserved", place.GetDeviceId()))
+          << "MB], [gpu peak allocated memory: "
+          << ToMegaBytes(paddle::memory::DeviceMemoryStatPeakValue(
+                 "Allocated", place.GetDeviceId()))
+          << "MB], [gpu peak reserved memory: "
+          << ToMegaBytes(paddle::memory::DeviceMemoryStatPeakValue(
+                 "Reserved", place.GetDeviceId()))
+          << "MB]";
+#endif
+  VLOG(1)
+      << hint << " : [cpu current allocated memory: "
+      << ToMegaBytes(paddle::memory::HostMemoryStatCurrentValue("Allocated", 0))
+      << "MB], [cpu current reserved memory: "
+      << ToMegaBytes(paddle::memory::HostMemoryStatCurrentValue("Reserved", 0))
+      << "MB], [cpu peak allocated memory: "
+      << ToMegaBytes(paddle::memory::HostMemoryStatPeakValue("Allocated", 0))
+      << "MB], [cpu peak reserved memory: "
+      << ToMegaBytes(paddle::memory::HostMemoryStatPeakValue("Reserved", 0))
+      << "MB]";
+}
 
 }  // namespace inference
 }  // namespace paddle

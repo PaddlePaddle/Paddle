@@ -150,8 +150,10 @@ int32_t SparseAccessor::Create(float** values, size_t num) {
     value[sparse_feature_value.ShowIndex()] = 0;
     value[sparse_feature_value.ClickIndex()] = 0;
     value[sparse_feature_value.SlotIndex()] = -1;
+    bool zero_init = _config.ctr_accessor_param().zero_init();
     _embed_sgd_rule->InitValue(value + sparse_feature_value.EmbedWIndex(),
-                               value + sparse_feature_value.EmbedG2SumIndex());
+                               value + sparse_feature_value.EmbedG2SumIndex(),
+                               zero_init);
     _embedx_sgd_rule->InitValue(value + sparse_feature_value.EmbedxWIndex(),
                                 value + sparse_feature_value.EmbedxG2SumIndex(),
                                 false);

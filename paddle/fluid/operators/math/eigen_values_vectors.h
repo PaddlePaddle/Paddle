@@ -207,7 +207,10 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
     auto vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     auto values_stride = dims[dim_size - 1];
     int lwork = 0;
-    auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_size);
+    auto info = memory::Alloc(
+        dev_ctx.GetPlace(),
+        sizeof(int) * batch_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     auto *info_ptr = reinterpret_cast<int *>(info->ptr());
 
     // When the input type is float32, and the feature value input dimension is
@@ -240,7 +243,10 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
                 out_value,
                 &lwork);
     }
-    auto work = memory::Alloc(dev_ctx, sizeof(T) * lwork);
+    auto work = memory::Alloc(
+        dev_ctx.GetPlace(),
+        sizeof(T) * lwork,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     auto *work_ptr = reinterpret_cast<T *>(work->ptr());
     for (auto i = 0; i < batch_size; i++) {
       auto *input_data = input_vector + i * vector_stride;

@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/copy_cross_scope_op.cc"
 #include "paddle/fluid/string/printf.h"
 
 #define Conn(x, y) x##y
@@ -42,18 +41,18 @@ void Compare1(f::Scope* scope,
               std::string op_type) {
   // init
   auto var_x = scope->Var("tmp");
-  auto x = var_x->GetMutable<f::LoDTensor>();
+  auto x = var_x->GetMutable<phi::DenseTensor>();
   std::vector<T> main_x = {1.0};
   paddle::framework::TensorFromVector(main_x, ctx, x);
 
   auto var_id = scope->Var("Id");
-  auto id = var_id->GetMutable<f::LoDTensor>();
+  auto id = var_id->GetMutable<phi::DenseTensor>();
   std::vector<int64_t> main_id = {1};
   paddle::framework::TensorFromVector(main_id, ctx, id);
   for (int i = 0; i < 3; i++) {
     auto& child_scope = scope->NewScope();
     auto child_var = child_scope.Var("tmp");
-    auto tensor_x = child_var->GetMutable<f::LoDTensor>();
+    auto tensor_x = child_var->GetMutable<phi::DenseTensor>();
     std::vector<T> init_x = {static_cast<T>(i)};
     paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   }
@@ -76,7 +75,7 @@ void Compare1(f::Scope* scope,
 
   auto* kid_scope = *iter;
   auto* dst_var = kid_scope->FindVar("tmp");
-  auto* tensor_out = dst_var->GetMutable<f::LoDTensor>();
+  auto* tensor_out = dst_var->GetMutable<phi::DenseTensor>();
 
   std::vector<T> out_vec;
   paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
@@ -91,18 +90,18 @@ void Compare2(f::Scope* scope,
               std::string op_type) {
   // init
   auto var_x = scope->Var("tmp");
-  auto x = var_x->GetMutable<f::LoDTensor>();
+  auto x = var_x->GetMutable<phi::DenseTensor>();
   std::vector<T> main_x = {1.0};
   paddle::framework::TensorFromVector(main_x, ctx, x);
 
   auto var_id = scope->Var("Id");
-  auto id = var_id->GetMutable<f::LoDTensor>();
+  auto id = var_id->GetMutable<phi::DenseTensor>();
   std::vector<int64_t> main_id = {0};
   paddle::framework::TensorFromVector(main_id, ctx, id);
   for (int i = 0; i < 3; i++) {
     auto& child_scope = scope->NewScope();
     auto child_var = child_scope.Var("tmp");
-    auto tensor_x = child_var->GetMutable<f::LoDTensor>();
+    auto tensor_x = child_var->GetMutable<phi::DenseTensor>();
     std::vector<T> init_x = {static_cast<T>(i)};
     paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   }
@@ -120,7 +119,7 @@ void Compare2(f::Scope* scope,
   ctx.Wait();
 
   auto* dst_var = scope->FindVar("tmp");
-  auto* tensor_out = dst_var->GetMutable<f::LoDTensor>();
+  auto* tensor_out = dst_var->GetMutable<phi::DenseTensor>();
 
   std::vector<T> out_vec;
   paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);

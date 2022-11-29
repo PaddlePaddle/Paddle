@@ -68,6 +68,12 @@ class MetaTensor {
 
   virtual bool initialized() const;
 
+  virtual bool is_selected_rows() const;
+  virtual bool is_dense() const;
+  // TODO(YuanRisheng) This API is for compatible with Fluid
+  //  and it will be deleted in the future.
+  virtual bool is_tensor_array() const;
+
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;
   }

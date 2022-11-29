@@ -35,11 +35,11 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Hyps",
-             "2-D Tensor<int64_t>, or 2-D LoDTensor<int64_t> with last "
+             "2-D Tensor<int64_t>, or 2-D phi::DenseTensor<int64_t> with last "
              "dimension being 1. "
              "The indices for hypothesis strings.");
     AddInput("Refs",
-             "2-D Tensor<int64_t>, or 2-D LoDTensor<int64_t> with last "
+             "2-D Tensor<int64_t>, or 2-D phi::DenseTensor<int64_t> with last "
              "dimension being 1. "
              "The indices for reference strings.");
     AddInput("HypsLength",
@@ -65,7 +65,7 @@ strings and their references.
 
 Edit distance, also called Levenshtein distance, measures how dissimilar two strings
 are by counting the minimum number of operations to transform one string into another.
-The operations include insertion, deletion, and substitution. 
+The operations include insertion, deletion, and substitution.
 
 For example, given hypothesis string A = "kitten" and reference B = "sitting",
 A will be transformed into B at least after two substitutions and one
@@ -75,7 +75,7 @@ insertion:
 
 So the edit distance between A and B is 3.
 
-Input(Hyps) is a 2-D Tensor or a 2-D LoDTensor consisting of all the hypothesis strings.
+Input(Hyps) is a 2-D Tensor or a 2-D phi::DenseTensor consisting of all the hypothesis strings.
 And the `batch_size` reference strings are arranged in order in the same way in the
 Input(Refs).
 

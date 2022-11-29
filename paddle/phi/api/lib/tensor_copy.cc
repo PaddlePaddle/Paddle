@@ -41,7 +41,7 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
 
   auto dense_x = TensorToDenseTensor(src);
 
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), dst);
+  auto kernel_out = SetKernelOutput(dst);
   phi::MetaTensor meta_out(kernel_out);
   phi::UnchangedInferMeta(*dense_x, &meta_out);
 

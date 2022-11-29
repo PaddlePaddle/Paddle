@@ -18,18 +18,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class DropoutMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
     auto* seed_tensor =
-        ctx.HasInput("Seed") ? ctx.Input<Tensor>("Seed") : nullptr;
+        ctx.HasInput("Seed") ? ctx.Input<phi::DenseTensor>("Seed") : nullptr;
     auto dropout_implementation =
         ctx.Attr<std::string>("dropout_implementation");
 
@@ -39,8 +39,17 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc out_desc(*out);
 
-    if (!is_test) {
-      // exec dropout op for training only.
+    if (is_test && is_upscale) {
+      // dropout op for inference: out = input.
+      framework::TensorCopy(
+          *x,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::MLUDeviceContext>(),
+          out);
+      return;
+    } else if (!is_test) {
+      // dropout op for training: out = input * mask / ( 1.0 - dropout_prob ) or
+      // out = input * mask.
       int seed_data = 0;
       if (seed_tensor) {
         if (platform::is_mlu_place(seed_tensor->place())) {
@@ -56,7 +65,7 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
         seed_data = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
 
-      auto* mask = ctx.Output<Tensor>("Mask");
+      auto* mask = ctx.Output<phi::DenseTensor>("Mask");
       mask->mutable_data<uint8_t>(ctx.GetPlace());
       MLUCnnlTensorDesc mask_desc(*mask);
       // Special case when dropout_prob is 1.0
@@ -79,50 +88,44 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
       const int device_id = ctx.GetPlace().GetDeviceId();
       auto mlu_gen_random = GetMLURandomGenerator(ctx, device_id, seed_data);
 
-      const float prob = is_upscale ? dropout_prob : 0.0f;
+      // compute out = input * mask / ( 1.0 - dropout_prob )
       MLUCnnl::FusedDropout(ctx,
                             mlu_gen_random->get(),
                             x_desc.get(),
                             GetBasePtr(x),
-                            prob,
+                            dropout_prob,
                             GetBasePtr(&(mlu_gen_random->get_state())),
                             mask_desc.get(),
                             GetBasePtr(mask),
                             out_desc.get(),
                             GetBasePtr(out));
-    } else {
-      // exec dropout op for inference only.
-      if (is_upscale) {
-        framework::TensorCopy(
-            *x,
-            ctx.GetPlace(),
-            ctx.template device_context<platform::MLUDeviceContext>(),
-            out);
-      } else {
-        auto scale = static_cast<T>(1.0f - dropout_prob);
-        Tensor scale_tensor(x->dtype());
-        scale_tensor.mutable_data<T>({1}, ctx.GetPlace());
-        MLUCnnlTensorDesc scale_desc(scale_tensor);
-        MLUCnnl::Fill(ctx,
-                      CNNL_POINTER_MODE_HOST,
-                      &scale,
-                      scale_desc.get(),
-                      GetBasePtr(&scale_tensor));
 
-        auto data_type = ToCnnlDataType<T>();
-        MLUCnnlOpTensorDesc op_tensor_desc(
-            CNNL_OP_TENSOR_MUL, data_type, CNNL_NOT_PROPAGATE_NAN);
-        MLUCnnl::OpTensor(ctx,
-                          op_tensor_desc.get(),
-                          x_desc.get(),
-                          GetBasePtr(x),
-                          scale_desc.get(),
-                          GetBasePtr(&scale_tensor),
-                          out_desc.get(),
-                          GetBasePtr(out),
-                          data_type);
+      if (is_upscale) {
+        return;
       }
     }
+
+    // In downgrade_in_infer mode, need to multiply (1.0f - dropout_prob).
+    Tensor scale_tensor(x->dtype());
+    Tensor bias_tensor(x->dtype());
+    scale_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    bias_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    MLUCnnlTensorDesc scale_desc(scale_tensor);
+    MLUCnnlTensorDesc bias_desc(bias_tensor);
+    FillMLUTensorWithHostValue(
+        ctx, static_cast<T>(1.0f - dropout_prob), &scale_tensor);
+    FillMLUTensorWithHostValue(ctx, static_cast<T>(0.0f), &bias_tensor);
+
+    MLUCnnl::Scale(ctx,
+                   0,
+                   is_test ? x_desc.get() : out_desc.get(),
+                   is_test ? GetBasePtr(x) : GetBasePtr(out),
+                   scale_desc.get(),
+                   GetBasePtr(&scale_tensor),
+                   bias_desc.get(),
+                   GetBasePtr(&bias_tensor),
+                   out_desc.get(),
+                   GetBasePtr(out));
   }
 };
 
@@ -134,9 +137,9 @@ class DropoutGradMLUKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
-    auto* grad_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* grad_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* grad_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* grad_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* mask = ctx.Input<phi::DenseTensor>("Mask");
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto dropout_impl = ctx.Attr<std::string>("dropout_implementation");
 

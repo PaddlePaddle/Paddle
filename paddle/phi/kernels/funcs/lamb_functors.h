@@ -19,19 +19,19 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/memory/buffer.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/funcs/squared_l2_norm.h"
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
 
 namespace phi {
 
-namespace scatter = paddle::operators::math::scatter;
+namespace scatter = phi::funcs::scatter;
 
 template <typename T, bool IsMultiPrecision>
 struct LambMomentREGUpdateFunctor {

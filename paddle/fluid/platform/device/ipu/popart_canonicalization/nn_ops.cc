@@ -824,6 +824,14 @@ Node *pad_handler(Graph *graph, Node *node) {
                       {{"mode", mode}});
 }
 
+Node *depthwise_conv2d_handler(Graph *graph, Node *node) {
+  return conv2d_handler(graph, node);
+}
+
+Node *depthwise_conv2d_transpose_handler(Graph *graph, Node *node) {
+  return conv2d_transpose_handler(graph, node);
+}
+
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
@@ -846,3 +854,6 @@ REGISTER_HANDLER(linear_interp_v2, linear_interp_v2_handler);
 REGISTER_HANDLER(trilinear_interp_v2, trilinear_interp_v2_handler);
 REGISTER_HANDLER(data_norm, data_norm_handler);
 REGISTER_HANDLER(pad3d, pad_handler);
+REGISTER_HANDLER(depthwise_conv2d, depthwise_conv2d_handler);
+REGISTER_HANDLER(depthwise_conv2d_transpose,
+                 depthwise_conv2d_transpose_handler);

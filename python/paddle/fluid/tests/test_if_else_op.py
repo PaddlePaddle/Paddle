@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
+
+import numpy as np
 
 import paddle
-import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import MomentumOptimizer
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.layers.control_flow import split_lod_tensor
-from paddle.fluid.layers.control_flow import merge_lod_tensor
-from paddle.fluid.layers.control_flow import ConditionalBlock
-
-import unittest
-import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.layers.control_flow import (
+    ConditionalBlock,
+    merge_lod_tensor,
+    split_lod_tensor,
+)
+from paddle.fluid.optimizer import MomentumOptimizer
 
 paddle.enable_static()
 
@@ -61,19 +62,19 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 prob = layers.fc(input=hidden, size=10, act='softmax')
                 layers.assign(input=prob, output=false_out)
 
-            prob = merge_lod_tensor(in_true=true_out,
-                                    in_false=false_out,
-                                    mask=cond,
-                                    x=image)
+            prob = merge_lod_tensor(
+                in_true=true_out, in_false=false_out, mask=cond, x=image
+            )
             loss = layers.cross_entropy(input=prob, label=label)
             avg_loss = paddle.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
 
-        train_reader = paddle.batch(paddle.reader.shuffle(
-            paddle.dataset.mnist.train(), buf_size=8192),
-                                    batch_size=10)
+        train_reader = paddle.batch(
+            paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=8192),
+            batch_size=10,
+        )
 
         place = core.CPUPlace()
         exe = Executor(place)
@@ -86,12 +87,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 y_data = np.array([x[1] for x in data]).astype("int64")
                 y_data = np.expand_dims(y_data, axis=1)
 
-                outs = exe.run(prog,
-                               feed={
-                                   'x': x_data,
-                                   'y': y_data
-                               },
-                               fetch_list=[avg_loss])
+                outs = exe.run(
+                    prog, feed={'x': x_data, 'y': y_data}, fetch_list=[avg_loss]
+                )
                 print(outs[0])
                 if outs[0] < 1.0:
                     return
@@ -128,9 +126,10 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
-        train_reader = paddle.batch(paddle.reader.shuffle(
-            paddle.dataset.mnist.train(), buf_size=8192),
-                                    batch_size=200)
+        train_reader = paddle.batch(
+            paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=8192),
+            batch_size=200,
+        )
 
         place = core.CPUPlace()
         exe = Executor(place)
@@ -143,12 +142,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 y_data = np.array([x[1] for x in data]).astype("int64")
                 y_data = y_data.reshape((y_data.shape[0], 1))
 
-                outs = exe.run(prog,
-                               feed={
-                                   'x': x_data,
-                                   'y': y_data
-                               },
-                               fetch_list=[avg_loss])
+                outs = exe.run(
+                    prog, feed={'x': x_data, 'y': y_data}, fetch_list=[avg_loss]
+                )
                 print(outs[0])
                 if outs[0] < 1.0:
                     return
@@ -156,7 +152,6 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
 
 class TestIfElse(unittest.TestCase):
-
     def set_test_case(self):
         # condiction is: self.data < self.cond_value
         self.cond_value = 0.5
@@ -176,29 +171,31 @@ class TestIfElse(unittest.TestCase):
         startup_prog = Program()
         with program_guard(prog, startup_prog):
             src = layers.data(name='data', shape=[1], dtype='float32')
-            cond = layers.fill_constant([1],
-                                        dtype='float32',
-                                        value=self.cond_value)
+            cond = layers.fill_constant(
+                [1], dtype='float32', value=self.cond_value
+            )
             ifcond = layers.less_than(x=src, y=cond)
             ie = layers.IfElse(ifcond)
             with ie.true_block():
                 true_target = ie.input(src)
-                true_target = fluid.layers.exp(true_target)
+                true_target = paddle.exp(true_target)
                 ie.output(true_target)
 
             with ie.false_block():
                 false_target = ie.input(src)
-                false_target = fluid.layers.tanh(false_target)
+                false_target = paddle.tanh(false_target)
                 ie.output(false_target)
             if_out = ie()
-            out = layers.reduce_sum(if_out[0])
+            out = paddle.sum(if_out[0])
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             fetch_list = [out]
-            o1, = exe.run(fluid.default_main_program(),
-                          feed={'data': self.data},
-                          fetch_list=[out])
+            (o1,) = exe.run(
+                fluid.default_main_program(),
+                feed={'data': self.data},
+                fetch_list=[out],
+            )
             o2 = self.numpy_cal()
 
             np.testing.assert_allclose(
@@ -218,31 +215,28 @@ class TestIfElse(unittest.TestCase):
 
 
 class TestIfElseTrueBranch(TestIfElse):
-
     def set_test_case(self):
         # condiction is: self.data < self.cond_value
-        self.cond_value = 10.
+        self.cond_value = 10.0
         self.data = np.random.rand(25, 1).astype(np.float32)
 
 
 class TestIfElseFalseBranch(TestIfElse):
-
     def set_test_case(self):
         # condiction is: self.data < self.cond_value
-        self.cond_value = -10.
+        self.cond_value = -10.0
         self.data = np.random.rand(25, 1).astype(np.float32)
 
 
 class TestIfElseError(unittest.TestCase):
-
     def test_input_type_error(self):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
             src = layers.data(name='data', shape=[1], dtype='float32')
-            const_value = layers.fill_constant([1],
-                                               dtype='float32',
-                                               value=123.0)
+            const_value = layers.fill_constant(
+                [1], dtype='float32', value=123.0
+            )
             ifcond = layers.less_than(x=src, y=const_value)
             with self.assertRaises(TypeError):
                 ie = layers.IfElse(set())
@@ -253,7 +247,7 @@ class TestIfElseError(unittest.TestCase):
                 ie = layers.IfElse(ifcond)
                 with ie.true_block():
                     true_target = ie.input(src)
-                    true_target = fluid.layers.exp(true_target)
+                    true_target = paddle.exp(true_target)
                     ie.output([])
 
 

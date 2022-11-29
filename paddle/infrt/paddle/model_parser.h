@@ -60,7 +60,7 @@ void ReadBinaryFile(const std::string& filename, std::string* contents);
 
 #ifdef INFRT_WITH_PHI
 void DeserializeFromStream(std::istream& is,
-                           ::phi::DenseTensor* tensor,
+                           ::Tensor* tensor,
                            const ::phi::CPUContext& dev_ctx);
 #endif
 

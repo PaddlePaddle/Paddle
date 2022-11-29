@@ -18,7 +18,7 @@
 
 USE_OP_ITSELF(reshape_p);
 USE_OP_ITSELF(broadcast_p);
-USE_OP_ITSELF(reduce_p);
+USE_OP_ITSELF(reduce_sum_p);
 USE_OP_ITSELF(transpose_p);
 USE_OP_ITSELF(split_p);
 USE_OP_ITSELF(concat_p);
@@ -38,6 +38,9 @@ USE_OP_ITSELF(log_p);
 USE_OP_ITSELF(select_p);
 USE_OP_ITSELF(eq_p);
 USE_OP_ITSELF(pow_p);
+USE_OP_ITSELF(max_p);
+USE_OP_ITSELF(erf_p);
+USE_OP_ITSELF(bernoulli_p);
 
 namespace paddle {
 namespace framework {
@@ -128,7 +131,7 @@ TEST(PrimOp, broadcast_p) {
   ASSERT_EQ(shapes[2], 5L);
 }
 
-TEST(PrimOp, reduce_p) {
+TEST(PrimOp, reduce_sum_p) {
   ProgramDesc program;
   auto *block = program.MutableBlock(0);
   std::vector<int64_t> shape{3, 4, 5};
@@ -139,7 +142,7 @@ TEST(PrimOp, reduce_p) {
 
   NewVar(block, x0, shape);
   AppendOp(block,
-           "reduce_p",
+           "reduce_sum_p",
            {{"X", {x0}}},
            {{"Y", {x1}}},
            {{"axis", std::vector<int64_t>{0, 2}}, {"keepdim", false}});
@@ -149,7 +152,7 @@ TEST(PrimOp, reduce_p) {
   ASSERT_EQ(shapes.size(), 1UL);
   ASSERT_EQ(shapes[0], 4L);
   AppendOp(block,
-           "reduce_p",
+           "reduce_sum_p",
            {{"X", {x0}}},
            {{"Y", {x2}}},
            {{"axis", std::vector<int64_t>{0, 2}}, {"keepdim", true}});
@@ -681,6 +684,68 @@ TEST(PrimOp, pow_p) {
   ASSERT_EQ(block->Var("z")->GetType(), proto::VarType::LOD_TENSOR);
   ASSERT_EQ(block->Var("z")->GetDataType(), proto::VarType_Type_FP32);
   auto shapes = block->Var("z")->GetShape();
+  ASSERT_EQ(shapes.size(), 3UL);
+  ASSERT_EQ(shapes[0], 3L);
+  ASSERT_EQ(shapes[1], 4L);
+  ASSERT_EQ(shapes[2], 5L);
+}
+
+TEST(PrimOp, max_p) {
+  ProgramDesc program;
+  auto *block = program.MutableBlock(0);
+  std::vector<int64_t> shape{2, 3, 4};
+
+  std::string x = "x";
+  std::string y = "y";
+  std::string z = "z";
+
+  NewVar(block, x, shape);
+  NewVar(block, y, shape);
+
+  AppendOp(block, "max_p", {{"X", {x}}, {"Y", {y}}}, {{"Z", {z}}}, {});
+  ASSERT_EQ(block->Var("z")->GetType(), proto::VarType::LOD_TENSOR);
+  ASSERT_EQ(block->Var("z")->GetDataType(), proto::VarType_Type_FP32);
+  auto shapes = block->Var("z")->GetShape();
+  ASSERT_EQ(shapes.size(), 3UL);
+  ASSERT_EQ(shapes[0], 2L);
+  ASSERT_EQ(shapes[1], 3L);
+  ASSERT_EQ(shapes[2], 4L);
+}
+
+TEST(PrimOp, erf_p) {
+  ProgramDesc program;
+  auto *block = program.MutableBlock(0);
+  std::vector<int64_t> shape{3, 4, 5};
+
+  std::string x0 = "x0";
+  std::string x1 = "x1";
+
+  NewVar(block, x0, shape);
+  AppendOp(block, "erf_p", {{"X", {x0}}}, {{"Y", {x1}}}, {});
+  ASSERT_EQ(block->Var("x1")->GetType(), proto::VarType::LOD_TENSOR);
+  ASSERT_EQ(block->Var("x1")->GetDataType(), proto::VarType_Type_FP32);
+  auto shapes = block->Var("x1")->GetShape();
+  ASSERT_EQ(shapes.size(), 3UL);
+  ASSERT_EQ(shapes[0], 3L);
+  ASSERT_EQ(shapes[1], 4L);
+  ASSERT_EQ(shapes[2], 5L);
+}
+
+TEST(PrimOp, bernoulli_p) {
+  ProgramDesc program;
+  auto *block = program.MutableBlock(0);
+  std::string x0 = "x0";
+
+  AppendOp(block,
+           "bernoulli_p",
+           {{}},
+           {{"Y", {x0}}},
+           {{"p", 0.5f},
+            {"dtype", proto::VarType_Type_FP32},
+            {"shape", std::vector<int64_t>{3, 4, 5}}});
+  ASSERT_EQ(block->Var("x0")->GetType(), proto::VarType::LOD_TENSOR);
+  ASSERT_EQ(block->Var("x0")->GetDataType(), proto::VarType_Type_FP32);
+  auto shapes = block->Var("x0")->GetShape();
   ASSERT_EQ(shapes.size(), 3UL);
   ASSERT_EQ(shapes[0], 3L);
   ASSERT_EQ(shapes[1], 4L);

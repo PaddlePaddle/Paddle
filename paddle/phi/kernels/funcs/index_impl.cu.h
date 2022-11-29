@@ -36,18 +36,18 @@ __global__ void VectorizedIndexKernel(T *out,
   size_t args[VecSize];
   T result[VecSize];
   for (; data_offset < main_offset; data_offset += stride) {
-    kps::InitWithDataIndex<size_t, VecSize, 1, 1>(&args[0], data_offset);
-    kps::ElementwiseUnary<size_t, T, VecSize, 1, 1, Functor>(
+    kps::InitWithDataIndex<size_t, VecSize, 1>(&args[0], data_offset);
+    kps::ElementwiseUnary<size_t, T, VecSize, 1, Functor>(
         &result[0], &args[0], func);
-    kps::WriteData<T, VecSize, 1, 1, false>(
+    kps::WriteData<T, VecSize, 1, false>(
         out + data_offset, &result[0], BLOCK_NUM_X * VecSize);
   }
   size_t num = numel - data_offset;
   if (num > 0) {
-    kps::InitWithDataIndex<size_t, VecSize, 1, 1>(&args[0], data_offset);
-    kps::ElementwiseUnary<size_t, T, VecSize, 1, 1, Functor>(
+    kps::InitWithDataIndex<size_t, VecSize, 1>(&args[0], data_offset);
+    kps::ElementwiseUnary<size_t, T, VecSize, 1, Functor>(
         &result[0], &args[0], func);
-    kps::WriteData<T, VecSize, 1, 1, true>(out + data_offset, &result[0], num);
+    kps::WriteData<T, VecSize, 1, true>(out + data_offset, &result[0], num);
   }
 }
 

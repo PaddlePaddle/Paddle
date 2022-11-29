@@ -40,11 +40,12 @@ class SaveOp : public framework::OperatorWithKernel {
 class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor ) Input LoDTensor and SelectedRows to be saved");
+    AddInput("X",
+             "(Tensor ) Input phi::DenseTensor and SelectedRows to be saved");
     AddComment(R"DOC(
 Save operator
 
-This operator will serialize and write LoDTensor / SelectedRows variable to file on disk.
+This operator will serialize and write phi::DenseTensor / SelectedRows variable to file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
                   "(boolean, default true)"
@@ -87,15 +88,3 @@ REGISTER_OPERATOR(save,
                   ops::SaveOp,
                   ops::SaveOpProtoMaker,
                   ops::SaveOpVarTypeInference);
-
-REGISTER_OP_CPU_KERNEL(
-    save,
-    ops::SaveOpKernel<phi::CPUContext, float>,
-    ops::SaveOpKernel<phi::CPUContext, double>,
-    ops::SaveOpKernel<phi::CPUContext, paddle::platform::float16>,
-    ops::SaveOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
-    ops::SaveOpKernel<phi::CPUContext, int>,
-    ops::SaveOpKernel<phi::CPUContext, uint8_t>,
-    ops::SaveOpKernel<phi::CPUContext, int8_t>,
-    ops::SaveOpKernel<phi::CPUContext, int16_t>,
-    ops::SaveOpKernel<phi::CPUContext, int64_t>);

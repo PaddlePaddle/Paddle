@@ -18,8 +18,8 @@
 #include <thrust/host_vector.h>
 
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
@@ -199,7 +199,10 @@ void BoxCoderKernel(const Context &dev_ctx,
   int grid = (row * col + block - 1) / block;
 
   int bytes = var_size * sizeof(float);
-  auto dev_var = paddle::memory::Alloc(dev_ctx, bytes);
+  auto dev_var = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   float *dev_var_data = reinterpret_cast<float *>(dev_var->ptr());
   auto cplace = phi::CPUPlace();
   const auto gplace = dev_ctx.GetPlace();

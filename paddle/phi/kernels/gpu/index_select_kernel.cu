@@ -14,33 +14,16 @@
 
 #include "paddle/phi/kernels/index_select_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/gpu/index_select_impl.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
-
-template <typename T, typename IndexT>
-__global__ void index_select_cuda_kernel(const T* input,
-                                         T* output,
-                                         const IndexT* index,
-                                         int64_t N,
-                                         int64_t stride,
-                                         int64_t size,
-                                         int64_t delta) {
-  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
-    int64_t pre_idx = idx / (stride * size);
-    int64_t dim_idx = idx % (stride * size) / stride;
-    IndexT src_dim_idx = index[dim_idx];
-    int64_t input_idx =
-        idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    output[idx] = input[input_idx];
-  }
-}
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
 void IndexSelectKernel(const Context& ctx,
@@ -79,7 +62,7 @@ void IndexSelectKernel(const Context& ctx,
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  paddle::platform::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

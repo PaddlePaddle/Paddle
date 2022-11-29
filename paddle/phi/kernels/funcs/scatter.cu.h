@@ -16,8 +16,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -70,7 +70,7 @@ __global__ void ScatterCUDAKernel(const T* params,
     if (overwrite) {
       *(output + out_i) = *(params + i);
     } else {
-      paddle::platform::CudaAtomicAdd(output + out_i, *(params + i));
+      phi::CudaAtomicAdd(output + out_i, *(params + i));
     }
   }
 }
@@ -104,7 +104,7 @@ __global__ void ScatterNdCUDAKernel(const T* update,
       temp *= output_dims[j];
     }
     int64_t output_i = gather_i + slice_i;
-    paddle::platform::CudaAtomicAdd(output + output_i, *(update + i));
+    phi::CudaAtomicAdd(output + output_i, *(update + i));
   }
 }
 
@@ -158,7 +158,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   dim3 grid = dim3((n + block - 1) / block);
-  paddle::platform::LimitGridDim(ctx, &grid);
+  phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -190,7 +190,7 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   int64_t n = slice_size * index_size;
   int64_t height = (n + block - 1) / block;
   dim3 grid = dim3((n + block - 1) / block);
-  paddle::platform::LimitGridDim(ctx, &grid);
+  phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_index, p_output, index_size, slice_size);
@@ -231,7 +231,7 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * remain_numel;
   dim3 grid = dim3((n + block - 1) / block);
-  paddle::platform::LimitGridDim(ctx, &grid);
+  phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   ScatterNdCUDAKernel<T, IndexT>
       <<<grid, block, 0, ctx.stream()>>>(p_update,
