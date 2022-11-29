@@ -3220,18 +3220,6 @@ class TestBook(LayerTest):
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
 
-    def make_space_to_depth(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data',
-                shape=[32, 9, 6, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            return layers.space_to_depth(data, 3)
-
     def make_get_places(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
