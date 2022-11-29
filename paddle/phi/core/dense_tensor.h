@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/ge_ir_properties.h"
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
@@ -221,8 +220,6 @@ class DenseTensor : public TensorBase,
    *  dnnl::memory::desc size: 696 // need to be moved
    */
   std::unique_ptr<StorageProperties> storage_properties_{nullptr};
-
-  std::shared_ptr<GraphEngineIRProperties> ge_ir_properties_{nullptr};
 
  public:
   /* Temporarily put InplaceVersion inside DenseTensor.
