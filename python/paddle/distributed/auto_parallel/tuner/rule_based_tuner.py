@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from ..graph import Graph
 
@@ -33,6 +33,57 @@ def register_pattern(cls):
     return cls
 
 
+class BasePattern(Graph):
+    name = "base"
+
+    def __init__(self):
+        super().__init__()
+        self.build()
+
+    @abstractmethod
+    def build(self):
+        pass
+
+
+@register_pattern
+class QKVPattern(BasePattern):
+    name = "qkv"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        query = self.add_node(0, **{"type": "var"})
+
+        q_weight = self.add_node(1, **{"dim": 2, "type": "param"})
+        k_weight = self.add_node(2, **{"dim": 2, "type": "param"})
+        v_weight = self.add_node(3, **{"dim": 2, "type": "param"})
+
+        q_matmul = self.add_node(4, **{"type": "matmul_v2"})
+        k_matmul = self.add_node(5, **{"type": "matmul_v2"})
+        v_matmul = self.add_node(6, **{"type": "matmul_v2"})
+
+        q_x = self.add_edge(0, 4, **{"input_name": "X"})
+        k_x = self.add_edge(0, 5, **{"input_name": "X"})
+        v_x = self.add_edge(0, 6, **{"input_name": "X"})
+        q_y = self.add_edge(1, 4, **{"input_name": "Y"})
+        k_y = self.add_edge(2, 5, **{"input_name": "Y"})
+        v_y = self.add_edge(3, 6, **{"input_name": "Y"})
+
+        q = self.add_node(7, **{"type": "var"})
+        k = self.add_node(8, **{"type": "var"})
+        v = self.add_node(9, **{"type": "var"})
+
+        q_out = self.add_edge(4, 7, **{"output_name": "Out"})
+        k_out = self.add_edge(5, 8, **{"output_name": "Out"})
+        v_out = self.add_edge(6, 9, **{"output_name": "Out"})
+
+        # Pattern
+        self.attrs["shard_spec"] = [
+            [(1, 2, 3), [[-1, 0], [-1, 1]]],
+        ]  # 2-tuple list such as [(tensor_id, shard_sepc)]
+
+
 def convert_to_graph(ops, block):
     """Convert ops to graph."""
     graph = Graph()
@@ -43,8 +94,7 @@ def convert_to_graph(ops, block):
 
     node_id = -1
     for op in ops:
-        # attrs = op.all_attrs() # for test
-        attrs = {}
+        attrs = op.all_attrs()
         attrs["type"] = op.type
         node_id += 1
 
@@ -108,18 +158,21 @@ def convert_to_graph(ops, block):
 
 def match(pattern, graph):
     def _is_op_node(node):
+        """Judge whether node is op node"""
         if node.attrs["type"] not in ["var", "param", "data"]:
             return True
 
         return False
 
     def _compare_op_node(src, tgt):
+        """Compare whether two op nodes are equal"""
         if src.attrs["type"] != tgt.attrs["type"]:
             return False
 
         return True
 
     def _compare_var_node(src, tgt):
+        """Compare whether two var nodes are equal"""
         for key in src.attrs:
             if key not in tgt.attrs:
                 return False
@@ -236,9 +289,9 @@ def match(pattern, graph):
     results = []
     result = {}
     has_matched = set()
-    src_nodes = pattern.graph.nodes
-    src_edges = pattern.graph._adjs
-    src_reverse_adjs = pattern.graph._reverse_adjs
+    src_nodes = pattern.nodes
+    src_edges = pattern._adjs
+    src_reverse_adjs = pattern._reverse_adjs
 
     tgt_nodes = graph.nodes
     tgt_edges = graph._adjs
@@ -278,60 +331,7 @@ def match(pattern, graph):
     return results
 
 
-class BasePattern(ABC):
-    name = "base"
-
-    def __init__(self):
-        self.graph = None
-        self.build()
-
-    @abstractmethod
-    def build(self):
-        pass
-
-
-@register_pattern
-class QKVPattern(BasePattern):
-    name = "qkv"
-
-    def __init__(self):
-        super().__init__()
-
-    def build(self):
-        self.graph = Graph()
-
-        query = self.graph.add_node(0, **{"type": "var"})
-
-        q_weight = self.graph.add_node(1, **{"dim": 2, "type": "param"})
-        k_weight = self.graph.add_node(2, **{"dim": 2, "type": "param"})
-        v_weight = self.graph.add_node(3, **{"dim": 2, "type": "param"})
-
-        q_matmul = self.graph.add_node(4, **{"type": "matmul_v2"})
-        k_matmul = self.graph.add_node(5, **{"type": "matmul_v2"})
-        v_matmul = self.graph.add_node(6, **{"type": "matmul_v2"})
-
-        q_x = self.graph.add_edge(0, 4, **{"input_name": "X"})
-        k_x = self.graph.add_edge(0, 5, **{"input_name": "X"})
-        v_x = self.graph.add_edge(0, 6, **{"input_name": "X"})
-        q_y = self.graph.add_edge(1, 4, **{"input_name": "Y"})
-        k_y = self.graph.add_edge(2, 5, **{"input_name": "Y"})
-        v_y = self.graph.add_edge(3, 6, **{"input_name": "Y"})
-
-        q = self.graph.add_node(7, **{"type": "var"})
-        k = self.graph.add_node(8, **{"type": "var"})
-        v = self.graph.add_node(9, **{"type": "var"})
-
-        q_out = self.graph.add_edge(4, 7, **{"output_name": "Out"})
-        k_out = self.graph.add_edge(5, 8, **{"output_name": "Out"})
-        v_out = self.graph.add_edge(6, 9, **{"output_name": "Out"})
-
-        # Pattern
-        self.graph.attrs["shard_tensor"] = [
-            [(1, 2, 3), [[-1, 0], [-1, 1]]],
-        ]  # 2-tuple list such as [(tensor_id, shard_sepc)]
-
-
-class OperatorGroupUtil:
+class OperatorClusteringUtil:
     common_starts = ["layer_norm", "matmul_v2", "matmul"]
 
     @staticmethod
@@ -439,7 +439,10 @@ class OperatorGroupUtil:
                 min_index = min(index_group)
                 if max_index - min_index >= k:
                     longest_sub_seq = seq[min_index : min_index + k]
-                    if longest_sub_seq[0] in OperatorGroupUtil.common_starts:
+                    if (
+                        longest_sub_seq[0]
+                        in OperatorClusteringUtil.common_starts
+                    ):
                         return longest_sub_seq
             if longest_sub_seq is not None:
                 return longest_sub_seq
@@ -507,9 +510,9 @@ class RuleBasedTuner:
         self._dist_context = dist_context
         self._mode = mode
 
-    def group_operators(self, ops):
+    def cluster_operators(self, ops):
         """
-        Group operators to layers.
+        Cluster operators to layers.
 
         Args:
             ops (list): A operator list.
@@ -519,7 +522,7 @@ class RuleBasedTuner:
         """
         seq = [op.type for op in ops]
 
-        while not OperatorGroupUtil.stop_replace(seq):
+        while not OperatorClusteringUtil.stop_replace(seq):
             to_replace_seq = []
             to_replace_idxes = []
             has_append = False
@@ -533,11 +536,15 @@ class RuleBasedTuner:
                 elif isinstance(seq, list) and has_append:
                     break
 
-            ranks = OperatorGroupUtil.get_ranks(to_replace_seq)
-            suffixes = OperatorGroupUtil.get_suffixes(ranks)
-            heights = OperatorGroupUtil.get_heights(suffixes, to_replace_seq)
-            longest_sub_seq = OperatorGroupUtil.get_longest_repeated_sub_seq(
-                suffixes, heights, to_replace_seq
+            ranks = OperatorClusteringUtil.get_ranks(to_replace_seq)
+            suffixes = OperatorClusteringUtil.get_suffixes(ranks)
+            heights = OperatorClusteringUtil.get_heights(
+                suffixes, to_replace_seq
+            )
+            longest_sub_seq = (
+                OperatorClusteringUtil.get_longest_repeated_sub_seq(
+                    suffixes, heights, to_replace_seq
+                )
             )
             has_merged = False
             if longest_sub_seq is None:
@@ -556,10 +563,10 @@ class RuleBasedTuner:
                     seq = [to_replace_seq]
                     break
 
-            decomposed_sub_seq = OperatorGroupUtil.get_decomposed_sub_seq(
+            decomposed_sub_seq = OperatorClusteringUtil.get_decomposed_sub_seq(
                 longest_sub_seq
             )
-            to_replace_seq = OperatorGroupUtil.replace_by_decomposed_seq(
+            to_replace_seq = OperatorClusteringUtil.replace_by_decomposed_seq(
                 decomposed_sub_seq, to_replace_seq
             )
             result = seq[: to_replace_idxes[0]]
