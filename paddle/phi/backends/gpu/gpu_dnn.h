@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-KernelSignature MatrixPowerGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "matrix_power_grad", {"X", "Out", "Out@GRAD"}, {"n"}, {"X@GRAD"});
-}
+#ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/gpu/rocm/miopen_desc.h"
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
+#else  // CUDA
+#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#endif
 
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(matrix_power_grad,
-                           phi::MatrixPowerGradOpArgumentMapping);
+#endif

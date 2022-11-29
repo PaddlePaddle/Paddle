@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"

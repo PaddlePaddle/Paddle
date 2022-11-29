@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 // FeedVariableVisitor is to feed the variable data
-// according to data type (LoDTensor or  Strings).
+// according to data type (phi::DenseTensor or  Strings).
 class FeedVariableVisitor {
  public:
   explicit FeedVariableVisitor(framework::Variable *out_var,
@@ -146,11 +146,11 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) "
-             "A feeding list of LoDTensor, which may have "
+             "(vector<phi::DenseTensor>) "
+             "A feeding list of phi::DenseTensor, which may have "
              "different dimension and data type.");
     AddOutput("Out",
-              "(LoDTensor) The LoDTensor which is a copy "
+              "(phi::DenseTensor) The phi::DenseTensor which is a copy "
               "of the col-th feeding "
               "object.");
     AddAttr<int>("col", "(int) The column index of current feeding object.");
