@@ -28,9 +28,9 @@ using dnnl::prop_kind;
 using dnnl::stream;
 using framework::DDim;
 using framework::ExecutionContext;
+using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::to_void_cast;
-using platform::MKLDNNDeviceContext;
 
 struct InnerProductCache {
   dnnl::inner_product_forward inner_product_p;
@@ -45,7 +45,7 @@ class FCMKLDNNHandler
                                                  dnnl::inner_product_forward> {
  public:
   FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                  const platform::MKLDNNDeviceContext& dev_ctx,
+                  const OneDNNContext& dev_ctx,
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* weights,
                   const phi::DenseTensor* bias,
@@ -220,7 +220,7 @@ class FCMKLDNNHandler
     auto reorder_p = std::make_shared<dnnl::reorder>(
         *user_memory_p, *target_memory_p, attrs);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder(
           "int_reorder",
@@ -237,7 +237,7 @@ class FCMKLDNNHandler
   }
 
   std::string memory_key_;
-  const platform::MKLDNNDeviceContext& dev_ctx_;
+  const OneDNNContext& dev_ctx_;
 
  public:
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
@@ -388,7 +388,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       dnnl::memory x_mem(x_md, engine, to_void_cast<T_in>(x->data<T_in>()));
       auto reorder_p = dnnl::reorder(x_mem, *src_mem);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       reorder_p.execute(astream, x_mem, *src_mem);
       astream.wait();
     } else {
@@ -398,8 +398,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
   template <typename T_out, typename T_w>
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("Input");
@@ -417,12 +416,12 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
     std::string cache_key;
     cache_key.reserve(64);
-    cache_key = platform::ExtendKeyWithThreadInfoIfNeeded(
+    cache_key = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx,
-        platform::CreateKey(dev_ctx,
-                            ctx.InputName("Input"),
-                            ctx.InputName("W"),
-                            phi::vectorize(x->dims())));
+        phi::funcs::CreateKey(dev_ctx,
+                              ctx.InputName("Input"),
+                              ctx.InputName("W"),
+                              phi::vectorize(x->dims())));
 
     auto inner_product_cache =
         std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
@@ -479,7 +478,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       fc_p = handler.AcquireForwardPrimitive();
     }
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
 
     std::unordered_map<int, dnnl::memory> fc_args = {
         {DNNL_ARG_SRC, *src_memory_p},
