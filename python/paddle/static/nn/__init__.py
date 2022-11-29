@@ -20,7 +20,6 @@ from .common import deform_conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
-from .common import multi_box_head  # noqa: F401
 from .common import prior_box  # noqa: F401
 
 from ...fluid.layers import batch_norm  # noqa: F401
@@ -77,7 +76,6 @@ __all__ = [  # noqa
     'group_norm',
     'instance_norm',
     'layer_norm',
-    'multi_box_head',
     'nce',
     'prelu',
     'prior_box',
