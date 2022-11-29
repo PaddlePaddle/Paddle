@@ -526,7 +526,7 @@ class ClusterPartitionUtil:
         n: int,
         m: int,
         filter=[
-            complete_meshes,
+            complete_meshes.__func__,
         ],
     ) -> list:
         """
