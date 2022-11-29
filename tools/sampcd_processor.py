@@ -21,16 +21,16 @@ for example, you can run cpu version python2 testing like this:
     python sampcd_processor.py cpu
 
 """
-import os
-import sys
-import subprocess
-import multiprocessing
-import platform
-import inspect
 import argparse
-import shutil
-import re
+import inspect
 import logging
+import multiprocessing
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
 import time
 
 logger = logging.getLogger()

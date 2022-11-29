@@ -581,10 +581,9 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
 
 void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::MKLDNNDeviceContext* dev_ctx =
-      (platform::MKLDNNDeviceContext*)pool.Get(predictor_.place_);
-  dev_ctx->ResetBlobMap(
-      paddle::platform::MKLDNNDeviceContext::tls().get_curr_exec());
+  phi::OneDNNContext* dev_ctx =
+      (phi::OneDNNContext*)pool.Get(predictor_.place_);
+  dev_ctx->ResetBlobMap(phi::OneDNNContext::tls().get_curr_exec());
 }
 
 void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {

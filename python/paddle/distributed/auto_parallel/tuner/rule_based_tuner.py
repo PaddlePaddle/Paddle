@@ -16,7 +16,6 @@ from abc import ABC, abstractmethod
 
 from ..graph import Graph
 
-
 _PATTERNS = {}
 
 
