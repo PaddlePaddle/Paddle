@@ -123,11 +123,11 @@ class TestGroupOperators(unittest.TestCase):
 
         dist_context = DistributedContext()
         tuner = RuleBasedTuner(dist_context)
-        layers = tuner.group_operators(train_program.global_block().ops)
+        layers = tuner.cluster_operators(train_program.global_block().ops)
         layer = layers[0]
         graph = convert_to_graph(layer, train_program.global_block())
-        print(graph)
-        print("qkv: ", _PATTERNS["qkv"].graph)
+        print("graph: ", graph)
+        print("qkv: ", _PATTERNS["qkv"].attrs["shard_spec"])
 
 
 if __name__ == "__main__":

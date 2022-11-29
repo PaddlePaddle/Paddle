@@ -15,19 +15,21 @@
 import os
 import tempfile
 import time
+import unittest
+
 import numpy as np
+from predictor_utils import PredictorTools
+
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.jit.api import declarative
 from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-import unittest
-
-from predictor_utils import PredictorTools
+from paddle.jit.api import declarative
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,

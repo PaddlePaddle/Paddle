@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import math
-import time
+import os
 import tempfile
+import time
 import unittest
 
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-from predictor_utils import PredictorTools
+from paddle.fluid.dygraph.nn import Linear, Pool2D
+from paddle.jit import ProgramTranslator
 
 SEED = 2020
 IMAGENET1000 = 1281167

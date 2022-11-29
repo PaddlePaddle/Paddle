@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.jit.api import declarative
-
-from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 
 class PositionwiseFeedForwardLayer(Layer):

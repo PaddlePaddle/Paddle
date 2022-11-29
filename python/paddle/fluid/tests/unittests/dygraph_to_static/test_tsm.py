@@ -13,18 +13,21 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
 import os
 import random
 import sys
 import unittest
+
+import numpy as np
+from tsm_config_utils import merge_configs, parse_config, print_configs
+
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import Linear, Pool2D
 from tsm_config_utils import merge_configs, parse_config, print_configs
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 random.seed(0)
 np.random.seed(0)
