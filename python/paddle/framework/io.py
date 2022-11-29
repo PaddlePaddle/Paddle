@@ -66,7 +66,7 @@ from paddle.static import (
 )
 from paddle.utils import unique_name
 
-__all__ = []
+__all__ = ["py_reader", "double_buffer", "create_py_reader_by_data"]
 
 
 def _build_saved_state_dict(state_dict):
