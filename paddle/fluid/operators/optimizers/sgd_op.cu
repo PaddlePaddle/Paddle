@@ -72,7 +72,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           paddle::framework::ToTypeName(param_var->Type())));
@@ -107,7 +107,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
             ? master_param_out->mutable_data<MPDType>(ctx.GetPlace())
             : nullptr;
 
-    // Actually, all tensors are LoDTensor except SelectedRows.
+    // Actually, all tensors are phi::DenseTensor except SelectedRows.
     if (grad_var->IsType<phi::DenseTensor>()) {
       auto* grad = ctx.Input<phi::DenseTensor>("Grad");
 
