@@ -14,12 +14,11 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.tuner import tunable_space as ts
 from paddle.distributed.auto_parallel.tuner import trial as tr
+from paddle.distributed.auto_parallel.tuner import tunable_space as ts
 
 
 class TestTiral(unittest.TestCase):
-
     def test_trial(self):
         space = ts.TunableSpace()
         space.choice("choice", [0, 1, 2, 3], default=2)

@@ -112,6 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
+    if (node.Name().rfind("__control_var") == 0) continue;
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
         VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
@@ -383,7 +384,6 @@ std::string PDPattern::DotString() const {
   // Create Edges
   for (const auto &edge : edges()) {
     if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
-      LOG(ERROR) << "no node " << edge.first << " " << edge.second;
       continue;
     }
     auto &src = node2dot.at(edge.first);
@@ -453,7 +453,8 @@ PDNode *PDNode::assert_var_not_persistable() {
 
 PDNode *PDNode::assert_is_persistable_var() {
   assert_is_var();
-  asserts_.emplace_back([=](Node *x) { return x->Var()->Persistable(); });
+  asserts_.emplace_back(
+      [=](Node *x) { return x->Var() && x->Var()->Persistable(); });
   return this;
 }
 
@@ -939,6 +940,29 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
+PDNode *patterns::LayerNormShiftScale::operator()() {
+  auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("layer_norm", "X");
+  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("layer_norm", "Bias");
+  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("layer_norm", "Scale");
+
+  auto layer_norm_op =
+      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
+
+  auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
+                            ->assert_is_op_output("layer_norm", "Y")
+                            ->AsOutput();
+
+  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
+      .LinksTo({layer_norm_out});
+  return layer_norm_out;
+}
+
 PDNode *patterns::OperatorActivation::operator()(
     const std::string &operator_type, const std::string &activation_type) {
   auto *preceding_op =
@@ -955,6 +979,64 @@ PDNode *patterns::OperatorActivation::operator()(
   preceding_op->LinksTo({preceding_op_out});
   activation_op->LinksFrom({preceding_op_out}).LinksTo({activation_out});
   return activation_out;
+}
+
+PDNode *patterns::Squeeze2Transpose2::operator()() {
+  auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
+                             ->AsInput()
+                             ->assert_has_n_outputs(1)
+                             ->assert_is_op_input("squeeze2", "X");
+  auto *squeeze2_op = pattern->NewNode(squeeze2_op_repr())
+                          ->assert_is_op("squeeze2")
+                          ->assert_has_n_outputs(2);
+  auto *squeeze2_op_out = pattern->NewNode(squeeze2_op_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("squeeze2", "Out")
+                              ->assert_is_op_input("transpose2", "X");
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+
+  squeeze2_op->LinksFrom({squeeze2_op_in}).LinksTo({squeeze2_op_out});
+  transpose2_op->LinksFrom({squeeze2_op_out});
+  return transpose2_op;
+}
+
+PDNode *patterns::OperatorUnsqueeze2::operator()(
+    const std::string &operator_type, const int num_of_operator_outs) {
+  auto *preceding_op = pattern->NewNode(preceding_op_repr())
+                           ->assert_is_op(operator_type)
+                           ->assert_has_n_outputs(num_of_operator_outs);
+  auto *preceding_op_out = pattern->NewNode(preceding_op_out_repr())
+                               ->AsIntermediate()
+                               ->assert_is_op_output(operator_type, "Out")
+                               ->assert_is_op_input("unsqueeze2");
+  auto *unsqueeze2_op =
+      pattern->NewNode(unsqueeze2_op_repr())->assert_is_op("unsqueeze2");
+  auto *unsqueeze2_out = pattern->NewNode(unsqueeze2_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output("unsqueeze2");
+  preceding_op->LinksTo({preceding_op_out});
+  unsqueeze2_op->LinksFrom({preceding_op_out}).LinksTo({unsqueeze2_out});
+  return unsqueeze2_out;
+}
+
+PDNode *patterns::OperatorReshape2::operator()(const std::string &operator_type,
+                                               const int num_of_operator_outs) {
+  auto *preceding_op = pattern->NewNode(preceding_op_repr())
+                           ->assert_is_op(operator_type)
+                           ->assert_has_n_outputs(num_of_operator_outs);
+  auto *preceding_op_out = pattern->NewNode(preceding_op_out_repr())
+                               ->AsIntermediate()
+                               ->assert_is_op_output(operator_type, "Out")
+                               ->assert_is_op_input("reshape2");
+  auto *reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto *reshape2_out = pattern->NewNode(reshape2_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("reshape2");
+  preceding_op->LinksTo({preceding_op_out});
+  reshape2_op->LinksFrom({preceding_op_out}).LinksTo({reshape2_out});
+  return reshape2_out;
 }
 
 PDNode *patterns::SeqConvEltAddRelu::operator()(
@@ -1081,21 +1163,12 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
                           ->AsInput()
-                          ->assert_is_op_input("fc")
-                          // assert_is_op_input with two arguments doesn't work
-                          // because ResidualData in FC is set as output with
-                          // SetOutput so we do custom assert output
-                          ->assert_more([&](Node *x) {
-                            for (auto *op : x->outputs)
-                              if (IsNthOutput(x, op, "ResidualData", 0))
-                                return true;
-                            return false;
-                          });
+                          ->assert_is_op_input("fc", "ResidualData");
     links_from.push_back(res_fc_var);
   } else {
     fc_op->assert_more([&](Node *x) {
-      if (!HasOutput(x, "ResidualData") ||
-          x->Op()->Output("ResidualData").size() == 0)
+      if (!HasInput(x, "ResidualData") ||
+          x->Op()->Input("ResidualData").size() == 0)
         return true;
       return false;
     });
@@ -2707,7 +2780,8 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"cast",
+      std::unordered_set<std::string>({"bilinear_interp_v2",
+                                       "cast",
                                        "clip",
                                        "concat",
                                        "conv2d",

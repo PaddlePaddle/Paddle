@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 import paddle.distributed as dist
 
@@ -59,11 +60,11 @@ def main():
             shape=(10 * world_size, 100),
         )
         for i in range(world_size):
-            a = mmap_data1[i * 10:(i + 1) * 10, :]
-            b = mmap_data2[i * 10:(i + 1) * 10, :]
+            a = mmap_data1[i * 10 : (i + 1) * 10, :]
+            b = mmap_data2[i * 10 : (i + 1) * 10, :]
             args = (a, b)
             out = rpc_add(worker_name(i), args)
-            mmap_out[i * 10:(i + 1) * 10, :] = out[:]
+            mmap_out[i * 10 : (i + 1) * 10, :] = out[:]
     dist.rpc.shutdown()
 
 

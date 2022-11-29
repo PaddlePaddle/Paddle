@@ -26,7 +26,6 @@ def sigmoid_array(x):
 
 
 class TestXPULogLossOp(OpTest):
-
     def setUp(self):
         self.op_type = 'log_loss'
         samples_num = 100
@@ -41,8 +40,9 @@ class TestXPULogLossOp(OpTest):
         }
 
         self.attrs = {'epsilon': epsilon}
-        loss = -labels * np.log(predicted + epsilon) - (
-            1 - labels) * np.log(1 - predicted + epsilon)
+        loss = -labels * np.log(predicted + epsilon) - (1 - labels) * np.log(
+            1 - predicted + epsilon
+        )
         self.outputs = {'Loss': loss}
 
     def test_check_output(self):

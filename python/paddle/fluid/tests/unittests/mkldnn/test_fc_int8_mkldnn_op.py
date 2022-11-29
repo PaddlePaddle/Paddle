@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu()
 class TestFCINT8OneDNNOp(OpTest):
-
     def setUp(self):
         self.op_type = "fc"
         self._cpu_only = True
@@ -32,7 +33,7 @@ class TestFCINT8OneDNNOp(OpTest):
             'Scale_in': self.x_scale,
             'Scale_weights': [self.y_scale],
             'Scale_out': self.out_scale,
-            'force_fp32_output': self.force_fp32_output
+            'force_fp32_output': self.force_fp32_output,
         }
 
         if self.force_fp32_output:
@@ -50,7 +51,7 @@ class TestFCINT8OneDNNOp(OpTest):
         self.inputs = {'Input': self.x, 'W': self.y_float, 'Bias': self.bias}
 
     def quantize(self, tensor):
-        scale = 63. / np.abs(np.amax(tensor))
+        scale = 63.0 / np.abs(np.amax(tensor))
         quantized = np.round(scale * tensor).astype("int8")
         return scale, quantized
 
@@ -74,7 +75,6 @@ class TestFCINT8OneDNNOp(OpTest):
 
 
 class TestFCINT8NoBiasOneDNNOp(TestFCINT8OneDNNOp):
-
     def configure(self):
         self.use_bias = False
         self.force_fp32_output = False
@@ -87,7 +87,6 @@ class TestFCINT8NoBiasOneDNNOp(TestFCINT8OneDNNOp):
 
 
 class TestFCINT8ForceFP32OutputOneDNNOp(TestFCINT8NoBiasOneDNNOp):
-
     def configure(self):
         self.use_bias = False
         self.force_fp32_output = True
@@ -95,5 +94,6 @@ class TestFCINT8ForceFP32OutputOneDNNOp(TestFCINT8NoBiasOneDNNOp):
 
 if __name__ == "__main__":
     import paddle
+
     paddle.enable_static()
     unittest.main()

@@ -17,12 +17,11 @@ import unittest
 
 
 class TestPlace(unittest.TestCase):
-
     def test_place(self):
 
         paddle.enable_static()
         x = paddle.to_tensor([1, 2, 3, 4])
-        self.assertTrue(x.place() == None)
+        self.assertIsNone(x.place())
 
 
 if __name__ == '__main__':

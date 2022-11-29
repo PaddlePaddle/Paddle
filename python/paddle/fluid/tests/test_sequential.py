@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 
 
 class TestDataFeeder(unittest.TestCase):
-
     def test_lod_level_1_converter(self):
         sequential = paddle.nn.Sequential()
 

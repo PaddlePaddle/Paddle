@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
+
+import paddle
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 
 paddle.enable_static()
 logger = get_logger()
 
 
 class AutoCheckpointTest3(AutoCheckPointACLBase):
-
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -41,7 +41,7 @@ class AutoCheckpointTest3(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_3",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_3",
-            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
         }
         os.environ.update(proc_env)
 

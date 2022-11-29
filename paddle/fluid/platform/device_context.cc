@@ -19,7 +19,6 @@ limitations under the License. */
 #include <set>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -28,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/expect.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -183,6 +183,9 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
   dev_ctx->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                 .GetZeroAllocator(p)
                                 .get());
+  dev_ctx->SetHostZeroAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetZeroAllocator(platform::CPUPlace())
+                                    .get());
   return PtrType(dev_ctx);
 }
 
@@ -221,7 +224,7 @@ void EmplaceDeviceContexts(
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext>(
+      EmplaceDeviceContext<phi::OneDNNContext>(
           place_to_device_context,
           p,
           disable_setting_default_stream_for_allocator);

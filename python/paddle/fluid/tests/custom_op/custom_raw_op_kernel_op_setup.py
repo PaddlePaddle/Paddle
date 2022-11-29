@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
+
+from utils import extra_compile_args, paddle_includes
+
 import paddle
 import paddle.fluid.core as core
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
-from utils import paddle_includes, extra_compile_args
 
 if paddle.is_compiled_with_cuda():
     sources = ['custom_raw_op_kernel_op.cc', 'custom_raw_op_kernel_op.cu']
@@ -41,9 +43,13 @@ if core.is_compiled_with_nccl():
 macros.append(("THRUST_IGNORE_CUB_VERSION_CHECK", None))
 
 include_dirs = list(paddle_includes) + [cwd]
-setup(name=os.getenv("MODULE_NAME", "custom_raw_op_kernel_op_setup"),
-      ext_modules=extension(sources=sources,
-                            include_dirs=include_dirs,
-                            extra_compile_args=extra_compile_args,
-                            _compile_dir=compile_dir,
-                            define_macros=macros))
+setup(
+    name=os.getenv("MODULE_NAME", "custom_raw_op_kernel_op_setup"),
+    ext_modules=extension(
+        sources=sources,
+        include_dirs=include_dirs,
+        extra_compile_args=extra_compile_args,
+        _compile_dir=compile_dir,
+        define_macros=macros,
+    ),
+)

@@ -25,30 +25,28 @@ using dnnl::reorder;
 using dnnl::resampling_forward;
 using dnnl::stream;
 using phi::DataLayout;
-using platform::GetMKLDNNFormat;
-using platform::to_void_cast;
 
 template <typename T = float>
-class InterpolateMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward> {
+class InterpolateOneDNNHandler
+    : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward> {
  public:
-  InterpolateMKLDNNHandler(const dnnl::algorithm algo,
+  InterpolateOneDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine,
                            platform::Place cpu_place,
                            const phi::DenseTensor* x,
                            phi::DenseTensor* out)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
     const auto dst_tz = phi::vectorize(out->dims());
     const auto dst_md = memory::desc(
-        dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+        dst_tz, phi::funcs::OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_inference, algo, x->mem_desc(), dst_md);
   }
 };
 
 template <typename T = float>
-class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
+class InterpolateOneDNNKernel : public framework::OpKernel<T> {
   std::vector<int> ComputeOutputShape(
       const framework::ExecutionContext& ctx) const {
     const auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -132,8 +130,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto& dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -148,7 +145,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = phi::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
-    InterpolateMKLDNNHandler<T> handler(
+    InterpolateOneDNNHandler<T> handler(
         algo, mkldnn_engine, ctx.GetPlace(), x, out);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
@@ -157,7 +154,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     auto resampling_prim = handler.AcquireForwardPrimitive();
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
 
     resampling_prim->execute(astream, args);
     astream.wait();
@@ -174,10 +171,10 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(nearest_interp,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>,
-                   ops::InterpolateMKLDNNKernel<int8_t>,
-                   ops::InterpolateMKLDNNKernel<uint8_t>);
+                   ops::InterpolateOneDNNKernel<float>,
+                   ops::InterpolateOneDNNKernel<int8_t>,
+                   ops::InterpolateOneDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>);
+                   ops::InterpolateOneDNNKernel<float>);

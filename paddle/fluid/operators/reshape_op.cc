@@ -258,6 +258,15 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -518,19 +527,16 @@ class Reshape2Op : public ReshapeOp {
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Output(XShape) of ReshapeOp should not be null."));
-    const auto &x_dims = ctx->GetInputDim("X");
-    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-    xshape_dims[0] = 0;
-    for (int i = 0; i < x_dims.size(); ++i) {
-      xshape_dims[i + 1] = x_dims[i];
+    if (ctx->HasOutput("XShape")) {
+      const auto &x_dims = ctx->GetInputDim("X");
+      std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+      xshape_dims[0] = 0;
+      for (int i = 0; i < x_dims.size(); ++i) {
+        xshape_dims[i + 1] = x_dims[i];
+      }
+      ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+      ctx->ShareLoD("X", /*->*/ "XShape");
     }
-    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
-    ctx->ShareLoD("X", /*->*/ "XShape");
-
     ReshapeOp::InferShape(ctx);
   }
 };
@@ -617,6 +623,15 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

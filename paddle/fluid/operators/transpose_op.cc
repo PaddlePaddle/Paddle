@@ -34,14 +34,17 @@ class TransposeOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Transpose");
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
+
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
-    PADDLE_ENFORCE_EQ(x_rank,
+    // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+    // axis_size
+    PADDLE_ENFORCE_GE(x_rank,
                       axis_size,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension "
-                          "should be equal to the axis's size. "
+                          "should be equal to or greater than the axis's size. "
                           "But received input tensor's dimension is %d, "
                           "axis's size is %d",
                           x_rank,
@@ -79,8 +82,8 @@ class TransposeOp : public framework::OperatorWithKernel {
     // Here we need to match dims to paddle layout
     // as we are producing non-oneDNN result
     if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
-        (paddle::platform::MKLDNNDeviceContext::tls()
-             .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC)) {
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+         phi::DataLayout::kNHWC)) {
       auto dims = phi::vectorize<int>(x_dims);
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       x_dims = x_dims.reshape(dims);

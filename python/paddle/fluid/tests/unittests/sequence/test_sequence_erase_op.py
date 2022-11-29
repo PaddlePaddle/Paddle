@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("../")
 from op_test import OpTest
@@ -26,7 +27,7 @@ def sequence_erase(in_seq, lod0, tokens):
     offset = 0
     for i in range(0, len(lod0)):
         num_out = 0
-        for dat in in_seq[offset:(offset + lod0[i])]:
+        for dat in in_seq[offset : (offset + lod0[i])]:
             if dat not in tokens:
                 out_seq.append(dat)
                 num_out += 1
@@ -36,7 +37,6 @@ def sequence_erase(in_seq, lod0, tokens):
 
 
 class TestSequenceEraseOpInt32(OpTest):
-
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
@@ -52,7 +52,6 @@ class TestSequenceEraseOpInt32(OpTest):
 
 
 class TestSequenceEraseOpInt32LoD2(OpTest):
-
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
@@ -68,7 +67,6 @@ class TestSequenceEraseOpInt32LoD2(OpTest):
 
 
 class TestSequenceEraseOpInt64(OpTest):
-
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
@@ -84,7 +82,6 @@ class TestSequenceEraseOpInt64(OpTest):
 
 
 class TestSequenceEraseOpInt64SeqLen0(OpTest):
-
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
@@ -100,7 +97,6 @@ class TestSequenceEraseOpInt64SeqLen0(OpTest):
 
 
 class TestSequenceEraseOpEmpty(OpTest):
-
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")

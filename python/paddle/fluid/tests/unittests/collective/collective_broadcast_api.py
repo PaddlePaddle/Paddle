@@ -12,24 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 paddle.enable_static()
 
 
 class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(name="tindata",
-                                  shape=[10, 1000],
-                                  dtype='float32')
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
+            )
             paddle.distributed.broadcast(tindata, src=1)
             return [tindata]
 

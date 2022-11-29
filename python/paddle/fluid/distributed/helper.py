@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class FileSystem(object):
+class FileSystem:
     """
     A file system that support hadoop client desc.
 
@@ -26,23 +26,26 @@ class FileSystem(object):
         fs = FileSystm()
     """
 
-    def __init__(self,
-                 fs_type="afs",
-                 uri="afs://xx",
-                 user=None,
-                 passwd=None,
-                 hadoop_bin=""):
-        assert user != None
-        assert passwd != None
-        assert hadoop_bin != None
+    def __init__(
+        self,
+        fs_type="afs",
+        uri="afs://xx",
+        user=None,
+        passwd=None,
+        hadoop_bin="",
+    ):
+        assert user is not None
+        assert passwd is not None
+        assert hadoop_bin is not None
         import ps_pb2 as pslib
+
         self.fs_client = pslib.FsClientParameter()
         self.fs_client.uri = uri
         self.fs_client.user = user
         self.fs_client.passwd = passwd
-        #self.fs_client.buffer_size = 0
+        # self.fs_client.buffer_size = 0
         self.fs_client.hadoop_bin = hadoop_bin
-        #self.fs_client.afs_conf = afs_conf if not afs_conf else ""
+        # self.fs_client.afs_conf = afs_conf if not afs_conf else ""
 
     def get_desc(self):
         """
@@ -51,7 +54,7 @@ class FileSystem(object):
         return self.fs_client
 
 
-class MPIHelper(object):
+class MPIHelper:
     """
     MPIHelper is a wrapper of mpi4py, support get_rank get_size etc.
     Args:
@@ -63,6 +66,7 @@ class MPIHelper(object):
 
     def __init__(self):
         from mpi4py import MPI
+
         self.comm = MPI.COMM_WORLD
         self.MPI = MPI
 
@@ -74,11 +78,13 @@ class MPIHelper(object):
 
     def get_ip(self):
         import socket
+
         local_ip = socket.gethostbyname(socket.gethostname())
         return local_ip
 
     def get_hostname(self):
         import socket
+
         return socket.gethostname()
 
     def finalize(self):
