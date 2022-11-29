@@ -37,7 +37,6 @@ class TensorRTPool3dTest(InferencePassTest):
         self.pool_type = 'max'
         self.pool_stride = 1
         self.pool_padding = 0
-        self.global_pooling = False
         self.ceil_mode = False
         self.exclusive = False
         self.enable_trt = True
@@ -64,16 +63,23 @@ class TensorRTPool3dTest(InferencePassTest):
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
             )
-            pool_out = fluid.layers.pool3d(
-                input=data,
-                pool_size=self.pool_size,
-                pool_type=self.pool_type,
-                pool_stride=self.pool_stride,
-                pool_padding=self.pool_padding,
-                global_pooling=self.global_pooling,
-                ceil_mode=self.ceil_mode,
-                exclusive=self.exclusive,
-            )
+            if self.pool_type == "max":
+                pool_out = paddle.nn.functional.max_pool3d(
+                    x=data,
+                    kernel_size=self.pool_size,
+                    stride=self.pool_stride,
+                    padding=self.pool_padding,
+                    ceil_mode=self.ceil_mode,
+                )
+            else:
+                pool_out = paddle.nn.functional.avg_pool3d(
+                    x=data,
+                    kernel_size=self.pool_size,
+                    stride=self.pool_stride,
+                    padding=self.pool_padding,
+                    ceil_mode=self.ceil_mode,
+                    exclusive=self.exclusive,
+                )
             # out = paddle.static.nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
@@ -158,62 +164,6 @@ class TensorRTAvgPool3dTest(TensorRTPool3dTest):
         self.pool_type = 'avg'
         self.pool_stride = 1
         self.pool_padding = 0
-        self.global_pooling = False
-        self.ceil_mode = False
-        self.exclusive = False
-
-
-class TensorRTGlobalPool3dTest(TensorRTPool3dTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 0
-        self.global_pooling = True
-        self.ceil_mode = False
-        self.exclusive = False
-
-
-class TensorRTCeilPool3dTest(TensorRTPool3dTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 0
-        self.global_pooling = False
-        self.ceil_mode = True
-        self.exclusive = False
-
-
-class TensorRTExclusivePool3dTest(TensorRTPool3dTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 0
-        self.global_pooling = False
-        self.ceil_mode = False
-        self.exclusive = True
-
-
-class TensorRTSamePaddingPool3dTest(InferencePassTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 'SAME'
-        self.global_pooling = False
-        self.ceil_mode = False
-        self.exclusive = False
-
-
-class TensorRTValidPaddingPool3dTest(InferencePassTest):
-    def set_extra_config(self):
-        self.pool_size = 2
-        self.pool_type = 'max'
-        self.pool_stride = 1
-        self.pool_padding = 'VALID'
-        self.global_pooling = False
         self.ceil_mode = False
         self.exclusive = False
 

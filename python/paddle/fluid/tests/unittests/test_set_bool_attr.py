@@ -16,6 +16,8 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 
+import paddle.fluid as fluid
+
 
 class TestAttrSet(unittest.TestCase):
     def test_set_bool_attr(self):

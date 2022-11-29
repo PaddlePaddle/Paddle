@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
 
 
 class TestTransferDtypeOpFp32ToFp64(OpTest):

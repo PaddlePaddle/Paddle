@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 import gradient_checker
-import paddle
-
+import numpy as np
 from decorator_helper import prog_scope
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
