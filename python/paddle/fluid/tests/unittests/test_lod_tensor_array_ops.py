@@ -13,21 +13,18 @@
 # limitations under the License.
 
 import unittest
-
-import numpy as np
-
 import paddle
 import paddle.fluid.core as core
+import numpy as np
 import paddle.fluid.layers as layers
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers.control_flow import (
-    array_to_lod_tensor,
-    lod_rank_table,
-    lod_tensor_to_array,
-    max_sequence_len,
-)
+from paddle.fluid.executor import Executor
+from paddle.fluid.backward import append_backward
+
+from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers.control_flow import max_sequence_len
+from paddle.fluid.layers.control_flow import lod_tensor_to_array
+from paddle.fluid.layers.control_flow import array_to_lod_tensor
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
