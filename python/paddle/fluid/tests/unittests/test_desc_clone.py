@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import functools
+import unittest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-import unittest
-import functools
-import collections
 
 SEED = 1
 DTYPE = "float32"

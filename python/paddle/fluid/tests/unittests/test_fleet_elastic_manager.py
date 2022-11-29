@@ -15,10 +15,10 @@
 import os
 import unittest
 
-from paddle.distributed.fleet.elastic.manager import ElasticManager
-from paddle.distributed.fleet.elastic.manager import LauncherInterface
 from paddle.distributed.fleet.elastic.manager import (
     ELASTIC_AUTO_PARALLEL_EXIT_CODE,
+    ElasticManager,
+    LauncherInterface,
 )
 
 
