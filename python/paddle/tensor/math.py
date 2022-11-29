@@ -3983,7 +3983,7 @@ def any(x, axis=None, keepdim=False, name=None):
 
 def broadcast_shape(x_shape, y_shape):
     """
-    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to boardcasting for more details.
+    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape.
 
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
