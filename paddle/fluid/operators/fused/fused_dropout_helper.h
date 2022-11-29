@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/layer_norm_kernel.h"
 
 DECLARE_bool(use_fast_math);
 
@@ -347,6 +348,18 @@ class FusedDropoutHelper {
   DropoutParam dropout_param_;
 };
 
+template <typename T>
+struct PDDataTypeTraits {
+  using DataType = T;
+};
+
+template <>
+struct PDDataTypeTraits<phi::dtype::float16> {
+  // Since LayerNormDirectCUDAFunctor register half type, we need to convert
+  // phi::float16 to half.
+  using DataType = half;
+};
+
 template <typename T,
           typename MaskType,
           typename InType = T,
@@ -383,13 +396,22 @@ class FusedDropoutLayerNormHelper
                  OutType* out,
                  LayerNormParamType<T>* mean,
                  LayerNormParamType<T>* variance) {
-    using U = LayerNormParamType<T>;
-    switch (GetDesiredBlockDim(this->cols_)) {
-      FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<T, U, kBlockDim, false, InType, OutType>
-          <<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
-              src, gamma, beta, out, mean, variance, epsilon_, this->cols_));
-    }
+    using InDataType = typename PDDataTypeTraits<InType>::DataType;
+    using OutDataType = typename PDDataTypeTraits<OutType>::DataType;
+
+    phi::LayerNormDirectCUDAFunctor<InDataType, LayerNormParamType<T>>
+        layer_norm;
+    std::vector<int> src_shape{this->rows_, this->cols_};
+    layer_norm(ctx.stream(),
+               reinterpret_cast<const InDataType*>(src),
+               src_shape,
+               beta,
+               gamma,
+               reinterpret_cast<OutDataType*>(out),
+               mean,
+               variance,
+               1,
+               epsilon_);
   }
 
   void LayerNormGrad(const phi::GPUContext& ctx,

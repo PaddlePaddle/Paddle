@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
+import yaml
 from api_gen import ForwardAPI
 
 kernel_func_set = set()

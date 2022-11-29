@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Linear, Layer
-from paddle.fluid.dygraph import to_variable, guard
-from paddle.fluid.dygraph import TracedLayer
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
-from paddle.fluid import core
-import numpy as np
 import paddle.nn.functional as F
+from paddle.fluid import Embedding, Layer, LayerNorm, Linear, core
+from paddle.fluid.dygraph import guard, to_variable
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.jit import TracedLayer
 
 np.set_printoptions(suppress=True)
 
@@ -692,7 +693,7 @@ class PrepareEncoderDecoderLayer(Layer):
 
     def forward(self, src_word, src_pos):
         src_word_emb = self._input_emb(src_word)
-        src_word_emb = fluid.layers.scale(
+        src_word_emb = paddle.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5
         )
         # # TODO change this to fit dynamic length input
@@ -1102,8 +1103,8 @@ class TransFormer(Layer):
             soft_label=True if self._label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = fluid.layers.reduce_sum(weighted_cost)
-        token_num = fluid.layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, predict, token_num

@@ -26,7 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <typename T, typename Type>

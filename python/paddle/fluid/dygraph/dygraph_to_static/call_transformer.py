@@ -51,7 +51,7 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
         try:
-            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
+            from paddle.jit.dy2static.convert_call_func import (
                 is_builtin,
             )
 

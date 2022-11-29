@@ -1125,10 +1125,9 @@ class BeamSearchDecoder(Decoder):
         )
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
-        probs = nn.elementwise_mul(
+        probs = paddle.multiply(
             paddle.tile(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
             self.noend_mask_tensor,
-            axis=-1,
         ) - nn.elementwise_mul(probs, (finished - 1), axis=0)
         return probs
 
@@ -1167,7 +1166,7 @@ class BeamSearchDecoder(Decoder):
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
-        return nn.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     class OutputWrapper(
         collections.namedtuple(
@@ -1335,9 +1334,9 @@ class BeamSearchDecoder(Decoder):
         next_lengths = next_lengths + tensor.cast(
             paddle.logical_not(next_finished), beam_state.lengths.dtype
         )
-        next_finished = control_flow.logical_or(
+        next_finished = paddle.logical_or(
             next_finished,
-            control_flow.equal(token_indices, self.end_token_tensor),
+            paddle.equal(token_indices, self.end_token_tensor),
         )
 
         beam_search_output = self.OutputWrapper(
@@ -1499,11 +1498,11 @@ def _dynamic_decode_imperative(
             # beams would be reordered and the finished status of each
             # entry might change. Otherwise, perform logical OR which
             # would not change the already finished.
-            next_finished = control_flow.logical_or(next_finished, finished)
+            next_finished = paddle.logical_or(next_finished, finished)
             # To confirm states.finished/finished be consistent with
             # next_finished.
             tensor.assign(next_finished, finished)
-            next_sequence_lengths = nn.elementwise_add(
+            next_sequence_lengths = paddle.add(
                 sequence_lengths,
                 tensor.cast(
                     paddle.logical_not(finished), sequence_lengths.dtype
@@ -1662,10 +1661,8 @@ def _dynamic_decode_declarative(
             # be reordered and the finished status of each entry might change.
             # Otherwise, perform logical OR which would not change the already
             # finished.
-            next_finished = control_flow.logical_or(
-                next_finished, global_finished
-            )
-            next_sequence_lengths = nn.elementwise_add(
+            next_finished = paddle.logical_or(next_finished, global_finished)
+            next_sequence_lengths = paddle.add(
                 sequence_lengths,
                 tensor.cast(
                     paddle.logical_not(global_finished),
@@ -1722,9 +1719,9 @@ def _dynamic_decode_declarative(
                 states_arrays,
             )
         if max_step_num is not None:
-            control_flow.logical_and(
+            paddle.logical_and(
                 paddle.logical_not(nn.reduce_all(global_finished)),
-                control_flow.less_equal(step_idx, max_step_num),
+                paddle.less_equal(step_idx, max_step_num),
                 cond,
             )
         else:
@@ -2015,7 +2012,7 @@ class TrainingHelper(DecodeHelper):
                 variable[s], and the tensor's shape is `[batch_size, ...]`. \
                 `initial_finished` is a bool tensor with shape `[batch_size]`.
         """
-        init_finished = control_flow.equal(
+        init_finished = paddle.equal(
             self.sequence_length,
             tensor.fill_constant(
                 shape=[1], dtype=self.sequence_length.dtype, value=0
@@ -2086,15 +2083,15 @@ class TrainingHelper(DecodeHelper):
         if self.sequence_length.dtype != time.dtype:
             self.sequence_length = tensor.cast(self.sequence_length, time.dtype)
         next_time = time + 1
-        finished = control_flow.less_equal(self.sequence_length, next_time)
+        finished = paddle.less_equal(self.sequence_length, next_time)
 
         def _slice(x):  # TODO: use Variable.__getitem__
             axes = [0 if self.time_major else 1]
-            return nn.squeeze(
-                nn.slice(
+            return paddle.squeeze(
+                paddle.slice(
                     x, axes=axes, starts=[next_time], ends=[next_time + 1]
                 ),
-                axes=axes,
+                axis=axes,
             )
 
         next_inputs = map_structure(_slice, self.inputs_)
@@ -2229,7 +2226,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
                 argument `states`. `finished` is a `bool` Tensor with \
                 shape `[batch_size]`.
         """
-        finished = control_flow.equal(sample_ids, self.end_token)
+        finished = paddle.equal(sample_ids, self.end_token)
         next_inputs = self.embedding_fn(sample_ids)
         return finished, next_inputs, states
 

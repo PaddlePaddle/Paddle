@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
+from paddle.jit import ProgramTranslator
+from paddle.jit.dy2static.convert_call_func import (
     CONVERSION_OPTIONS,
 )
 from test_program_translator import get_source_code

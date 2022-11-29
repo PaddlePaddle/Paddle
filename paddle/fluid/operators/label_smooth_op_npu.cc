@@ -19,7 +19,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 void LabelSmoothMuls(const platform::Place& place,
@@ -58,8 +57,8 @@ template <typename T>
 class LabelSmoothNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_t = ctx.Output<LoDTensor>("Out");
-    auto* in_t = ctx.Input<LoDTensor>("X");
+    auto* out_t = ctx.Output<phi::DenseTensor>("Out");
+    auto* in_t = ctx.Input<phi::DenseTensor>("X");
     auto* dist_t = ctx.Input<phi::DenseTensor>("PriorDist");
     auto epsilon = ctx.Attr<float>("epsilon");
 

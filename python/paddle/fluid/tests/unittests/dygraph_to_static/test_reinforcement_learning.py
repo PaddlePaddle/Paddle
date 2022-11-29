@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gym
-import math
 import itertools
+import math
+import unittest
+
+import gym
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph.nn as nn
-from paddle.fluid.dygraph import to_variable, Layer
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-
-import unittest
+from paddle.fluid.dygraph import Layer, to_variable
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 SEED = 2020
 program_translator = ProgramTranslator()
@@ -122,8 +124,8 @@ def train(args, place, to_static):
             mask.stop_gradient = True
 
             loss_probs = fluid.layers.log(loss_probs)
-            loss_probs = fluid.layers.elementwise_mul(loss_probs, mask)
-            loss_probs = fluid.layers.reduce_sum(loss_probs, dim=-1)
+            loss_probs = paddle.multiply(loss_probs, mask)
+            loss_probs = paddle.sum(loss_probs, axis=-1)
 
             policy.saved_log_probs.append(loss_probs)
             return action, loss_probs
@@ -149,11 +151,11 @@ def train(args, place, to_static):
                 _R = -1 * R * R_numpy
                 _R = to_variable(_R)
                 _R.stop_gradient = True
-                cur_loss = fluid.layers.elementwise_mul(_R, log_prob)
+                cur_loss = paddle.multiply(_R, log_prob)
                 policy_loss.append(cur_loss)
 
             policy_loss = fluid.layers.concat(policy_loss)
-            policy_loss = fluid.layers.reduce_sum(policy_loss)
+            policy_loss = paddle.sum(policy_loss)
 
             policy_loss.backward()
             optimizer.minimize(policy_loss)

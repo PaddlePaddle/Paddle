@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
@@ -39,7 +40,7 @@ class TRTScaleTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
-        return fluid.layers.scale(
+        return paddle.scale(
             x=data, scale=2.0, bias=-1.0, bias_after_scale=False
         )
 
@@ -71,7 +72,7 @@ class TRTScaleShape2Test(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
-        return fluid.layers.scale(
+        return paddle.scale(
             x=data, scale=2.0, bias=-1.0, bias_after_scale=False
         )
 

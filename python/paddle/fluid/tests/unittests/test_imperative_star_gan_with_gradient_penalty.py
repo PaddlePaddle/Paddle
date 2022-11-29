@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.tensor import random
-import numpy as np
-import unittest
 from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
@@ -120,7 +122,7 @@ class InstanceNorm(fluid.dygraph.Layer):
             )
             return out
         else:
-            return fluid.layers.instance_norm(
+            return paddle.static.nn.instance_norm(
                 input,
                 epsilon=self.epsilon,
                 param_attr=fluid.ParamAttr(self.scale.name),
@@ -379,9 +381,7 @@ def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
     cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
-        fluid.layers.reduce_sum(
-            fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
-        )
+        paddle.sum(fluid.layers.sigmoid_cross_entropy_with_logits(cls, label))
         / cfg.batch_size
     )
 

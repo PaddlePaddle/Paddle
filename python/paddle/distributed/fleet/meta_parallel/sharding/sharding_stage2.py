@@ -23,11 +23,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import numpy as np
-from itertools import chain
-from functools import reduce
 from collections import deque
+from functools import reduce
+from itertools import chain
 from types import MethodType
+
+import numpy as np
 
 import paddle
 import paddle.distributed as dist
@@ -35,10 +36,10 @@ from paddle import nn
 from paddle.distributed import collective as collective
 from paddle.distributed.collective import _get_global_group
 
-from ...utils.internal_storage import GradStorage
 from ...meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import (
     ShardingOptimizerStage2,
 )
+from ...utils.internal_storage import GradStorage
 from .sharding_utils import Taskflow, Type
 
 
@@ -318,7 +319,7 @@ class ShardingStage2(nn.Layer):
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
         # Multi stream operation will be supported later
-        collective.wait(tensor=buffer, group=self._group, use_calc_stream=True)
+        dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -382,7 +383,7 @@ class ShardingStage2(nn.Layer):
                     )
 
                     # Multi stream operation will be supported later
-                    collective.wait(
+                    dist.wait(
                         tensor=param.grad,
                         group=self._group,
                         use_calc_stream=True,
@@ -448,7 +449,7 @@ class ShardingStage2(nn.Layer):
                         )
 
                         # Multi stream operation will be supported later
-                        collective.wait(
+                        dist.wait(
                             tensor=grad_storage.buffer,
                             group=self._group,
                             use_calc_stream=True,

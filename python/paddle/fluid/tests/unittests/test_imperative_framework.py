@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
 from test_imperative_base import new_program_scope
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -46,7 +49,7 @@ class MLP(fluid.Layer):
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 

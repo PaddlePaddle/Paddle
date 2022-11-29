@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import random
 import os
+import random
 import sys
+import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from test_imperative_base import new_program_scope
-from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph import Linear
+from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -254,9 +255,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
-            loss = fluid.layers.reduce_sum(
-                fluid.layers.log_loss(prediction, labels)
-            )
+            loss = paddle.sum(fluid.layers.log_loss(prediction, labels))
             adam = fluid.optimizer.AdamOptimizer(0.01)
             adam.minimize(loss)
 
@@ -309,7 +308,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(users_np[slice : slice + self.batch_size]),
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
-                    loss = fluid.layers.reduce_sum(
+                    loss = paddle.sum(
                         fluid.layers.log_loss(
                             prediction,
                             to_variable(
@@ -343,7 +342,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(users_np[slice : slice + self.batch_size]),
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
-                    loss2 = fluid.layers.reduce_sum(
+                    loss2 = paddle.sum(
                         fluid.layers.log_loss(
                             prediction2,
                             to_variable(
@@ -386,7 +385,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                                 items_np[slice : slice + self.batch_size]
                             ),
                         )
-                        loss = fluid.layers.reduce_sum(
+                        loss = paddle.sum(
                             fluid.layers.log_loss(
                                 prediction,
                                 to_variable(
