@@ -582,7 +582,7 @@ class TestUniformDtype(unittest.TestCase):
                 paddle.enable_static()
                 return
             paddle.set_device('gpu')
-            out = paddle.uniform([2, 3], dtype=paddle.float16)
+            out = paddle.uniform([2, 3], dtype="float32")
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         test_default_fp64()
