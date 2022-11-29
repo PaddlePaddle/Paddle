@@ -16,14 +16,15 @@ import os
 import shutil
 import tempfile
 import unittest
+
 import paddle
 
 paddle.enable_static()
 
-import paddle.fluid as fluid
-
-from test_dist_fleet_base import TestFleetBase
 from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
+from test_dist_fleet_base import TestFleetBase
+
+import paddle.fluid as fluid
 
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")

@@ -43,6 +43,12 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
 
   dnnl::post_ops post_operations;
   funcs::AppendActivation(dev_ctx, post_operations);
+  if (dev_ctx.HasDnnAttr("fused_output_scale")) {
+    float scale_alpha =
+        PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
+    post_operations.append_eltwise(
+        1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+  }
 
   auto* non_const_x = &x;
   auto* non_const_y = &y;
