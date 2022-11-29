@@ -116,6 +116,11 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
   dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
     dnnl::post_ops post_operations;
     platform::AppendActivation(ctx, post_operations);
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
     return post_operations;
   }
 
