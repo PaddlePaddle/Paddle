@@ -151,7 +151,7 @@ class _HPRecomputeFunction(PyLayer):
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
 
-                # In some cases a subset of outputs is identity to the subset of inputs,
+                # In new dygraph mode, in some cases a subset of outputs is identity to the subset of inputs,
                 #  which is inplace operating. When the inputs' stop_gradient is True, an
                 #  error will occurs because the stop_gradient=True and inpalce-op are not
                 #  supported in the same time. The solution is to mark the inputs non_differentiable
@@ -160,7 +160,7 @@ class _HPRecomputeFunction(PyLayer):
                 #  If not marked non_differentiable, all output tensors' attr `stop gradient`
                 #  will be reset to `False` in c++ backend.
                 #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
-                if state:
+                if framework.in_dygraph_mode() and state:
                     ctx.mark_non_differentiable(arg)
             else:
                 ctx.inputs.append(arg)
