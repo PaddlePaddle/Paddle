@@ -19,6 +19,8 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SizeKernel(const Context& ctx, const DenseTensor& input, DenseTensor* out);
+void NumelKernel(const Context& ctx,
+                 const DenseTensor& input,
+                 DenseTensor* out);
 
 }  // namespace phi

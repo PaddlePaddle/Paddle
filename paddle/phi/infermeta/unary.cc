@@ -3243,7 +3243,7 @@ void ShardIndexInferMeta(const MetaTensor& in,
   out->set_dtype(in.dtype());
 }
 
-void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
+void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   if (input.dims().size() == 0) {
     out->set_dims(phi::make_ddim({}));

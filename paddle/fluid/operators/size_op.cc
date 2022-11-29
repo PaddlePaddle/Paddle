@@ -62,7 +62,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SizeOpNoNeedBufferVarInferer, "Input");
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(size,
                             SizeInferShapeFunctor,
-                            PD_INFER_META(phi::SizeInferMeta));
+                            PD_INFER_META(phi::NumelInferMeta));
 REGISTER_OPERATOR(
     size,
     ops::SizeOp,
