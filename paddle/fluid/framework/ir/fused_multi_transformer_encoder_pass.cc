@@ -307,6 +307,7 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                                   ->AsIntermediate()
                                   ->assert_is_op_input("elementwise_add");
 
+  std::unordered_set<std::string> act_ops{"relu", "gelu"};
   auto* ffn_eltadd0 =
       pattern->NewNode(ffn_eltadd0_repr())->assert_is_op("elementwise_add");
   auto* ffn_eltadd0_b_var = pattern->NewNode(ffn_eltadd0_b_repr())
@@ -315,11 +316,11 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
   auto* ffn_eltadd0_out_var = pattern->NewNode(ffn_eltadd0_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->AsIntermediate()
-                                  ->assert_is_op_input("relu");
+                                  ->assert_is_ops_input(act_ops);
 
-  auto* ffn_relu = pattern->NewNode(ffn_relu_repr())->assert_is_op("relu");
-  auto* ffn_relu_out_var = pattern->NewNode(ffn_relu_out_repr())
-                               ->assert_is_op_output("relu")
+  auto* ffn_act = pattern->NewNode(ffn_act_repr())->assert_is_ops(act_ops);
+  auto* ffn_act_out_var = pattern->NewNode(ffn_act_out_repr())
+                               ->assert_is_ops_output(act_ops)
                                ->AsIntermediate()
                                ->assert_is_op_input("matmul_v2");
 
@@ -354,8 +355,8 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
       .LinksTo({ffn_matmul0_out_var});
   ffn_eltadd0->LinksFrom({ffn_matmul0_out_var, ffn_eltadd0_b_var})
       .LinksTo({ffn_eltadd0_out_var});
-  ffn_relu->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_relu_out_var});
-  ffn_matmul1->LinksFrom({ffn_relu_out_var, ffn_matmul1_w_var})
+  ffn_act->LinksFrom({ffn_eltadd0_out_var}).LinksTo({ffn_act_out_var});
+  ffn_matmul1->LinksFrom({ffn_act_out_var, ffn_matmul1_w_var})
       .LinksTo({ffn_matmul1_out_var});
   ffn_eltadd1->LinksFrom({ffn_matmul1_out_var, ffn_eltadd1_b_var})
       .LinksTo({ffn_eltadd1_out_var});
@@ -1183,6 +1184,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
                           Node* ffn_matmul1_w,
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
+                          Node* ffn_act,
                           Node* ffn_layer_norm_out) {
     auto reshape_desc = reshape2_0->Op();
     int num_head =
@@ -1327,7 +1329,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
 
     fused_multi_transformer_op_desc.SetAttr("is_test", true);
     fused_multi_transformer_op_desc.SetAttr("dropout_rate", 0.0f);
-    fused_multi_transformer_op_desc.SetAttr("act_method", "relu");
+    fused_multi_transformer_op_desc.SetAttr("act_method", {ffn_act->Op()->Type()});
 
     auto* fused_multi_transformer =
         graph->CreateOpNode(&fused_multi_transformer_op_desc);
@@ -1461,9 +1463,9 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
         ffn_eltadd0_out, ffn_eltadd0_out, fused_multi_transformer_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
-        ffn_relu, ffn_relu, fused_multi_transformer_pattern);
+        ffn_act, ffn_act, fused_multi_transformer_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
-        ffn_relu_out, ffn_relu_out, fused_multi_transformer_pattern);
+        ffn_act_out, ffn_act_out, fused_multi_transformer_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
         ffn_matmul1, ffn_matmul1, fused_multi_transformer_pattern);
@@ -1578,6 +1580,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
                  ffn_matmul1_w,
                  ffn_eltadd0_b,
                  ffn_eltadd1_b,
+                 ffn_act,
                  ffn_layer_norm_out);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
@@ -1637,8 +1640,8 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
                                                   ffn_eltadd1,
                                                   ffn_eltadd0_out,
                                                   ffn_eltadd1_out,
-                                                  ffn_relu,
-                                                  ffn_relu_out,
+                                                  ffn_act,
+                                                  ffn_act_out,
                                                   ffn_output,
                                                   ffn_eltadd_out});
 
