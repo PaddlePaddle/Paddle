@@ -17,7 +17,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import (
-    BatchNorm,
     Conv3D,
     Embedding,
     GroupNorm,
@@ -201,8 +200,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                         num_channels=3, num_filters=2, filter_size=3, act="relu"
                     )
 
-                    self.batch_norm_1 = BatchNorm(10)
-                    self.batch_norm_2 = BatchNorm(10)
+                    self.batch_norm_1 = paddle.nn.BatchNorm(10)
+                    self.batch_norm_2 = paddle.nn.BatchNorm(10)
 
                     self.emb1 = Embedding([1000, 100])
                     self.emb2 = Embedding([2000, 200])

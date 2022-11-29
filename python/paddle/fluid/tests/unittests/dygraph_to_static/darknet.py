@@ -17,8 +17,6 @@ import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from paddle.fluid.dygraph.nn import BatchNorm
-
 
 class ConvBNLayer(fluid.dygraph.Layer):
     def __init__(
@@ -46,7 +44,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             ),
             bias_attr=False,
         )
-        self.batch_norm = BatchNorm(
+        self.batch_norm = paddle.nn.BatchNorm(
             num_channels=ch_out,
             is_test=is_test,
             param_attr=ParamAttr(

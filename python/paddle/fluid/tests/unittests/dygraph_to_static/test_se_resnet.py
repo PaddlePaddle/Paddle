@@ -23,7 +23,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.jit.api import declarative
 from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -112,7 +112,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             bias_attr=False,
         )
 
-        self._batch_norm = BatchNorm(num_filters, act=act)
+        self._batch_norm = paddle.nn.BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)

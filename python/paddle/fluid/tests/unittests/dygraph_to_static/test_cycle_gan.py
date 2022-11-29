@@ -39,7 +39,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import declarative
 from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
+from paddle.fluid.dygraph.nn import Conv2DTranspose
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -380,7 +380,7 @@ class conv2d(fluid.dygraph.Layer):
         if fluid.is_compiled_with_cuda():
             norm = False
         if norm:
-            self.bn = BatchNorm(
+            self.bn = paddle.nn.BatchNorm(
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(
@@ -447,7 +447,7 @@ class DeConv2D(fluid.dygraph.Layer):
         if fluid.is_compiled_with_cuda():
             norm = False
         if norm:
-            self.bn = BatchNorm(
+            self.bn = paddle.nn.BatchNorm(
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(

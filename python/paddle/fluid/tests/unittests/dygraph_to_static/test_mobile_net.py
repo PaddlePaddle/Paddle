@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.jit.api import declarative
 from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -68,7 +68,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             bias_attr=False,
         )
 
-        self._batch_norm = BatchNorm(
+        self._batch_norm = paddle.nn.BatchNorm(
             num_filters,
             act=act,
             param_attr=ParamAttr(name=self.full_name() + "_bn" + "_scale"),

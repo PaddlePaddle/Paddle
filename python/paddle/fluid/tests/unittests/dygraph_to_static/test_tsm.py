@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle.jit.api import declarative
 from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
@@ -71,7 +71,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             bias_attr=False,
         )
 
-        self._batch_norm = BatchNorm(
+        self._batch_norm = paddle.nn.BatchNorm(
             num_filters,
             act=act,
             param_attr=fluid.param_attr.ParamAttr(),
