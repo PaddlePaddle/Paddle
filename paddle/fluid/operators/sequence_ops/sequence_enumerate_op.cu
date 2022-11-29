@@ -79,7 +79,7 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     // Copy LoD to GPU
     paddle::framework::MixVector<size_t> mixv_lod0(&lod0);
     const size_t* dev_in_lod_ptr = mixv_lod0.CUDAData(context.GetPlace());
-    // Calc output phi::DenseTensor
+    // Calc output tensor
     CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
                  PADDLE_CUDA_NUM_THREADS,
                  0,
