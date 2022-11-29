@@ -191,7 +191,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
         &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
-    // 6. ffn matmul1 + act + bias
+    // 6. ffn1 matmul + act + bias
     auto ffn1_weights = ctx.MultiInput<phi::DenseTensor>("FFN1Weight");
     auto ffn1_biases = ctx.MultiInput<phi::DenseTensor>("FFN1Bias");
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
@@ -464,7 +464,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       VLOG(0) << "step6";
 #endif
 
-      // step7. ffn matmul2
+      // step7. ffn2 matmul
       if (pre_layer_norm) {
         ffn2_linear_bias_residual.ComputeForward(&ffn1_out,
                                                  ffn2_weights[i],
@@ -518,7 +518,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       }
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step9";
+      VLOG(0) << "step8";
 #endif
       if (pre_layer_norm) {
         x_data = buf1->data<T>();
