@@ -145,7 +145,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
 
 
 def create_undefined_variable():
-    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+    from paddle.jit.dy2static.return_transformer import (
         RETURN_NO_VALUE_MAGIC_NUM,
     )
 
@@ -1212,13 +1212,13 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             """NOTE: why we need merge w_vars and push_pop_vars here ?
             because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
-            from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import (
+            from paddle.jit.dy2static.loop_transformer import (
                 WHILE_CONDITION_PREFIX,
                 WHILE_BODY_PREFIX,
                 FOR_CONDITION_PREFIX,
                 FOR_BODY_PREFIX,
             )
-            from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import (
+            from paddle.jit.dy2static.ifelse_transformer import (
                 TRUE_FUNC_PREFIX,
                 FALSE_FUNC_PREFIX,
             )
