@@ -74,6 +74,7 @@ void AllocateMemoryMap(
               "File descriptor %s open failed, unable in read-write mode",
               filename.c_str()));
       VLOG(6) << "shm_open: " << filename;
+      MemoryMapFdSet::Instance().Insert(filename);
     }
   } else {
     fd = -1;
