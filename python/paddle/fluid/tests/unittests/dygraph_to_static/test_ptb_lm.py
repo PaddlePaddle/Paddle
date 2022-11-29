@@ -17,13 +17,14 @@ import time
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit.api import declarative
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 PRINT_STEP = 20
 SEED = 2020

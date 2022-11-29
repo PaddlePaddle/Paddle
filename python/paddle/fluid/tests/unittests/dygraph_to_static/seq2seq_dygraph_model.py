@@ -14,15 +14,15 @@
 # limitations under the License.
 
 import numpy as np
+from seq2seq_utils import Seq2SeqModelHyperParams as args
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid import layers
+from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit.api import declarative
 from paddle.fluid.dygraph.nn import Embedding
-from seq2seq_utils import Seq2SeqModelHyperParams as args
+from paddle.jit.api import declarative
 
 INF = 1.0 * 1e5
 alpha = 0.6

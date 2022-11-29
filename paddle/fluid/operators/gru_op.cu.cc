@@ -21,23 +21,24 @@ template <typename DeviceContext, typename T>
 class GRUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
-    using LodTensorPtr = LoDTensor*;
+    using LodTensorPtr = phi::DenseTensor*;
 
     bool is_test = context.Attr<bool>("is_test");
     bool origin_mode = context.Attr<bool>("origin_mode");
-    auto* input = context.Input<LoDTensor>("Input");
+    auto* input = context.Input<phi::DenseTensor>("Input");
     auto* h0 = context.Input<phi::DenseTensor>("H0");
     auto* weight = context.Input<phi::DenseTensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* bias = context.Input<phi::DenseTensor>("Bias");
-    auto* hidden = context.Output<LoDTensor>("Hidden");
+    auto* hidden = context.Output<phi::DenseTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
     auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
 
     LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
-    LoDTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
+    phi::DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp,
+        batch_hidden_tmp;
     if (is_test) {
       batch_gate = &batch_gate_tmp;
       batch_gate->Resize(input_dims);
@@ -48,10 +49,10 @@ class GRUKernel : public framework::OpKernel<T> {
       batch_hidden = &batch_hidden_tmp;
       batch_hidden->Resize(hidden_dims);
     } else {
-      batch_gate = context.Output<LoDTensor>("BatchGate");
-      batch_hidden = context.Output<LoDTensor>("BatchHidden");
+      batch_gate = context.Output<phi::DenseTensor>("BatchGate");
+      batch_hidden = context.Output<phi::DenseTensor>("BatchHidden");
       batch_reset_hidden_prev =
-          context.Output<LoDTensor>("BatchResetHiddenPrev");
+          context.Output<phi::DenseTensor>("BatchResetHiddenPrev");
     }
     batch_gate->mutable_data<T>(context.GetPlace());
     batch_reset_hidden_prev->mutable_data<T>(context.GetPlace());

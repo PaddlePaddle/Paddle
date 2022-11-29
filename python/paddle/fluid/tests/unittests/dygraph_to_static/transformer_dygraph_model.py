@@ -14,8 +14,10 @@
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 from paddle.fluid.dygraph import (
     Embedding,
     Layer,
@@ -23,10 +25,8 @@ from paddle.fluid.dygraph import (
     Linear,
     to_variable,
 )
-from paddle.jit.api import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
-import paddle
-import paddle.nn.functional as F
+from paddle.jit.api import dygraph_to_static_func
 
 
 def position_encoding_init(n_position, d_pos_vec):
