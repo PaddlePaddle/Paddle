@@ -203,6 +203,7 @@ class RecomputeState(ProgramStats):
                 if cur_op.attr("fix_seed") is False
                 else int(cur_op.attr("seed"))
             )
+            # TODO add dependency for seed op to ensure it be issued just before recompute.
             seed_op = self._block._insert_op_without_sync(
                 index=cur_op.idx,
                 type="seed",
@@ -490,6 +491,7 @@ class RecomputePass(PassBase):
                                 prior_op,
                                 posterior_op,
                                 self._dist_context,
+                                is_recompute=True,
                                 sync=False,
                             )
         main_program._sync_with_cpp()

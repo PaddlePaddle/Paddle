@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
+from paddle.jit.dy2static.loop_transformer import NameVisitor
 from paddle.jit.api import declarative
 
 SEED = 2020

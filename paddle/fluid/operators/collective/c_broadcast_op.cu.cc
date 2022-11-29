@@ -53,8 +53,8 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     } else {
       stream = comm->stream();
     }
