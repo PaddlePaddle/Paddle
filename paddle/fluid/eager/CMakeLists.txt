@@ -35,6 +35,7 @@ endif()
 add_subdirectory(api)
 add_subdirectory(accumulation)
 add_subdirectory(custom_operator)
+add_subdirectory(tests)
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   add_subdirectory(pylayer)
   cc_library(
