@@ -25,25 +25,14 @@ class Graph;
 void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat",
-                                       "conv2d",
-                                       "depthwise_conv2d",
-                                       "elementwise_add",
-                                       "elementwise_mul",
-                                       "elementwise_sub",
-                                       "fc",
-                                       "matmul",
-                                       "nearest_interp",
-                                       "nearest_interp_v2",
-                                       "pool2d",
-                                       "prior_box",
-                                       "reshape2",
-                                       "transpose2",
-                                       "fusion_gru",
-                                       "fusion_lstm",
-                                       "multi_gru",
-                                       "slice",
-                                       "split"});
+      std::unordered_set<std::string>(
+          {"concat",          "conv2d",          "depthwise_conv2d",
+           "fused_conv2d",    "fused_conv3d",    "elementwise_add",
+           "elementwise_mul", "elementwise_sub", "fc",
+           "matmul",          "nearest_interp",  "nearest_interp_v2",
+           "pool2d",          "prior_box",       "reshape2",
+           "transpose2",      "fusion_gru",      "fusion_lstm",
+           "multi_gru",       "slice",           "split"});
   const auto& excluded_ids_list =
       Get<std::unordered_set<int>>("quantize_excluded_op_ids");
   const auto& op_types_list =

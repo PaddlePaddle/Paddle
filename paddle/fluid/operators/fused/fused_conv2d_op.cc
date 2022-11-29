@@ -20,75 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class FusedConvOpMaker : public framework::OpProtoAndCheckerMaker {
+class FusedConvOpMaker : public Conv2DOpMaker {
  protected:
-  void Make() override {
-    AddInput(
-        "Input",
-        "(Tensor) The input tensor of convolution operator. "
-        "The format of input tensor is NCHW or NHWC, where N is batch size, "
-        "C is the "
-        "number of channels, H is the height of the feature, "
-        "and W is the width of the feature.");
-    AddInput(
-        "Filter",
-        "(Tensor) The filter tensor of convolution operator. "
-        "The format of the filter tensor is MCHW, where M is the number of "
-        "output image channels, C is the number of input image channels, "
-        "H is the height of the filter, and W is the width of the filter. "
-        "If the groups attribute is greater than 1, C equals the number of "
-        "input image channels divided by the groups.");
-    AddInput("Bias",
-             "(Tensor) Bias to be added to each output of filter application."
-             "The format of output tensor is X (one-dimensional) of size equal"
-             "to the number of output channels. Only used with MKL-DNN.")
-        .AsDispensable();
-    AddInput("ResidualData",
-             "(Tensor) Tensor with residual data "
-             "to which convolution output will be added."
-             "Used with fuse_residual_connection fusion.")
-        .AsDispensable();
-    AddOutput("Output",
-              "(Tensor) The output tensor of convolution operator. "
-              "It has same data fromat and data type as the Input.");
-    AddAttr<std::vector<int>>("strides",
-                              "(vector<int> default:{1, 1}), the "
-                              "strides(h_stride, w_stride) of "
-                              "convolution operator.")
-        .SetDefault({1, 1});
-    AddAttr<std::vector<int>>("paddings",
-                              "(vector<int> default:{0, 0}), the "
-                              "paddings(pad_height_top, pad_height_bottom, "
-                              "pad_width_left, pad_wifth_right)  of "
-                              "convolution operator.")
-        .SetDefault({0, 0});
-    AddAttr<std::string>(
-        "padding_algorithm",
-        "(string, default \"EXPLICIT\") An optional string from: \"EXPLICIT\","
-        "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
-        "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
-        .SetDefault("EXPLICIT");
-    AddAttr<int>(
-        "groups",
-        "(int default:1), the groups number of the convolution operator. "
-        "According to grouped convolution in Alex Krizhevsky's Deep CNN paper: "
-        "when group=2, the first half of the filters is only connected to the "
-        "first half of the input channels, while the second half of the "
-        "filters "
-        "is only connected to the second half of the input channels.")
-        .SetDefault(1);
-    AddAttr<std::vector<int>>("dilations",
-                              "(vector<int> default:{1, 1}), the "
-                              "dilations(h_dilation, w_dilation) of "
-                              "convolution operator.")
-        .SetDefault({1, 1});
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("NCHW");
+  void Apply() override {
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
