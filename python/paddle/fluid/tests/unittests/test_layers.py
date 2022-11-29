@@ -1880,7 +1880,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            ret = layers.group_norm(
+            ret = paddle.static.nn.group_norm(
                 input=X,
                 groups=2,
                 param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
@@ -1953,7 +1953,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            ret = layers.instance_norm(input=X)
+            ret = paddle.static.nn.instance_norm(input=X)
             static_ret = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
             )[0]
@@ -3584,7 +3584,7 @@ class TestBook(LayerTest):
                 name="input", shape=[3, 4, 5, 6], dtype='float32'
             )
 
-            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+            out = paddle.slice(input, axes=axes, starts=starts, ends=ends)
             return out
 
     def make_scale_variable(self):
