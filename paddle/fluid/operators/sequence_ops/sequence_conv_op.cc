@@ -48,7 +48,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
         in_dims.size() == 2 && filter_dims.size() == 2,
         true,
         platform::errors::InvalidArgument(
-            "Input(X, Filter) should be 2-D phi::DenseTensor. But received Input(X): "
+            "Input(X, Filter) should be 2-D tensor. But received Input(X): "
             "input rank %u, input shape [%s]; received Input(Filter): "
             "input rank %u, input shape [%s].",
             in_dims.size(),
@@ -89,7 +89,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
           padding_dim.size(),
           2,
           platform::errors::InvalidArgument(
-              "Input(PaddingData) should be 2-D phi::DenseTensor. But received: "
+              "Input(PaddingData) should be 2-D tensor. But received: "
               "input rank %u, input shape [%s].",
               padding_dim.size(),
               padding_dim));
@@ -145,14 +145,14 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(phi::DenseTensor) the input(X) is a phi::DenseTensor, which supports "
-        "variable-time length input sequence. The underlying phi::DenseTensor in "
-        "this phi::DenseTensor is a matrix with shape (T, N), where T is the "
+        "(phi::DenseTensor) the input(X) is a LodTensor, which supports "
+        "variable-time length input sequence. The underlying tensor in "
+        "this LodTensor is a matrix with shape (T, N), where T is the "
         "total time steps in this mini-batch and N is the input_hidden_size.");
     AddInput("PaddingData",
              "(phi::DenseTensor, optional) the input(PaddingData) is an optional "
              "parameter, and it is learnable. "
-             "This is a phi::DenseTensor with shape (P, N), where P is the "
+             "This is a tensor with shape (P, N), where P is the "
              "top_pad + bottom_pad, N is the input_hidden_size. In order to "
              "ensure the equal length of sequence before and after "
              "convolution, it is necessary to fill the top and bottom of each "
@@ -166,9 +166,9 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         "context_length * input_hidden_size, M is the output feature size.");
     AddOutput(
         "Out",
-        "(phi::DenseTensor) the output(Out) is a phi::DenseTensor, which support "
-        "variable-time length output sequence. The underlying phi::DenseTensor in "
-        "this phi::DenseTensor is a matrix with shape (T, M), where, T is the "
+        "(phi::DenseTensor) the output(Out) is a LodTensor, which support "
+        "variable-time length output sequence. The underlying tensor in "
+        "this LodTensor is a matrix with shape (T, M), where, T is the "
         "total time steps in this mini-batch, M is the output feature size.");
 
     AddAttr<bool>("paddingTrainable",
