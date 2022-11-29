@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from .common import fc  # noqa: F401
+from .common import instance_norm  # noqa: F401
+from .common import data_norm  # noqa: F401
+from .common import group_norm  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
@@ -25,9 +28,6 @@ from ...fluid.layers import cond  # noqa: F401
 from ...fluid.layers import conv2d  # noqa: F401
 from ...fluid.layers import create_parameter  # noqa: F401
 from ...fluid.layers import crf_decoding  # noqa: F401
-from ...fluid.layers import data_norm  # noqa: F401
-from ...fluid.layers import group_norm  # noqa: F401
-from ...fluid.layers import instance_norm  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
 from ...fluid.layers import multi_box_head  # noqa: F401
 from .loss import nce  # noqa: F401

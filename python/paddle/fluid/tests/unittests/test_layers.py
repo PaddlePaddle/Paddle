@@ -1832,7 +1832,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            ret = layers.group_norm(
+            ret = paddle.static.nn.group_norm(
                 input=X,
                 groups=2,
                 param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
@@ -1905,7 +1905,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            ret = layers.instance_norm(input=X)
+            ret = paddle.static.nn.instance_norm(input=X)
             static_ret = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
             )[0]
@@ -1914,7 +1914,7 @@ class TestLayer(LayerTest):
             X = fluid.layers.data(
                 name='X', shape=shape, dtype='float32', append_batch_size=False
             )
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             ret = instanceNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={'X': input}, fetch_list=[ret]
@@ -1922,21 +1922,21 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 dy_eager_ret = instanceNorm(base.to_variable(input))
                 dy_eager_rlt_value2 = dy_eager_ret.numpy()
 
-            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
@@ -1949,7 +1949,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
             def test_Variable():
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret1 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_Variable)
@@ -1957,7 +1957,7 @@ class TestLayer(LayerTest):
             # the input dtype of InstanceNorm must be float32 or float64
             def test_type():
                 input = np.random.random(shape).astype('int32')
-                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
@@ -3172,18 +3172,6 @@ class TestBook(LayerTest):
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
 
-    def make_space_to_depth(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data',
-                shape=[32, 9, 6, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            return layers.space_to_depth(data, 3)
-
     def make_get_places(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3548,7 +3536,7 @@ class TestBook(LayerTest):
                 name="input", shape=[3, 4, 5, 6], dtype='float32'
             )
 
-            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+            out = paddle.slice(input, axes=axes, starts=starts, ends=ends)
             return out
 
     def make_scale_variable(self):
@@ -3793,16 +3781,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_psroi_pool(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[4], dtype="float32", lod_level=1
-            )
-            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
-            return output
-
     def test_sequence_expand(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -3942,81 +3920,11 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_roi_pool(self):
-        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
-        rois_np = np.random.rand(3, 4).astype('float32')
-        rois_num_np = np.array([1, 2]).astype('int32')
-
-        with self.static_graph():
-            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
-            rois = layers.data(name="rois", shape=[4], dtype="float32")
-            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
-            output = layers.roi_pool(x, rois, 4, 4, 0.5, rois_num=rois_num)
-            static_res = self.get_static_graph_result(
-                feed={'x': x_np, 'rois': rois_np, 'rois_num': rois_num_np},
-                fetch_list=[output],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                x_dy = base.to_variable(x_np)
-                rois_dy = base.to_variable(rois_np)
-                rois_num_dy = base.to_variable(rois_num_np)
-                dy_eager_res = layers.roi_pool(
-                    x_dy, rois_dy, 4, 4, 0.5, rois_num=rois_num_dy
-                )
-                dy_eager_res_value = dy_eager_res[0].numpy()
-
-            x_dy = base.to_variable(x_np)
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
-            dy_res = layers.roi_pool(
-                x_dy, rois_dy, 4, 4, 0.5, rois_num=rois_num_dy
-            )
-            dy_res_value = dy_res[0].numpy()
-        np.testing.assert_array_equal(static_res, dy_res_value)
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
-
     def test_sequence_enumerate(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
-
-    def test_roi_align(self):
-        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
-        rois_np = np.random.rand(3, 4).astype('float32')
-        rois_num_np = np.array([1, 2]).astype('int32')
-
-        with self.static_graph():
-            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
-            rois = layers.data(name="rois", shape=[4], dtype="float32")
-            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
-            output = layers.roi_align(x, rois, 4, 4, 0.5, 2, rois_num=rois_num)
-            static_res = self.get_static_graph_result(
-                feed={'x': x_np, 'rois': rois_np, 'rois_num': rois_num_np},
-                fetch_list=[output],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                x_dy = base.to_variable(x_np)
-                rois_dy = base.to_variable(rois_np)
-                rois_num_dy = base.to_variable(rois_num_np)
-                dy_eager_res = layers.roi_align(
-                    x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-                )
-                dy_eager_res_value = dy_eager_res.numpy()
-
-            x_dy = base.to_variable(x_np)
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
-            dy_res = layers.roi_align(
-                x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-            )
-            dy_res_value = dy_res.numpy()
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
-        np.testing.assert_array_equal(static_res, dy_res_value)
 
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now
