@@ -117,12 +117,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << op_type << " op does not support tensorrt.";
         return false;
 #endif
-        int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
-        int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
-        if (in_dtype != 0 || out_dtype != 0) {
-          VLOG(3) << "logical_not only supports inputs and outputs of BOOL";
-          return false;
-        }
         if (!with_dynamic_shape) {
           VLOG(3) << "static shape mode is not supported for TRT logical_not";
           return false;
