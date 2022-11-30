@@ -3175,6 +3175,73 @@ void patterns::DeleteWeightQuantDequantLinearOpPattern::operator()() {
   any_op2->LinksFrom({weight_dequantize_linear_op_out});
 }
 
+void patterns::DeleteWeightDequantLinearOpEncoderPattern::operator()() {
+  auto weight_dequantize_linear_op_x =
+      pattern->NewNode(weight_dequantize_linear_op_x_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op_scale =
+      pattern->NewNode(weight_dequantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op =
+      pattern->NewNode(weight_dequantize_linear_op_repr())
+          ->assert_is_op("dequantize_linear");
+
+  auto weight_dequantize_linear_op_out =
+      pattern->NewNode(weight_dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y");
+
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  // while loop
+  auto *while0 =
+      pattern->NewNode(while0_repr())->assert_is_op("while")->AsOutput();
+  while0->LinksFrom({weight_dequantize_linear_op_out});
+
+  weight_dequantize_linear_op
+      ->LinksFrom(
+          {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
+      .LinksTo({weight_dequantize_linear_op_out});
+  any_op2->LinksFrom({weight_dequantize_linear_op_out});
+}
+
+void patterns::DeleteWeightDequantLinearOpDecoderPattern::operator()() {
+  auto weight_dequantize_linear_op_x =
+      pattern->NewNode(weight_dequantize_linear_op_x_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op_scale =
+      pattern->NewNode(weight_dequantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op =
+      pattern->NewNode(weight_dequantize_linear_op_repr())
+          ->assert_is_op("dequantize_linear");
+
+  auto weight_dequantize_linear_op_out =
+      pattern->NewNode(weight_dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y");
+
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  weight_dequantize_linear_op
+      ->LinksFrom(
+          {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
+      .LinksTo({weight_dequantize_linear_op_out});
+  any_op2->LinksFrom({weight_dequantize_linear_op_out});
+}
+
 void patterns::DeleteQuantDequantLinearOpPattern::operator()() {
   auto quantize_linear_op_x = pattern->NewNode(quantize_linear_op_x_repr())
                                   ->AsInput()
