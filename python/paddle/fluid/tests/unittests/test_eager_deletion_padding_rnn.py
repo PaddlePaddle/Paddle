@@ -369,7 +369,7 @@ def lm_model(
         init_cell, shape=[num_layers, -1, hidden_size]
     )
 
-    x_emb = layers.embedding(
+    x_emb = paddle.static.nn.embedding(
         input=x,
         size=[vocab_size, hidden_size],
         dtype='float32',

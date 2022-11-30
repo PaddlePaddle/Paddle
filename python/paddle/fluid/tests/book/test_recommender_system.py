@@ -42,7 +42,7 @@ def get_usr_combined_features():
 
     uid = layers.data(name='user_id', shape=[1], dtype='int64')
 
-    usr_emb = layers.embedding(
+    usr_emb = paddle.static.nn.embedding(
         input=uid,
         dtype='float32',
         size=[USR_DICT_SIZE, 32],
@@ -56,7 +56,7 @@ def get_usr_combined_features():
 
     usr_gender_id = layers.data(name='gender_id', shape=[1], dtype='int64')
 
-    usr_gender_emb = layers.embedding(
+    usr_gender_emb = paddle.static.nn.embedding(
         input=usr_gender_id,
         size=[USR_GENDER_DICT_SIZE, 16],
         param_attr='gender_table',
@@ -68,7 +68,7 @@ def get_usr_combined_features():
     USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
     usr_age_id = layers.data(name='age_id', shape=[1], dtype="int64")
 
-    usr_age_emb = layers.embedding(
+    usr_age_emb = paddle.static.nn.embedding(
         input=usr_age_id,
         size=[USR_AGE_DICT_SIZE, 16],
         is_sparse=IS_SPARSE,
@@ -80,7 +80,7 @@ def get_usr_combined_features():
     USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
     usr_job_id = layers.data(name='job_id', shape=[1], dtype="int64")
 
-    usr_job_emb = layers.embedding(
+    usr_job_emb = paddle.static.nn.embedding(
         input=usr_job_id,
         size=[USR_JOB_DICT_SIZE, 16],
         param_attr='job_table',
@@ -104,7 +104,7 @@ def get_mov_combined_features():
 
     mov_id = layers.data(name='movie_id', shape=[1], dtype='int64')
 
-    mov_emb = layers.embedding(
+    mov_emb = paddle.static.nn.embedding(
         input=mov_id,
         dtype='float32',
         size=[MOV_DICT_SIZE, 32],
@@ -120,7 +120,7 @@ def get_mov_combined_features():
         name='category_id', shape=[1], dtype='int64', lod_level=1
     )
 
-    mov_categories_emb = layers.embedding(
+    mov_categories_emb = paddle.static.nn.embedding(
         input=category_id, size=[CATEGORY_DICT_SIZE, 32], is_sparse=IS_SPARSE
     )
 
@@ -134,7 +134,7 @@ def get_mov_combined_features():
         name='movie_title', shape=[1], dtype='int64', lod_level=1
     )
 
-    mov_title_emb = layers.embedding(
+    mov_title_emb = paddle.static.nn.embedding(
         input=mov_title_id, size=[MOV_TITLE_DICT_SIZE, 32], is_sparse=IS_SPARSE
     )
 

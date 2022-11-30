@@ -1287,7 +1287,7 @@ def prepare_encoder(
     This module is used at the bottom of the encoder stacks.
     """
     if TrainTaskConfig.check_acc:
-        src_word_emb = layers.embedding(
+        src_word_emb = paddle.static.nn.embedding(
             src_word,
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
@@ -1296,7 +1296,7 @@ def prepare_encoder(
             ),
         )
     else:
-        src_word_emb = layers.embedding(
+        src_word_emb = paddle.static.nn.embedding(
             src_word,
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
@@ -1306,7 +1306,7 @@ def prepare_encoder(
         )
 
     src_word_emb = paddle.scale(x=src_word_emb, scale=src_emb_dim**0.5)
-    src_pos_enc = layers.embedding(
+    src_pos_enc = paddle.static.nn.embedding(
         src_pos,
         size=[src_max_len, src_emb_dim],
         param_attr=fluid.ParamAttr(

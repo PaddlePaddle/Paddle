@@ -34,7 +34,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
         x1 = fluid.layers.data(name='x1', shape=[1], dtype='int64', lod_level=1)
 
-        emb = fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=x1,
             size=[10000, 10],
             param_attr=fluid.ParamAttr(

@@ -31,6 +31,7 @@ class TestFleet1(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
+        import paddle
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
@@ -57,7 +58,7 @@ class TestFleet1(unittest.TestCase):
                 lod_level=1,
                 append_batch_size=False,
             )
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=show,
                 size=[1, 1],
                 is_sparse=True,

@@ -1191,7 +1191,7 @@ class TestLayer(LayerTest):
         dict_size = 20
         with self.static_graph():
             data_t = layers.data(name='word', shape=[1], dtype='int64')
-            emb = layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=data_t,
                 size=[dict_size, 32],
                 param_attr='emb.w',
@@ -3113,26 +3113,26 @@ class TestBook(LayerTest):
             forth_word = self._get_data(name='forthw', shape=[1], dtype='int64')
             next_word = self._get_data(name='nextw', shape=[1], dtype='int64')
 
-            embed_first = layers.embedding(
+            embed_first = paddle.static.nn.embedding(
                 input=first_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
                 param_attr='shared_w',
             )
-            embed_second = layers.embedding(
+            embed_second = paddle.static.nn.embedding(
                 input=second_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
                 param_attr='shared_w',
             )
 
-            embed_third = layers.embedding(
+            embed_third = paddle.static.nn.embedding(
                 input=third_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
                 param_attr='shared_w',
             )
-            embed_forth = layers.embedding(
+            embed_forth = paddle.static.nn.embedding(
                 input=forth_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
@@ -3226,7 +3226,7 @@ class TestBook(LayerTest):
             if i == label_word:
                 continue
 
-            emb = layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=words[i],
                 size=[dict_size, 32],
                 param_attr='emb.w',

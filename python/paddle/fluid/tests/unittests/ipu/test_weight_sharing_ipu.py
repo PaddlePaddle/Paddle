@@ -55,7 +55,7 @@ class TestWeightSharing(IPUOpTest):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='int64'
         )
         with paddle.static.ipu_shard_guard(index=0, stage=0):
-            y = paddle.fluid.layers.embedding(
+            y = paddle.static.nn.embedding(
                 input=x,
                 size=[768, 768],
                 dtype='float32',

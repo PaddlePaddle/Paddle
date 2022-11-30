@@ -59,7 +59,7 @@ def TestDistTraining():
         with paddle.static.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[3, 2, 1], dtype='int64')
             with paddle.static.ipu_shard_guard(index=0, stage=0):
-                out = paddle.fluid.layers.embedding(x, **attrs)
+                out = paddle.static.nn.embedding(x, **attrs)
             with paddle.static.ipu_shard_guard(index=1, stage=1):
                 loss = paddle.mean(out)
             opt = paddle.optimizer.Adam(learning_rate=1e-1)

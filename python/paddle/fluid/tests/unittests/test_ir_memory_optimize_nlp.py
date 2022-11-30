@@ -32,7 +32,7 @@ def lstm_net(
     class_dim=2,
     emb_lr=30.0,
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),

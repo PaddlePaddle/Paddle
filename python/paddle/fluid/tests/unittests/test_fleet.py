@@ -59,7 +59,7 @@ class TestFleet1(unittest.TestCase):
                 lod_level=1,
                 append_batch_size=False,
             )
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=show,
                 size=[1, 1],
                 is_sparse=True,

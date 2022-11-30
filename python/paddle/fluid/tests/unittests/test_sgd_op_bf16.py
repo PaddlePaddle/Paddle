@@ -338,7 +338,7 @@ class TestSGDOpBF16API(unittest.TestCase):
             label = fluid.layers.data(
                 name='Y', shape=self.y_shape, dtype='uint16'
             )
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
                 param_attr=fluid.ParamAttr(

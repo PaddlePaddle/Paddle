@@ -61,7 +61,9 @@ class TestDatasetWithStat(unittest.TestCase):
 
         embs = []
         for x in slots_vars:
-            emb = fluid.layers.embedding(x, is_sparse=True, size=[100001, 4])
+            emb = paddle.static.nn.embedding(
+                x, is_sparse=True, size=[100001, 4]
+            )
             embs.append(emb)
 
         dataset = paddle.distributed.InMemoryDataset()

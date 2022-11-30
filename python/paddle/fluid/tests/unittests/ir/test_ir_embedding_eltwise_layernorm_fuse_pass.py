@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from pass_test import PassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -42,13 +43,13 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
                 dtype="int64",
                 append_batch_size=False,
             )
-            word_emb = fluid.layers.embedding(
+            word_emb = paddle.static.nn.embedding(
                 input=word_id, size=(128, 768), dtype='float32'
             )
-            pos_emb = fluid.layers.embedding(
+            pos_emb = paddle.static.nn.embedding(
                 input=pos_id, size=(128, 768), dtype='float32'
             )
-            sent_emb = fluid.layers.embedding(
+            sent_emb = paddle.static.nn.embedding(
                 input=sent_id, size=(128, 768), dtype='float32'
             )
             add1 = fluid.layers.elementwise_add(word_emb, pos_emb)
@@ -79,16 +80,16 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
                 dtype="int64",
                 append_batch_size=False,
             )
-            emb1 = fluid.layers.embedding(
+            emb1 = paddle.static.nn.embedding(
                 input=id1, size=(128, 768), dtype='float32'
             )
-            emb2 = fluid.layers.embedding(
+            emb2 = paddle.static.nn.embedding(
                 input=id2, size=(128, 768), dtype='float32'
             )
-            emb3 = fluid.layers.embedding(
+            emb3 = paddle.static.nn.embedding(
                 input=id3, size=(128, 768), dtype='float32'
             )
-            emb4 = fluid.layers.embedding(
+            emb4 = paddle.static.nn.embedding(
                 input=id4, size=(128, 768), dtype='float32'
             )
             add_1 = fluid.layers.elementwise_add(emb1, emb2)

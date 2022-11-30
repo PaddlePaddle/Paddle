@@ -53,7 +53,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             lod_level=1,
             append_batch_size=False,
         )
-        x_embedding = paddle.fluid.layers.embedding(
+        x_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=input_x,
             size=[1000000000, 100000],

@@ -32,7 +32,7 @@ class SparseLoadOp(unittest.TestCase):
         with fluid.unique_name.guard():
             dense_input = fluid.data('input', shape=[None, 1], dtype="int64")
 
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=dense_input,
                 is_sparse=True,
                 size=[10, 10],

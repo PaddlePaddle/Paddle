@@ -47,7 +47,7 @@ def db_lstm(
     **ignored
 ):
     # 8 features
-    predicate_embedding = fluid.layers.embedding(
+    predicate_embedding = paddle.static.nn.embedding(
         input=predicate,
         is_sparse=is_sparse,
         size=[pred_dict_len, word_dim],
@@ -55,7 +55,7 @@ def db_lstm(
         param_attr='vemb',
     )
 
-    mark_embedding = fluid.layers.embedding(
+    mark_embedding = paddle.static.nn.embedding(
         input=mark,
         is_sparse=is_sparse,
         size=[mark_dict_len, mark_dim],
@@ -64,7 +64,7 @@ def db_lstm(
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [
-        fluid.layers.embedding(
+        paddle.static.nn.embedding(
             size=[word_dict_len, word_dim],
             is_sparse=is_sparse,
             input=x,

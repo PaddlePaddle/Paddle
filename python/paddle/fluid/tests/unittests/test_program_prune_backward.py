@@ -41,7 +41,7 @@ def lstm_net(use_feed):
         name="words", shape=[1], dtype="int64", lod_level=1
     )
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),
