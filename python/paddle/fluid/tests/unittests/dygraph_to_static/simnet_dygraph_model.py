@@ -17,7 +17,10 @@ from functools import reduce
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
-from paddle.fluid.dygraph import Embedding, Layer, Linear
+
+from functools import reduce
+
+from paddle.fluid.dygraph import Embedding, Layer
 from paddle.jit.api import declarative
 from paddle.static import Variable
 
@@ -171,7 +174,7 @@ class ElementwiseAddLayer:
         """
         operation
         """
-        add = fluid.layers.elementwise_add(x, y)
+        add = paddle.add(x, y)
         return add
 
 
@@ -190,7 +193,7 @@ class ElementwiseSubLayer:
         """
         operation
         """
-        sub = fluid.layers.elementwise_sub(x, y)
+        sub = paddle.subtract(x, y)
         return sub
 
 
@@ -490,7 +493,7 @@ class BOW(Layer):
         self.emb_layer = EmbeddingLayer(
             self.dict_size, self.emb_dim, "emb"
         ).ops()
-        self.bow_layer = Linear(self.bow_dim, self.bow_dim)
+        self.bow_layer = paddle.nn.Linear(self.bow_dim, self.bow_dim)
         self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 
