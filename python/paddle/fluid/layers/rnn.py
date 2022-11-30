@@ -1427,7 +1427,7 @@ class BeamSearchDecoder(Decoder):
                 `[time_step, batch_size, beam_size]`. `final_states` is the same \
                 as the input argument `final_states`.
         """
-        predicted_ids = nn.gather_tree(
+        predicted_ids = paddle.nn.functional.gather_tree(
             outputs.predicted_ids, outputs.parent_ids
         )
         # TODO: use FinalBeamSearchDecoderOutput as output
