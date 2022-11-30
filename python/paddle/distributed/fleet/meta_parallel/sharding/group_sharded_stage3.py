@@ -329,6 +329,7 @@ class GroupShardedStage3(nn.Layer):
         Flatten parameters according to layer.
         """
         current_layer_params = _current_layer_params(layer)
+
         if current_layer_params:
             CHECK_LAYER[id(layer)] = name
             self._flatten_layer_params(layer, current_layer_params)
@@ -346,7 +347,7 @@ class GroupShardedStage3(nn.Layer):
 
         current_params = list()
         for p in current_layer_params:
-            if p.trainable and p._numel() > self._segment_size:
+            if p._numel() > self._segment_size:
                 current_params.append(_add_manage_info(p))
             elif p.trainable:
                 self._unslice_params.add(_UnsliceParam(p))
@@ -430,7 +431,11 @@ class GroupShardedStage3(nn.Layer):
         param.status = "part"
 
         # Updata optimizer master weights
-        if param.dtype == Type.fp16.value and not self._offload:
+        if (
+            param.trainable
+            and param.dtype == Type.fp16.value
+            and not self._offload
+        ):
             master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
             master_tensor.name = param.name
             self._optim._master_weights[param.fw_storage.name] = master_tensor
@@ -599,6 +604,9 @@ class GroupShardedStage3(nn.Layer):
     def _get_allreduce_fn(self, param):
         @paddle.autograd.no_grad()
         def allreduce_(*_):
+            assert (
+                param.trainable
+            ), "param must be trainable for grad allreduced"
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
@@ -962,6 +970,8 @@ def _allgather_buffer(
 @paddle.autograd.no_grad()
 def _create_params_grad(trainable_params, param2buffer_size, task_flow):
     for param in trainable_params:
+        if not param.trainable:
+            continue
         if param.name in task_flow.full_grad.keys():
             continue
         assert isinstance(param2buffer_size[param.name], int)
