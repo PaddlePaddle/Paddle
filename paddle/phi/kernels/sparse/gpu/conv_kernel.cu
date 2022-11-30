@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+#ifdef PADDLE_WITH_CUTLASS
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
+#endif
 
 #include "glog/logging.h"
 
@@ -120,29 +123,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
-  // 2. gather
-  phi::DenseTensor in_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor out_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
-  T* in_features_ptr = in_features.data<T>();
-  T* out_features_ptr = out_features.data<T>();
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
-
-  Gather<T, IntT>(dev_ctx,
-                  x.values().data<T>(),
-                  rulebook_ptr,
-                  rulebook_len,
-                  in_channels,
-                  in_features_ptr);
-
-  // 3. call gemm for every werght
-  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-  auto* out_values = out->mutable_values();
-  T* out_values_ptr = out_values->data<T>();
-  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
   if (subm) {
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
@@ -162,43 +142,152 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                       out_index_ptr,
                                       unique_value_ptr);
   }
+#ifdef PADDLE_WITH_CUTLASS
+  bool cutlass = true;
+  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
+    if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
+    if (std::is_same<T, float>::value) cutlass = false;
+  }
+  if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+  if (cutlass) {
+    auto* out_values = out->mutable_non_zero_elements();
+    T* out_values_ptr = out_values->data<T>();
+    phi::funcs::SetConstant<GPUContext, T> set_zero;
+    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
-  const T* kernel_ptr = kernel.data<T>();
-  for (int i = 0; i < kernel_size; i++) {
-    if (h_counter_ptr[i] <= 0) {
-      continue;
+    const T* kernel_ptr = kernel.data<T>();
+    for (int i = 0; i < kernel_size; i++) {
+      if (h_counter_ptr[i] <= 0) {
+        continue;
+      }
+
+      const int M = h_counter_ptr[i];
+      const int K = in_channels;
+      const int N = out_channels;
+      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+      const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
+      const IntT* scatter_indices =
+          rulebook_ptr + rulebook_len + h_offsets_ptr[i];
+
+      if constexpr (std::is_same<T, phi::dtype::float16>::value &&
+                    std::is_same<IntT, int32_t>::value) {
+        fp16_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp16Kernel(M, N, K);
+        gather_gemm_scatter(
+            dev_ctx,
+            reinterpret_cast<const cutlass::half_t*>(
+                x.non_zero_elements().data<T>()),
+            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            M,
+            N,
+            K,
+            static_cast<const int32_t*>(gather_indices),
+            static_cast<const int32_t*>(scatter_indices),
+            static_cast<cutlass::half_t>(1),
+            static_cast<cutlass::half_t>(1));
+      }
+      if constexpr (std::is_same<T, float>::value &&
+                    std::is_same<IntT, int32_t>::value) {
+        fp32_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp32Kernel(M, N, K);
+        gather_gemm_scatter(dev_ctx,
+                            x.non_zero_elements().data<T>(),
+                            tmp_kernel_ptr,
+                            out_values_ptr,
+                            out_values_ptr,
+                            M,
+                            N,
+                            K,
+                            gather_indices,
+                            scatter_indices,
+                            static_cast<T>(1),
+                            static_cast<T>(1));
+      }
+      if constexpr (std::is_same<T, double>::value &&
+                    std::is_same<IntT, int32_t>::value) {
+        fp64_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp64Kernel(M, N, K);
+        gather_gemm_scatter(dev_ctx,
+                            x.non_zero_elements().data<T>(),
+                            tmp_kernel_ptr,
+                            out_values_ptr,
+                            out_values_ptr,
+                            M,
+                            N,
+                            K,
+                            gather_indices,
+                            scatter_indices,
+                            static_cast<T>(1),
+                            static_cast<T>(1));
+      }
+    }
+  } else {
+#endif
+    // 2. gather
+    phi::DenseTensor in_features =
+        phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+    phi::DenseTensor out_features =
+        phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+    T* in_features_ptr = in_features.data<T>();
+    T* out_features_ptr = out_features.data<T>();
+    phi::funcs::SetConstant<GPUContext, T> set_zero;
+    set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
+
+    Gather<T, IntT>(dev_ctx,
+                    x.values().data<T>(),
+                    rulebook_ptr,
+                    rulebook_len,
+                    in_channels,
+                    in_features_ptr);
+
+    // 3. call gemm for every werght
+    auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+    auto* out_values = out->mutable_values();
+    T* out_values_ptr = out_values->data<T>();
+    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+    const T* kernel_ptr = kernel.data<T>();
+    for (int i = 0; i < kernel_size; i++) {
+      if (h_counter_ptr[i] <= 0) {
+        continue;
+      }
+
+      // call gemm: (n, in_channels) * (in_channels, out_channels)
+      const int M = h_counter_ptr[i];
+      const int K = in_channels;
+      const int N = out_channels;
+      T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
+      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+      T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
+
+      blas.GEMM(CblasNoTrans,
+                CblasNoTrans,
+                M,
+                N,
+                K,
+                static_cast<T>(1),
+                tmp_in_ptr,
+                tmp_kernel_ptr,
+                static_cast<T>(0),
+                tmp_out_ptr);
     }
 
-    // call gemm: (n, in_channels) * (in_channels, out_channels)
-    const int M = h_counter_ptr[i];
-    const int K = in_channels;
-    const int N = out_channels;
-    T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
-    const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-    T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-
-    blas.GEMM(CblasNoTrans,
-              CblasNoTrans,
-              M,
-              N,
-              K,
-              static_cast<T>(1),
-              tmp_in_ptr,
-              tmp_kernel_ptr,
-              static_cast<T>(0),
-              tmp_out_ptr);
+    // 4. scatter
+    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                     out_features_ptr,
+                                     out_index.data<int>(),
+                                     unique_value.data<int>(),
+                                     out->nnz(),
+                                     kernel_size,
+                                     out_channels,
+                                     1,
+                                     out_values_ptr);
+#ifdef PADDLE_WITH_CUTLASS
   }
-
-  // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   out_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   out->nnz(),
-                                   kernel_size,
-                                   out_channels,
-                                   1,
-                                   out_values_ptr);
+#endif
 }
 
 /**

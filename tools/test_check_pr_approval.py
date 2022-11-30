@@ -22,7 +22,6 @@ import sys
 
 
 class Test_check_approval(unittest.TestCase):
-
     def setUp(self):
         self.codeset = 'UTF-8'
         # only key info in it
@@ -68,47 +67,64 @@ class Test_check_approval(unittest.TestCase):
     "author_association": "CONTRIBUTOR"
   }
 ]
-""".encode(self.codeset)
+""".encode(
+            self.codeset
+        )
 
     def test_ids(self):
         cmd = [sys.executable, 'check_pr_approval.py', '1', '26408901']
-        subprc = subprocess.Popen(cmd,
-                                  stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+        subprc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
     def test_logins(self):
         cmd = [sys.executable, 'check_pr_approval.py', '1', 'pangyoki']
-        subprc = subprocess.Popen(cmd,
-                                  stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+        subprc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
     def test_ids_and_logins(self):
         cmd = [
-            sys.executable, 'check_pr_approval.py', '2', 'pangyoki', '13469016'
+            sys.executable,
+            'check_pr_approval.py',
+            '2',
+            'pangyoki',
+            '13469016',
         ]
-        subprc = subprocess.Popen(cmd,
-                                  stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+        subprc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
-        #self.assertEqual('', error.rstrip())
+        # self.assertEqual('', error.rstrip())
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
     def test_check_with_required_reviewer_not_approved(self):
         cmd = [
-            sys.executable, 'check_pr_approval.py', '2', 'wadefelix',
-            ' 13469016'
+            sys.executable,
+            'check_pr_approval.py',
+            '2',
+            'wadefelix',
+            ' 13469016',
         ]
-        subprc = subprocess.Popen(cmd,
-                                  stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+        subprc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('FALSE', output.decode(self.codeset).rstrip())
 

@@ -15,43 +15,46 @@
 import unittest
 import paddle
 from paddle import fluid
-import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
+from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import (
+    MetaOptimizerBase,
+)
 
 
 class TestFleetMetaOptimizerBase(unittest.TestCase):
-
     def net(main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
             with fluid.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
-                input_x = paddle.fluid.layers.data(name="x",
-                                                   shape=[32],
-                                                   dtype='float32')
-                input_y = paddle.fluid.layers.data(name="y",
-                                                   shape=[1],
-                                                   dtype='int64')
+                input_x = paddle.fluid.layers.data(
+                    name="x", shape=[32], dtype='float32'
+                )
+                input_y = paddle.fluid.layers.data(
+                    name="y", shape=[1], dtype='int64'
+                )
 
-                fc_1 = paddle.fluid.layers.fc(input=input_x,
-                                              size=64,
-                                              act='tanh')
+                fc_1 = paddle.fluid.layers.fc(
+                    input=input_x, size=64, act='tanh'
+                )
                 fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
-                prediction = paddle.fluid.layers.fc(input=[fc_2],
-                                                    size=2,
-                                                    act='softmax')
-                cost = paddle.fluid.layers.cross_entropy(input=prediction,
-                                                         label=input_y)
+                prediction = paddle.fluid.layers.fc(
+                    input=[fc_2], size=2, act='softmax'
+                )
+                cost = paddle.fluid.layers.cross_entropy(
+                    input=prediction, label=input_y
+                )
                 avg_cost = paddle.mean(x=cost)
 
                 optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
                 opt = MetaOptimizerBase(optimizer)
                 opt_ops, params_grads = opt.minimize(avg_cost)
-                opt.apply_optimize(avg_cost,
-                                   paddle.static.default_startup_program(),
-                                   params_grads)
+                opt.apply_optimize(
+                    avg_cost,
+                    paddle.static.default_startup_program(),
+                    params_grads,
+                )
         return None
 
     net(fluid.default_startup_program(), fluid.default_main_program())

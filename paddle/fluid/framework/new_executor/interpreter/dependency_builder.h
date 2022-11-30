@@ -36,7 +36,7 @@ class DependencyBuilder {
   // build op dependencies and return the mapping from op to its downstream-op
   // set
   const std::map<int, std::set<int>>& Build(
-      const std::vector<Instruction>& instructions);
+      const std::vector<Instruction>& instructions, bool is_sequential_run);
 
   bool OpHappensBefore(int prior_op_idx, int posterior_op_idx);
 

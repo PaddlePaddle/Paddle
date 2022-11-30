@@ -14,24 +14,18 @@
 
 from paddle.fluid.tests.unittests.hdfs_test_utils import FSTestBase
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
-import sys
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 
 java_home = os.environ["JAVA_HOME"]
 
 
 class FSTest3(FSTestBase):
-
     def test_hdfs(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/",
-                        None,
-                        time_out=5 * 1000,
-                        sleep_inter=100)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=5 * 1000, sleep_inter=100
+        )
         self._test_mkdirs(fs)
         self._test_list_dir(fs)
         self._test_try_upload(fs)

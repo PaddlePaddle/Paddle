@@ -18,7 +18,6 @@ import sys
 
 sys.path.append("..")
 import numpy as np
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
 
 paddle.enable_static()
@@ -26,7 +25,7 @@ paddle.enable_static()
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
-        axis = (axis, )
+        axis = (axis,)
     elif isinstance(axis, list):
         axis = tuple(axis)
     if reduce_all:
@@ -36,7 +35,6 @@ def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
 
 
 class XPUTestLogsumexp(XPUOpTest):
-
     def setUp(self):
         self.op_type = 'logsumexp'
         self.shape = [2, 3, 4, 5]
@@ -55,7 +53,7 @@ class XPUTestLogsumexp(XPUOpTest):
         self.attrs = {
             'axis': self.axis,
             'keepdim': self.keepdim,
-            'reduce_all': self.reduce_all
+            'reduce_all': self.reduce_all,
         }
 
     def set_attrs(self):
@@ -71,31 +69,26 @@ class XPUTestLogsumexp(XPUOpTest):
 
 
 class TestLogsumexp_shape(XPUTestLogsumexp):
-
     def set_attrs(self):
         self.shape = [4, 5, 6]
 
 
 class TestLogsumexp_axis(XPUTestLogsumexp):
-
     def set_attrs(self):
         self.axis = [0, -1]
 
 
 class TestLogsumexp_axis_all(XPUTestLogsumexp):
-
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
 
 class TestLogsumexp_keepdim(XPUTestLogsumexp):
-
     def set_attrs(self):
         self.keepdim = True
 
 
 class TestLogsumexp_reduce_all(XPUTestLogsumexp):
-
     def set_attrs(self):
         self.reduce_all = True
 

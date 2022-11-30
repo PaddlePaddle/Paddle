@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -43,9 +42,9 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='int32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='int32'
+        )
         out = paddle.fluid.layers.one_hot(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -62,7 +61,6 @@ class TestBase(IPUOpTest):
 
 @unittest.skip('does not support allow_out_of_range=True')
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {"depth": 4, "allow_out_of_range": True}
 

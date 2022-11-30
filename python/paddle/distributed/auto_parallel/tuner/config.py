@@ -14,9 +14,7 @@
 
 import os
 import copy
-import pathlib
 
-import paddle
 from ..strategy import Strategy
 
 _tuning_supported_passes = ["sharding", "recompute"]
@@ -27,7 +25,7 @@ def _get_pass_config(strategy, pass_name):
     return config
 
 
-class TuningConfig(object):
+class TuningConfig:
     """
     A uniform config wrap:
     distributed strategy: the user defined configuration for optimization pass
@@ -111,8 +109,10 @@ class TuningConfig(object):
         self._project_dir = project_dir
 
         for p in _tuning_supported_passes:
-            if getattr(self._dist_strategy, p) and _get_pass_config(
-                    self._dist_strategy, p).enable_tuning:
+            if (
+                getattr(self._dist_strategy, p)
+                and _get_pass_config(self._dist_strategy, p).enable_tuning
+            ):
                 # TODO distinguish different args of each passes
                 self._tuning_passes_name.add(p)
 

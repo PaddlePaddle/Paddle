@@ -13,10 +13,8 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
 import os
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -28,18 +26,14 @@ class TestCloudRoleMaker(unittest.TestCase):
         """Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import sys
         import threading
-        import paddle.fluid as fluid
+
         try:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
-            from paddle.fluid.incubate.fleet.base.role_maker import \
-                GeneralRoleMaker
             from paddle.distributed.fleet.utils.http_server import KVHandler
             from paddle.distributed.fleet.utils.http_server import KVServer
             from paddle.distributed.fleet.utils.http_server import KVHTTPServer
@@ -47,7 +41,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             print("warning: no fleet, skip test_pslib_4")
             return
 
-        class FakeStream():
+        class FakeStream:
             """
             it is a fake stream only for test.
             """
@@ -74,8 +68,6 @@ class TestCloudRoleMaker(unittest.TestCase):
                 if b == 0:
                     raise ValueError("this is only for test")
                 return "fake"
-
-        import os
 
         try:
 
@@ -123,11 +115,10 @@ class TestCloudRoleMaker(unittest.TestCase):
                     fake end header, it will do nothing.
                     """
                     pass
+
         except:
             print("warning: no KVHandler, skip test_pslib_4")
             return
-
-        import sys
 
         try:
 
@@ -142,6 +133,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     self.delete_kv = {}
                     self.kv_lock = threading.Lock()
                     self.kv = {}
+
         except:
             print("warning: no KVHTTPServer, skip test_pslib_4")
             return
@@ -159,6 +151,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     self.listen_thread = None
                     self.size = {}
                     self.size["a"] = 999
+
         except:
             print("warning: no KVServer, skip test_pslib_4")
             return

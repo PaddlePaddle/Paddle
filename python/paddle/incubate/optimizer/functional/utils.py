@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.fluid.framework import Variable
-from paddle.fluid.data_feeder import check_type, check_dtype
+from paddle.fluid.data_feeder import check_type
 
 
 def check_input_type(input, name, op_name):
@@ -53,26 +53,29 @@ def check_initial_inverse_hessian_estimate(H0):
     else:
 
         def create_tmp_var(program, name, dtype, shape):
-            return program.current_block().create_var(name=name,
-                                                      dtype=dtype,
-                                                      shape=shape)
+            return program.current_block().create_var(
+                name=name, dtype=dtype, shape=shape
+            )
 
-        out_var = create_tmp_var(paddle.static.default_main_program(),
-                                 name='output',
-                                 dtype='float32',
-                                 shape=[-1])
+        out_var = create_tmp_var(
+            paddle.static.default_main_program(),
+            name='output',
+            dtype='float32',
+            shape=[-1],
+        )
 
         def false_fn():
-            paddle.static.nn.py_func(func=raise_func,
-                                     x=is_symmetric,
-                                     out=out_var)
+            paddle.static.nn.py_func(
+                func=raise_func, x=is_symmetric, out=out_var
+            )
 
         paddle.static.nn.cond(is_symmetric, None, false_fn)
         # eigvals only support cpu
         paddle.set_device("cpu")
         eigvals = paddle.paddle.linalg.eigvals(H0)
-        is_positive = paddle.all(eigvals.real() > 0.) and paddle.all(
-            eigvals.imag() == 0.)
+        is_positive = paddle.all(eigvals.real() > 0.0) and paddle.all(
+            eigvals.imag() == 0.0
+        )
         paddle.static.nn.cond(is_positive, None, false_fn)
 
 

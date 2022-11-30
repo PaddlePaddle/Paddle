@@ -19,7 +19,11 @@ import unittest
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 np.random.seed(10)
@@ -29,7 +33,7 @@ def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
     # clip to shiftx, otherwise, when calc loss with
     # log(exp(shiftx)), may get log(0)=INF
-    shiftx = (x - np.max(x)).clip(-64.)
+    shiftx = (x - np.max(x)).clip(-64.0)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -44,7 +48,6 @@ def ref_softmax(x, axis=None, dtype=None):
 
 
 class XPUTestSoftmaxOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'softmax'
         self.use_dynamic_create_class = True
@@ -56,14 +59,12 @@ class XPUTestSoftmaxOp(XPUOpTestWrapper):
         axis = [-1, 0, 1]
         for shape in shapes:
             for axi in axis:
-                class_name = 'XPUTestSoftmax_' + \
-                       str(shape) + "_" + str(axi)
+                class_name = 'XPUTestSoftmax_' + str(shape) + "_" + str(axi)
                 attr_dict = {'shape': shape, 'axis': axi}
                 classes.append([class_name, attr_dict])
         return base_class, classes
 
     class TestSoftmaxOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = "softmax"
             if not hasattr(self, 'shape'):

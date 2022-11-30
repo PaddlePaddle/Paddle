@@ -13,18 +13,15 @@
 # limitations under the License.
 
 import unittest
-import os
-import paddle
 import socket
 import threading
 
 
 class TestFleetPrivateFunction(unittest.TestCase):
-
     def test_wait_port(self):
-
         def init_server(port):
             import time
+
             time.sleep(5)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.bind(("127.0.0.1", port))
@@ -35,10 +32,11 @@ class TestFleetPrivateFunction(unittest.TestCase):
                 c.close()
                 break
 
-        thr = threading.Thread(target=init_server, args=(9292, ))
+        thr = threading.Thread(target=init_server, args=(9292,))
         thr.start()
 
         import paddle.distributed.fleet as fleet
+
         ep = ["127.0.0.1:9292"]
         fleet.base.private_helper_function.wait_server_ready(ep)
 

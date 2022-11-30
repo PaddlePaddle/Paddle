@@ -25,8 +25,8 @@ namespace operators {
 
 template <typename T>
 static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
-  auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
   auto embedding_size_vec = ctx.Attr<std::vector<int>>("size");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
@@ -57,9 +57,9 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
 
 template <typename T>
 static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto d_output =
-      ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
+      ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size);
@@ -97,7 +97,7 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
 #endif
 }
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 template <typename T>
 class PullGpuPSSparseCPUKernel : public framework::OpKernel<T> {
  public:

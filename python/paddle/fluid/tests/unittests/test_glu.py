@@ -32,7 +32,6 @@ def glu(x, dim=-1):
 
 
 class TestGLUCase(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.randn(5, 20)
         self.dim = -1
@@ -53,7 +52,6 @@ class TestGLUCase(unittest.TestCase):
 
 
 class TestGLUV2(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.randn(5, 20)
         self.dim = -1

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -33,7 +31,6 @@ paddle.enable_static()
 
 
 class TestInstanceNorm(unittest.TestCase):
-
     def test_dygraph(self):
         places = [fluid.NPUPlace(0)]
         for p in places:

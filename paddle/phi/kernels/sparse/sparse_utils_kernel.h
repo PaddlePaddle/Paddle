@@ -168,10 +168,9 @@ template <typename T, typename Context>
 void SparseCooTensorKernel(const Context& dev_ctx,
                            const DenseTensor& values,
                            const DenseTensor& indices,
-                           const IntArray& dense_shape,
+                           const std::vector<int64_t>& shape,
                            SparseCooTensor* out) {
-  *out =
-      SparseCooTensor(indices, values, phi::make_ddim(dense_shape.GetData()));
+  *out = SparseCooTensor(indices, values, phi::make_ddim(shape));
 }
 
 }  // namespace sparse

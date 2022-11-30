@@ -12,13 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import *
+from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import (
+    DygraphToStaticAst,
+)
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
+    Location,
+    ORIGI_INFO,
+    OriginInfo,
+    attach_origin_info,
+    create_and_update_origin_info_map,
+    gast,
+    inspect,
+    unwrap,
+)
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.jit import declarative
 
@@ -55,8 +64,9 @@ class TestOriginInfo(unittest.TestCase):
         self.source_code = inspect.getsource(self.dygraph_func)
         lines, self.start_lineno = inspect.getsourcelines(self.dygraph_func)
         lines = [line.strip("\n") for line in lines]
-        self.lines = [line for line in lines
-                      if line != ""]  # Delete empty lines
+        self.lines = [
+            line for line in lines if line != ""
+        ]  # Delete empty lines
 
         self.set_static_lineno()
         self.set_dygraph_info()
@@ -77,8 +87,9 @@ class TestOriginInfo(unittest.TestCase):
     def set_origin_info_list(self, dygraph_ast):
         assert isinstance(dygraph_ast, gast.Module)
         self.transformed_node_list = [
-            dygraph_ast.body[0], dygraph_ast.body[0].body[0],
-            dygraph_ast.body[0].body[1]
+            dygraph_ast.body[0],
+            dygraph_ast.body[0].body[0],
+            dygraph_ast.body[0].body[1],
         ]
 
     def _get_OriginInfo_map(self):
@@ -91,8 +102,9 @@ class TestOriginInfo(unittest.TestCase):
 
         # step3
         self.static_func, _ = ast_to_func(transformed_ast, self.dygraph_func)
-        info_map = create_and_update_origin_info_map(dygraph_ast,
-                                                     self.static_func)
+        info_map = create_and_update_origin_info_map(
+            dygraph_ast, self.static_func
+        )
         return info_map
 
     def test_origin_info_map(self):
@@ -115,9 +127,12 @@ class TestOriginInfo(unittest.TestCase):
             code = self.lines[line_idx]
             origin_info = OriginInfo(
                 Location(self.dygraph_filepath, dy_lineno, dy_col_offset),
-                self.dy_func_name[i], code)
+                self.dy_func_name[i],
+                code,
+            )
             self.assertEqual(
-                str(origin_info_map[staic_loc.line_location]), str(origin_info))
+                str(origin_info_map[staic_loc.line_location]), str(origin_info)
+            )
 
     def test_attach_origin_info(self):
         dygraph_ast = gast.parse(self.source_code)
@@ -155,16 +170,20 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
         self.line_index_list = [0, 1, 2, 3, 4]
         self.dy_rel_lineno_list = [0, 1, 2, 4, 5]
         self.dy_abs_col_offset = [0, 4, 8, 4, 4]
-        self.dy_func_name = [self.dygraph_func.__name__] + \
-                            ["f1"] * 2 + \
-                            [self.dygraph_func.__name__] * 2
+        self.dy_func_name = (
+            [self.dygraph_func.__name__]
+            + ["f1"] * 2
+            + [self.dygraph_func.__name__] * 2
+        )
 
     def set_origin_info_list(self, dygraph_ast):
         assert isinstance(dygraph_ast, gast.Module)
         self.transformed_node_list = [
-            dygraph_ast.body[0], dygraph_ast.body[0].body[0],
-            dygraph_ast.body[0].body[0].body[0], dygraph_ast.body[0].body[1],
-            dygraph_ast.body[0].body[2]
+            dygraph_ast.body[0],
+            dygraph_ast.body[0].body[0],
+            dygraph_ast.body[0].body[0].body[0],
+            dygraph_ast.body[0].body[1],
+            dygraph_ast.body[0].body[2],
         ]
 
 

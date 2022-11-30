@@ -24,19 +24,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class TopkKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
-    auto* indices = ctx.Output<Tensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
-    auto* k_t = ctx.Input<Tensor>("K");
+    auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       k = k_t->data<int>()[0];
       framework::DDim output_dims = output->dims();
@@ -94,10 +94,12 @@ template <typename DeviceContext, typename T>
 class TopkGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* indices = context.Input<Tensor>("Indices");
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* indices = context.Input<phi::DenseTensor>("Indices");
+    auto* x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     const T* out_grad_data = out_grad->data<T>();

@@ -48,7 +48,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The variable %s to be loaded cannot be found.", out_var_name));
 
-    if (out_var->IsType<framework::LoDTensor>()) {
+    if (out_var->IsType<phi::DenseTensor>()) {
       LoadLodTensor(fin, place, out_var, ctx);
     } else if (out_var->IsType<phi::SelectedRows>()) {
       LoadSelectedRows(fin, place, out_var);
@@ -67,7 +67,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
-    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    auto *tensor = var->GetMutable<phi::DenseTensor>();
 
     auto seek = ctx.Attr<int64_t>("seek");
 
@@ -91,7 +91,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
       // convert to float16 tensor
       auto in_kernel_type = framework::OpKernelType(in_dtype, place);
       auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-      framework::LoDTensor fp16_tensor;
+      phi::DenseTensor fp16_tensor;
       // copy LoD info to the new tensor
       fp16_tensor.set_lod(tensor->lod());
       framework::TransDataType(
@@ -99,7 +99,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
       // reset output tensor
       var->Clear();
-      tensor = var->GetMutable<framework::LoDTensor>();
+      tensor = var->GetMutable<phi::DenseTensor>();
       tensor->set_lod(fp16_tensor.lod());
       tensor->ShareDataWith(fp16_tensor);
     }

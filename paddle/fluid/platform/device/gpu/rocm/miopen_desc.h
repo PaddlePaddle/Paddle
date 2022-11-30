@@ -25,6 +25,7 @@
 
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 class DenseTensor;
@@ -32,12 +33,11 @@ class DenseTensor;
 
 namespace paddle {
 namespace platform {
-using framework::Tensor;
 
 template <typename T>
 inline miopenDataType_t ToCudnnDataType(const T& t) {
   auto type = framework::ToDataType(t);
-  return ToCudnnDataType(type);
+  return ToCudnnDataType(phi::TransToPhiDataType(type));
 }
 
 inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
@@ -64,14 +64,13 @@ inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
 }
 
 template <>
-inline miopenDataType_t ToCudnnDataType(
-    const framework::proto::VarType::Type& t) {
+inline miopenDataType_t ToCudnnDataType(const phi::DataType& t) {
   miopenDataType_t type = miopenFloat;
   switch (t) {
-    case framework::proto::VarType::FP16:
+    case phi::DataType::FLOAT16:
       type = miopenHalf;
       break;
-    case framework::proto::VarType::FP32:
+    case phi::DataType::FLOAT32:
       type = miopenFloat;
       break;
     default:
@@ -130,7 +129,7 @@ class TensorDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor, const int groups = 1) {
+  void set(const phi::DenseTensor& tensor, const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -143,13 +142,13 @@ class TensorDescriptor {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()),
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        ToCudnnDataType(tensor.dtype()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
   }
 
-  void set(const Tensor& tensor, const miopenTensorFormat_t format) {
+  void set(const phi::DenseTensor& tensor, const miopenTensorFormat_t format) {
     const int groups = 1;
     PADDLE_ENFORCE_EQ(format,
                       MIOPEN_TENSOR_NCHW,
@@ -167,7 +166,7 @@ class TensorDescriptor {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()),
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        ToCudnnDataType(tensor.dtype()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -196,7 +195,7 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor,
+  void set(const phi::DenseTensor& tensor,
            const miopenTensorFormat_t format,
            const int groups = 1) {
     PADDLE_ENFORCE_EQ(format,
@@ -215,7 +214,7 @@ class FilterDescriptor {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()),
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        ToCudnnDataType(tensor.dtype()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));

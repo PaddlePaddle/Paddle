@@ -12,29 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 from paddle.fluid.dygraph.jit import TracedLayer
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
-
     def __init__(self, name_scope):
-        super(TestTracedLayer, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, input):
         return _legacy_C_ops.relu(input)
 
 
 class TestVariable(unittest.TestCase):
-
     def setUp(self):
         self.shape = [512, 768]
         self.dtype = np.float32
@@ -103,7 +98,8 @@ class TestVariable(unittest.TestCase):
             a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             x = fluid.dygraph.to_variable(a)
             res_dygraph, static_layer = TracedLayer.trace(
-                layer, inputs=x)  # dygraph out
+                layer, inputs=x
+            )  # dygraph out
             res_static_graph = static_layer([x])[0]
 
             np.testing.assert_array_equal(res_dygraph.numpy(), res_static_graph)

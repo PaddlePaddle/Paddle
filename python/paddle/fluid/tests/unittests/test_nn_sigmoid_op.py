@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest
-from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
@@ -27,7 +23,6 @@ import paddle.nn.functional as functional
 
 
 class TestNNSigmoidAPI(unittest.TestCase):
-
     def setUp(self):
         self.init_data()
 
@@ -73,7 +68,6 @@ class TestNNSigmoidAPI(unittest.TestCase):
 
 
 class TestNNFunctionalSigmoidAPI(unittest.TestCase):
-
     def setUp(self):
         self.init_data()
 

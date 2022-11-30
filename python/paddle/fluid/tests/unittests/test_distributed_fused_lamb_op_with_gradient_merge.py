@@ -17,17 +17,20 @@ import unittest
 
 
 class TestDistributedFusedLambGradientMerge(unittest.TestCase):
-
     def test_gm(self):
-        run_test(clip_after_allreduce=True,
-                 max_global_norm=-1.0,
-                 gradient_merge_steps=2)
+        run_test(
+            clip_after_allreduce=True,
+            max_global_norm=-1.0,
+            gradient_merge_steps=2,
+        )
 
     def test_gm_with_fp16_acc_grad(self):
-        run_test(clip_after_allreduce=True,
-                 max_global_norm=-1.0,
-                 gradient_merge_steps=2,
-                 use_master_acc_grad=False)
+        run_test(
+            clip_after_allreduce=True,
+            max_global_norm=-1.0,
+            gradient_merge_steps=2,
+            use_master_acc_grad=False,
+        )
 
 
 if __name__ == "__main__":

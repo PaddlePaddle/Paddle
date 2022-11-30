@@ -16,6 +16,4 @@ from .hapi.hub import list  # noqa: F401
 from .hapi.hub import help  # noqa: F401
 from .hapi.hub import load  # noqa: F401
 
-__all__ = [  #noqa
-    'list', 'help', 'load'
-]
+__all__ = ['list', 'help', 'load']  # noqa

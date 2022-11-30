@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/group_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -26,9 +28,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
+using DataLayout = phi::DataLayout;
 
 class GroupNormOp : public framework::OperatorWithKernel {
  public:

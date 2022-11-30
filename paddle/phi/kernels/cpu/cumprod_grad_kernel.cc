@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 // NOTE(@xiongkun): use of IsComplex<>
-#include "paddle/fluid/framework/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -51,7 +51,7 @@ void CumprodGradKernel(const Context& dev_ctx,
   const T* out_data_deal;
   Allocator::AllocationPtr x_conj;
   Allocator::AllocationPtr out_conj;
-  if (paddle::framework::IsComplex<T>::value) {
+  if (phi::IsComplexType(x.dtype())) {
     x_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())
                  .Allocate(numel * sizeof(T));
     auto* x_data_conj = reinterpret_cast<T*>(x_conj->ptr());

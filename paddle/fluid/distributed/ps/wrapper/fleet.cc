@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
@@ -26,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using framework::ProgramDesc;
 using framework::VarDesc;
 using framework::Variable;
@@ -340,12 +339,12 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id,
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor* output = nullptr;
+  phi::DenseTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -569,8 +568,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
     size_t cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
-      batch_size = int(cur_batch_size);
-    } else if (batch_size != int(cur_batch_size)) {
+      batch_size = static_cast<int>(cur_batch_size);
+    } else if (batch_size != static_cast<int>(cur_batch_size)) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -602,7 +601,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   const float* clk_tensor = clks->data<float>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
-    framework::LoDTensor* g_tensor = outputs->at(index);
+    phi::DenseTensor* g_tensor = outputs->at(index);
     float* g = g_tensor->data<float>();
     // no cvm
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
@@ -617,7 +616,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
       }
     }
 
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     output_len = 0;

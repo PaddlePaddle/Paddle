@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 import scipy.stats
 
-import config
 from config import ATOL, DEVICES, RTOL
 import parameterize as param
 
@@ -29,14 +28,15 @@ np.random.seed(2022)
 @param.param_cls(
     (param.TEST_CASE_NAME, 'concentration'),
     [
-        ('test-one-dim', param.xrand((89, ))),
+        ('test-one-dim', param.xrand((89,))),
         # ('test-multi-dim', config.xrand((10, 20, 30)))
-    ])
+    ],
+)
 class TestDirichlet(unittest.TestCase):
-
     def setUp(self):
         self._paddle_diric = paddle.distribution.Dirichlet(
-            paddle.to_tensor(self.concentration))
+            paddle.to_tensor(self.concentration)
+        )
 
     def test_mean(self):
         with paddle.fluid.dygraph.guard(self.place):
@@ -44,7 +44,8 @@ class TestDirichlet(unittest.TestCase):
                 self._paddle_diric.mean,
                 scipy.stats.dirichlet.mean(self.concentration),
                 rtol=RTOL.get(str(self.concentration.dtype)),
-                atol=ATOL.get(str(self.concentration.dtype)))
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
 
     def test_variance(self):
         with paddle.fluid.dygraph.guard(self.place):
@@ -52,7 +53,8 @@ class TestDirichlet(unittest.TestCase):
                 self._paddle_diric.variance,
                 scipy.stats.dirichlet.var(self.concentration),
                 rtol=RTOL.get(str(self.concentration.dtype)),
-                atol=ATOL.get(str(self.concentration.dtype)))
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
 
     def test_prob(self):
         value = [np.random.rand(*self.concentration.shape)]
@@ -64,7 +66,8 @@ class TestDirichlet(unittest.TestCase):
                     self._paddle_diric.prob(paddle.to_tensor(v)),
                     scipy.stats.dirichlet.pdf(v, self.concentration),
                     rtol=RTOL.get(str(self.concentration.dtype)),
-                    atol=ATOL.get(str(self.concentration.dtype)))
+                    atol=ATOL.get(str(self.concentration.dtype)),
+                )
 
     def test_log_prob(self):
         value = [np.random.rand(*self.concentration.shape)]
@@ -76,7 +79,8 @@ class TestDirichlet(unittest.TestCase):
                     self._paddle_diric.log_prob(paddle.to_tensor(v)),
                     scipy.stats.dirichlet.logpdf(v, self.concentration),
                     rtol=RTOL.get(str(self.concentration.dtype)),
-                    atol=ATOL.get(str(self.concentration.dtype)))
+                    atol=ATOL.get(str(self.concentration.dtype)),
+                )
 
     def test_entropy(self):
         with paddle.fluid.dygraph.guard(self.place):
@@ -84,28 +88,35 @@ class TestDirichlet(unittest.TestCase):
                 self._paddle_diric.entropy(),
                 scipy.stats.dirichlet.entropy(self.concentration),
                 rtol=RTOL.get(str(self.concentration.dtype)),
-                atol=ATOL.get(str(self.concentration.dtype)))
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
 
     def test_natural_parameters(self):
         self.assertTrue(
-            isinstance(self._paddle_diric._natural_parameters, tuple))
+            isinstance(self._paddle_diric._natural_parameters, tuple)
+        )
 
     def test_log_normalizer(self):
         self.assertTrue(
             np.all(
                 self._paddle_diric._log_normalizer(
-                    paddle.to_tensor(param.xrand((100, 100,
-                                                  100)))).numpy() < 0.0))
+                    paddle.to_tensor(param.xrand((100, 100, 100)))
+                ).numpy()
+                < 0.0
+            )
+        )
 
     @param.place(DEVICES)
-    @param.param_cls((param.TEST_CASE_NAME, 'concentration'),
-                     [('test-zero-dim', np.array(1.0))])
+    @param.param_cls(
+        (param.TEST_CASE_NAME, 'concentration'),
+        [('test-zero-dim', np.array(1.0))],
+    )
     class TestDirichletException(unittest.TestCase):
-
         def TestInit(self):
             with self.assertRaises(ValueError):
-                paddle.distribution.Dirichlet(paddle.squeeze(
-                    self.concentration))
+                paddle.distribution.Dirichlet(
+                    paddle.squeeze(self.concentration)
+                )
 
 
 if __name__ == '__main__':

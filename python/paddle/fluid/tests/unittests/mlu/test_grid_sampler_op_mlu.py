@@ -28,12 +28,15 @@ def AffineGrid(theta, grid_shape):
     n = grid_shape[0]
     h = grid_shape[1]
     w = grid_shape[2]
-    h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w,
-                      axis=0).T[:, :, np.newaxis]
-    w_idx = np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h,
-                      axis=0)[:, :, np.newaxis]
-    grid = np.concatenate([w_idx, h_idx, np.ones([h, w, 1])],
-                          axis=2)  # h * w * 3
+    h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[
+        :, :, np.newaxis
+    ]
+    w_idx = np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h, axis=0)[
+        :, :, np.newaxis
+    ]
+    grid = np.concatenate(
+        [w_idx, h_idx, np.ones([h, w, 1])], axis=2
+    )  # h * w * 3
     grid = np.repeat(grid[np.newaxis, :], n, axis=0)  # n * h * w *3
 
     ret = np.zeros([n, h * w, 2])
@@ -53,13 +56,17 @@ def getGridPointValue(data, x, y):
     out_H = x.shape[1]
     out_W = x.shape[2]
 
-    #out = np.zeros(data_shape, dtype='float32')
+    # out = np.zeros(data_shape, dtype='float32')
     out = np.zeros([N, C, out_H, out_W], dtype='float32')
     for i in range(N):
         for j in range(out_H):
             for k in range(out_W):
-                if y[i, j, k] < 0 or y[i, j, k] > in_H - 1 or x[
-                        i, j, k] < 0 or x[i, j, k] > in_W - 1:
+                if (
+                    y[i, j, k] < 0
+                    or y[i, j, k] > in_H - 1
+                    or x[i, j, k] < 0
+                    or x[i, j, k] > in_W - 1
+                ):
                     out[i, :, j, k] = 0
                 else:
                     out[i, :, j, k] = data[i, :, y[i, j, k], x[i, j, k]]
@@ -75,27 +82,28 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
     if align_corners:
         grid_slice = 0.5 * ((grid_slice.astype('float32') + 1.0) * max_val)
     else:
-        grid_slice = 0.5 * ((grid_slice.astype('float32') + 1.0) *
-                            (max_val + 1)) - 0.5
+        grid_slice = (
+            0.5 * ((grid_slice.astype('float32') + 1.0) * (max_val + 1)) - 0.5
+        )
 
     if padding_mode == "border":
         grid_slice = clip(grid_slice, 0, max_val)
     elif padding_mode == "reflection":
         double_range = 2 * max_val if align_corners else (max_val + 1) * 2
-        grid_abs = np.abs(grid_slice) if align_corners else np.abs(grid_slice +
-                                                                   0.5)
+        grid_abs = (
+            np.abs(grid_slice) if align_corners else np.abs(grid_slice + 0.5)
+        )
         extra = grid_abs - np.floor(grid_abs / double_range) * double_range
         grid_slice = np.minimum(extra, double_range - extra)
-        grid_slice = grid_slice if align_corners else clip(
-            grid_slice - 0.5, 0, max_val)
+        grid_slice = (
+            grid_slice if align_corners else clip(grid_slice - 0.5, 0, max_val)
+        )
     return grid_slice
 
 
-def GridSampler(data,
-                grid,
-                align_corners=True,
-                mode="bilinear",
-                padding_mode="zeros"):
+def GridSampler(
+    data, grid, align_corners=True, mode="bilinear", padding_mode="zeros"
+):
     dims = data.shape
     N = dims[0]
     in_C = dims[1]
@@ -119,14 +127,18 @@ def GridSampler(data,
         y0 = np.floor(y).astype('int32')
         y1 = y0 + 1
 
-        wa = np.tile(((x1 - x) * (y1 - y)).reshape((N, 1, out_H, out_W)),
-                     (1, in_C, 1, 1))
-        wb = np.tile(((x1 - x) * (y - y0)).reshape((N, 1, out_H, out_W)),
-                     (1, in_C, 1, 1))
-        wc = np.tile(((x - x0) * (y1 - y)).reshape((N, 1, out_H, out_W)),
-                     (1, in_C, 1, 1))
-        wd = np.tile(((x - x0) * (y - y0)).reshape((N, 1, out_H, out_W)),
-                     (1, in_C, 1, 1))
+        wa = np.tile(
+            ((x1 - x) * (y1 - y)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
+        )
+        wb = np.tile(
+            ((x1 - x) * (y - y0)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
+        )
+        wc = np.tile(
+            ((x - x0) * (y1 - y)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
+        )
+        wd = np.tile(
+            ((x - x0) * (y - y0)).reshape((N, 1, out_H, out_W)), (1, in_C, 1, 1)
+        )
 
         va = getGridPointValue(data, x0, y0)
         vb = getGridPointValue(data, x0, y1)
@@ -142,7 +154,6 @@ def GridSampler(data,
 
 
 class TestGridSamplerOp(OpTest):
-
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -166,12 +177,12 @@ class TestGridSamplerOp(OpTest):
             'use_cudnn': False,
             "align_corners": self.align_corners,
             "padding_mode": self.padding_mode,
-            "mode": self.mode
+            "mode": self.mode,
         }
         self.outputs = {
-            'Output':
-            GridSampler(x, grid, self.align_corners, self.mode,
-                        self.padding_mode)
+            'Output': GridSampler(
+                x, grid, self.align_corners, self.mode, self.padding_mode
+            )
         }
 
     def test_check_output(self):
@@ -186,20 +197,17 @@ class TestGridSamplerOp(OpTest):
         self.mode = "bilinear"
 
 
-# TODO(fwg): Test this case when cnnl support align_corners = True.
-# class Case1(TestGridSamplerOp):
-#
-#     def initTestCase(self):
-#         self.x_shape = (2, 3, 5, 6)
-#         self.grid_shape = (2, 8, 9, 2)
-#         self.theta_shape = (2, 2, 3)
-#         self.align_corners = True
-#         self.padding_mode = "zeros"
-#         self.mode = "bilinear"
+class Case1(TestGridSamplerOp):
+    def initTestCase(self):
+        self.x_shape = (2, 3, 5, 6)
+        self.grid_shape = (2, 8, 9, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = True
+        self.padding_mode = "zeros"
+        self.mode = "bilinear"
 
 
 class LargeInputCase(TestGridSamplerOp):
-
     def initTestCase(self):
         self.x_shape = (2, 3, 128, 128)
         self.grid_shape = (2, 130, 130, 2)
@@ -209,16 +217,15 @@ class LargeInputCase(TestGridSamplerOp):
         self.mode = "bilinear"
 
 
-# TODO(fwg): Test this case when cnnl support align_corners = True.
-# class Case2(LargeInputCase):
-#
-#     def initTestCase(self):
-#         self.x_shape = (2, 3, 128, 128)
-#         self.grid_shape = (2, 130, 130, 2)
-#         self.theta_shape = (2, 2, 3)
-#         self.align_corners = True
-#         self.padding_mode = "zeros"
-#         self.mode = "bilinear"
+class Case2(LargeInputCase):
+    def initTestCase(self):
+        self.x_shape = (2, 3, 128, 128)
+        self.grid_shape = (2, 130, 130, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = True
+        self.padding_mode = "zeros"
+        self.mode = "bilinear"
+
 
 if __name__ == "__main__":
     unittest.main()

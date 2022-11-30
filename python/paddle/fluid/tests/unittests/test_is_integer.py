@@ -18,7 +18,6 @@ import unittest
 
 
 class TestIsInteger(unittest.TestCase):
-
     def test_for_integer(self):
         x = paddle.arange(10)
         self.assertTrue(paddle.is_integer(x))

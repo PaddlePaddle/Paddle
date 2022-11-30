@@ -46,4 +46,4 @@
 
 如果输入非预期的参数后，对飞桨代码造成了内存破坏，或者非干净退出，这类行为被认定为存在安全问题。
 
-### [安全公告](https://github.com/PaddlePaddle/Paddle/blob/develop/security/README_cn.md)
+### [安全公告](./security/README_cn.md)

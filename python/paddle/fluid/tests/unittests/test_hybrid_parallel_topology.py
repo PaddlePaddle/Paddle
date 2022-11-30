@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import paddle
-import paddle.nn as nn
 import unittest
 from paddle.distributed import fleet
 import numpy as np
 
 
 class TestCommunicateTopology(unittest.TestCase):
-
     def test_topology(self):
         topo = fleet.CommunicateTopology(["dp", "mp", "pp"], [2, 2, 2])
 
@@ -36,8 +32,9 @@ class TestCommunicateTopology(unittest.TestCase):
 
         # test get_hybrid_group_names
         parallel_names = ["dp", "mp", "pp"]
-        np.testing.assert_array_equal(parallel_names,
-                                      topo.get_hybrid_group_names())
+        np.testing.assert_array_equal(
+            parallel_names, topo.get_hybrid_group_names()
+        )
 
         # test get_dims
         np.testing.assert_array_equal(2, topo.get_dim("dp"))
@@ -81,29 +78,64 @@ class TestCommunicateTopology(unittest.TestCase):
         self.assertEqual(topo.get_dim_size("pp"), 2)
 
     def test_topology_4D(self):
-        topo = fleet.CommunicateTopology(["dp", "pp", "sharding", "mp"],
-                                         [2, 2, 2, 2])
+        topo = fleet.CommunicateTopology(
+            ["dp", "pp", "sharding", "mp"], [2, 2, 2, 2]
+        )
 
         # test get_comm_list
-        dp_comm_list = [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13],
-                        [6, 14], [7, 15]]
-        mp_comm_list = [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11],
-                        [12, 13], [14, 15]]
-        pp_comm_list = [[0, 4], [1, 5], [2, 6], [3, 7], [8, 12], [9, 13],
-                        [10, 14], [11, 15]]
-        sharding_comm_list = [[0, 2], [1, 3], [4, 6], [5, 7], [8, 10], [9, 11],
-                              [12, 14], [13, 15]]
+        dp_comm_list = [
+            [0, 8],
+            [1, 9],
+            [2, 10],
+            [3, 11],
+            [4, 12],
+            [5, 13],
+            [6, 14],
+            [7, 15],
+        ]
+        mp_comm_list = [
+            [0, 1],
+            [2, 3],
+            [4, 5],
+            [6, 7],
+            [8, 9],
+            [10, 11],
+            [12, 13],
+            [14, 15],
+        ]
+        pp_comm_list = [
+            [0, 4],
+            [1, 5],
+            [2, 6],
+            [3, 7],
+            [8, 12],
+            [9, 13],
+            [10, 14],
+            [11, 15],
+        ]
+        sharding_comm_list = [
+            [0, 2],
+            [1, 3],
+            [4, 6],
+            [5, 7],
+            [8, 10],
+            [9, 11],
+            [12, 14],
+            [13, 15],
+        ]
 
         np.testing.assert_array_equal(dp_comm_list, topo.get_comm_list("dp"))
         np.testing.assert_array_equal(mp_comm_list, topo.get_comm_list("mp"))
         np.testing.assert_array_equal(pp_comm_list, topo.get_comm_list("pp"))
-        np.testing.assert_array_equal(sharding_comm_list,
-                                      topo.get_comm_list("sharding"))
+        np.testing.assert_array_equal(
+            sharding_comm_list, topo.get_comm_list("sharding")
+        )
 
         # test get_hybrid_group_names
         parallel_names = ["dp", "pp", "sharding", "mp"]
-        np.testing.assert_array_equal(parallel_names,
-                                      topo.get_hybrid_group_names())
+        np.testing.assert_array_equal(
+            parallel_names, topo.get_hybrid_group_names()
+        )
 
         # test get_dims
         np.testing.assert_array_equal(2, topo.get_dim("dp"))
@@ -152,20 +184,27 @@ class TestCommunicateTopology(unittest.TestCase):
 
         # test get_axis_list
         self.assertEqual(topo.get_axis_list("dp", 0), [0, 1, 2, 3, 4, 5, 6, 7])
-        self.assertEqual(topo.get_axis_list("dp", 1),
-                         [8, 9, 10, 11, 12, 13, 14, 15])
-        self.assertEqual(topo.get_axis_list("mp", 0),
-                         [0, 2, 4, 6, 8, 10, 12, 14])
-        self.assertEqual(topo.get_axis_list("mp", 1),
-                         [1, 3, 5, 7, 9, 11, 13, 15])
-        self.assertEqual(topo.get_axis_list("pp", 0),
-                         [0, 1, 2, 3, 8, 9, 10, 11])
-        self.assertEqual(topo.get_axis_list("pp", 1),
-                         [4, 5, 6, 7, 12, 13, 14, 15])
-        self.assertEqual(topo.get_axis_list("sharding", 0),
-                         [0, 1, 4, 5, 8, 9, 12, 13])
-        self.assertEqual(topo.get_axis_list("sharding", 1),
-                         [2, 3, 6, 7, 10, 11, 14, 15])
+        self.assertEqual(
+            topo.get_axis_list("dp", 1), [8, 9, 10, 11, 12, 13, 14, 15]
+        )
+        self.assertEqual(
+            topo.get_axis_list("mp", 0), [0, 2, 4, 6, 8, 10, 12, 14]
+        )
+        self.assertEqual(
+            topo.get_axis_list("mp", 1), [1, 3, 5, 7, 9, 11, 13, 15]
+        )
+        self.assertEqual(
+            topo.get_axis_list("pp", 0), [0, 1, 2, 3, 8, 9, 10, 11]
+        )
+        self.assertEqual(
+            topo.get_axis_list("pp", 1), [4, 5, 6, 7, 12, 13, 14, 15]
+        )
+        self.assertEqual(
+            topo.get_axis_list("sharding", 0), [0, 1, 4, 5, 8, 9, 12, 13]
+        )
+        self.assertEqual(
+            topo.get_axis_list("sharding", 1), [2, 3, 6, 7, 10, 11, 14, 15]
+        )
 
         # test get_dim_size
         self.assertEqual(topo.get_dim_size("dp"), 2)

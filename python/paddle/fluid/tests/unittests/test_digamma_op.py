@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import math
 import numpy as np
 from scipy.special import psi
 import paddle
@@ -24,7 +23,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDigammaOp(OpTest):
-
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -50,7 +48,6 @@ class TestDigammaOp(OpTest):
 
 
 class TestDigammaOpFp32(TestDigammaOp):
-
     def init_dtype_type(self):
         self.dtype = np.float32
 
@@ -59,7 +56,6 @@ class TestDigammaOpFp32(TestDigammaOp):
 
 
 class TestDigammaAPI(unittest.TestCase):
-
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -71,7 +67,6 @@ class TestDigammaAPI(unittest.TestCase):
         self._shape = [8, 3, 32, 32]
 
     def test_in_static_mode(self):
-
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(dtype)
             return {'x': input}, psi(input)

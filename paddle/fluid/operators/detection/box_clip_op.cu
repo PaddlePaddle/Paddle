@@ -15,15 +15,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTenso = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTenso = phi::DenseTensor;
 
 static constexpr int ImInfoSize = 3;
 
@@ -50,7 +50,7 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *input = context.Input<LoDTensor>("Input");
-    auto *im_info = context.Input<Tensor>("ImInfo");
+    auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
     auto *output = context.Output<LoDTensor>("Output");
     const int64_t num = input->dims()[0];
     const int64_t bbox_width = input->numel() / num;

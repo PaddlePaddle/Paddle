@@ -40,8 +40,8 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "X") {
       return expected_kernel_type;
     }

@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class ResNetBasicBlockOp : public framework::OperatorWithKernel {
  public:
@@ -227,29 +227,29 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
     auto bn_param_type = framework::proto::VarType::FP32;
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Scale1")->dtype()),
-        platform::errors::InvalidArgument(
-            "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Bias1")->dtype()),
-        platform::errors::InvalidArgument(
-            "Bias input should be of float type"));
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Scale2")->dtype()),
-        platform::errors::InvalidArgument(
-            "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Bias2")->dtype()),
-        platform::errors::InvalidArgument(
-            "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale1")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias1")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale2")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias2")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         input_data_type, ctx.GetPlace(), layout, library);
   }
@@ -554,7 +554,7 @@ class ResNetBasicBlockGradOp : public framework::OperatorWithKernel {
             "Can not find Y@GRAD in the execution context."));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),

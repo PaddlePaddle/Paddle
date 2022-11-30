@@ -113,11 +113,6 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_cvm_op", "(boolean, default false) Use cvm op or not.")
         .SetDefault(false);
 
-    AddAttr<std::vector<int>>("slots",
-                              "[slot_id1, slot_id2] Slots array of Ids.")
-        .SetDefault({})
-        .AsExtra();
-
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.
 This operator is used to perform lookup on parameter W,

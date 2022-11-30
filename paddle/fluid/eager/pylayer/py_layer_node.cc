@@ -27,6 +27,11 @@
 #include "pybind11/pytypes.h"
 
 namespace egr {
+GradNodePyLayer::~GradNodePyLayer() {
+  pybind11::gil_scoped_acquire gil;
+  Py_XDECREF(ctx_);
+}
+
 paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                      kSlotSmallVectorSize>
 GradNodePyLayer::operator()(

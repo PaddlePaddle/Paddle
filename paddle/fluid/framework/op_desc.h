@@ -196,6 +196,7 @@ class OpDesc {
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+  const OperatorDistAttr *DistAttr() const;
   OperatorDistAttr *MutableDistAttr();
   void SetDistAttr(const OperatorDistAttr &dist_attr);
 
@@ -216,7 +217,7 @@ class OpDesc {
     return ret_val;
   }
 
-  // it it really needed? or just mantain a ptr from block?
+  // it it really needed? or just maintain a ptr from block?
   proto::OpDesc desc_;
   BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names

@@ -31,8 +31,9 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     Returns:
         min_pos: the minimun point between the specified points in the cubic curve.
     """
-    xmin, xmax = paddle.static.nn.cond(x1 <= x2, lambda: (x1, x2), lambda:
-                                       (x2, x1))
+    xmin, xmax = paddle.static.nn.cond(
+        x1 <= x2, lambda: (x1, x2), lambda: (x2, x1)
+    )
     d1 = g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
     d2_square = d1**2 - g1 * g2
 
@@ -51,22 +52,24 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
         return paddle.minimum(paddle.maximum(min_pos, xmin), xmax)
 
     def false_func1():
-        return (xmin + xmax) / 2.
+        return (xmin + xmax) / 2.0
 
-    min_pos = paddle.static.nn.cond(d2_square >= 0., true_func1, false_func1)
+    min_pos = paddle.static.nn.cond(d2_square >= 0.0, true_func1, false_func1)
     return min_pos
 
 
-def strong_wolfe(f,
-                 xk,
-                 pk,
-                 max_iters=20,
-                 tolerance_change=1e-8,
-                 initial_step_length=1.0,
-                 c1=1e-4,
-                 c2=0.9,
-                 alpha_max=10,
-                 dtype='float32'):
+def strong_wolfe(
+    f,
+    xk,
+    pk,
+    max_iters=20,
+    tolerance_change=1e-8,
+    initial_step_length=1.0,
+    c1=1e-4,
+    c2=0.9,
+    alpha_max=10,
+    dtype='float32',
+):
     r"""Implements of line search algorithm that satisfies the strong Wolfe conditions using double zoom.
 
     Reference:
@@ -143,36 +146,67 @@ def strong_wolfe(f,
 
     def phi_and_derphi(a):
         r"""Compute function value and derivative of phi at a.
-            phi = f(xk + a * pk)
-            phi'(a) = f'(xk + a * pk) * pk
+        phi = f(xk + a * pk)
+        phi'(a) = f'(xk + a * pk) * pk
         """
         phi_value, f_grad = _value_and_gradient(f, xk + a * pk)
         phi_grad = paddle.dot(f_grad, pk)
         # return f_grad to be used in bfgs/l-bfgs to compute yk to avoid computint repeatly.
         return phi_value, f_grad, phi_grad
 
-    def zoom(a_lo, phi_lo, derphi_lo, derf_lo, a_hi, phi_hi, derphi_hi, phi_0,
-             derphi_0):
+    def zoom(
+        a_lo,
+        phi_lo,
+        derphi_lo,
+        derf_lo,
+        a_hi,
+        phi_hi,
+        derphi_hi,
+        phi_0,
+        derphi_0,
+    ):
         # find the exact a from the bracket [a_lo, a_hi]
         max_zoom_iters = max_iters
         j = paddle.full(shape=[1], fill_value=0, dtype='int64')
         done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-        def cond_zoom(j, done_zoom, a_lo, phi_lo, derphi_lo, derf_lo, a_hi,
-                      phi_hi, derphi_hi):
+        def cond_zoom(
+            j,
+            done_zoom,
+            a_lo,
+            phi_lo,
+            derphi_lo,
+            derf_lo,
+            a_hi,
+            phi_hi,
+            derphi_hi,
+        ):
             pred = paddle.abs(a_hi - a_lo) < tolerance_change
             paddle.assign(done_zoom | pred, done_zoom)
             return (j < max_zoom_iters) & ~done_zoom
 
-        def body_zoom(j, done_zoom, a_lo, phi_lo, derphi_lo, derf_lo, a_hi,
-                      phi_hi, derphi_hi):
-            aj = cubic_interpolation_(a_lo, phi_lo, derphi_lo, a_hi, phi_hi,
-                                      derphi_hi)  # 21
+        def body_zoom(
+            j,
+            done_zoom,
+            a_lo,
+            phi_lo,
+            derphi_lo,
+            derf_lo,
+            a_hi,
+            phi_hi,
+            derphi_hi,
+        ):
+            aj = cubic_interpolation_(
+                a_lo, phi_lo, derphi_lo, a_hi, phi_hi, derphi_hi
+            )  # 21
             min_change = 0.1 * paddle.abs(a_hi - a_lo)
-            pred = paddle.minimum(paddle.abs(aj - a_lo),
-                                  paddle.abs(aj - a_hi)) < min_change
-            aj = paddle.static.nn.cond(pred, lambda: 0.5 * (a_lo + a_hi),
-                                       lambda: aj)
+            pred = (
+                paddle.minimum(paddle.abs(aj - a_lo), paddle.abs(aj - a_hi))
+                < min_change
+            )
+            aj = paddle.static.nn.cond(
+                pred, lambda: 0.5 * (a_lo + a_hi), lambda: aj
+            )
 
             phi_j, derf_j, derphi_j = phi_and_derphi(aj)
 
@@ -183,7 +217,7 @@ def strong_wolfe(f,
                 paddle.assign(derphi_j, derphi_hi)
 
             def false_fn(a_lo, done_zoom):
-                pred3 = (paddle.abs(derphi_j) <= -c2 * derphi_0)
+                pred3 = paddle.abs(derphi_j) <= -c2 * derphi_0
                 paddle.assign(pred3, done_zoom)
 
                 def true_fn():
@@ -200,26 +234,43 @@ def strong_wolfe(f,
                 paddle.assign(derf_j, derf_lo)
 
             pred2 = (phi_j > phi_0 + c1 * aj * derphi_0) | (phi_j >= phi_lo)
-            paddle.static.nn.cond(pred2, true_fn,
-                                  lambda: false_fn(a_lo, done_zoom))
+            paddle.static.nn.cond(
+                pred2, true_fn, lambda: false_fn(a_lo, done_zoom)
+            )
             j = paddle.static.nn.cond(done_zoom, lambda: j, lambda: j + 1)
             return [
-                j, done_zoom, a_lo, phi_lo, derphi_lo, derf_lo, a_hi, phi_hi,
-                derphi_hi
+                j,
+                done_zoom,
+                a_lo,
+                phi_lo,
+                derphi_lo,
+                derf_lo,
+                a_hi,
+                phi_hi,
+                derphi_hi,
             ]
 
-        paddle.static.nn.while_loop(cond=cond_zoom,
-                                    body=body_zoom,
-                                    loop_vars=[
-                                        j, done_zoom, a_lo, phi_lo, derphi_lo,
-                                        derf_lo, a_hi, phi_hi, derphi_hi
-                                    ])
+        paddle.static.nn.while_loop(
+            cond=cond_zoom,
+            body=body_zoom,
+            loop_vars=[
+                j,
+                done_zoom,
+                a_lo,
+                phi_lo,
+                derphi_lo,
+                derf_lo,
+                a_hi,
+                phi_hi,
+                derphi_hi,
+            ],
+        )
         # j is the number of object function called in zoom.
         return j
 
     alpha_max = paddle.full(shape=[1], fill_value=alpha_max, dtype=dtype)
 
-    a1 = paddle.full(shape=[1], fill_value=0., dtype=dtype)
+    a1 = paddle.full(shape=[1], fill_value=0.0, dtype=dtype)
     a2 = paddle.full(shape=[1], fill_value=initial_step_length, dtype=dtype)
 
     phi_1, derf_1, derphi_1 = phi_and_derphi(a1)
@@ -245,15 +296,25 @@ def strong_wolfe(f,
         paddle.assign(done | paddle.any(paddle.isinf(phi_2)), done)
 
         def true_fn1():
-            j = zoom(a1, phi_1, derphi_1, derf_1, a2, phi_2, derphi_2, phi_0,
-                     derphi_0)
+            j = zoom(
+                a1,
+                phi_1,
+                derphi_1,
+                derf_1,
+                a2,
+                phi_2,
+                derphi_2,
+                phi_0,
+                derphi_0,
+            )
             paddle.assign(a1, a_star)
             paddle.assign(phi_1, phi_star)
             paddle.assign(derf_1, derf_star)
             paddle.assign(ls_func_calls + j, ls_func_calls)
 
-        pred1 = ~done & ((phi_2 > phi_0 + c1 * a2 * derphi_0) |
-                         ((phi_2 >= phi_0) & (i > 1)))
+        pred1 = ~done & (
+            (phi_2 > phi_0 + c1 * a2 * derphi_0) | ((phi_2 >= phi_0) & (i > 1))
+        )
         paddle.assign(done | pred1, done)
         paddle.static.nn.cond(pred1, true_fn1, None)
 
@@ -267,8 +328,17 @@ def strong_wolfe(f,
         paddle.static.nn.cond(pred2, true_fn2, None)
 
         def true_fn3():
-            j = zoom(a2, phi_2, derphi_2, derf_2, a1, phi_1, derphi_1, phi_0,
-                     derphi_0)
+            j = zoom(
+                a2,
+                phi_2,
+                derphi_2,
+                derf_2,
+                a1,
+                phi_1,
+                derphi_1,
+                phi_0,
+                derphi_0,
+            )
             paddle.assign(a2, a_star)
             paddle.assign(phi_2, phi_star)
             paddle.assign(derf_2, derf_star)
@@ -291,6 +361,7 @@ def strong_wolfe(f,
     paddle.static.nn.while_loop(
         cond=cond,
         body=body,
-        loop_vars=[i, ls_func_calls, a1, a2, phi_1, derf_1, done])
+        loop_vars=[i, ls_func_calls, a1, a2, phi_1, derf_1, done],
+    )
 
     return a_star, phi_star, derf_star, ls_func_calls

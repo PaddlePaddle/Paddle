@@ -216,7 +216,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::NotFound(
                                 "Variable %s is not found in scope.", varname));
-    auto lod_tensor = var->GetMutable<f::LoDTensor>();
+    auto lod_tensor = var->GetMutable<phi::DenseTensor>();
     std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k + val_scalar;
@@ -286,7 +286,7 @@ struct TestBroadcastOpHandle {
     }
 
     p::CPUPlace cpu_place;
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float* ct = result_tensor.data<float>();
 
@@ -304,7 +304,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::NotFound(
                                 "Variable %s is not found in scope.", varname));
-    auto tensor = var->Get<f::LoDTensor>();
+    auto tensor = var->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(tensor.lod(),
                       lod,
                       platform::errors::InvalidArgument(
@@ -312,7 +312,7 @@ struct TestBroadcastOpHandle {
                           "the expected, expect %s, but got %s.",
                           lod,
                           tensor.lod()));
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(tensor, cpu_place, &result_tensor);
     float* ct = result_tensor.mutable_data<float>(cpu_place);
     for (int64_t k = 0; k < phi::product(kDims); ++k) {

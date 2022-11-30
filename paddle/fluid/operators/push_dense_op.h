@@ -36,7 +36,7 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
                     platform::errors::InvalidArgument(
                         "table id should > 0, but value is ", table_id));
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
-  const auto& ids = ctx.MultiInput<framework::LoDTensor>("Ids");
+  const auto& ids = ctx.MultiInput<phi::DenseTensor>("Ids");
   int batch_size =
       ids[0]->lod().size() ? ids[0]->lod()[0].size() - 1 : ids[0]->dims()[0];
   PADDLE_ENFORCE_GT(batch_size,

@@ -18,21 +18,27 @@ import numpy as np
 
 
 class TestIInfoAndFInfoAPI(unittest.TestCase):
-
     def test_invalid_input(self):
         for dtype in [
-                paddle.float16, paddle.float32, paddle.float64, paddle.bfloat16,
-                paddle.complex64, paddle.complex128, paddle.bool
+            paddle.float16,
+            paddle.float32,
+            paddle.float64,
+            paddle.bfloat16,
+            paddle.complex64,
+            paddle.complex128,
+            paddle.bool,
         ]:
             with self.assertRaises(ValueError):
                 _ = paddle.iinfo(dtype)
 
     def test_iinfo(self):
-        for paddle_dtype, np_dtype in [(paddle.int64, np.int64),
-                                       (paddle.int32, np.int32),
-                                       (paddle.int16, np.int16),
-                                       (paddle.int8, np.int8),
-                                       (paddle.uint8, np.uint8)]:
+        for paddle_dtype, np_dtype in [
+            (paddle.int64, np.int64),
+            (paddle.int32, np.int32),
+            (paddle.int16, np.int16),
+            (paddle.int8, np.int8),
+            (paddle.uint8, np.uint8),
+        ]:
             xinfo = paddle.iinfo(paddle_dtype)
             xninfo = np.iinfo(np_dtype)
             self.assertEqual(xinfo.bits, xninfo.bits)

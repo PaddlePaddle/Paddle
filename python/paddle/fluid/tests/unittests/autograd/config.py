@@ -23,27 +23,11 @@ DEFAULT_DTYPE = 'float64'
 # derivative. It's a empirical value provided by Paddle Science team.
 TOLERANCE = {
     "float32": {
-        "first_order_grad": {
-            "rtol": 1e-3,
-            "atol": 1e-3,
-            "eps": 1e-4
-        },
-        "second_order_grad": {
-            "rtol": 1e-2,
-            "atol": 1e-2,
-            "eps": 1e-2
-        }
+        "first_order_grad": {"rtol": 1e-3, "atol": 1e-3, "eps": 1e-4},
+        "second_order_grad": {"rtol": 1e-2, "atol": 1e-2, "eps": 1e-2},
     },
     "float64": {
-        "first_order_grad": {
-            "rtol": 1e-7,
-            "atol": 1e-7,
-            "eps": 1e-7
-        },
-        "second_order_grad": {
-            "rtol": 1e-5,
-            "atol": 1e-5,
-            "eps": 1e-5
-        }
-    }
+        "first_order_grad": {"rtol": 1e-7, "atol": 1e-7, "eps": 1e-7},
+        "second_order_grad": {"rtol": 1e-5, "atol": 1e-5, "eps": 1e-5},
+    },
 }

@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
@@ -37,7 +37,7 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   //  in operator impl, which is not elegant enough.
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place());

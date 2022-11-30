@@ -43,7 +43,7 @@ class L1Decay(fluid.regularizer.L1Decay):
             # Example1: set Regularizer in optimizer
             import paddle
             from paddle.regularizer import L1Decay
-            import numpy as np
+
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
@@ -76,7 +76,7 @@ class L1Decay(fluid.regularizer.L1Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super(L1Decay, self).__init__(coeff)
+        super().__init__(coeff)
 
 
 class L2Decay(fluid.regularizer.L2Decay):
@@ -105,7 +105,6 @@ class L2Decay(fluid.regularizer.L2Decay):
             # Example1: set Regularizer in optimizer
             import paddle
             from paddle.regularizer import L2Decay
-            import numpy as np
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
@@ -138,4 +137,4 @@ class L2Decay(fluid.regularizer.L2Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super(L2Decay, self).__init__(coeff)
+        super().__init__(coeff)

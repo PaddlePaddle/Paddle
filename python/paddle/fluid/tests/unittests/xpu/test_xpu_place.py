@@ -12,19 +12,15 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-from __future__ import print_function
-
 import unittest
 import os
 import paddle
-import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.static as static
 
 
 class Test_XPU_Places(unittest.TestCase):
-
     def assert_places_equal(self, places0, places1):
         self.assertEqual(len(places0), len(places1))
         for place0, place1 in zip(places0, places1):

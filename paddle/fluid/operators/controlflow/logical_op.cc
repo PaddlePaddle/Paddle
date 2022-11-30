@@ -72,7 +72,7 @@ class LogicalOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // LogicalOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
     return kt;
   }
 };

@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using framework::DDim;
-using framework::Tensor;
 
 class BroadcastTensorsOp : public framework::OperatorWithKernel {
  public:

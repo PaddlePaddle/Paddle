@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -77,8 +77,7 @@ __global__ void CEmbeddingGrad(T *table,
     auto id = ids[row];
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
-      paddle::platform::CudaAtomicAdd(&table[real_idx * columns + col],
-                                      output[i]);
+      phi::CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
     }
   }
 }

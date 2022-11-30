@@ -30,7 +30,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto x = ctx.Input<phi::DenseTensor>("X");
     int numel = x->numel();
     int rid = ctx.Attr<int>("ring_id");
     int peer = ctx.Attr<int>("peer");
@@ -70,7 +70,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
       phi::DenseTensor tmp = *x;
-      auto task = pg->Send_Partial(tmp, peer, offset, send_numel);
+      auto task = pg->Send(tmp, peer, offset, send_numel, /*sync_op*/ true);
       task->Wait();
     } else {
       gpuStream_t stream = nullptr;

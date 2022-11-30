@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
 import unittest
 
 import numpy as np
 import paddle
-from paddle import fluid
-from paddle.distribution import *
+from paddle.distribution import Categorical, Normal, Uniform
 from paddle.fluid import layers
 
 import config
@@ -27,8 +25,7 @@ import parameterize
 paddle.enable_static()
 
 
-class DistributionNumpy():
-
+class DistributionNumpy:
     def sample(self):
         raise NotImplementedError
 
@@ -46,9 +43,8 @@ class DistributionNumpy():
 
 
 class DistributionTestName(unittest.TestCase):
-
     def get_prefix(self, string):
-        return (string.split('.')[0])
+        return string.split('.')[0]
 
     def test_normal_name(self):
         name = 'test_normal'
@@ -138,15 +134,18 @@ class DistributionTestName(unittest.TestCase):
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'batch_shape', 'event_shape'),
-    [('test-tuple', (10, 20), (10, 20)),
-     ('test-list', [100, 100], [100, 200, 300]),
-     ('test-null-eventshape', (100, 100), ())])
+    [
+        ('test-tuple', (10, 20), (10, 20)),
+        ('test-list', [100, 100], [100, 200, 300]),
+        ('test-null-eventshape', (100, 100), ()),
+    ],
+)
 class TestDistributionShape(unittest.TestCase):
-
     def setUp(self):
         paddle.disable_static()
         self.dist = paddle.distribution.Distribution(
-            batch_shape=self.batch_shape, event_shape=self.event_shape)
+            batch_shape=self.batch_shape, event_shape=self.event_shape
+        )
 
     def tearDown(self):
         paddle.enable_static()
@@ -164,15 +163,15 @@ class TestDistributionShape(unittest.TestCase):
             self.dist.prob(paddle.to_tensor(parameterize.xrand()))
 
     def test_extend_shape(self):
-        shapes = [(34, 20), (56, ), ()]
+        shapes = [(34, 20), (56,), ()]
         for shape in shapes:
             self.assertTrue(
                 self.dist._extend_shape(shape),
-                shape + self.dist.batch_shape + self.dist.event_shape)
+                shape + self.dist.batch_shape + self.dist.event_shape,
+            )
 
 
 class TestDistributionException(unittest.TestCase):
-
     def setUp(self):
         self._d = paddle.distribution.Distribution()
 

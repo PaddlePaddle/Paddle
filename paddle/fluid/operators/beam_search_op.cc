@@ -105,7 +105,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto *scores = ctx.Input<framework::LoDTensor>("scores");
+    auto *scores = ctx.Input<phi::DenseTensor>("scores");
     size_t level = ctx.Attr<int>("level");
     size_t batch_size = scores->lod()[level].size() - 1;
     // The current CUDA kernel only support cases with batch_size < 4.

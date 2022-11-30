@@ -12,26 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
-import os
 import unittest
-import numpy as np
 
-import paddle
-import paddle.fluid as fluid
-
-import paddle
-from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import *
+from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import (
+    PsPassTestBase,
+    remove_path_if_exists,
+)
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
-from ps_dnn_trainer import DnnTrainer
-import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
-from google.protobuf import text_format
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2  # noqa: F401
+from google.protobuf import text_format  # noqa: F401
 
 
 class TestTheOnePs(PsPassTestBase):
-
     def setUp(self):
         pass
 
@@ -39,7 +31,6 @@ class TestTheOnePs(PsPassTestBase):
         pass
 
     def check(self, file1, file2):
-        pass
         '''
         f = open(file1, "rb")
         ps_desc_1 = ps_pb2.PSParameter()
@@ -59,6 +50,7 @@ class TestTheOnePs(PsPassTestBase):
         else:
             return False
         '''
+        pass
 
     def test_ps_cpu_async(self):
         self.init()
@@ -66,14 +58,16 @@ class TestTheOnePs(PsPassTestBase):
         self.config['run_the_one_ps'] = '1'
 
         self.config['debug_the_one_ps'] = '0'
-        self.config[
-            'log_dir'] = ps_log_root_dir + "async_cpu_log_old_the_one_ps"
+        self.config['log_dir'] = (
+            ps_log_root_dir + "async_cpu_log_old_the_one_ps"
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 
         self.config['debug_the_one_ps'] = '1'
-        self.config[
-            'log_dir'] = ps_log_root_dir + "async_cpu_log_new_the_one_ps"
+        self.config['log_dir'] = (
+            ps_log_root_dir + "async_cpu_log_new_the_one_ps"
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 

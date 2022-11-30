@@ -195,6 +195,19 @@ inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
   return key;
 }
 
+// The function adjusts the vector of weight dimensions for group convolutions
+inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
+                                  const int groups) {
+  if (groups > 1) {
+    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
+    // else [o, i, h, w] -> [g, o/g, i, h, w]
+    weights_tz.push_back(0);
+    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
+    weights_tz[0] = groups;
+    weights_tz[1] = weights_tz[1] / groups;
+  }
+}
+
 inline void MatchShapeToLayout(DenseTensor* tensor_in,
                                DataLayout from,
                                DataLayout to) {
@@ -269,11 +282,6 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
   return (OneDNNContext::tls().is_tid_used_in_key() == true)
              ? key + "-t:" + ThreadIDasStr()
              : key;
-}
-
-template <typename T>
-bool constexpr is_int8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 }
 
 }  // namespace funcs

@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class ElementwiseAddMLUKernel : public framework::OpKernel<T> {
@@ -32,11 +32,11 @@ class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
 

@@ -50,13 +50,11 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
-    auto &in_true = scope.FindVar(Input("InTrue"))->Get<framework::LoDTensor>();
-    auto &in_false =
-        scope.FindVar(Input("InFalse"))->Get<framework::LoDTensor>();
-    auto *out =
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto &x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
+    auto &in_true = scope.FindVar(Input("InTrue"))->Get<phi::DenseTensor>();
+    auto &in_false = scope.FindVar(Input("InFalse"))->Get<phi::DenseTensor>();
+    auto *out = scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
     auto level = static_cast<size_t>(Attr<int>("level"));
 
     PADDLE_ENFORCE_EQ(
@@ -66,7 +64,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
             "Input(InTrue) or Input(InFalse) should be initialized."));
 
     auto &mask_dim = mask.dims();
-    std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+    std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
@@ -111,7 +109,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     size_t in_true_idx = 0;
     size_t in_false_idx = 0;
     for (size_t i = 0; i < static_cast<size_t>(mask_dim[0]); i++) {
-      const framework::LoDTensor *input = nullptr;
+      const phi::DenseTensor *input = nullptr;
       size_t *in_idx = nullptr;
       if (static_cast<int>(mask_data[i]) == 0) {
         input = &in_false;
@@ -175,8 +173,8 @@ class MergeLoDTensorInferOp : public MergeLoDTensorOp {
     framework::Variable *in_false_var = scope.FindVar(Input("InFalse"));
     in_true_var->Clear();
     in_false_var->Clear();
-    in_true_var->GetMutable<framework::LoDTensor>();
-    in_false_var->GetMutable<framework::LoDTensor>();
+    in_true_var->GetMutable<phi::DenseTensor>();
+    in_false_var->GetMutable<phi::DenseTensor>();
   }
 };
 

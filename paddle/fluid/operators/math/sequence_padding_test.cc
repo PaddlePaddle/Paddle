@@ -19,13 +19,13 @@ template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,
                          const paddle::framework::LoD &lod,
                          const size_t sequence_width) {
-  paddle::framework::LoDTensor cpu_seq;
-  paddle::framework::LoDTensor cpu_seq_back;
-  paddle::framework::LoDTensor seq;
-  paddle::framework::LoDTensor seq_back;
-  paddle::framework::LoDTensor padding;
-  paddle::framework::LoDTensor cpu_pad_value;
-  paddle::framework::LoDTensor pad_value;
+  phi::DenseTensor cpu_seq;
+  phi::DenseTensor cpu_seq_back;
+  phi::DenseTensor seq;
+  phi::DenseTensor seq_back;
+  phi::DenseTensor padding;
+  phi::DenseTensor cpu_pad_value;
+  phi::DenseTensor pad_value;
 
   const size_t level = lod.size() - 1;
   auto seq_dims = phi::make_ddim({static_cast<int64_t>(lod[level].back()),

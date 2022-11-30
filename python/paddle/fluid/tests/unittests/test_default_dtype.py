@@ -12,18 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 from paddle.framework import set_default_dtype, get_default_dtype
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import Linear
-import paddle.fluid.core as core
 
 
 class TestDefaultType(unittest.TestCase):
-
     def check_default(self):
         self.assertEqual("float32", get_default_dtype())
 
@@ -50,7 +44,6 @@ class TestDefaultType(unittest.TestCase):
 
 
 class TestRaiseError(unittest.TestCase):
-
     def test_error(self):
         self.assertRaises(TypeError, set_default_dtype, "int32")
         self.assertRaises(TypeError, set_default_dtype, np.int32)

@@ -14,15 +14,13 @@
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 import unittest
 
 paddle.disable_static()
 
 
 def clear_grad(w, a):
-
     @paddle.no_grad()
     def warp(*_):
         assert w.grad is not None
@@ -33,7 +31,6 @@ def clear_grad(w, a):
 
 
 class TestInplaceAndClearGradient(unittest.TestCase):
-
     def test(self):
         paddle.set_device('cpu')
 

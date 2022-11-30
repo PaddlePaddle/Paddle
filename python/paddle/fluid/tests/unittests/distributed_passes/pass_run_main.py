@@ -17,37 +17,44 @@ import paddle
 import pickle
 import importlib
 import os
-import sys
 from paddle.distributed.fleet.launch_utils import run_with_coverage
-from dist_pass_test_base import prepare_python_path_and_return_module, DistPassTestBase
+from dist_pass_test_base import (
+    prepare_python_path_and_return_module,
+    DistPassTestBase,
+)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='arguments for distributed pass tests')
+        description='arguments for distributed pass tests'
+    )
     parser.add_argument('--file_path', type=str, help='The test file path.')
     parser.add_argument(
         '--class_name',
         type=str,
-        help=
-        'The test class name. It is the class name that inherits the DistPassTestBase class.'
+        help='The test class name. It is the class name that inherits the DistPassTestBase class.',
     )
-    parser.add_argument('--apply_pass',
-                        default=False,
-                        action="store_true",
-                        help='Whether to apply distributed passes.')
+    parser.add_argument(
+        '--apply_pass',
+        default=False,
+        action="store_true",
+        help='Whether to apply distributed passes.',
+    )
     parser.add_argument(
         '--input_file',
         type=str,
-        help='The input file which contains the dumped input arguments.')
+        help='The input file which contains the dumped input arguments.',
+    )
     parser.add_argument(
         '--output_dir',
         type=str,
-        help='The output directory to save the logs and output results.')
+        help='The output directory to save the logs and output results.',
+    )
     parser.add_argument(
         '--model_file',
         type=str,
-        help='The input model file which contains the dumped model function.')
+        help='The input model file which contains the dumped model function.',
+    )
     return parser.parse_args()
 
 

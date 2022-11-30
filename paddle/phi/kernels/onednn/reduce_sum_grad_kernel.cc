@@ -25,6 +25,7 @@ void SumGradKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceGradKernel<T, Context>(dev_ctx,
                                x,
                                out_grad,
@@ -39,9 +40,6 @@ void SumGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_grad,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::SumGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::dtype::bfloat16) {
+}

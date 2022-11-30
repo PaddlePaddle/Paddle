@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
-import numpy as np
 import paddle
 
 from test_collective_api_base import TestDistBase
@@ -23,7 +21,6 @@ paddle.enable_static()
 
 
 class TestCollectiveBarrierAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 
@@ -31,8 +28,9 @@ class TestCollectiveBarrierAPI(TestDistBase):
         self.check_with_place("collective_barrier_api.py", "barrier", "nccl")
 
     def test_barrier_gloo(self):
-        self.check_with_place("collective_barrier_api.py", "barrier", "gloo",
-                              "5")
+        self.check_with_place(
+            "collective_barrier_api.py", "barrier", "gloo", "5"
+        )
 
 
 if __name__ == '__main__':

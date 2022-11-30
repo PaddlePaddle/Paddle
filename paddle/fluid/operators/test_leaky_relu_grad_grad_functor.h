@@ -25,9 +25,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static void InitRandom(framework::Tensor *tensor,
-                       const platform::Place &place) {
-  framework::Tensor cpu_tensor;
+static void InitRandom(phi::DenseTensor *tensor, const platform::Place &place) {
+  phi::DenseTensor cpu_tensor;
   auto *cpu_ptr =
       cpu_tensor.mutable_data<T>(tensor->dims(), platform::CPUPlace());
   int64_t numel = cpu_tensor.numel();
@@ -69,23 +68,23 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
   LeakyReluGradGradFunctor<T> functor;
   functor.alpha = alpha;
   auto &dev_ctx = *platform::DeviceContextPool::Instance().Get(place);
-  framework::Tensor *out = nullptr;
-  framework::Tensor *dout = nullptr;
-  framework::Tensor *dx = nullptr;
+  phi::DenseTensor *out = nullptr;
+  phi::DenseTensor *dout = nullptr;
+  phi::DenseTensor *dx = nullptr;
 
-  framework::Tensor x;
+  phi::DenseTensor x;
   x.Resize(dim);
   InitRandom<T>(&x, place);
 
-  framework::Tensor ddx;
+  phi::DenseTensor ddx;
   ddx.Resize(dim);
   InitRandom<T>(&ddx, place);
 
-  framework::Tensor ddout;
+  phi::DenseTensor ddout;
   ddout.Resize(dim);
   InitRandom<T>(&ddout, place);
 
-  framework::Tensor ddout_actual;
+  phi::DenseTensor ddout_actual;
   ddout_actual.mutable_data<T>(dim, place);
   LeakyReluGradGradEachElementFunctor<T> actual_functor(ddx.data<T>(),
                                                         x.data<T>(),
@@ -112,7 +111,7 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
 
   dev_ctx.Wait();
 
-  framework::Tensor ddout_cpu, ddout_actual_cpu;
+  phi::DenseTensor ddout_cpu, ddout_actual_cpu;
   framework::TensorCopySync(ddout, platform::CPUPlace(), &ddout_cpu);
   framework::TensorCopySync(
       ddout_actual, platform::CPUPlace(), &ddout_actual_cpu);

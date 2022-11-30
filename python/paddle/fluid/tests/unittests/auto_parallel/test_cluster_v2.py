@@ -19,7 +19,6 @@ from paddle.distributed.auto_parallel.cluster_v2 import DeviceMesh
 
 
 class TestDeviceMesh(unittest.TestCase):
-
     def test_device_mesh(self):
         name = "my_device_mesh"
         mesh = [[0, 1, 2], [3, 4, 5]]
@@ -77,11 +76,11 @@ class TestDeviceMesh(unittest.TestCase):
         self.assertEqual(device_mesh.machine(0).device(2), dev2)
         self.assertEqual(device_mesh.machine(1).link(3, 4), link2)
         self.assertEqual(
-            device_mesh.machine(0).devices,
-            device_mesh.machine(0).devices)
+            device_mesh.machine(0).devices, device_mesh.machine(0).devices
+        )
         self.assertEqual(
-            device_mesh.machine(0).links,
-            device_mesh.machine(0).links)
+            device_mesh.machine(0).links, device_mesh.machine(0).links
+        )
 
         self.assertEqual(device_mesh.device_type, "GPU")
         self.assertEqual(device_mesh.devices, device_mesh.devices)

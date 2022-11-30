@@ -29,8 +29,8 @@ namespace operators {
 
 template <typename T>
 static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
-  auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   // BoxPS only supports float now
@@ -61,9 +61,9 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 
 template <typename T>
 static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto d_output =
-      ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
+      ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size);
@@ -113,7 +113,7 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #endif
 }
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 template <typename T>
 class PullBoxSparseKernel : public framework::OpKernel<T> {
  public:

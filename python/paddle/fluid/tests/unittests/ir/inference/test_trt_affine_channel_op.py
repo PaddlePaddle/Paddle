@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import itertools
 import numpy as np
@@ -25,7 +23,6 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTAffineChannelTest(InferencePassTest):
-
     def setUp(self):
         self.bs = 2
         self.channel = 8
@@ -40,7 +37,8 @@ class TRTAffineChannelTest(InferencePassTest):
         # set min_graph_size to 2,
         # because affine channel doesn't support nhwc format
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+            1 << 30, self.bs, 2, self.precision, self.serialize, False
+        )
 
         with fluid.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
@@ -53,13 +51,16 @@ class TRTAffineChannelTest(InferencePassTest):
             scale = fluid.layers.create_parameter(
                 shape=[self.channel],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(2.))
+                default_initializer=fluid.initializer.Constant(2.0),
+            )
             bias = fluid.layers.create_parameter(
                 shape=[self.channel],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(.5))
+                default_initializer=fluid.initializer.Constant(0.5),
+            )
             affine_channel_out = fluid.layers.affine_channel(
-                data, scale=scale, bias=bias, data_layout=self.data_layout)
+                data, scale=scale, bias=bias, data_layout=self.data_layout
+            )
             out = fluid.layers.batch_norm(affine_channel_out, is_test=True)
 
         shape[0] = self.bs
@@ -76,7 +77,8 @@ class TRTAffineChannelTest(InferencePassTest):
                 atol = 2e-2
             self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def run_test(self):
         self.build()
@@ -84,30 +86,39 @@ class TRTAffineChannelTest(InferencePassTest):
 
     def run_test_all(self):
         precision_opt = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_opt = [False, True]
 
         if self.data_layout == 'NCHW':
             min_shape = [
-                self.bs, self.channel, self.height // 2, self.width // 2
+                self.bs,
+                self.channel,
+                self.height // 2,
+                self.width // 2,
             ]
             max_shape = [self.bs, self.channel, self.height * 2, self.width * 2]
             opt_shape = [self.bs, self.channel, self.height, self.width]
 
         if self.data_layout == 'NHWC':
             min_shape = [
-                self.bs, self.height // 2, self.width // 2, self.channel
+                self.bs,
+                self.height // 2,
+                self.width // 2,
+                self.channel,
             ]
             max_shape = [self.bs, self.height * 2, self.width * 2, self.channel]
             opt_shape = [self.bs, self.height, self.width, self.channel]
 
         dynamic_shape_profile = InferencePassTest.DynamicShapeParam(
-            {'in': min_shape}, {'in': max_shape}, {'in': opt_shape}, False)
+            {'in': min_shape}, {'in': max_shape}, {'in': opt_shape}, False
+        )
         dynamic_shape_opt = [None, dynamic_shape_profile]
 
         for precision, serialize, dynamic_shape in itertools.product(
-                precision_opt, serialize_opt, dynamic_shape_opt):
+            precision_opt, serialize_opt, dynamic_shape_opt
+        ):
             self.precision = precision
             self.serialize = serialize
             self.dynamic_shape_params = dynamic_shape
@@ -128,7 +139,9 @@ class TRTAffineChannelTest(InferencePassTest):
         self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
             {'in': [self.bs, self.channel, self.height // 2, self.width // 2]},
             {'in': [self.bs, self.channel, self.height * 2, self.width * 2]},
-            {'in': [self.bs, self.channel, self.height, self.width]}, False)
+            {'in': [self.bs, self.channel, self.height, self.width]},
+            False,
+        )
         self.run_test()
 
     def test_nchw_all(self):

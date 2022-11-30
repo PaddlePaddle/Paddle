@@ -14,7 +14,6 @@
 
 
 class Node:
-
     def __init__(self, id, **attrs):
         # Each node must has a unique id
         self._id = id
@@ -48,7 +47,6 @@ class Node:
 
 
 class Edge:
-
     def __init__(self, src_id, tgt_id, **attrs):
         # The id of source node in an Edge
         self._src_id = src_id
@@ -85,12 +83,12 @@ class Edge:
     def __str__(self):
         str = ""
         str += "(src_id: {}, tgt_id: {}, attrs: {})".format(
-            self.src_id, self.tgt_id, self._attrs)
+            self.src_id, self.tgt_id, self._attrs
+        )
         return str
 
 
 class Graph:
-
     def __init__(self, **attrs):
         # _nodes is dict for storing the nodes of the graph.
         # The key of this dict is the node id.

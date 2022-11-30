@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import numpy as np
 
-import paddle.fluid.core as core
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 
 
 class TestCapture:
-
     def __init__(self):
         self.list = []
 
@@ -43,7 +39,6 @@ def grad_hook(grad):
 
 
 class TestBakcwardFunctionHookError(unittest.TestCase):
-
     def func_hook(self):
         input_data = np.ones([4, 4]).astype('float32')
 

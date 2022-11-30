@@ -143,13 +143,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return input names
   ///
-  std::vector<std::string> GetInputNames();
+  std::vector<std::string> GetInputNames() override;
   ///
   /// \brief Get the output names
   ///
   /// \return output names
   ///
-  std::vector<std::string> GetOutputNames();
+  std::vector<std::string> GetOutputNames() override;
 
   ///
   /// \brief Get the Input Tensor object
@@ -227,7 +227,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Clear the intermediate tensors of the predictor
   ///
   ///
-  void ClearIntermediateTensor();
+  void ClearIntermediateTensor() override;
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.
@@ -271,6 +271,16 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the serialized program
   ///
   std::string GetSerializedProgram() const override;
+
+  ///
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
@@ -353,8 +363,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[out] output_data output tensor
   ///
   template <typename T>
-  void GetFetchOne(const framework::LoDTensor &fetchs,
-                   PaddleTensor *output_data);
+  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
   ///
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
   ///
@@ -383,7 +392,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void MkldnnPostReset();
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   ///
   /// \brief save calibration table
   ///
@@ -499,7 +508,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
-  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<phi::DenseTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
   // A mutex help to make Clone thread safe.
   std::mutex clone_mutex_;
@@ -511,10 +520,13 @@ class AnalysisPredictor : public PaddlePredictor {
   int predictor_id_;
 
  private:
+  std::vector<Exp_OutputHookFunc> hookfuncs_;
+
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
+  std::map<std::string, std::vector<std::vector<int32_t>>> shape_tensor_value_;
   static int clone_num_;
 
   bool private_context_{false};

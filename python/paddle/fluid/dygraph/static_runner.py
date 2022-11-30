@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import TranslatedLayer
 
 
 # NOTE: This class will be deprecated later.
 # It is kept here because PaddleHub is already using this API.
-class StaticModelRunner(object):
+class StaticModelRunner:
     """
     A Dynamic graph Layer for loading inference program and related parameters,
     and then performing fine-tune training or inference.

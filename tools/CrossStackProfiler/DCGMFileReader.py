@@ -14,27 +14,20 @@
 
 import os
 import re
-import json
-import glob
 import logging
 import tempfile
-import argparse
 import pandas as pd
 import multiprocessing
 from multiprocessing import Process
 
-from CspChromeTraceFormatter import ChromeTraceFormatter
-
 from CspFileReader import FileReader
 from CspFileReader import getLogger
 from CspFileReader import dcgmMetricParameterMap
-from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
-from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
-from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
+from CspFileReader import PIPELINEINFO_TRACE_NUM
+from CspFileReader import FILEORGANIZEFORM_BYTRAINER
 
 
 class dcgmFileReader(FileReader):
-
     def parseFileByGroup(self, groupId, processNum=8):
         fileFist = self.getFileListByGroup(groupId)
         displaySize = min(self._displaySize, len(fileFist))
@@ -44,8 +37,9 @@ class dcgmFileReader(FileReader):
             return self._parseTask(fileFist)
 
         else:
-            self._logger.info("using [%d] process to do this work!" %
-                              processNum)
+            self._logger.info(
+                "using [%d] process to do this work!" % processNum
+            )
             processPool = []
             pidList = []
 
@@ -54,23 +48,28 @@ class dcgmFileReader(FileReader):
 
             taskList = self._splitTaskListForMultiProcess(fileFist, processNum)
             for task in taskList:
-                subproc = Process(target=self._parseTask, args=(
-                    task,
-                    q,
-                ))
+                subproc = Process(
+                    target=self._parseTask,
+                    args=(
+                        task,
+                        q,
+                    ),
+                )
                 processPool.append(subproc)
                 subproc.start()
                 pidList.append(subproc.pid)
                 self._logger.info(
                     "[DCGM reader]: process [%d] has been started, total task num is %d ..."
-                    % (subproc.pid, len(processPool)))
+                    % (subproc.pid, len(processPool))
+                )
 
             for t in processPool:
                 t.join()
                 pidList.remove(t.pid)
                 self._logger.info(
                     "[DCGM reader]: process [%d] has exited! remained %d process!"
-                    % (t.pid, len(pidList)))
+                    % (t.pid, len(pidList))
+                )
 
             isFistProcess = True
             for t in processPool:
@@ -78,9 +77,9 @@ class dcgmFileReader(FileReader):
                     isFistProcess = False
                     dcgm_data = q.get()
                 else:
-                    dcgm_data = pd.concat([dcgm_data, q.get()],
-                                          axis=0,
-                                          join='outer')
+                    dcgm_data = pd.concat(
+                        [dcgm_data, q.get()], axis=0, join='outer'
+                    )
 
             return dcgm_data
 
@@ -96,11 +95,11 @@ class dcgmFileReader(FileReader):
                 is_first = False
                 dcgm_data = tmp_data
             else:
-                dcgm_data = pd.concat([dcgm_data, tmp_data],
-                                      axis=0,
-                                      join='outer')
+                dcgm_data = pd.concat(
+                    [dcgm_data, tmp_data], axis=0, join='outer'
+                )
         dcgm_data = dcgm_data.dropna()
-        if not q is None:
+        if q is not None:
             q.put(dcgm_data)
         self._logger.info("I finish processing %s!" % fileName)
         return dcgm_data
@@ -123,18 +122,23 @@ class dcgmFileReader(FileReader):
 
             for line in fp:
                 # skip `nvidia-dcgm-dmon.sh` init and fini info lines
-                if 'nv-hostengine' in line or 'dmon' in line or 'Host Engine Listener Started' in line:
+                if (
+                    'nv-hostengine' in line
+                    or 'dmon' in line
+                    or 'Host Engine Listener Started' in line
+                ):
                     continue
 
                 if not line.strip().startswith(
-                        "GPU") and not line.strip().startswith("# Entity"):
+                    "GPU"
+                ) and not line.strip().startswith("# Entity"):
                     continue
 
                 # skip non-needed headers (only the header in 1th line was needed)
                 if line.strip().startswith("# Entity"):
                     line = line.strip()[2:]
 
-                if 'Entity' == line[0:len('Entity')]:
+                if 'Entity' == line[0 : len('Entity')]:
                     if has_header:
                         continue
                     else:
@@ -159,15 +163,13 @@ class dcgmFileReader(FileReader):
 
         return dcgm
 
-    def _getDCGMTraceInfoByGpuId(self,
-                                 groupId,
-                                 gpuId,
-                                 dcgm_data,
-                                 pid_map,
-                                 q=None):
+    def _getDCGMTraceInfoByGpuId(
+        self, groupId, gpuId, dcgm_data, pid_map, q=None
+    ):
         self._logger.info(
-            "Begin to generate dcgm info, groupId = %d, gpuID = %d ..." %
-            (groupId, gpuId))
+            "Begin to generate dcgm info, groupId = %d, gpuID = %d ..."
+            % (groupId, gpuId)
+        )
 
         gpuDcgmData = dcgm_data[dcgm_data['Entity'].isin([gpuId])]
 
@@ -226,27 +228,31 @@ class dcgmFileReader(FileReader):
         pidList = []
 
         for gpuId in range(self._gpuPerTrainer):
-            subproc = Process(target=self._getDCGMTraceInfoByGpuId,
-                              args=(
-                                  groupId,
-                                  gpuId,
-                                  dcgm_data,
-                                  pid_map,
-                                  q,
-                              ))
+            subproc = Process(
+                target=self._getDCGMTraceInfoByGpuId,
+                args=(
+                    groupId,
+                    gpuId,
+                    dcgm_data,
+                    pid_map,
+                    q,
+                ),
+            )
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
                 "[DCGM info]: process [%d] has been started, total task num is %d ..."
-                % (subproc.pid, 1))
+                % (subproc.pid, 1)
+            )
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
-                "[DCGM info]: process [%d] has exited! remained %d process!" %
-                (t.pid, len(pidList)))
+                "[DCGM info]: process [%d] has exited! remained %d process!"
+                % (t.pid, len(pidList))
+            )
 
         dcgmInfo = {}
 

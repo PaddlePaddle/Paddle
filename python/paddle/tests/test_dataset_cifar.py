@@ -19,7 +19,6 @@ from paddle.vision.datasets import Cifar10, Cifar100
 
 
 class TestCifar10Train(unittest.TestCase):
-
     def test_main(self):
         cifar = Cifar10(mode='train')
         self.assertTrue(len(cifar) == 50000)
@@ -37,7 +36,6 @@ class TestCifar10Train(unittest.TestCase):
 
 
 class TestCifar10Test(unittest.TestCase):
-
     def test_main(self):
         cifar = Cifar10(mode='test')
         self.assertTrue(len(cifar) == 10000)
@@ -72,7 +70,6 @@ class TestCifar10Test(unittest.TestCase):
 
 
 class TestCifar100Train(unittest.TestCase):
-
     def test_main(self):
         cifar = Cifar100(mode='train')
         self.assertTrue(len(cifar) == 50000)
@@ -90,7 +87,6 @@ class TestCifar100Train(unittest.TestCase):
 
 
 class TestCifar100Test(unittest.TestCase):
-
     def test_main(self):
         cifar = Cifar100(mode='test')
         self.assertTrue(len(cifar) == 10000)

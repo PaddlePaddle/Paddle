@@ -21,7 +21,7 @@ limitations under the License. */
 USE_NO_KERNEL_OP(conditional_block);
 USE_NO_KERNEL_OP(conditional_block_grad);
 
-using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 using Scope = paddle::framework::Scope;
 using Variable = paddle::framework::Variable;

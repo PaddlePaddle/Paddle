@@ -27,11 +27,11 @@ namespace operators {
 template <typename T>
 struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &dev_ctx,
-                  const framework::Tensor *in,
-                  const framework::Tensor *scale,
+                  const phi::DenseTensor *in,
+                  const phi::DenseTensor *scale,
                   T max_range,
                   const int quant_axis,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     // Dequant op is before quantized op
     // Dequantize the weight of quantized op
     auto in_dims = in->dims();
@@ -40,8 +40,8 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
     if (quant_axis == 0) {
       for (int64_t i = 0; i < channel; i++) {
         T s = scale_factor[i];
-        framework::Tensor one_channel_in = in->Slice(i, i + 1);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+        phi::DenseTensor one_channel_in = in->Slice(i, i + 1);
+        phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
         auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
         auto &dev = *dev_ctx.eigen_device();

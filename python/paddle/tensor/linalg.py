@@ -14,8 +14,12 @@
 
 import numpy as np
 from ..framework import LayerHelper
-from ..framework import _varbase_creator, _dygraph_tracer, in_dygraph_mode, _non_static_mode
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..framework import _non_static_mode, in_dygraph_mode
+from ..fluid.data_feeder import (
+    check_variable_and_dtype,
+    check_type,
+    check_dtype,
+)
 from ..static import Variable
 from ..fluid.framework import _in_legacy_dygraph
 from .manipulation import cast
@@ -24,8 +28,6 @@ from .logic import logical_not
 from .creation import full
 
 import paddle
-import warnings
-from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
 
@@ -92,10 +94,21 @@ def transpose(x, perm, name=None):
             out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
             return out
 
-    check_variable_and_dtype(x, 'x', [
-        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
-        'complex128'
-    ], 'transpose')
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'complex64',
+            'complex128',
+        ],
+        'transpose',
+    )
     check_type(perm, 'perm', (list, tuple), 'transpose')
     if isinstance(perm, tuple):
         perm = list(perm)
@@ -104,24 +117,25 @@ def transpose(x, perm, name=None):
             "Input(perm) is the permutation of dimensions of Input(x), "
             "its length should be equal to dimensions of Input(x), "
             "but received dimension of Input(x) is %s, "
-            "the length of Input(perm) is %s." % (len(x.shape), len(perm)))
+            "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+        )
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
                 "Each element in Input(perm) should be less than Input(x)'s dimension, "
                 "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
-                "dimension %d." % (idx, perm[idx], len(x.shape)))
+                "dimension %d." % (idx, perm[idx], len(x.shape))
+            )
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(type='transpose2',
-                     inputs={'X': [x]},
-                     outputs={
-                         'Out': [out],
-                         'XShape': [x_shape]
-                     },
-                     attrs={'axis': perm})
+    helper.append_op(
+        type='transpose2',
+        inputs={'X': [x]},
+        outputs={'Out': [out], 'XShape': [x_shape]},
+        attrs={'axis': perm},
+    )
     return out
 
 
@@ -169,9 +183,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     Args:
         x (Tensor): The input tensor which is a Tensor.
         y (Tensor): The input tensor which is a Tensor.
-        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
-        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication.
+        name(str, optional): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
@@ -188,35 +202,35 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             y = paddle.rand([10])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [1]
+            # (1,)
 
             # matrix * vector
             x = paddle.rand([10, 5])
             y = paddle.rand([5])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10]
+            # (10,)
 
             # batched matrix * broadcasted vector
             x = paddle.rand([10, 5, 2])
             y = paddle.rand([2])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10, 5]
+            # (10, 5)
 
             # batched matrix * batched matrix
             x = paddle.rand([10, 5, 2])
             y = paddle.rand([10, 2, 5])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10, 5, 5]
+            # (10, 5, 5)
 
             # batched matrix * broadcasted matrix
             x = paddle.rand([10, 1, 5, 2])
             y = paddle.rand([1, 3, 2, 5])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10, 3, 5, 5]
+            # (10, 3, 5, 5)
 
     """
     if in_dygraph_mode():
@@ -236,21 +250,22 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
             check_variable_and_dtype(
-                val, name,
+                val,
+                name,
                 ['float16', 'float32', 'float64', 'complex64', 'complex128'],
-                'matmul')
+                'matmul',
+            )
 
     __check_input(x, y)
 
     helper = LayerHelper('matmul_v2', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='matmul_v2',
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Out': out},
-                     attrs=attrs)
+    helper.append_op(
+        type='matmul_v2',
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': out},
+        attrs=attrs,
+    )
     return out
 
 
@@ -292,38 +307,53 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            shape=[2, 3, 4]
-            np_input = np.arange(24).astype('float32') - 12
-            np_input = np_input.reshape(shape)
-            x = paddle.to_tensor(np_input)
-            #[[[-12. -11. -10.  -9.] [ -8.  -7.  -6.  -5.] [ -4.  -3.  -2.  -1.]]
-            # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
+            x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            # x: Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #          [[[-12., -11., -10., -9. ],
+            #            [-8. , -7. , -6. , -5. ],
+            #            [-4. , -3. , -2. , -1. ]],
+
+            #           [[ 0. ,  1. ,  2. ,  3. ],
+            #            [ 4. ,  5. ,  6. ,  7. ],
+            #            [ 8. ,  9. ,  10.,  11.]]])
 
             # compute frobenius norm along last two dimensions.
             out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
-            # out_fro.numpy() [17.435596 16.911535 16.7332   16.911535]
+            # out_fro: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                 [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             # compute 2-order vector norm along last dimension.
             out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
-            #out_pnorm.numpy(): [[21.118711  13.190906   5.477226]
-            #                    [ 3.7416575 11.224972  19.131126]]
+            # out_pnorm: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                [[21.11871147, 13.19090557, 5.47722578 ],
+            #                 [3.74165750 , 11.22497177, 19.13112640]])
 
             # compute 2-order  norm along [0,1] dimension.
             out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
-            #out_pnorm.numpy(): [17.435596 16.911535 16.7332   16.911535]
+            # out_pnorm: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             # compute inf-order  norm
-            out_pnorm = paddle.linalg.norm(x, p=np.inf)
-            #out_pnorm.numpy()  = [12.]
-            out_pnorm = paddle.linalg.norm(x, p=np.inf, axis=0)
-            #out_pnorm.numpy(): [[12. 11. 10. 9.] [8. 7. 6. 7.] [8. 9. 10. 11.]]
+            out_pnorm = paddle.linalg.norm(x, p=float("inf"))
+            # out_pnorm  = Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                    [12.])
+
+            out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
+            # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                 [[12., 11., 10., 9. ],
+            #                  [8. , 7. , 6. , 7. ],
+            #                  [8. , 9. , 10., 11.]])
 
             # compute -inf-order  norm
-            out_pnorm = paddle.linalg.norm(x, p=-np.inf)
-            #out_pnorm.numpy(): [0.]
-            out_pnorm = paddle.linalg.norm(x, p=-np.inf, axis=0)
-            #out_pnorm.numpy(): [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
+            out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
+            # out_pnorm: Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [0.])
+
+            out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
+            # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [[0., 1., 2., 3.],
+            #                  [4., 5., 6., 5.],
+            #                  [4., 3., 2., 1.]])
     """
 
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
@@ -345,32 +375,35 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return _C_ops.frobenius_norm(input, dim, keepdim, False)
         if _in_legacy_dygraph():
             if dim is None:
-                return _legacy_C_ops.frobenius_norm(input, 'keep_dim', keepdim,
-                                                    'reduce_all', True)
-            return _legacy_C_ops.frobenius_norm(input, 'dim', dim, 'keep_dim',
-                                                keepdim, 'reduce_all', False)
+                return _legacy_C_ops.frobenius_norm(
+                    input, 'keep_dim', keepdim, 'reduce_all', True
+                )
+            return _legacy_C_ops.frobenius_norm(
+                input, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', False
+            )
         attrs = {'dim': dim, 'keep_dim': keepdim, 'reduce_all': False}
         if dim is None:
             attrs['reduce_all'] = True
-        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'frobenius_norm')
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'frobenius_norm'
+        )
 
         helper = LayerHelper('frobenius_norm', **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=helper.input_dtype()
+        )
 
-        helper.append_op(type='frobenius_norm',
-                         inputs={'X': input},
-                         outputs={'Out': out},
-                         attrs=attrs)
+        helper.append_op(
+            type='frobenius_norm',
+            inputs={'X': input},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
         return out
 
-    def vector_norm(input,
-                    porder=None,
-                    axis=None,
-                    keepdim=False,
-                    asvector=False,
-                    name=None):
+    def vector_norm(
+        input, porder=None, axis=None, keepdim=False, asvector=False, name=None
+    ):
         """
         Calculate the p-order vector norm for certain  dimension of Tensor `input`.
         Args:
@@ -380,21 +413,32 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         """
         if in_dygraph_mode():
-            if axis is None: axis = -1
+            if axis is None:
+                axis = -1
             return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
 
         if _in_legacy_dygraph():
-            if axis is None: axis = -1
-            return _legacy_C_ops.p_norm(input, 'porder', porder, 'axis', axis,
-                                        'keepdim', keepdim, 'asvector',
-                                        asvector)
+            if axis is None:
+                axis = -1
+            return _legacy_C_ops.p_norm(
+                input,
+                'porder',
+                porder,
+                'axis',
+                axis,
+                'keepdim',
+                keepdim,
+                'asvector',
+                asvector,
+            )
 
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
             check_type(axis, 'axis', (int), 'p_norm')
-        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'p_norm')
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'p_norm'
+        )
 
         attrs = {
             'axis': axis if axis is not None else -1,
@@ -405,26 +449,22 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         }
         helper = LayerHelper('p_norm', **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=helper.input_dtype()
+        )
 
-        helper.append_op(type='p_norm',
-                         inputs={'X': input},
-                         outputs={'Out': out},
-                         attrs=attrs)
+        helper.append_op(
+            type='p_norm',
+            inputs={'X': input},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
         return out
 
-    def inf_norm(input,
-                 porder=None,
-                 axis=axis,
-                 keepdim=False,
-                 asvector=False,
-                 name=None):
+    def inf_norm(
+        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
+    ):
         if in_dygraph_mode():
             out = _C_ops.abs(input)
-            reduce_all = True if axis == None or axis == [] or asvector == True else False
-            axis = axis if axis != None and axis != [] else [0]
-            if reduce_all:
-                assert (axis == []) or (axis is None)
             if porder == np.float64('inf'):
                 return _C_ops.max(out, axis, keepdim)
             else:
@@ -432,28 +472,29 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=helper.input_dtype()
+        )
         helper.append_op(type='abs', inputs={'X': input}, outputs={'Out': out})
         reduce_out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=helper.input_dtype()
+        )
 
-        reduce_all = True if axis == None or axis == [] or asvector == True else False
-        axis = axis if axis != None and axis != [] else [0]
+        reduce_all = True if axis is None or axis == [] or asvector else False
+        axis = axis if axis is not None and axis != [] else [0]
 
-        reduce_type = 'reduce_max' if porder == np.float64(
-            'inf') else 'reduce_min'
-        helper.append_op(type=reduce_type,
-                         inputs={'X': out},
-                         outputs={'Out': reduce_out},
-                         attrs={
-                             'dim': axis,
-                             'keep_dim': keepdim,
-                             'reduce_all': reduce_all
-                         })
+        reduce_type = (
+            'reduce_max' if porder == np.float64('inf') else 'reduce_min'
+        )
+        helper.append_op(
+            type=reduce_type,
+            inputs={'X': out},
+            outputs={'Out': reduce_out},
+            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+        )
 
         return reduce_out
 
-    def p_matrix_norm(input, porder=1., axis=axis, keepdim=False, name=None):
+    def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
         """
         NOTE:
             This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
@@ -462,38 +503,48 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             abs_out = _C_ops.abs(input)
             pow_out = _C_ops.pow(abs_out, porder)
             sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
-            out = _C_ops.pow(sum_out, float(1. / porder))
+            out = _C_ops.pow(sum_out, float(1.0 / porder))
             return out
 
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
+            dtype=block.input_dtype()
+        )
         abs_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
-        block.append_op(type='abs',
-                        inputs={'X': input},
-                        outputs={'Out': abs_out})
+            dtype=block.input_dtype()
+        )
+        block.append_op(
+            type='abs', inputs={'X': input}, outputs={'Out': abs_out}
+        )
         pow_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
+            dtype=block.input_dtype()
+        )
 
-        block.append_op(type='pow',
-                        inputs={'X': abs_out},
-                        outputs={'Out': pow_out},
-                        attrs={'factor': porder})
+        block.append_op(
+            type='pow',
+            inputs={'X': abs_out},
+            outputs={'Out': pow_out},
+            attrs={'factor': porder},
+        )
         sum_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
-        block.append_op(type='reduce_sum',
-                        inputs={'X': pow_out},
-                        outputs={'Out': sum_out},
-                        attrs={
-                            'dim': axis,
-                            'keep_dim': keepdim,
-                            'reduce_all': True if axis is None else False
-                        })
-        block.append_op(type='pow',
-                        inputs={'X': sum_out},
-                        outputs={'Out': out},
-                        attrs={'factor': float(1. / porder)})
+            dtype=block.input_dtype()
+        )
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': pow_out},
+            outputs={'Out': sum_out},
+            attrs={
+                'dim': axis,
+                'keep_dim': keepdim,
+                'reduce_all': True if axis is None else False,
+            },
+        )
+        block.append_op(
+            type='pow',
+            inputs={'X': sum_out},
+            outputs={'Out': out},
+            attrs={'factor': float(1.0 / porder)},
+        )
         return out
 
     if axis is None and p is not None:
@@ -502,50 +553,60 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
             else:
                 raise ValueError(
-                    "only valid string values are 'fro', found {}".format(p))
+                    "only valid string values are 'fro', found {}".format(p)
+                )
         elif isinstance(p, (int, float)):
-            return vector_norm(x,
-                               porder=p,
-                               axis=axis,
-                               keepdim=keepdim,
-                               asvector=True,
-                               name=name)
+            return vector_norm(
+                x,
+                porder=p,
+                axis=axis,
+                keepdim=keepdim,
+                asvector=True,
+                name=name,
+            )
         else:
             raise ValueError(
-                "only valid p type is string or float, found {}".format(
-                    type(p)))
+                "only valid p type is string or float, found {}".format(type(p))
+            )
 
     if isinstance(axis, tuple):
         axis = list(axis)
     if isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
-    #calculate vector norm, where axis is int or list with only one integer
+    # calculate vector norm, where axis is int or list with only one integer
     if isinstance(axis, int):
         if isinstance(p, str):
             if p == "fro":
-                return vector_norm(x,
-                                   porder=2,
-                                   axis=axis,
-                                   keepdim=keepdim,
-                                   asvector=False,
-                                   name=name)
+                return vector_norm(
+                    x,
+                    porder=2,
+                    axis=axis,
+                    keepdim=keepdim,
+                    asvector=False,
+                    name=name,
+                )
 
             else:
                 raise ValueError(
-                    "only valid string values are 'fro', found {}".format(p))
+                    "only valid string values are 'fro', found {}".format(p)
+                )
         elif isinstance(p, (int, float)):
-            return vector_norm(x,
-                               axis=axis,
-                               porder=p,
-                               keepdim=keepdim,
-                               asvector=False,
-                               name=name)
+            return vector_norm(
+                x,
+                axis=axis,
+                porder=p,
+                keepdim=keepdim,
+                asvector=False,
+                name=name,
+            )
         else:
             raise ValueError(
-                "unspport p for p-order vector norm. except float, found {}".
-                format(p))
-    #calculate matrix norm, where axis is list with two integers
+                "unspport p for p-order vector norm. except float, found {}".format(
+                    p
+                )
+            )
+    # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
@@ -553,26 +614,28 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just suport axis type int or list (length of list <=1) if p = 0, found {}"
-                .format(axis))
+                "just suport axis type int or list (length of list <=1) if p = 0, found {}".format(
+                    axis
+                )
+            )
         else:
-            return p_matrix_norm(x,
-                                 porder=p,
-                                 axis=axis,
-                                 keepdim=keepdim,
-                                 name=name)
+            return p_matrix_norm(
+                x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
     else:
         raise ValueError(
-            "except axis type int or list (length of list <=2), found {}".
-            format(axis))
+            "except axis type int or list (length of list <=2), found {}".format(
+                axis
+            )
+        )
 
 
 def dist(x, y, p=2, name=None):
     r"""
 
-    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
-    details, please refer to the `numpy's broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_:
+    details, please refer to the `Introduction to Tensor <../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor>`_:
 
     - Each input has at least one dimension.
     - Match the two input dimensions from back to front, the dimension sizes must either be equal, one of them is 1, or one of them does not exist.
@@ -626,6 +689,8 @@ def dist(x, y, p=2, name=None):
         x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+        name (str, optional): The default value is `None`. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Tensor that is the p-norm of (x - y).
@@ -634,10 +699,9 @@ def dist(x, y, p=2, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[3, 3],[3, 3]]), "float32")
-            y = paddle.to_tensor(np.array([[3, 3],[3, 1]]), "float32")
+            x = paddle.to_tensor([[3, 3],[3, 3]], dtype="float32")
+            y = paddle.to_tensor([[3, 3],[3, 1]], dtype="float32")
             out = paddle.dist(x, y, 0)
             print(out) # out = [1.]
 
@@ -662,10 +726,9 @@ def dist(x, y, p=2, name=None):
     inputs = {"X": [x], "Y": [y]}
     outputs = {'Out': [out]}
     attrs = {"p": float(p)}
-    helper.append_op(type='dist',
-                     inputs=inputs,
-                     outputs={'Out': out},
-                     attrs=attrs)
+    helper.append_op(
+        type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs
+    )
     return out
 
 
@@ -690,141 +753,181 @@ def cond(x, p=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])
 
             # compute conditional number when p is None
             out = paddle.linalg.cond(x)
-            # out.numpy() [1.4142135]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.41421342])
 
             # compute conditional number when order of the norm is 'fro'
             out_fro = paddle.linalg.cond(x, p='fro')
-            # out_fro.numpy() [3.1622777]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [3.16227770])
 
             # compute conditional number when order of the norm is 'nuc'
             out_nuc = paddle.linalg.cond(x, p='nuc')
-            # out_nuc.numpy() [9.2426405]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [9.24263859])
 
             # compute conditional number when order of the norm is 1
             out_1 = paddle.linalg.cond(x, p=1)
-            # out_1.numpy() [2.]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [2.])
 
             # compute conditional number when order of the norm is -1
             out_minus_1 = paddle.linalg.cond(x, p=-1)
-            # out_minus_1.numpy() [1.]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.])
 
             # compute conditional number when order of the norm is 2
             out_2 = paddle.linalg.cond(x, p=2)
-            # out_2.numpy() [1.4142135]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.41421342])
 
             # compute conditional number when order of the norm is -1
             out_minus_2 = paddle.linalg.cond(x, p=-2)
-            # out_minus_2.numpy() [0.70710677]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.70710683])
 
             # compute conditional number when order of the norm is inf
-            out_inf = paddle.linalg.cond(x, p=np.inf)
-            # out_inf.numpy() [2.]
+            out_inf = paddle.linalg.cond(x, p=float("inf"))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [2.])
 
             # compute conditional number when order of the norm is -inf
-            out_minus_inf = paddle.linalg.cond(x, p=-np.inf)
-            # out_minus_inf.numpy() [1.]
+            out_minus_inf = paddle.linalg.cond(x, p=-float("inf"))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.])
 
-            a = paddle.to_tensor(np.random.randn(2, 4, 4).astype('float32'))
-            # a.numpy()
-            # [[[ 0.14063153 -0.996288    0.7996131  -0.02571543]
-            #   [-0.16303636  1.5534962  -0.49919784 -0.04402903]
-            #   [-1.1341571  -0.6022629   0.5445269   0.29154757]
-            #   [-0.16816919 -0.30972657  1.7521842  -0.5402487 ]]
-            #  [[-0.58081484  0.12402827  0.7229862  -0.55046535]
-            #   [-0.15178485 -1.1604939   0.75810957  0.30971205]
-            #   [-0.9669573   1.0940945  -0.27363303 -0.35416734]
-            #   [-1.216529    2.0018666  -0.7773689  -0.17556527]]]
+            a = paddle.randn([2, 4, 4])
+            # Tensor(shape=[2, 4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[-0.06784091, -0.07095790,  1.31792855, -0.58959651],
+            #          [ 0.20818676, -0.85640615, -0.89998871, -1.47439921],
+            #          [-0.49132481,  0.42250812, -0.77383220, -2.19794774],
+            #          [-0.33551720, -1.70003879, -1.09795380, -0.63737559]],
+
+            #         [[ 1.12026262, -0.16119350, -1.21157813,  2.74383283],
+            #          [-0.15999718,  0.18798758, -0.69392562,  1.35720372],
+            #          [-0.53013402, -2.26304483,  1.40843511, -1.02288902],
+            #          [ 0.69533503,  2.05261683, -0.02251151, -1.43127477]]])
+
             a_cond_fro = paddle.linalg.cond(a, p='fro')
-            # a_cond_fro.numpy()  [31.572273 28.120834]
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [8.86691189 , 75.23817444])
 
-            b = paddle.to_tensor(np.random.randn(2, 3, 4).astype('float64'))
-            # b.numpy()
-            # [[[ 1.61707487  0.46829144  0.38130416  0.82546736]
-            #   [-1.72710298  0.08866375 -0.62518804  0.16128892]
-            #   [-0.02822879 -1.67764516  0.11141444  0.3220113 ]]
-            #  [[ 0.22524372  0.62474921 -0.85503233 -1.03960523]
-            #   [-0.76620689  0.56673047  0.85064753 -0.45158196]
-            #   [ 1.47595418  2.23646462  1.5701758   0.10497519]]]
+            b = paddle.randn([2, 3, 4])
+            # Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[-0.43754861,  1.80796063, -0.78729683, -1.82264030],
+            #          [-0.27670753,  0.06620564,  0.29072434, -0.31155765],
+            #          [ 0.34123746, -0.05444612,  0.05001324, -1.46877074]],
+
+            #         [[-0.64331555, -1.51103854, -1.26277697, -0.68024760],
+            #          [ 2.59375715, -1.06665540,  0.96575671, -0.73330832],
+            #          [-0.47064447, -0.23945692, -0.95150250, -1.07125998]]])
             b_cond_2 = paddle.linalg.cond(b, p=2)
-            # b_cond_2.numpy()  [3.30064451 2.51976252]
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [6.64228773, 3.89068866])
 
     """
 
-    def mat_norm(input, porder=1., axis=None):
+    def mat_norm(input, porder=1.0, axis=None):
         """
         NOTE:
             Calculate the matrix norm of a square matrix or batches of square matrices,
             when porder is in (1, -1, inf, -inf)
         """
-        reduce_all = True if axis is None or axis == [] else False
-        axis = axis if axis != None and axis != [] else [0]
-        keepdim = False
-
         if in_dygraph_mode():
             abs_out = _C_ops.abs(input)
-            sum_out = _C_ops.sum(abs_out, axis, None, keepdim)
+            sum_out = _C_ops.sum(abs_out, axis, None, False)
 
             if porder == 1 or porder == np.inf:
-                return _C_ops.max(sum_out, [-1], keepdim)
+                return _C_ops.max(sum_out, [-1], False)
             if porder == -1 or porder == -np.inf:
-                return _C_ops.min(sum_out, [-1], keepdim)
+                return _C_ops.min(sum_out, [-1], False)
 
         elif _in_legacy_dygraph():
+            reduce_all = True if axis is None or axis == [] else False
+            axis = axis if axis is not None and axis != [] else [0]
             abs_out = _legacy_C_ops.abs(input)
-            sum_out = _legacy_C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
-                                               keepdim, 'reduce_all',
-                                               reduce_all)
+            sum_out = _legacy_C_ops.reduce_sum(
+                abs_out,
+                'dim',
+                axis,
+                'keepdim',
+                False,
+                'reduce_all',
+                reduce_all,
+            )
             if porder == 1 or porder == np.inf:
-                return _legacy_C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
-                                                keepdim, 'reduce_all',
-                                                reduce_all)
+                return _legacy_C_ops.reduce_max(
+                    sum_out,
+                    'dim',
+                    [-1],
+                    'keepdim',
+                    False,
+                    'reduce_all',
+                    reduce_all,
+                )
             if porder == -1 or porder == -np.inf:
-                return _legacy_C_ops.reduce_min(sum_out, 'dim', [-1], 'keepdim',
-                                                keepdim, 'reduce_all',
-                                                reduce_all)
+                return _legacy_C_ops.reduce_min(
+                    sum_out,
+                    'dim',
+                    [-1],
+                    'keepdim',
+                    False,
+                    'reduce_all',
+                    reduce_all,
+                )
         else:
+            reduce_all = True if axis is None or axis == [] else False
+            axis = axis if axis is not None and axis != [] else [0]
             block = LayerHelper('norm', **locals())
             abs_out = block.create_variable_for_type_inference(
-                dtype=block.input_dtype())
+                dtype=block.input_dtype()
+            )
             sum_out = block.create_variable_for_type_inference(
-                dtype=block.input_dtype())
+                dtype=block.input_dtype()
+            )
             out = block.create_variable_for_type_inference(
-                dtype=block.input_dtype())
-            block.append_op(type='abs',
-                            inputs={'X': input},
-                            outputs={'Out': abs_out})
-            block.append_op(type='reduce_sum',
-                            inputs={'X': abs_out},
-                            outputs={'Out': sum_out},
-                            attrs={
-                                'dim': axis,
-                                'keep_dim': keepdim,
-                                'reduce_all': reduce_all
-                            })
+                dtype=block.input_dtype()
+            )
+            block.append_op(
+                type='abs', inputs={'X': input}, outputs={'Out': abs_out}
+            )
+            block.append_op(
+                type='reduce_sum',
+                inputs={'X': abs_out},
+                outputs={'Out': sum_out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': False,
+                    'reduce_all': reduce_all,
+                },
+            )
             if porder == 1 or porder == np.inf:
-                block.append_op(type='reduce_max',
-                                inputs={'X': sum_out},
-                                outputs={'Out': out},
-                                attrs={
-                                    'dim': [-1],
-                                    'keep_dim': keepdim,
-                                    'reduce_all': reduce_all
-                                })
+                block.append_op(
+                    type='reduce_max',
+                    inputs={'X': sum_out},
+                    outputs={'Out': out},
+                    attrs={
+                        'dim': [-1],
+                        'keep_dim': False,
+                        'reduce_all': reduce_all,
+                    },
+                )
             if porder == -1 or porder == -np.inf:
-                block.append_op(type='reduce_min',
-                                inputs={'X': sum_out},
-                                outputs={'Out': out},
-                                attrs={
-                                    'dim': [-1],
-                                    'keep_dim': keepdim,
-                                    'reduce_all': reduce_all
-                                })
+                block.append_op(
+                    type='reduce_min',
+                    inputs={'X': sum_out},
+                    outputs={'Out': out},
+                    attrs={
+                        'dim': [-1],
+                        'keep_dim': False,
+                        'reduce_all': reduce_all,
+                    },
+                )
             return out
 
     def fro_norm(input, porder=2, axis=[-1]):
@@ -832,57 +935,72 @@ def cond(x, p=None, name=None):
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
         """
-        reduce_all = True if axis is None or axis == [] else False
-        keepdim = False
-
         if in_dygraph_mode():
             pow_out = _C_ops.pow(input, porder)
-            sum_out_1 = _C_ops.sum(pow_out, axis, None, keepdim)
-            sum_out_2 = _C_ops.sum(sum_out_1, axis, None, keepdim)
-            return _C_ops.pow(sum_out_2, float(1. / porder))
+            sum_out_1 = _C_ops.sum(pow_out, axis, None, False)
+            sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
+            return _C_ops.pow(sum_out_2, float(1.0 / porder))
         elif paddle.in_dynamic_mode():
+            reduce_all = True if axis is None or axis == [] else False
             pow_out = _legacy_C_ops.pow(input, 'factor', porder)
-            sum_out_1 = _legacy_C_ops.reduce_sum(pow_out, 'dim', axis,
-                                                 'keepdim', keepdim,
-                                                 'reduce_all', reduce_all)
-            sum_out_2 = _legacy_C_ops.reduce_sum(sum_out_1, 'dim', axis,
-                                                 'keepdim', keepdim,
-                                                 'reduce_all', reduce_all)
-            return _legacy_C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+            sum_out_1 = _legacy_C_ops.reduce_sum(
+                pow_out,
+                'dim',
+                axis,
+                'keepdim',
+                False,
+                'reduce_all',
+                reduce_all,
+            )
+            sum_out_2 = _legacy_C_ops.reduce_sum(
+                sum_out_1,
+                'dim',
+                axis,
+                'keepdim',
+                False,
+                'reduce_all',
+                reduce_all,
+            )
+            return _legacy_C_ops.pow(sum_out_2, 'factor', float(1.0 / porder))
 
+        reduce_all = True if axis is None or axis == [] else False
         block = LayerHelper('norm', **locals())
         pow_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
+            dtype=block.input_dtype()
+        )
         sum_out_1 = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
+            dtype=block.input_dtype()
+        )
         sum_out_2 = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
+            dtype=block.input_dtype()
+        )
         out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
-        block.append_op(type='pow',
-                        inputs={'X': input},
-                        outputs={'Out': pow_out},
-                        attrs={'factor': porder})
-        block.append_op(type='reduce_sum',
-                        inputs={'X': pow_out},
-                        outputs={'Out': sum_out_1},
-                        attrs={
-                            'dim': axis,
-                            'keep_dim': keepdim,
-                            'reduce_all': reduce_all
-                        })
-        block.append_op(type='reduce_sum',
-                        inputs={'X': sum_out_1},
-                        outputs={'Out': sum_out_2},
-                        attrs={
-                            'dim': axis,
-                            'keep_dim': keepdim,
-                            'reduce_all': reduce_all
-                        })
-        block.append_op(type='pow',
-                        inputs={'X': sum_out_2},
-                        outputs={'Out': out},
-                        attrs={'factor': float(1. / porder)})
+            dtype=block.input_dtype()
+        )
+        block.append_op(
+            type='pow',
+            inputs={'X': input},
+            outputs={'Out': pow_out},
+            attrs={'factor': porder},
+        )
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': pow_out},
+            outputs={'Out': sum_out_1},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
+        )
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': sum_out_1},
+            outputs={'Out': sum_out_2},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
+        )
+        block.append_op(
+            type='pow',
+            inputs={'X': sum_out_2},
+            outputs={'Out': out},
+            attrs={'factor': float(1.0 / porder)},
+        )
         return out
 
     def svd_norm(input, porder, axis=[-1]):
@@ -891,97 +1009,97 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm, which is related to singular values, of a matrix
             or batches of matrices, including nuclear norm, 2-norm and (-2)-norm.
         """
-        reduce_all = True if axis is None or axis == [] else False
-        keepdim = False
-
+        if not in_dygraph_mode():
+            reduce_all = True if axis is None or axis == [] else False
         u, s, vh = svd(input, full_matrices=False)
 
         if _non_static_mode():
             if porder == "nuc":
                 if in_dygraph_mode():
-                    return _C_ops.sum(s, axis, None, keepdim)
+                    return _C_ops.sum(s, axis, None, False)
                 else:
-                    return _legacy_C_ops.reduce_sum(s, 'dim', axis, 'keepdim',
-                                                    keepdim, 'reduce_all',
-                                                    reduce_all)
+                    return _legacy_C_ops.reduce_sum(
+                        s,
+                        'dim',
+                        axis,
+                        'keepdim',
+                        False,
+                        'reduce_all',
+                        reduce_all,
+                    )
             if in_dygraph_mode():
-                max_out = _C_ops.max(s, axis, keepdim)
-                min_out = _C_ops.min(s, axis, keepdim)
+                max_out = _C_ops.max(s, axis, False)
+                min_out = _C_ops.min(s, axis, False)
                 if porder == 2:
                     return _C_ops.divide(max_out, min_out)
                 if porder == -2:
                     return _C_ops.divide(min_out, max_out)
 
             else:
-                max_out = _legacy_C_ops.reduce_max(s, 'dim', axis, 'keepdim',
-                                                   keepdim, 'reduce_all',
-                                                   reduce_all)
-                min_out = _legacy_C_ops.reduce_min(s, 'dim', axis, 'keepdim',
-                                                   keepdim, 'reduce_all',
-                                                   reduce_all)
+                max_out = _legacy_C_ops.reduce_max(
+                    s, 'dim', axis, 'keepdim', False, 'reduce_all', reduce_all
+                )
+                min_out = _legacy_C_ops.reduce_min(
+                    s, 'dim', axis, 'keepdim', False, 'reduce_all', reduce_all
+                )
                 if porder == 2:
                     return _legacy_C_ops.elementwise_div(
-                        max_out, min_out, 'aixs', axis, 'use_mkldnn', False)
+                        max_out, min_out, 'aixs', axis, 'use_mkldnn', False
+                    )
                 if porder == -2:
                     return _legacy_C_ops.elementwise_div(
-                        min_out, max_out, 'aixs', axis, 'use_mkldnn', False)
+                        min_out, max_out, 'aixs', axis, 'use_mkldnn', False
+                    )
 
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
+            dtype=block.input_dtype()
+        )
         if porder == "nuc":
-            block.append_op(type='reduce_sum',
-                            inputs={'X': s},
-                            outputs={'Out': out},
-                            attrs={
-                                'dim': axis,
-                                'keep_dim': keepdim,
-                                'reduce_all': reduce_all
-                            })
+            block.append_op(
+                type='reduce_sum',
+                inputs={'X': s},
+                outputs={'Out': out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': False,
+                    'reduce_all': reduce_all,
+                },
+            )
             return out
         max_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
+            dtype=block.input_dtype()
+        )
         min_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
-        block.append_op(type='reduce_max',
-                        inputs={'X': s},
-                        outputs={'Out': max_out},
-                        attrs={
-                            'dim': axis,
-                            'keep_dim': keepdim,
-                            'reduce_all': reduce_all
-                        })
-        block.append_op(type='reduce_min',
-                        inputs={'X': s},
-                        outputs={'Out': min_out},
-                        attrs={
-                            'dim': axis,
-                            'keep_dim': keepdim,
-                            'reduce_all': reduce_all
-                        })
+            dtype=block.input_dtype()
+        )
+        block.append_op(
+            type='reduce_max',
+            inputs={'X': s},
+            outputs={'Out': max_out},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
+        )
+        block.append_op(
+            type='reduce_min',
+            inputs={'X': s},
+            outputs={'Out': min_out},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
+        )
         if porder == 2:
-            block.append_op(type='elementwise_div',
-                            inputs={
-                                'X': max_out,
-                                'Y': min_out
-                            },
-                            outputs={'Out': out},
-                            attrs={
-                                'aixs': axis,
-                                'use_mkldnn': False
-                            })
+            block.append_op(
+                type='elementwise_div',
+                inputs={'X': max_out, 'Y': min_out},
+                outputs={'Out': out},
+                attrs={'aixs': axis, 'use_mkldnn': False},
+            )
             return out
         if porder == -2:
-            block.append_op(type='elementwise_div',
-                            inputs={
-                                'X': min_out,
-                                'Y': max_out
-                            },
-                            outputs={'Out': out},
-                            attrs={
-                                'aixs': axis,
-                                'use_mkldnn': False
-                            })
+            block.append_op(
+                type='elementwise_div',
+                inputs={'X': min_out, 'Y': max_out},
+                outputs={'Out': out},
+                attrs={'aixs': axis, 'use_mkldnn': False},
+            )
             return out
 
     def empty_tensor(input, shape):
@@ -992,9 +1110,10 @@ def cond(x, p=None, name=None):
     x_shape = list(x.shape)
     if not len(x_shape) >= 2:
         raise ValueError(
-            "input should be a matrix or batches of matrices, " +
-            "but the dimention of received input is {}".format(len(x_shape)))
-    if p == None:
+            "input should be a matrix or batches of matrices, "
+            + "but the dimention of received input is {}".format(len(x_shape))
+        )
+    if p is None:
         p = 2
     x_size = 0 if (0 in x_shape) else 1
     if p in ("fro", "nuc", 1, -1, np.inf, -np.inf):
@@ -1008,21 +1127,26 @@ def cond(x, p=None, name=None):
                 return svd_norm(x, p) * svd_norm(x_inv, p)
             if p in (1, -1):
                 return mat_norm(x, porder=p, axis=[-2]) * mat_norm(
-                    x_inv, porder=p, axis=[-2])
+                    x_inv, porder=p, axis=[-2]
+                )
             if p in (np.inf, -np.inf):
                 return mat_norm(x, porder=p, axis=[-1]) * mat_norm(
-                    x_inv, porder=p, axis=[-1])
+                    x_inv, porder=p, axis=[-1]
+                )
         else:
-            raise ValueError("only support p is {} when input is a ".format(p) +
-                             "square matrix or batches of square matrices")
+            raise ValueError(
+                "only support p is {} when input is a ".format(p)
+                + "square matrix or batches of square matrices"
+            )
     elif p in (2, -2):
         if x_size == 0:
             return empty_tensor(x, x_shape[:-2])
         return svd_norm(x, porder=p)
     else:
         raise ValueError(
-            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(p) +
-            "1, -1, 2, -2, inf, -inf) or none")
+            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(p)
+            + "1, -1, 2, -2, inf, -inf) or none"
+        )
 
 
 def dot(x, y, name=None):
@@ -1046,14 +1170,18 @@ def dot(x, y, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
-        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
+        # 1-D Tensor * 1-D Tensor
+        x = paddle.to_tensor([1, 2, 3])
+        y = paddle.to_tensor([4, 5, 6])
         z = paddle.dot(x, y)
-        print(z)
+        print(z)  # [32]
+
+        # 2-D Tensor * 2-D Tensor
+        x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
+        y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+        z = paddle.dot(x, y)
+        print(z)  # [[32], [64]]
 
     """
     if in_dygraph_mode():
@@ -1066,25 +1194,23 @@ def dot(x, y, name=None):
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             op_type)
-    check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
-                             op_type)
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], op_type
+    )
+    check_variable_and_dtype(
+        y, 'y', ['float32', 'float64', 'int32', 'int64'], op_type
+    )
 
     helper = LayerHelper(op_type, **locals())
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
-        out = helper.create_variable(name=name,
-                                     dtype=x.dtype,
-                                     persistable=False)
-    helper.append_op(type="dot",
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     attrs={},
-                     outputs={"Out": out})
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False
+        )
+    helper.append_op(
+        type="dot", inputs={'X': x, 'Y': y}, attrs={}, outputs={"Out": out}
+    )
     return out
 
 
@@ -1127,7 +1253,8 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
     if len(x.shape) > 2 or len(x.shape) < 1:
         raise ValueError(
             "Input(x) only support N-D (1<=N<=2) tensor in cov, but received "
-            "length of Input(input) is %s." % len(x.shape))
+            "length of Input(input) is %s." % len(x.shape)
+        )
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cov')
     nx = x
     if len(x.shape) == 1:
@@ -1141,16 +1268,20 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if len(w.shape) > 1:
             raise ValueError(
                 "Input(fweights) only support N-D (N<=1) tensor in cov, but received "
-                "shape of Input(input) is %s." % len(fweights.shape))
+                "shape of Input(input) is %s." % len(fweights.shape)
+            )
         if fweights.shape[0] != observation_num:
             raise ValueError(
                 "The number of Input(fweights) should equal to x's dim[1]: {}, but received "
-                "size of Input(fweights) is {}.".format(observation_num,
-                                                        fweights.shape[0]))
+                "size of Input(fweights) is {}.".format(
+                    observation_num, fweights.shape[0]
+                )
+            )
         if fweights.min() < 0:
             raise ValueError(
                 "The value of Input(fweights) cannot be negtive, but received "
-                "min of Input(fweights) is {}.".format(fweights.min()))
+                "min of Input(fweights) is {}.".format(fweights.min())
+            )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
             raise ValueError("Input(fweights) must be integer ")
 
@@ -1159,18 +1290,23 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if len(aw.shape) > 1:
             raise ValueError(
                 "Input(aweights) only support N-D (N<=1) tensor in cov, but received "
-                "length of Input(input) is %s." % len(aweights.shape))
-        check_variable_and_dtype(aweights, 'dtype', ['float32', 'float64'],
-                                 'cov')
+                "length of Input(input) is %s." % len(aweights.shape)
+            )
+        check_variable_and_dtype(
+            aweights, 'dtype', ['float32', 'float64'], 'cov'
+        )
         if aweights.shape[0] != observation_num:
             raise ValueError(
                 "The number of Input(aweights) should equal to x's dim[1]: {}, but received "
-                "size of Input(aweights) is {}.".format(observation_num,
-                                                        aweights.shape[0]))
+                "size of Input(aweights) is {}.".format(
+                    observation_num, aweights.shape[0]
+                )
+            )
         if aweights.min() < 0:
             raise ValueError(
                 "The value of Input(aweights) cannot be negtive, but received "
-                "min of Input(aweights) is {}.".format(aweights.min()))
+                "min of Input(aweights) is {}.".format(aweights.min())
+            )
         if w is not None:
             w = w * aw
         else:
@@ -1189,7 +1325,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         avg = nx.sum(axis=1) / w_sum
         nx_w = nx
 
-    if w is not None and aweights is not None and ddof == True:
+    if w is not None and aweights is not None and ddof:
         norm_factor = w_sum - (w * aweights).sum() / w_sum
     else:
         norm_factor = w_sum - ddof
@@ -1244,7 +1380,8 @@ def t(input, name=None):
         raise ValueError(
             "Input(input) only support N-D (N<=2) tensor, but received "
             "length of Input(input) is %s. Perhaps you can use paddle."
-            "tensor.transpose() instead." % len(input.shape))
+            "tensor.transpose() instead." % len(input.shape)
+        )
     if in_dygraph_mode():
         if len(input.shape) == 1:
             return input
@@ -1262,8 +1399,11 @@ def t(input, name=None):
         return out
 
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'transpose')
+        input,
+        'input',
+        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'transpose',
+    )
 
     helper = LayerHelper('t', **locals())
     out = helper.create_variable_for_type_inference(input.dtype)
@@ -1271,13 +1411,12 @@ def t(input, name=None):
     if len(input.shape) == 1:
         out = input
     else:
-        helper.append_op(type='transpose2',
-                         inputs={'X': [input]},
-                         outputs={
-                             'Out': [out],
-                             'XShape': [input_shape]
-                         },
-                         attrs={'axis': [1, 0]})
+        helper.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [out], 'XShape': [input_shape]},
+            attrs={'axis': [1, 0]},
+        )
     return out
 
 
@@ -1334,13 +1473,12 @@ def cross(x, y, axis=9, name=None):
             attrs = dict()
             attrs['dim'] = axis
 
-            helper.append_op(type='cross',
-                             inputs={
-                                 'X': x,
-                                 'Y': y
-                             },
-                             outputs={'Out': out},
-                             attrs=attrs)
+            helper.append_op(
+                type='cross',
+                inputs={'X': x, 'Y': y},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
             return out
 
 
@@ -1372,18 +1510,13 @@ def cholesky(x, upper=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            a = np.random.rand(3, 3)
-            a_t = np.transpose(a, [1, 0])
-            x_data = np.matmul(a, a_t) + 1e-03
-            x = paddle.to_tensor(x_data)
+            a = paddle.rand([3, 3], dtype="float32")
+            a_t = paddle.transpose(a, [1, 0])
+            x = paddle.matmul(a, a_t) + 1e-03
+
             out = paddle.linalg.cholesky(x, upper=False)
             print(out)
-            # [[1.190523   0.         0.        ]
-            #  [0.9906703  0.27676893 0.        ]
-            #  [1.25450498 0.05600871 0.06400121]]
-
     """
     if in_dygraph_mode():
         return _C_ops.cholesky(x, upper)
@@ -1395,10 +1528,12 @@ def cholesky(x, upper=False, name=None):
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='cholesky',
-                     inputs={'X': [x]},
-                     outputs={'Out': out},
-                     attrs={'upper': upper})
+    helper.append_op(
+        type='cholesky',
+        inputs={'X': [x]},
+        outputs={'Out': out},
+        attrs={'upper': upper},
+    )
     return out
 
 
@@ -1448,8 +1583,9 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             else:
                 tol_tensor = tol
             use_default_tol = False
-            return _C_ops.matrix_rank_tol(x, tol_tensor, use_default_tol,
-                                          hermitian)
+            return _C_ops.matrix_rank_tol(
+                x, tol_tensor, use_default_tol, hermitian
+            )
 
         if tol is None:
             tol_attr = 0.0
@@ -1457,7 +1593,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         else:
             tol_attr = float(tol)
             use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
+        return _C_ops.matrix_rank(x, tol_attr, hermitian, use_default_tol)
 
     if _in_legacy_dygraph():
         if tol is None:
@@ -1475,9 +1611,16 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             tol_tensor = None
             tol_attr = float(tol)
             use_default_tol = False
-        return _legacy_C_ops.matrix_rank(x, tol_tensor, "tol", tol_attr,
-                                         'hermitian', hermitian,
-                                         'use_default_tol', use_default_tol)
+        return _legacy_C_ops.matrix_rank(
+            x,
+            tol_tensor,
+            "tol",
+            tol_attr,
+            'hermitian',
+            hermitian,
+            'use_default_tol',
+            use_default_tol,
+        )
 
     inputs = {}
     attrs = {}
@@ -1500,10 +1643,9 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
 
     helper = LayerHelper('matrix_rank', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(type='matrix_rank',
-                     inputs=inputs,
-                     outputs={'Out': out},
-                     attrs=attrs)
+    helper.append_op(
+        type='matrix_rank', inputs=inputs, outputs={'Out': out}, attrs=attrs
+    )
     return out
 
 
@@ -1550,16 +1692,22 @@ def bmm(x, y, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 3:
         raise ValueError(
-            "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}"
-            .format(x_shape, y_shape))
+            "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".format(
+                x_shape, y_shape
+            )
+        )
     if x_shape[2] != y_shape[1]:
         raise ValueError(
-            "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}"
-            .format(x_shape, y_shape))
+            "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
+                x_shape, y_shape
+            )
+        )
     if x_shape[0] != y_shape[0]:
         raise ValueError(
-            "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}"
-            .format(x_shape, y_shape))
+            "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
+                x_shape, y_shape
+            )
+        )
 
     if in_dygraph_mode():
         return _C_ops.bmm(x, y)
@@ -1602,22 +1750,21 @@ def histogram(input, bins=100, min=0, max=0, name=None):
         return _C_ops.histogram(input, bins, min, max)
 
     if _in_legacy_dygraph():
-        return _legacy_C_ops.histogram(input, "bins", bins, "min", min, "max",
-                                       max)
+        return _legacy_C_ops.histogram(
+            input, "bins", bins, "min", min, "max", max
+        )
 
     helper = LayerHelper('histogram', **locals())
-    check_variable_and_dtype(input, 'X',
-                             ['int32', 'int64', 'float32', 'float64'],
-                             'histogram')
+    check_variable_and_dtype(
+        input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram'
+    )
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
-    helper.append_op(type='histogram',
-                     inputs={'X': input},
-                     outputs={'Out': out},
-                     attrs={
-                         'bins': bins,
-                         'min': min,
-                         'max': max
-                     })
+    helper.append_op(
+        type='histogram',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'bins': bins, 'min': min, 'max': max},
+    )
     return out
 
 
@@ -1651,7 +1798,9 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.bincount(x, weights, minlength)
+    elif _in_legacy_dygraph():
         return _legacy_C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1659,19 +1808,21 @@ def bincount(x, weights=None, minlength=0, name=None):
     check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
 
     if weights is not None:
-        check_variable_and_dtype(weights, 'Weights',
-                                 ['int32', 'int64', 'float32', 'float64'],
-                                 'bincount')
+        check_variable_and_dtype(
+            weights,
+            'Weights',
+            ['int32', 'int64', 'float32', 'float64'],
+            'bincount',
+        )
         out = helper.create_variable_for_type_inference(dtype=weights.dtype)
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='bincount',
-                     inputs={
-                         'X': x,
-                         'Weights': weights
-                     },
-                     outputs={'Out': out},
-                     attrs={'minlength': minlength})
+    helper.append_op(
+        type='bincount',
+        inputs={'X': x, 'Weights': weights},
+        outputs={'Out': out},
+        attrs={'minlength': minlength},
+    )
     return out
 
 
@@ -1716,40 +1867,45 @@ def mv(x, vec, name=None):
             def __check_input(x, vec):
                 var_names = {'x': x, 'vec': vec}
                 for name, val in var_names.items():
-                    check_variable_and_dtype(val, name, ['float32', 'float64'],
-                                             'mv')
+                    check_variable_and_dtype(
+                        val, name, ['float32', 'float64'], 'mv'
+                    )
                 x_shape = list(x.shape)
                 vec_shape = list(vec.shape)
                 if len(x_shape) != 2:
                     raise ValueError(
-                        "x should be 2-dimensional. But received x's dimention: {}"
-                        .format(x_shape))
+                        "x should be 2-dimensional. But received x's dimention: {}".format(
+                            x_shape
+                        )
+                    )
                 if len(vec_shape) != 1:
                     raise ValueError(
-                        "vec should be 1-dimensional. But received vec's dimention: {}"
-                        .format(vec_shape))
+                        "vec should be 1-dimensional. But received vec's dimention: {}".format(
+                            vec_shape
+                        )
+                    )
 
             __check_input(x, vec)
 
             helper = LayerHelper('mv', **locals())
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(type='mv',
-                             inputs={
-                                 'X': x,
-                                 'Vec': vec
-                             },
-                             outputs={'Out': out})
+            helper.append_op(
+                type='mv', inputs={'X': x, 'Vec': vec}, outputs={'Out': out}
+            )
             return out
 
 
 def det(x, name=None):
     """
+
     Calculates determinant value of a square matrix or batches of square matrices.
 
     Args:
-        x (Tensor): input (Tensor): the input matrix of size `(n, n)` or the
+        x (Tensor): the input matrix of size `(n, n)` or the
             batch of matrices of size `(*, n, n)` where `*` is one or more
             batch dimensions.
+        name(str, optional): Name of the output. Default is None. It's used
+            to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
         Tensor, the determinant value of a square matrix or batches of square matrices.
@@ -1778,39 +1934,42 @@ def det(x, name=None):
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
     input_shape = list(x.shape)
-    assert len(input_shape) >= 2,                     \
-            "The x must be at least 2-dimensional, "   \
-            "but received Input x's dimensional: %s.\n" %  \
-            len(input_shape)
+    assert len(input_shape) >= 2, (
+        "The x must be at least 2-dimensional, "
+        "but received Input x's dimensional: %s.\n" % len(input_shape)
+    )
 
-    assert (input_shape[-1] == input_shape[-2]),    \
-            "Expect squared input," \
-            "but received %s by %s matrix.\n" \
-            %(input_shape[-2], input_shape[-1]) \
-
+    assert (
+        input_shape[-1] == input_shape[-2]
+    ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        input_shape[-2],
+        input_shape[-1],
+    )
     helper = LayerHelper('determinant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='determinant',
-                     inputs={'Input': [x]},
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='determinant', inputs={'Input': [x]}, outputs={'Out': [out]}
+    )
     return out
 
 
 def slogdet(x, name=None):
     """
+
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
-    The determinant can be computed with ``sign * exp(logabsdet)
+    The determinant can be computed with ``sign * exp`` (logabsdet)
 
     Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
+
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
 
     Returns:
-        y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
+        y (Tensor), A tensor containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
     Examples:
@@ -1837,22 +1996,23 @@ def slogdet(x, name=None):
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
     input_shape = list(x.shape)
-    assert len(input_shape) >= 2,                     \
-            "The x must be at least 2-dimensional, "   \
-            "but received Input x's dimensional: %s.\n" %  \
-            len(input_shape)
+    assert len(input_shape) >= 2, (
+        "The x must be at least 2-dimensional, "
+        "but received Input x's dimensional: %s.\n" % len(input_shape)
+    )
 
-    assert (input_shape[-1] == input_shape[-2]),    \
-            "Expect squared input," \
-            "but received %s by %s matrix.\n" \
-            %(input_shape[-2], input_shape[-1]) \
-
+    assert (
+        input_shape[-1] == input_shape[-2]
+    ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        input_shape[-2],
+        input_shape[-1],
+    )
     helper = LayerHelper('slogdeterminant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='slogdeterminant',
-                     inputs={'Input': [x]},
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='slogdeterminant', inputs={'Input': [x]}, outputs={'Out': [out]}
+    )
     return out
 
 
@@ -1919,11 +2079,7 @@ def svd(x, full_matrices=False, name=None):
     helper.append_op(
         type='svd',
         inputs={'X': [x]},
-        outputs={
-            'U': u,
-            'VH': vh,
-            'S': s
-        },
+        outputs={'U': u, 'VH': vh, 'S': s},
         attrs=attrs,
     )
     return u, s, vh
@@ -1931,6 +2087,7 @@ def svd(x, full_matrices=False, name=None):
 
 def matrix_power(x, n, name=None):
     r"""
+
     Computes the n-th power of a square matrix or a batch of square matrices.
 
     Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
@@ -1956,8 +2113,8 @@ def matrix_power(x, n, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
-            data type should be the same as that of `x`.
+        - Tensor, The n-th power of the matrix (or the batch of matrices) `x`. Its
+          data type should be the same as that of `x`.
 
     Examples:
         .. code-block:: python
@@ -1992,10 +2149,12 @@ def matrix_power(x, n, name=None):
     check_type(n, 'n', int, 'matrix_power')
     helper = LayerHelper('matrix_power', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='matrix_power',
-                     inputs={'X': x},
-                     outputs={'Out': out},
-                     attrs={'n': n})
+    helper.append_op(
+        type='matrix_power',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'n': n},
+    )
     return out
 
 
@@ -2060,13 +2219,9 @@ def qr(x, mode="reduced", name=None):
     r = helper.create_variable_for_type_inference(dtype=x.dtype)
     attrs = dict()
     attrs['mode'] = mode
-    helper.append_op(type='qr',
-                     inputs={'X': [x]},
-                     outputs={
-                         'Q': q,
-                         'R': r
-                     },
-                     attrs=attrs)
+    helper.append_op(
+        type='qr', inputs={'X': [x]}, outputs={'Q': q, 'R': r}, attrs=attrs
+    )
     if mode == "r":
         return r
     else:
@@ -2165,14 +2320,12 @@ def lu(x, pivot=True, get_infos=False, name=None):
         info = helper.create_variable_for_type_inference(dtype='int')
         attrs = dict()
         attrs['pivot'] = pivot
-        helper.append_op(type='lu',
-                         inputs={'X': x},
-                         outputs={
-                             'Out': lu,
-                             'Pivots': p,
-                             'Infos': info
-                         },
-                         attrs=attrs)
+        helper.append_op(
+            type='lu',
+            inputs={'X': x},
+            outputs={'Out': lu, 'Pivots': p, 'Infos': info},
+            attrs=attrs,
+        )
     if get_infos:
         return lu, p, info
     else:
@@ -2257,8 +2410,9 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         return P, L, U
 
     if paddle.in_dynamic_mode():
-        P, L, U = _legacy_C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
-                                          'unpack_pivots', unpack_pivots)
+        P, L, U = _legacy_C_ops.lu_unpack(
+            x, y, 'unpack_ludata', unpack_ludata, 'unpack_pivots', unpack_pivots
+        )
         return P, L, U
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu_unpack')
@@ -2270,17 +2424,12 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
     attrs = dict()
     attrs['unpack_ludata'] = unpack_ludata
     attrs['unpack_pivots'] = unpack_pivots
-    helper.append_op(type='lu_unpack',
-                     inputs={
-                         'X': x,
-                         'Pivots': y
-                     },
-                     outputs={
-                         'Pmat': p,
-                         'L': l,
-                         'U': u
-                     },
-                     attrs=attrs)
+    helper.append_op(
+        type='lu_unpack',
+        inputs={'X': x, 'Pivots': y},
+        outputs={'Pmat': p, 'L': l, 'U': u},
+        attrs=attrs,
+    )
     return p, l, u
 
 
@@ -2336,9 +2485,9 @@ def eig(x, name=None):
         w, v = _legacy_C_ops.eig(x)
         return w, v
 
-    check_variable_and_dtype(x, 'X',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'eig')
+    check_variable_and_dtype(
+        x, 'X', ['float32', 'float64', 'complex64', 'complex128'], 'eig'
+    )
     helper = LayerHelper('eig', **locals())
 
     w = helper.create_variable_for_type_inference(x.dtype)
@@ -2387,20 +2536,24 @@ def eigvals(x, name=None):
             # [(-0.27078833542132674+0j), (0.29962280156230725+0j), (0.8824477020120244+0j)] #complex128
     """
 
-    check_variable_and_dtype(x, 'dtype',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'eigvals')
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigvals'
+    )
 
     x_shape = list(x.shape)
     if len(x_shape) < 2:
         raise ValueError(
-            "The dimension of Input(x) should be at least 2, but received x's dimention = {}, x's shape = {}"
-            .format(len(x_shape), x_shape))
+            "The dimension of Input(x) should be at least 2, but received x's dimention = {}, x's shape = {}".format(
+                len(x_shape), x_shape
+            )
+        )
 
     if x_shape[-1] != x_shape[-2]:
         raise ValueError(
-            "The last two dimensions of Input(x) should be equal, but received x's shape = {}"
-            .format(x_shape))
+            "The last two dimensions of Input(x) should be equal, but received x's shape = {}".format(
+                x_shape
+            )
+        )
 
     if in_dygraph_mode():
         return _C_ops.eigvals(x)
@@ -2452,7 +2605,6 @@ def multi_dot(x, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
         # A * B
         A = paddle.rand([3, 4])
@@ -2477,11 +2629,16 @@ def multi_dot(x, name=None):
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
     for id, item in enumerate(x):
-        check_variable_and_dtype(item, 'x[' + str(id) + ']',
-                                 ['float16', 'float32', 'float64'], 'multi_dot')
+        check_variable_and_dtype(
+            item,
+            'x[' + str(id) + ']',
+            ['float16', 'float32', 'float64'],
+            'multi_dot',
+        )
         if item.dtype != x[0].dtype:
             raise TypeError(
-                "All the Tensors in the input must have the same data type.")
+                "All the Tensors in the input must have the same data type."
+            )
 
     helper = LayerHelper('multi_dot', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -2534,32 +2691,35 @@ def eigh(x, UPLO='L', name=None):
         if len(x.shape) < 2:
             raise ValueError(
                 "Input(input) only support >=2 tensor, but received "
-                "length of Input(input) is %s." % len(x.shape))
+                "length of Input(input) is %s." % len(x.shape)
+            )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
-                "The input matrix must be batches of square matrices. But received x's dimention: {}"
-                .format(x_shape))
+                "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
+                    x_shape
+                )
+            )
         if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
-                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO)
+            )
 
     __check_input(x, UPLO)
 
     helper = LayerHelper('eigh', **locals())
-    check_variable_and_dtype(x, 'dtype',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'eigh')
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigh'
+    )
 
     out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='eigh',
-                     inputs={'X': x},
-                     outputs={
-                         'Eigenvalues': out_value,
-                         'Eigenvectors': out_vector
-                     },
-                     attrs={'UPLO': UPLO})
+    helper.append_op(
+        type='eigh',
+        inputs={'X': x},
+        outputs={'Eigenvalues': out_value, 'Eigenvectors': out_vector},
+        attrs={'UPLO': UPLO},
+    )
     return out_value, out_vector
 
 
@@ -2678,8 +2838,9 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _legacy_C_ops.svd(x, 'full_matrices', False)
-            max_singular_val = _legacy_C_ops.reduce_max(s, 'dim', [-1], 'keep_dim', True, \
-                'reduce_all', False)
+            max_singular_val = _legacy_C_ops.reduce_max(
+                s, 'dim', [-1], 'keep_dim', True, 'reduce_all', False
+            )
             rcond = paddle.to_tensor(rcond, dtype=x.dtype)
             cutoff = rcond * max_singular_val
             y = float('inf')
@@ -2701,15 +2862,17 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             if in_dygraph_mode():
                 out_2 = _C_ops.matmul(out_1, u, False, True)
             else:
-                out_2 = _legacy_C_ops.matmul_v2(out_1, u, 'trans_x', False,
-                                                'trans_y', True)
+                out_2 = _legacy_C_ops.matmul_v2(
+                    out_1, u, 'trans_x', False, 'trans_y', True
+                )
             return out_2
         else:
             # combine eigh and matmul op
             s, u = _legacy_C_ops.eigh(x, 'UPLO', 'L')
             s_abs = paddle.abs(s)
-            max_singular_val = _legacy_C_ops.reduce_max(s_abs, 'dim', [-1], 'keep_dim', True, \
-                'reduce_all', False)
+            max_singular_val = _legacy_C_ops.reduce_max(
+                s_abs, 'dim', [-1], 'keep_dim', True, 'reduce_all', False
+            )
             rcond = paddle.to_tensor(rcond, dtype=s.dtype)
             cutoff = rcond * max_singular_val
             y = float('inf')
@@ -2728,8 +2891,9 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             if in_dygraph_mode():
                 out_2 = _C_ops.matmul(out_1, u_conj, False, True)
             else:
-                out_2 = _legacy_C_ops.matmul_v2(out_1, u_conj, 'trans_x', False,
-                                                'trans_y', True)
+                out_2 = _legacy_C_ops.matmul_v2(
+                    out_1, u_conj, 'trans_x', False, 'trans_y', True
+                )
             return out_2
     else:
         if not hermitian:
@@ -2743,23 +2907,17 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             helper.append_op(
                 type='svd',
                 inputs={'X': [x]},
-                outputs={
-                    'U': u,
-                    'VH': vt,
-                    'S': s
-                },
+                outputs={'U': u, 'VH': vt, 'S': s},
                 attrs={'full_matrices': False},
             )
 
             max_singular_val = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='reduce_max',
-                             inputs={'X': s},
-                             outputs={'Out': max_singular_val},
-                             attrs={
-                                 'dim': [-1],
-                                 'keep_dim': True,
-                                 'reduce_all': False
-                             })
+            helper.append_op(
+                type='reduce_max',
+                inputs={'X': s},
+                outputs={'Out': max_singular_val},
+                attrs={'dim': [-1], 'keep_dim': True, 'reduce_all': False},
+            )
 
             rcond = full(shape=[1], fill_value=rcond, dtype=dtype)
             cutoff = rcond * max_singular_val
@@ -2775,59 +2933,50 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
             st = helper.create_variable_for_type_inference(dtype=dtype)
             st_shape = helper.create_variable_for_type_inference(dtype=dtype)
-            helper.append_op(type='unsqueeze2',
-                             inputs={'X': singular},
-                             attrs={'axes': [-2]},
-                             outputs={
-                                 'Out': st,
-                                 'XShape': st_shape
-                             })
+            helper.append_op(
+                type='unsqueeze2',
+                inputs={'X': singular},
+                attrs={'axes': [-2]},
+                outputs={'Out': st, 'XShape': st_shape},
+            )
 
             dims = list(range(len(vt.shape)))
             perm = dims[:-2] + [dims[-1]] + [dims[-2]]
             v = helper.create_variable_for_type_inference(dtype)
             v_shape = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='transpose2',
-                             inputs={'X': [vt]},
-                             outputs={
-                                 'Out': [v],
-                                 'XShape': [v_shape]
-                             },
-                             attrs={'axis': perm})
+            helper.append_op(
+                type='transpose2',
+                inputs={'X': [vt]},
+                outputs={'Out': [v], 'XShape': [v_shape]},
+                attrs={'axis': perm},
+            )
 
             out_1 = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='elementwise_mul',
-                             inputs={
-                                 'X': v,
-                                 'Y': st
-                             },
-                             outputs={'Out': out_1},
-                             attrs={
-                                 'axis': -1,
-                                 'use_mkldnn': False
-                             })
+            helper.append_op(
+                type='elementwise_mul',
+                inputs={'X': v, 'Y': st},
+                outputs={'Out': out_1},
+                attrs={'axis': -1, 'use_mkldnn': False},
+            )
             out_1 = helper.append_activation(out_1)
 
             out_2 = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
                 type='matmul_v2',
-                inputs={
-                    'X': out_1,
-                    'Y': u
-                },
+                inputs={'X': out_1, 'Y': u},
                 outputs={'Out': out_2},
-                attrs={
-                    'trans_x': False,
-                    'trans_y': True
-                },
+                attrs={'trans_x': False, 'trans_y': True},
             )
             return out_2
         else:
             helper = LayerHelper('pinv', **locals())
             dtype = x.dtype
             check_variable_and_dtype(
-                x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'],
-                'pinv')
+                x,
+                'dtype',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'pinv',
+            )
 
             if dtype == paddle.complex128:
                 s_type = 'float64'
@@ -2838,26 +2987,23 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
             u = helper.create_variable_for_type_inference(dtype)
             s = helper.create_variable_for_type_inference(s_type)
-            helper.append_op(type='eigh',
-                             inputs={'X': x},
-                             outputs={
-                                 'Eigenvalues': s,
-                                 'Eigenvectors': u
-                             },
-                             attrs={'UPLO': 'L'})
+            helper.append_op(
+                type='eigh',
+                inputs={'X': x},
+                outputs={'Eigenvalues': s, 'Eigenvectors': u},
+                attrs={'UPLO': 'L'},
+            )
             s_abs = helper.create_variable_for_type_inference(s_type)
-            helper.append_op(type='abs',
-                             inputs={'X': s},
-                             outputs={'Out': s_abs})
+            helper.append_op(
+                type='abs', inputs={'X': s}, outputs={'Out': s_abs}
+            )
             max_singular_val = helper.create_variable_for_type_inference(s_type)
-            helper.append_op(type='reduce_max',
-                             inputs={'X': s_abs},
-                             outputs={'Out': max_singular_val},
-                             attrs={
-                                 'dim': [-1],
-                                 'keep_dim': True,
-                                 'reduce_all': False
-                             })
+            helper.append_op(
+                type='reduce_max',
+                inputs={'X': s_abs},
+                outputs={'Out': max_singular_val},
+                attrs={'dim': [-1], 'keep_dim': True, 'reduce_all': False},
+            )
 
             rcond = full(shape=[1], fill_value=rcond, dtype=s_type)
             cutoff = rcond * max_singular_val
@@ -2873,52 +3019,42 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
             st = helper.create_variable_for_type_inference(dtype=s_type)
             st_shape = helper.create_variable_for_type_inference(dtype=s_type)
-            helper.append_op(type='unsqueeze2',
-                             inputs={'X': singular},
-                             attrs={'axes': [-2]},
-                             outputs={
-                                 'Out': st,
-                                 'XShape': st_shape
-                             })
+            helper.append_op(
+                type='unsqueeze2',
+                inputs={'X': singular},
+                attrs={'axes': [-2]},
+                outputs={'Out': st, 'XShape': st_shape},
+            )
 
             out_1 = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='elementwise_mul',
-                             inputs={
-                                 'X': u,
-                                 'Y': st
-                             },
-                             outputs={'Out': out_1},
-                             attrs={
-                                 'axis': -1,
-                                 'use_mkldnn': False
-                             })
+            helper.append_op(
+                type='elementwise_mul',
+                inputs={'X': u, 'Y': st},
+                outputs={'Out': out_1},
+                attrs={'axis': -1, 'use_mkldnn': False},
+            )
             out_1 = helper.append_activation(out_1)
 
             u_conj = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='conj',
-                             inputs={'X': u},
-                             outputs={'Out': [u_conj]})
+            helper.append_op(
+                type='conj', inputs={'X': u}, outputs={'Out': [u_conj]}
+            )
 
             out_2 = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
                 type='matmul_v2',
-                inputs={
-                    'X': out_1,
-                    'Y': u_conj
-                },
+                inputs={'X': out_1, 'Y': u_conj},
                 outputs={'Out': out_2},
-                attrs={
-                    'trans_x': False,
-                    'trans_y': True
-                },
+                attrs={'trans_x': False, 'trans_y': True},
             )
             return out_2
 
 
 def solve(x, y, name=None):
     r"""
+
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
-    Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
+    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
     a vector/matrix or a batch of vectors/matrices, the equation should be:
 
     .. math::
@@ -2927,9 +3063,9 @@ def solve(x, y, name=None):
     Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
 
     Args:
-        x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
+        x (Tensor): A square matrix or a batch of square matrices. Its shape should be ``[*, M, M]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
-        y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be `[*, M, K]`, where `*` is zero or
+        y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         name(str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -2967,27 +3103,31 @@ def solve(x, y, name=None):
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'solve')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type="solve",
-                     inputs={
-                         "X": x,
-                         "Y": y
-                     },
-                     outputs={"Out": out})
+    helper.append_op(
+        type="solve", inputs={"X": x, "Y": y}, outputs={"Out": out}
+    )
     return out
 
 
-def triangular_solve(x,
-                     y,
-                     upper=True,
-                     transpose=False,
-                     unitriangular=False,
-                     name=None):
+def triangular_solve(
+    x, y, upper=True, transpose=False, unitriangular=False, name=None
+):
     r"""
-    Computes the solution of a system of equations with a triangular coefficient matrix `x` and
-    multiple right-hand sides `y` .
+    Computes the solution of a system of equations with a triangular coefficient.  `x` is coefficient matrix
+    `y` is multiple right-hand sides of equations.
 
-    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
-    is also batches.
+    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs is also
+    batches.
+
+    Equations can be described as:
+
+    .. math::
+        x * Out = y
+
+    Solution of Equations is:
+
+    .. math::
+        Out = x ^ {-1} * y
 
     Args:
         x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
@@ -3014,8 +3154,6 @@ def triangular_solve(x,
             #               -x3 = 5
 
             import paddle
-            import numpy as np
-
             x = paddle.to_tensor([[1, 1, 1],
                                   [0, 2, 1],
                                   [0, 0,-1]], dtype="float64")
@@ -3029,9 +3167,16 @@ def triangular_solve(x,
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
 
     if paddle.in_dynamic_mode():
-        return _legacy_C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
-                                              transpose, 'unitriangular',
-                                              unitriangular)
+        return _legacy_C_ops.triangular_solve(
+            x,
+            y,
+            'upper',
+            upper,
+            'transpose',
+            transpose,
+            'unitriangular',
+            unitriangular,
+        )
 
     inputs = {"X": [x], "Y": [y]}
     helper = LayerHelper("triangular_solve", **locals())
@@ -3039,17 +3184,16 @@ def triangular_solve(x,
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'triangular_solve')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='triangular_solve',
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Out': out},
-                     attrs={
-                         'upper': upper,
-                         'transpose': transpose,
-                         'unitriangular': unitriangular
-                     })
+    helper.append_op(
+        type='triangular_solve',
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': out},
+        attrs={
+            'upper': upper,
+            'transpose': transpose,
+            'unitriangular': unitriangular,
+        },
+    )
     return out
 
 
@@ -3097,13 +3241,12 @@ def cholesky_solve(x, y, upper=False, name=None):
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'cholesky_solve')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='cholesky_solve',
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Out': out},
-                     attrs={'upper': upper})
+    helper.append_op(
+        type='cholesky_solve',
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': out},
+        attrs={'upper': upper},
+    )
     return out
 
 
@@ -3125,14 +3268,13 @@ def eigvalsh(x, UPLO='L', name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x_data = np.array([[1, -2j], [2j, 5]])
-            x = paddle.to_tensor(x_data)
+            x = paddle.to_tensor([[1, -2j], [2j, 5]])
             out_value = paddle.eigvalsh(x, UPLO='L')
             print(out_value)
-            #[0.17157288, 5.82842712]
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.17157286, 5.82842731])
     """
     if in_dygraph_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
@@ -3148,36 +3290,39 @@ def eigvalsh(x, UPLO='L', name=None):
         if len(x.shape) < 2:
             raise ValueError(
                 "Input(input) only support >=2 tensor, but received "
-                "length of Input(input) is %s." % len(x.shape))
+                "length of Input(input) is %s." % len(x.shape)
+            )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
-                "The input matrix must be batches of square matrices. But received x's dimention: {}"
-                .format(x_shape))
+                "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
+                    x_shape
+                )
+            )
         if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
-                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO)
+            )
 
     __check_input(x, UPLO)
 
     helper = LayerHelper('eigvalsh', **locals())
-    check_variable_and_dtype(x, 'dtype',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'eigvalsh')
+    check_variable_and_dtype(
+        x,
+        'dtype',
+        ['float32', 'float64', 'complex64', 'complex128'],
+        'eigvalsh',
+    )
 
     out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     is_test = x.stop_gradient
-    helper.append_op(type='eigvalsh',
-                     inputs={'X': x},
-                     outputs={
-                         'Eigenvalues': out_value,
-                         'Eigenvectors': out_vector
-                     },
-                     attrs={
-                         'UPLO': UPLO,
-                         'is_test': is_test
-                     })
+    helper.append_op(
+        type='eigvalsh',
+        inputs={'X': x},
+        outputs={'Eigenvalues': out_value, 'Eigenvectors': out_vector},
+        attrs={'UPLO': UPLO, 'is_test': is_test},
+    )
     return out_value
 
 
@@ -3244,14 +3389,18 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     if device == "cpu":
         if driver not in (None, "gels", "gelss", "gelsd", "gelsy"):
             raise ValueError(
-                "Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {}"
-                .format(driver))
+                "Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {}".format(
+                    driver
+                )
+            )
         driver = "gelsy" if driver is None else driver
     elif "gpu" in device:
         if driver not in (None, "gels"):
             raise ValueError(
-                "Only support valid driver is 'gels' or None for CUDA inputs. But got {}"
-                .format(driver))
+                "Only support valid driver is 'gels' or None for CUDA inputs. But got {}".format(
+                    driver
+                )
+            )
         driver = "gels" if driver is None else driver
     else:
         raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
@@ -3272,10 +3421,12 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     if _non_static_mode():
         if in_dygraph_mode():
             solution, residuals, rank, singular_values = _C_ops.lstsq(
-                x, y, rcond, driver)
+                x, y, rcond, driver
+            )
         else:
             solution, residuals, rank, singular_values = _legacy_C_ops.lstsq(
-                x, y, 'rcond', rcond, 'driver', driver)
+                x, y, 'rcond', rcond, 'driver', driver
+            )
 
         if driver == "gels":
             rank = paddle.empty(shape=[0], dtype=paddle.int32)
@@ -3286,33 +3437,29 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         return solution, residuals, rank, singular_values
 
     helper = LayerHelper('lstsq', **locals())
-    check_variable_and_dtype(x, 'dtype',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'lstsq')
-    check_variable_and_dtype(y, 'dtype',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'lstsq')
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lstsq'
+    )
+    check_variable_and_dtype(
+        y, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lstsq'
+    )
 
     solution = helper.create_variable_for_type_inference(dtype=x.dtype)
     residuals = helper.create_variable_for_type_inference(dtype=x.dtype)
     rank = helper.create_variable_for_type_inference(dtype=paddle.int32)
     singular_values = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='lstsq',
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={
-                         'Solution': solution,
-                         'Residuals': residuals,
-                         'Rank': rank,
-                         'SingularValues': singular_values
-                     },
-                     attrs={
-                         'rcond': rcond,
-                         'driver': driver
-                     })
+    helper.append_op(
+        type='lstsq',
+        inputs={'X': x, 'Y': y},
+        outputs={
+            'Solution': solution,
+            'Residuals': residuals,
+            'Rank': rank,
+            'SingularValues': singular_values,
+        },
+        attrs={'rcond': rcond, 'driver': driver},
+    )
 
     if driver == "gels":
         rank = paddle.static.data(name='rank', shape=[0])
@@ -3364,11 +3511,12 @@ def corrcoef(x, rowvar=True, name=None):
     if len(x.shape) > 2 or len(x.shape) < 1:
         raise ValueError(
             "Input(x) only support N-D (1<=N<=2) tensor in corrcoef, but received "
-            "length of Input(input) is %s." % len(x.shape))
+            "length of Input(input) is %s." % len(x.shape)
+        )
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'corrcoef')
 
     c = cov(x, rowvar)
-    if (c.ndim == 0):
+    if c.ndim == 0:
         # scalar covariance
         # nan if incorrect value (nan, inf, 0), 1 otherwise
         return c / c
@@ -3383,8 +3531,9 @@ def corrcoef(x, rowvar=True, name=None):
 
     # Clip to [-1, 1].  This does not guarantee
     if paddle.is_complex(c):
-        return paddle.complex(paddle.clip(c.real(), -1, 1),
-                              paddle.clip(c.imag(), -1, 1))
+        return paddle.complex(
+            paddle.clip(c.real(), -1, 1), paddle.clip(c.imag(), -1, 1)
+        )
     else:
         c = paddle.clip(c, -1, 1)
 

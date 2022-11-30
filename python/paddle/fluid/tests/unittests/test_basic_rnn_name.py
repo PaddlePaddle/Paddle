@@ -12,29 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 from paddle.fluid.contrib.layers import basic_gru, basic_lstm
-from paddle.fluid.executor import Executor
-from paddle.fluid import framework
 from test_imperative_base import new_program_scope
-import numpy as np
 
 
 class TestBasicGRUApiName(unittest.TestCase):
-
     def setUp(self):
-        self.name_set = set([
-            "test1_fw_w_0_gate", "test1_fw_w_0_candidate", "test1_fw_b_0_gate",
-            "test1_fw_b_0_candidate", "test1_bw_w_0_gate",
-            "test1_bw_w_0_candidate", "test1_bw_b_0_gate",
-            "test1_bw_b_0_candidate"
-        ])
+        self.name_set = set(
+            [
+                "test1_fw_w_0_gate",
+                "test1_fw_w_0_candidate",
+                "test1_fw_b_0_gate",
+                "test1_fw_b_0_candidate",
+                "test1_bw_w_0_gate",
+                "test1_bw_w_0_candidate",
+                "test1_bw_b_0_gate",
+                "test1_bw_b_0_candidate",
+            ]
+        )
 
     def test_name(self):
         batch_size = 20
@@ -46,35 +44,54 @@ class TestBasicGRUApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
-            input = layers.data(name="input",
-                                shape=[-1, batch_size, input_size],
-                                dtype='float32')
-            pre_hidden = layers.data(name="pre_hidden",
-                                     shape=[-1, hidden_size],
-                                     dtype='float32')
-            sequence_length = layers.data(name="sequence_length",
-                                          shape=[-1],
-                                          dtype='int32')
+            input = layers.data(
+                name="input",
+                shape=[-1, batch_size, input_size],
+                dtype='float32',
+            )
+            pre_hidden = layers.data(
+                name="pre_hidden", shape=[-1, hidden_size], dtype='float32'
+            )
+            sequence_length = layers.data(
+                name="sequence_length", shape=[-1], dtype='int32'
+            )
 
-
-            rnn_out, last_hidden = basic_gru( input, pre_hidden, hidden_size, num_layers = num_layers, \
-                sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
-                batch_first = batch_first, param_attr=fluid.ParamAttr( name ="test1"), bias_attr=fluid.ParamAttr( name="test1"), name="basic_gru")
+            rnn_out, last_hidden = basic_gru(
+                input,
+                pre_hidden,
+                hidden_size,
+                num_layers=num_layers,
+                sequence_length=sequence_length,
+                dropout_prob=dropout,
+                bidirectional=bidirectional,
+                batch_first=batch_first,
+                param_attr=fluid.ParamAttr(name="test1"),
+                bias_attr=fluid.ParamAttr(name="test1"),
+                name="basic_gru",
+            )
 
             var_list = fluid.io.get_program_parameter(
-                fluid.default_main_program())
+                fluid.default_main_program()
+            )
 
             for var in var_list:
                 self.assertTrue(var.name in self.name_set)
 
 
 class TestBasicLSTMApiName(unittest.TestCase):
-
     def setUp(self):
-        self.name_set = set([
-            "test1_fw_w_0", "test1_fw_b_0", "test1_fw_w_1", "test1_fw_b_1",
-            "test1_bw_w_0", "test1_bw_b_0", "test1_bw_w_1", "test1_bw_b_1"
-        ])
+        self.name_set = set(
+            [
+                "test1_fw_w_0",
+                "test1_fw_b_0",
+                "test1_fw_w_1",
+                "test1_fw_b_1",
+                "test1_bw_w_0",
+                "test1_bw_b_0",
+                "test1_bw_w_1",
+                "test1_bw_b_1",
+            ]
+        )
 
     def test_name(self):
         batch_size = 20
@@ -86,27 +103,38 @@ class TestBasicLSTMApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
-            input = layers.data(name="input",
-                                shape=[-1, batch_size, input_size],
-                                dtype='float32')
-            pre_hidden = layers.data(name="pre_hidden",
-                                     shape=[-1, hidden_size],
-                                     dtype='float32')
-            pre_cell = layers.data(name="pre_cell",
-                                   shape=[-1, hidden_size],
-                                   dtype='float32')
-            sequence_length = layers.data(name="sequence_length",
-                                          shape=[-1],
-                                          dtype='int32')
+            input = layers.data(
+                name="input",
+                shape=[-1, batch_size, input_size],
+                dtype='float32',
+            )
+            pre_hidden = layers.data(
+                name="pre_hidden", shape=[-1, hidden_size], dtype='float32'
+            )
+            pre_cell = layers.data(
+                name="pre_cell", shape=[-1, hidden_size], dtype='float32'
+            )
+            sequence_length = layers.data(
+                name="sequence_length", shape=[-1], dtype='int32'
+            )
 
-            rnn_out, last_hidden, last_cell = basic_lstm( input, pre_hidden, pre_cell, \
-                hidden_size, num_layers = num_layers, \
-                sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
-                param_attr=fluid.ParamAttr( name ="test1"), bias_attr=fluid.ParamAttr( name = "test1"),  \
-                batch_first = batch_first)
+            rnn_out, last_hidden, last_cell = basic_lstm(
+                input,
+                pre_hidden,
+                pre_cell,
+                hidden_size,
+                num_layers=num_layers,
+                sequence_length=sequence_length,
+                dropout_prob=dropout,
+                bidirectional=bidirectional,
+                param_attr=fluid.ParamAttr(name="test1"),
+                bias_attr=fluid.ParamAttr(name="test1"),
+                batch_first=batch_first,
+            )
 
             var_list = fluid.io.get_program_parameter(
-                fluid.default_main_program())
+                fluid.default_main_program()
+            )
 
             for var in var_list:
                 self.assertTrue(var.name in self.name_set)
