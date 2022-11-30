@@ -128,7 +128,6 @@ __all__ = [
     'shard_index',
     'hard_swish',
     'mish',
-    'gather_tree',
     'uniform_random',
     'unbind',
 ]
@@ -7926,70 +7925,6 @@ def mish(x, threshold=20, name=None):
         attrs={'threshold': threshold},
     )
     return out
-
-
-def gather_tree(ids, parents):
-    r"""
-    To be used after beam search. After beam search, we get selected ids at
-    each time step and the corresponding parents in the search tree. Both ids
-    and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
-    :attr:`gather_tree` is used to backtrace from the last time step and
-    generate the full sequences by collecting selected ids.
-
-    Here is an example:
-
-    .. code-block:: text
-
-            Given:
-                ids = [[[2 2]
-                        [6 1]]
-                       [[3 9]
-                        [6 1]]
-                       [[0 1]
-                        [9 0]]]
-                parents = [[[0 0]
-                            [1 1]]
-                           [[1 0]
-                            [1 0]]
-                           [[0 0]
-                            [0 1]]]
-
-            Then:
-                gather_tree(ids, parents)
-                         = [[[2 2]
-                             [1 6]]
-                            [[3 3]
-                             [6 1]]
-                            [[0 1]
-                             [9 0]]]
-
-    Args:
-        ids(Tensor): A Tensor with shape :attr:`[length, batch_size, beam_size]`
-            and data type :attr:`int32` or :attr:`int64`. It contains the selected
-            ids of all time steps.
-        parents(Tensor): A Tensor with the same shape and data type as :attr:`ids`,
-            It contains the parents corresponding to selected ids when searching
-            among beams.
-
-    Returns:
-            A Tensor with the same shape and data type as :attr:`ids`. \
-            It contains the full sequences. The sequences are collected from \
-            :attr:`ids` by backtracing according to :attr:`parents`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
-
-            parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
-
-            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
-            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
-
-    """
-    return paddle.nn.functional.gather_tree(ids, parents)
 
 
 @deprecated(since="2.0.0", update_to="paddle.uniform")

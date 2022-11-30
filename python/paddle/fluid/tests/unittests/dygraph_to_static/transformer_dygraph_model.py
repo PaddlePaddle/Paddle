@@ -884,7 +884,7 @@ class Transformer(Layer):
         predict_ids = paddle.stack(predict_ids, axis=0)
         parent_ids = paddle.stack(parent_ids, axis=0)
         finished_seq = paddle.transpose(
-            layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
+            paddle.nn.functional.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )
         finished_scores = topk_scores
 
