@@ -329,7 +329,6 @@ class GroupShardedStage3(nn.Layer):
         Flatten parameters according to layer.
         """
         current_layer_params = _current_layer_params(layer)
-
         if current_layer_params:
             CHECK_LAYER[id(layer)] = name
             self._flatten_layer_params(layer, current_layer_params)
