@@ -143,7 +143,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   }
 
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Add, dnnl::algorithm::binary_add)
-DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Substract, dnnl::algorithm::binary_sub)
+DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Subtract, dnnl::algorithm::binary_sub)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Multiply, dnnl::algorithm::binary_mul)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Divide, dnnl::algorithm::binary_div)
 
@@ -167,19 +167,19 @@ PD_REGISTER_KERNEL(add,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(substract_raw,
+PD_REGISTER_KERNEL(subtract_raw,
                    OneDNN,
                    ONEDNN,
-                   phi::SubstractRawKernel,
+                   phi::SubtractRawKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(substract,
+PD_REGISTER_KERNEL(subtract,
                    OneDNN,
                    ONEDNN,
-                   phi::SubstractKernel,
+                   phi::SubtractKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
