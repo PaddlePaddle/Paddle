@@ -100,17 +100,6 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
-void AnalysisConfig::EnableUseCutlass() {
-#if defined(PADDLE_WITH_CUDA)
-  use_cutlass_ = true;
-#else
-  LOG(ERROR) << "Please compile with CUDA to EnableUseCutlass()";
-  use_cutlass_ = false;
-#endif
-
-  Update();
-}
-
 void AnalysisConfig::SetExecStream(void *stream) {
   PADDLE_ENFORCE_NOT_NULL(
       stream,
@@ -765,6 +754,17 @@ void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
+}
+
+void AnalysisConfig::Exp_EnableUseCutlass() {
+#if defined(PADDLE_WITH_CUDA)
+  use_cutlass_ = true;
+#else
+  LOG(ERROR) << "Please compile with CUDA to EnableUseCutlass()";
+  use_cutlass_ = false;
+#endif
+
+  Update();
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }

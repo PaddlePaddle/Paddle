@@ -391,16 +391,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
-  /// \brief Turn on CUTLASS.
-  ///
-  void EnableUseCutlass();
-  ///
-  /// \brief A boolean state telling whether the CUTLASS is turned on.
-  ///
-  /// \return bool Whether the CUTLASS is turned on.
-  ///
-  bool use_cutlass() const { return use_cutlass_; }
-  ///
   /// \brief A boolean state telling whether the XPU is turned on.
   ///
   /// \return bool Whether the XPU is turned on.
@@ -687,6 +677,17 @@ struct PD_INFER_DECL AnalysisConfig {
   /// NOTE: just experimental, not an official stable API, easy to be broken.
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
+
+  ///
+  /// \brief Turn on CUTLASS.
+  ///  NOTE: just experimental, not an official stable API, easy to be broken.
+  void Exp_EnableUseCutlass();
+  ///
+  /// \brief A boolean state telling whether the CUTLASS is turned on.
+  ///
+  /// \return bool Whether the CUTLASS is turned on.
+  ///
+  bool use_cutlass() const { return use_cutlass_; }
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
