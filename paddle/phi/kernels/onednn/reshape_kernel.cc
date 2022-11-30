@@ -114,7 +114,7 @@ DDim ValidateShape(const std::vector<int64_t>& shape, const DDim& in_dims) {
   return make_ddim(output_shape);
 }
 
-template <typename Context>
+template <typename T, typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
@@ -148,26 +148,23 @@ void ReshapeKernel(const Context& dev_ctx,
       reorder_dst_memory_p->get_desc().reshape(vectorize(out_dims)));
 }
 
-template <typename Context>
+template <typename T, typename Context>
 void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        const IntArray& shape,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  ReshapeKernel<Context>(dev_ctx, x, shape, out);
+  ReshapeKernel(dev_ctx, x, shape, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(reshape,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ReshapeKernel<phi::OneDNNContext>,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    reshape, OneDNN, ONEDNN, phi::ReshapeKernel, float, phi::dtype::bfloat16) {}
+
 PD_REGISTER_KERNEL(reshape_with_xshape,
                    OneDNN,
                    ONEDNN,
-                   phi::ReshapeWithXShape<phi::OneDNNContext>,
+                   phi::ReshapeWithXShape,
                    float,
                    phi::dtype::bfloat16) {}
