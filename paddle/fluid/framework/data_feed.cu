@@ -2551,9 +2551,8 @@ void GraphDataGenerator::SetFeedVec(std::vector<phi::DenseTensor *> feed_vec) {
   feed_vec_ = feed_vec;
 }
 
-void GraphDataGenerator::AllocResource(int thread_id,
-                                       std::vector<phi::DenseTensor *> feed_vec) {
-                                       //std::vector<LoDTensor *> feed_vec) {
+void GraphDataGenerator::AllocResource(
+    int thread_id, std::vector<phi::DenseTensor *> feed_vec) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   gpuid_ = gpu_graph_ptr->device_id_mapping[thread_id];
   thread_id_ = thread_id;

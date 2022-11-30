@@ -1111,13 +1111,16 @@ class InMemoryDataset(DatasetBase):
         )
         self.proto_desc.graph_config.meta_path = config.get("meta_path", "")
         self.proto_desc.graph_config.gpu_graph_training = config.get(
-            "gpu_graph_training", True)
+            "gpu_graph_training", True
+        )
         self.proto_desc.graph_config.sage_mode = config.get("sage_mode", False)
         self.proto_desc.graph_config.samples = config.get("samples", "")
         self.proto_desc.graph_config.train_table_cap = config.get(
-            "train_table_cap", 800000)
+            "train_table_cap", 800000
+        )
         self.proto_desc.graph_config.infer_table_cap = config.get(
-            "infer_table_cap", 800000)
+            "infer_table_cap", 800000
+        )
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):

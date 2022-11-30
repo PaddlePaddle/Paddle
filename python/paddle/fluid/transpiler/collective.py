@@ -281,14 +281,16 @@ class GradAllReduce(Collective):
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(idx + 1,
-                                 type='scale',
-                                 inputs={'X': loss_grad_var},
-                                 outputs={'Out': loss_grad_var},
-                                 attrs={
-                                     'scale': 1.0 / self.nranks,
-                                     self.op_role_key: OpRole.Backward
-                                 })
+                block._insert_op(
+                    idx + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / self.nranks,
+                        self.op_role_key: OpRole.Backward,
+                    },
+                )
 
     def _insert_allreduce_ops(self):
         block = self.main_program.global_block()
@@ -472,7 +474,7 @@ class LocalSGD(Collective):
 
 class SingleProcessMultiThread(GradAllReduce):
     """
-        single process multi thread mode
+    single process multi thread mode
     """
 
     def __init__(self):
@@ -481,7 +483,8 @@ class SingleProcessMultiThread(GradAllReduce):
         self.fuse_allreduce = int(os.getenv("PADDLE_FUSE_ALLREDUCE", "1"))
         self.loss_scale = int(os.getenv("PADDLE_LOSS_SCALE", "1"))
         self.gpu_nums = len(
-            os.getenv("FLAGS_selected_gpus", "0,1,2,3,4,5,6,7").split(","))
+            os.getenv("FLAGS_selected_gpus", "0,1,2,3,4,5,6,7").split(",")
+        )
 
     def _transpile_startup_program(self):
         nodes_num = 0
@@ -495,10 +498,15 @@ class SingleProcessMultiThread(GradAllReduce):
             print("total endpoints: ", self.endpoints)
             print("rank: %d, ring_id: %d" % (self.rank, self.nrings))
             for ring_id in range(self.nrings):
-                self._init_communicator(self.startup_program,
-                                        self.current_endpoint, self.endpoints,
-                                        self.rank, ring_id, self.wait_port,
-                                        True)
+                self._init_communicator(
+                    self.startup_program,
+                    self.current_endpoint,
+                    self.endpoints,
+                    self.rank,
+                    ring_id,
+                    self.wait_port,
+                    True,
+                )
         else:
             self.nranks = 1
             print("begin to _transpile_startup_program for single-node")
@@ -525,7 +533,7 @@ class SingleProcessMultiThread(GradAllReduce):
 
     def _get_update_param_count(self):
         """
-            get need update param count
+        get need update param count
         """
         param_count = 0
         block = self.main_program.global_block()
@@ -559,18 +567,17 @@ class SingleProcessMultiThread(GradAllReduce):
             if not self._is_loss_grad_op(op):
                 continue
             loss_grad_var = block.vars[op.output_arg_names[0]]
-            block._insert_op(idx + 1,
-                             type='scale',
-                             inputs={'X': loss_grad_var},
-                             outputs={'Out': loss_grad_var},
-                             attrs={
-                                 'scale': scale,
-                                 self.op_role_key: OpRole.Backward
-                             })
+            block._insert_op(
+                idx + 1,
+                type='scale',
+                inputs={'X': loss_grad_var},
+                outputs={'Out': loss_grad_var},
+                attrs={'scale': scale, self.op_role_key: OpRole.Backward},
+            )
 
     def _insert_fuse_allreduce_ops(self):
         """
-            insert coalesce_tensor and all reduce ops
+        insert coalesce_tensor and all reduce ops
         """
         block = self.main_program.global_block()
         ring_id = -1
@@ -578,8 +585,10 @@ class SingleProcessMultiThread(GradAllReduce):
         input_grads = []
         global_offset = 0  # find insert offset of fuse tensor, after the max dense grad offset
         for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_backward_op(op) and \
-                    self.op_role_var_key in op.attr_names:
+            if (
+                self._is_backward_op(op)
+                and self.op_role_var_key in op.attr_names
+            ):
                 op_role_var = op.all_attrs()[self.op_role_var_key]
                 if len(op_role_var) == 0:
                     continue
@@ -599,53 +608,54 @@ class SingleProcessMultiThread(GradAllReduce):
         # init output_grads
         output_grads = input_grads
         # init fused_output with temp shape, it will calculate real shape depend on inputs
-        fused_output = block.create_var(name="fused_output",
-                                        shape=[1],
-                                        persistable=False,
-                                        dtype=core.VarDesc.VarType.FP32,
-                                        stop_gradient=True)
+        fused_output = block.create_var(
+            name="fused_output",
+            shape=[1],
+            persistable=False,
+            dtype=core.VarDesc.VarType.FP32,
+            stop_gradient=True,
+        )
         # fuse all grad tensors
         coalesce_tensor_attrs = {
             "copy_data": True,
             "set_constant": False,
-            "dtype": core.VarDesc.VarType.FP32
+            "dtype": core.VarDesc.VarType.FP32,
         }
-        block._insert_op(global_offset,
-                         type='coalesce_tensor',
-                         inputs={'Input': input_grads},
-                         outputs={
-                             'Output': output_grads,
-                             'FusedOutput': fused_output
-                         },
-                         attrs=coalesce_tensor_attrs)
+        block._insert_op(
+            global_offset,
+            type='coalesce_tensor',
+            inputs={'Input': input_grads},
+            outputs={'Output': output_grads, 'FusedOutput': fused_output},
+            attrs=coalesce_tensor_attrs,
+        )
         global_offset += 1
         # grads aggregation of multi-gpus
-        block._insert_op(global_offset,
-                         type='c_sync_calc_stream',
-                         inputs={'X': fused_output},
-                         outputs={'Out': fused_output},
-                         attrs={self.op_role_key: OpRole.Backward})
+        block._insert_op(
+            global_offset,
+            type='c_sync_calc_stream',
+            inputs={'X': fused_output},
+            outputs={'Out': fused_output},
+            attrs={self.op_role_key: OpRole.Backward},
+        )
         global_offset += 1
         ring_id = (ring_id + 1) % self.nrings
-        block._insert_op(global_offset,
-                         type='c_allreduce_sum',
-                         inputs={'X': fused_output},
-                         outputs={'Out': fused_output},
-                         attrs={
-                             'ring_id': ring_id,
-                             self.op_role_key: OpRole.Backward
-                         })
+        block._insert_op(
+            global_offset,
+            type='c_allreduce_sum',
+            inputs={'X': fused_output},
+            outputs={'Out': fused_output},
+            attrs={'ring_id': ring_id, self.op_role_key: OpRole.Backward},
+        )
         global_offset += 1
 
         # sync before adam
-        block._insert_op(global_offset,
-                         type='c_sync_comm_stream',
-                         inputs={'X': fused_output},
-                         outputs={'Out': fused_output},
-                         attrs={
-                             'ring_id': ring_id,
-                             self.op_role_key: OpRole.Backward
-                         })
+        block._insert_op(
+            global_offset,
+            type='c_sync_comm_stream',
+            inputs={'X': fused_output},
+            outputs={'Out': fused_output},
+            attrs={'ring_id': ring_id, self.op_role_key: OpRole.Backward},
+        )
         global_offset += 1
 
 

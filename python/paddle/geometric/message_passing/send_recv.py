@@ -56,7 +56,7 @@ def send_u_recv(
            dst_index = [1, 2, 1, 0]
 
            reduce_op = "sum"
-           
+
            out_size = None
 
            Then:

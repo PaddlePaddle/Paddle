@@ -967,12 +967,12 @@ class Fleet:
     def check_save_pre_patch_done(self):
         return self._runtime_handle._check_save_pre_patch_done()
 
-    def save_cache_table(self,
-                         table_id,
-                         pass_id,
-                         mem_cache_key_threshold=4000000000):
-        return self._runtime_handle._save_cache_table(table_id, pass_id,
-                                                      mem_cache_key_threshold)
+    def save_cache_table(
+        self, table_id, pass_id, mem_cache_key_threshold=4000000000
+    ):
+        return self._runtime_handle._save_cache_table(
+            table_id, pass_id, mem_cache_key_threshold
+        )
 
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
@@ -1333,28 +1333,42 @@ class Fleet:
 
         can_not_apply_optimizer_list = []
         # fix set collective and fleet ps gpu error
-        if self._is_collective and len(
-                self._user_defined_strategy.sparse_table_configs) > 0:
+        if (
+            self._is_collective
+            and len(self._user_defined_strategy.sparse_table_configs) > 0
+        ):
             context["use_fleet_ps"] = True
             from ..meta_optimizers import ParameterServerOptimizer
+
             meta_optimizer = ParameterServerOptimizer(
-                self.user_defined_optimizer)
-            meta_optimizer._set_basic_info(loss, self._role_maker,
-                                           self.user_defined_optimizer,
-                                           copy_user_defined_strategy)
+                self.user_defined_optimizer
+            )
+            meta_optimizer._set_basic_info(
+                loss,
+                self._role_maker,
+                self.user_defined_optimizer,
+                copy_user_defined_strategy,
+            )
             can_not_apply_optimizer_list.append(meta_optimizer)
             from ..meta_optimizers import ParameterServerGraphOptimizer
+
             graph_optimizer = ParameterServerGraphOptimizer(
-                self.user_defined_optimizer)
-            graph_optimizer._set_basic_info(loss, self._role_maker,
-                                            self.user_defined_optimizer,
-                                            copy_user_defined_strategy)
+                self.user_defined_optimizer
+            )
+            graph_optimizer._set_basic_info(
+                loss,
+                self._role_maker,
+                self.user_defined_optimizer,
+                copy_user_defined_strategy,
+            )
             can_not_apply_optimizer_list.append(graph_optimizer)
         else:
             # compile time
-            distributed_optimizer_list = \
+            distributed_optimizer_list = (
                 MetaOptimizerFactory()._get_valid_meta_optimizers(
-                    self.user_defined_optimizer)
+                    self.user_defined_optimizer
+                )
+            )
             # trigger the auto-parallel in very strict condition
             # strategy = DistributedStrategy()
             # strategy.auto = True
@@ -1369,9 +1383,12 @@ class Fleet:
             valid_graph_optimizer_list = []
             # recall meta optimizers for ranking
             for opt in distributed_optimizer_list:
-                opt._set_basic_info(loss, self._role_maker,
-                                    self.user_defined_optimizer,
-                                    copy_user_defined_strategy)
+                opt._set_basic_info(
+                    loss,
+                    self._role_maker,
+                    self.user_defined_optimizer,
+                    copy_user_defined_strategy,
+                )
                 if opt._can_apply() and not opt._is_graph_out():
                     valid_optimizer_list.append(opt)
                 elif opt._can_apply() and opt._is_graph_out():
@@ -1379,11 +1396,17 @@ class Fleet:
                 else:
                     can_not_apply_optimizer_list.append(opt)
             # combine recalled meta optimizers to be a valid meta optimizer
-            meta_optimizer, graph_optimizer = \
-                self.strategy_compiler.generate_optimizer(
-                    loss, self._role_maker, self.user_defined_optimizer,
-                    copy_user_defined_strategy, valid_optimizer_list,
-                    valid_graph_optimizer_list)
+            (
+                meta_optimizer,
+                graph_optimizer,
+            ) = self.strategy_compiler.generate_optimizer(
+                loss,
+                self._role_maker,
+                self.user_defined_optimizer,
+                copy_user_defined_strategy,
+                valid_optimizer_list,
+                valid_graph_optimizer_list,
+            )
 
         valid_strategy = self.strategy_compiler._get_valid_strategy(
             copy_user_defined_strategy, can_not_apply_optimizer_list

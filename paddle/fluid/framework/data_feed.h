@@ -900,10 +900,8 @@ class GraphDataGenerator {
   GraphDataGenerator() {}
   virtual ~GraphDataGenerator() {}
   void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
-  //void AllocResource(int thread_id, std::vector<LoDTensor*> feed_vec);
   void AllocResource(int thread_id, std::vector<phi::DenseTensor*> feed_vec);
   void AllocTrainResource(int thread_id);
-  //void SetFeedVec(std::vector<LoDTensor*> feed_vec);
   void SetFeedVec(std::vector<phi::DenseTensor*> feed_vec);
   int AcquireInstance(BufState* state);
   int GenerateBatch();
