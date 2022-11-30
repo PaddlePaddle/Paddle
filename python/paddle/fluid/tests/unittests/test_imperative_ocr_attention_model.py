@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.nn import (
-    BatchNorm,
     Embedding,
     GRUUnit,
     Linear,
@@ -100,7 +99,9 @@ class ConvBNPool(fluid.dygraph.Layer):
             weight_attr=conv_param_0,
             bias_attr=False,
         )
-        self.bn_0_layer = BatchNorm(out_ch[0], act=act, is_test=is_test)
+        self.bn_0_layer = paddle.nn.BatchNorm(
+            out_ch[0], act=act, is_test=is_test
+        )
         self.conv_1_layer = paddle.nn.Conv2D(
             out_ch[0],
             out_ch[1],
@@ -109,7 +110,9 @@ class ConvBNPool(fluid.dygraph.Layer):
             weight_attr=conv_param_1,
             bias_attr=False,
         )
-        self.bn_1_layer = BatchNorm(out_ch[1], act=act, is_test=is_test)
+        self.bn_1_layer = paddle.nn.BatchNorm(
+            out_ch[1], act=act, is_test=is_test
+        )
 
         if self.pool:
             self.pool_layer = Pool2D(

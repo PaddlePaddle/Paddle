@@ -1037,6 +1037,7 @@ class BatchNorm(layers.Layer):
         )
 
         # Currently, we don't support inplace in dygraph mode
+        return batch_norm_out
 
 
 class BatchNorm1D(_BatchNormBase):
