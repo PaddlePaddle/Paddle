@@ -554,8 +554,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
-  // 如果开启了动态shape，但没有给 shape_info
-  // 表明要在运行时边 run 边 build
+  // If with_dynamic_shape is configured，but min_input_shape is empty,
+  // create trt engine in runtime instead of in pass.
   if (Get<bool>("with_dynamic_shape") && min_input_shape.empty()) {
     return;
   }

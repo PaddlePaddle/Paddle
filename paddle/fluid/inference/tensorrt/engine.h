@@ -467,15 +467,8 @@ class TensorRTEngine {
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
-      // PADDLE_ENFORCE_EQ(
-      //     min_input_shape_.count(name),
-      //     true,
-      //     platform::errors::InvalidArgument(
-      //         "TRT dynamic_shape min_input_shape %s not found.", name));
-
       bool min_change = false;
       bool max_change = false;
-      // 如果当前的 shape_info 中没有目前的 runtime_input，进行添加
       if (!min_input_shape_.count(name)) {
         min_input_shape_[name] = input_shape;
         max_input_shape_[name] = input_shape;
