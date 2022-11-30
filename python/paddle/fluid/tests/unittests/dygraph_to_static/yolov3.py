@@ -19,11 +19,10 @@ from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
 from darknet import DarkNet53_conv_body
 from darknet import ConvBNLayer
 from paddle.jit.api import declarative
@@ -280,53 +279,6 @@ class YOLOv3(fluid.dygraph.Layer):
                 self.route_blocks_2.append(route)
             self.upsample = Upsample()
 
-    def multiclass_nms(
-        self,
-        bboxes,
-        scores,
-        score_threshold,
-        nms_top_k,
-        keep_top_k,
-        nms_threshold=0.3,
-        normalized=True,
-        nms_eta=1.0,
-        background_label=0,
-        name=None,
-    ):
-        check_variable_and_dtype(
-            bboxes, 'BBoxes', ['float32', 'float64'], 'multiclass_nms'
-        )
-        check_variable_and_dtype(
-            scores, 'Scores', ['float32', 'float64'], 'multiclass_nms'
-        )
-        check_type(score_threshold, 'score_threshold', float, 'multicalss_nms')
-        check_type(nms_top_k, 'nums_top_k', int, 'multiclass_nms')
-        check_type(keep_top_k, 'keep_top_k', int, 'mutliclass_nms')
-        check_type(nms_threshold, 'nms_threshold', float, 'multiclass_nms')
-        check_type(normalized, 'normalized', bool, 'multiclass_nms')
-        check_type(nms_eta, 'nms_eta', float, 'multiclass_nms')
-        check_type(background_label, 'background_label', int, 'multiclass_nms')
-
-        helper = LayerHelper('multiclass_nms', **locals())
-        output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
-        helper.append_op(
-            type="multiclass_nms",
-            inputs={'BBoxes': bboxes, 'Scores': scores},
-            attrs={
-                'background_label': background_label,
-                'score_threshold': score_threshold,
-                'nms_top_k': nms_top_k,
-                'nms_threshold': nms_threshold,
-                'nms_eta': nms_eta,
-                'keep_top_k': keep_top_k,
-                'normalized': normalized,
-            },
-            outputs={'Out': output},
-        )
-        output.stop_gradient = True
-
-        return output
-
     @declarative
     def forward(
         self,
@@ -402,7 +354,7 @@ class YOLOv3(fluid.dygraph.Layer):
             yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
             yolo_scores = fluid.layers.concat(self.scores, axis=2)
 
-            pred = self.multiclass_nms(
+            pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,
                 scores=yolo_scores,
                 score_threshold=cfg.valid_thresh,
