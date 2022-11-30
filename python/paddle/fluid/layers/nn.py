@@ -97,7 +97,6 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'relu',
-    'log',
     'elementwise_add',
     'elementwise_div',
     'elementwise_sub',
@@ -5238,47 +5237,6 @@ def resize_nearest(
         align_mode=1,
         data_format=data_format,
     )
-
-
-def log(x, name=None):
-    r"""
-    Calculates the natural log of the given input tensor, element-wise.
-
-    .. math::
-
-        Out = \\ln(x)
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-
-    Returns:
-        Tensor: The natural log of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = [[2,3,4], [7,8,9]]
-            x = paddle.to_tensor(x, dtype='float32')
-            res = paddle.log(x)
-            # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.log(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.log(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
-    return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.relu")

@@ -845,7 +845,7 @@ class Transformer(Layer):
             )
             caches = map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
-                fluid.layers.log(fluid.layers.softmax(logits))
+                paddle.log(fluid.layers.softmax(logits))
             )
 
             step_log_probs = mask_probs(
