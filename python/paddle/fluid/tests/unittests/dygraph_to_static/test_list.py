@@ -183,7 +183,7 @@ def test_list_pop_in_for_loop(x, iter_num):
         a.append(x + i)
         b.append(x * 2)
 
-    one = fluid.layers.ones(shape=[1], dtype="int32")
+    one = paddle.ones(shape=[1], dtype="int32")
     for i in range(one.numpy()[0]):
         item = a.pop()
     return a[0], item, b[1]
