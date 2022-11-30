@@ -204,8 +204,7 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
 
     if (isnan(value)) {
       has_nan = true;
-    }
-    if (isinf(value)) {
+    } else if (isinf(value)) {
       has_inf = true;
     }
 
@@ -230,30 +229,6 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                 tensor_block_max_ptr,
                                 tensor_block_min_ptr,
                                 tensor_block_mean_ptr);
-}
-
-template <typename T,
-          typename MT,
-          std::enable_if_t<std::is_same<T, float>::value, bool> = true>
-__device__ bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
-  if (check_nan_inf_level >= 3) {
-    return true;
-  } else if (check_nan_inf_level >= 2) {
-    MT fp16_max =
-        static_cast<MT>(std::numeric_limits<phi::dtype::float16>::max());
-    return max_value > fp16_max || min_value < -fp16_max;
-  }
-  return false;
-}
-
-template <typename T,
-          typename MT,
-          std::enable_if_t<!std::is_same<T, float>::value, bool> = true>
-__device__ bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
-  if (check_nan_inf_level >= 3) {
-    return true;
-  }
-  return false;
 }
 
 template <typename T, typename MT>
@@ -338,7 +313,7 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
                                    multi_op_var2gpu_str_mutex().size()));
 
   std::string op_var =
-      GetCpuHintString<T>(ctx.GetPlace(), op_type, var_namedev_id);
+      GetCpuHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
   char* gpu_str_ptr = nullptr;
 
   {
@@ -402,7 +377,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
   int dev_id = tensor_.place().device;
   char* gpu_str_ptr =
-      GetHintGpuStringPtr<T>(*dev_ctx, op_type_, var_name_, dev_id);
+      GetGpuHintStringPtr<T>(*dev_ctx, op_type_, var_name_, dev_id);
 
 #ifdef __HIPCC__
   // HIP will throw GPU memory access fault if threads > 256

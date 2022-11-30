@@ -24,6 +24,30 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+template <typename T,
+          typename MT,
+          std::enable_if_t<std::is_same<T, float>::value, bool> = true>
+HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
+  if (check_nan_inf_level >= 3) {
+    return true;
+  } else if (check_nan_inf_level >= 2) {
+    MT fp16_max =
+        static_cast<MT>(std::numeric_limits<phi::dtype::float16>::max());
+    return max_value > fp16_max || min_value < -fp16_max;
+  }
+  return false;
+}
+
+template <typename T,
+          typename MT,
+          std::enable_if_t<!std::is_same<T, float>::value, bool> = true>
+HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
+  if (check_nan_inf_level >= 3) {
+    return true;
+  }
+  return false;
+}
+
 template <typename T>
 inline std::string GetCpuHintString(const std::string& op_type,
                                     const std::string& var_name,
