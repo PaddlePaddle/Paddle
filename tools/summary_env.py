@@ -44,13 +44,12 @@ def get_paddle_info():
 
 
 def get_os_info():
-    plat = platform.system()
     if platform.system() == "Darwin":
-        plat = "macOs"
-        ver = platform.mac_ver()[0]
+        plat = "macOS"
+        ver = run_shell_command('sw_vers -productVersion').strip('\n')
     elif platform.system() == "Linux":
-        plat = distro.linux_distribution()[0]
-        ver = distro.linux_distribution()[1]
+        plat = distro.id()
+        ver = distro.version()
     elif platform.system() == "Windows":
         plat = "Windows"
         ver = platform.win32_ver()[0]
