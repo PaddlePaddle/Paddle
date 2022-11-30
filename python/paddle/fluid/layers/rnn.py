@@ -1125,10 +1125,9 @@ class BeamSearchDecoder(Decoder):
         )
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
-        probs = nn.elementwise_mul(
+        probs = paddle.multiply(
             paddle.tile(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
             self.noend_mask_tensor,
-            axis=-1,
         ) - nn.elementwise_mul(probs, (finished - 1), axis=0)
         return probs
 
@@ -1503,7 +1502,7 @@ def _dynamic_decode_imperative(
             # To confirm states.finished/finished be consistent with
             # next_finished.
             tensor.assign(next_finished, finished)
-            next_sequence_lengths = nn.elementwise_add(
+            next_sequence_lengths = paddle.add(
                 sequence_lengths,
                 tensor.cast(
                     paddle.logical_not(finished), sequence_lengths.dtype
@@ -1663,7 +1662,7 @@ def _dynamic_decode_declarative(
             # Otherwise, perform logical OR which would not change the already
             # finished.
             next_finished = paddle.logical_or(next_finished, global_finished)
-            next_sequence_lengths = nn.elementwise_add(
+            next_sequence_lengths = paddle.add(
                 sequence_lengths,
                 tensor.cast(
                     paddle.logical_not(global_finished),

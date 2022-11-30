@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+from decorator_helper import prog_scope
+
 import paddle
 import paddle.fluid as fluid
-from decorator_helper import prog_scope
 import paddle.nn.functional as F
-import numpy as np
-import unittest
 
 fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
