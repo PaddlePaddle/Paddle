@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 import paddle.fluid.core as core
-
-from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, grad_var_name
 
 np.random.seed(123)
 

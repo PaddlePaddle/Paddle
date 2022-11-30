@@ -13,19 +13,19 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-import numpy as np
-import paddle
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
-
-import tempfile
+from paddle.optimizer import Adam
 
 
 class SimpleLSTMRNN(fluid.Layer):

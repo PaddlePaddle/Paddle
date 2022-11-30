@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn as nn
-import paddle.distributed as dist
-
 import unittest
+
+import paddle
+import paddle.distributed as dist
+import paddle.nn as nn
 
 
 class Net(nn.Layer):

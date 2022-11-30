@@ -16,7 +16,6 @@ import copy
 import math
 import numpy as np
 import unittest
-
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -121,7 +120,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
     def test_LR_state_dict(self):
         with fluid.dygraph.guard():
             x = np.random.uniform(-1, 1, [3, 10]).astype("float32")
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
             Exponential_scheduler = fluid.dygraph.ExponentialDecay(
@@ -292,7 +291,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             learning_rate = 0.5
             milestones = [2, 4, 8]
             decay_rate = 0.2
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
 
             scheduler = fluid.dygraph.MultiStepDecay(
                 learning_rate, milestones, decay_rate
@@ -365,7 +364,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             lr_lambda = lambda x: 0.95**x
             scheduler = fluid.dygraph.LambdaDecay(learning_rate, lr_lambda)
 
-            linear = fluid.dygraph.nn.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             adam = fluid.optimizer.Adam(
                 scheduler, parameter_list=linear.parameters()
             )

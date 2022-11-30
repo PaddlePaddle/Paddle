@@ -14,13 +14,13 @@
 
 import contextlib
 from enum import Enum
-import numpy as np
 from types import MethodType
+
+import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid import layers
+from paddle.fluid import core, layers
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
 
@@ -138,7 +138,7 @@ class GroupShardedClipGrad:
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
 
-        clip_var = layers.elementwise_div(
+        clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )

@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
-import paddle
-import paddle.fluid as fluid
+
 import numpy as np
 import os
+import paddle
+import paddle.fluid as fluid
 
 
 class SimpleFCLayer(fluid.dygraph.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(feature_size, fc_size)
+        self._linear = paddle.nn.Linear(feature_size, fc_size)
         self._offset = fluid.dygraph.to_variable(
             np.random.random((batch_size, fc_size)).astype('float32')
         )

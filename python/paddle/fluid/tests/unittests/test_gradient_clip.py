@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from fake_reader import fake_imdb_reader
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()
@@ -405,7 +407,7 @@ class TestGradientClipByValue(TestGradientClip):
 class TestDygraphGradientClip(unittest.TestCase):
     def test_gradient_clip(self):
         with fluid.dygraph.guard():
-            linear = fluid.dygraph.Linear(5, 5)
+            linear = paddle.nn.Linear(5, 5)
             inputs = fluid.layers.uniform_random(
                 [16, 5], min=-10, max=10
             ).astype('float32')
@@ -600,8 +602,8 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
         with fluid.dygraph.guard():
             inputs = fluid.layers.uniform_random(
                 [16, 5], min=-10, max=10
-            ).astype('float64')
-            linear = fluid.dygraph.Linear(5, 5, dtype="float64")
+            ).astype('float32')
+            linear = paddle.nn.Linear(5, 5)
             out = linear(fluid.dygraph.to_variable(inputs))
             loss = paddle.mean(out)
             loss.backward()

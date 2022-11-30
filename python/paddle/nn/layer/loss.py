@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 # TODO: define loss functions of neural network
 import paddle.fluid as fluid
-import paddle
-from .. import functional as F
-from paddle.fluid.framework import in_dygraph_mode
-from .. import Layer
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
+
+from .. import Layer
+from .. import functional as F
 
 __all__ = []
 

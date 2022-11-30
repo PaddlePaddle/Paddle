@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
 import unittest
+
 import numpy
 import numpy as np
+import op_test
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -46,7 +48,7 @@ def create_test_class(op_type, typename, callback):
                     self.assertRaises(
                         TypeError, fluid.layers.less_than, x=x, y=y, force_cpu=1
                     )
-                op = eval("fluid.layers.%s" % self.op_type)
+                op = eval("paddle.%s" % self.op_type)
                 self.assertRaises(TypeError, op, x=x, y=y, cond=1)
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
@@ -446,7 +448,7 @@ class TestCompareOpError(unittest.TestCase):
             y = fluid.create_lod_tensor(
                 numpy.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.greater_equal, x, y)
+            self.assertRaises(TypeError, paddle.greater_equal, x, y)
 
 
 class API_TestElementwise_Equal(unittest.TestCase):

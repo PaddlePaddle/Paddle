@@ -25,11 +25,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     StaticAnalysisVisitor,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
-    create_undefined_var,
-)
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
     create_nonlocal_stmt_nodes,
     create_get_args_node,
@@ -38,19 +34,13 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import (
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
     FunctionNameLivenessAnalysis,
 )
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .ifelse_transformer import ARGS_NAME
+from .base_transformer import (
     BaseTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
-    RenameTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     ForLoopTuplePreTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     ForNodeVisitor,
 )
+
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
     GetterSetterHelper,
     create_name_str,
@@ -217,7 +207,7 @@ class NameVisitor(gast.NodeVisitor):
                 # If this var is a basic variable and read-only and not
                 # condition var, it may not be loop_var else it should
                 # be in loop_var as input
-                if (not name in condition_names) and (not name in write_names):
+                if (name not in condition_names) and (name not in write_names):
                     continue
                 loop_var_names.add(name)
 

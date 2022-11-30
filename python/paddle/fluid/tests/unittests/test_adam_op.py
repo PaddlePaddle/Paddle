@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from paddle.fluid import core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.op import Operator
 
 
 class TestAdamOp1(OpTest):
@@ -639,7 +641,7 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
-        linear = fluid.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
 
         adam = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=linear.parameters()
@@ -688,7 +690,7 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
-        linear = fluid.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
         clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(
             0.1, parameters=linear.parameters(), grad_clip=clip
@@ -1093,7 +1095,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             trainable=True,
         )
         if use_param_attr:
-            model = paddle.nn.Linear(5, 5, weight_attr)
+            model = paddle.nn.Linear(5, 5, weight_attr=weight_attr)
         else:
             model = paddle.nn.Linear(5, 5)
 
