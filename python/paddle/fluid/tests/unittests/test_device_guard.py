@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+import warnings
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import warnings
 
 
 def execute(main_program, startup_program):

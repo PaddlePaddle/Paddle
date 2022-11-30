@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-
 import functools
-import unittest
-import numpy as np
-
 import gc
+import math
+import unittest
+
+import numpy as np
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
@@ -428,10 +427,10 @@ class TestFakeInit(TranspilerTest):
             true_logits, shape=[-1, neg_num], value=0.0, dtype='float32'
         )
 
-        true_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        true_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             true_logits, label_ones
         )
-        neg_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        neg_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             neg_logits, label_zeros
         )
         cost = fluid.layers.elementwise_add(

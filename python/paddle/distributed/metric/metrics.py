@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import yaml
 import logging
+import sys
+
+import yaml
+
 from paddle.distributed.utils.log_utils import get_logger
 
 __all__ = []

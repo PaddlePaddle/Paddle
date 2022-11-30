@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid import Program, program_guard
-import numpy as np
-import functools
+from paddle.fluid.layers.control_flow import lod_rank_table
 
 
 def convert_to_offset(lod):

@@ -11,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle
-from paddle import fluid
-from .meta_optimizer_base import MetaOptimizerBase
-from paddle.framework import core
-import subprocess
-import re
 import os
 import platform
+import re
+import subprocess
+
+import paddle
+from paddle import fluid
+from paddle.framework import core
+
 from ..base.private_helper_function import wait_server_ready
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
