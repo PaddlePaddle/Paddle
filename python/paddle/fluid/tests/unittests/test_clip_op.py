@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 

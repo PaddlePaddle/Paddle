@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid.framework import _test_eager_guard
+import unittest
 
 import numpy as np
 import scipy.sparse as sp
-import unittest
+
+import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(2022)
 

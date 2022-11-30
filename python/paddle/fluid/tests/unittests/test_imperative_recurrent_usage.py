@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
+
 import numpy as np
+from test_imperative_base import new_program_scope
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.framework import _test_eager_guard
 
 
 class RecurrentTest(fluid.Layer):

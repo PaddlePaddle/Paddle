@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+from test_imperative_base import new_program_scope
+
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.contrib.layers import basic_gru, basic_lstm
-from test_imperative_base import new_program_scope
 
 
 class TestBasicGRUApiName(unittest.TestCase):

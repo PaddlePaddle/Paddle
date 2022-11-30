@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 
 import copy
+import logging
+
 import paddle
 from paddle.framework import core
-from .meta_optimizer_base import MetaOptimizerBase
-from ..base.private_helper_function import wait_server_ready
-import logging
 from paddle.static import BuildStrategy
+
+from ..base.private_helper_function import wait_server_ready
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 

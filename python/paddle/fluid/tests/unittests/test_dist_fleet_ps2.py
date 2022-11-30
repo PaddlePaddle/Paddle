@@ -19,9 +19,9 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -89,7 +89,7 @@ class TestPSPassWithBow(unittest.TestCase):
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
         q_ss = paddle.nn.functional.softsign(q_sum)
-        q_ss = fluid.layers.data_norm(input=q_ss)
+        q_ss = paddle.static.nn.data_norm(input=q_ss)
         # fc layer after conv
         q_fc = fluid.layers.fc(
             input=q_ss,
@@ -160,8 +160,8 @@ class TestPSPassWithBow(unittest.TestCase):
             ),
             bias_attr=fluid.ParamAttr(name="__fc_b__"),
         )
-        cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
-        cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
+        cos_q_pt = paddle.nn.functional.cosine_similarity(q_fc, pt_fc)
+        cos_q_nt = paddle.nn.functional.cosine_similarity(q_fc, nt_fc)
         # loss
         avg_cost = get_loss(cos_q_pt, cos_q_nt)
         # acc

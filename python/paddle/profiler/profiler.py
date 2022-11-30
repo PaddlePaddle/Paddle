@@ -12,24 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+import importlib
+import json
 import os
 import socket
-import datetime
 from enum import Enum
 from typing import Any, Callable, Iterable, Optional, Union
 from warnings import warn
-import importlib
-import json
 
 import paddle
 from paddle.fluid.core import (
-    _Profiler,
     ProfilerOptions,
     TracerEventType,
-    enable_memory_recorder,
-    enable_op_info_recorder,
+    _Profiler,
     disable_memory_recorder,
     disable_op_info_recorder,
+    enable_memory_recorder,
+    enable_op_info_recorder,
 )
 
 from .utils import RecordEvent, wrap_optimizers
@@ -40,7 +40,10 @@ from .profiler_statistic import (
     gen_layer_flops,
 )
 from paddle.profiler import utils
+
+from .profiler_statistic import SortedKeys, StatisticData, _build_table
 from .timer import benchmark
+from .utils import RecordEvent, wrap_optimizers
 
 
 class SummaryView(Enum):
