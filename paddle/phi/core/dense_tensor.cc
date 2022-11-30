@@ -200,9 +200,10 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
+  meta_.use_gpudnn = meta.use_gpudnn;
 }
 
-/* @jim19930609: This interface will be further modified util we finalized the
+/* @jim19930609: This interface will be further modified until we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:
    1. Designed behaviour: DenseTensor constructed with its underlying storage_

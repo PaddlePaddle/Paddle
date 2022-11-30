@@ -14,15 +14,16 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import default_main_program
 from paddle.fluid import Program, program_guard
-import numpy as np
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import default_main_program
 
 
 def _test_read_write(x):
@@ -80,7 +81,7 @@ class TestArrayReadWrite(unittest.TestCase):
         self.assertEqual(outs[0], outs[1])
 
         total_sum = layers.sums(input=[a_sum, x_sum])
-        total_sum_scaled = layers.scale(x=total_sum, scale=1 / 6.0)
+        total_sum_scaled = paddle.scale(x=total_sum, scale=1 / 6.0)
 
         append_backward(total_sum_scaled)
 
@@ -117,7 +118,7 @@ class TestArrayReadWrite(unittest.TestCase):
             total_sum_dygraph = layers.sums(
                 input=[a_sum_dygraph, x_sum_dygraph]
             )
-            total_sum_scaled_dygraph = layers.scale(
+            total_sum_scaled_dygraph = paddle.scale(
                 x=total_sum_dygraph, scale=1 / 6.0
             )
             total_sum_scaled_dygraph.backward()

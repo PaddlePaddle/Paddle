@@ -221,8 +221,10 @@ class Uniform(Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.low.dtype, 0.0
             )
-            uniform_random_tmp = nn.uniform_random_batch_size_like(
-                zero_tmp, zero_tmp.shape, min=0.0, max=1.0, seed=seed
+            uniform_random_tmp = (
+                paddle.tensor.random.uniform_random_batch_size_like(
+                    zero_tmp, zero_tmp.shape, min=0.0, max=1.0, seed=seed
+                )
             )
             output = (
                 uniform_random_tmp * (zero_tmp + self.high - self.low)
@@ -536,13 +538,13 @@ class Categorical(Distribution):
         )
         e_logits = paddle.exp(logits)
         other_e_logits = paddle.exp(other_logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
-        other_z = nn.reduce_sum(other_e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+        other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
-        kl = nn.reduce_sum(
+        kl = paddle.sum(
             prob * (logits - nn.log(z) - other_logits + nn.log(other_z)),
-            dim=-1,
-            keep_dim=True,
+            axis=-1,
+            keepdim=True,
         )
 
         return kl
@@ -556,10 +558,11 @@ class Categorical(Distribution):
         """
         logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
         e_logits = paddle.exp(logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+
         prob = e_logits / z
-        entropy = -1.0 * nn.reduce_sum(
-            prob * (logits - nn.log(z)), dim=-1, keep_dim=True
+        entropy = -1.0 * paddle.sum(
+            prob * (logits - nn.log(z)), axis=-1, keepdim=True
         )
 
         return entropy
@@ -656,9 +659,9 @@ class MultivariateNormalDiag(Distribution):
     def _det(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_all = paddle.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
-            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
+            paddle.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         det_diag = paddle.prod(value + one_all - one_diag)
 
@@ -667,9 +670,9 @@ class MultivariateNormalDiag(Distribution):
     def _inv(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_all = paddle.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
-            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
+            paddle.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         inv_diag = paddle.pow(value, (one_all - 2 * one_diag))
 
@@ -701,7 +704,7 @@ class MultivariateNormalDiag(Distribution):
         """
         check_type(other, 'other', MultivariateNormalDiag, 'kl_divergence')
 
-        tr_cov_matmul = nn.reduce_sum(self._inv(other.scale) * self.scale)
+        tr_cov_matmul = paddle.sum(self._inv(other.scale) * self.scale)
         loc_matmul_cov = nn.matmul(
             (other.loc - self.loc), self._inv(other.scale)
         )

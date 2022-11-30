@@ -16,15 +16,13 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle.fluid as fluid
+from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
+
 import paddle
-from xpu.get_test_cover_info import (
-    create_test_class,
-    XPUOpTestWrapper,
-)
+import paddle.fluid as fluid
 
 
 def conv3d_forward_naive(
@@ -525,7 +523,7 @@ class TestConv3DAPI(unittest.TestCase):
             dtype="float32",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NDHWC,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -536,7 +534,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -547,7 +545,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -558,7 +556,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NDHWC,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -569,7 +567,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NDHWC",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -580,7 +578,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -603,7 +601,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: cudnn
         def run_1():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -619,7 +617,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: data_format
         def run_2():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3, 3],
@@ -635,7 +633,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: padding
         def run_3():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -650,7 +648,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_3)
 
         def run_4():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -665,7 +663,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_4)
 
         def run_5():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=0,
@@ -688,7 +686,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
         )
 
         def run_6():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=x,
                 num_filters=3,
                 filter_size=3,
@@ -704,7 +702,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: groups
         def run_7():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -720,7 +718,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: filter num
         def run_8():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=0,
                 filter_size=0,

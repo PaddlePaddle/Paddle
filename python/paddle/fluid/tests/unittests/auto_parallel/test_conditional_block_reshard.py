@@ -17,9 +17,8 @@ import unittest
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-
-from paddle.static import InputSpec
 from paddle.distributed.fleet import auto
+from paddle.static import InputSpec
 
 
 class MLPLayer(nn.Layer):

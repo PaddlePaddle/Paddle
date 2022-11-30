@@ -227,6 +227,25 @@ void PowKernel(const Context& dev_ctx,
 }
 
 template <typename T>
+struct XPUHardSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
+  float slope;
+  float offset;
+  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int r = xpu_activation_1attr_func<Context, T, XPUType>(
+        dev_ctx, x, out, slope, xpu::hard_sigmoid<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_sigmoid");
+  }
+};
+
+template <typename T>
 struct XPUHardSwishFunctor : public funcs::BaseActivationFunctor<T> {
   float threshold;
   float scale;
@@ -407,7 +426,21 @@ struct XPUTanhFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUFloorFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int r = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::floor<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "floor");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Log, XPULogFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Reciprocal, XPUReciprocalFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Relu, XPUReluFunctor)
@@ -428,6 +461,10 @@ DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
                                             XPUSoftplusFunctor,
                                             beta,
                                             threshold)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
+                                            XPUHardSigmoidFunctor,
+                                            slope,
+                                            offset)
 
 template <typename T, typename Context>
 void HardSwishRawKernel(const Context& dev_ctx,
@@ -456,10 +493,15 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
+PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish_raw, HardSwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
@@ -468,4 +510,3 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(square, SquareKernel)

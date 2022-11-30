@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import copy
-import time
 import logging
+import time
 
+from paddle.distributed.passes import new_pass
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import unique_name
-from paddle.distributed.passes import new_pass
-from .reshard import Resharder
-from .partitioner import Partitioner
-from .utils import set_grad_var_shape
-from .process_group import get_world_process_group
+
 from ..utils.log_utils import get_logger
+from .partitioner import Partitioner
+from .process_group import get_world_process_group
+from .reshard import Resharder
+from .utils import set_grad_var_shape
 
 
 class Parallelizer:

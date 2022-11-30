@@ -23,21 +23,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import time
+import os
 import random
+import time
 import unittest
+
 import numpy as np
 from PIL import Image, ImageOps
-
-import os
 
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.dygraph.nn import BatchNorm, Conv2DTranspose
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -89,8 +91,8 @@ class Cycle_Gan(fluid.dygraph.Layer):
         cyc_A = self.build_generator_resnet_9blocks_b(fake_B)
         cyc_B = self.build_generator_resnet_9blocks_a(fake_A)
 
-        diff_A = paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=cyc_A))
-        diff_B = paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=cyc_B))
+        diff_A = paddle.abs(paddle.subtract(x=input_A, y=cyc_A))
+        diff_B = paddle.abs(paddle.subtract(x=input_B, y=cyc_B))
         cyc_A_loss = fluid.layers.reduce_mean(diff_A) * lambda_A
         cyc_B_loss = fluid.layers.reduce_mean(diff_B) * lambda_B
         cyc_loss = cyc_A_loss + cyc_B_loss
@@ -104,7 +106,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
         idt_A = self.build_generator_resnet_9blocks_a(input_B)
         idt_loss_A = (
             fluid.layers.reduce_mean(
-                paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=idt_A))
+                paddle.abs(paddle.subtract(x=input_B, y=idt_A))
             )
             * lambda_B
             * lambda_identity
@@ -113,12 +115,12 @@ class Cycle_Gan(fluid.dygraph.Layer):
         idt_B = self.build_generator_resnet_9blocks_b(input_A)
         idt_loss_B = (
             fluid.layers.reduce_mean(
-                paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=idt_B))
+                paddle.abs(paddle.subtract(x=input_A, y=idt_B))
             )
             * lambda_A
             * lambda_identity
         )
-        idt_loss = fluid.layers.elementwise_add(idt_loss_A, idt_loss_B)
+        idt_loss = paddle.add(idt_loss_A, idt_loss_B)
         g_loss = cyc_loss + G + idt_loss
         return (
             fake_A,
@@ -179,10 +181,12 @@ class build_resnet_block(fluid.dygraph.Layer):
         self.dim = dim
 
     def forward(self, inputs):
-        out_res = fluid.layers.pad2d(inputs, [1, 1, 1, 1], mode="reflect")
+        pad1 = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
+        out_res = pad1(inputs)
         out_res = self.conv0(out_res)
 
-        out_res = fluid.layers.pad2d(out_res, [1, 1, 1, 1], mode="reflect")
+        pad2 = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
+        out_res = pad2(out_res)
         out_res = self.conv1(out_res)
         return out_res + inputs
 
@@ -253,7 +257,8 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
         )
 
     def forward(self, inputs):
-        pad_input = fluid.layers.pad2d(inputs, [3, 3, 3, 3], mode="reflect")
+        pad1 = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
+        pad_input = pad1(inputs)
         y = self.conv0(pad_input)
         y = self.conv1(y)
         y = self.conv2(y)
@@ -261,7 +266,8 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
             y = build_resnet_block_i(y)
         y = self.deconv0(y)
         y = self.deconv1(y)
-        y = fluid.layers.pad2d(y, [3, 3, 3, 3], mode="reflect")
+        pad2 = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
+        y = pad2(y)
         y = self.conv3(y)
         y = paddle.tanh(y)
         return y
@@ -461,9 +467,10 @@ class DeConv2D(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         conv = self._deconv(inputs)
-        conv = fluid.layers.pad2d(
-            conv, paddings=self.outpadding, mode='constant', pad_value=0.0
+        tmp_pad = paddle.nn.Pad2D(
+            padding=self.outpadding, mode='constant', value=0.0
         )
+        conv = tmp_pad(conv)
 
         if self.norm:
             conv = self.bn(conv)

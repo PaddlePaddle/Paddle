@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from scipy.special import expit, erf
-
 from op_test import OpTest, convert_float_to_uint16
+from scipy.special import erf, expit
+
 import paddle
-import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
@@ -1889,51 +1889,6 @@ class TestBRelu(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
-
-
-class TestBreluAPI(unittest.TestCase):
-    # test paddle.fluid.layers.brelu
-    def setUp(self):
-        np.random.seed(1024)
-        self.t_min = 0.0
-        self.t_max = 24.0
-        self.x_np = np.random.uniform(-1, 30, [10, 12]).astype('float32')
-        self.out_ref = np.copy(self.x_np)
-        self.out_ref[self.out_ref < self.t_min] = self.t_min
-        self.out_ref[self.out_ref > self.t_max] = self.t_max
-        self.out_ref = self.out_ref.astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
-    def test_fluid_api(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', [10, 12])
-            out = paddle.fluid.layers.brelu(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-            np.testing.assert_allclose(self.out_ref, res[0], rtol=1e-05)
-
-            paddle.disable_static(self.place)
-            x = paddle.to_tensor(self.x_np)
-            out = paddle.fluid.layers.brelu(x)
-            np.testing.assert_allclose(self.out_ref, out.numpy(), rtol=1e-05)
-            paddle.enable_static()
-
-    def test_errors(self):
-        with program_guard(Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.brelu, 1)
-            # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.brelu, x_int32)
-            # support the input dtype is float16
-            x_fp16 = fluid.layers.data(
-                name='x_fp16', shape=[12, 10], dtype='float16'
-            )
-            fluid.layers.brelu(x_fp16)
 
 
 def ref_relu6(x, threshold=6.0):

@@ -13,40 +13,44 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
 from test_imperative_base import new_program_scope
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+import paddle
 
 
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()
-        self._linear1 = fluid.dygraph.Linear(
+        self._linear1 = paddle.nn.Linear(
             input_size,
             3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
         )
-        self._linear2 = fluid.dygraph.Linear(
+        self._linear2 = paddle.nn.Linear(
             3,
             4,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
         )
 
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
-from api_gen import ForwardAPI
+import yaml
 from api_base import PREFIX_TENSOR_NAME
+from api_gen import ForwardAPI
 
 
 class SparseAPI(ForwardAPI):
