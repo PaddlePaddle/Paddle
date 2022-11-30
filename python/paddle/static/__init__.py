@@ -28,6 +28,9 @@ from .io import normalize_program  # noqa: F401
 from ..fluid import Scope  # noqa: F401
 from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
+
+from ..tensor.creation import create_parameter  # noqa: F401
+
 from ..fluid.executor import Executor  # noqa: F401
 from ..fluid.executor import global_scope  # noqa: F401
 from ..fluid.executor import scope_guard  # noqa: F401
@@ -66,7 +69,6 @@ from ..fluid.io import load_vars  # noqa: F401
 from ..fluid.io import save_vars  # noqa: F401
 from ..fluid.io import batch  # noqa: F401
 
-from ..fluid.layers import create_parameter  # noqa: F401
 from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.layers.metric_op import auc  # noqa: F401
 from ..fluid.layers.metric_op import accuracy  # noqa: F401

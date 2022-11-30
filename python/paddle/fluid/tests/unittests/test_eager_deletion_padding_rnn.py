@@ -127,7 +127,7 @@ def lm_model(
         cell_array = []
         mask_array = []
         for i in range(num_layers):
-            weight_1 = layers.create_parameter(
+            weight_1 = paddle.create_parameter(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
@@ -136,7 +136,7 @@ def lm_model(
                 ),
             )
             weight_1_arr.append(weight_1)
-            bias_1 = layers.create_parameter(
+            bias_1 = paddle.create_parameter(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
@@ -248,7 +248,7 @@ def lm_model(
         cell_array = []
         mask_array = []
         for i in range(num_layers):
-            weight_1 = layers.create_parameter(
+            weight_1 = paddle.create_parameter(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
@@ -257,7 +257,7 @@ def lm_model(
                 ),
             )
             weight_1_arr.append(weight_1)
-            bias_1 = layers.create_parameter(
+            bias_1 = paddle.create_parameter(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
@@ -442,7 +442,7 @@ def lm_model(
 
     rnn_out = paddle.reshape(rnn_out, shape=[-1, num_steps, hidden_size])
 
-    softmax_weight = layers.create_parameter(
+    softmax_weight = paddle.create_parameter(
         [hidden_size, vocab_size],
         dtype="float32",
         name="softmax_weight",
@@ -450,7 +450,7 @@ def lm_model(
             low=-init_scale, high=init_scale
         ),
     )
-    softmax_bias = layers.create_parameter(
+    softmax_bias = paddle.create_parameter(
         [vocab_size],
         dtype="float32",
         name='softmax_bias',
