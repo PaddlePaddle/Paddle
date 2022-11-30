@@ -23,8 +23,6 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-# This is the special test case with weight including batch dimension
-# I don't want to mess up the code written by others, so I wrote a class specifically
 class TrtConvertLogicalTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
@@ -322,7 +320,7 @@ class TrtConvertCompareTest(TrtLayerAutoScanTest):
         self.run_test()
 
 
-class TrtConvertLessThanTest(TrtLayerAutoScanTest):
+class TrtConvertLessEqualTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

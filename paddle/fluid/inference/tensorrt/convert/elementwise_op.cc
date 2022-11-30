@@ -76,9 +76,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
 
     int axis = -1;
     // axis here is relative to explicit batch
-    if (op_type_ != "logical_or" || op_type_ != "logical_xor" ||
+    if (op_type_ != "logical_or" && op_type_ != "logical_xor" &&
         op_type_ != "logical_and") {
-      s axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+      axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     }
     int real_x_rank = dims_x.nbDims;
     int real_y_rank = dims_y.nbDims;
