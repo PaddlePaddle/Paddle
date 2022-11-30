@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from paddle.distributed.fleet import auto
 
 from test_dist_pnorm import parallelizer
+
+import paddle
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 

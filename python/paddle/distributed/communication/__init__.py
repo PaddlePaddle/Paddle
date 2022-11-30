@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from .all_gather import all_gather, all_gather_object
 from .all_reduce import all_reduce
 from .broadcast import broadcast
 from .reduce import reduce, ReduceOp
@@ -20,24 +21,10 @@ from .scatter import scatter
 from .batch_isend_irecv import batch_isend_irecv, P2POp
 from .reduce_scatter import reduce_scatter
 from .all_to_all import alltoall, alltoall_single
-from .group import is_initialized, destroy_process_group, get_group
-
-__all__ = [
-    "ReduceOp",
-    "all_reduce",
-    "alltoall",
-    "alltoall_single",
-    "broadcast",
-    "reduce",
-    "send",
-    "scatter",
-    "isend",
-    "recv",
-    "irecv",
-    "batch_isend_irecv",
-    "P2POp",
-    "reduce_scatter",
-    "is_initialized",
-    "destroy_process_group",
-    "get_group",
-]
+from .group import (
+    is_initialized,
+    destroy_process_group,
+    get_group,
+    wait,
+    barrier,
+)

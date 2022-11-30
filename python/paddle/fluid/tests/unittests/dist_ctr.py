@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import os
 
 import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
+
+import paddle
+import paddle.fluid as fluid
 
 IS_SPARSE = True
 os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"

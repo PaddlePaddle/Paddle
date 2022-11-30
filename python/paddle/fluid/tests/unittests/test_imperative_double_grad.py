@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.vision.models import resnet50, resnet101
 
 
 def _dygraph_guard_(func):
@@ -365,7 +367,7 @@ class TestDygraphDoubleGrad(TestCase):
         x.stop_gradient = False
 
         alpha = 0.2
-        y = fluid.layers.leaky_relu(x, alpha=alpha)
+        y = paddle.nn.functional.leaky_relu(x, alpha)
         y = y * y
         z = y * y
 
@@ -584,7 +586,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         )
 
         def model_f(input):
-            linear = fluid.dygraph.Linear(5, 3, bias_attr=False)
+            linear = paddle.nn.Linear(5, 3)
             for i in range(10):
                 if i == 0:
                     out = linear(input)
@@ -636,7 +638,7 @@ class TestRaiseNoDoubleGradOp(TestCase):
         with fluid.dygraph.guard():
             x = fluid.layers.ones(shape=[2, 3, 2, 2], dtype='float32')
             x.stop_gradient = False
-            y = paddle.fluid.layers.group_norm(x, groups=1)
+            y = paddle.static.nn.group_norm(x, groups=1)
 
             dx = fluid.dygraph.grad(
                 outputs=[y], inputs=[x], create_graph=True, retain_graph=True

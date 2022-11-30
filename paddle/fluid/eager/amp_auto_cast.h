@@ -49,7 +49,7 @@ inline std::vector<paddle::experimental::Tensor> AmpAutoCasts(
     std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
+          << phi::DataTypeToString(dst_dtype) << ").";
   std::vector<paddle::experimental::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
@@ -72,7 +72,7 @@ inline paddle::experimental::Tensor AmpAutoCast(
     std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
+          << phi::DataTypeToString(dst_dtype) << ").";
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;

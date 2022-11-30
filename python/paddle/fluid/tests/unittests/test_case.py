@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+from functools import partial
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
-from functools import partial
 import paddle.fluid.optimizer as optimizer
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestAPICase(unittest.TestCase):
@@ -105,8 +106,8 @@ class TestAPICase(unittest.TestCase):
             y = layers.fill_constant(shape=[1], dtype='float32', value=1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=3)
 
-            pred_1 = layers.equal(x, y)  # true
-            pred_2 = layers.equal(x, z)  # false
+            pred_1 = paddle.equal(x, y)  # true
+            pred_2 = paddle.equal(x, z)  # false
 
             out = layers.case(((pred_1, fn_1), (pred_2, fn_2)), fn_3)
 

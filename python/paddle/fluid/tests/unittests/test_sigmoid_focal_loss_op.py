@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import math
 import copy
+import math
+import unittest
+
+import numpy as np
 from op_test import OpTest
+
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def sigmoid_focal_loss_forward(

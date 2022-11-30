@@ -13,22 +13,21 @@
 # limitations under the License.
 
 import numpy as np
+
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import (
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
 from paddle.fluid.layers import (
-    elementwise_add,
-    elementwise_div,
-    elementwise_sub,
     nn,
     tensor,
 )
-import paddle
+from paddle.tensor import random
 
 
 class Uniform(distribution.Distribution):
@@ -167,7 +166,7 @@ class Uniform(distribution.Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.dtype, 0.0
             )
-            uniform_random_tmp = nn.uniform_random_batch_size_like(
+            uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
                 dtype=self.dtype,
@@ -182,7 +181,7 @@ class Uniform(distribution.Distribution):
             output = uniform_random_tmp_reshape * (
                 zero_tmp_reshape + self.high - self.low
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
@@ -192,7 +191,7 @@ class Uniform(distribution.Distribution):
                 tensor.zeros(output_shape, dtype=self.dtype)
                 + (self.high - self.low)
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return paddle.reshape(output, shape, name=name)
             else:
@@ -233,7 +232,7 @@ class Uniform(distribution.Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
+        return paddle.subtract(
             nn.log(lb * ub), nn.log(self.high - self.low), name=name
         )
 
@@ -271,7 +270,7 @@ class Uniform(distribution.Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_div((lb * ub), (self.high - self.low), name=name)
+        return paddle.divide((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
         r"""Shannon entropy in nats.

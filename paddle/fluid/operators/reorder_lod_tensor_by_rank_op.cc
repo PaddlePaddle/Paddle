@@ -37,13 +37,14 @@ class ReorderLoDTensorByRankTableOpProtoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor), the input lod tensor to be reordered according to "
-             "Input(RankTable).");
+    AddInput(
+        "X",
+        "(phi::DenseTensor), the input lod tensor to be reordered according to "
+        "Input(RankTable).");
     AddInput("RankTable",
              "(LoDRankTable), the rank table according to which Input(X) is "
              "reordered.");
-    AddOutput("Out", "LoDTensor, the reordered lod tensor.");
+    AddOutput("Out", "phi::DenseTensor, the reordered lod tensor.");
     AddComment(R"DOC(ReorderLoDTensorByRankTable operator.
 
 Input(X) is a batch of sequences. Input(RankTable) stores new orders of the
