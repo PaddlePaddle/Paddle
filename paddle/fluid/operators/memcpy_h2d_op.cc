@@ -84,9 +84,9 @@ class MemcpyH2DKernel {
 class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input variable ");
+    AddInput("X", "(phi::DenseTensor) The input variable ");
     AddOutput("Out",
-              "(LoDTensor) The type of output "
+              "(phi::DenseTensor) The type of output "
               "is the same as input X.");
     AddAttr<int>("dst_place_type",
                  "Determine the dst place of tensor copy. "
@@ -100,7 +100,7 @@ class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     MemcpyD2H Operator.
     By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.
     You would have to update it if you want other more capacities.
-Out = X,  when type in [LoDTensor]
+Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.
 )DOC");
   }

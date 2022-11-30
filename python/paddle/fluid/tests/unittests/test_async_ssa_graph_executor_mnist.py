@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import os
+import time
 import unittest
 
 import numpy
-import time
+
 import paddle
 import paddle.fluid as fluid
 

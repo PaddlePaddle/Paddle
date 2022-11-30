@@ -14,8 +14,9 @@
 """Parameter Server utils"""
 
 import os
-import paddle
 import warnings
+
+import paddle
 
 __all__ = []
 
