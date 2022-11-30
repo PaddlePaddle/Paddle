@@ -89,7 +89,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         "atan",        "asinh",      "atanh",
         "ceil",        "floor",      "erf",
         "reciprocal",  "silu",       "celu",
-        "tanh_shrink", "logsigmoid", "sign"};
+        "tanh_shrink", "logsigmoid", "sign",
+        "logical_not"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -343,6 +344,18 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #else
       VLOG(3) << "sign op is only supported by trt8.2 above ";
+      return false;
+#endif
+    }
+
+    if (op_type == "logical_not") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "logical_not op is only supported by trt8.4 above because of "
+                 "cast op";
       return false;
 #endif
     }
@@ -2354,6 +2367,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "rsqrt",
       "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
@@ -2485,6 +2499,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "rsqrt",
       "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
