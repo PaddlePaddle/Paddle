@@ -61,7 +61,7 @@ def get_api_args(api_item):
 
 
 def get_api_name(api_item):
-    if api_item[0] == '+' or api_item[0] == '+' or api_item[0] == ' ':
+    if api_item[0] == '+' or api_item[0] == '-' or api_item[0] == ' ':
         return api_item.split(" ")[1].split(".")[-1]
     else:
         return api_item.split(" ")[0].split(".")[-1]
