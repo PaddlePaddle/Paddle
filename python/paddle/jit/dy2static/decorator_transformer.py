@@ -17,19 +17,17 @@ from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
 )
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    create_funcDef_node,
+    RE_PYNAME,
+    RE_PYMODULE,
     ast_to_source_code,
-    is_paddle_api,
-    Dygraph2StaticException,
 )
 import warnings
 
 import re
-from paddle.fluid.dygraph.dygraph_to_static.utils import RE_PYNAME, RE_PYMODULE
 
 IGNORE_NAMES = [
     'declarative',

@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,39 +13,40 @@
 # limitations under the License.
 
 from paddle.utils import gast
-import warnings
 
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
 )
-from paddle.fluid.dygraph.dygraph_to_static import utils
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 
 
-class TypeHintTransformer(BaseTransformer):
+class TensorShapeTransformer(BaseTransformer):
     """
-    A class remove all the typehint in gast.Name(annotation).
-    Please put it behind other transformers because other transformer may relay on typehints.
+    This class transforms variable.shape  into Static Graph Ast.
+    All 'xxx.shape' will be converted int '_jst.Shape(x)'.
     """
 
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of TypeHintTransformer."
+        ), "Input non-AstNodeWrapper node for the initialization of TensorShapeTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
 
     def transform(self):
         self.visit(self.root)
 
-    def visit_FunctionDef(self, node):
-        node.returns = None
+    def visit_Attribute(self, node):
         self.generic_visit(node)
-        return node
-
-    def visit_Name(self, node):
-        node.annotation = None
-        self.generic_visit(node)
+        if node.attr == 'shape':
+            args = ast_to_source_code(node.value).strip()
+            # NOTE(dev): we can deal with paddle.shape in this case, but it's
+            # not pretty to modify into 'convert_shape(paddle)(x)[0]'.
+            if args != 'paddle':
+                convert_shape_func = "_jst.Shape({})".format(args)
+                shape_node = gast.parse(convert_shape_func).body[0].value
+                return shape_node
         return node
