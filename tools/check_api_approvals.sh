@@ -66,7 +66,7 @@ if [ "$api_yaml_diff" != "" ]; then
     echo_line="API's name and params should be consistent with op's name and params in yaml.
                 The API or Yaml file you changed may cause inconsistent.\n"
     echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, chenwhql) review and approve.\n"
-
+    echo_line="${echo_line}\r\n ${api_yaml_diff}\n"
     check_approval 1 YuanRisheng zyfncg chenwhql
 fi
 
