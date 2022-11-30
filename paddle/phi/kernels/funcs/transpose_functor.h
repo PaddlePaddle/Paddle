@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,56 +16,14 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
-
-template <typename DeviceContext, typename T>
-inline void TransCompute(const int dim,
-                         const DeviceContext& dev_ctx,
-                         const phi::DenseTensor& in,
-                         phi::DenseTensor* out,
-                         const std::vector<int>& axis) {
-  switch (dim) {
-    case 0:
-      phi::Copy<DeviceContext>(dev_ctx, in, dev_ctx.GetPlace(), false, out);
-      break;
-    case 1:
-      phi::funcs::Transpose<DeviceContext, T, 1> trans1;
-      trans1(dev_ctx, in, out, axis);
-      break;
-    case 2:
-      phi::funcs::Transpose<DeviceContext, T, 2> trans2;
-      trans2(dev_ctx, in, out, axis);
-      break;
-    case 3:
-      phi::funcs::Transpose<DeviceContext, T, 3> trans3;
-      trans3(dev_ctx, in, out, axis);
-      break;
-    case 4:
-      phi::funcs::Transpose<DeviceContext, T, 4> trans4;
-      trans4(dev_ctx, in, out, axis);
-      break;
-    case 5:
-      phi::funcs::Transpose<DeviceContext, T, 5> trans5;
-      trans5(dev_ctx, in, out, axis);
-      break;
-    case 6:
-      phi::funcs::Transpose<DeviceContext, T, 6> trans6;
-      trans6(dev_ctx, in, out, axis);
-      break;
-    default:
-      // for dim >= 7 situation
-      phi::funcs::TransposeNormal<DeviceContext, T> trans_normal;
-      trans_normal(dev_ctx, in, out, axis);
-  }
-}
 
 enum PermuteType {
   kCopy = 1,
@@ -227,5 +185,5 @@ class TranposeTypeClassifier {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
