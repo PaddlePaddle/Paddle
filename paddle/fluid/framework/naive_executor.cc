@@ -183,5 +183,6 @@ void NaiveExecutor::ResetTrtOps(int num) {
   }
 #endif
 }
+
 }  // namespace framework
 }  // namespace paddle

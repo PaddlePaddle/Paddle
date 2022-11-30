@@ -37,15 +37,6 @@ using string::PrettyLogEndl;
 using string::Style;
 
 IRPassManager::IRPassManager(Argument *argument) {
-  ARGUMENT_CHECK_FIELD(argument, main_program);
-  graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
-  if (argument->Has("scope")) {
-    auto *scope_ptr = argument->scope_ptr();
-    PADDLE_ENFORCE_NOT_NULL(scope_ptr,
-                            platform::errors::PreconditionNotMet(
-                                "The scope ptr should not be nullptr."));
-    graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
-  }
   disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);

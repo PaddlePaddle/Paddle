@@ -32,8 +32,6 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/inference/analysis/passes/ir_graph_clean_pass.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -406,14 +404,21 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
   main_graph_ = std::unique_ptr<framework::ir::Graph>(
       new framework::ir::Graph(*program_desc_));
 
-  // Remove all control var
-  IrInferCleanGraphPass pass;
-  Argument arg;
-  arg.SetMainGraphNotOwned(main_graph_.get());
-  pass.Run(&arg);
-
   vars_appear_multi_in_one_block_.resize(program_desc_->Size());
   FindVarsInMultiBlock();
+  for (size_t i = 0; i < main_graph_->SubGraphsSize(); ++i) {
+    auto* graph = main_graph_->GetSubGraph(i);
+    graphes_.push_back(graph);
+
+    for (auto* node : graph->Nodes()) {
+      if (!node->IsVar()) continue;
+      if (!name2node_.count(node->Name())) {
+        name2node_[node->Name()] = node;
+      }
+    }
+  }
+
+  ProcessCircleCases();
 }
 
 void ConvertToMixedPrecisionPass::FindVarsInMultiBlock() {
