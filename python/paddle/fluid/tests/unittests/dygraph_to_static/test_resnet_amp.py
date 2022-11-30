@@ -76,8 +76,8 @@ def train(to_static, build_strategy=None):
                     # If we remove it, the loss between dygraph and dy2stat is exactly same.
                     loss = fluid.layers.cross_entropy(input=pred, label=label)
                 avg_loss = paddle.mean(x=pred)
-                acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
+                acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+                acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
                 scaled = scaler.scale(avg_loss)
                 scaled.backward()
