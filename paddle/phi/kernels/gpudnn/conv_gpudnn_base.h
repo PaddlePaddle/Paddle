@@ -92,6 +92,15 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   return out;
 }
 
+// int max_rank = 3;
+// struct ConvCacheKey
+// {
+//   cudnnDataType_t cudnn_dtype;
+//   int in_shape[ max_rank + 2];
+//   int filter_shape[ max_rank + 2];
+
+// };
+
 // As the container of conv relevant descriptors.
 template <typename HandleT, typename DataT>
 struct ConvArgsBase {

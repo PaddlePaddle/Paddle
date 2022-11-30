@@ -64,7 +64,9 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   T* output_data = transformed_output->data<T>();
 
   auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto workspace_handle = ctx.shared_cudnn_workspace_handle();
+  LOG(ERROR) << workspace_handle;
+  // auto workspace_handle = ctx.cudnn_workspace_handle();
 
   auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
   auto dtype = paddle::platform::CudnnDataType<T>::type;
@@ -190,7 +192,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
 
 #ifdef PADDLE_WITH_HIP
-  workspace_handle.RunFunc(
+  workspace_handle->RunFunc(
       [&](void* workspace_ptr) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             paddle::platform::dynload::miopenConvolutionForward(
@@ -221,7 +223,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                                            group_offset_filter,
                                            group_offset_out,
                                            workspace_size,
-                                           &workspace_handle,
+                                           workspace_handle,
                                            false);
 #endif
   phi::dynload::nvtxRangePop();

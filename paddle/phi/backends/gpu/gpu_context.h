@@ -41,6 +41,7 @@ class DnnWorkspaceHandle {
   inline void RunFunc(const std::function<void(void*)>& cudnn_func,
                       size_t required_workspace_bytes) {
     if (required_workspace_bytes > WorkspaceSize()) {
+      std::cerr << "realloc" << std::endl;
       ReallocWorkspace(required_workspace_bytes);
     }
     {
@@ -146,6 +147,7 @@ class PADDLE_API GPUContext : public DeviceContext,
    *  workspace. Once the handle is destructed, the lock would be released.
    */
   // TODO(wilber): The return type is a pointer, to be modified later.
+  DnnWorkspaceHandle* shared_cudnn_workspace_handle() const;
   DnnWorkspaceHandle cudnn_workspace_handle() const;
 
  public:

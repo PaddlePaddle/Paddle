@@ -784,56 +784,32 @@ struct ConvRunner<T, ConvKind::kForward> {
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
 
-    auto cudnn_handle = ctx.cudnn_handle();
-
-    // for (int i = 0; i < groups; i++) {
-    //   workspace_handle->RunFunc(
-    //       [&](void* workspace_ptr) {
-
-    //         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionForward(
-    //             cudnn_handle,
-    //             &alpha,
-    //             args.idesc.desc(),
-    //             input_ptr + i * group_offset_in,
-    //             args.wdesc.desc(),
-    //             filter_ptr + i * group_offset_filter,
-    //             args.cdesc.desc(),
-    //             search_result.algo,
-    //             workspace_ptr,
-    //             workspace_size,
-    //             &beta,
-    //             args.odesc.desc(),
-    //             output_ptr + i * group_offset_out));
-
-    //       },
-    //       workspace_size);
-    // }
     phi::dynload::nvtxRangePop();
     phi::dynload::nvtxRangePushA("1.6.7");
-    DenseTensor workspace_tensor;
-    workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
-    void* workspace_ptr =
-        static_cast<void*>(ctx.template Alloc<uint8_t>(&workspace_tensor));
 
-    phi::dynload::nvtxRangePop();
-    phi::dynload::nvtxRangePushA("real call");
+    auto cudnn_handle = ctx.cudnn_handle();
 
     for (int i = 0; i < groups; i++) {
-      phi::dynload::cudnnConvolutionForward(
-          cudnn_handle,
-          &alpha,
-          args.idesc.desc(),
-          input_ptr + i * group_offset_in,
-          args.wdesc.desc(),
-          filter_ptr + i * group_offset_filter,
-          args.cdesc.desc(),
-          search_result.algo,
-          workspace_ptr,
-          workspace_size,
-          &beta,
-          args.odesc.desc(),
-          output_ptr + i * group_offset_out);
+      workspace_handle->RunFunc(
+          [&](void* workspace_ptr) {
+            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionForward(
+                cudnn_handle,
+                &alpha,
+                args.idesc.desc(),
+                input_ptr + i * group_offset_in,
+                args.wdesc.desc(),
+                filter_ptr + i * group_offset_filter,
+                args.cdesc.desc(),
+                search_result.algo,
+                workspace_ptr,
+                workspace_size,
+                &beta,
+                args.odesc.desc(),
+                output_ptr + i * group_offset_out));
+          },
+          workspace_size);
     }
+
     phi::dynload::nvtxRangePop();
     phi::dynload::nvtxRangePushA("fin real call");
   }

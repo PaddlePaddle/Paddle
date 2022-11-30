@@ -291,10 +291,10 @@ struct GPUContext::Impl {
   }
 
   // TODO(wilber): The return type is a pointer, to be modified later.
-  // DnnWorkspaceHandle* GetDnnWorkspace() {
-  //   PD_CHECK(workspace_ != nullptr, "the gpu cudnn workspace is nullptr.");
-  //   return workspace_;
-  // }
+  DnnWorkspaceHandle* SharedDnnWorkspace() {
+    PD_CHECK(workspace_ != nullptr, "the gpu cudnn workspace is nullptr.");
+    return workspace_;
+  }
   DnnWorkspaceHandle GetDnnWorkspace() {
     PD_CHECK(allocator_ != nullptr,
              "the device allocator for gpu context is nullptr.");
@@ -877,6 +877,10 @@ std::array<int, 3> GPUContext::GetCUDAMaxGridDimSize() const {
 
 Eigen::GpuDevice* GPUContext::eigen_device() const {
   return impl_->eigen_device();
+}
+
+DnnWorkspaceHandle* GPUContext::shared_cudnn_workspace_handle() const {
+  return impl_->SharedDnnWorkspace();
 }
 
 DnnWorkspaceHandle GPUContext::cudnn_workspace_handle() const {
