@@ -352,7 +352,6 @@ class GroupShardedStage3(nn.Layer):
                 self._unslice_params.add(_UnsliceParam(p))
 
         assert id(layer) not in self._trainable_params.keys()
-
         self._trainable_params[id(layer)] = current_params
 
         for param in self._trainable_params[id(layer)]:
