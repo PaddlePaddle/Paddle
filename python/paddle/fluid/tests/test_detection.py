@@ -24,7 +24,6 @@ import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.dygraph import base
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers import detection
 
 paddle.enable_static()
 
@@ -496,29 +495,6 @@ class TestMultiBoxHead(unittest.TestCase):
         )
 
         return mbox_locs, mbox_confs, box, var
-
-
-class TestDetectionMAP(unittest.TestCase):
-    def test_detection_map(self):
-        program = Program()
-        with program_guard(program):
-            detect_res = layers.data(
-                name='detect_res',
-                shape=[10, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            label = layers.data(
-                name='label',
-                shape=[10, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-
-            map_out = detection.detection_map(detect_res, label, 21)
-            self.assertIsNotNone(map_out)
-            self.assertEqual(map_out.shape, (1,))
-        print(str(program))
 
 
 class TestRpnTargetAssign(unittest.TestCase):
