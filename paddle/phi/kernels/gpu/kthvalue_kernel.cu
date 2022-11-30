@@ -68,6 +68,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   const T* input = input_tensor->data<T>();
   T* values = out_tensor->data<T>();
   int64_t* indices = dev_ctx.template Alloc<int64_t>(indices_tensor);
+  temp_values.Resize(dim);
   temp_indices.Resize(dim);
   sorted_values_ptr = dev_ctx.template Alloc<T>(&temp_values);
   sorted_indices_ptr = dev_ctx.template Alloc<int64_t>(&temp_indices);
