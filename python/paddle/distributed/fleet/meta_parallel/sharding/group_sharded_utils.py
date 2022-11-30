@@ -138,7 +138,7 @@ class GroupShardedClipGrad:
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
 
-        clip_var = layers.elementwise_div(
+        clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )

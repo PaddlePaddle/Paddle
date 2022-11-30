@@ -1450,28 +1450,28 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor__use_cudnn(TensorObject* self,
-                                   PyObject* args,
-                                   PyObject* kwargs) {
+static PyObject* tensor__use_gpudnn(TensorObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
   EAGER_TRY
   PADDLE_ENFORCE(self->tensor.defined() && self->tensor.is_dense_tensor(),
                  paddle::platform::errors::Fatal(
-                     "function _use_cudnn is only effective for DenseTensor"));
+                     "function _use_gpudnn is only effective for DenseTensor"));
 
-  bool use_cudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  bool use_gpudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
 
-  // Set the same use_cudnn attribute, return directly
+  // Set the same use_gpudnn attribute, return directly
   phi::DenseTensor* dense_tensor =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   phi::DenseTensorMeta* dense_tensor_meta =
       phi::DenseTensorUtils::GetMutableMeta(dense_tensor);
-  if (use_cudnn == dense_tensor_meta->use_cudnn) {
+  if (use_gpudnn == dense_tensor_meta->use_gpudnn) {
     return ToPyObject(self->tensor);
   }
 
-  // Share all other members of Tensor except use_cudnn
+  // Share all other members of Tensor except use_gpudnn
   phi::DenseTensorMeta target_dense_meta = *dense_tensor_meta;
-  target_dense_meta.use_cudnn = use_cudnn;
+  target_dense_meta.use_gpudnn = use_gpudnn;
   phi::DenseTensor target_dense_tensor;
   target_dense_tensor.ShareDataWith(*dense_tensor);
   target_dense_tensor.set_meta(target_dense_meta);
@@ -1481,7 +1481,7 @@ static PyObject* tensor__use_cudnn(TensorObject* self,
       self->tensor.name());
   target_tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
   VLOG(4) << "Tensor: " << target_tensor.name()
-          << " set use_cudnn = " << use_cudnn;
+          << " set use_gpudnn = " << use_gpudnn;
 
   return ToPyObject(target_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -2053,8 +2053,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"_tensor_use_cudnn",
-     (PyCFunction)(void (*)(void))tensor__use_cudnn,
+    {"_tensor_use_gpudnn",
+     (PyCFunction)(void (*)(void))tensor__use_gpudnn,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /** the methods to adapt old dygraph, will be removed in the future **/

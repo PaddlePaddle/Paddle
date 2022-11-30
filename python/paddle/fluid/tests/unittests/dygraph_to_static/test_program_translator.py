@@ -204,7 +204,7 @@ class StaticCode2:
 class NetWithError(fluid.dygraph.layers.Layer):
     @declarative
     def forward(self, x):
-        linear = fluid.dygraph.Linear(32, 64)
+        linear = paddle.nn.Linear(32, 64)
         y = linear(x)
         return y
 
