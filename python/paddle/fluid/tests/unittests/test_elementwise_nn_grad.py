@@ -94,7 +94,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
         y = layers.data('y', shape, False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y)
+        out = paddle.add(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
@@ -155,7 +155,7 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
         y = layers.data('y', shape, False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_sub(x, y)
+        out = paddle.subtract(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
@@ -291,7 +291,7 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
         y = layers.data('y', shape, False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y)
+        out = paddle.add(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
