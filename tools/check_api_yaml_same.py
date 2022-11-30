@@ -164,8 +164,7 @@ for each_add in api_add:
     # We needn't approve it
     if add and len(yaml_add) == 0:
         need_approve = False
-    # import pdb
-    # pdb.set_trace()
+
     # In others, the changes need to be approved.
     # eg: 1, The args in api is inconsistent with yaml's op
     #     2, New Api is add, but the yaml op's name may not be inconsistent

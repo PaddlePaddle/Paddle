@@ -760,8 +760,8 @@
     func : silu
   backward : silu_grad
 
-- op : sina
-  args : (Tensor x, int a)
+- op : sin
+  args : (Tensor x)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
