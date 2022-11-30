@@ -22,7 +22,7 @@ namespace egr {
 inline bool NeedTransLayout(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    const paddle::experimental::DataLayout& layout) {
+    const phi::DataLayout& layout) {
   for (size_t i = 0; i < tensors_vector.size(); i++) {
     for (size_t idx = 0; idx < tensors_vector[0].size(); idx++) {
       if (layout != tensors_vector[i][idx].layout()) {
@@ -40,8 +40,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
   // For agnostic op like add, relu, exp
   auto first_layout = tensors_vector[0][0].layout();
   auto desired_layout = DesiredLayout();
-  bool is_started =
-      !(desired_layout == paddle::experimental::DataLayout::UNDEFINED);
+  bool is_started = !(desired_layout == phi::DataLayout::UNDEFINED);
   if (is_started && NeedTransLayout(tensors_vector, first_layout)) {
     bool need_trans_back = false;
     for (size_t i = 0; i < tensors_vector.size(); i++) {
@@ -68,22 +67,22 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
                                kSlotSmallVectorSize>& tensors_vector,
     T* attr) {
   // For lightly op like reduce
-  if ((DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED)) {
+  if ((DesiredLayout() == phi::DataLayout::UNDEFINED)) {
     VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
   }
 
-  VLOG(4) << " Current op :" << op_name << "desir " << DesiredLayout();
-  // if (op_name == "reshape") {
-  //   bool trans_back = tensors_vector[0][0].layout() == DesiredLayout() &&
-  //   (*attr).size() != 4;
-  //
-  //   if (trans_back){
-  //     return
-  //     std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
-  //   }
-  // }
+  if (op_name == "reshape") {
+    bool trans_back = tensors_vector[0][0].layout() == DesiredLayout() &&
+    (*attr).size() != 4;
+  
+    if (trans_back){
+      VLOG(4) << "LayoutAutotune: the shape of reshape's input is :" <<(*attr).size()<<", need trans back to" << DefaultLayout();
+      return
+      std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
+    }
+  }
   return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
 }
 
@@ -94,7 +93,6 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
                                kSlotSmallVectorSize>& tensors_vector,
     T1* axis,
     T2* keep_dim) {
-  VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
   // For lightly op like argmax
   return EagerLayoutAutotune<T1>(op_name, tensors_vector, axis);
 }
@@ -105,11 +103,10 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     std::string* attr) {
-  VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
   // Heavily op with (string) data_format, data_layout
   auto transposer = std::make_shared<EagerLayoutTransformer>(
       op_name, tensors_vector, tensors_vector[0][0].layout());
-  if (DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED) {
+  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
     // Layout autotune only supports model with convolutional layers
     if (op_name != "conv2d") {
       VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
@@ -126,15 +123,15 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
               << op_name;
       if (is_tune_fp32) {
         paddle::imperative::LayoutAutoTune::Instance().SetDesiredLayout(
-            paddle::experimental::DataLayout::NCHW);
+            phi::DataLayout::NCHW);
 
         paddle::imperative::LayoutAutoTune::Instance().SetDefaultLayout(
-            paddle::experimental::DataLayout::NHWC);
+            phi::DataLayout::NHWC);
       } else if (is_tune_fp16) {
         paddle::imperative::LayoutAutoTune::Instance().SetDesiredLayout(
-            paddle::experimental::DataLayout::NHWC);
+            phi::DataLayout::NHWC);
         paddle::imperative::LayoutAutoTune::Instance().SetDefaultLayout(
-            paddle::experimental::DataLayout::NCHW);
+            phi::DataLayout::NCHW);
       } else {
         VLOG(4) << "DisableLayoutAutoTune accoding to Conv op"
                 << " dtype : " << data_type << " format : " << (*attr);
@@ -144,6 +141,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
       VLOG(4) << "LayoutAutoTune from " << *attr << " to " << DesiredLayout();
     }
   }
+
   if (op_name == "group_norm") {
     return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
   }
@@ -161,9 +159,8 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     std::vector<int>* attr) {
-  VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
   // lightly  transpose
-  if (DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED) {
+  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
     VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
@@ -173,8 +170,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
       (tensors_vector[0][0].layout() == DesiredLayout())) {
     auto trans = std::make_shared<EagerTransposeOpTransformer>(op_name);
     trans->SetAttr(attr,
-                   tensors_vector[0][0].layout() ==
-                       paddle::experimental::DataLayout::NHWC);
+                   tensors_vector[0][0].layout() == phi::DataLayout::NHWC);
     return trans;
   }
   return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
@@ -189,8 +185,7 @@ EagerLayoutAutotune<paddle::experimental::Scalar, bool>(
                                kSlotSmallVectorSize>& tensors_vector,
     paddle::experimental::Scalar* axis,
     bool* keep_dim) {
-  VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
-  if (DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED) {
+  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
     VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
@@ -200,9 +195,8 @@ EagerLayoutAutotune<paddle::experimental::Scalar, bool>(
       (tensors_vector[0][0].layout() == DesiredLayout()) && (*keep_dim)) {
     std::shared_ptr<EagerArgmaxOpTransformer> argmax_transform = nullptr;
     argmax_transform = std::make_shared<EagerArgmaxOpTransformer>(op_name);
-    argmax_transform->SetAttr(axis,
-                              tensors_vector[0][0].layout() ==
-                                  paddle::experimental::DataLayout::NHWC);
+    argmax_transform->SetAttr(
+        axis, tensors_vector[0][0].layout() == phi::DataLayout::NHWC);
     return argmax_transform;
   }
   return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
@@ -215,8 +209,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune<int, int>(
                                kSlotSmallVectorSize>& tensors_vector,
     int* start_axis,
     int* stop_axis) {
-  VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
-  if (DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED) {
+  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
     VLOG(4) << "Optimze Layout was not started" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
@@ -239,7 +232,6 @@ EagerLayoutAutotune<paddle::experimental::Scalar>(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     paddle::experimental::Scalar* axis) {
-  VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
   if (DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED) {
     VLOG(4) << "Optimze Layout was not started" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
