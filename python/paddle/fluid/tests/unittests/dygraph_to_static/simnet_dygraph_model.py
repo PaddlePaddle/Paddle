@@ -136,7 +136,7 @@ class CosSimLayer:
         """
         operation
         """
-        sim = fluid.layers.cos_sim(x, y)
+        sim = paddle.nn.functional.cosine_similarity(x, y)
         return sim
 
 
