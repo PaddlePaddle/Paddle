@@ -354,7 +354,7 @@ class TestVarBase(unittest.TestCase):
                 var = fluid.dygraph.to_variable("test", name="abc")
             # test to_variable of LayerObjectHelper(LayerHelperBase)
             with self.assertRaises(TypeError):
-                linear = fluid.dygraph.Linear(32, 64)
+                linear = paddle.nn.Linear(32, 64)
                 var = linear._helper.to_variable("test", name="abc")
 
     def test_to_variable(self):
@@ -1170,13 +1170,13 @@ class TestVarBase(unittest.TestCase):
             self._assert_to_static(var_base, static_param, True)
 
             # Convert ParamBase into Parameter
-            fc = fluid.dygraph.Linear(
+            fc = paddle.nn.Linear(
                 10,
                 20,
-                param_attr=fluid.ParamAttr(
+                weight_attr=paddle.ParamAttr(
                     learning_rate=0.001,
                     do_model_average=True,
-                    regularizer=fluid.regularizer.L1Decay(),
+                    regularizer=paddle.regularizer.L1Decay(),
                 ),
             )
             weight = fc.parameters()[0]

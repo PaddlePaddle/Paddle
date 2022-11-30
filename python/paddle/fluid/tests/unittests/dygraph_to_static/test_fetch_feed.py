@@ -27,9 +27,7 @@ SEED = 2020
 class Pool2D(fluid.dygraph.Layer):
     def __init__(self):
         super().__init__()
-        self.pool2d = fluid.dygraph.Pool2D(
-            pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
-        )
+        self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
 
     @declarative
     def forward(self, x):
@@ -44,21 +42,22 @@ class Pool2D(fluid.dygraph.Layer):
 class Linear(fluid.dygraph.Layer):
     def __init__(self, input_dim=10, output_dim=5):
         super().__init__()
-        self.fc = fluid.dygraph.Linear(
+        self.fc = paddle.nn.Linear(
             input_dim,
             output_dim,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
+        self.act = paddle.nn.ReLU()
 
     @declarative
     def forward(self, x):
         pre = self.fc(x)
+        pre = self.act(pre)
         loss = paddle.mean(pre)
         return pre, loss
 

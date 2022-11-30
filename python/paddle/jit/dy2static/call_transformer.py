@@ -19,7 +19,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 
