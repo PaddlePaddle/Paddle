@@ -102,7 +102,6 @@ class RMSProp(Optimizer):
           .. code-block:: python
 
             import paddle
-            paddle.enable_static()
 
             inp = paddle.rand([10,10], dtype="float32")
             linear = paddle.nn.Linear(10, 10)

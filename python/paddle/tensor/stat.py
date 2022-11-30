@@ -57,7 +57,6 @@ def mean(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.enable_static()
             x = paddle.to_tensor([[[1., 2., 3., 4.],
                                    [5., 6., 7., 8.],
                                    [9., 10., 11., 12.]],

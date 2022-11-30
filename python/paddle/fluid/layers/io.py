@@ -682,7 +682,6 @@ def py_reader(
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
-         paddle.enable_static()
 
          def network(reader):
              img, label = fluid.layers.read_file(reader)
@@ -789,7 +788,6 @@ def create_py_reader_by_data(
           import paddle
           import paddle.fluid as fluid
           import paddle.dataset.mnist as mnist
-          paddle.enable_static()
 
           def network(img, label):
               # User defined network. Here a simple regression as example
