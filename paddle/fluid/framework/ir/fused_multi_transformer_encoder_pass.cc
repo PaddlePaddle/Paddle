@@ -1354,9 +1354,10 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
     // NOTE(minghaoBD): to make it compatible with strucutured pruning on
-    // num_head dimension: get dim_head from reshape.shape[3], dim_embed from
-    // layer_norm_bias.shape[0] calculate num_head according to
-    // wq_tensor.shape[1] and dim_head
+    // num_head dimension:
+    // 1. get dim_head from reshape.shape[3], dim_embed from
+    // layer_norm_bias.shape[0]
+    // 2. calculate num_head according to wq_tensor.shape[1] and dim_head
     auto reshape_desc = reshape2_0->Op();
     int dim_head =
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
@@ -2217,9 +2218,10 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
     // NOTE(minghaoBD): to make it compatible with strucutured pruning on
-    // num_head dimension: get dim_head from reshape.shape[3], dim_embed from
-    // layer_norm_bias.shape[0] calculate num_head according to
-    // wqkv_tensor.shape[1]/3 and dim_head
+    // num_head dimension:
+    // 1. get dim_head from reshape.shape[3], dim_embed from
+    // layer_norm_bias.shape[0]
+    // 2. calculate num_head according to wqkv_tensor.shape[1]/3 and dim_head
     auto reshape_desc = reshape2_0->Op();
     int dim_head =
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
