@@ -3152,17 +3152,6 @@ class TestBook(LayerTest):
             avg_cost = paddle.mean(cost)
             return avg_cost
 
-    def make_sigmoid_cross_entropy(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            dat = self._get_data(name='data', shape=[10], dtype='float32')
-            lbl = self._get_data(name='label', shape=[10], dtype='float32')
-            ignore_index = -1
-            return layers.sigmoid_cross_entropy_with_logits(
-                x=dat, label=lbl, ignore_index=ignore_index
-            )
-
     def make_pool2d(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
