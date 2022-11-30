@@ -4121,30 +4121,6 @@ class TestBook(LayerTest):
                 10,
             )
 
-    def test_sigmoid_focal_loss(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = layers.data(
-                name='data',
-                shape=[10, 80],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            label = layers.data(
-                name='label',
-                shape=[10, 1],
-                append_batch_size=False,
-                dtype='int32',
-            )
-            fg_num = layers.data(
-                name='fg_num', shape=[1], append_batch_size=False, dtype='int32'
-            )
-            out = fluid.layers.sigmoid_focal_loss(
-                x=input, label=label, fg_num=fg_num, gamma=2.0, alpha=0.25
-            )
-            return out
-
     def test_addmm(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
