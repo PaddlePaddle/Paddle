@@ -14,16 +14,13 @@
 
 # cf. https://github.com/pypa/manylinux/issues/53
 
+import sys
+from urllib.request import urlopen
+
 GOOD_SSL = "https://google.com"
 BAD_SSL = "https://self-signed.badssl.com"
 
-import sys
-
 print("Testing SSL certificate checking for Python:", sys.version)
-
-from urllib.request import urlopen
-
-EXC = OSError
 
 print("Connecting to %s should work" % (GOOD_SSL,))
 urlopen(GOOD_SSL)
@@ -35,5 +32,5 @@ try:
     # If we get here then we failed:
     print("...it DIDN'T!!!!!11!!1one!")
     sys.exit(1)
-except EXC:
+except OSError:
     print("...it did, yay.")
