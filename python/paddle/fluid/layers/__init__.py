@@ -32,7 +32,6 @@ from paddle.static.nn import metric
 from paddle.static.nn.metric import *
 from .learning_rate_scheduler import *
 from .collective import *
-from .distributions import *
 from .sequence_lod import *
 from . import rnn
 
@@ -45,7 +44,6 @@ __all__ += device.__all__
 __all__ += detection.__all__
 __all__ += metric.__all__
 __all__ += learning_rate_scheduler.__all__
-__all__ += distributions.__all__
 __all__ += sequence_lod.__all__
 __all__ += loss.__all__
 __all__ += rnn.__all__
