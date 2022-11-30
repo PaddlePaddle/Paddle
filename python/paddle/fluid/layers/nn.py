@@ -67,7 +67,6 @@ __all__ = [
     'embedding',
     'linear_chain_crf',
     'crf_decoding',
-    'cos_sim',
     'conv2d',
     'softmax',
     'pool2d',
@@ -1003,43 +1002,6 @@ def crf_decoding(input, param_attr, label=None, length=None):
     )
 
     return viterbi_path
-
-
-@templatedoc()
-def cos_sim(X, Y):
-    """
-    ${comment}
-
-    Args:
-        X (Tensor): ${x_comment}.
-        Y (Tensor): ${y_comment}.
-
-    Returns:
-        A Tensor representing the output of cosine(X, Y).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand(shape=[3, 7], dtype='float32')
-            y = paddle.rand(shape=[1, 7], dtype='float32')
-            out = paddle.fluid.layers.cos_sim(x, y)
-            print(out)
-
-    """
-    check_variable_and_dtype(X, 'X', ['float32'], 'cos_sim')
-    check_variable_and_dtype(Y, 'Y', ['float32'], 'cos_sim')
-    helper = LayerHelper('cos_sim', **locals())
-    out = helper.create_variable_for_type_inference(dtype=X.dtype)
-    xnorm = helper.create_variable_for_type_inference(dtype=X.dtype)
-    ynorm = helper.create_variable_for_type_inference(dtype=X.dtype)
-    helper.append_op(
-        type='cos_sim',
-        inputs={'X': [X], 'Y': [Y]},
-        outputs={'Out': [out], 'XNorm': [xnorm], 'YNorm': [ynorm]},
-    )
-    return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.dropout")
