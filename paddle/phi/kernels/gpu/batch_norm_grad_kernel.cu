@@ -842,21 +842,21 @@ void BatchNormGradRawKernel(const Context &ctx,
                 ctx.template Alloc<BatchNormParamType<T>>(d_bias));
       }
 
-      // TODO(wangran16): wait for MIOpen to improve the performance of BN
-      // PADDLE_ENFORCE_GPU_SUCCESS(
-      //     platform::dynload::miopenBatchNormalizationBackward(
-      //         dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
-      //         CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
-      //         CudnnDataType<T>::kZero(), data_desc_,
-      //         transformed_x.template data<T>(), data_desc_,
-      //         transformed_d_y.template data<T>(), data_desc_,
-      //         transformed_d_x.template mutable_data<T>(ctx.GetPlace()),
-      //         bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
-      //         d_scale->template mutable_data<BatchNormParamType<T>>(
-      //             ctx.GetPlace()),
-      //         d_bias->template mutable_data<BatchNormParamType<T>>(
-      //             ctx.GetPlace()),
-      //         epsilon, saved_mean_data, saved_var_data));
+// TODO(wangran16): wait for MIOpen to improve the performance of BN
+// PADDLE_ENFORCE_GPU_SUCCESS(
+//     platform::dynload::miopenBatchNormalizationBackward(
+//         dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
+//         CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
+//         CudnnDataType<T>::kZero(), data_desc_,
+//         transformed_x.template data<T>(), data_desc_,
+//         transformed_d_y.template data<T>(), data_desc_,
+//         transformed_d_x.template mutable_data<T>(ctx.GetPlace()),
+//         bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
+//         d_scale->template mutable_data<BatchNormParamType<T>>(
+//             ctx.GetPlace()),
+//         d_bias->template mutable_data<BatchNormParamType<T>>(
+//             ctx.GetPlace()),
+//         epsilon, saved_mean_data, saved_var_data));
 #else
     }
     // CUDNN only support small batch size
