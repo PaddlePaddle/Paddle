@@ -59,6 +59,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "floor",
                     "rsqrt",
                     "reciprocal",
+                    "sign",
                 ]:
                     self.dims = dims
                     self.op_type = op_type
@@ -122,7 +123,14 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1 or (self.op_type == "sign" and not dynamic_shape):
+            ver = paddle_infer.get_trt_compile_version()
+            if self.dims == 1 or (
+                self.op_type == "sign"
+                and (
+                    not dynamic_shape
+                    or ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200
+                )
+            ):
                 return 0, 3
             return 1, 2
 
