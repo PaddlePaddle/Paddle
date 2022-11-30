@@ -67,7 +67,6 @@ __all__ = [
     'embedding',
     'linear_chain_crf',
     'crf_decoding',
-    'cos_sim',
     'conv2d',
     'softmax',
     'pool2d',
@@ -97,7 +96,6 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'relu',
-    'log',
     'unique',
     'unique_with_counts',
     'elementwise_add',
@@ -125,7 +123,6 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
-    'gather_tree',
 ]
 
 OP_NAMEMAPPING = {
@@ -997,43 +994,6 @@ def crf_decoding(input, param_attr, label=None, length=None):
     )
 
     return viterbi_path
-
-
-@templatedoc()
-def cos_sim(X, Y):
-    """
-    ${comment}
-
-    Args:
-        X (Tensor): ${x_comment}.
-        Y (Tensor): ${y_comment}.
-
-    Returns:
-        A Tensor representing the output of cosine(X, Y).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand(shape=[3, 7], dtype='float32')
-            y = paddle.rand(shape=[1, 7], dtype='float32')
-            out = paddle.fluid.layers.cos_sim(x, y)
-            print(out)
-
-    """
-    check_variable_and_dtype(X, 'X', ['float32'], 'cos_sim')
-    check_variable_and_dtype(Y, 'Y', ['float32'], 'cos_sim')
-    helper = LayerHelper('cos_sim', **locals())
-    out = helper.create_variable_for_type_inference(dtype=X.dtype)
-    xnorm = helper.create_variable_for_type_inference(dtype=X.dtype)
-    ynorm = helper.create_variable_for_type_inference(dtype=X.dtype)
-    helper.append_op(
-        type='cos_sim',
-        inputs={'X': [X], 'Y': [Y]},
-        outputs={'Out': [out], 'XNorm': [xnorm], 'YNorm': [ynorm]},
-    )
-    return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.dropout")
@@ -5239,47 +5199,6 @@ def resize_nearest(
     )
 
 
-def log(x, name=None):
-    r"""
-    Calculates the natural log of the given input tensor, element-wise.
-
-    .. math::
-
-        Out = \\ln(x)
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-
-    Returns:
-        Tensor: The natural log of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = [[2,3,4], [7,8,9]]
-            x = paddle.to_tensor(x, dtype='float32')
-            res = paddle.log(x)
-            # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.log(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.log(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.relu")
 def relu(x, name=None):
     """
@@ -7523,67 +7442,3 @@ def unique_with_counts(x, dtype='int32'):
     )
 
     return out, index, count
-
-
-def gather_tree(ids, parents):
-    r"""
-    To be used after beam search. After beam search, we get selected ids at
-    each time step and the corresponding parents in the search tree. Both ids
-    and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
-    :attr:`gather_tree` is used to backtrace from the last time step and
-    generate the full sequences by collecting selected ids.
-
-    Here is an example:
-
-    .. code-block:: text
-
-            Given:
-                ids = [[[2 2]
-                        [6 1]]
-                       [[3 9]
-                        [6 1]]
-                       [[0 1]
-                        [9 0]]]
-                parents = [[[0 0]
-                            [1 1]]
-                           [[1 0]
-                            [1 0]]
-                           [[0 0]
-                            [0 1]]]
-
-            Then:
-                gather_tree(ids, parents)
-                         = [[[2 2]
-                             [1 6]]
-                            [[3 3]
-                             [6 1]]
-                            [[0 1]
-                             [9 0]]]
-
-    Args:
-        ids(Tensor): A Tensor with shape :attr:`[length, batch_size, beam_size]`
-            and data type :attr:`int32` or :attr:`int64`. It contains the selected
-            ids of all time steps.
-        parents(Tensor): A Tensor with the same shape and data type as :attr:`ids`,
-            It contains the parents corresponding to selected ids when searching
-            among beams.
-
-    Returns:
-            A Tensor with the same shape and data type as :attr:`ids`. \
-            It contains the full sequences. The sequences are collected from \
-            :attr:`ids` by backtracing according to :attr:`parents`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
-
-            parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
-
-            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
-            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
-
-    """
-    return paddle.nn.functional.gather_tree(ids, parents)
