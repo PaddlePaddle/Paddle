@@ -933,6 +933,15 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      // The x input must not be int64 datatype.
+      if (x_var_desc->GetDataType() ==
+          paddle::framework::proto::VarType_Type::VarType_Type_INT64) {
+        VLOG(3) << "unsqueeze2 op x input data type must not be int64";
+        return false;
+      }
     }
 
     if (op_type == "batch_norm") {
