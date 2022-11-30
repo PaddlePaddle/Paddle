@@ -462,7 +462,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   for (auto& var_name_item : *ins_map_temp) {
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
-
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
       auto var_name = new_ins[var_name_item.first].at(i);
