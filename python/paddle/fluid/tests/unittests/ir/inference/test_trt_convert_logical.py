@@ -38,7 +38,7 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
                 for axis in [-1]:
                     self.dims = len(shape)
                     dics = [
-                        {"axis": axis, "in_dtype": 0, "out_dtype": 0},
+                        {"axis": axis},
                         {"in_dtype": 5, "out_dtype": 0},
                         {"in_dtype": 0, "out_dtype": 5},
                     ]

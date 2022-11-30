@@ -1271,7 +1271,24 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-        op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+        op_type == "elementwise_max" || op_type == "elementwise_floordiv" ||
+        op_type == "logical_or" || op_type == "logical_xor" ||
+        op_type == "logical_and") {
+      if (op_type == "logical_or" || op_type == "logical_xor" ||
+          op_type == "logical_and") {
+#if IS_TRT_VERSION_GE(8400)
+        if (!with_dynamic_shape) {
+          VLOG(3) << "static shape mode is not supported for TRT logical_or, "
+                     "logical_xor, logical_and and logical_not.";
+          return false;
+        }
+        return true;
+#endif
+        VLOG(3)
+            << "logical_or, logical_xor, logical_and and logical_not is not "
+               "supported when TensorRT < 8.4";
+        return false;
+      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1316,27 +1333,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                "elementwise in tensorrt's static shape, swap x and y will work";
         return false;
       }
-    }
-    if (op_type == "logical_or" || op_type == "logical_xor" ||
-        op_type == "logical_and") {
-#if IS_TRT_VERSION_GE(8400)
-      int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
-      int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
-      if (in_dtype != 0 || out_dtype != 0) {
-        VLOG(3) << "logical_or, logical_xor, logical_and and logical_not only "
-                   "supports inputs and outputs of BOOL";
-        return false;
-      }
-      if (!with_dynamic_shape) {
-        VLOG(3) << "static shape mode is not supported for TRT logical_or, "
-                   "logical_xor, logical_and and logical_not.";
-        return false;
-      }
-      return true;
-#endif
-      VLOG(3) << "logical_or, logical_xor, logical_and and logical_not is not "
-                 "supported when TensorRT < 8.4";
-      return false;
     }
 
     if (op_type == "stack") {
