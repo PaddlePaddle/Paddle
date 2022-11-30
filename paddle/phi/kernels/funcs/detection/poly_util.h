@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gpc.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <class T>
 class Point_ {
@@ -69,7 +69,7 @@ T PolyOverlapArea(const T* box1,
                   const T* box2,
                   const size_t box_size,
                   const bool normalized);
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
 
 #include "paddle/phi/kernels/funcs/detection/poly_util.cc"

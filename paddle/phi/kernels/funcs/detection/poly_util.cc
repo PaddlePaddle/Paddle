@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/detection/poly_util.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 using phi::funcs::gpc_free_polygon;
 using phi::funcs::gpc_polygon_clip;
@@ -132,7 +132,7 @@ T PolyOverlapArea(const T* box1,
   return inter_area;
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
 
 #endif
