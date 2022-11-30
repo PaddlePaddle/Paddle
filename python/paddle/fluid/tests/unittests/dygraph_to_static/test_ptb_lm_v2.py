@@ -152,7 +152,7 @@ class PtbModel(paddle.nn.Layer):
         )
         self.embedding = paddle.nn.Embedding(
             vocab_size,
-            hidden_size],
+            hidden_size,
             sparse=False,
             weight_attr=paddle.ParamAttr(
                 name='embedding_para',
