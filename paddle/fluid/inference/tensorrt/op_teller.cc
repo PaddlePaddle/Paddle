@@ -1319,23 +1319,24 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
     if (op_type == "logical_or" || op_type == "logical_xor" ||
         op_type == "logical_and") {
-#if !IS_TRT_VERSION_GE(8400)
-      VLOG(3) << "logical_or, logical_xor and logical_and is not supported "
-                 "when TensorRT < 8.4";
-      return false;
-#endif
+#if IS_TRT_VERSION_GE(8400)
       int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
       if (in_dtype != 0 || out_dtype != 0) {
-        VLOG(3) << "logical_or, logical_xor and logical_and only supports "
-                   "inputs and outputs of BOOL";
-        return true;
+        VLOG(3) << "logical_or, logical_xor, logical_and and logical_not only "
+                   "supports inputs and outputs of BOOL";
+        return false;
       }
       if (!with_dynamic_shape) {
         VLOG(3) << "static shape mode is not supported for TRT logical_or, "
-                   "logical_xor and logical_than.";
+                   "logical_xor, logical_and and logical_not.";
         return false;
       }
+      return true;
+#endif
+      VLOG(3) << "logical_or, logical_xor, logical_and and logical_not is not "
+                 "supported when TensorRT < 8.4";
+      return false;
     }
 
     if (op_type == "stack") {
@@ -2345,6 +2346,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_or",
       "logical_xor",
       "logical_and",
+      "logical_not",
       "equal",
       "dropout",
       "fill_any_like",
@@ -2476,6 +2478,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_or",
       "logical_xor",
       "logical_and",
+      "logical_not",
       "equal",
       "dropout",
       "fill_any_like",
