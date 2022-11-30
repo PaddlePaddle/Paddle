@@ -17,19 +17,20 @@ from paddle.framework import in_dygraph_mode
 from paddle.framework import _non_static_mode
 import paddle
 import paddle.fluid.core as core
-from .fleet.layers.mpu.mp_ops import split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
+
 from .communication.group import Group, _add_new_group, is_initialized
+from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
 
 __all__ = []
 

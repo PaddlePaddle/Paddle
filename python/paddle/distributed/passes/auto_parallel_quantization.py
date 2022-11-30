@@ -14,15 +14,17 @@
 
 import paddle
 
-from paddle.fluid import core, framework
 from paddle.distributed.parallel_env import ParallelEnv
-from paddle.fluid.contrib.slim.quantization import utils
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPassV2
-from paddle.fluid.contrib.slim.quantization import AddQuantDequantPassV2
-from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
+)
+from paddle.fluid import core, framework
+from paddle.fluid.contrib.slim.quantization import (
+    AddQuantDequantPassV2,
+    OutScaleForTrainingPass,
+    QuantizationTransformPassV2,
+    utils,
 )
 
 from .pass_base import PassBase, register_pass

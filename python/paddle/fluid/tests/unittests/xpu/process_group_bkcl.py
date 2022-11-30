@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.parallel_env import ParallelEnv
-import paddle.distributed as dist
+from paddle.fluid.framework import _test_eager_guard
 
 
 def init_process_group(strategy=None):

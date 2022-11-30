@@ -12,42 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import inspect
 import os
 import pickle
-import numpy as np
-import warnings
-import time
 import socket
-import contextlib
+import time
+import warnings
+
+import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.framework import Variable
-from paddle.fluid.framework import _get_paddle_place
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.executor import global_scope
-from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.dygraph.base import to_variable
-from paddle.distributed.parallel_env import ParallelEnv
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
-from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers import collective
-
-from paddle.io import DataLoader
-from paddle.io import Dataset
-from paddle.io import DistributedBatchSampler
-from paddle.metric import Metric
-from paddle.static import InputSpec as Input
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.base import role_maker
+from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed.fleet.base import role_maker
+from paddle.fluid import core
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import Variable
+from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.framework import _get_paddle_place, _non_static_mode
+from paddle.fluid.io import is_belong_to_optimizer
+from paddle.distributed.parallel_env import ParallelEnv
+from paddle.fluid.layers import collective
+from paddle.fluid.layers.utils import flatten
+from paddle.io import DataLoader, Dataset, DistributedBatchSampler
+from paddle.metric import Metric
+from paddle.static import InputSpec as Input
 
-from .callbacks import config_callbacks, EarlyStopping
+from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
 
 __all__ = []

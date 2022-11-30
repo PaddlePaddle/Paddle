@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 from collections import defaultdict
-from paddle.framework import Block
+from paddle.framework import Block, _non_static_mode
 import paddle.static.Program as Program
-from paddle.framework import _non_static_mode
 import paddle.fluid.core as core
 import paddle.distributed.fleet as fleet
-import numpy as np
 
 
 class HybridParallelInferenceHelper:

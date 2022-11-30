@@ -13,10 +13,14 @@
 # limitations under the License.
 
 import paddle
-from paddle.static import program_guard, default_main_program
-from paddle.static import default_startup_program
+from paddle.static import (
+    default_main_program,
+    default_startup_program,
+    program_guard,
+)
+
+from .common import OP_ROLE_KEY, CollectiveHelper, OpRole
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import CollectiveHelper, OP_ROLE_KEY, OpRole
 
 __all__ = []
 
