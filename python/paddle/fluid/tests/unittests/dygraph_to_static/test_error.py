@@ -68,7 +68,7 @@ def func_decorated_by_other_2():
 class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def __init__(self, fc_size=20):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(fc_size, fc_size)
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
 
     @paddle.jit.to_static(
         input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')]

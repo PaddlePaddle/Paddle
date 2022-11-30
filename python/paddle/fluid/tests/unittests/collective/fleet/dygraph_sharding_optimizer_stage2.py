@@ -25,6 +25,7 @@ from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimiz
 from paddle.distributed.fleet.utils.internal_storage import GradStorage
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 base_lr = 0.1
 momentum_rate = 0.9

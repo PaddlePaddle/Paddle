@@ -22,9 +22,9 @@ from paddle.fluid.dygraph import (
     Embedding,
     Layer,
     LayerNorm,
-    Linear,
     to_variable,
 )
+from paddle.nn import Linear
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
 
@@ -107,28 +107,28 @@ class MultiHeadAttention(Layer):
         self.d_model = d_model
         self.dropout_rate = dropout_rate
         self.q_fc = Linear(
-            input_dim=d_model,
-            output_dim=d_key * n_head,
+            in_features=d_model,
+            out_features=d_key * n_head,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
         self.k_fc = Linear(
-            input_dim=d_model,
-            output_dim=d_key * n_head,
+            in_features=d_model,
+            out_features=d_key * n_head,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
         self.v_fc = Linear(
-            input_dim=d_model,
-            output_dim=d_value * n_head,
+            in_features=d_model,
+            out_features=d_value * n_head,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
         self.proj_fc = Linear(
-            input_dim=d_value * n_head,
-            output_dim=d_model,
+            in_features=d_value * n_head,
+            out_features=d_model,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
 
     def forward(self, queries, keys, values, attn_bias, cache=None):
@@ -174,11 +174,12 @@ class FFN(Layer):
     def __init__(self, d_inner_hid, d_model, dropout_rate):
         super().__init__()
         self.dropout_rate = dropout_rate
-        self.fc1 = Linear(input_dim=d_model, output_dim=d_inner_hid, act="relu")
-        self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
+        self.fc1 = Linear(d_model, d_inner_hid)
+        self.fc2 = Linear(d_inner_hid, d_model)
 
     def forward(self, x):
         hidden = self.fc1(x)
+        hidden = paddle.nn.functional.relu(hidden)
         if self.dropout_rate:
             hidden = layers.dropout(hidden, dropout_prob=self.dropout_rate)
         out = self.fc2(hidden)
