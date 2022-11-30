@@ -21,7 +21,6 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
 from paddle.fluid.layers import (
-    array_length,
     array_read,
     array_write,
 )
@@ -530,7 +529,7 @@ def convert_len(var):
                 return var.shape[0]
             return nn.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            return control_flow.array_length(var)
+            return paddle.tensor.array_length(var)
         else:
             raise TypeError(
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
@@ -789,11 +788,11 @@ def _run_paddle_pop(array, *args):
 
     def body(i, new_array):
         item = array_read(array=array, i=i)
-        array_write(item, array_length(new_array), new_array)
+        array_write(item, paddle.tensor.array_length(new_array), new_array)
         i = increment(i)
         return i, new_array
 
-    arr_len = array_length(array)
+    arr_len = paddle.tensor.array_length(array)
     if idx < 0:
         idx = idx + arr_len
     else:

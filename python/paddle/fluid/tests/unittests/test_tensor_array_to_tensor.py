@@ -290,7 +290,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
 
             _, _, array = fluid.layers.while_loop(cond, body, [i, ten, array])
 
-            self.assertTrue(fluid.layers.array_length(array), 10)
+            self.assertTrue(paddle.tensor.array_length(array), 10)
             last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
             np.testing.assert_array_equal(
                 fluid.layers.array_read(array, last).numpy(), inp0

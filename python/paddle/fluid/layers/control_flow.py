@@ -58,7 +58,6 @@ __all__ = [
     'array_write',
     'less_than',
     'array_read',
-    'array_length',
     'cond',
     'IfElse',
     'StaticRNN',
@@ -1895,75 +1894,6 @@ def array_read(array, i):
         outputs={'Out': [out]},
     )
     return out
-
-
-def array_length(array):
-    """
-    This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
-    It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` ,
-    :ref:`api_fluid_layers_While` OP to traverse, read and write LoDTensorArray.
-
-    Args:
-        array (LoDTensorArray): The input array that will be used to compute the length.
-
-    Returns:
-        Variable: 1-D Tensor with shape [1], which is the length of array. Datatype: int64.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            # tmp is 1-D Tensor with shape [10]. We write tmp into arr on subscript 10,
-            # then the length of arr becomes 11.
-            arr = fluid.layers.array_write(tmp, i=i)
-            # return the length of arr
-            arr_len = fluid.layers.array_length(arr)
-
-            # You can use executor to print out the length of LoDTensorArray.
-            input = fluid.layers.Print(arr_len, message="The length of LoDTensorArray:")
-            main_program = fluid.default_main_program()
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(main_program)
-
-            # The printed result is:
-
-            # 1569576542  The length of LoDTensorArray:   The place is:CPUPlace
-            # Tensor[array_length_0.tmp_0]
-            #    shape: [1,]
-            #    dtype: l
-            #    data: 11,
-
-            # 1-D Tensor with shape [1], whose value is 11. It means that the length of LoDTensorArray
-            # is 11.
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-    """
-
-    if _non_static_mode():
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_write must be a list in dygraph mode"
-        return len(array)
-
-    if (
-        not isinstance(array, Variable)
-        or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    ):
-        raise TypeError(
-            "array should be tensor array vairable in array_length Op"
-        )
-
-    helper = LayerHelper('array_length', **locals())
-    tmp = helper.create_variable_for_type_inference(dtype='int64')
-    tmp.stop_gradient = True
-    helper.append_op(
-        type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]}
-    )
-    return tmp
 
 
 class ConditionalBlockGuard(BlockGuard):

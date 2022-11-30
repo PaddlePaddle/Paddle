@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.tensor.array as array
 
 paddle.enable_static()
 
