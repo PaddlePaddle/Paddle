@@ -53,54 +53,6 @@ def convolution_net(
     return avg_cost, accuracy, prediction
 
 
-def dyn_rnn_lstm(
-    data, label, input_dim, class_dim=2, emb_dim=32, lstm_size=128
-):
-    emb = fluid.layers.embedding(
-        input=data, size=[input_dim, emb_dim], is_sparse=True
-    )
-    sentence = paddle.static.nn.fc(x=emb, size=lstm_size, activation='tanh')
-
-    rnn = fluid.layers.DynamicRNN()
-    with rnn.block():
-        word = rnn.step_input(sentence)
-        prev_hidden = rnn.memory(value=0.0, shape=[lstm_size])
-        prev_cell = rnn.memory(value=0.0, shape=[lstm_size])
-
-        def gate_common(ipt, hidden, size):
-            gate0 = paddle.static.nn.fc(x=ipt, size=size, bias_attr=True)
-            gate1 = paddle.static.nn.fc(x=hidden, size=size, bias_attr=False)
-            return gate0 + gate1
-
-        forget_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-        input_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-        output_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-        cell_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-
-        cell = forget_gate * prev_cell + input_gate * cell_gate
-        hidden = output_gate * paddle.tanh(x=cell)
-        rnn.update_memory(prev_cell, cell)
-        rnn.update_memory(prev_hidden, hidden)
-        rnn.output(hidden)
-
-    last = fluid.layers.sequence_last_step(rnn())
-    prediction = paddle.static.nn.fc(
-        x=last, size=class_dim, activation="softmax"
-    )
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy, prediction
-
-
 def stacked_lstm_net(
     data, label, input_dim, class_dim=2, emb_dim=128, hid_dim=512, stacked_num=3
 ):
@@ -374,25 +326,6 @@ class TestUnderstandSentiment(unittest.TestCase):
             main(
                 self.word_dict,
                 net_method=stacked_lstm_net,
-                use_cuda=True,
-                parallel=True,
-            )
-
-    @unittest.skip(reason='make CI faster')
-    def test_dynrnn_lstm_gpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=dyn_rnn_lstm,
-                use_cuda=True,
-                parallel=False,
-            )
-
-    def test_dynrnn_lstm_gpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=dyn_rnn_lstm,
                 use_cuda=True,
                 parallel=True,
             )

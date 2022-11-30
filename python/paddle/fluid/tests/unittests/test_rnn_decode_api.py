@@ -14,21 +14,20 @@
 
 import random
 import unittest
+
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 import paddle.nn as nn
 from paddle import Model, set_device
-from paddle.static import InputSpec as Input
 from paddle.fluid.dygraph import Layer
-from paddle.nn import BeamSearchDecoder, dynamic_decode
-
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import BeamSearchDecoder, dynamic_decode
+from paddle.static import InputSpec as Input
 
 paddle.enable_static()
 
@@ -80,7 +79,7 @@ class DecoderCell(layers.RNNCell):
                 attn_scores, encoder_padding_mask
             )
         attn_scores = layers.softmax(attn_scores)
-        attn_out = layers.squeeze(
+        attn_out = paddle.squeeze(
             layers.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
@@ -320,7 +319,7 @@ class PolicyGradient:
         neg_log_prob = layers.cross_entropy(act_prob, action)
         cost = neg_log_prob * reward
         cost = (
-            (layers.reduce_sum(cost) / layers.reduce_sum(length))
+            (paddle.sum(cost) / paddle.sum(length))
             if length is not None
             else layers.reduce_mean(cost)
         )
@@ -409,7 +408,7 @@ class MLE:
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
         loss = layers.reduce_mean(loss, dim=[0])
-        loss = layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
         return loss

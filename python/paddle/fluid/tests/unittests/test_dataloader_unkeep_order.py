@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
+import os
 import unittest
 import numpy as np
-import os
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.reader import keep_data_loader_order
 
 keep_data_loader_order(False)

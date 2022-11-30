@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import os
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import numpy as np
-import os
-import contextlib
 
 
 class TestPrune(unittest.TestCase):

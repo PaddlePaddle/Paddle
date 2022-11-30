@@ -17,10 +17,11 @@ import paddle
 paddle.enable_static()
 
 import unittest
+
 import paddle.fluid as fluid
 from paddle.distributed import (
-    ProbabilityEntry,
     CountFilterEntry,
+    ProbabilityEntry,
     ShowClickEntry,
 )
 

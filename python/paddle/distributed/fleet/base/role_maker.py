@@ -14,9 +14,10 @@
 """Defination of Role Makers."""
 import os
 import time
-import numpy as np
 import warnings
-from multiprocessing import Process, Manager
+from multiprocessing import Manager, Process
+
+import numpy as np
 
 import paddle
 import paddle.fluid.core as core

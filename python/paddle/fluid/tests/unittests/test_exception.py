@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
 import unittest
+
+import numpy
 
 import paddle
 import paddle.fluid as fluid
@@ -65,7 +66,7 @@ class TestExceptionNoCStack(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             x = numpy.random.random(size=(10, 2)).astype('float32')
-            linear = fluid.dygraph.Linear(1, 10)
+            linear = paddle.nn.Linear(1, 10)
             data = fluid.dygraph.to_variable(x)
             with self.assertRaises(ValueError):
                 res = linear(data)

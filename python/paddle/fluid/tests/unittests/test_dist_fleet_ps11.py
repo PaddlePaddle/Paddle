@@ -16,9 +16,9 @@ import os
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -38,7 +38,7 @@ class TestPSPassWithBow(unittest.TestCase):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
             cond = fluid.layers.cast(cond, dtype='float64')
-            cond_3 = fluid.layers.reduce_sum(cond)
+            cond_3 = paddle.sum(cond)
             acc = fluid.layers.elementwise_div(
                 cond_3,
                 fluid.layers.fill_constant(

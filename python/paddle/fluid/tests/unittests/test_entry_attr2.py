@@ -17,6 +17,7 @@ import paddle
 paddle.enable_static()
 
 import unittest
+
 import paddle.fluid as fluid
 
 

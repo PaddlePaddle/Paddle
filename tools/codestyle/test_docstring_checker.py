@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import astroid
 import docstring_checker
 import pylint.testutils
-import astroid
 
 
 class TestDocstring(pylint.testutils.CheckerTestCase):

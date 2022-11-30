@@ -16,16 +16,17 @@ import os
 
 os.environ['CPU_NUM'] = '2'
 
-import unittest
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
-import paddle.fluid.core as core
-import paddle.fluid.compiler as compiler
-import numpy
 import multiprocessing
+import unittest
+
+import numpy
 
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.compiler as compiler
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.executor import Executor
 
 paddle.enable_static()
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)

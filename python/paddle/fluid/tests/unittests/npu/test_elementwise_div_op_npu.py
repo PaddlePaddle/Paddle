@@ -133,7 +133,7 @@ class TestElementwiseDivNet(unittest.TestCase):
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
             f.stop_gradient = True
-            g = fluid.layers.elementwise_div(e, f)
+            g = paddle.divide(e, f)
 
             fc_1 = paddle.static.nn.fc(x=g, size=128)
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')

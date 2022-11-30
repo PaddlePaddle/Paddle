@@ -14,9 +14,9 @@
 
 import paddle
 import paddle.fluid as fluid
+import os
 import unittest
 import numpy as np
-import os
 
 
 def create_reader(shape, batch_number):

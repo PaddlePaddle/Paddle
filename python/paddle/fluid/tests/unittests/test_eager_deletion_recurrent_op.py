@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import os
+import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import unittest
-
 from paddle.fluid import ParamAttr
-from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
-import paddle
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, grad_var_name
 
 paddle.enable_static()
 
@@ -592,7 +593,7 @@ class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
             mem_pre = rnn_1.memory(shape=[-1, self.input_dim], batch_ref=x)
             x_t = rnn_1.step_input(x)
             last_rnn_output = rnn_0()
-            last_rnn_sum = fluid.layers.reduce_sum(last_rnn_output)
+            last_rnn_sum = paddle.sum(last_rnn_output)
             mem = layers.elementwise_add(x=x_t, y=last_rnn_sum)
             y = layers.elementwise_add(x=mem_pre, y=mem)
             rnn_1.update_memory(mem_pre, mem)

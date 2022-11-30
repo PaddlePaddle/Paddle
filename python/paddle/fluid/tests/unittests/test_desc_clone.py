@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import functools
+import unittest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-import unittest
-import functools
-import collections
 
 SEED = 1
 DTYPE = "float32"
@@ -210,11 +211,11 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
-            true = fluid.layers.ones(shape=[1], dtype="float32")
+            true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
 
-            cond = fluid.layers.equal(true, true)
+            cond = paddle.equal(true, true)
 
             def true_fn():
                 hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
@@ -253,11 +254,11 @@ class TestCloneWithRaise(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
-            true = fluid.layers.ones(shape=[1], dtype="float32")
+            true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
 
-            cond = fluid.layers.equal(true, true)
+            cond = paddle.equal(true, true)
 
             def true_fn():
                 hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)

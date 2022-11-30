@@ -14,19 +14,20 @@
 
 import contextlib
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid import core, framework
-from paddle.fluid.layers.utils import _hash_with_id
-from paddle.fluid.framework import _in_eager_mode_
-from paddle.fluid.executor import (
-    _is_enable_standalone_executor,
-    _is_dy2st_enable_standalone_executor,
-)
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.executor import (
+    _is_dy2st_enable_standalone_executor,
+    _is_enable_standalone_executor,
+)
+from paddle.fluid.framework import _in_eager_mode_
+from paddle.fluid.layers.utils import _hash_with_id
 
 paddle.enable_static()
 
@@ -417,7 +418,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.op_type = "run_program"
         self.dtype = np.float32
         self.input_names = {'X': ['x'], 'Params': ['emb_weight']}
-        self.output_names = {'Out': ['reduce_sum_0.tmp_0']}
+        self.output_names = {'Out': ['sum_0.tmp_0']}
 
         self.inputs = {
             'X': {'x': np.array([[1, 3, 0, 4, 7]]).astype("int64")},
@@ -456,7 +457,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
             ),
             is_sparse=True,
         )
-        y = fluid.layers.reduce_sum(emb, dim=-1)
+        y = paddle.sum(emb, axis=-1)
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
         # 3. append backward

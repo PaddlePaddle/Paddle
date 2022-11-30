@@ -1792,11 +1792,12 @@ class LarsMomentumOptimizer(Optimizer):
             import paddle.fluid as fluid
             import numpy as np
 
+            paddle.enable_static()
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
             inp = fluid.layers.data(
                 name="inp", shape=[2, 2], append_batch_size=False)
             out = paddle.static.nn.fc(inp, size=3)
-            out = fluid.layers.reduce_sum(out)
+            out = paddle.sum(out)
             optimizer = fluid.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(out)
 
@@ -2047,14 +2048,16 @@ class AdagradOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import numpy as np
             import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
             inp = fluid.data(name="inp", shape=[2, 2])
             out = paddle.static.nn.fc(inp, size=3)
-            out = fluid.layers.reduce_sum(out)
+            out = paddle.sum(out)
             optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.2)
             optimizer.minimize(out)
 
@@ -7309,10 +7312,10 @@ class LookaheadOptimizer:
                     for param_name in params:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
-                        tmp_var = layers.elementwise_add(
-                            layers.elementwise_mul(fast_var, alpha),
-                            layers.elementwise_mul(
-                                slow_var, layers.elementwise_sub(one_var, alpha)
+                        tmp_var = paddle.add(
+                            paddle.multiply(fast_var, alpha),
+                            paddle.multiply(
+                                slow_var, paddle.subtract(one_var, alpha)
                             ),
                         )
                         layers.assign(input=tmp_var, output=slow_var)

@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
-from .tensor.attribute import is_complex
-from .fft import fft_r2c, fft_c2r, fft_c2c
+from .fft import fft_c2c, fft_c2r, fft_r2c
 from .fluid.data_feeder import check_variable_and_dtype
 from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from .tensor.attribute import is_complex
 
 __all__ = [
     'stft',

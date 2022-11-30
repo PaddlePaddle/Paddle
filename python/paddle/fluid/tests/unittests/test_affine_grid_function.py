@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import unittest
+
 import numpy as np
-from paddle import fluid
+
+import paddle
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import unittest
+from paddle import fluid
 
 
 class AffineGridTestCase(unittest.TestCase):
