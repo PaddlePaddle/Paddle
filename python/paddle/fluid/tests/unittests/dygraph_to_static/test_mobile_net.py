@@ -23,11 +23,19 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import BatchNorm, Linear
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.jit import ProgramTranslator
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.nn import Linear
 from paddle.jit.api import declarative
+from paddle.jit import ProgramTranslator
+
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+
+import unittest
+
+from predictor_utils import PredictorTools
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -255,12 +263,14 @@ class MobileNetV1(fluid.dygraph.Layer):
         )
         self.dwsl.append(dws6)
 
-        self.pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
+            pool_type='avg', global_pooling=True
+        )
 
         self.out = Linear(
             int(1024 * scale),
             class_dim,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "fc7_weights"
             ),
             bias_attr=ParamAttr(name="fc7_offset"),
@@ -421,14 +431,16 @@ class MobileNetV2(fluid.dygraph.Layer):
         )
 
         # 4. pool
-        self._pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self._pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
+            pool_type='avg', global_pooling=True
+        )
 
         # 5. fc
         tmp_param = ParamAttr(name=self.full_name() + "fc10_weights")
         self._fc = Linear(
             self._out_c,
             class_dim,
-            param_attr=tmp_param,
+            weight_attr=tmp_param,
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 
