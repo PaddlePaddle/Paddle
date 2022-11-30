@@ -136,12 +136,12 @@ class BaseTransform:
 
     calling logic:
 
-        ..code-block:: text
+    .. code-block:: text
 
-            if keys is None:
-                _get_params -> _apply_image()
-            else:
-                _get_params -> _apply_*() for * in keys
+        if keys is None:
+            _get_params -> _apply_image()
+        else:
+            _get_params -> _apply_*() for * in keys
 
     If you want to implement a self-defined transform method for image,
     rewrite _apply_* method in subclass.
