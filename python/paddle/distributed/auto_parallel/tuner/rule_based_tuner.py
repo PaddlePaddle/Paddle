@@ -83,6 +83,64 @@ class QKVPattern(BasePattern):
         ]  # 2-tuple list such as [(tensor_id, shard_sepc)]
 
 
+@register_pattern
+class FFNPattrern(BasePattern):
+    name = "ffn"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        x = self.add_node(0, **{"type": "var"})
+
+        w1_weight = self.add_node(1, **{"dim": 2, "type": "param"})
+        w1_matmul = self.add_node(2, **{"type": "matmul_v2"})
+
+        w1_x = self.add_edge(0, 2, **{"input_name": "X"})
+        w1_y = self.add_edge(1, 2, **{"input_name": "Y"})
+
+        out1 = self.add_node(3, **{"type": "var"})
+        w1_out = self.add_edge(2, 3, **{"output_name": "Out"})
+
+        w1_b = self.add_node(4, **{"dim": 1, "type": "param"})
+        add1 = self.add_node(5, **{"type": "elementwise_add"})
+
+        add1_x = self.add_edge(3, 5, **{"input_name": "X"})
+        add1_y = self.add_edge(4, 5, **{"input_name": "Y"})
+
+        out2 = self.add_node(6, **{"type": "var"})
+        add1_out = self.add_edge(5, 6, **{"output_name": "Out"})
+
+        gelu = self.add_node(7, **{"type": "gelu"})
+
+        gelu_x = self.add_edge(6, 7, **{"input_name": "X"})
+        out3 = self.add_node(8, **{"type": "var"})
+        gelu_out = self.add_edge(7, 8, **{"output_name": "Out"})
+
+        w2_weight = self.add_node(9, **{"dim": 2, "type": "param"})
+        w2_matmul = self.add_node(10, **{"type": "matmul_v2"})
+
+        w1_x = self.add_edge(8, 10, **{"input_name": "X"})
+        w1_y = self.add_edge(9, 10, **{"input_name": "Y"})
+
+        out4 = self.add_node(11, **{"type": "var"})
+        w2_out = self.add_edge(10, 11, **{"output_name": "Out"})
+
+        w2_b = self.add_node(12, **{"dim": 1, "type": "param"})
+        add2 = self.add_node(13, **{"type": "elementwise_add"})
+
+        add2_x = self.add_edge(11, 13, **{"input_name": "X"})
+        add2_y = self.add_edge(12, 13, **{"input_name": "Y"})
+
+        out5 = self.add_node(14, **{"type": "var"})
+        add2_out = self.add_edge(13, 14, **{"output_name": "Out"})
+
+        # Pattern
+        self.attrs["shard_spec"] = [
+            [(1, 2, 3), [[-1, 0], [-1, 1]]],
+        ]  # 2-tuple list such as [(tensor_id, shard_sepc)]
+
+
 def convert_to_graph(ops, block):
     """Convert ops to graph."""
     graph = Graph()
