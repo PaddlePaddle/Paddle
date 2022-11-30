@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import warnings
+
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.framework as framework
 import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.framework as framework
 import paddle.fluid.layer_helper as layer_helper
 from paddle.distributed.communication.group import (
     _get_global_group,
-    _warn_cur_rank_not_in_group,
     _get_or_throw_group_rank,
+    _warn_cur_rank_not_in_group,
 )
 
 

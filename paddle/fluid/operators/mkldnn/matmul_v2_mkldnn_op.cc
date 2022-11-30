@@ -381,7 +381,7 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
 }
 
 template <typename T>
-class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -696,21 +696,13 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
-                   MatMulV2MKLDNNKernel<float>,
-                   MatMulV2MKLDNNKernel<paddle::platform::bfloat16>,
-                   MatMulV2MKLDNNKernel<int8_t>,
-                   MatMulV2MKLDNNKernel<uint8_t>);
+                   MatMulMKLDNNKernel<float>,
+                   MatMulMKLDNNKernel<paddle::platform::bfloat16>,
+                   MatMulMKLDNNKernel<int8_t>,
+                   MatMulMKLDNNKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    MatMulGradMKLDNNKernel<float>,
                    MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);
-
-REGISTER_OP_KERNEL(matmul_v2,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   MatMulV2MKLDNNKernel<float>,
-                   MatMulV2MKLDNNKernel<paddle::platform::bfloat16>,
-                   MatMulV2MKLDNNKernel<int8_t>,
-                   MatMulV2MKLDNNKernel<uint8_t>);
