@@ -1762,7 +1762,7 @@ def fast_decode(
         step_idx = layers.fill_constant(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
-        cond = layers.less_than(x=step_idx, y=max_len)
+        cond = paddle.less_than(x=step_idx, y=max_len)
         while_op = layers.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
@@ -1861,7 +1861,7 @@ def fast_decode(
             for i in range(n_layer):
                 layers.assign(pre_caches[i]["k"], caches[i]["k"])
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
-            length_cond = layers.less_than(x=step_idx, y=max_len)
+            length_cond = paddle.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
             paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 

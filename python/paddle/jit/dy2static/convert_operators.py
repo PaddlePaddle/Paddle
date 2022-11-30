@@ -38,7 +38,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers.control_flow import (
     cond,
     while_loop,
-    less_than,
     increment,
 )
 from .return_transformer import (
@@ -784,7 +783,7 @@ def _run_paddle_pop(array, *args):
     assert isinstance(idx, int)
 
     def cond(i, new_array):
-        return less_than(i, arr_len)
+        return paddle.less_than(i, arr_len)
 
     def body(i, new_array):
         item = array_read(array=array, i=i)

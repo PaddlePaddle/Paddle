@@ -2423,7 +2423,7 @@ class TestLayer(LayerTest):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
             def cond(i):
-                return layers.less_than(i, ten)
+                return paddle.less_than(i, ten)
 
             def body(i):
                 return i + 1
@@ -2436,7 +2436,7 @@ class TestLayer(LayerTest):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
             def cond1(i):
-                return layers.less_than(i, ten)
+                return paddle.less_than(i, ten)
 
             def body1(i):
                 return i + 1
@@ -2464,7 +2464,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a = layers.data(name='a', shape=[1], dtype='int64')
             b = layers.data(name='b', shape=[1], dtype='int64')
-            cond = layers.less_than(x=a, y=b)
+            cond = paddle.less_than(x=a, y=b)
             static_ret = self.get_static_graph_result(
                 feed={"a": value_a, "b": value_b}, fetch_list=[cond]
             )[0]
@@ -2472,14 +2472,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da = base.to_variable(value_a)
                 db = base.to_variable(value_b)
-                dcond = layers.less_than(x=da, y=db)
+                dcond = paddle.less_than(x=da, y=db)
 
                 for i in range(len(static_ret)):
                     self.assertTrue(dcond.numpy()[i] == static_ret[i])
 
             da = base.to_variable(value_a)
             db = base.to_variable(value_b)
-            dcond = layers.less_than(x=da, y=db)
+            dcond = paddle.less_than(x=da, y=db)
 
             for i in range(len(static_ret)):
                 self.assertTrue(dcond.numpy()[i] == static_ret[i])
@@ -2696,8 +2696,8 @@ class TestLayer(LayerTest):
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
 
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
@@ -2719,8 +2719,8 @@ class TestLayer(LayerTest):
                 y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
                 z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
 
-                pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
-                pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+                pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+                pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
                 pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
                 out_1 = layers.case(
@@ -2736,8 +2736,8 @@ class TestLayer(LayerTest):
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
 
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
