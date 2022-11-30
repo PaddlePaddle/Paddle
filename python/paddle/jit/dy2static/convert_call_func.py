@@ -81,30 +81,15 @@ def is_builtin(func, name=None):
         return False
 
 
-def builtin_modules():
-    """
-    Return builtin modules.
-    """
-    modules = [
-        collections,
-        pdb,
-        copy,
-        inspect,
-        re,
-        numpy,
-        logging,
-    ]
-    try:
-        import six
-
-        modules.append(six)
-    except ImportError:
-        pass  # do nothing
-
-    return modules
-
-
-BUILTIN_LIKELY_MODULES = builtin_modules()
+BUILTIN_LIKELY_MODULES = [
+    collections,
+    pdb,
+    copy,
+    inspect,
+    re,
+    numpy,
+    logging,
+]
 
 
 def is_unsupported(func):
