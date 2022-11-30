@@ -115,7 +115,7 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 cc_library(
   string_array
   SRCS string_array.cc
-  DEPS utf8proc)
+  DEPS utf8proc phi_enforce)
 
 cc_library(
   data_type
