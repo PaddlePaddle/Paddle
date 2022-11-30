@@ -38,7 +38,6 @@ __all__ = [
     'cross_entropy',
     'square_error_cost',
     'softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
 ]
 
 kIgnoreIndex = -100
@@ -292,66 +291,3 @@ def softmax_with_cross_entropy(
         return_softmax,
         axis,
     )
-
-
-@templatedoc()
-def sigmoid_cross_entropy_with_logits(
-    x, label, ignore_index=kIgnoreIndex, name=None, normalize=False
-):
-    """
-
-    ${comment}
-
-    Args:
-        x(Tensor): a 2-D tensor with shape N x D, where N is the batch size and
-                D is the number of classes. This input is a tensor of logits computed
-                by the previous operator. Logits are unscaled log probabilities given
-                as log(p/(1-p)) The data type should be float32 or float64.
-        label (Tensor): a 2-D tensor of the same type and shape as X.
-                This input is a tensor of probabalistic labels for each logit.
-        ignore_index(int): Specifies a target value that is ignored and
-                does not contribute to the input gradient.
-        name(str|None): The default value is None.  Normally there is
-            no need for user to set this property.  For more information,
-            please refer to :ref:`api_guide_Name`
-        normalize(bool): If true, divide the output by the number of
-            targets != ignore_index.
-
-    Returns:
-        out(Tensor): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-
-            import paddle
-
-            input = paddle.rand(shape=[10], dtype='float32')
-            label = paddle.rand(shape=[10], dtype='float32')
-            loss = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(input, label,
-                                                            ignore_index=-1, normalize=True)
-            print(loss)
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.sigmoid_cross_entropy_with_logits(
-            x, label, normalize, int(ignore_index)
-        )
-    check_variable_and_dtype(
-        x,
-        'input',
-        ['float16', 'float32', 'float64'],
-        'sigmoid_cross_entropy_with_logits',
-    )
-
-    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="sigmoid_cross_entropy_with_logits",
-        inputs={"X": x, "Label": label},
-        attrs={"ignore_index": ignore_index, 'normalize': normalize},
-        outputs={"Out": out},
-    )
-    return out
