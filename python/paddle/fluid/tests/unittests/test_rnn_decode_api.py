@@ -836,8 +836,9 @@ class TestBeamSearch(ModuleApiTest):
         beam_size=4,
         max_step_num=20,
     ):
-        embedder = paddle.fluid.dygraph.Embedding(
-            size=[vocab_size, embed_dim], dtype="float64"
+        embedder = paddle.nn.Embedding(
+            vocab_size,
+            embed_dim
         )
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)

@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import Adam
 
@@ -167,10 +167,10 @@ class PtbModel(fluid.Layer):
             dropout=dropout,
         )
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -991,7 +991,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_testOnlyLoadParams(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = Embedding(10, 10)
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, os.path.join('saved_dy', 'emb_dy'))
 
@@ -1011,7 +1011,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_test_load_compatible_with_keep_name_table(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = Embedding(10, 10)
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, os.path.join('saved_dy', 'emb_dy'))
 

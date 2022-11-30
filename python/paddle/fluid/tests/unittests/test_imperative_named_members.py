@@ -101,7 +101,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
                     self.linear1 = paddle.nn.Linear(10, 10)
                     self.linear2 = paddle.nn.Linear(5, 5)
                     self.conv2d = paddle.nn.Conv2D(3, 2, 3)
-                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
+                    self.embedding = paddle.nn.Embedding(128, 16)
                     self.h_0 = fluid.dygraph.to_variable(
                         np.zeros([10, 10]).astype('float32')
                     )
