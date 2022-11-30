@@ -126,17 +126,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
   }
 
-  void InferShapeReshape2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,            // NOLINT
-                            framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
-    auto xshape_dims = xshape->dims();
-    x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    out_dims = out->dims();
-    ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
-  }
-
   // in reshape1/2 ops  "ShapeTensor" has highest priority and "Shape" has
   // second highest priority
   void ChangeReshapeOutDimsIfNeeded(
@@ -165,16 +154,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     x_dims = x->dims();
     const auto& axes = ctx.Attr<std::vector<int>>("axes");
     out_dims = GetOutputShape(axes, x_dims, true);
-  }
-
-  void InferShapeSqueeze2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,            // NOLINT
-                            framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
-    auto xshape_dims = xshape->dims();
-    x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    out_dims = out->dims();
   }
 
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,

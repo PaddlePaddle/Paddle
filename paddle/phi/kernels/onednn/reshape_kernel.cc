@@ -159,13 +159,15 @@ void ReshapeWithXShape(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(reshape,
-                           OneDNN,
-                           ALL_LAYOUT,
-                           phi::ReshapeKernel<phi::OneDNNContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
-                           OneDNN,
-                           ALL_LAYOUT,
-                           phi::ReshapeWithXShape<phi::OneDNNContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL(reshape,
+                   OneDNN,
+                   ONEDNN,
+                   phi::ReshapeKernel<phi::OneDNNContext>,
+                   float,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(reshape_with_xshape,
+                   OneDNN,
+                   ONEDNN,
+                   phi::ReshapeWithXShape<phi::OneDNNContext>,
+                   float,
+                   phi::dtype::bfloat16) {}
