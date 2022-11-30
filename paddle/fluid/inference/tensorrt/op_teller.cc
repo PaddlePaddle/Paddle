@@ -66,6 +66,12 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("sparse_multihead_matmul");
     int8_teller_set.insert("sparse_multihead_matmul");
 #endif
+#if IS_TRT_VERSION_GE(8200)
+    teller_set.insert("sign");
+    int8_teller_set.insert("sign");
+    teller_set.insert("round");
+    int8_teller_set.insert("round");
+#endif
   }
 
   bool operator()(const framework::OpDesc& desc,
@@ -2348,8 +2354,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "reciprocal",
       "erf",
       "logical_not",
-      "sign",
-      "round",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -2483,8 +2487,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "reciprocal",
       "erf",
       "logical_not",
-      "sign",
-      "round",
       "softmax",
       "sigmoid",
       "hard_swish",

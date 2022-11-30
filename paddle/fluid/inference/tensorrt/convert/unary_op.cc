@@ -96,6 +96,8 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
 #if IS_TRT_VERSION_GE(7000)
         {"erf", {nvinfer1::UnaryOperation::kERF}},
         {"not", {nvinfer1::UnaryOperation::kNOT}},
+#endif
+#if IS_TRT_VERSION_GE(8200)
         {"sign", {nvinfer1::UnaryOperation::kSIGN}},
         {"round", {nvinfer1::UnaryOperation::kROUND}},
 #endif
@@ -229,6 +231,8 @@ REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
 #if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
 REGISTER_TRT_OP_CONVERTER(logical_not, NotOpConverter);
+#endif
+#if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(sign, SignOpConverter);
 REGISTER_TRT_OP_CONVERTER(round, RoundOpConverter);
 #endif
