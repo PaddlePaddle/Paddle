@@ -267,14 +267,12 @@ def img_conv_group(
             x=tmp,
             kernel_size=pool_size,
             stride=pool_stride,
-            padding=pool_padding,
         )
     else:
         pool_out = paddle.nn.functional.avg_pool2d(
             x=tmp,
             kernel_size=pool_size,
             stride=pool_stride,
-            padding=pool_padding,
         )
     return pool_out
 
