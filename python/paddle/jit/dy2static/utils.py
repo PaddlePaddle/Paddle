@@ -16,7 +16,6 @@ import ast
 import astor
 import atexit
 import copy
-import collections
 from paddle.utils import gast
 import inspect
 import os
@@ -32,15 +31,17 @@ from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import assign
-import collections
 from functools import reduce
 import warnings
+
+
+__all__ = []
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
 PADDLE_MODULE_PREFIX = 'paddle.'
 DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
-DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
+DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.jit.dy2static'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
 ALREADY_D2S = '__already_d2s'
@@ -258,19 +259,10 @@ def is_api_in_module(node, module_prefix):
 
     func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
-        # TODO(liym27):
-        #  Consider a better to import modules like:
-        #  source_file = inspect.getfile(dyfunc)
-        #  import_statements = ImportVisitor(source_file).transform()
-        #  import_str = "".join(import_statements)
-        import paddle
-        import paddle.fluid as fluid
-        import paddle.fluid.dygraph as dygraph
-        import paddle.fluid.layers as layers
-        import paddle.jit.dy2static as _jst
-
-        from paddle.fluid.dygraph import to_variable
-        from paddle import to_tensor
+        import paddle.fluid as fluid  # noqa: F401
+        import paddle.fluid.dygraph as dygraph  # noqa: F401
+        import paddle.fluid.layers as layers  # noqa: F401
+        import paddle.jit.dy2static as _jst  # noqa: F401
 
         return eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
@@ -304,7 +296,7 @@ def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
-        import numpy as np
+        import numpy as np  # noqa: F401
 
         module_result = eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
@@ -321,7 +313,6 @@ def is_numpy_api(node):
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
-    import paddle.fluid as fluid
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -402,7 +393,6 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
-    import paddle.fluid as fluid
 
     if method_name == "__init__" or eval(
         "issubclass({}, fluid.dygraph.Layer)".format(class_src)
@@ -894,7 +884,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         return node
 
     def _is_node_with_tensor(self, node, name_id):
-        from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+        from paddle.jit.dy2static.static_analysis import (
             NodeVarType,
         )
 
@@ -1213,7 +1203,6 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
             from paddle.jit.dy2static.loop_transformer import (
-                WHILE_CONDITION_PREFIX,
                 WHILE_BODY_PREFIX,
                 FOR_CONDITION_PREFIX,
                 FOR_BODY_PREFIX,

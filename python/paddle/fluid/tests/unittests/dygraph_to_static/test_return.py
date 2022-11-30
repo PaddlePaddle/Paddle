@@ -20,7 +20,7 @@ from ifelse_simple_func import dyfunc_with_if_else
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 from paddle.jit import ProgramTranslator, to_static
 
 SEED = 2020

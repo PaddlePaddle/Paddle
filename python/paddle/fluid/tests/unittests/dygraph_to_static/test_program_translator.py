@@ -27,7 +27,7 @@ from ifelse_simple_func import (
 import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 from paddle.utils import gast

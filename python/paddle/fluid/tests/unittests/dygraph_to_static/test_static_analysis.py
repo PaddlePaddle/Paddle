@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import (
+from paddle.jit.dy2static import (
     NodeVarType,
     StaticAnalysisVisitor,
 )

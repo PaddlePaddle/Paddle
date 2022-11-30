@@ -15,7 +15,7 @@
 import re
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+from paddle.jit.dy2static.variable_trans_func import (
     to_static_variable,
 )
 from paddle.fluid.framework import core, Variable
@@ -46,11 +46,11 @@ from paddle.fluid.layers.control_flow import (
 from .return_transformer import (
     RETURN_NO_VALUE_VAR_NAME,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     UndefinedVar,
     Dygraph2StaticException,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper
+from paddle.jit.dy2static.utils import GetterSetterHelper
 from paddle.fluid.layers.utils import copy_mutable_vars
 
 
