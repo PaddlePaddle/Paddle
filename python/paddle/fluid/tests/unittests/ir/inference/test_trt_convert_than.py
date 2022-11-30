@@ -27,9 +27,6 @@ import paddle.inference as paddle_infer
 # I don't want to mess up the code written by others, so I wrote a class specifically
 class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8400:
-            return False
         return True
 
     def sample_program_configs(self):
@@ -130,6 +127,8 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
+            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8400:
+                return 0, 5
             if not dynamic_shape:
                 return 0, 5
             return 1, 3
