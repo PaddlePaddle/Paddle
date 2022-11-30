@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 
 np.random.seed(2021)
 paddle.seed(1024)
@@ -28,7 +29,7 @@ class SimpleNet(fluid.Layer):
     def __init__(self):
         # bias is unused parameters, and it share with net_a
         super().__init__()
-        self.net_a = Linear(input_dim=10, output_dim=5)
+        self.net_a = Linear(10, 5)
         self.net_b = Linear(10, 10)
         self.bias = self.net_a.bias
 
