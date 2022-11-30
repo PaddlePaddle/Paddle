@@ -92,15 +92,6 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   return out;
 }
 
-// int max_rank = 3;
-// struct ConvCacheKey
-// {
-//   cudnnDataType_t cudnn_dtype;
-//   int in_shape[ max_rank + 2];
-//   int filter_shape[ max_rank + 2];
-
-// };
-
 // As the container of conv relevant descriptors.
 template <typename HandleT, typename DataT>
 struct ConvArgsBase {
@@ -114,20 +105,21 @@ struct ConvArgsBase {
   const phi::DenseTensor* w = nullptr;
   const phi::DenseTensor* o = nullptr;
 
-  DataT cudnn_dtype;
+  phi::autotune::ConvCacheKey conv_cache_key;
+  // DataT cudnn_dtype;
 
-  // strides
-  std::vector<int> s;
-  // paddings
-  std::vector<int> p;
-  // dilations
-  std::vector<int> d;
+  // // strides
+  // std::vector<int> s;
+  // // paddings
+  // std::vector<int> p;
+  // // dilations
+  // std::vector<int> d;
 
-  // groups
-  int group;
+  // // groups
+  // int group;
 
-  // data foramt
-  GPUDNNDataLayout data_layout;
+  // // data foramt
+  // GPUDNNDataLayout data_layout;
 
   ConvArgsBase(const HandleT& h,
                const phi::DenseTensor* x,
@@ -139,36 +131,54 @@ struct ConvArgsBase {
                DataT dtype,
                int g,
                GPUDNNDataLayout layout)
-      : handle(h),
-        x(x),
-        w(w),
-        o(o),
-        s(s),
-        p(p),
-        d(d),
-        cudnn_dtype(dtype),
-        group(g),
-        data_layout(layout) {}
+      : handle(h), x(x), w(w), o(o) {
+    memset(&conv_cache_key, 0, sizeof(phi::autotune::ConvCacheKey));
+
+    for (int i = 0; i < x->dims().size(); ++i) {
+      conv_cache_key.in_shape[i] = x->dims()[i];
+    }
+    for (int i = 0; i < w->dims().size(); ++i) {
+      conv_cache_key.filter_shape[i] = w->dims()[i];
+    }
+
+    // strides
+    for (size_t i = 0; i < s.size(); ++i) {
+      conv_cache_key.strides[i] = s[i];
+    }
+
+    for (size_t i = 0; i < p.size(); ++i) {
+      conv_cache_key.paddings[i] = p[i];
+    }
+
+    for (size_t i = 0; i < d.size(); ++i) {
+      conv_cache_key.dilations[i] = d[i];
+    }
+
+    conv_cache_key.group = g;
+  }
 
   template <typename T>
   phi::autotune::ConvCacheKey ConvertToConvCacheKey() const {
-    auto x_shape = phi::vectorize(x->dims());
-    auto w_shape = phi::vectorize(w->dims());
-    VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
-             << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
-             << ", data=" << paddle::experimental::CppTypeToDataType<T>::Type()
-             << ", group=" << group
-             << ", data layout=" << static_cast<int64_t>(data_layout);
+    return conv_cache_key;
+    // auto x_shape = phi::vectorize(x->dims());
+    // auto w_shape = phi::vectorize(w->dims());
+    // VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
+    //          << ", strides=" << s << ", paddings=" << p << ", dilations=" <<
+    //          d
+    //          << ", data=" <<
+    //          paddle::experimental::CppTypeToDataType<T>::Type()
+    //          << ", group=" << group
+    //          << ", data layout=" << static_cast<int64_t>(data_layout);
 
-    return phi::autotune::ConvCacheKey(
-        x_shape,
-        w_shape,
-        p,
-        s,
-        d,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        group,
-        static_cast<int64_t>(data_layout));
+    // return phi::autotune::ConvCacheKey(
+    //     x_shape,
+    //     w_shape,
+    //     p,
+    //     s,
+    //     d,
+    //     paddle::experimental::CppTypeToDataType<T>::Type(),
+    //     group,
+    //     static_cast<int64_t>(data_layout));
   }
 };
 

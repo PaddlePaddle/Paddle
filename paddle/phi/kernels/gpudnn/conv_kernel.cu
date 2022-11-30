@@ -65,8 +65,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.shared_cudnn_workspace_handle();
-  LOG(ERROR) << workspace_handle;
-  // auto workspace_handle = ctx.cudnn_workspace_handle();
+  // LOG(ERROR) << workspace_handle;
+  //  auto workspace_handle = ctx.cudnn_workspace_handle();
 
   auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
   auto dtype = paddle::platform::CudnnDataType<T>::type;

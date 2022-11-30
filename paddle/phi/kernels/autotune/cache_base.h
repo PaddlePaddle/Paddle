@@ -59,64 +59,89 @@ size_t GetKey(Args&&... args) {
   HashCombine(&seed, std::forward<Args>(args)...);
   return seed;
 }
-
+const size_t kMaxConvRank = 5;
 struct ConvCacheKey {
-  ConvCacheKey() {}
-  ConvCacheKey(const std::vector<int64_t>& arg_x_dims,
-               const std::vector<int64_t>& arg_w_dims,
-               const std::vector<int>& arg_strides,
-               const std::vector<int>& arg_paddings,
-               const std::vector<int>& arg_dilations,
-               phi::DataType arg_dtype,
-               int arg_groups,
-               int64_t arg_data_layout)
-      : x_dims(arg_x_dims),
-        w_dims(arg_w_dims),
-        strides(arg_strides),
-        paddings(arg_paddings),
-        dilations(arg_dilations),
-        dtype(arg_dtype),
-        groups(arg_groups),
-        data_layout(arg_data_layout) {}
-  size_t hash_value() const {
-    return GetKey(x_dims,
-                  w_dims,
-                  strides,
-                  paddings,
-                  dilations,
-                  static_cast<int64_t>(dtype),
-                  groups,
-                  data_layout);
-  }
+  // cudnnDataType_t cudnn_dtype;
+  int in_shape[kMaxConvRank];
+  int input_rank;
+  int filter_shape[5];
+  int strides[3];
+  int paddings[3];
+  int dilations[3];
+  int group;
+  int data_layout;
 
-  std::vector<int64_t> x_dims;
-  std::vector<int64_t> w_dims;
-  std::vector<int> strides;
-  std::vector<int> paddings;
-  std::vector<int> dilations;
-  phi::DataType dtype;
-  int groups;
-  int64_t data_layout;
+  // size_t hash_value() const {
+  // return GetKey(in_shape,
+  //               filter_shape,
+  //                 strides,
+  //                 paddings,
+  //                 dilations,
+  //                 static_cast<int64_t>(0),
+  //                 group,
+  //                 data_layout);
+  // }
 };
+
+// struct ConvCacheKey {
+//   ConvCacheKey() {}
+//   ConvCacheKey(const std::vector<int64_t>& arg_x_dims,
+//                const std::vector<int64_t>& arg_w_dims,
+//                const std::vector<int>& arg_strides,
+//                const std::vector<int>& arg_paddings,
+//                const std::vector<int>& arg_dilations,
+//                phi::DataType arg_dtype,
+//                int arg_groups,
+//                int64_t arg_data_layout)
+//       : x_dims(arg_x_dims),
+//         w_dims(arg_w_dims),
+//         strides(arg_strides),
+//         paddings(arg_paddings),
+//         dilations(arg_dilations),
+//         dtype(arg_dtype),
+//         groups(arg_groups),
+//         data_layout(arg_data_layout) {}
+//   size_t hash_value() const {
+//     return GetKey(x_dims,
+//                   w_dims,
+//                   strides,
+//                   paddings,
+//                   dilations,
+//                   static_cast<int64_t>(dtype),
+//                   groups,
+//                   data_layout);
+//   }
+
+//   std::vector<int64_t> x_dims;
+//   std::vector<int64_t> w_dims;
+//   std::vector<int> strides;
+//   std::vector<int> paddings;
+//   std::vector<int> dilations;
+//   phi::DataType dtype;
+//   int groups;
+//   int64_t data_layout;
+// };
 
 struct ConvCacheKeyHash {
   size_t operator()(const ConvCacheKey& cache) const {
-    return cache.hash_value();
+    auto ptr = reinterpret_cast<const uint8_t*>(&cache);
+    size_t value = 0x811C9DC5;
+    for (size_t i = 0; i < sizeof(ConvCacheKey); ++i) {
+      value ^= ptr[i];
+      value *= 0x01000193;
+    }
+    return value;
+
+    // return cache.hash_value();
   }
 };
 
 struct ConvCacheKeyEqual {
   size_t operator()(const ConvCacheKey& first,
                     const ConvCacheKey& second) const {
-    if (first.x_dims != second.x_dims) return false;
-    if (first.w_dims != second.w_dims) return false;
-    if (first.strides != second.strides) return false;
-    if (first.paddings != second.paddings) return false;
-    if (first.dilations != second.dilations) return false;
-    if (first.dtype != second.dtype) return false;
-    if (first.groups != second.groups) return false;
-    if (first.data_layout != second.data_layout) return false;
-
+    if (memcmp(&first, &second, sizeof(ConvCacheKey)) != 0) {
+      return false;
+    }
     return true;
   }
 };
