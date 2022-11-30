@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid.core as core
+
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.fluid.op import Operator
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestGetTensorFromSelectedRowsError(unittest.TestCase):

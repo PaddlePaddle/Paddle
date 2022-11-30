@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import warnings
-from paddle.nn.layer.norm import _BatchNormBase
-from paddle.framework import no_grad
+
+import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import no_grad
+from paddle.nn.layer.norm import _BatchNormBase
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
