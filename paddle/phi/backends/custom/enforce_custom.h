@@ -16,12 +16,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include <string>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace platform {
-namespace details {
+namespace phi {
 template <typename T>
 struct CustomDeviceStatusType {};
 
@@ -33,7 +31,6 @@ struct CustomDeviceStatusType {};
   }
 
 DEFINE_CUSTOM_DEVICE_STATUS_TYPE(C_Status, C_SUCCESS);
-}  // namespace details
 
 inline std::string build_custom_device_error_msg(C_Status stat) {
   std::ostringstream sout;
@@ -41,19 +38,17 @@ inline std::string build_custom_device_error_msg(C_Status stat) {
   return sout.str();
 }
 
-#define PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(COND)                      \
-  do {                                                                  \
-    auto __cond__ = (COND);                                             \
-    using __CUSTOM_DEVICE_STATUS_TYPE__ = decltype(__cond__);           \
-    constexpr auto __success_type__ =                                   \
-        ::paddle::platform::details::CustomDeviceStatusType<            \
-            __CUSTOM_DEVICE_STATUS_TYPE__>::kSuccess;                   \
-    if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = ::paddle::platform::errors::External(          \
-          ::paddle::platform::build_custom_device_error_msg(__cond__)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                            \
-    }                                                                   \
+#define PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(COND)                   \
+  do {                                                               \
+    auto __cond__ = (COND);                                          \
+    using __CUSTOM_DEVICE_STATUS_TYPE__ = decltype(__cond__);        \
+    constexpr auto __success_type__ = ::phi::CustomDeviceStatusType< \
+        __CUSTOM_DEVICE_STATUS_TYPE__>::kSuccess;                    \
+    if (UNLIKELY(__cond__ != __success_type__)) {                    \
+      auto __summary__ = ::phi::errors::External(                    \
+          ::phi::build_custom_device_error_msg(__cond__));           \
+      __THROW_ERROR_INTERNAL__(__summary__);                         \
+    }                                                                \
   } while (0)
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
 #endif  // PADDLE_WITH_CUSTOM_DEVICE

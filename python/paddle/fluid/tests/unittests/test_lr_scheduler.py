@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import math
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
