@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-import inspect
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -382,7 +384,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def func_test_np_left_mul(self):
         with fluid.dygraph.guard():
             t = np.sqrt(2.0 * np.pi)
-            x = fluid.layers.ones((2, 2), dtype="float32")
+            x = paddle.ones((2, 2), dtype="float32")
             y = t * x
 
             np.testing.assert_allclose(

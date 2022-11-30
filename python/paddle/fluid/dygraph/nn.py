@@ -56,7 +56,6 @@ __all__ = [
     'Dropout',
     'Embedding',
     'GRUUnit',
-    'InstanceNorm',
     'LayerNorm',
     'NCE',
     'PRelu',
@@ -672,6 +671,7 @@ class Pool2D(layers.Layer):
     def forward(self, input):
         if _non_static_mode():
             if not self._use_mkldnn and in_dygraph_mode():
+                input = input._use_gpudnn(self._use_cudnn)
                 return _C_ops.pool2d(
                     input,
                     self._pool_size,
@@ -684,7 +684,6 @@ class Pool2D(layers.Layer):
                     self._global_pooling,
                     False,
                     "EXPLICIT",
-                    self._use_cudnn,
                 )
 
             attrs = (
@@ -878,157 +877,6 @@ class Linear(layers.Layer):
         else:
             pre_activation = tmp
         return self._helper.append_activation(pre_activation, act=self._act)
-
-
-class InstanceNorm(layers.Layer):
-    r"""
-    This interface is used to construct a callable object of the ``InstanceNorm`` class.
-    For more details, refer to code examples.
-
-    Can be used as a normalizer function for convolution or fully_connected operations.
-    The required data format for this layer is one of the following:
-
-    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
-
-    Refer to `Instance Normalization: The Missing Ingredient for Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
-    for more details.
-
-    :math:`input` is the input features over a mini-batch.
-
-    ..  math::
-
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
-
-    Note:
-        `H` means height of feature map, `W` means width of feature map.
-
-    Parameters:
-        num_channels(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): A value added to the denominator for
-            numerical stability. Default is 1e-5.
-        param_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized
-	     one. If it is set to False, will not create param_attr. Default: None.
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If it is set to False, will not create bias_attr. Default: None.
-        dtype(str, optional): Indicate the data type of the input ``Tensor``,
-             which can be float32 or float64. Default: float32.
-
-    Returns:
-        None.
-
-    Examples:
-
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph.base import to_variable
-          import numpy as np
-          import paddle
-
-          # x's shape is [1, 3, 1, 2]
-          x = np.array([[[[1.0, 8.0]], [[10.0, 5.0]], [[4.0, 6.0]]]]).astype('float32')
-          with fluid.dygraph.guard():
-              x = to_variable(x)
-              instanceNorm = paddle.nn.InstanceNorm(3)
-              ret = instanceNorm(x)
-              # ret's shape is [1, 3, 1, 2]; value is [-1 1 0.999999 -0.999999 -0.999995 0.999995]
-              print(ret)
-
-    """
-
-    def __init__(
-        self,
-        num_channels,
-        epsilon=1e-5,
-        param_attr=None,
-        bias_attr=None,
-        dtype='float32',
-    ):
-        super().__init__()
-
-        if param_attr == False or bias_attr == False:
-            assert (
-                bias_attr == param_attr
-            ), "param_attr and bias_attr must be set to False at the same time in InstanceNorm"
-        self._epsilon = epsilon
-        self._param_attr = param_attr
-        self._bias_attr = bias_attr
-        self._dtype = dtype
-
-        if param_attr != False and bias_attr != False:
-            self.scale = self.create_parameter(
-                attr=self._param_attr,
-                shape=[num_channels],
-                dtype=self._dtype,
-                default_initializer=Constant(1.0),
-                is_bias=False,
-            )
-            self.bias = self.create_parameter(
-                attr=self._bias_attr,
-                shape=[num_channels],
-                dtype=self._dtype,
-                default_initializer=Constant(0.0),
-                is_bias=True,
-            )
-        else:
-            self.scale = None
-            self.bias = None
-
-    def forward(self, input):
-        if in_dygraph_mode():
-            out = _C_ops.instance_norm(
-                input, self.scale, self.bias, self._epsilon
-            )
-            return out
-        if _in_legacy_dygraph():
-            out, _, _ = _legacy_C_ops.instance_norm(
-                input, self.scale, self.bias, 'epsilon', self._epsilon
-            )
-            return out
-
-        check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], "InstanceNorm"
-        )
-
-        attrs = {"epsilon": self._epsilon}
-
-        if self.scale and self.bias:
-            inputs = {"X": [input], "Scale": [self.scale], "Bias": [self.bias]}
-        else:
-            inputs = {"X": [input]}
-
-        saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True
-        )
-        saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True
-        )
-        instance_norm_out = self._helper.create_variable_for_type_inference(
-            self._dtype
-        )
-
-        outputs = {
-            "Y": [instance_norm_out],
-            "SavedMean": [saved_mean],
-            "SavedVariance": [saved_variance],
-        }
-
-        self._helper.append_op(
-            type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs
-        )
-        return instance_norm_out
 
 
 class BatchNorm(layers.Layer):

@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.core as core
-import paddle
+import copy
+import unittest
+
 import numpy as np
+
+import paddle
+import paddle.fluid.core as core
 from paddle.fluid.framework import (
     EagerParamBase,
     _current_expected_place,
@@ -22,8 +26,6 @@ from paddle.fluid.framework import (
     _test_eager_guard,
     in_dygraph_mode,
 )
-import unittest
-import copy
 
 
 class EagerScaleTestCase(unittest.TestCase):
@@ -896,6 +898,21 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             self.assertTrue(x._is_initialized())
             x._clear()
             self.assertFalse(x._is_initialized())
+
+    def test_use_gpudnn(self):
+        np_x = np.random.random((3, 8, 8))
+        with _test_eager_guard():
+            self.assertTrue(in_dygraph_mode())
+            x = paddle.to_tensor(np_x, dtype="float64")
+            y = x._use_gpudnn(False)
+            np.testing.assert_array_equal(x.numpy(), y.numpy())
+            y = x._use_gpudnn(True)
+            np.testing.assert_array_equal(x.numpy(), y.numpy())
+
+        self.assertFalse(in_dygraph_mode())
+        x = paddle.to_tensor(np_x, dtype="float64")
+        with self.assertRaises(AttributeError):
+            x = x._use_gpudnn(False)
 
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):

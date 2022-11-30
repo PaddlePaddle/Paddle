@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 import paddle.fluid.core as core
-
-from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, grad_var_name
 
 np.random.seed(123)
 
@@ -95,7 +96,7 @@ class TestArgsortOpCPU(unittest.TestCase):
             )
             self.sorted_x.stop_gradient = False
             loss = fluid.layers.elementwise_mul(self.sorted_x, label)
-            self.loss = fluid.layers.reduce_sum(loss)
+            self.loss = paddle.sum(loss)
 
     def forward(self):
         self.feed_map = {

@@ -91,7 +91,6 @@ void GraphPatternDetector::operator()(Graph *graph,
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
-
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   SortSubgraphs(&subgraphs);
@@ -99,7 +98,6 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -1163,21 +1161,12 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
                           ->AsInput()
-                          ->assert_is_op_input("fc")
-                          // assert_is_op_input with two arguments doesn't work
-                          // because ResidualData in FC is set as output with
-                          // SetOutput so we do custom assert output
-                          ->assert_more([&](Node *x) {
-                            for (auto *op : x->outputs)
-                              if (IsNthOutput(x, op, "ResidualData", 0))
-                                return true;
-                            return false;
-                          });
+                          ->assert_is_op_input("fc", "ResidualData");
     links_from.push_back(res_fc_var);
   } else {
     fc_op->assert_more([&](Node *x) {
-      if (!HasOutput(x, "ResidualData") ||
-          x->Op()->Output("ResidualData").size() == 0)
+      if (!HasInput(x, "ResidualData") ||
+          x->Op()->Input("ResidualData").size() == 0)
         return true;
       return false;
     });
@@ -1620,6 +1609,33 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
       .LinksTo({d_ele_x_var, d_ele_y_var});
 
   return ele_add_grad;
+}
+
+PDNode *patterns::ActElewiseAddInplaceGrad::operator()(
+    paddle::framework::ir::PDNode *d_out_var,
+    std::unordered_set<std::string> act_types) {
+  VLOG(4) << "ActElewiseAddInplaceGrad::operator";
+
+  auto *ele_add_grad_op = pattern->NewNode(ele_add_grad_op_repr())
+                              ->assert_is_op("elementwise_add_grad");
+  auto *act_grad_op =
+      pattern->NewNode(act_grad_op_repr())->assert_is_ops(act_types);
+
+  auto *d_intermediate_out_var =
+      pattern->NewNode(d_intermediate_var_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"))
+          ->assert_is_ops_input(act_types, GradVarName("Out"));
+  auto *intermediate_out_var =
+      pattern->NewNode(intermediate_var_repr())
+          ->assert_is_op_input("elementwise_add_grad", "Y")
+          ->assert_is_ops_input(act_types, "Out");
+
+  ele_add_grad_op->LinksFrom({d_out_var});
+  d_intermediate_out_var->LinksFrom({ele_add_grad_op}).LinksTo({act_grad_op});
+  intermediate_out_var->LinksTo({ele_add_grad_op});
+  intermediate_out_var->LinksTo({act_grad_op});
+
+  return act_grad_op;
 }
 
 PDNode *patterns::ElewiseAddAct::operator()(
@@ -3154,6 +3170,73 @@ void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
 }
 
 void patterns::DeleteWeightQuantDequantLinearOpPattern::operator()() {
+  auto weight_dequantize_linear_op_x =
+      pattern->NewNode(weight_dequantize_linear_op_x_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op_scale =
+      pattern->NewNode(weight_dequantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op =
+      pattern->NewNode(weight_dequantize_linear_op_repr())
+          ->assert_is_op("dequantize_linear");
+
+  auto weight_dequantize_linear_op_out =
+      pattern->NewNode(weight_dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y");
+
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  weight_dequantize_linear_op
+      ->LinksFrom(
+          {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
+      .LinksTo({weight_dequantize_linear_op_out});
+  any_op2->LinksFrom({weight_dequantize_linear_op_out});
+}
+
+void patterns::DeleteWeightDequantLinearOpEncoderPattern::operator()() {
+  auto weight_dequantize_linear_op_x =
+      pattern->NewNode(weight_dequantize_linear_op_x_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op_scale =
+      pattern->NewNode(weight_dequantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op =
+      pattern->NewNode(weight_dequantize_linear_op_repr())
+          ->assert_is_op("dequantize_linear");
+
+  auto weight_dequantize_linear_op_out =
+      pattern->NewNode(weight_dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y");
+
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  // while loop
+  auto *while0 =
+      pattern->NewNode(while0_repr())->assert_is_op("while")->AsOutput();
+  while0->LinksFrom({weight_dequantize_linear_op_out});
+
+  weight_dequantize_linear_op
+      ->LinksFrom(
+          {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
+      .LinksTo({weight_dequantize_linear_op_out});
+  any_op2->LinksFrom({weight_dequantize_linear_op_out});
+}
+
+void patterns::DeleteWeightDequantLinearOpDecoderPattern::operator()() {
   auto weight_dequantize_linear_op_x =
       pattern->NewNode(weight_dequantize_linear_op_x_repr())
           ->AsInput()

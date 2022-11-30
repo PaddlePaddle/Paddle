@@ -15,6 +15,7 @@
 import unittest
 
 from pass_test import PassTest
+
 import paddle
 
 

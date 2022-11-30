@@ -13,24 +13,18 @@
 # limitations under the License.
 
 import math
+from collections.abc import Iterable
+
 import numpy as np
+
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layers import (
-    elementwise_add,
-    elementwise_div,
-    elementwise_sub,
     nn,
-    ops,
     tensor,
 )
-
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -188,22 +182,22 @@ class Normal(distribution.Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
             )
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
             zero_tmp_shape = nn.shape(zero_tmp_reshape)
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
             )
             output = normal_random_tmp * (zero_tmp_reshape + self.scale)
-            output = elementwise_add(output, self.loc, name=name)
+            output = paddle.add(output, self.loc, name=name)
             return output
         else:
             output_shape = shape + batch_shape
             output = nn.gaussian_random(
                 output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
             ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
-            output = elementwise_add(output, self.loc, name=name)
+            output = paddle.add(output, self.loc, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -246,7 +240,7 @@ class Normal(distribution.Distribution):
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, self.dtype, 0.0
         )
-        return elementwise_add(
+        return paddle.add(
             0.5 + zero_tmp,
             0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
             name=name,
@@ -267,7 +261,7 @@ class Normal(distribution.Distribution):
 
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
-        return elementwise_sub(
+        return paddle.subtract(
             -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var),
             log_scale + math.log(math.sqrt(2.0 * math.pi)),
             name=name,
@@ -287,8 +281,8 @@ class Normal(distribution.Distribution):
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
-        return elementwise_div(
-            ops.exp(
+        return paddle.divide(
+            paddle.exp(
                 -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
             ),
             (math.sqrt(2 * math.pi) * self.scale),
@@ -336,6 +330,6 @@ class Normal(distribution.Distribution):
         var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
         t1 = t1 * t1
-        return elementwise_add(
+        return paddle.add(
             0.5 * var_ratio, 0.5 * (t1 - 1.0 - nn.log(var_ratio)), name=name
         )

@@ -41,7 +41,7 @@ def func_error_in_compile_time(x):
 @paddle.jit.to_static
 def func_error_in_compile_time_2(x):
     x = fluid.dygraph.to_variable(x)
-    x = fluid.layers.reshape(x, shape=[1, 2])
+    x = paddle.reshape(x, shape=[1, 2])
     return x
 
 
@@ -49,7 +49,7 @@ def func_error_in_compile_time_2(x):
 def func_error_in_runtime(x):
     x = fluid.dygraph.to_variable(x)
     two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
-    x = fluid.layers.reshape(x, shape=[1, two])
+    x = paddle.reshape(x, shape=[1, two])
     return x
 
 
@@ -68,7 +68,7 @@ def func_decorated_by_other_2():
 class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def __init__(self, fc_size=20):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(fc_size, fc_size)
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
 
     @paddle.jit.to_static(
         input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')]
@@ -101,7 +101,7 @@ def func_error_in_runtime_with_empty_line(x):
     x = fluid.dygraph.to_variable(x)
     two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
 
-    x = fluid.layers.reshape(x, shape=[1, two])
+    x = paddle.reshape(x, shape=[1, two])
 
     return x
 
@@ -290,7 +290,7 @@ class TestErrorStaticLayerCallInCompiletime_2(
             ),
             'def func_error_in_compile_time_2(x):',
             'x = fluid.dygraph.to_variable(x)',
-            'x = fluid.layers.reshape(x, shape=[1, 2])',
+            'x = paddle.reshape(x, shape=[1, 2])',
             '<--- HERE',
             'return x',
         ]
@@ -340,7 +340,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
             ),
             'x = fluid.dygraph.to_variable(x)',
             'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
-            'x = fluid.layers.reshape(x, shape=[1, two])',
+            'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
             'return x',
         ]
@@ -356,7 +356,7 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
                 self.filepath
             ),
             'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
-            'x = fluid.layers.reshape(x, shape=[1, two])',
+            'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
             'return x',
         ]

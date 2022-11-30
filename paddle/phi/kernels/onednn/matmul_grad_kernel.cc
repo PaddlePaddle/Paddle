@@ -153,11 +153,61 @@ void MatmulGradKernel(const Context &dev_ctx,
   dy->Resize(y.dims());
 }
 
+template <typename T, typename Context>
+void MatmulWithFlattenGradKernel(const Context &dev_ctx,
+                                 const DenseTensor &x,
+                                 const DenseTensor &y,
+                                 const DenseTensor &out_grad,
+                                 int x_num_col_dims,
+                                 int y_num_col_dims,
+                                 DenseTensor *x_grad,
+                                 DenseTensor *y_grad) {
+  const DenseTensor reshaped_y =
+      paddle::framework::ReshapeToMatrix(y, y_num_col_dims);
+  const DenseTensor reshaped_x =
+      paddle::framework::ReshapeToMatrix(x, x_num_col_dims);
+  const DenseTensor x_matrix = x.dims().size() > 2 ? reshaped_x : x;
+  const DenseTensor y_matrix = y.dims().size() > 2 ? reshaped_y : y;
+
+  DenseTensor dout_matrix = out_grad;
+  dout_matrix.Resize({flatten_to_2d(x.dims(), x_num_col_dims)[0],
+                      flatten_to_2d(y.dims(), y_num_col_dims)[1]});
+
+  // adding mb dim because MatMulV2 handler needs it
+  std::vector<int64_t> x_dims(3, 1);
+  std::vector<int64_t> y_dims(3, 1);
+  std::vector<int64_t> dout_dims(3, 1);
+  x_dims[1] = x_matrix.dims()[0];
+  x_dims[2] = x_matrix.dims()[1];
+  y_dims[1] = y_matrix.dims()[0];
+  y_dims[2] = y_matrix.dims()[1];
+  dout_dims[1] = dout_matrix.dims()[0];
+  dout_dims[2] = dout_matrix.dims()[1];
+
+  if (x_grad != nullptr) {
+    x_grad->set_lod(x.lod());
+    funcs::ExecuteMul<T>(
+        dev_ctx, dout_matrix, y_matrix, dout_dims, y_dims, false, true, x_grad);
+  }
+  if (y_grad != nullptr) {
+    y_grad->set_lod(y.lod());
+    funcs::ExecuteMul<T>(
+        dev_ctx, x_matrix, dout_matrix, x_dims, dout_dims, true, false, y_grad);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(matmul_grad,
                    OneDNN,
                    ONEDNN,
                    phi::MatmulGradKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(matmul_with_flatten_grad,
+                   OneDNN,
+                   ONEDNN,
+                   phi::MatmulWithFlattenGradKernel,
                    float,
                    phi::dtype::bfloat16) {}

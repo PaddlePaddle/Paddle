@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
+
 import paddle
 from paddle.distribution import categorical, distribution
-
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
 
 
 class Multinomial(distribution.Distribution):

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 # url: https://aistudio.baidu.com/aistudio/projectdetail/3756986?forkThirdPart=1
 from net import EfficientNet
+
+import paddle
 from paddle.jit import to_static
 from paddle.static import InputSpec
-import paddle
-import sys
 
 model = EfficientNet.from_name('efficientnet-b4')
 net = to_static(

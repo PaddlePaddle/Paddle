@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import unittest
 
 
 class TestAssertOp(unittest.TestCase):
@@ -70,7 +71,7 @@ class TestAssertOp(unittest.TestCase):
     def test_assert_summary(self):
         def net_func():
             x = layers.fill_constant(shape=[10], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0
+            condition = paddle.max(x) < 1.0
             layers.Assert(condition, (x,), 5)
 
         print("test_assert_summary")
@@ -80,7 +81,7 @@ class TestAssertOp(unittest.TestCase):
     def test_assert_summary_greater_than_size(self):
         def net_func():
             x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0
+            condition = paddle.max(x) < 1.0
             layers.Assert(condition, [x], 10, name="test")
 
         print("test_assert_summary_greater_than_size")

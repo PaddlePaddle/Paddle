@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
-from decorator_helper import prog_scope
-import paddle
-import paddle.fluid as fluid
+
 import numpy
 import numpy as np
+from decorator_helper import prog_scope
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -232,7 +234,7 @@ class TestMathOpPatches(unittest.TestCase):
         a = fluid.layers.data(name="a", shape=[1], dtype='float32')
         b = fluid.layers.data(name="b", shape=[1], dtype='float32')
 
-        one = fluid.layers.ones(shape=[1], dtype='int32')
+        one = paddle.ones(shape=[1], dtype='int32')
         zero = fluid.layers.zeros(shape=[1], dtype='int32')
         cond = one == zero
         c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
@@ -378,6 +380,108 @@ class TestMathOpPatches(unittest.TestCase):
             fetch_list=[c],
         )
         np.testing.assert_allclose(a_np @ b_np, c_np, rtol=1e-05)
+
+
+class TestDygraphMathOpPatches(unittest.TestCase):
+    def init_data(self):
+        self.np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        self.np_b = np.random.random((2, 3, 4)).astype(np.float32)
+        self.np_a[np.abs(self.np_a) < 0.0005] = 0.002
+        self.np_b[np.abs(self.np_b) < 0.0005] = 0.002
+
+        self.tensor_a = paddle.to_tensor(self.np_a, dtype="float32")
+        self.tensor_b = paddle.to_tensor(self.np_b, dtype="float32")
+
+    def test_dygraph_greater_than(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor > nparray
+        expect_out = self.np_a > self.np_b
+        actual_out = self.tensor_a > self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_greater_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor >= nparray
+        expect_out = self.np_a >= self.np_b
+        actual_out = self.tensor_a >= self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_reminder(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor % nparray
+        expect_out = self.np_a % self.np_b
+        actual_out = self.tensor_a % self.np_b
+        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
+        paddle.enable_static()
+
+    def test_dygraph_less_than(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor < nparray
+        expect_out = self.np_a < self.np_b
+        actual_out = self.tensor_a < self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_less_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor <= nparray
+        expect_out = self.np_a <= self.np_b
+        actual_out = self.tensor_a <= self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_floor_divide(self):
+        paddle.disable_static()
+        np_a = np.random.random((2, 3, 4)).astype(np.int32)
+        np_b = np.random.random((2, 3, 4)).astype(np.int32)
+        np_b[np.abs(np_b) < 1] = 2
+        # normal case: tenor // nparray
+        tensor_a = paddle.to_tensor(np_a, dtype="int32")
+        tensor_b = paddle.to_tensor(np_b, dtype="int32")
+        expect_out = np_a // np_b
+        actual_out = tensor_a // np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_elementwise_pow(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor ** nparray
+        expect_out = self.np_a**self.np_b
+        actual_out = self.tensor_a**self.np_b
+        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
+
+        # normal case: nparray ** tensor
+        expect_out = self.np_a**self.np_b
+        actual_out = self.np_a**self.tensor_b
+        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
+
+        paddle.enable_static()
+
+    def test_dygraph_not_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor != nparray
+        expect_out = self.np_a != self.np_b
+        actual_out = self.tensor_a != self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
+
+    def test_dygraph_equal(self):
+        paddle.disable_static()
+        self.init_data()
+        # normal case: tenor == nparray
+        expect_out = self.np_a == self.np_b
+        actual_out = self.tensor_a == self.np_b
+        np.testing.assert_equal(actual_out, expect_out)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
