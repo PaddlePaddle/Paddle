@@ -720,8 +720,8 @@ std::pair<int64_t, int64_t> MemorySparseTable::PrintTableStat() {
 int32_t MemorySparseTable::Pull(TableContext &context) {
   CHECK(context.value_type == Sparse);
   if (context.use_ptr) {
-    char** pull_values = context.pull_context.ptr_values;
-    const uint64_t* keys = context.pull_context.keys;
+    char **pull_values = context.pull_context.ptr_values;
+    const uint64_t *keys = context.pull_context.keys;
     return PullSparsePtr(
         context.shard_id, pull_values, keys, context.num, context.pass_id);
   } else {
@@ -821,8 +821,8 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
 }
 
 int32_t MemorySparseTable::PullSparsePtr(int shard_id,  // fake num
-                                         char** pull_values,
-                                         const uint64_t* keys,
+                                         char **pull_values,
+                                         const uint64_t *keys,
                                          size_t num,
                                          uint16_t pass_id) {
   CostTimer timer("pscore_sparse_select_all");

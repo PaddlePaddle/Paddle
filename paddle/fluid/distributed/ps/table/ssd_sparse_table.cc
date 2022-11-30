@@ -829,7 +829,6 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
                     &free_channel,
                     &busy_channel](int file_num) {
     int err_no = 0;
-    //int split_num = 0;
     int shard_num = file_num;
     int part_num = 0;
     shard_num = file_num;
@@ -1114,7 +1113,6 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
                     &free_channel,
                     &busy_channel](int file_num) {
     int err_no = 0;
-    //int split_num = 0;
     int shard_num = file_num;
     int part_num = 0;
     shard_num = file_num;
@@ -1722,8 +1720,6 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
   // task pool _file_num_one_shard default 7
   auto task_pool = std::make_shared<::ThreadPool>(_real_local_shard_num * 7);
-  //int thread_num = _real_local_shard_num;
-  // omp_set_num_threads(thread_num);
   auto filelists = _afs_client.list(
       paddle::string::format_string("%s/part-%03d*", path.c_str(), _shard_idx));
   //#pragma omp parallel for schedule(dynamic)
@@ -1951,7 +1947,6 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
   std::lock_guard<std::mutex> guard(_table_mutex);
   VLOG(0) << "cache_table";
   std::atomic<uint32_t> count{0};
-  //auto thread_num = _real_local_shard_num;
   std::vector<std::future<int>> tasks;
 
   double show_threshold = 10000000;
@@ -1971,7 +1966,8 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
   VLOG(0) << "Table>> origin mem feasign size:" << LocalSize();
   static int cache_table_count = 0;
   ++cache_table_count;
-  for (size_t shard_id = 0; shard_id < (size_t)_real_local_shard_num; ++shard_id) {
+  for (size_t shard_id = 0; shard_id < (size_t)_real_local_shard_num;
+       ++shard_id) {
     // from mem to ssd
     auto fut = _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
         [shard_id, this, &count, show_threshold, pass_id]() -> int {

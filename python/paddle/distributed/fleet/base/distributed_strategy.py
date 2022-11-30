@@ -561,22 +561,57 @@ class DistributedStrategy:
 
     @sparse_table_configs.setter
     def fleet_desc_configs(self, configs):
-        support_sparse_key_list = ['sparse_table_class', 'sparse_compress_in_save', 'sparse_shard_num', \
-                                   'sparse_accessor_class', 'sparse_learning_rate', 'sparse_initial_g2sum', 'sparse_initial_range', \
-                                   'sparse_weight_bounds', 'sparse_fea_dim', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
-                                   'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
-                                   'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
-                                   'sparse_converter', 'sparse_deconverter', 'sparse_enable_cache', 'sparse_cache_rate', \
-                                   'sparse_cache_file_num', 'sparse_beta1_decay_rate', 'sparse_beta2_decay_rate', \
-                                   'sparse_ada_epsilon', 'sparse_optimizer', 'sparse_ssd_unseenday_threshold',
-                                   'embed_sparse_optimizer', 'embed_sparse_learning_rate', 'embed_sparse_weight_bounds', \
-                                   'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
-                                   'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
-                                   'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot', \
-                                   'sparse_load_filter_slots']
+        support_sparse_key_list = [
+            'sparse_table_class',
+            'sparse_compress_in_save',
+            'sparse_shard_num',
+            'sparse_accessor_class',
+            'sparse_learning_rate',
+            'sparse_initial_g2sum',
+            'sparse_initial_range',
+            'sparse_weight_bounds',
+            'sparse_fea_dim',
+            'sparse_embedx_dim',
+            'sparse_embedx_threshold',
+            'sparse_nonclk_coeff',
+            'sparse_click_coeff',
+            'sparse_base_threshold',
+            'sparse_delta_threshold',
+            'sparse_delta_keep_days',
+            'sparse_delete_after_unseen_days',
+            'sparse_show_click_decay_rate',
+            'sparse_delete_threshold',
+            'sparse_converter',
+            'sparse_deconverter',
+            'sparse_enable_cache',
+            'sparse_cache_rate',
+            'sparse_cache_file_num',
+            'sparse_beta1_decay_rate',
+            'sparse_beta2_decay_rate',
+            'sparse_ada_epsilon',
+            'sparse_optimizer',
+            'sparse_ssd_unseenday_threshold',
+            'embed_sparse_optimizer',
+            'embed_sparse_learning_rate',
+            'embed_sparse_weight_bounds',
+            'embed_sparse_initial_range',
+            'embed_sparse_initial_g2sum',
+            'embed_sparse_beta1_decay_rate',
+            'embed_sparse_beta2_decay_rate',
+            'embedx_sparse_optimizer',
+            'embedx_sparse_learning_rate',
+            'embedx_sparse_weight_bounds',
+            'embedx_sparse_initial_range',
+            'embedx_sparse_initial_g2sum',
+            'embedx_sparse_beta1_decay_rate',
+            'embedx_sparse_beta2_decay_rate',
+            'feature_learning_rate',
+            'nodeid_slot',
+            'sparse_load_filter_slots',
+        ]
         support_sparse_table_class = [
-            'DownpourSparseTable', 'DownpourSparseSSDTable'
+            'DownpourSparseTable',
+            'DownpourSparseSSDTable',
         ]
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor',
@@ -698,7 +733,8 @@ class DistributedStrategy:
             if table_class not in support_sparse_table_class:
                 raise ValueError(
                     "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
-                    % (table_class))
+                    % (table_class)
+                )
             if table_class == "DownpourSparseSSDTable":
                 table_data.table_class = 'SSDSparseTable'
             else:
@@ -757,18 +793,24 @@ class DistributedStrategy:
                 'sparse_delta_threshold', 0.25
             )
             table_data.accessor.ctr_accessor_param.delta_keep_days = config.get(
-                'sparse_delta_keep_days', 16)
-            table_data.accessor.ctr_accessor_param.show_click_decay_rate = config.get(
-                'sparse_show_click_decay_rate', 0.98)
-            table_data.accessor.ctr_accessor_param.delete_threshold = config.get(
-                'sparse_delete_threshold', 0.8)
-            table_data.accessor.ctr_accessor_param.delete_after_unseen_days = config.get(
-                'sparse_delete_after_unseen_days', 30)
-            table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = config.get(
-                'sparse_ssd_unseenday_threshold', 1)
+                'sparse_delta_keep_days', 16
+            )
+            table_data.accessor.ctr_accessor_param.show_click_decay_rate = (
+                config.get('sparse_show_click_decay_rate', 0.98)
+            )
+            table_data.accessor.ctr_accessor_param.delete_threshold = (
+                config.get('sparse_delete_threshold', 0.8)
+            )
+            table_data.accessor.ctr_accessor_param.delete_after_unseen_days = (
+                config.get('sparse_delete_after_unseen_days', 30)
+            )
+            table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = (
+                config.get('sparse_ssd_unseenday_threshold', 1)
+            )
             load_filter_slots = config.get('sparse_load_filter_slots', [])
             table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
-                load_filter_slots)
+                load_filter_slots
+            )
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
 

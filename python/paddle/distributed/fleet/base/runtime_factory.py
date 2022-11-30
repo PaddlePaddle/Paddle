@@ -18,7 +18,6 @@ __all__ = []
 
 
 class RuntimeFactory(object):
-
     def __init__(self):
         pass
 

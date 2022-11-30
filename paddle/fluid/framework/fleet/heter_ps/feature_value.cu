@@ -177,9 +177,7 @@ __global__ void PushMergeCopyAtomic(const size_t N,
       case 0:
         cur[accessor.SlotIndex()] = float(slot_vector[x]);
         cur[accessor.MfDimIndex()] = float(mf_dim);
-        //paddle::platform::CudaAtomicAdd(&cur[accessor.ShowIndex()],
-        phi::CudaAtomicAdd(&cur[accessor.ShowIndex()],
-                                        *(ptr + off));
+        phi::CudaAtomicAdd(&cur[accessor.ShowIndex()], *(ptr + off));
         break;
       case 1:
         phi::CudaAtomicAdd(&cur[accessor.ClickIndex()], *(ptr + off));
@@ -191,10 +189,8 @@ __global__ void PushMergeCopyAtomic(const size_t N,
       default:
         int embedx_idx = off - 3;
         if (embedx_idx < mf_dim) {
-          //paddle::platform::CudaAtomicAdd(
-          phi::CudaAtomicAdd(
-              &cur[accessor.EmbedxGIndex() + embedx_idx],
-              *(ptr + off) * -1. * bs);
+          phi::CudaAtomicAdd(&cur[accessor.EmbedxGIndex() + embedx_idx],
+                             *(ptr + off) * -1. * bs);
         }
         break;
     }

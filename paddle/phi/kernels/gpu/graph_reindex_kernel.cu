@@ -200,8 +200,10 @@ void Reindex(const Context& dev_ctx,
   int64_t table_size = log_num << 1;
 
   auto keys = paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
-  auto values = paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
-  auto key_index = paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+  auto values =
+      paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+  auto key_index =
+      paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
   T* keys_ptr = reinterpret_cast<T*>(keys->ptr());
   int* values_ptr = reinterpret_cast<int*>(values->ptr());
   int* key_index_ptr = reinterpret_cast<int*>(key_index->ptr());
