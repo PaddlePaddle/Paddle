@@ -20,7 +20,7 @@
 namespace phi {
 namespace fusion {
 
-template <typename TShape, typename WShape, int Aligment = 8>
+template <typename TShape, typename WShape, int Aligment = 4>
 cutlass::Status cutlass_nhwc_conv2d_bias_add_relu(ConvAllParams params) {
   using EpilogueOp = cutlass::epilogue::thread::LinearCombinationResidualBlock<
       cutlass::half_t,

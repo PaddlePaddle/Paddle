@@ -100,7 +100,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
-void AnalysisConfig::EnableUseCutlass() {
+void AnalysisConfig::Exp_EnableUseCutlass() {
 #if defined(PADDLE_WITH_CUDA)
   use_cutlass_ = true;
 #else
