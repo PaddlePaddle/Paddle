@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 from paddle.device import cuda
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid import core
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestAsyncRead(unittest.TestCase):

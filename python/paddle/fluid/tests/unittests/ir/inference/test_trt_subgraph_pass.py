@@ -186,7 +186,7 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 name='instance_norm_b',
                 initializer=fluid.initializer.Constant(value=0.0),
             )
-            out = fluid.layers.instance_norm(
+            out = paddle.static.nn.instance_norm(
                 input=data, param_attr=param_attr, bias_attr=bias_attr
             )
         self.feeds = {

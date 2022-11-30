@@ -30,16 +30,15 @@ http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 """
 
 import functools
-from .common import download
 import tarfile
-
-from paddle.dataset.image import load_image_bytes
-from paddle.dataset.image import simple_transform
-
-from paddle.reader import map_readers, xmap_readers
-import paddle.utils.deprecated as deprecated
 from multiprocessing import cpu_count
+
+import paddle.utils.deprecated as deprecated
+from paddle.dataset.image import load_image_bytes, simple_transform
+from paddle.reader import map_readers, xmap_readers
 from paddle.utils import try_import
+
+from .common import download
 
 __all__ = []
 

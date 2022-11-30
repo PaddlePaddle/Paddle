@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+
 import seresnext_net
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
 import paddle.fluid.core as core
 
 
