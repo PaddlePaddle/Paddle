@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .message_passing import send_u_recv  # noqa: F401
-<<<<<<< HEAD
 from .message_passing import send_ue_recv  # noqa: F401
 from .message_passing import send_uv  # noqa: F401
 from .math import segment_sum  # noqa: F401

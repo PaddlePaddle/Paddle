@@ -98,5 +98,9 @@ minimize = fleet.minimize
 distributed_model = distributed_model
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
-distributed_scaler = fleet.distributed_scaler
+distributed_scaler = distributed_scaler
+set_log_level = log_util.set_log_level
+get_log_level_code = log_util.get_log_level_code
+get_log_level_name = log_util.get_log_level_name
 save_cache_table = fleet.save_cache_table
+from .. import auto_parallel as auto
