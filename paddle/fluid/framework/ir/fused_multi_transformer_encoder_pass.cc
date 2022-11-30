@@ -1325,17 +1325,6 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
                           Node* ffn_output) {
-    auto reshape_desc = reshape2_0->Op();
-    int num_head =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-            .at(2);
-    int dim_head =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-            .at(3);
-    auto* layer_norm_bias_tensor =
-        scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
-    int dim_embed = layer_norm_bias_tensor->dims()[0];
-
     auto* matmul0_op = matmul0->Op();
     auto* matmul_linear_op = matmul_linear->Op();
     auto* ffn_matmul_0_op = ffn_matmul0->Op();
@@ -1363,6 +1352,19 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
         scope->FindVar(eltadd1_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
+
+    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // num_head dimension: get dim_head from reshape.shape[3], dim_embed from
+    // layer_norm_bias.shape[0] calculate num_head according to
+    // wq_tensor.shape[1] and dim_head
+    auto reshape_desc = reshape2_0->Op();
+    int dim_head =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(3);
+    auto* layer_norm_bias_tensor =
+        scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
+    int dim_embed = layer_norm_bias_tensor->dims()[0];
+    int num_head = wq_tensor->dims()[1] / dim_head;
 
     QKVWeightsBiasProcess(wq_tensor,
                           wk_tensor,
@@ -2195,18 +2197,6 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
                           Node* ffn_output) {
-    auto reshape_desc = reshape2_0->Op();
-    int num_head =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-            .at(2);
-    int dim_head =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-            .at(3) /
-        3;  // 3 for qkv
-    auto* layer_norm_bias_tensor =
-        scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
-    int dim_embed = layer_norm_bias_tensor->dims()[0];
-
     auto* matmul0_op = matmul0->Op();
     auto* matmul_linear_op = matmul_linear->Op();
     auto* ffn_matmul_0_op = ffn_matmul0->Op();
@@ -2225,6 +2215,20 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         scope->FindVar(matmul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
+
+    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // num_head dimension: get dim_head from reshape.shape[3], dim_embed from
+    // layer_norm_bias.shape[0] calculate num_head according to
+    // wqkv_tensor.shape[1]/3 and dim_head
+    auto reshape_desc = reshape2_0->Op();
+    int dim_head =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(3) /
+        3;  // 3 for qkv
+    auto* layer_norm_bias_tensor =
+        scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
+    int dim_embed = layer_norm_bias_tensor->dims()[0];
+    int num_head = qkv_w_tensor->dims()[1] / 3 / dim_head;
 
     QKVWeightsBiasProcessFuseQKV(
         qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
@@ -2995,15 +2999,6 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
                           Node* ffn_output) {
-    auto reshape_desc = reshape2_0->Op();
-    int num_head =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-            .at(2);
-    int dim_head =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-            .at(3) /
-        3;  // 3 for qkv
-
     auto* matmul0_op = matmul0->Op();
     auto* matmul_linear_op = matmul_linear->Op();
     auto* ffn_matmul_0_op = ffn_matmul0->Op();
@@ -3023,9 +3018,20 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
+    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // num_head dimension:
+    // 1. get dim_head from reshape.shape[3], dim_embed from
+    // layer_norm_bias.shape[0]
+    // 2. calculate num_head according to wqkv_tensor.shape[1]/3 and dim_head
     auto* layer_norm_bias_tensor =
         scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
     int dim_embed = layer_norm_bias_tensor->dims()[0];
+    auto reshape_desc = reshape2_0->Op();
+    int dim_head =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(3) /
+        3;  // 3 for qkv
+    int num_head = qkv_w_tensor->dims()[1] / 3 / dim_head;
 
     QKVWeightsBiasProcessFuseQKV(
         qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
