@@ -36,7 +36,7 @@ program_trans = ProgramTranslator()
 class SimpleNet(Layer):
     def __init__(self):
         super().__init__()
-        self.linear = fluid.dygraph.Linear(10, 3)
+        self.linear = paddle.nn.Linear(10, 3)
 
     @declarative(input_spec=[InputSpec(shape=[None, 10], dtype='float32')])
     def forward(self, x, a=1, b=2):
