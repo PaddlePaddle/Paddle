@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.vision.models import resnet50, resnet101
 
 
 def _dygraph_guard_(func):

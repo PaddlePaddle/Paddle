@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
-import tempfile
 import shutil
+import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 from paddle.distributed.fleet import fleet
 
 
