@@ -14,15 +14,15 @@
 # limitations under the License.
 
 import numpy as np
+from seq2seq_utils import Seq2SeqModelHyperParams as args
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid import layers
+from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit.api import declarative
 from paddle.fluid.dygraph.nn import Embedding
-from seq2seq_utils import Seq2SeqModelHyperParams as args
+from paddle.jit.api import declarative
 
 INF = 1.0 * 1e5
 alpha = 0.6
@@ -72,15 +72,13 @@ class BasicLSTMUnit(Layer):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
         gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._bias)
+        gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
-        new_cell = layers.elementwise_add(
-            layers.elementwise_mul(
+        new_cell = paddle.add(
+            paddle.multiply(
                 pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
             ),
-            layers.elementwise_mul(
-                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
-            ),
+            paddle.multiply(paddle.nn.functional.sigmoid(i), paddle.tanh(j)),
         )
 
         new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
@@ -168,10 +166,14 @@ class BaseModel(fluid.dygraph.Layer):
                 )
             )
 
-        self.fc = fluid.dygraph.nn.Linear(
+        self.fc = paddle.nn.Linear(
             self.hidden_size,
             self.tar_vocab_size,
-            param_attr=param_attr,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                )
+            ),
             bias_attr=False,
         )
 
@@ -442,13 +444,12 @@ class BaseModel(fluid.dygraph.Layer):
                 np.array(noend_array, dtype='float32')
             )
 
-            step_log_probs = fluid.layers.elementwise_mul(
+            step_log_probs = paddle.multiply(
                 paddle.expand(
                     fluid.layers.unsqueeze(beam_finished, [2]),
                     [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
-                axis=-1,
             ) - fluid.layers.elementwise_mul(
                 step_log_probs, (beam_finished - 1), axis=0
             )
@@ -612,31 +613,38 @@ class AttentionModel(fluid.dygraph.Layer):
                     )
                 )
 
-        self.attn_fc = fluid.dygraph.nn.Linear(
+        self.attn_fc = paddle.nn.Linear(
             self.hidden_size,
             self.hidden_size,
-            param_attr=ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name="self_attn_fc",
-                initializer=uniform_initializer(self.init_scale),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
 
-        self.concat_fc = fluid.dygraph.nn.Linear(
+        self.concat_fc = paddle.nn.Linear(
             2 * self.hidden_size,
             self.hidden_size,
-            param_attr=ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name="self_concat_fc",
-                initializer=uniform_initializer(self.init_scale),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
 
-        self.fc = fluid.dygraph.nn.Linear(
+        self.fc = paddle.nn.Linear(
             self.hidden_size,
             self.tar_vocab_size,
-            param_attr=ParamAttr(
-                name="self_fc", initializer=uniform_initializer(self.init_scale)
+            weight_attr=paddle.ParamAttr(
+                name="self_fc",
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
@@ -691,7 +699,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
         if mask is not None:
             attn = paddle.transpose(attn, [1, 0, 2])
-            attn = fluid.layers.elementwise_add(attn, mask * 1000000000, -1)
+            attn = paddle.add(attn, mask * 1000000000)
             attn = paddle.transpose(attn, [1, 0, 2])
         weight = fluid.layers.softmax(attn)
         weight_memory = fluid.layers.matmul(weight, memory)

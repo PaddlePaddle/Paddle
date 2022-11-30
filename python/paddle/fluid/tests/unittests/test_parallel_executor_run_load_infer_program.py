@@ -14,8 +14,9 @@
 
 import unittest
 
+from simple_nets import init_data, simple_fc_net
+
 import paddle.fluid as fluid
-from simple_nets import simple_fc_net, init_data
 
 
 class TestMNIST(unittest.TestCase):

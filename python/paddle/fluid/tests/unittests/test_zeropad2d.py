@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 from paddle import to_tensor
-from paddle.nn.functional import zeropad2d
 from paddle.nn import ZeroPad2D
+from paddle.nn.functional import zeropad2d
 
 
 class TestZeroPad2dAPIError(unittest.TestCase):

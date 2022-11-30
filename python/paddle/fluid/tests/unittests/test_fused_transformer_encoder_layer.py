@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import unittest
+
 import numpy as np
 
 import paddle
+from paddle.fluid.framework import default_main_program, in_dygraph_mode
 from paddle.incubate.nn import FusedTransformerEncoderLayer
 from paddle.nn import TransformerEncoderLayer
-from paddle.fluid.framework import default_main_program, in_dygraph_mode
-import unittest
 
 
 class TestFusedTransformerEncoderLayer(unittest.TestCase):

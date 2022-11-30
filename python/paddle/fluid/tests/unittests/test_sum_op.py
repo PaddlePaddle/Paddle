@@ -13,25 +13,27 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from op_test import OpTest
+
 import paddle
-from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.inference as paddle_infer
+from paddle import enable_static
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
-from paddle.fluid.framework import _test_eager_guard
-import paddle.inference as paddle_infer
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
 
 
 class TestSumOp(OpTest):
