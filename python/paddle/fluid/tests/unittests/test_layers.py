@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
     program_guard,
 )
 from paddle.fluid.initializer import Constant
-from paddle.fluid.layers.device import get_places
 from paddle.fluid.param_attr import ParamAttr
 from paddle.tensor import random
 
@@ -2956,7 +2955,6 @@ class TestBook(LayerTest):
                     )
 
                 else:
-                    assert method.__name__ in ('make_get_places')
                     continue
             if method.__name__ in self.only_static_set:
                 continue
@@ -3202,12 +3200,6 @@ class TestBook(LayerTest):
             data = self._get_data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
-
-    def make_get_places(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            get_places(device_count=1)
 
     @prog_scope()
     def make_nce(self):
