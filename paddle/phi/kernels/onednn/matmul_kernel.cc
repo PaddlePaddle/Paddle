@@ -463,13 +463,12 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const DenseTensor *input_x,
     const DenseTensor *input_y,
     const engine &onednn_engine) {
-  std::string key =
-      funcs::CreateKey(dev_ctx,
-                       paddle::framework::TransToProtoVarType(input_x->dtype()),
-                       phi::vectorize(input_x->dims()),
-                       paddle::framework::TransToProtoVarType(input_y->dtype()),
-                       phi::vectorize(input_y->dims()),
-                       dev_ctx.GetOutputsName("Out")[0]);
+  std::string key = funcs::CreateKey(dev_ctx,
+                                     phi::TransToProtoVarType(input_x->dtype()),
+                                     phi::vectorize(input_x->dims()),
+                                     phi::TransToProtoVarType(input_y->dtype()),
+                                     phi::vectorize(input_y->dims()),
+                                     dev_ctx.GetOutputsName("Out")[0]);
   key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
@@ -523,7 +522,7 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
                                  DenseTensor *out) {
   PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
                     true,
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "oneDNN MatmulWithFlatten kernel must use CPUPlace"));
 
   OneDNNContext::tls().log_lib_version();
