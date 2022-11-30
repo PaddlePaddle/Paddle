@@ -117,7 +117,6 @@ from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
 from .layer.norm import LayerNorm  # noqa: F401
-from .layer.norm import SpectralNorm  # noqa: F401
 from .layer.norm import InstanceNorm1D  # noqa: F401
 from .layer.norm import InstanceNorm2D  # noqa: F401
 from .layer.norm import InstanceNorm3D  # noqa: F401
@@ -207,7 +206,6 @@ __all__ = [  # noqa
     'CELU',
     'GroupNorm',
     'LayerNorm',
-    'SpectralNorm',
     'BatchNorm1D',
     'BatchNorm2D',
     'BatchNorm3D',

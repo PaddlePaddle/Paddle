@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
     program_guard,
 )
 from paddle.fluid.initializer import Constant
-from paddle.fluid.layers.device import get_places
 from paddle.fluid.param_attr import ParamAttr
 from paddle.tensor import random
 
@@ -238,7 +237,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            flatten = nn.Flatten()
+            flatten = paddle.nn.Flatten()
             ret = flatten(t)
             static_ret = self.get_static_graph_result(
                 feed={'data': inp}, fetch_list=[ret]
@@ -246,12 +245,12 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 t = base.to_variable(inp)
-                flatten = nn.Flatten()
+                flatten = paddle.nn.Flatten()
                 dy_eager_ret = flatten(t)
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = base.to_variable(inp)
-            flatten = nn.Flatten()
+            flatten = paddle.nn.Flatten()
             dy_ret = flatten(t)
             dy_ret_value = dy_ret.numpy()
 
@@ -1916,10 +1915,10 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            groupNorm = nn.GroupNorm(
-                channels=shape[1],
-                groups=2,
-                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
+            groupNorm = paddle.nn.GroupNorm(
+                num_channels=shape[1],
+                num_groups=2,
+                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
             )
             ret = groupNorm(X)
@@ -1934,10 +1933,10 @@ class TestLayer(LayerTest):
             )[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm(
-                channels=shape[1],
-                groups=2,
-                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
+            groupNorm = paddle.nn.GroupNorm(
+                num_channels=shape[1],
+                num_groups=2,
+                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
             )
             dy_ret = groupNorm(base.to_variable(input))
@@ -2021,69 +2020,6 @@ class TestLayer(LayerTest):
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
-
-    def test_spectral_norm(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-
-        shape = (2, 4, 3, 3)
-
-        input = np.random.random(shape).astype('float32')
-
-        with self.static_graph():
-            Weight = fluid.layers.data(
-                name='Weight',
-                shape=shape,
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            ret = layers.spectral_norm(weight=Weight, dim=1, power_iters=2)
-            static_ret = self.get_static_graph_result(
-                feed={
-                    'Weight': fluid.create_lod_tensor(
-                        data=input, recursive_seq_lens=[[1, 1]], place=place
-                    ),
-                },
-                fetch_list=[ret],
-                with_lod=True,
-            )[0]
-
-        with self.static_graph():
-            Weight = fluid.layers.data(
-                name='Weight',
-                shape=shape,
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
-            ret = spectralNorm(Weight)
-            static_ret2 = self.get_static_graph_result(
-                feed={
-                    'Weight': fluid.create_lod_tensor(
-                        data=input, recursive_seq_lens=[[1, 1]], place=place
-                    )
-                },
-                fetch_list=[ret],
-                with_lod=True,
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
-                dy_eager_ret = spectralNorm(base.to_variable(input))
-                dy_eager_rlt_value = dy_eager_ret.numpy()
-
-            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
-            dy_ret = spectralNorm(base.to_variable(input))
-            dy_rlt_value = dy_ret.numpy()
-
-        np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, dy_eager_rlt_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
     def test_tree_conv(self):
         if core.is_compiled_with_cuda():
@@ -2895,7 +2831,7 @@ class TestLayer(LayerTest):
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
             predict = fluid.layers.softmax(input=fc_out)
-            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            result = paddle.static.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
@@ -2911,7 +2847,9 @@ class TestLayer(LayerTest):
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)
             predict = fluid.layers.softmax(fc_out)
-            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+            dynamic_out = paddle.static.accuracy(
+                input=predict, label=label, k=5
+            )
 
         np.testing.assert_array_equal(static_out[0], dynamic_out.numpy())
 
@@ -2954,7 +2892,6 @@ class TestBook(LayerTest):
                     )
 
                 else:
-                    assert method.__name__ in ('make_get_places')
                     continue
             if method.__name__ in self.only_static_set:
                 continue
@@ -3200,12 +3137,6 @@ class TestBook(LayerTest):
             data = self._get_data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
-
-    def make_get_places(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            get_places(device_count=1)
 
     @prog_scope()
     def make_nce(self):

@@ -25,7 +25,6 @@ from paddle.fluid.dygraph.nn import (
     NCE,
     BatchNorm,
     Embedding,
-    GroupNorm,
     LayerNorm,
     PRelu,
 )
@@ -221,8 +220,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.prelu1 = PRelu("channel", channel=5)
                     self.prelu2 = PRelu("channel", channel=5)
 
-                    self.group_norm1 = GroupNorm(8, 4)
-                    self.gourp_norm2 = GroupNorm(8, 4)
+                    self.group_norm1 = paddle.nn.GroupNorm(4, 8)
+                    self.gourp_norm2 = paddle.nn.GroupNorm(4, 8)
 
                     self.w_1 = self.create_parameter(
                         [100, 100], dtype='float32', attr="weight_test_1"

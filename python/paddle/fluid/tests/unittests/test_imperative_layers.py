@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-
 import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 

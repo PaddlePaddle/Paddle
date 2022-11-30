@@ -90,7 +90,6 @@ from .norm import BatchNorm3D  # noqa: F401
 from .norm import SyncBatchNorm  # noqa: F401
 from .norm import GroupNorm  # noqa: F401
 from .norm import LayerNorm  # noqa: F401
-from .norm import SpectralNorm  # noqa: F401
 from .norm import LocalResponseNorm  # noqa: F401
 
 from .vision import PixelShuffle  # noqa: F401

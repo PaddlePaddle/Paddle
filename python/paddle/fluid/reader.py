@@ -51,7 +51,6 @@ from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import (
     monkey_patch_reader_methods,
     _copy_reader_var_,
-    double_buffer,
 )
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
@@ -950,6 +949,13 @@ class DataLoader:
                 use_multiprocess,
             )
         else:
+            # Because layers.io.double_buffer is not supported anymore, and only when iterable and use_double_buffer
+            # are both True layers.io.double_buffer will be in use, here if itrable is False, use_double_buffer will be
+            # forcely set False to avoid using layers.io.double_buffer.
+            # See line whith 'raise RuntimeError("use_double_buffer is not supported now")' in this file
+            if not iterable:
+                use_double_buffer = False
+
             return GeneratorLoader(
                 feed_list,
                 capacity,
@@ -1453,13 +1459,7 @@ class GeneratorLoader(DataLoaderBase):
             reader = monkey_patch_reader_methods(main_prog_var)
 
         if self._use_double_buffer:
-            double_buffer_reader = double_buffer(
-                reader, name=double_buffer_name
-            )
-            # we return a double buffer reader. However, the reset method comes from
-            # py_reader.
-            double_buffer_reader.reset = reader.reset
-            reader = double_buffer_reader
+            raise RuntimeError("use_double_buffer is not supported now")
 
         self._reader = reader
 
