@@ -13,26 +13,24 @@
 # limitations under the License.
 
 import datetime
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.framework import _non_static_mode
-from ..fluid.layers.tensor import fill_constant
+
 import paddle
 import paddle.fluid.core as core
-from paddle import _legacy_C_ops
-from .fleet.layers.mpu.mp_ops import split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
-from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
+
+from ..fluid.framework import _non_static_mode, in_dygraph_mode
 from .communication.group import Group, _add_new_group, is_initialized
+from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
 
 __all__ = []
 
@@ -158,60 +156,6 @@ def _new_process_group_impl(
     elif backend == "bkcl":
         pg = core.ProcessGroupBKCL.create(store, rank, world_size, group_id)
     return pg
-
-
-def barrier(group=None):
-    """
-
-    Barrier among all participators in the group.
-
-    Args:
-        group (Group): The group instance return by new_group or None for global default group.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            from paddle.distributed import init_parallel_env
-
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            paddle.distributed.barrier()
-    """
-    if group is not None and not group.is_member():
-        return
-
-    if in_dygraph_mode():
-        group = _get_default_group() if group is None else group
-        place = paddle.fluid.framework._current_expected_place()
-        if isinstance(place, paddle.fluid.core.CPUPlace):
-            task = group.process_group.barrier()
-        else:
-            device_id = place.get_device_id()
-            task = group.process_group.barrier(device_id)
-        task.wait()
-        return
-
-    ring_id = 0 if group is None else group.id
-
-    temp = fill_constant([1], dtype="int32", value="1")
-    if _non_static_mode():
-        return _legacy_C_ops.barrier(temp, temp, 'ring_id', ring_id)
-
-    op_type = 'barrier'
-
-    if not isinstance(ring_id, int):
-        raise ValueError("The type of 'group' for barrier must be int.")
-    helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [temp]},
-        outputs={'Out': [temp]},
-        attrs={'ring_id': ring_id},
-    )
 
 
 # _custom_gid provides a way for users to
@@ -356,78 +300,8 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     tmp = (
         paddle.to_tensor([1], dtype="int32")
         if _non_static_mode()
-        else fill_constant([0], dtype="int32", value="1")
+        else paddle.full([0], 1, dtype="int32")
     )
     paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
-
-
-def wait(tensor, group=None, use_calc_stream=True):
-    """
-
-    wait to sync stream for group.
-
-    Args:
-        tensor (Tensor): The Tensor used before sync.
-        group (Group): The Group instance to perform sync.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            paddle.distributed.init_parallel_env()
-            tindata = paddle.randn(shape=[2, 3])
-            paddle.distributed.all_reduce(tindata, sync_op=True)
-            paddle.distributed.wait(tindata)
-
-    """
-
-    if group is not None and not group.is_member():
-        return
-
-    ring_id = 0 if group is None else group.id
-
-    if use_calc_stream:
-        _sync_calc_stream(tensor)
-    else:
-        _sync_comm_stream(tensor, ring_id)
-
-
-def _sync_calc_stream(tensor):
-
-    if _non_static_mode():
-        return _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
-
-    op_type = 'c_sync_calc_stream'
-
-    helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-    )
-
-
-def _sync_comm_stream(tensor, ring_id=0):
-
-    if _non_static_mode():
-        return _legacy_C_ops.c_sync_comm_stream(
-            [tensor], [tensor], 'ring_id', ring_id
-        )
-
-    op_type = 'c_sync_comm_stream'
-
-    helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-        attrs={'ring_id': ring_id},
-    )

@@ -270,7 +270,17 @@ class FusedMultiTransformerOpOpMaker
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
+    AddAttr<std::string>("act_method", "act_method")
+        .SetDefault("gelu")
+        .AddCustomChecker([](const std::string &act_type) {
+          PADDLE_ENFORCE_EQ(
+              act_type == "gelu" || act_type == "relu" || act_type == "none",
+              true,
+              platform::errors::InvalidArgument(
+                  "Only support `gelu`, `relu`, `none` activation in "
+                  "FusedMultiTransformer. "));
+        });
+
     AddAttr<bool>(
         "trans_qkvw",
         "Whether the weights of qkv should be transposed. If true,"

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.static as static
-import numpy as np
 import json
 import os
+
+import numpy as np
+
+import paddle
+import paddle.static as static
 from paddle.fluid import core
 
 

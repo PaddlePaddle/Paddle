@@ -1173,7 +1173,7 @@ def multi_head_attention(
         """
         Scaled Dot-Product Attention
         """
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
@@ -1305,7 +1305,7 @@ def prepare_encoder(
             ),
         )
 
-    src_word_emb = layers.scale(x=src_word_emb, scale=src_emb_dim**0.5)
+    src_word_emb = paddle.scale(x=src_word_emb, scale=src_emb_dim**0.5)
     src_pos_enc = layers.embedding(
         src_pos,
         size=[src_max_len, src_emb_dim],
@@ -1591,8 +1591,8 @@ def transformer(
         soft_label=True if label_smooth_eps else False,
     )
     weighted_cost = cost * weights
-    sum_cost = layers.reduce_sum(weighted_cost)
-    token_num = layers.reduce_sum(weights)
+    sum_cost = paddle.sum(weighted_cost)
+    token_num = paddle.sum(weights)
     avg_cost = sum_cost / token_num
     avg_cost.stop_gradient = True
     return sum_cost, avg_cost, predict, token_num
@@ -1837,7 +1837,7 @@ def fast_decode(
                 input=layers.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
@@ -1863,7 +1863,7 @@ def fast_decode(
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
             length_cond = layers.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
-            layers.logical_and(x=length_cond, y=finish_cond, out=cond)
+            paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 
         finished_ids, finished_scores = layers.beam_search_decode(
             ids, scores, beam_size=beam_size, end_id=eos_idx

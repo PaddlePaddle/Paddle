@@ -13,14 +13,18 @@
 # limitations under the License.
 import time
 import unittest
+
 import numpy as np
+from test_lac import DynamicGRU
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear, Embedding
-from paddle.fluid.dygraph import to_variable, ProgramTranslator, declarative
-
-from test_lac import DynamicGRU
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Linear
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.dygraph.nn import Embedding, Linear
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 SEED = 2020
 program_translator = ProgramTranslator()
@@ -81,13 +85,11 @@ class CNN(fluid.dygraph.Layer):
             batch_size=self.batch_size,
         )
         self._fc1 = Linear(
-            input_dim=self.hid_dim * self.seq_len,
-            output_dim=self.fc_hid_dim,
-            act="softmax",
+            self.hid_dim * self.seq_len,
+            self.fc_hid_dim,
         )
-        self._fc_prediction = Linear(
-            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
-        )
+        self._fc1_act = paddle.nn.Softmax()
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
     @declarative
     def forward(self, inputs, label=None):
@@ -102,7 +104,9 @@ class CNN(fluid.dygraph.Layer):
         )
         conv_3 = self._simple_conv_pool_1(emb)
         fc_1 = self._fc1(conv_3)
+        fc_1 = self._fc1_act(fc_1)
         prediction = self._fc_prediction(fc_1)
+        prediction = self._fc1_act(prediction)
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = paddle.mean(x=cost)
@@ -125,15 +129,9 @@ class BOW(fluid.dygraph.Layer):
             dtype='float32',
             is_sparse=False,
         )
-        self._fc1 = Linear(
-            input_dim=self.hid_dim, output_dim=self.hid_dim, act="tanh"
-        )
-        self._fc2 = Linear(
-            input_dim=self.hid_dim, output_dim=self.fc_hid_dim, act="tanh"
-        )
-        self._fc_prediction = Linear(
-            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
-        )
+        self._fc1 = Linear(self.hid_dim, self.hid_dim)
+        self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
     @declarative
     def forward(self, inputs, label=None):
@@ -144,11 +142,14 @@ class BOW(fluid.dygraph.Layer):
         mask_emb = paddle.expand(o_np_mask, [-1, self.hid_dim])
         emb = emb * mask_emb
         emb = paddle.reshape(emb, shape=[-1, self.seq_len, self.hid_dim])
-        bow_1 = fluid.layers.reduce_sum(emb, dim=1)
+        bow_1 = paddle.sum(emb, axis=1)
         bow_1 = paddle.tanh(bow_1)
         fc_1 = self._fc1(bow_1)
+        fc_1 = paddle.tanh(fc_1)
         fc_2 = self._fc2(fc_1)
+        fc_2 = paddle.tanh(fc_2)
         prediction = self._fc_prediction(fc_2)
+        prediction = paddle.nn.functional.softmax(prediction)
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = paddle.mean(x=cost)
@@ -174,13 +175,9 @@ class GRU(fluid.dygraph.Layer):
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
-        self._fc1 = Linear(input_dim=self.hid_dim, output_dim=self.hid_dim * 3)
-        self._fc2 = Linear(
-            input_dim=self.hid_dim, output_dim=self.fc_hid_dim, act="tanh"
-        )
-        self._fc_prediction = Linear(
-            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
-        )
+        self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
+        self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
         self._gru = DynamicGRU(size=self.hid_dim, h_0=h_0)
 
     @declarative
@@ -197,8 +194,9 @@ class GRU(fluid.dygraph.Layer):
         gru_hidden = paddle.max(gru_hidden, axis=1)
         tanh_1 = paddle.tanh(gru_hidden)
         fc_2 = self._fc2(tanh_1)
+        fc_2 = paddle.tanh(fc_2)
         prediction = self._fc_prediction(fc_2)
-
+        prediction = paddle.nn.functional.softmax(prediction)
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = paddle.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
@@ -223,13 +221,9 @@ class BiGRU(fluid.dygraph.Layer):
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
-        self._fc1 = Linear(input_dim=self.hid_dim, output_dim=self.hid_dim * 3)
-        self._fc2 = Linear(
-            input_dim=self.hid_dim * 2, output_dim=self.fc_hid_dim, act="tanh"
-        )
-        self._fc_prediction = Linear(
-            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
-        )
+        self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
+        self._fc2 = Linear(self.hid_dim * 2, self.fc_hid_dim)
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
         self._gru_forward = DynamicGRU(
             size=self.hid_dim, h_0=h_0, is_reverse=False
         )
@@ -257,7 +251,9 @@ class BiGRU(fluid.dygraph.Layer):
         )
         encoded_vector = paddle.max(encoded_vector, axis=1)
         fc_2 = self._fc2(encoded_vector)
+        fc_2 = paddle.tanh(fc_2)
         prediction = self._fc_prediction(fc_2)
+        prediction = paddle.nn.functional.softmax(prediction)
         # TODO(Aurelius84): Uncomment the following codes when we support return variable-length vars.
         # if label is not None:
         cost = fluid.layers.cross_entropy(input=prediction, label=label)

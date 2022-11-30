@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 # TODO: define loss functions of neural network
 import paddle.fluid as fluid
-import paddle
-from .. import functional as F
-from paddle.fluid.framework import in_dygraph_mode
-from .. import Layer
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
+
+from .. import Layer
+from .. import functional as F
 
 __all__ = []
 
@@ -28,8 +30,6 @@ class BCEWithLogitsLoss(Layer):
     r"""
 
     This operator combines the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
-    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-    layer and some reduce operations.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -593,7 +593,8 @@ class MSELoss(Layer):
 
         reduce_op = 'reduce_mean'
         if self.reduction == 'sum':
-            reduce_op = 'reduce_sum'
+            square_out = paddle.sum(square_out)
+            return square_out
 
         return getattr(fluid.layers, reduce_op)(square_out)
 

@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
+import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle
-import unittest
-import numpy as np
 
 dev_cnt = 2
 if fluid.core.is_compiled_with_cuda():
