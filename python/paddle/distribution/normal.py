@@ -242,7 +242,7 @@ class Normal(distribution.Distribution):
         )
         return paddle.add(
             0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
+            0.5 * math.log(2 * math.pi) + paddle.log((self.scale + zero_tmp)),
             name=name,
         )
 
@@ -260,7 +260,7 @@ class Normal(distribution.Distribution):
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
-        log_scale = nn.log(self.scale)
+        log_scale = paddle.log(self.scale)
         return paddle.subtract(
             -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var),
             log_scale + math.log(math.sqrt(2.0 * math.pi)),
@@ -331,5 +331,5 @@ class Normal(distribution.Distribution):
         t1 = (self.loc - other.loc) / other.scale
         t1 = t1 * t1
         return paddle.add(
-            0.5 * var_ratio, 0.5 * (t1 - 1.0 - nn.log(var_ratio)), name=name
+            0.5 * var_ratio, 0.5 * (t1 - 1.0 - paddle.log(var_ratio)), name=name
         )
