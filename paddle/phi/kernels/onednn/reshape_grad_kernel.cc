@@ -61,13 +61,15 @@ void ReshapeDoubleGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(reshape_grad,
-                           OneDNN,
-                           ALL_LAYOUT,
-                           phi::ReshapeGradKernel<phi::OneDNNContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
-                           OneDNN,
-                           ALL_LAYOUT,
-                           phi::ReshapeDoubleGradKernel<phi::OneDNNContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL(reshape_grad,
+                   OneDNN,
+                   ONEDNN,
+                   phi::ReshapeGradKernel<phi::OneDNNContext>,
+                   float,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(reshape_double_grad,
+                   OneDNN,
+                   ONEDNN,
+                   phi::ReshapeDoubleGradKernel<phi::OneDNNContext>,
+                   float,
+                   phi::dtype::bfloat16) {}
