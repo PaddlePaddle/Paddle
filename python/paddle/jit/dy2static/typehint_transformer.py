@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,44 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from .base_transformer import (
     BaseTransformer,
 )
 
-__all__ = ['AssertTransformer']
 
-
-class AssertTransformer(BaseTransformer):
+class TypeHintTransformer(BaseTransformer):
     """
-    A class transforms python assert to convert_assert.
+    A class remove all the typehint in gast.Name(annotation).
+    Please put it behind other transformers because other transformer may relay on typehints.
     """
 
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of AssertTransformer."
+        ), "Input non-AstNodeWrapper node for the initialization of TypeHintTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
 
     def transform(self):
         self.visit(self.root)
 
-    def visit_Assert(self, node):
-        convert_assert_node = (
-            gast.parse(
-                '_jst.Assert({test}, {msg})'.format(
-                    test=ast_to_source_code(node.test),
-                    msg=ast_to_source_code(node.msg) if node.msg else "",
-                )
-            )
-            .body[0]
-            .value
-        )
+    def visit_FunctionDef(self, node):
+        node.returns = None
+        self.generic_visit(node)
+        return node
 
-        return gast.Expr(value=convert_assert_node)
+    def visit_Name(self, node):
+        node.annotation = None
+        self.generic_visit(node)
+        return node
