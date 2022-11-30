@@ -23,6 +23,8 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.layers.control_flow import lod_rank_table
 
+paddle.enable_static()
+
 
 def convert_to_offset(lod):
     offset = [[0] for i in lod]

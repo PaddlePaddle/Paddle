@@ -19,6 +19,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+paddle.enable_static()
+
 
 def execute(main_program, startup_program):
     if paddle.is_compiled_with_cuda():
@@ -153,7 +155,7 @@ class TestDeviceGuard(unittest.TestCase):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 with paddle.static.device_guard("cpu"):
-                    while_op = fluid.layers.While(cond=cond)
+                    while_op = paddle.static.nn.control_flow.While(cond=cond)
                     with while_op.block():
                         i = paddle.increment(x=i, value=1)
                         fluid.layers.less_than(x=i, y=loop_len, cond=cond)

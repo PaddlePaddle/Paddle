@@ -101,7 +101,7 @@ def static(
         mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
-            avg_loss = layers.case(
+            avg_loss = paddle.static.nn.case(
                 [(mod_two, lambda: fn_1(adam, None, prediction, label))],
                 lambda: fn_2(sgd, None, prediction, label),
             )
@@ -112,7 +112,7 @@ def static(
                 logits=prediction, label=label
             )
             avg_loss_2 = paddle.mean(loss_2)
-            avg_loss = layers.case(
+            avg_loss = paddle.static.nn.case(
                 [(mod_two, lambda: fn_1(adam, avg_loss_1))],
                 lambda: fn_2(sgd, avg_loss_2),
             )
@@ -264,7 +264,7 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
 
             cond = layers.fill_constant([1], 'bool', True)
 
-            layers.case(
+            paddle.static.nn.case(
                 [(cond, lambda: fn_1(adam, avg_loss))],
                 lambda: fn_2(sgd, avg_loss),
             )

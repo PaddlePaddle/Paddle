@@ -46,7 +46,7 @@ class TestProfiler(unittest.TestCase):
             until = layers.fill_constant([1], dtype='int64', value=10)
             data_arr = layers.array_write(hidden1, i)
             cond = fluid.layers.less_than(x=counter, y=until)
-            while_op = fluid.layers.While(cond=cond)
+            while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
                 hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
                 layers.array_write(hidden_n, i, data_arr)

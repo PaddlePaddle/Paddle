@@ -24,6 +24,8 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard, switch_main_program
 from paddle.fluid.layers.control_flow import lod_rank_table, shrink_memory
 
+paddle.enable_static()
+
 
 class TestShrinkRNNMemoryBase(unittest.TestCase):
     def setUp(self):

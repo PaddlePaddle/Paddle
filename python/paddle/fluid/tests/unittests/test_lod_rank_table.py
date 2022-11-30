@@ -16,10 +16,13 @@ import unittest
 
 import numpy
 
+import paddle
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers import data
 from paddle.fluid.layers.control_flow import lod_rank_table
+
+paddle.enable_static()
 
 
 class TestLoDRankTable(unittest.TestCase):

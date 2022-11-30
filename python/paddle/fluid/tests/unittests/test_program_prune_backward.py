@@ -98,7 +98,7 @@ def cond_net(use_feed=None):
 
     two = fluid.layers.fill_constant([1], 'int32', 2)
     pred = two == 0
-    avg_loss = fluid.layers.case(
+    avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(prediction, label))],
         lambda: loss2(prediction, label),
     )
@@ -128,7 +128,7 @@ def optimization_in_cond_net(with_optimize=False):
     sgd = fluid.optimizer.SGD(learning_rate=0.1)
     two = fluid.layers.fill_constant([1], 'int32', 2)
     pred = two == 0
-    avg_loss = fluid.layers.case(
+    avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(sgd, prediction, label, with_optimize))],
         lambda: loss2(sgd, prediction, label, with_optimize),
     )
