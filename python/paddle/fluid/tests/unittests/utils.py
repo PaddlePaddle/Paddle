@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import paddle
 
 from paddle.fluid.framework import _dygraph_guard
 import paddle.fluid as fluid
@@ -93,7 +94,8 @@ def load_dygraph_vars_to_scope(model_path, scope, place):
             dst_t.set(np.array(src_t), place)
             dst_t.set_lod(src_t.lod())
 
-    param_dict, opti_dict = fluid.load_dygraph(model_path)
+    param_dict = paddle.load(model_path + '.pdparams')
+    opti_dict = paddle.load(model_path + '.pdopt')
     if param_dict:
         load_dict_to_scope(scope, param_dict)
 

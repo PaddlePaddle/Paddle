@@ -16,6 +16,7 @@ import os
 import tempfile
 import time
 import unittest
+import paddle
 
 import numpy as np
 import paddle.fluid as fluid
@@ -129,7 +130,7 @@ def train(args, attn_model=False):
 
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
-        fluid.save_dygraph(model.state_dict(), model_dir)
+        paddle.save(model.state_dict(), model_dir + '.pdparams')
         return loss.numpy()
 
 
@@ -164,7 +165,7 @@ def infer(args, attn_model=False):
         model_path = (
             args.attn_model_path if attn_model else args.base_model_path
         )
-        state_dict, _ = fluid.dygraph.load_dygraph(model_path)
+        state_dict = paddle.load(model_path + '.pdparams')
         model.set_dict(state_dict)
         model.eval()
         train_data_iter = get_data_iter(args.batch_size, mode='infer')

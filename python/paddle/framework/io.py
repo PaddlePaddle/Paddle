@@ -155,7 +155,6 @@ def _load_state_dict_from_save_params(model_path):
 #   - need [full filename] when loading
 #       - paddle.save
 #       - paddle.static.save
-#       - paddle.fluid.save_dygraph
 #   - need [prefix] when loading [compatible for paddle 2.x]
 #       - paddle.jit.save
 #       - paddle.static.save_inference_model
@@ -185,7 +184,6 @@ def _build_load_path_and_config(path, config):
         opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
             error_msg += (
-                " If you want to load the results saved by `fluid.save_dygraph`, "
                 "please specify the full file name, not just the file name prefix. For "
                 "example, it should be written as `paddle.load('model.pdparams')` instead of "
                 "`paddle.load('model')`."
