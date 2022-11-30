@@ -586,7 +586,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         )
 
         def model_f(input):
-            linear = fluid.dygraph.Linear(5, 3, bias_attr=False)
+            linear = paddle.nn.Linear(5, 3)
             for i in range(10):
                 if i == 0:
                     out = linear(input)
