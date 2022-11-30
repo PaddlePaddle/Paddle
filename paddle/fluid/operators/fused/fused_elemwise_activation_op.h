@@ -664,11 +664,9 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
         in_y,
         nullptr,
         platform::errors::InvalidArgument("Input(Y) should not be nullptr."));
-    auto in_out = ctx.Input<phi::DenseTensor>("Out");
-    PADDLE_ENFORCE_NE(
-        in_out,
-        nullptr,
-        platform::errors::InvalidArgument("Input(Out) should not be nullptr."));
+    phi::DenseTensor *in_out =
+        const_cast<phi::DenseTensor *>(ctx.Input<phi::DenseTensor>("Out"));
+
     auto in_out_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE_NE(in_out_grad,
@@ -724,6 +722,23 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
                             "Only when the compoundfunctor contains "
                             "elementwise_add_grad, the 'X' could be absent."));
       in_x = const_cast<phi::DenseTensor *>(in_out_grad);
+    }
+
+    // Get in_Out
+    if (ctx.HasInput("Out")) {
+      PADDLE_ENFORCE_NE(
+          in_out,
+          nullptr,
+          platform::errors::InvalidArgument("Input(X) should not be null."));
+    } else {
+      // If functor_list contains elementwise_add, the backward doesn't use
+      // in_x, in_y and in_out.
+      PADDLE_ENFORCE_EQ(InputXCanBeAbsent(functor_list),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Only when the compoundfunctor contains "
+                            "elementwise_add_grad, the 'X' could be absent."));
+      in_out = const_cast<phi::DenseTensor *>(in_out_grad);
     }
 
     bool has_in_place = HasInPlaceUnary(functor_list);
