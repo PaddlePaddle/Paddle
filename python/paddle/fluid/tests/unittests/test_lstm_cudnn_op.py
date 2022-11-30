@@ -573,7 +573,7 @@ class TestCUDNNlstmAPI1(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(
             low=-0.1, high=0.1, size=(seq_len, batch_size, hidden_size)
-        ).astype("float64")
+        ).astype(dtype)
         out = exe.run(
             fluid.default_main_program(),
             feed={'input': input_i},
