@@ -166,10 +166,14 @@ class BaseModel(fluid.dygraph.Layer):
                 )
             )
 
-        self.fc = fluid.dygraph.nn.Linear(
+        self.fc = paddle.nn.Linear(
             self.hidden_size,
             self.tar_vocab_size,
-            param_attr=param_attr,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                )
+            ),
             bias_attr=False,
         )
 
@@ -611,31 +615,38 @@ class AttentionModel(fluid.dygraph.Layer):
                     )
                 )
 
-        self.attn_fc = fluid.dygraph.nn.Linear(
+        self.attn_fc = paddle.nn.Linear(
             self.hidden_size,
             self.hidden_size,
-            param_attr=ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name="self_attn_fc",
-                initializer=uniform_initializer(self.init_scale),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
 
-        self.concat_fc = fluid.dygraph.nn.Linear(
+        self.concat_fc = paddle.nn.Linear(
             2 * self.hidden_size,
             self.hidden_size,
-            param_attr=ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name="self_concat_fc",
-                initializer=uniform_initializer(self.init_scale),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
 
-        self.fc = fluid.dygraph.nn.Linear(
+        self.fc = paddle.nn.Linear(
             self.hidden_size,
             self.tar_vocab_size,
-            param_attr=ParamAttr(
-                name="self_fc", initializer=uniform_initializer(self.init_scale)
+            weight_attr=paddle.ParamAttr(
+                name="self_fc",
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
