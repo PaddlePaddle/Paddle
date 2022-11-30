@@ -723,7 +723,7 @@ class DataParallel(layers.Layer):
         def check_layer_sparse(sublayer):
             if isinstance(sublayer, paddle.nn.layer.common.Embedding):
                 return sublayer._sparse
-            # NOTE(shenliang03):This is for compatibility. 
+            # NOTE(shenliang03):This is for compatibility.
             return False
 
         is_sparse_gradient = [
