@@ -15,8 +15,8 @@
 import unittest
 
 import paddle.fluid as fluid
-import paddle.fluid.framework as framework
 import paddle.fluid.core as core
+import paddle.fluid.framework as framework
 
 
 class TestInferNoNeedBufferSlots(unittest.TestCase):

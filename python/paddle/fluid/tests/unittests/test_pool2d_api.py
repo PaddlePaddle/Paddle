@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn.functional import avg_pool2d, max_pool2d
 from test_pool2d_op import (
     avg_pool2D_forward_naive,
     max_pool2D_forward_naive,
     pool2D_forward_naive,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn.functional import avg_pool2d, max_pool2d
 
 
 class TestPool2D_API(unittest.TestCase):
