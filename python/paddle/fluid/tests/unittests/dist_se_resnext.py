@@ -158,7 +158,7 @@ class SE_ResNeXt:
 
         short = self.shortcut(input, num_filters * 2, stride)
 
-        return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=short, y=scale))
 
     def conv_bn_layer(
         self, input, num_filters, filter_size, stride=1, groups=1, act=None

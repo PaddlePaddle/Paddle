@@ -16,18 +16,17 @@ import json
 import multiprocessing
 from multiprocessing import Process
 
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
-
 from CspChromeTraceFormatter import ChromeTraceFormatter
-
-from CspFileReader import FileReader
-from CspFileReader import getLogger
 from CspFileReader import (
-    NETINFO_TRACE_NUM,
     DCGMINFO_TRACE_NUM,
+    FILEORGANIZEFORM_BYRANK,
+    NETINFO_TRACE_NUM,
     PIPELINEINFO_TRACE_NUM,
+    FileReader,
+    getLogger,
 )
-from CspFileReader import FILEORGANIZEFORM_BYRANK
+
+import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
 class profileFileReader(FileReader):

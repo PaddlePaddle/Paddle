@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..utils import compute_compatible_and_update_dim_mapping
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    FillConstantBatchSizeLikeOpCost,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+)
+from ..utils import compute_compatible_and_update_dim_mapping
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 from .dist_default import DistributedDefaultImpl0
-from ..cost import FillConstantBatchSizeLikeOpCost
-from ..cost import build_comp_desc_from_dist_op
-from ..cost import build_comp_costs_from_descs
 
 
 class DistributedFillConstantBatchSizeLike(DistributedOperatorImplContainer):

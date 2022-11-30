@@ -16,10 +16,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 def adaptive_start_index(index, input_size, output_size):
