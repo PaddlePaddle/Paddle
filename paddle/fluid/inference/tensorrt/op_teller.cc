@@ -79,17 +79,17 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",      "relu6", "sigmoid",
-        "elu",       "selu",  "softsign",
-        "softplus",  "stanh", "thresholded_relu",
-        "exp",       "log",   "sqrt",
-        "abs",       "sin",   "cos",
-        "tan",       "tanh",  "sinh",
-        "cosh",      "asin",  "acos",
-        "atan",      "asinh", "atanh",
-        "ceil",      "floor", "erf",
-        "silu",      "celu",  "tanh_shrink",
-        "logsigmoid"};
+        "relu",       "relu6", "sigmoid",
+        "elu",        "selu",  "softsign",
+        "softplus",   "stanh", "thresholded_relu",
+        "exp",        "log",   "sqrt",
+        "abs",        "sin",   "cos",
+        "tan",        "tanh",  "sinh",
+        "cosh",       "asin",  "acos",
+        "atan",       "asinh", "atanh",
+        "ceil",       "floor", "erf",
+        "silu",       "celu",  "tanh_shrink",
+        "logsigmoid", "sign"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -331,6 +331,12 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bmm") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
+    if (op_type == "sign") {
       if (!with_dynamic_shape) {
         return false;
       }

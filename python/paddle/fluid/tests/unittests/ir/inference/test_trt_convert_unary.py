@@ -57,8 +57,10 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "atanh",
                     "ceil",
                     "floor",
+                    "sign",
                 ]:
                     self.dims = dims
+                    self.op_type = op_type
                     dics = [{}]
 
                     ops_config = [
@@ -119,7 +121,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1:
+            if self.dims == 1 or (self.op_type == "sign" and not dynamic_shape):
                 return 0, 3
             return 1, 2
 
