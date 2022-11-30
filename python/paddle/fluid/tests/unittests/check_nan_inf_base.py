@@ -64,7 +64,7 @@ def net():
             input=hidden, size=400, activation="sigmoid"
         )
 
-    hidden = paddle.static.nn.fc(input=hidden, size=3, activation=None)
+    hidden = paddle.static.nn.fc(x=hidden, size=3, activation=None)
     cost, y_predict = fluid.layers.softmax_with_cross_entropy(
         hidden, y, return_softmax=True
     )

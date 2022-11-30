@@ -263,7 +263,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             feeder = paddle.static.DataFeeder(feed_list=[image, label], place=paddle.CPUPlace())
 
-            predict = paddle.static.nn.fc(input=image, size=10, activation='softmax')
+            predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
             loss = paddle.nn.functional.cross_entropy(input=predict, label=label)
             avg_loss = paddle.mean(loss)
             exe = paddle.static.Executor(paddle.CPUPlace())

@@ -84,8 +84,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             fc_1 = paddle.static.nn.fc(
                 input=input_x, size=64, activation='tanh'
             )
-            fc_2 = paddle.static.nn.fc(input=fc_1, size=64, activation='tanh')
-            fc_3 = paddle.static.nn.fc(input=fc_2, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            fc_3 = paddle.static.nn.fc(x=fc_2, size=64, activation='tanh')
             return fc_3
 
         with fluid.program_guard(main_prog, startup_prog):

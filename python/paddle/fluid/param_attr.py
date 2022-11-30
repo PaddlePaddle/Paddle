@@ -263,7 +263,7 @@ class WeightNormParamAttr(ParamAttr):
 
             data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
 
-            fc = paddle.static.nn.fc(input=data,
+            fc = paddle.static.nn.fc(x=data,
                                      size=1000,
                                      weight_attr=paddle.static.WeightNormParamAttr(
                                          dim=None,

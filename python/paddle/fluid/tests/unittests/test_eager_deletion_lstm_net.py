@@ -37,7 +37,7 @@ def lstm_net(
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),
     )
-    fc0 = paddle.static.nn.fc(input=emb, size=hid_dim * 4)
+    fc0 = paddle.static.nn.fc(x=emb, size=hid_dim * 4)
     lstm_h, c = fluid.layers.dynamic_lstm(
         input=fc0, size=hid_dim * 4, is_reverse=False
     )

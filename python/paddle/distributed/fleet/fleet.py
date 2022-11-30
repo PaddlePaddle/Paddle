@@ -1223,9 +1223,9 @@ class Fleet:
                 label_dim = 2
                 input_x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
                 input_y = paddle.static.data(name='y', shape=[None, 1], dtype='int64')
-                fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim, activation='tanh')
-                fc_2 = paddle.static.nn.fc(input=fc_1, size=hid_dim, activation='tanh')
-                prediction = paddle.static.nn.fc(input=[fc_2], size=label_dim, activation='softmax')
+                fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
+                fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
+                prediction = paddle.static.nn.fc(x=[fc_2], size=label_dim, activation='softmax')
                 cost = F.cross_entropy(input=prediction, label=input_y)
                 avg_cost = paddle.mean(x=cost)
 

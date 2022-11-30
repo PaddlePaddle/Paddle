@@ -738,7 +738,7 @@ class ASPHelper:
 
               with paddle.static.program_guard(main_program, startup_program):
                   input_data = paddle.static.data(name='data', shape=[None, 128])
-                  fc = paddle.static.nn.fc(input=input_data, num_flatten_dims=-1, size=32, activation=None)
+                  fc = paddle.static.nn.fc(x=input_data, num_flatten_dims=-1, size=32, activation=None)
 
               for param in main_program.global_block().all_parameters():
                   ASPHelper._is_supported_layer(main_program, param.name)

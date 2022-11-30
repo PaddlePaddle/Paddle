@@ -2821,7 +2821,7 @@ class DpsgdOptimizer(Optimizer):
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-              hidden = paddle.static.nn.fc(input=data, size=10)
+              hidden = paddle.static.nn.fc(x=data, size=10)
               loss = fluid.layers.mean(hidden)
               optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
               optimizer.minimize(loss)
@@ -3678,7 +3678,7 @@ class LambOptimizer(AdamOptimizer):
             import paddle.fluid as fluid
 
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-            hidden = paddle.static.nn.fc(input=data, size=10)
+            hidden = paddle.static.nn.fc(x=data, size=10)
             cost = fluid.layers.mean(hidden)
 
             def exclude_fn(param):
@@ -3894,7 +3894,7 @@ class ModelAverage(Optimizer):
         with fluid.program_guard(train_program, startup_program):
             # build net
             data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-            hidden = paddle.static.nn.fc(input=data, size=10)
+            hidden = paddle.static.nn.fc(x=data, size=10)
             loss = fluid.layers.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
             optimizer.minimize(loss)
@@ -4072,7 +4072,7 @@ class ModelAverage(Optimizer):
             with fluid.program_guard(train_program, startup_program):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = paddle.static.nn.fc(input=data, size=10)
+                hidden = paddle.static.nn.fc(x=data, size=10)
                 loss = fluid.layers.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
@@ -4127,7 +4127,7 @@ class ModelAverage(Optimizer):
             with fluid.program_guard(train_program, startup_program):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = paddle.static.nn.fc(input=data, size=10)
+                hidden = paddle.static.nn.fc(x=data, size=10)
                 loss = fluid.layers.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
@@ -4216,7 +4216,7 @@ class ExponentialMovingAverage:
             paddle.enable_static()
 
             data = static.data(name='x', shape=[-1, 5], dtype='float32')
-            hidden = static.nn.fc(input=data, size=10)
+            hidden = static.nn.fc(x=data, size=10)
             cost = paddle.mean(hidden)
 
             test_program = static.default_main_program().clone(for_test=True)
@@ -4452,7 +4452,7 @@ class PipelineOptimizer:
 
             with fluid.device_guard("gpu:1"):
                 concat = layers.concat([emb_x, emb_y], axis=1)
-                fc = paddle.static.nn.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+                fc = paddle.static.nn.fc(x=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
                 loss = layers.reduce_mean(fc)
             optimizer = fluid.optimizer.SGD(learning_rate=0.5)
             optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
@@ -6403,8 +6403,8 @@ class RecomputeOptimizer(Optimizer):
                 "y": np.random.randint(2, size=(32, 1)).astype('int64')}
             def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                 print(input_x)
-                fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim)
-                prediction = paddle.static.nn.fc(input=[fc_1], size=label_dim, activation='softmax')
+                fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                 cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                 sum_cost = fluid.layers.reduce_mean(cost)
                 return sum_cost, fc_1, prediction
@@ -6477,8 +6477,8 @@ class RecomputeOptimizer(Optimizer):
 
                 paddle.enable_static()
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(input=[fc_1], size=label_dim, activation='softmax')
+                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
                     return sum_cost, fc_1, prediction
@@ -6519,8 +6519,8 @@ class RecomputeOptimizer(Optimizer):
                 import paddle.fluid.framework as framework
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(input=[fc_1], size=label_dim, activation='softmax')
+                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
                     return sum_cost, fc_1, prediction
@@ -7008,8 +7008,8 @@ class RecomputeOptimizer(Optimizer):
                 import paddle.fluid as fluid
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(input=[fc_1], size=label_dim, activation='softmax')
+                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
                     return sum_cost, fc_1, prediction
@@ -7085,8 +7085,8 @@ class RecomputeOptimizer(Optimizer):
                 import paddle.fluid as fluid
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-                    fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim)
-                    prediction = paddle.static.nn.fc(input=[fc_1], size=label_dim, activation='softmax')
+                    fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+                    prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
                     return sum_cost, fc_1, prediction
@@ -7180,7 +7180,7 @@ class LookaheadOptimizer:
 
             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            y = paddle.static.nn.fc(input=[x], size=2, activation="softmax")
+            y = paddle.static.nn.fc(x=[x], size=2, activation="softmax")
             loss = fluid.layers.cross_entropy(input=y, label=label)
             loss = paddle.mean(x=loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
@@ -7357,8 +7357,8 @@ class GradientMergeOptimizer:
                     "y": np.random.random(size=(batch_size, 1)).astype('int64')}
 
         def mlp(input_x, input_y, hid_dim=128, label_dim=2):
-            fc_1 = paddle.static.nn.fc(input=input_x, size=hid_dim)
-            prediction = paddle.static.nn.fc(input=[fc_1], size=label_dim, activation='softmax')
+            fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
+            prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
             cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
             sum_cost = fluid.layers.reduce_mean(cost)
             return sum_cost, fc_1, prediction

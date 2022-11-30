@@ -667,7 +667,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             with fluid.program_guard(train_program, startup_program):
                 input_data = fluid.data(name='input_data', shape=[-1,10], dtype='float32')
                 label = fluid.data(name='label', shape=[-1,1], dtype='int')
-                emission= paddle.static.nn.fc(input=input_data, size=10, activation="tanh")
+                emission= paddle.static.nn.fc(x=input_data, size=10, activation="tanh")
                 crf_cost = fluid.layers.linear_chain_crf(
                     input=emission,
                     label=label,
@@ -692,7 +692,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
                 input_data2 = fluid.data(name='input_data2', shape=[-1,10,10], dtype='float32')
                 label2 = fluid.data(name='label2', shape=[-1,10,1], dtype='int')
                 label_length = fluid.data(name='length', shape=[-1,1], dtype='int')
-                emission2= paddle.static.nn.fc(input=input_data2, size=10, activation="tanh", num_flatten_dims=2)
+                emission2= paddle.static.nn.fc(x=input_data2, size=10, activation="tanh", num_flatten_dims=2)
                 crf_cost2 = fluid.layers.linear_chain_crf(
                     input=emission2,
                     label=label2,

@@ -115,8 +115,8 @@ class TestReluNet(unittest.TestCase):
             sum = paddle.add(a, b)
             z = paddle.nn.functional.relu(sum)
 
-            fc_1 = paddle.static.nn.fc(input=z, size=128)
-            prediction = paddle.static.nn.fc(input=fc_1, size=2, activation='softmax')
+            fc_1 = paddle.static.nn.fc(x=z, size=128)
+            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)

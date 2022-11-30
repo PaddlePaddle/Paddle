@@ -31,7 +31,7 @@ class TestGradientScale(unittest.TestCase):
         fc_1 = paddle.static.nn.fc(
             input=input_x, size=hid_dim, activation='tanh'
         )
-        fc_2 = paddle.static.nn.fc(input=fc_1, size=hid_dim, activation='tanh')
+        fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
         prediction = paddle.static.nn.fc(
             x=[fc_2], size=label_dim, activation='softmax'
         )

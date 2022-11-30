@@ -33,7 +33,7 @@ __all__ = []
 
 @static_only
 def fc(
-    input,
+    x,
     size,
     num_flatten_dims=1,
     weight_attr=None,
@@ -82,7 +82,7 @@ def fc(
                    [0.3, 0.4]]]
         x.shape = (1, 2, 2) # 1 is batch_size
 
-        out = paddle.static.nn.fc(input=x, size=1, num_flatten_dims=2)
+        out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
 
         # Get the output:
         out.data = [[0.83234344], [0.34936576]]
@@ -96,7 +96,7 @@ def fc(
         x1.data = [[[0.1, 0.2, 0.3]]]
         x1.shape = (1, 1, 3)
 
-        out = paddle.static.nn.fc(input=[x0, x1], size=2)
+        out = paddle.static.nn.fc(x=[x0, x1], size=2)
 
         # Get the output:
         out.data = [[0.18669507, 0.1893476]]
@@ -163,23 +163,23 @@ def fc(
           x1 = paddle.static.data(name="x1", shape=[1, 1, 3], dtype="float32")
           # x1: [[[0.1 0.2 0.3]]]
           out = paddle.static.nn.fc(
-              input=[x0, x1],
+              x=[x0, x1],
               size=2,
               weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
               bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
           # out: [[1.8 1.8]]
     """
     helper = LayerHelper("fc", **locals())
-    check_type(input, 'input', (list, tuple, Variable), 'fc')
-    if isinstance(input, (list, tuple)):
-        for i, input_x in enumerate(input):
-            check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
-    dtype = helper.input_dtype()
-    check_dtype(
-        dtype, 'input', ['float16', 'uint16', 'float32', 'float64'], 'fc'
-    )
+    check_type(x, 'x', (list, tuple, Variable), 'fc')
+    if isinstance(x, (list, tuple)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'x[' + str(i) + ']', Variable, 'fc')
+    dtype = helper.input_dtype(input_param_name="x")
+    check_dtype(dtype, 'x', ['float16', 'uint16', 'float32', 'float64'], 'fc')
     mul_results = []
-    for input_var, weight_attr in helper.iter_inputs_and_params():
+    for input_var, weight_attr in helper.iter_inputs_and_params(
+        input_param_name="x"
+    ):
         input_shape = input_var.shape
         if num_flatten_dims == -1:
             num_flatten_dims = len(input_shape) - 1

@@ -30,13 +30,13 @@ def while_softmax_regression(img):
         return i < times
 
     def body(i, times, pred):
-        pred = paddle.static.nn.fc(input=pred, size=10, activation='softmax')
+        pred = paddle.static.nn.fc(x=pred, size=10, activation='softmax')
         i = i + 1
         return [i, times, pred]
 
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     times = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
-    pred = paddle.static.nn.fc(input=img, size=10, activation='softmax')
+    pred = paddle.static.nn.fc(x=img, size=10, activation='softmax')
     i, times, pred = fluid.layers.while_loop(
         cond=cond, body=body, loop_vars=[i, times, pred]
     )

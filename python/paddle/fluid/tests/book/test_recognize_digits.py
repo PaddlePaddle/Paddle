@@ -39,8 +39,8 @@ def loss_net(hidden, label):
 
 
 def mlp(img, label):
-    hidden = paddle.static.nn.fc(input=img, size=200, activation='tanh')
-    hidden = paddle.static.nn.fc(input=hidden, size=200, activation='tanh')
+    hidden = paddle.static.nn.fc(x=img, size=200, activation='tanh')
+    hidden = paddle.static.nn.fc(x=hidden, size=200, activation='tanh')
     return loss_net(hidden, label)
 
 

@@ -278,7 +278,7 @@ def decorate_bf16(
             paddle.enable_static()
 
             data = static.data(name='X', shape=[None, 1], dtype='float32')
-            hidden = static.nn.fc(input=data, size=10)
+            hidden = static.nn.fc(x=data, size=10)
             loss = paddle.mean(hidden)
             optimizer = paddle.optimizer.Adam(learning_rate=0.001)
 

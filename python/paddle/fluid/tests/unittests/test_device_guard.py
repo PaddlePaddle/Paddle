@@ -193,8 +193,8 @@ class TestDeviceGuard(unittest.TestCase):
             label = paddle.static.data(
                 name="label", shape=[4, 1], dtype="int64"
             )
-            fc1 = paddle.static.nn.fc(input=data1, size=10)
-            fc2 = paddle.static.nn.fc(input=fc1, size=10)
+            fc1 = paddle.static.nn.fc(x=data1, size=10)
+            fc2 = paddle.static.nn.fc(x=fc1, size=10)
             with paddle.static.device_guard("gpu"):
                 out = paddle.nn.functional.softmax_with_cross_entropy(
                     logits=fc1 + fc2, label=label

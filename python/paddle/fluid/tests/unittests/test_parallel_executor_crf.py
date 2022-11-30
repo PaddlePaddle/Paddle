@@ -80,7 +80,7 @@ def db_lstm(
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        paddle.static.nn.fc(input=emb, size=hidden_dim, activation='tanh')
+        paddle.static.nn.fc(x=emb, size=hidden_dim, activation='tanh')
         for emb in emb_layers
     ]
 
