@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph.nn as nn
 from paddle.fluid import core
+from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -29,8 +28,8 @@ class Policy(fluid.dygraph.Layer):
     def __init__(self, input_size):
         super().__init__()
 
-        self.affine1 = nn.Linear(input_size, 128)
-        self.affine2 = nn.Linear(128, 2)
+        self.affine1 = paddle.nn.Linear(input_size, 128)
+        self.affine2 = paddle.nn.Linear(128, 2)
         self.dropout_ratio = 0.6
 
         self.saved_log_probs = []

@@ -218,15 +218,14 @@ class BMN(fluid.dygraph.Layer):
         self.sample_mask = fluid.dygraph.base.to_variable(sample_mask)
         self.sample_mask.stop_gradient = True
 
-        self.p_conv3d1 = fluid.dygraph.Conv3D(
-            num_channels=128,
-            num_filters=self.hidden_dim_3d,
-            filter_size=(self.num_sample, 1, 1),
+        self.p_conv3d1 = paddle.nn.Conv3D(
+            in_channels=128,
+            out_channels=self.hidden_dim_3d,
+            kernel_size=(self.num_sample, 1, 1),
             stride=(self.num_sample, 1, 1),
             padding=0,
-            act="relu",
-            param_attr=ParamAttr(name="PEM_3d1_w"),
-            bias_attr=ParamAttr(name="PEM_3d1_b"),
+            weight_attr=paddle.ParamAttr(name="PEM_3d1_w"),
+            bias_attr=paddle.ParamAttr(name="PEM_3d1_b"),
         )
 
         self.p_conv2d1 = paddle.nn.Conv2D(
@@ -287,6 +286,7 @@ class BMN(fluid.dygraph.Layer):
         xp = paddle.reshape(xp, shape=[0, 0, -1, self.dscale, self.tscale])
 
         xp = self.p_conv3d1(xp)
+        xp = paddle.tanh(xp)
         xp = paddle.squeeze(xp, axis=[2])
         xp = paddle.nn.functional.relu(self.p_conv2d1(xp))
         xp = paddle.nn.functional.relu(self.p_conv2d2(xp))

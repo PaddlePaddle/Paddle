@@ -427,10 +427,10 @@ class TestFakeInit(TranspilerTest):
             true_logits, shape=[-1, neg_num], value=0.0, dtype='float32'
         )
 
-        true_xent = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+        true_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             true_logits, label_ones
         )
-        neg_xent = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+        neg_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             neg_logits, label_zeros
         )
         cost = fluid.layers.elementwise_add(

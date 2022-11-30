@@ -14,25 +14,17 @@
 
 from paddle.utils import gast
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_TUPLE_PREFIX
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    FOR_ITER_TUPLE_INDEX_PREFIX,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_VAR_LEN_PREFIX
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    ORIGI_INFO,
+    FOR_ITER_INDEX_PREFIX,
+    FOR_ITER_VAR_LEN_PREFIX,
+    FOR_ITER_TARGET_PREFIX,
     FOR_ITER_VAR_NAME_PREFIX,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
     FOR_ITER_ZIP_TO_LIST_PREFIX,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_TARGET_PREFIX
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
     FOR_ITER_ITERATOR_PREFIX,
+    create_assign_node,
+    ast_to_source_code,
+    get_attribute_full_name,
 )
 
 
