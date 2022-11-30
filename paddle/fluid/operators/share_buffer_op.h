@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class ShareBufferOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

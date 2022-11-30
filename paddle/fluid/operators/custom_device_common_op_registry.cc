@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/load_combine_op.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
+#include "paddle/fluid/operators/share_buffer_op.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #define REGISTER_OP_CUSTOM_DEVICE_KERNEL(op_type, dev_type, ...)             \
@@ -66,6 +67,11 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int8_t>,
       paddle::operators::
           LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int64_t>);
+  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
+      share_buffer,
+      device_type,
+      paddle::operators ::
+          ShareBufferOpKernel<paddle::platform::CustomDeviceContext, float>);
 }
 
 }  // namespace operators

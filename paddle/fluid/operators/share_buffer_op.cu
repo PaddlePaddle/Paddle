@@ -15,4 +15,4 @@
 #include "paddle/fluid/operators/share_buffer_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(share_buffer, ops::ShareBufferOpKernel<float>);
+REGISTER_OP_CUDA_KERNEL(share_buffer, ops::ShareBufferOpKernel<phi::GPUContext, float>);

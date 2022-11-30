@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-static constexpr size_t kHostNumThreads = 4;
+static constexpr size_t kHostNumThreads = 1;
 static constexpr size_t kDeviceNumThreads = 1;
 static constexpr size_t kNumGcThreads = 1;
 
