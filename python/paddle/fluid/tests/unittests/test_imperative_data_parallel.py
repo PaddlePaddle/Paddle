@@ -19,7 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 
 
 class MLP(fluid.Layer):

@@ -21,7 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
+from paddle.jit import ProgramTranslator
+from paddle.jit.dy2static.logical_transformer import (
     cmpop_node_to_str,
 )
 from paddle.jit import ProgramTranslator

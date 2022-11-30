@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
 )
@@ -22,7 +21,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import (
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
     create_undefined_var,
 )
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 
