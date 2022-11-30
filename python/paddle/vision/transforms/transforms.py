@@ -136,7 +136,7 @@ class BaseTransform:
 
     calling logic:
 
-        ..code-block:: test
+        ..code-block:: text
 
             if keys is None:
                 _get_params -> _apply_image()
