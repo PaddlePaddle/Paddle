@@ -39,12 +39,12 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
                 transpose_y=self.transpose_y,
                 alpha=self.alpha,
             )
-            fc_out = fluid.layers.fc(
-                input=matmul_out,
+            fc_out = paddle.static.nn.fc(
+                x=matmul_out,
                 size=10,
                 num_flatten_dims=1,
                 bias_attr=False,
-                act=None,
+                activation=None,
             )
             result = fluid.layers.relu(fc_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)
@@ -136,12 +136,12 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
                 alpha=self.alpha,
             )
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
-            fc_out = fluid.layers.fc(
-                input=matmul_out,
+            fc_out = paddle.static.nn.fc(
+                x=matmul_out,
                 size=10,
                 num_flatten_dims=1,
                 bias_attr=False,
-                act=None,
+                activation=None,
             )
             result = fluid.layers.relu(fc_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)
@@ -232,12 +232,12 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                 alpha=self.alpha,
             )
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
-            fc_out = fluid.layers.fc(
-                input=matmul_out,
+            fc_out = paddle.static.nn.fc(
+                x=matmul_out,
                 size=10,
                 num_flatten_dims=1,
                 bias_attr=False,
-                act=None,
+                activation=None,
             )
             result = fluid.layers.relu(fc_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)

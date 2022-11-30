@@ -37,7 +37,7 @@ class TestProfiler(unittest.TestCase):
         main_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
             image = fluid.layers.data(name='x', shape=[784], dtype='float32')
-            hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
+            hidden1 = paddle.static.nn.fc(x=image, size=64, activation='relu')
             i = layers.zeros(shape=[1], dtype='int64')
             counter = fluid.layers.zeros(
                 shape=[1], dtype='int64', force_cpu=True
@@ -47,14 +47,20 @@ class TestProfiler(unittest.TestCase):
             cond = fluid.layers.less_than(x=counter, y=until)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
+                hidden_n = paddle.static.nn.fc(
+                    x=hidden1, size=64, activation='relu'
+                )
                 layers.array_write(hidden_n, i, data_arr)
                 fluid.layers.increment(x=counter, value=1, in_place=True)
                 layers.less_than(x=counter, y=until, cond=cond)
 
             hidden_n = layers.array_read(data_arr, i)
-            hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
-            predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
+            hidden2 = paddle.static.nn.fc(
+                x=hidden_n, size=64, activation='relu'
+            )
+            predict = paddle.static.nn.fc(
+                x=hidden2, size=10, activation='softmax'
+            )
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = paddle.mean(cost)

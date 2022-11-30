@@ -123,7 +123,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                 startup.random_seed = seed
                 x = fluid.layers.data(name='X', shape=[13], dtype='float32')
                 y = fluid.layers.data(name='Y', shape=[1], dtype='float32')
-                prediction = fluid.layers.fc(input=x, size=1, act=None)
+                prediction = paddle.static.nn.fc(x, size=1, activation=None)
                 loss = fluid.layers.square_error_cost(input=prediction, label=y)
                 avg_loss = paddle.mean(loss)
             return avg_loss

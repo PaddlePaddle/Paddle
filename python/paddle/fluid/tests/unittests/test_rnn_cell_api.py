@@ -626,7 +626,7 @@ def def_seq2seq_model(
     dec_output, dec_final_state = dynamic_rnn(
         cell=dec_cell, inputs=tar_emb, initial_states=enc_final_state
     )
-    logits = layers.fc(
+    logits = paddle.static.nn.fc(
         dec_output,
         size=trg_vocab_size,
         num_flatten_dims=len(dec_output.shape) - 1,

@@ -112,8 +112,8 @@ class TestDyRnnStaticInput(unittest.TestCase):
             last = fluid.layers.sequence_pool(
                 input=step_static_input, pool_type='last'
             )
-            projected = fluid.layers.fc(
-                input=[step_x, last], size=self.output_dim
+            projected = paddle.static.nn.fc(
+                x=[step_x, last], size=self.output_dim
             )
             rnn.output(projected)
 

@@ -135,8 +135,8 @@ class TestElementwiseDivNet(unittest.TestCase):
             f.stop_gradient = True
             g = fluid.layers.elementwise_div(e, f)
 
-            fc_1 = fluid.layers.fc(input=g, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            fc_1 = paddle.static.nn.fc(x=g, size=128)
+            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)

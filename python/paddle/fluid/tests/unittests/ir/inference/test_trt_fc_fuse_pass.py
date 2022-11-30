@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
@@ -28,8 +29,8 @@ class FCFusePassTRTTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[32, 128, 2, 2], dtype="float32"
             )
-            fc_out1 = fluid.layers.fc(
-                input=data, size=128, num_flatten_dims=1, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=128, num_flatten_dims=1, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -58,8 +59,8 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[32, 128, 32, 8], dtype="float32"
             )
-            fc_out1 = fluid.layers.fc(
-                input=data, size=64, num_flatten_dims=1, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=64, num_flatten_dims=1, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -86,8 +87,8 @@ class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[3, 24, 16, 16], dtype="float32"
             )
-            fc_out1 = fluid.layers.fc(
-                input=data, size=32, num_flatten_dims=2, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=32, num_flatten_dims=2, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -112,8 +113,8 @@ class FCFusePassTRTDynamicDims2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[32, 128], dtype="float32")
-            fc_out1 = fluid.layers.fc(
-                input=data, size=64, num_flatten_dims=1, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=64, num_flatten_dims=1, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -144,8 +145,8 @@ class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[32, 128, 32], dtype="float32")
-            fc_out1 = fluid.layers.fc(
-                input=data, size=64, num_flatten_dims=1, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=64, num_flatten_dims=1, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -176,8 +177,8 @@ class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[32, 128, 32], dtype="float32")
-            fc_out1 = fluid.layers.fc(
-                input=data, size=64, num_flatten_dims=2, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=64, num_flatten_dims=2, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -210,8 +211,8 @@ class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[32, 12, 4, 6], dtype="float32"
             )
-            fc_out1 = fluid.layers.fc(
-                input=data, size=64, num_flatten_dims=1, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=64, num_flatten_dims=1, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -246,8 +247,8 @@ class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )
-            fc_out1 = fluid.layers.fc(
-                input=data, size=64, num_flatten_dims=2, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=64, num_flatten_dims=2, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 
@@ -282,8 +283,8 @@ class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )
-            fc_out1 = fluid.layers.fc(
-                input=data, size=64, num_flatten_dims=3, act="relu"
+            fc_out1 = paddle.static.nn.fc(
+                x=data, size=64, num_flatten_dims=3, activation="relu"
             )
             out = fluid.layers.softmax(input=fc_out1)
 

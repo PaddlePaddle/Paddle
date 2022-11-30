@@ -133,10 +133,10 @@ def train_network(
     q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
     q_ss = paddle.nn.functional.softsign(q_sum)
     # fc layer after conv
-    q_fc = fluid.layers.fc(
-        input=q_ss,
+    q_fc = paddle.static.nn.fc(
+        x=q_ss,
         size=hid_dim,
-        param_attr=fluid.ParamAttr(
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01),
             name="__q_fc__",
             learning_rate=base_lr,
@@ -160,10 +160,10 @@ def train_network(
     pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
     pt_ss = paddle.nn.functional.softsign(pt_sum)
     # fc layer
-    pt_fc = fluid.layers.fc(
-        input=pt_ss,
+    pt_fc = paddle.static.nn.fc(
+        x=pt_ss,
         size=hid_dim,
-        param_attr=fluid.ParamAttr(
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01), name="__fc__"
         ),
         bias_attr=fluid.ParamAttr(name="__fc_b__"),
@@ -184,10 +184,10 @@ def train_network(
     nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
     nt_ss = paddle.nn.functional.softsign(nt_sum)
     # fc layer
-    nt_fc = fluid.layers.fc(
-        input=nt_ss,
+    nt_fc = paddle.static.nn.fc(
+        x=nt_ss,
         size=hid_dim,
-        param_attr=fluid.ParamAttr(
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01), name="__fc__"
         ),
         bias_attr=fluid.ParamAttr(name="__fc_b__"),

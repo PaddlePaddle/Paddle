@@ -99,8 +99,8 @@ class TestProgram(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             d = layers.data(name='x', shape=[784], dtype='float32')
-            hidden = layers.fc(input=d, size=100)
-            layers.fc(input=hidden, size=100)
+            hidden = paddle.static.nn.fc(x=d, size=100)
+            paddle.static.nn.fc(x=hidden, size=100)
 
         new_program = main_program.clone()
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
@@ -115,7 +115,9 @@ class TestProgram(unittest.TestCase):
                 use_double_buffer=True,
             )
             in_data, label = fluid.layers.read_file(reader)
-            predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
+            predict_label = paddle.static.nn.fc(
+                in_data, size=2, activation='softmax'
+            )
             loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label)
             )
@@ -143,7 +145,7 @@ class TestProgram(unittest.TestCase):
     def test_program_all_parameters(self):
         program = fluid.default_main_program()
         data = fluid.data(name='x', shape=[None, 13], dtype='float32')
-        hidden = fluid.layers.fc(input=data, size=10)
+        hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
         fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
@@ -182,7 +184,9 @@ class TestProgram(unittest.TestCase):
                 use_double_buffer=True,
             )
             in_data, label = fluid.layers.read_file(reader)
-            predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
+            predict_label = paddle.static.nn.fc(
+                in_data, size=2, activation='softmax'
+            )
             loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label)
             )

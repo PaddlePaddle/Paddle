@@ -15,6 +15,7 @@
 
 import os
 import unittest
+import paddle
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -61,7 +62,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                 lod_level=1,
                 append_batch_size=False,
             )
-            fc = fluid.layers.fc(input=show, size=1, act=None)
+            fc = paddle.static.nn.fc(x=show, size=1, activation=None)
             label = fluid.layers.data(
                 name="click",
                 shape=[-1, 1],

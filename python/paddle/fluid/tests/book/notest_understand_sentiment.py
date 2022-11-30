@@ -44,8 +44,8 @@ def convolution_net(
         act="tanh",
         pool_type="sqrt",
     )
-    prediction = fluid.layers.fc(
-        input=[conv_3, conv_4], size=class_dim, act="softmax"
+    prediction = paddle.static.nn.fc(
+        x=[conv_3, conv_4], size=class_dim, activation="softmax"
     )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)
@@ -59,7 +59,7 @@ def dyn_rnn_lstm(
     emb = fluid.layers.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
-    sentence = fluid.layers.fc(input=emb, size=lstm_size, act='tanh')
+    sentence = paddle.static.nn.fc(x=emb, size=lstm_size, activation='tanh')
 
     rnn = fluid.layers.DynamicRNN()
     with rnn.block():
@@ -68,8 +68,8 @@ def dyn_rnn_lstm(
         prev_cell = rnn.memory(value=0.0, shape=[lstm_size])
 
         def gate_common(ipt, hidden, size):
-            gate0 = fluid.layers.fc(input=ipt, size=size, bias_attr=True)
-            gate1 = fluid.layers.fc(input=hidden, size=size, bias_attr=False)
+            gate0 = paddle.static.nn.fc(x=ipt, size=size, bias_attr=True)
+            gate1 = paddle.static.nn.fc(x=hidden, size=size, bias_attr=False)
             return gate0 + gate1
 
         forget_gate = paddle.nn.functional.sigmoid(
@@ -92,7 +92,9 @@ def dyn_rnn_lstm(
         rnn.output(hidden)
 
     last = fluid.layers.sequence_last_step(rnn())
-    prediction = fluid.layers.fc(input=last, size=class_dim, act="softmax")
+    prediction = paddle.static.nn.fc(
+        x=last, size=class_dim, activation="softmax"
+    )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
@@ -110,13 +112,13 @@ def stacked_lstm_net(
     # add bias attr
 
     # TODO(qijun) linear act
-    fc1 = fluid.layers.fc(input=emb, size=hid_dim)
+    fc1 = paddle.static.nn.fc(x=emb, size=hid_dim)
     lstm1, cell1 = fluid.layers.dynamic_lstm(input=fc1, size=hid_dim)
 
     inputs = [fc1, lstm1]
 
     for i in range(2, stacked_num + 1):
-        fc = fluid.layers.fc(input=inputs, size=hid_dim)
+        fc = paddle.static.nn.fc(x=inputs, size=hid_dim)
         lstm, cell = fluid.layers.dynamic_lstm(
             input=fc, size=hid_dim, is_reverse=(i % 2) == 0
         )
@@ -125,8 +127,8 @@ def stacked_lstm_net(
     fc_last = fluid.layers.sequence_pool(input=inputs[0], pool_type='max')
     lstm_last = fluid.layers.sequence_pool(input=inputs[1], pool_type='max')
 
-    prediction = fluid.layers.fc(
-        input=[fc_last, lstm_last], size=class_dim, act='softmax'
+    prediction = paddle.static.nn.fc(
+        x=[fc_last, lstm_last], size=class_dim, activation='softmax'
     )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)

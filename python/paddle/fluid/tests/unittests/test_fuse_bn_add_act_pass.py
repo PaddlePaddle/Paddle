@@ -98,11 +98,11 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 param_attr=self.bn_param_attr2,
                 bias_attr=self.bn_bias_attr2,
             )
-            prediction = fluid.layers.fc(
-                input=fused_bn_add_act,
+            prediction = paddle.static.nn.fc(
+                x=fused_bn_add_act,
                 size=10,
-                act='softmax',
-                param_attr=self.fc_param_attr,
+                activation='softmax',
+                weight_attr=self.fc_param_attr,
             )
             loss = fluid.layers.cross_entropy(input=prediction, label=y)
             loss = paddle.mean(loss)
@@ -157,8 +157,11 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             )
             out = bn1 + bn2
             out = fluid.layers.relu(out)
-            prediction = fluid.layers.fc(
-                input=out, size=10, act='softmax', param_attr=self.fc_param_attr
+            prediction = paddle.static.nn.fc(
+                x=out,
+                size=10,
+                activation='softmax',
+                weight_attr=self.fc_param_attr,
             )
             loss = fluid.layers.cross_entropy(input=prediction, label=y)
             loss = paddle.mean(loss)

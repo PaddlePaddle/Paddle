@@ -583,6 +583,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
         .. code-block:: python
 
             import numpy as np
+            import paddle
             import paddle.fluid as fluid
 
             num_classes = 10  # exclude background
@@ -613,12 +614,12 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
             def build_model(mode='train'):
                 x = fluid.data(name="x", shape=[-1, 3, -1, -1], dtype='float64')
                 output = fluid.layers.pool2d(input=x, pool_type='avg', global_pooling=True)
-                output = fluid.layers.fc(
-                    input=output,
+                output = paddle.static.nn.fc(
+                    x=output,
                     size=num_classes,
                     # Notice: size is set to be the number of target classes (excluding backgorund)
                     # because sigmoid activation will be done in the sigmoid_focal_loss op.
-                    act=None)
+                    activation=None)
                 if mode == 'train':
                     label = fluid.data(name="label", shape=[-1, 1], dtype='int32')
                     # Obtain the fg_num needed by the sigmoid_focal_loss op:

@@ -647,7 +647,7 @@ class StaticRNN:
                 word = rnn.step_input(x_emb)
                 # create prev memory parameter, batch size comes from word
                 prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                 # use hidden to update prev
                 rnn.update_memory(prev, hidden)
                 # mark hidden as output
@@ -738,7 +738,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -767,7 +767,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # init memory
                         prev = rnn.memory(init=boot_memory)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # update hidden with prev
                         rnn.update_memory(prev, hidden)
 
@@ -870,7 +870,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -923,7 +923,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         rnn.step_output(hidden)
@@ -985,7 +985,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         # mark each step's hidden and word as output
@@ -3580,6 +3580,7 @@ class DynamicRNN:
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
             sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
@@ -3594,13 +3595,13 @@ class DynamicRNN:
                 encoder_word = drnn.static_input(encoder_proj)
                 # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
                 memory = drnn.memory(init=decoder_boot, need_reorder=True)
-                fc_1 = fluid.layers.fc(input=encoder_word, size=30)
-                fc_2 = fluid.layers.fc(input=current_word, size=30)
+                fc_1 = paddle.static.nn.fc(x=encoder_word, size=30)
+                fc_2 = paddle.static.nn.fc(x=current_word, size=30)
                 decoder_inputs = fc_1 + fc_2
                 hidden, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=memory, size=30)
                 # Update memory with hidden
                 drnn.update_memory(ex_mem=memory, new_mem=hidden)
-                out = fluid.layers.fc(input=hidden, size=10, bias_attr=True, act='softmax')
+                out = paddle.static.nn.fc(x=hidden, size=10, bias_attr=True, activation='softmax')
                 # Set hidden and out as RNN's outputs
                 drnn.output(hidden, out)
 
@@ -3700,6 +3701,7 @@ class DynamicRNN:
         Examples:
             ..  code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
 
                 sentence = fluid.data(name='sentence', shape=[None, 1], dtype='int64', lod_level=1)
@@ -3712,7 +3714,7 @@ class DynamicRNN:
                     # Initialize memory to a Tensor whose value is 0, shape=[batch_size, 200],
                     # where batch_size is the number of sequences in embedding.
                     memory = drnn.memory(shape=[200])
-                    hidden = fluid.layers.fc(input=[word, memory], size=200, act='relu')
+                    hidden = paddle.static.nn.fc(x=[word, memory], size=200, activation='relu')
                     # Update memory to hidden
                     drnn.update_memory(ex_mem=memory, new_mem=hidden)
                     # Set hidden as RNN's output
@@ -3866,6 +3868,7 @@ class DynamicRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
 
                 sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
@@ -3880,13 +3883,13 @@ class DynamicRNN:
                     encoder_word = drnn.static_input(encoder_proj)
                     # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
                     memory = drnn.memory(init=decoder_boot, need_reorder=True)
-                    fc_1 = fluid.layers.fc(input=encoder_word, size=30)
-                    fc_2 = fluid.layers.fc(input=current_word, size=30)
+                    fc_1 = paddle.static.nn.fc(x=encoder_word, size=30)
+                    fc_2 = paddle.static.nn.fc(x=current_word, size=30)
                     decoder_inputs = fc_1 + fc_2
                     hidden, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=memory, size=30)
                     # Update memory with hidden
                     drnn.update_memory(ex_mem=memory, new_mem=hidden)
-                    out = fluid.layers.fc(input=hidden, size=10, bias_attr=True, act='softmax')
+                    out = paddle.static.nn.fc(x=hidden, size=10, bias_attr=True, activation='softmax')
                     # Set out as RNN's output
                     drnn.output(out)
 
@@ -4023,6 +4026,7 @@ class DynamicRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
 
                 sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
@@ -4034,7 +4038,7 @@ class DynamicRNN:
                     word = drnn.step_input(sentence)
                     # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
                     memory = drnn.memory(init=boot_memory, need_reorder=True)
-                    hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                    hidden = paddle.static.nn.fc(x=[word, memory], size=10, activation='tanh')
                     # Update memory with hidden
                     drnn.update_memory(ex_mem=memory, new_mem=hidden)
                     # Set hidden as RNN's output
@@ -4047,6 +4051,7 @@ class DynamicRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
 
                 sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
@@ -4058,7 +4063,7 @@ class DynamicRNN:
                     # Initialize memory to a Tensor whose value is 0, shape=[batch_size, 10],
                     # where batch_size is the number of sequences in sentence.
                     memory = drnn.memory(shape=[10], dtype='float32', value=0)
-                    hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                    hidden = paddle.static.nn.fc(x=[word, memory], size=10, activation='tanh')
                     # Update memory with hidden
                     drnn.update_memory(ex_mem=memory, new_mem=hidden)
                     # Set hidden as RNN's output

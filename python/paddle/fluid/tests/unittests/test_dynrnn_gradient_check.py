@@ -264,12 +264,12 @@ class TestSimpleMul(SeedFixedTestCase):
         rnn = fluid.layers.DynamicRNN()
         with rnn.block():
             d = rnn.step_input(dat)
-            o = fluid.layers.fc(
-                input=d,
-                param_attr=self.PARAM_NAME,
+            o = paddle.static.nn.fc(
+                x=d,
+                weight_attr=self.PARAM_NAME,
                 bias_attr=False,
                 size=self.HIDDEN_WIDTH,
-                act=None,
+                activation=None,
             )
             rnn.output(o)
 
@@ -352,12 +352,12 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
         with rnn.block():
             d = rnn.step_input(data)
             mem = rnn.memory(value=0.0, shape=[self.HIDDEN_WIDTH])
-            hidden = fluid.layers.fc(
-                input=d,
+            hidden = paddle.static.nn.fc(
+                x=d,
                 size=self.HIDDEN_WIDTH,
-                param_attr=self.PARAM_NAME,
+                weight_attr=self.PARAM_NAME,
                 bias_attr=False,
-                act=None,
+                activation=None,
             )
             o = fluid.layers.elementwise_add(x=hidden, y=mem)
             rnn.update_memory(mem, o)

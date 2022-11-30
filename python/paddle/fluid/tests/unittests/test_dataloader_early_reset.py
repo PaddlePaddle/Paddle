@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
@@ -30,7 +31,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
         self.iterable = True
 
     def build_network(self):
-        y = fluid.layers.fc(self.x, size=10)
+        y = paddle.static.nn.fc(self.x, size=10)
         loss = fluid.layers.reduce_mean(y)
 
         optimizer = fluid.optimizer.SGD(learning_rate=1e-3)

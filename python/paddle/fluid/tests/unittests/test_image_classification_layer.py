@@ -14,6 +14,7 @@
 
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program
@@ -42,7 +43,9 @@ class TestLayer(unittest.TestCase):
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
             hidden1 = fluid.layers.batch_norm(input=images)
-            hidden2 = fluid.layers.fc(input=hidden1, size=128, act='relu')
+            hidden2 = paddle.static.nn.fc(
+                x=hidden1, size=128, activation='relu'
+            )
             fluid.layers.batch_norm(input=hidden2)
 
         print(str(main_program))

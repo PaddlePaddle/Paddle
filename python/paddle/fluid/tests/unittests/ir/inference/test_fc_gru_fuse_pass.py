@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
 
@@ -30,7 +31,7 @@ class FcGruFusePassTest(InferencePassTest):
             )
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
+            x = paddle.static.nn.fc(x=emb, size=hidden_dim * 3)
             hidden = fluid.layers.dynamic_gru(
                 input=x,
                 size=hidden_dim,
@@ -64,7 +65,7 @@ class MulGruFusePassTest(InferencePassTest):
             )
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3, bias_attr=False)
+            x = paddle.static.nn.fc(x=emb, size=hidden_dim * 3, bias_attr=False)
             hidden = fluid.layers.dynamic_gru(
                 input=x,
                 size=hidden_dim,

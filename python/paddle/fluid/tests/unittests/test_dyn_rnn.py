@@ -118,7 +118,9 @@ class TestDynamicRNN(unittest.TestCase):
 
                 mem = shrink_memory(x=mem, i=i, table=rank_table)
 
-                hidden = fluid.layers.fc(input=[mem, ipt], size=100, act='tanh')
+                hidden = paddle.static.nn.fc(
+                    x=[mem, ipt], size=100, activationn='tanh'
+                )
 
                 fluid.layers.array_write(x=hidden, i=i, array=out)
                 fluid.layers.increment(x=i, in_place=True)
@@ -128,7 +130,7 @@ class TestDynamicRNN(unittest.TestCase):
             result_all_timesteps = array_to_lod_tensor(x=out, table=rank_table)
             last = fluid.layers.sequence_last_step(input=result_all_timesteps)
 
-            logits = fluid.layers.fc(input=last, size=1, act=None)
+            logits = paddle.static.nn.fc(x=last, size=1, activation=None)
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=logits, label=label
@@ -166,13 +168,15 @@ class TestDynamicRNN(unittest.TestCase):
             with drnn.block():
                 in_ = drnn.step_input(sent_emb)
                 mem = drnn.memory(shape=[100], dtype='float32')
-                out_ = fluid.layers.fc(input=[in_, mem], size=100, act='tanh')
+                out_ = paddle.static.nn.fc(
+                    x=[in_, mem], size=100, activation='tanh'
+                )
                 drnn.update_memory(mem, out_)
                 drnn.output(out_)
 
             drnn_result = drnn()
             last = fluid.layers.sequence_last_step(input=drnn_result)
-            logits = fluid.layers.fc(input=last, size=1, act=None)
+            logits = paddle.static.nn.fc(x=last, size=1, activation=None)
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
@@ -227,8 +231,8 @@ class TestDynamicRNN(unittest.TestCase):
                 sentence_emb = fluid.layers.embedding(
                     input=in_0, size=[len(word_dict), 32], dtype='float32'
                 )
-                out_0 = fluid.layers.fc(
-                    input=sentence_emb, size=100, act='tanh'
+                out_0 = paddle.static.nn.fc(
+                    x=sentence_emb, size=100, activation='tanh'
                 )
 
                 drnn1 = fluid.layers.DynamicRNN()
@@ -237,7 +241,9 @@ class TestDynamicRNN(unittest.TestCase):
                     assert (
                         in_1.lod_level == 0
                     ), "the lod level of in_1 should be 0"
-                    out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
+                    out_1 = paddle.static.nn.fc(
+                        x=[in_1], size=100, activation='tanh'
+                    )
                     drnn1.output(out_1)
 
                 drnn1_result = drnn1()
@@ -245,7 +251,7 @@ class TestDynamicRNN(unittest.TestCase):
                 drnn0.output(last_1)
 
             last = drnn0()
-            logits = fluid.layers.fc(input=last, size=1, act=None)
+            logits = paddle.static.nn.fc(x=last, size=1, activation=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=logits, label=label
             )
@@ -290,10 +296,10 @@ class TestDynamicRNN(unittest.TestCase):
                     size=[len(word_dict), hidden_size],
                     dtype='float32',
                 )
-                input_forward_proj = fluid.layers.fc(
-                    input=sentence_emb,
+                input_forward_proj = paddle.static.nn.fc(
+                    x=sentence_emb,
                     size=hidden_size * 4,
-                    act=None,
+                    activation=None,
                     bias_attr=False,
                 )
                 forward, _ = fluid.layers.dynamic_lstm(
@@ -305,14 +311,16 @@ class TestDynamicRNN(unittest.TestCase):
                 drnn1 = fluid.layers.DynamicRNN()
                 with drnn1.block():
                     in_1 = drnn1.step_input(forward)
-                    out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
+                    out_1 = paddle.static.nn.fc(
+                        x=[in_1], size=100, activation='tanh'
+                    )
                     drnn1.output(out_1)
 
                 last = fluid.layers.sequence_last_step(input=drnn1())
                 drnn0.output(last)
 
             last = drnn0()
-            logits = fluid.layers.fc(input=last, size=1, act=None)
+            logits = paddle.static.nn.fc(x=last, size=1, activation=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=logits, label=label
             )
@@ -356,8 +364,8 @@ class TestDynamicRNNErrors(unittest.TestCase):
                 with drnn.block():
                     word = drnn.step_input(sentence)
                     memory = drnn.memory(shape=[10], dtype='float32', value=0)
-                    hidden = fluid.layers.fc(
-                        input=[word, memory], size=10, act='tanh'
+                    hidden = paddle.static.nn.fc(
+                        x=[word, memory], size=10, activation='tanh'
                     )
                     out = numpy.ones(1).astype('float32')
                     drnn.update_memory(ex_mem=memory, new_mem=hidden)

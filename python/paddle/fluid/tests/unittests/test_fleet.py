@@ -15,6 +15,7 @@
 
 import os
 import unittest
+import paddle
 
 
 class TestFleet1(unittest.TestCase):
@@ -67,7 +68,7 @@ class TestFleet1(unittest.TestCase):
             )
             bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
             bow = fluid.layers.data_norm(input=bow, epsilon=1e-4, name="norm")
-            fc = fluid.layers.fc(input=bow, size=1, act=None)
+            fc = paddle.static.nn.fc(x=bow, size=1, activation=None)
             label = fluid.layers.data(
                 name="click",
                 shape=[-1, 1],

@@ -35,14 +35,16 @@ def lstm_net(
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),
     )
-    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
+    fc0 = paddle.static.nn.fc(x=emb, size=hid_dim * 4)
     lstm_h, c = fluid.layers.dynamic_lstm(
         input=fc0, size=hid_dim * 4, is_reverse=False
     )
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = paddle.tanh(lstm_max)
-    fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
-    prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
+    fc1 = paddle.static.nn.fc(x=lstm_max_tanh, size=hid_dim2, activation='tanh')
+    prediction = paddle.static.nn.fc(
+        x=fc1, size=class_dim, activation='softmax'
+    )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(x=cost)
     return avg_cost

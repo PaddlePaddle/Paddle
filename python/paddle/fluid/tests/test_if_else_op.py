@@ -50,16 +50,24 @@ class TestMNISTIfElseOp(unittest.TestCase):
             true_cond = ConditionalBlock([cond])
 
             with true_cond.block():
-                hidden = layers.fc(input=true_image, size=100, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
+                hidden = paddle.static.nn.fc(
+                    x=true_image, size=100, activation='tanh'
+                )
+                prob = paddle.static.nn.fc(
+                    x=hidden, size=10, activation='softmax'
+                )
                 layers.assign(input=prob, output=true_out)
 
             false_out = layers.create_tensor(dtype='float32')
             false_cond = ConditionalBlock([cond])
 
             with false_cond.block():
-                hidden = layers.fc(input=false_image, size=200, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
+                hidden = paddle.static.nn.fc(
+                    x=false_image, size=200, activation='tanh'
+                )
+                prob = paddle.static.nn.fc(
+                    x=hidden, size=10, activation='softmax'
+                )
                 layers.assign(input=prob, output=false_out)
 
             prob = merge_lod_tensor(
@@ -110,14 +118,22 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             with ie.true_block():
                 true_image = ie.input(image)
-                hidden = layers.fc(input=true_image, size=100, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
+                hidden = paddle.static.nn.fc(
+                    x=true_image, size=100, activation='tanh'
+                )
+                prob = paddle.static.nn.fc(
+                    x=hidden, size=10, activation='softmax'
+                )
                 ie.output(prob)
 
             with ie.false_block():
                 false_image = ie.input(image)
-                hidden = layers.fc(input=false_image, size=200, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
+                hidden = paddle.static.nn.fc(
+                    x=false_image, size=200, activation='tanh'
+                )
+                prob = paddle.static.nn.fc(
+                    x=hidden, size=10, activation='softmax'
+                )
                 ie.output(prob)
 
             prob = ie()

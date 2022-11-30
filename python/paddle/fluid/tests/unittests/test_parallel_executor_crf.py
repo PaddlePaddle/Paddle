@@ -80,7 +80,7 @@ def db_lstm(
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        fluid.layers.fc(input=emb, size=hidden_dim, act='tanh')
+        paddle.static.nn.fc(x=emb, size=hidden_dim, activation='tanh')
         for emb in emb_layers
     ]
 
@@ -100,11 +100,11 @@ def db_lstm(
     for i in range(1, depth):
         mix_hidden = fluid.layers.sums(
             input=[
-                fluid.layers.fc(
-                    input=input_tmp[0], size=hidden_dim, act='tanh'
+                paddle.static.nn.fc(
+                    x=input_tmp[0], size=hidden_dim, activation='tanh'
                 ),
-                fluid.layers.fc(
-                    input=input_tmp[1], size=hidden_dim, act='tanh'
+                paddle.static.nn.fc(
+                    x=input_tmp[1], size=hidden_dim, activation='tanh'
                 ),
             ]
         )
@@ -122,11 +122,11 @@ def db_lstm(
 
     feature_out = fluid.layers.sums(
         input=[
-            fluid.layers.fc(
-                input=input_tmp[0], size=label_dict_len, act='tanh'
+            paddle.static.nn.fc(
+                x=input_tmp[0], size=label_dict_len, activation='tanh'
             ),
-            fluid.layers.fc(
-                input=input_tmp[1], size=label_dict_len, act='tanh'
+            paddle.static.nn.fc(
+                x=input_tmp[1], size=label_dict_len, activation='tanh'
             ),
         ]
     )

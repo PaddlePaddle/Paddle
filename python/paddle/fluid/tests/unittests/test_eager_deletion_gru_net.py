@@ -35,12 +35,14 @@ def gru_net(
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),
     )
-    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 3)
+    fc0 = paddle.static.nn.fc(x=emb, size=hid_dim * 3)
     gru_h = fluid.layers.dynamic_gru(input=fc0, size=hid_dim, is_reverse=False)
     gru_max = fluid.layers.sequence_pool(input=gru_h, pool_type='max')
     gru_max_tanh = paddle.tanh(gru_max)
-    fc1 = fluid.layers.fc(input=gru_max_tanh, size=hid_dim2, act='tanh')
-    prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
+    fc1 = paddle.static.nn.fc(x=gru_max_tanh, size=hid_dim2, activation='tanh')
+    prediction = paddle.static.nn.fc(
+        x=fc1, size=class_dim, activation='softmax'
+    )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(x=cost)
     return avg_cost

@@ -397,10 +397,10 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
             ),
             trainable=True,
         )
-        pred = fluid.layers.fc(
-            input=img,
+        pred = paddle.static.nn.fc(
+            x=img,
             size=10,
-            param_attr=weight_attr,
+            weight_attr=weight_attr,
             bias_attr=bias_attr,
             act='relu',
         )

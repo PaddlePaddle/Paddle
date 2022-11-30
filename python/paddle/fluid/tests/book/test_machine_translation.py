@@ -52,7 +52,9 @@ def encoder(is_sparse):
         param_attr=fluid.ParamAttr(name='vemb'),
     )
 
-    fc1 = pd.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
+    fc1 = paddle.static.nn.fc(
+        x=src_embedding, size=hidden_dim * 4, activation='tanh'
+    )
     lstm_hidden0, lstm_0 = pd.dynamic_lstm(input=fc1, size=hidden_dim * 4)
     encoder_out = pd.sequence_last_step(input=lstm_hidden0)
     return encoder_out
@@ -75,12 +77,11 @@ def decoder_train(context, is_sparse):
     with rnn.block():
         current_word = rnn.step_input(trg_embedding)
         pre_state = rnn.memory(init=context)
-        current_state = pd.fc(
-            input=[current_word, pre_state], size=decoder_size, act='tanh'
+        current_state = paddle.static.nn.fc(
+            x=[current_word, pre_state], size=decoder_size, activation='tanh'
         )
-
-        current_score = pd.fc(
-            input=current_state, size=target_dict_dim, act='softmax'
+        current_score = paddle.static.nn.fc(
+            x=current_state, size=target_dict_dim, activation='softmax'
         )
         rnn.update_memory(pre_state, current_state)
         rnn.output(current_score)
@@ -128,15 +129,15 @@ def decoder_decode(context, is_sparse):
         )
 
         # use rnn unit to update rnn
-        current_state = pd.fc(
-            input=[pre_state_expanded, pre_ids_emb],
+        current_state = paddle.static.nn.fc(
+            x=[pre_state_expanded, pre_ids_emb],
             size=decoder_size,
-            act='tanh',
+            activation='tanh',
         )
         current_state_with_lod = pd.lod_reset(x=current_state, y=pre_score)
         # use score to do beam search
-        current_score = pd.fc(
-            input=current_state_with_lod, size=target_dict_dim, act='softmax'
+        current_score = paddle.static.nn.fc(
+            x=current_state_with_lod, size=target_dict_dim, activation='softmax'
         )
         topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
         # calculate accumulated scores after topk to reduce computation cost

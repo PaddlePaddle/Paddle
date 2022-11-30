@@ -2108,6 +2108,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             trg_emb = fluid.data(name="trg_emb",
@@ -2116,12 +2117,12 @@ class GreedyEmbeddingHelper(DecodeHelper):
 
             trg_embeder = lambda x: fluid.embedding(
                 x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
-                                            size=10000,
-                                            num_flatten_dims=len(x.shape) - 1,
-                                            param_attr=fluid.ParamAttr(name=
-                                                                    "output_w"),
-                                            bias_attr=False)
+            output_layer = lambda x: paddle.static.nn.fc(x,
+                                                         size=10000,
+                                                         num_flatten_dims=len(x.shape) - 1,
+                                                         weight_attr=fluid.ParamAttr(name=
+                                                         "output_w"),
+                                                         bias_attr=False)
             helper = layers.GreedyEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
             decoder_cell = layers.GRUCell(hidden_size=128)
             decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
@@ -2242,6 +2243,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             trg_emb = fluid.data(name="trg_emb",
@@ -2250,10 +2252,10 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
 
             trg_embeder = lambda x: fluid.embedding(
                 x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
+            output_layer = lambda x: paddle.static.nn.fc(x,
                                             size=10000,
                                             num_flatten_dims=len(x.shape) - 1,
-                                            param_attr=fluid.ParamAttr(name=
+                                            weight_attr=fluid.ParamAttr(name=
                                                                     "output_w"),
                                             bias_attr=False)
             helper = layers.SampleEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
@@ -2361,6 +2363,7 @@ class BasicDecoder(Decoder):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             trg_emb = fluid.data(name="trg_emb",
@@ -2369,7 +2372,7 @@ class BasicDecoder(Decoder):
 
             trg_embeder = lambda x: fluid.embedding(
                 x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
+            output_layer = lambda x: paddle.static.nn.fc(x,
                                             size=10000,
                                             num_flatten_dims=len(x.shape) - 1,
                                             param_attr=fluid.ParamAttr(name=
@@ -2578,6 +2581,7 @@ def dynamic_lstm(
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             emb_dim = 256
             vocab_size = 10000
@@ -2586,7 +2590,7 @@ def dynamic_lstm(
             data = fluid.data(name='x', shape=[None], dtype='int64', lod_level=1)
             emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
 
-            forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
+            forward_proj = paddle.static.nn.fc(x=emb, size=hidden_dim * 4,
                                            bias_attr=False)
 
             forward, cell = fluid.layers.dynamic_lstm(
@@ -2980,13 +2984,14 @@ def dynamic_lstmp(
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             dict_dim, emb_dim = 128, 64
             data = fluid.data(name='sequence', shape=[None], dtype='int64', lod_level=1)
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
-            fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
-                                    act=None, bias_attr=None)
+            fc_out = paddle.static.nn.fc(x=emb, size=hidden_dim * 4,
+                                    activation=None, bias_attr=None)
             proj_out, last_c = fluid.layers.dynamic_lstmp(input=fc_out,
                                                     size=hidden_dim * 4,
                                                     proj_size=proj_dim,
@@ -3193,6 +3198,7 @@ def dynamic_gru(
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
             dict_dim, emb_dim = 128, 64
@@ -3202,7 +3208,7 @@ def dynamic_gru(
                       lod_level=1)
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
+            x = paddle.static.nn.fc(x=emb, size=hidden_dim * 3)
             hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
     """
 
@@ -3358,13 +3364,14 @@ def gru_unit(
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
             dict_dim, emb_dim = 128, 64
             data = fluid.data(name='step_data', shape=[None], dtype='int64')
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
+            x = paddle.static.nn.fc(x=emb, size=hidden_dim * 3)
             pre_hidden = fluid.data(
                 name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
             hidden = fluid.layers.gru_unit(
@@ -3797,10 +3804,10 @@ def lstm_unit(
 
     size = cell_t_prev.shape[1]
     concat_out = nn.concat(input=[x_t, hidden_t_prev], axis=1)
-    fc_out = nn.fc(
-        input=concat_out,
+    fc_out = paddle.static.nn.fc(
+        x=concat_out,
         size=4 * size,
-        param_attr=param_attr,
+        weight_attr=param_attr,
         bias_attr=bias_attr,
     )
     dtype = x_t.dtype

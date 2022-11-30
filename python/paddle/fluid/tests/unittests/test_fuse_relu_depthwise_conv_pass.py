@@ -58,7 +58,7 @@ def simple_depthwise_net(use_feed):
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
         hidden = fluid.layers.relu(hidden)
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
     return loss

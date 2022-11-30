@@ -120,11 +120,11 @@ class SE_ResNeXt:
         )
         drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
-        out = fluid.layers.fc(
-            input=drop,
+        out = paddle.static.nn.fc(
+            x=drop,
             size=class_dim,
-            act='softmax',
-            param_attr=fluid.ParamAttr(
+            activation='softmax',
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
         )
@@ -189,22 +189,22 @@ class SE_ResNeXt:
             input=input, pool_size=0, pool_type='avg', global_pooling=True
         )
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
-        squeeze = fluid.layers.fc(
-            input=pool,
+        squeeze = paddle.static.nn.fc(
+            x=pool,
             size=num_channels // reduction_ratio,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
-            act='relu',
+            activation='relu',
         )
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
-        excitation = fluid.layers.fc(
-            input=squeeze,
+        excitation = paddle.static.nn.fc(
+            x=squeeze,
             size=num_channels,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)
             ),
-            act='sigmoid',
+            activation='sigmoid',
         )
         scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
         return scale

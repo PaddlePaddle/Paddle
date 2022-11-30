@@ -116,16 +116,18 @@ def simple_fc_net(
 
     hidden = in_data
     for hidden_size in hidden_sizes:
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=hidden_size,
-            act='tanh',
+            activation='tanh',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
 
-    predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
+    predict_label = paddle.static.nn.fc(
+        hidden, size=class_num, activation='softmax'
+    )
     loss = paddle.mean(
         fluid.layers.cross_entropy(input=predict_label, label=label)
     )

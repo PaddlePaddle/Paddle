@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import unittest
 
@@ -22,7 +23,7 @@ class TestProgram(unittest.TestCase):
         a = fluid.layers.data(
             name="X", shape=[2, 3], dtype="float32", append_batch_size=False
         )
-        c = fluid.layers.fc(a, size=3)
+        c = paddle.static.nn.fc(a, size=3)
         prog_string = prog.to_string(throw_on_error=True, with_details=False)
         prog_string_with_details = prog.to_string(
             throw_on_error=False, with_details=True

@@ -42,16 +42,16 @@ USE_PEEPHOLES = False
 
 
 def bi_lstm_encoder(input_seq, hidden_size):
-    input_forward_proj = fluid.layers.fc(
-        input=input_seq, size=hidden_size * 4, bias_attr=True
+    input_forward_proj = paddle.static.nn.fc(
+        x=input_seq, size=hidden_size * 4, bias_attr=True
     )
     forward, _ = fluid.layers.dynamic_lstm(
         input=input_forward_proj,
         size=hidden_size * 4,
         use_peepholes=USE_PEEPHOLES,
     )
-    input_backward_proj = fluid.layers.fc(
-        input=input_seq, size=hidden_size * 4, bias_attr=True
+    input_backward_proj = paddle.static.nn.fc(
+        x=input_seq, size=hidden_size * 4, bias_attr=True
     )
     backward, _ = fluid.layers.dynamic_lstm(
         input=input_backward_proj,
@@ -69,7 +69,7 @@ def bi_lstm_encoder(input_seq, hidden_size):
 # FIXME(peterzhang2029): Replace this function with the lstm_unit_op.
 def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
     def linear(inputs):
-        return fluid.layers.fc(input=inputs, size=size, bias_attr=True)
+        return paddle.static.nn.fc(x=inputs, size=size, bias_attr=True)
 
     forget_gate = paddle.nn.functional.sigmoid(x=linear([hidden_t_prev, x_t]))
     input_gate = paddle.nn.functional.sigmoid(x=linear([hidden_t_prev, x_t]))
@@ -112,8 +112,8 @@ def lstm_decoder_without_attention(
         h, c = lstm_step(decoder_inputs, hidden_mem, cell_mem, decoder_size)
         rnn.update_memory(hidden_mem, h)
         rnn.update_memory(cell_mem, c)
-        out = fluid.layers.fc(
-            input=h, size=target_dict_dim, bias_attr=True, act='softmax'
+        out = paddle.static.nn.fc(
+            x=h, size=target_dict_dim, bias_attr=True, activation='softmax'
         )
         rnn.output(out)
     return rnn()
@@ -140,8 +140,11 @@ def seq_to_seq_net():
         input=[src_forward_last, src_backward_first], axis=1
     )
 
-    decoder_boot = fluid.layers.fc(
-        input=src_backward_first, size=decoder_size, bias_attr=False, act='tanh'
+    decoder_boot = paddle.static.nn.fc(
+        x=src_backward_first,
+        size=decoder_size,
+        bias_attr=False,
+        activation='tanh',
     )
 
     trg_word_idx = fluid.layers.data(

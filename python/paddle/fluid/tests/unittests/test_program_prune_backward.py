@@ -45,14 +45,16 @@ def lstm_net(use_feed):
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),
     )
-    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
+    fc0 = paddle.static.nn.fc(x=emb, size=hid_dim * 4)
     lstm_h, c = fluid.layers.dynamic_lstm(
         input=fc0, size=hid_dim * 4, is_reverse=False
     )
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = paddle.tanh(lstm_max)
-    fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
-    prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
+    fc1 = paddle.static.nn.fc(x=lstm_max_tanh, size=hid_dim2, activation='tanh')
+    prediction = paddle.static.nn.fc(
+        x=fc1, size=class_dim, activation='softmax'
+    )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(x=cost)
     return avg_cost
@@ -64,15 +66,15 @@ def simple_fc_net_with_accuracy(use_feed):
 
     hidden = img
     for _ in range(4):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
-            act='relu',
+            activation='relu',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
     accuracy_out = fluid.layers.accuracy(input=prediction, label=label, k=5)
@@ -82,7 +84,7 @@ def simple_fc_net_with_accuracy(use_feed):
 def cond_net(use_feed=None):
     x = fluid.layers.data(name="x", shape=[4], dtype='float32')
     label = fluid.layers.data('label', shape=[1], dtype='int64')
-    prediction = fluid.layers.fc(input=x, size=1, act=None)
+    prediction = paddle.static.nn.fc(x, size=1, activation=None)
 
     def loss1(pred, label):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')
@@ -107,7 +109,7 @@ def cond_net(use_feed=None):
 def optimization_in_cond_net(with_optimize=False):
     x = fluid.layers.data(name="x", shape=[4], dtype='float32')
     label = fluid.layers.data('label', shape=[1], dtype='int64')
-    prediction = fluid.layers.fc(input=x, size=1, act=None)
+    prediction = paddle.static.nn.fc(x, size=1, activation=None)
 
     def loss1(opt, pred, label, with_optimize):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')

@@ -1687,7 +1687,7 @@ class PyReader(DataLoaderBase):
 
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = fluid.layers.fc(input=image, size=10, act='softmax')
+               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
                return fluid.layers.cross_entropy(input=predict, label=label)
 
            def reader_creator_random_image_and_label(height, width):
@@ -1741,7 +1741,7 @@ class PyReader(DataLoaderBase):
 
            def network(image, label):
                # User-defined network, here is an example of softmax regression.
-               predict = fluid.layers.fc(input=image, size=10, act='softmax')
+               predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
                return fluid.layers.cross_entropy(input=predict, label=label)
 
            def reader_creator_random_image(height, width):
@@ -1926,6 +1926,7 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1935,7 +1936,7 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
+                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
                     return fluid.layers.cross_entropy(input=predict, label=label)
 
                 def random_image_and_label_generator(height, width):
@@ -1997,7 +1998,7 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
+                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
                     return fluid.layers.cross_entropy(input=predict, label=label)
 
                 def random_image_and_label_generator(height, width):
@@ -2048,6 +2049,7 @@ class PyReader(DataLoaderBase):
         Example:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -2057,7 +2059,7 @@ class PyReader(DataLoaderBase):
 
                 def network(image, label):
                     # User-defined network, here is an example of softmax regression.
-                    predict = fluid.layers.fc(input=image, size=10, act='softmax')
+                    predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
                     return fluid.layers.cross_entropy(input=predict, label=label)
 
                 def random_image_and_label_generator(height, width):

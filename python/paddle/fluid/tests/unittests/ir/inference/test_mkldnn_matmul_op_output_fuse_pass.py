@@ -82,7 +82,7 @@ class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
             out = fluid.layers.matmul(x, y)
             out = paddle.transpose(out, perm=[0, 1, 2, 3])
             out = paddle.reshape(out, [0, 0, 0, 0])
-            out = fluid.layers.fc(out, size=1)
+            out = paddle.static.nn.fc(out, size=1)
         return out
 
 

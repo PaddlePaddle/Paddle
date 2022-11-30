@@ -730,6 +730,7 @@ class ASPHelper:
         Examples:
             .. code-block:: python
 
+              import paddle
               from paddle.static.sparsity.asp import ASPHelper
 
               main_program = paddle.static.Program()

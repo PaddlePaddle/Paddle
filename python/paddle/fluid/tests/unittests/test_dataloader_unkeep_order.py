@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
@@ -51,7 +52,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
             capacity=16, feed_list=[input_data], iterable=self.iterable
         )
 
-        fc = fluid.layers.fc(input_data, size=10)
+        fc = paddle.static.nn.fc(input_data, size=10)
         loss = fluid.layers.reduce_mean(fc)
 
         loader.set_batch_generator(

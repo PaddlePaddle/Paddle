@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.nn.quant.quant_layers as quant_layers
@@ -45,7 +44,7 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
                 name='image', shape=[784], dtype='float32'
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            fc_tmp = fluid.layers.fc(image, size=10, act='softmax')
+            fc_tmp = paddle.static.nn.fc(image, size=10, activation='softmax')
             out_scale = quant_layers.MovingAverageAbsMaxScale(
                 name=fc_tmp.name, dtype=fc_tmp.dtype
             )

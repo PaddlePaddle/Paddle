@@ -82,7 +82,7 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
         with fluid.program_guard(main_prog, start_prog):
             x = fluid.data(name='x', shape=[10, 16], dtype='float32')
             y = fluid.data(name='y', shape=[10, 16], dtype='float32')
-            z = fluid.layers.fc(x, 4)
+            z = paddle.static.nn.fc(x, 4)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)

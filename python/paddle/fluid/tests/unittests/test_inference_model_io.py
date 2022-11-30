@@ -57,7 +57,7 @@ class TestBook(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
@@ -151,7 +151,7 @@ class TestSaveInferenceModel(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
@@ -173,7 +173,7 @@ class TestSaveInferenceModel(unittest.TestCase):
         with program_guard(program, init_program):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='int32')
-            predict = fluid.layers.fc(input=x, size=2, act='softmax')
+            predict = paddle.static.nn.fc(x, size=2, activation='softmax')
             acc = fluid.layers.accuracy(input=predict, label=y)
             auc_var, batch_auc_var, auc_states = fluid.layers.auc(
                 input=predict, label=y
@@ -207,7 +207,7 @@ class TestInstance(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
@@ -243,7 +243,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
@@ -420,7 +420,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
@@ -467,7 +467,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)

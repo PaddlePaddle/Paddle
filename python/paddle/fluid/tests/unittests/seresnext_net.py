@@ -53,11 +53,11 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     reshape = paddle.reshape(x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
 
-    squeeze = fluid.layers.fc(
-        input=pool, size=num_channels // reduction_ratio, act='relu'
+    squeeze = paddle.static.nn.fc(
+        x=pool, size=num_channels // reduction_ratio, activation='relu'
     )
-    excitation = fluid.layers.fc(
-        input=squeeze, size=num_channels, act='sigmoid'
+    excitation = paddle.static.nn.fc(
+        x=squeeze, size=num_channels, activation='sigmoid'
     )
     scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
     return scale
@@ -169,7 +169,7 @@ def SE_ResNeXt50Small(use_feed):
         else fluid.layers.dropout(x=pool, dropout_prob=0.2, seed=1)
     )
     # Classifier layer:
-    prediction = fluid.layers.fc(input=dropout, size=1000, act='softmax')
+    prediction = paddle.static.nn.fc(x=dropout, size=1000, activation='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
     return loss

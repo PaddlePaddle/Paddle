@@ -1107,25 +1107,25 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = layers.fc(
-            input=queries,
+        q = paddle.static.nn.fc(
+            x=queries,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        k = layers.fc(
-            input=keys,
+        k = paddle.static.nn.fc(
+            x=keys,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        v = layers.fc(
-            input=values,
+        v = paddle.static.nn.fc(
+            x=values,
             size=d_value * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
         return q, k, v
@@ -1205,11 +1205,11 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = layers.fc(
-        input=out,
+    proj_out = paddle.static.nn.fc(
+        x=out,
         size=d_model,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return proj_out
@@ -1221,19 +1221,19 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = layers.fc(
-        input=x,
+    hidden = paddle.static.nn.fc(
+        x=x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        act="relu",
-        param_attr=const_para_attr,
+        activation="relu",
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
-    out = layers.fc(
-        input=hidden,
+    out = paddle.static.nn.fc(
+        x=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return out
@@ -1707,11 +1707,11 @@ def wrap_decoder(
             transpose_y=True,
         )
     else:
-        predict = layers.fc(
-            input=dec_output,
+        predict = paddle.static.nn.fc(
+            x=dec_output,
             size=trg_vocab_size,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:

@@ -69,7 +69,7 @@ class DecoderCell(layers.RNNCell):
         ]
 
     def attention(self, hidden, encoder_output, encoder_padding_mask):
-        query = layers.fc(
+        query = paddle.static.nn.fc(
             hidden, size=encoder_output.shape[-1], bias_attr=False
         )
         attn_scores = layers.matmul(
@@ -84,7 +84,9 @@ class DecoderCell(layers.RNNCell):
             layers.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
-        attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)
+        attn_out = paddle.static.nn.fc(
+            attn_out, size=self.hidden_size, bias_attr=False
+        )
         return attn_out
 
     def call(
@@ -230,11 +232,11 @@ class Seq2SeqModel:
             decoding_strategy,
             max_decoding_length,
         )
-        self.output_layer = lambda x: layers.fc(
+        self.output_layer = lambda x: paddle.static.nn.fc(
             x,
             size=trg_vocab_size,
             num_flatten_dims=len(x.shape) - 1,
-            param_attr=fluid.ParamAttr(),
+            weight_attr=fluid.ParamAttr(),
             bias_attr=False,
         )
 
