@@ -58,7 +58,6 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   inplace_version_counter_ = other.inplace_version_counter_;
 
 #ifdef PADDLE_WITH_MKLDNN
-  format_ = other.format_;
   mem_desc_ = other.mem_desc_;
 #endif
 }
@@ -70,7 +69,6 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
-  format_ = other.format_;
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -82,7 +80,6 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
 #ifdef PADDLE_WITH_MKLDNN
-  format_ = other.format_;
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -203,9 +200,10 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
+  meta_.use_gpudnn = meta.use_gpudnn;
 }
 
-/* @jim19930609: This interface will be further modified util we finalized the
+/* @jim19930609: This interface will be further modified until we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:
    1. Designed behaviour: DenseTensor constructed with its underlying storage_
@@ -265,6 +263,10 @@ template const NPUStorageProperties& DenseTensor::storage_properties() const;
 #ifdef PADDLE_WITH_MKLDNN
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
 #endif
+
+bool DenseTensor::storage_properties_initialized() const {
+  return storage_properties_ != nullptr;
+}
 
 void DenseTensor::set_storage_properties(
     std::unique_ptr<StorageProperties>&& storage_properties) {

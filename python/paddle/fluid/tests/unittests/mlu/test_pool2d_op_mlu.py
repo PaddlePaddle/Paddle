@@ -174,7 +174,7 @@ def pool2d_backward_navie(
     return x_grad
 
 
-class TestPool2D_Op_Mixin(object):
+class TestPool2D_Op_Mixin:
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -997,110 +997,6 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         self.assertRaises(ValueError, run_5)
 
-
-class TestDygraphPool2DAPIError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input of Pool2D must be Variable.
-            data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
-            )
-            self.assertRaises(TypeError, pool2d, data1)
-
-            # the input dtype of mlu Pool2D must be float16 or float32
-            data2 = fluid.layers.data(
-                name='x1', shape=[3, 32, 32, 5], dtype="int32"
-            )
-            self.assertRaises(TypeError, pool2d, data2)
-
-    def test_data_format_error(self):
-        with program_guard(Program(), Program()):
-            # the data_format must be 'NCHW' or 'NHWC'
-            data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            self.assertRaises(
-                ValueError,
-                fluid.dygraph.Pool2D,
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
-                data_format='NWHC',
-            )
-
-
-class TestDygraphPool2DAPI(unittest.TestCase):
-    def test_nhwc(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='NHWC',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2)
-
-    def test_lower_case(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='nhwc',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2)
-
-    def test_upper_case(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='MAX',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='nhwc',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2)
 
 
 if __name__ == '__main__':

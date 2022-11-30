@@ -106,7 +106,7 @@ def maximum_path_len_algo(optimizer_list):
     return candidate
 
 
-class StrategyCompilerBase(object):
+class StrategyCompilerBase:
     def __init__(self):
         pass
 
@@ -123,7 +123,7 @@ class StrategyCompiler(StrategyCompilerBase):
     """
 
     def __init__(self):
-        super(StrategyCompiler, self).__init__()
+        super().__init__()
         self._meta_optimizers = []
         self._graph_optimizers = []
         self._valid_optimizer_list = None

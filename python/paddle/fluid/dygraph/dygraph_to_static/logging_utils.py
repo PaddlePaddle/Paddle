@@ -36,7 +36,7 @@ def synchronized(func):
     return wrapper
 
 
-class TranslatorLogger(object):
+class TranslatorLogger:
     """
     class for Logging and debugging during the tranformation from dygraph to static graph.
     The object of this class is a singleton.

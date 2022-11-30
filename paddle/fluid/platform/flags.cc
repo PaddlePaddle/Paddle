@@ -70,31 +70,24 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
- * Name: FLAGS_abort_on_nan_inf
+ * Name: FLAGS_check_nan_inf_level
  * Since Version: 2.5.0
- * Value Range: bool, default=true
+ * Value Range: int32, default=0
  * Example:
- * Note: Used to debug. Whether abort the process when any operator produce
- * NAN/INF. It only works when FLAGS_check_nan_inf is set.
+ * Note: Used to debug. Setting the check and print level when
+ * FLAGS_check_nan_inf is set.
+ * - 0, abort the process when any operator produce NAN/INF and only print the
+ * information of tensor which holds NAN/INF.
+ * - 1, continue the training or inference process and print the information of
+ * all tensors which holds NAN/INF.
+ * - 2, print the information of float tensors when the max or min value
+ * overflowing float16's limit.
+ * - 3, print the information of all tensors.
  */
-PADDLE_DEFINE_EXPORTED_bool(
-    abort_on_nan_inf,
-    true,
-    "Whether abort the process when any operator produce NAN/INF or not.");
-
-/**
- * Operator related FLAG
- * Name: FLAGS_check_tensor_max_min
- * Since Version: 2.5.0
- * Value Range: bool, default=false
- * Example:
- * Note: Used to debug. Enable to calculate and print the max and min value of
- * each operator's output tensor. It only works when FLAGS_check_nan_inf is set.
- */
-PADDLE_DEFINE_EXPORTED_bool(
-    check_tensor_max_min,
-    false,
-    "Whether to check all the output tensors's min and max value.");
+PADDLE_DEFINE_EXPORTED_int32(
+    check_nan_inf_level,
+    0,
+    "Setting the check and print level when FLAGS_check_nan_inf is set.");
 
 /**
  * Operator related FLAG
@@ -1041,8 +1034,6 @@ PADDLE_DEFINE_EXPORTED_bool(
  * default=Predictor
  * Example:
  * Note:
- * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
- * FLAGS_jit_engine_type == PE, using PEEngine by default
  * FLAGS_jit_engine_type == New, using InterpreterEngine by default
  * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
  */
@@ -1060,4 +1051,17 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
  * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
  */
 PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+
+/**
+ * CUDNNv8 related FLAG
+ * Name: cudnn_cache_saturation_count
+ * Since Version: 2.5.0
+ * Value Range: int64_t, default=1
+ * Example:
+ * Note: Set saturation count for CUDNNv8 cache. A candidate execution
+ * plan need to be considered as the fastest plan by exhaustive search
+ * N times before it is actually added in the cache. It is useful when
+ * the result of exhaustive search is unstable.
+ */
+PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND

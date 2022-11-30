@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -85,7 +87,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     return Out
 
 
-class Generator(object):
+class Generator:
     def setUp(self):
         self.op_type = "matmul"
         X = np.random.random(self.shape_X).astype("float32")

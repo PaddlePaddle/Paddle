@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest as unittest
 
+import paddle.fluid as fluid
 
-class VarInfo(object):
+
+class VarInfo:
     def __init__(self, var_name, var_type, writable):
         self.name = var_name
         self.type = var_type

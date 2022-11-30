@@ -22,7 +22,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 inline std::vector<size_t> GetNmsLodFromRoisNum(
     const phi::DenseTensor* rois_num) {
@@ -357,11 +356,11 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* boxes = ctx.Input<LoDTensor>("BBoxes");
-    auto* scores = ctx.Input<LoDTensor>("Scores");
-    auto* outs = ctx.Output<LoDTensor>("Out");
+    auto* boxes = ctx.Input<phi::DenseTensor>("BBoxes");
+    auto* scores = ctx.Input<phi::DenseTensor>("Scores");
+    auto* outs = ctx.Output<phi::DenseTensor>("Out");
     bool return_index = ctx.HasOutput("Index") ? true : false;
-    auto index = ctx.Output<LoDTensor>("Index");
+    auto index = ctx.Output<phi::DenseTensor>("Index");
     bool has_roisnum = ctx.HasInput("RoisNum") ? true : false;
     auto rois_num = ctx.Input<phi::DenseTensor>("RoisNum");
     auto score_dims = scores->dims();
@@ -496,7 +495,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "predicted locations of M bounding bboxes, N is the batch size. "
              "Each bounding box has four coordinate values and the layout is "
              "[xmin, ymin, xmax, ymax], when box size equals to 4."
-             "2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]"
+             "2. (phi::DenseTensor) A 3-D Tensor with shape [M, C, 4]"
              "M is the number of bounding boxes, C is the class number");
     AddInput("Scores",
              "Two types of scores are supported:"
@@ -505,7 +504,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "class number, M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
              " Please note, M is equal to the 2nd dimension of BBoxes. "
-             "2. (LoDTensor) A 2-D LoDTensor with shape [M, C]. "
+             "2. (phi::DenseTensor) A 2-D phi::DenseTensor with shape [M, C]. "
              "M is the number of bbox, C is the class number. In this case, "
              "Input BBoxes should be the second case with shape [M, C, 4].");
     AddAttr<int>(
@@ -540,10 +539,12 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether detections are normalized.")
         .SetDefault(true);
     AddOutput("Out",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 6] "
+              "represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax] or "
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 10] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 10] "
+              "represents the "
               "detections. Each row has 10 values: "
               "[label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the "
               "total number of detections in this mini-batch."
@@ -564,7 +565,7 @@ Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
-image, the offsets in first dimension of LoDTensor are called LoD, the number
+image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.
 )DOC");
@@ -600,7 +601,8 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
   void Make() override {
     MultiClassNMSOpMaker::Make();
     AddOutput("Index",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 1] "
+              "represents the "
               "index of selected bbox. The index is the absolute index cross "
               "batches.")
         .AsIntermediate();

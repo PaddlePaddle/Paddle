@@ -17,11 +17,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -50,8 +50,8 @@ __global__ void IndexSampleGrad(const IndexT* index,
       unsigned int in_idx = index_j * input_length + index_i;
       IndexT sample_idx = index[index_idx];
       if (same_data_in_row) {
-        paddle::platform::CudaAtomicAdd(
-            &(in_grad[in_idx - index_i + sample_idx]), out_grad[sample_idx]);
+        phi::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
+                           out_grad[sample_idx]);
       } else {
         in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
       }
@@ -70,18 +70,14 @@ void IndexSampleGradKernel(const Context& ctx,
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      errors::InvalidArgument(
-          "Input(Index) holds the wrong type, it holds %s, but "
-          "desires to be %s or %s",
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(index_type)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(DataType::INT32)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType((DataType::INT64)))));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        phi::DataTypeToString(index_type),
+                        phi::DataTypeToString(DataType::INT32),
+                        phi::DataTypeToString(DataType::INT64)));
 
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
   auto input_num = x.numel();
@@ -92,16 +88,16 @@ void IndexSampleGradKernel(const Context& ctx,
   size_t index_length = index_dim[1];
   bool same_data_in_index_row = index_length == 1 ? false : true;
 
-  auto block_width = paddle::platform::RoundToPowerOfTwo(index_length);
+  auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
   auto block_height =
-      paddle::platform::RoundToPowerOfTwo(index_length * batch_size) /
+      phi::backends::gpu::RoundToPowerOfTwo(index_length * batch_size) /
       block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  paddle::platform::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, x_grad, static_cast<T>(0));
@@ -134,6 +130,8 @@ PD_REGISTER_KERNEL(index_sample_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::IndexSampleGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,

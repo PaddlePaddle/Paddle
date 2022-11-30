@@ -16,18 +16,18 @@ test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
 
-import unittest
-import numpy as np
 import os
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.nn as nn
-from paddle.fluid import compiler
-from paddle.fluid import Program, program_guard
+import unittest
 
-from op_test import OpTest, _set_use_system_allocator
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, _set_use_system_allocator
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn as nn
+from paddle.fluid import Program, compiler, program_guard
 
 _set_use_system_allocator(True)
 
@@ -94,8 +94,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     bn = fluid.layers.cast(bn, 'float32')
                 else:
                     bn = fluid.layers.cast(bn, 'float64')
-                sigmoid = fluid.layers.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                sigmoid = paddle.nn.functional.sigmoid(bn)
+                out = paddle.sum(sigmoid)
                 if not sync_bn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
@@ -287,7 +287,7 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
 
         class Net(nn.Layer):
             def __init__(self):
-                super(Net, self).__init__()
+                super().__init__()
                 self.conv1 = nn.Conv2D(3, 5, 3)
                 self.bn = []
                 bn = self.add_sublayer('bn', nn.BatchNorm2D(5))
@@ -318,7 +318,7 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
 
             class SyBNNet(paddle.nn.Layer):
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
-                    super(SyBNNet, self).__init__()
+                    super().__init__()
                     self.bn_s1 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
                         paddle.nn.BatchNorm3D(
                             out_ch,
@@ -338,7 +338,7 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
 
             class BNNet(paddle.nn.Layer):
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
-                    super(BNNet, self).__init__()
+                    super().__init__()
                     self.bn_s1 = paddle.nn.BatchNorm3D(
                         out_ch,
                         weight_attr=paddle.ParamAttr(

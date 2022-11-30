@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import fcntl
 import inspect
 import os
-import fcntl
+
 import numpy as np
 
 import paddle
@@ -98,7 +99,7 @@ xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
 
-class XPUOpTestWrapper(object):
+class XPUOpTestWrapper:
     def create_classes(self):
         base_class = None
         classes = []

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
-import tempfile
 import shutil
+import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 from paddle.distributed.fleet import fleet
 
 
@@ -68,7 +70,9 @@ class SparseLoadOp(unittest.TestCase):
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
                 model_path = tempfile.mkdtemp()
-                fluid.io.save_persistables(executor=exe, dirname=model_path)
+                paddle.distributed.io.save_persistables(
+                    executor=exe, dirname=model_path
+                )
         return model_path
 
 

@@ -601,10 +601,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else if (type == framework::proto::VarType::FP16) {
         buffers[bind_index] = static_cast<void *>(t.data<float16>());
+#if IS_TRT_VERSION_GE(8400)
+      } else if (type == framework::proto::VarType::BOOL) {
+        buffers[bind_index] = static_cast<void *>(t.data<bool>());
+#endif
       } else {
-        PADDLE_THROW(
-            platform::errors::Fatal("The TRT Engine OP only support "
-                                    "float/int32_t/int64_t/float16 input."));
+        PADDLE_THROW(platform::errors::Fatal(
+            "The TRT Engine OP only support "
+            "float/int32_t/int64_t/float16/bool input."));
       }
     }
 

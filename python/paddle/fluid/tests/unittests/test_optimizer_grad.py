@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 from collections import defaultdict
 
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.backward import _append_grad_suffix_
-
-import paddle
 
 paddle.enable_static()
 
@@ -29,7 +29,7 @@ np.random.seed(10)
 SHAPE = [16, 10]
 
 
-class SimpleNetWithCond(object):
+class SimpleNetWithCond:
     """
     Build net with conditional Block and useless layers.
     """

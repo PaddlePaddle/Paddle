@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -76,7 +78,7 @@ class TestUnfoldOp(OpTest):
         )
         output_shape[2] = out_height * out_width
         output = np.zeros(output_shape).astype(np.float64)
-        ############ calculate output ##############
+        # ------------ calculate output -------------- #
         for i in range(output_shape[0]):
             for j in range(output_shape[1]):
                 for k in range(output_shape[2]):

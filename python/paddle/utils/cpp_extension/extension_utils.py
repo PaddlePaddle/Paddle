@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
+import collections
+import glob
+import hashlib
+import json
+import logging
 import os
 import re
-import sys
-import json
-import glob
-import atexit
-import hashlib
-import logging
-import collections
-import textwrap
-import warnings
 import subprocess
+import sys
+import textwrap
 import threading
-
-from importlib import machinery
+import warnings
 from contextlib import contextmanager
+from importlib import machinery
+
 from setuptools.command import bdist_egg
 
 try:
@@ -559,13 +559,13 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['extra_link_args'] = extra_link_args
 
     else:
-        ########################### Linux Platform ###########################
+        # ----------------------- Linux Platform ----------------------- #
         extra_link_args = kwargs.get('extra_link_args', [])
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
             extra_link_args.append('-l:{}'.format(_get_core_name()))
-        ########################### MacOS Platform ###########################
+        # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
             extra_link_args.append('-Wl,-rpath,{}'.format(_get_fluid_path()))
@@ -573,7 +573,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             # liblibpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
             extra_link_args.append('-l{}'.format(lib_core_name))
-        ###########################   -- END --    ###########################
+        # -----------------------   -- END --    ----------------------- #
 
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
 

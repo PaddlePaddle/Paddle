@@ -153,7 +153,7 @@ class TraceBackFrameRange(OriginInfo):
         return msg + '\n'.join(self.source_code)
 
 
-class SuggestionDict(object):
+class SuggestionDict:
     def __init__(self):
         # {(keywords): (suggestions)}
         self.suggestion_dict = {
@@ -174,7 +174,7 @@ class Dy2StKeyError(Exception):
     pass
 
 
-class ErrorData(object):
+class ErrorData:
     """
     Error data attached to an exception which is raised in un-transformed code.
     """

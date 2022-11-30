@@ -12,30 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+import importlib
+import json
 import os
 import socket
-import datetime
 from enum import Enum
 from typing import Any, Callable, Iterable, Optional, Union
 from warnings import warn
-import importlib
-import json
 
 import paddle
 from paddle.fluid.core import (
-    _Profiler,
     ProfilerOptions,
     TracerEventType,
-    enable_memory_recorder,
-    enable_input_shape_recorder,
+    _Profiler,
     disable_memory_recorder,
-    disable_input_shape_recorder,
+    disable_op_info_recorder,
+    enable_memory_recorder,
+    enable_op_info_recorder,
 )
-
-from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import StatisticData, _build_table, SortedKeys
 from paddle.profiler import utils
+
+from .profiler_statistic import SortedKeys, StatisticData, _build_table
 from .timer import benchmark
+from .utils import RecordEvent, wrap_optimizers
 
 
 class SummaryView(Enum):
@@ -115,7 +115,7 @@ def make_scheduler(
     ready: int,
     record: int,
     repeat: int = 0,
-    skip_first: int = 0
+    skip_first: int = 0,
 ) -> Callable:
     r"""
     Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
@@ -351,6 +351,7 @@ class Profiler:
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
         profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
+        with_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
 
     Examples:
         1. profiling range [2, 5).
@@ -420,7 +421,7 @@ class Profiler:
 
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
-                        super(SimpleNet, self).__init__()
+                        super().__init__()
                         self.fc = paddle.nn.Linear(100, 10)
 
                     def forward(self, image, label=None):
@@ -468,10 +469,11 @@ class Profiler:
         scheduler: Union[Callable[[int], ProfilerState], tuple, None] = None,
         on_trace_ready: Optional[Callable[..., Any]] = None,
         record_shapes: Optional[bool] = False,
-        profile_memory=False,
+        profile_memory: Optional[bool] = False,
         timer_only: Optional[bool] = False,
         emit_nvtx: Optional[bool] = False,
-        custom_device_types: Optional[list] = []
+        custom_device_types: Optional[list] = [],
+        with_flops: Optional[bool] = False,
     ):
         supported_targets = _get_supported_targets()
         if targets:
@@ -534,6 +536,7 @@ class Profiler:
         self.timer_only = timer_only
         self.record_shapes = record_shapes
         self.profile_memory = profile_memory
+        self.with_flops = with_flops
         self.emit_nvtx = emit_nvtx
 
     def __enter__(self):
@@ -571,8 +574,8 @@ class Profiler:
             utils._is_profiler_used = True
         if self.timer_only:
             return
-        if self.record_shapes:
-            enable_input_shape_recorder()
+        if self.record_shapes or self.with_flops:
+            enable_op_info_recorder()
         if self.profile_memory:
             enable_memory_recorder()
         # CLOSED -> self.current_state
@@ -614,8 +617,8 @@ class Profiler:
         benchmark().end()
         if self.timer_only:
             return
-        if self.record_shapes:
-            disable_input_shape_recorder()
+        if self.record_shapes or self.with_flops:
+            disable_op_info_recorder()
         if self.profile_memory:
             disable_memory_recorder()
         # self.current_state -> CLOSED

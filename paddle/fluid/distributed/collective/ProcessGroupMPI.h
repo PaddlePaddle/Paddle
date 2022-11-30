@@ -33,8 +33,6 @@
 #include "paddle/fluid/distributed/collective/MPITools.h"
 #endif
 
-constexpr const char* MPI_BACKEND_NAME = "MPI";
-
 namespace paddle {
 namespace distributed {
 
@@ -137,9 +135,7 @@ class ProcessGroupMPI : public ProcessGroup {
 
   virtual ~ProcessGroupMPI();
 
-  const std::string GetBackendName() const override {
-    return std::string(MPI_BACKEND_NAME);
-  }
+  std::string GetBackendName() const override { return "MPI"; }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,

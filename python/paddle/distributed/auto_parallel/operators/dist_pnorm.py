@@ -14,30 +14,34 @@
 
 import copy
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..process_group import new_process_group
-from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
-from ..utils import (
-    compute_compatible_dim_mapping,
-    set_dist_op_desc_original_id,
-    _get_comm_group,
-)
-from ..dist_attribute import (
-    TensorDistributedAttribute,
-    OperatorDistributedAttribute,
-)
-
 from paddle.fluid import core
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.fluid.framework import Operator
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+
+from ..dist_attribute import (
+    OperatorDistributedAttribute,
+    TensorDistributedAttribute,
+)
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    compute_compatible_dim_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 
 class DistributedPNorm(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedPNorm, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
@@ -46,7 +50,7 @@ register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
 # Row Parallel
 class DistributedPNormImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedPNormImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -155,7 +159,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        X_var = main_block.var(kwargs['X'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
         in_dims_mapping = op_dist_attr.get_input_dims_mapping(X_var.name)
         for axis in range(len(in_dims_mapping)):
             if in_dims_mapping[axis] != -1:
@@ -260,13 +264,13 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        X_grad_var = main_block.var(kwargs['X@GRAD'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        X_grad_var = main_block._var_recursive(kwargs['X@GRAD'][0])
 
         # 1. copy p_norm_grad op and reset input name and output name
         new_kwargs = copy.deepcopy(kwargs)
         new_kwargs['X'] = [".".join(["c_allgather", X_var.name])]
-        new_X_var = main_block.var(new_kwargs['X'][0])
+        new_X_var = main_block._var_recursive(new_kwargs['X'][0])
         new_X_grad = main_block.create_var(
             name=".".join(["c_allgather", X_grad_var.name]),
             dtype=X_grad_var.dtype,

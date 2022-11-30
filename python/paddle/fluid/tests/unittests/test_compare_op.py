@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
 import unittest
+
 import numpy
 import numpy as np
+import op_test
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -46,7 +48,7 @@ def create_test_class(op_type, typename, callback):
                     self.assertRaises(
                         TypeError, fluid.layers.less_than, x=x, y=y, force_cpu=1
                     )
-                op = eval("fluid.layers.%s" % self.op_type)
+                op = eval("paddle.%s" % self.op_type)
                 self.assertRaises(TypeError, op, x=x, y=y, cond=1)
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
@@ -283,54 +285,6 @@ def create_paddle_case(op_type, callback):
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
-        def test_zero_dim_api_1(self):
-            paddle.enable_static()
-            with program_guard(Program(), Program()):
-                x = paddle.randint(-3, 3, shape=[], dtype='int32')
-                y = paddle.randint(-3, 3, shape=[], dtype='int32')
-                op = eval("paddle.%s" % (self.op_type))
-                out = op(x, y)
-                exe = paddle.static.Executor(self.place)
-                (
-                    x_np,
-                    y_np,
-                    res,
-                ) = exe.run(fetch_list=[x, y, out])
-                real_result = callback(x_np, y_np)
-            self.assertEqual((res == real_result).all(), True)
-
-        def test_zero_dim_api_2(self):
-            paddle.enable_static()
-            with program_guard(Program(), Program()):
-                x = paddle.randint(-3, 3, shape=[2, 3, 4], dtype='int32')
-                y = paddle.randint(-3, 3, shape=[], dtype='int32')
-                op = eval("paddle.%s" % (self.op_type))
-                out = op(x, y)
-                exe = paddle.static.Executor(self.place)
-                (
-                    x_np,
-                    y_np,
-                    res,
-                ) = exe.run(fetch_list=[x, y, out])
-                real_result = callback(x_np, y_np)
-            self.assertEqual((res == real_result).all(), True)
-
-        def test_zero_dim_api_3(self):
-            paddle.enable_static()
-            with program_guard(Program(), Program()):
-                x = paddle.randint(-3, 3, shape=[], dtype='int32')
-                y = paddle.randint(-3, 3, shape=[2, 3, 4], dtype='int32')
-                op = eval("paddle.%s" % (self.op_type))
-                out = op(x, y)
-                exe = paddle.static.Executor(self.place)
-                (
-                    x_np,
-                    y_np,
-                    res,
-                ) = exe.run(fetch_list=[x, y, out])
-                real_result = callback(x_np, y_np)
-            self.assertEqual((res == real_result).all(), True)
-
         def test_broadcast_api_1(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
@@ -381,6 +335,54 @@ def create_paddle_case(op_type, callback):
                 (res,) = exe.run(
                     feed={"x": input_x, "y": input_y}, fetch_list=[out]
                 )
+            self.assertEqual((res == real_result).all(), True)
+
+        def test_zero_dim_api_1(self):
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
+                x = paddle.randint(-3, 3, shape=[], dtype='int32')
+                y = paddle.randint(-3, 3, shape=[], dtype='int32')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.static.Executor(self.place)
+                (
+                    x_np,
+                    y_np,
+                    res,
+                ) = exe.run(fetch_list=[x, y, out])
+                real_result = callback(x_np, y_np)
+            self.assertEqual((res == real_result).all(), True)
+
+        def test_zero_dim_api_2(self):
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
+                x = paddle.randint(-3, 3, shape=[2, 3, 4], dtype='int32')
+                y = paddle.randint(-3, 3, shape=[], dtype='int32')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.static.Executor(self.place)
+                (
+                    x_np,
+                    y_np,
+                    res,
+                ) = exe.run(fetch_list=[x, y, out])
+                real_result = callback(x_np, y_np)
+            self.assertEqual((res == real_result).all(), True)
+
+        def test_zero_dim_api_3(self):
+            paddle.enable_static()
+            with program_guard(Program(), Program()):
+                x = paddle.randint(-3, 3, shape=[], dtype='int32')
+                y = paddle.randint(-3, 3, shape=[2, 3, 4], dtype='int32')
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                exe = paddle.static.Executor(self.place)
+                (
+                    x_np,
+                    y_np,
+                    res,
+                ) = exe.run(fetch_list=[x, y, out])
+                real_result = callback(x_np, y_np)
             self.assertEqual((res == real_result).all(), True)
 
         def test_bool_api_4(self):
@@ -446,7 +448,7 @@ class TestCompareOpError(unittest.TestCase):
             y = fluid.create_lod_tensor(
                 numpy.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.greater_equal, x, y)
+            self.assertRaises(TypeError, paddle.greater_equal, x, y)
 
 
 class API_TestElementwise_Equal(unittest.TestCase):

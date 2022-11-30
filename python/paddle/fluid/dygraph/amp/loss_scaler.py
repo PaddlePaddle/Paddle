@@ -26,6 +26,7 @@ import numpy as np
 from paddle import _C_ops, _legacy_C_ops
 from collections import defaultdict
 from enum import Enum
+from paddle.fluid import in_dygraph_mode
 
 __all__ = ['AmpScaler', 'OptimizerState']
 
@@ -40,7 +41,7 @@ def _refresh_optimizer_state():
     return {"state": OptimizerState.INIT}
 
 
-class AmpScaler(object):
+class AmpScaler:
     """
     :api_attr: imperative
 
@@ -297,26 +298,37 @@ class AmpScaler(object):
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
-            param_grads = [
-                param._grad_ivar()
-                for param in optimizer._parameter_list
-                if param._grad_ivar() is not None
-            ]
-            param_grads_fp16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP16
-            ]
-            param_grads_bf16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.BF16
-            ]
-            param_grads_fp32 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP32
-            ]
+            if in_dygraph_mode():
+                # It is very time-consuming to call c++ functions in a loop on the python side.
+                # We put this part of the code on the c++ side to improve the speed in eager mode.
+                (
+                    param_grads_fp16,
+                    param_grads_bf16,
+                    param_grads_fp32,
+                ) = core.eager.get_grads_lists(optimizer._parameter_list)
+            else:
+                # Keep the original code to support legacy mode.
+                # Delete the else branch when the legacy mode exits.
+                param_grads = [
+                    param._grad_ivar()
+                    for param in optimizer._parameter_list
+                    if param._grad_ivar() is not None
+                ]
+                param_grads_fp16 = [
+                    param
+                    for param in param_grads
+                    if param.dtype == core.VarDesc.VarType.FP16
+                ]
+                param_grads_bf16 = [
+                    param
+                    for param in param_grads
+                    if param.dtype == core.VarDesc.VarType.BF16
+                ]
+                param_grads_fp32 = [
+                    param
+                    for param in param_grads
+                    if param.dtype == core.VarDesc.VarType.FP32
+                ]
         if core.is_compiled_with_npu():
             float_status = _legacy_C_ops.alloc_float_status()
             _legacy_C_ops.clear_float_status(float_status, float_status)

@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import sys
 
+import numpy as np
+
 sys.path.append("..")
-import paddle
+import unittest
+
 from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
-import unittest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -100,6 +103,24 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
 
         def init_max_relative_error(self):
             self.max_relative_error = 0.006
+
+    class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.y = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.out = self.x + self.y
+
+    class TestElementwiseAddOp_ZeroDim2(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.y = np.random.uniform(-1, 1, [13, 17]).astype(self.dtype)
+            self.out = self.x + self.y
+
+    class TestElementwiseAddOp_ZeroDim3(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(-1, 1, [13, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-1, 1, []).astype(self.dtype)
+            self.out = self.x + self.y
 
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."

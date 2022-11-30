@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
@@ -44,7 +45,7 @@ def generator():
 
 class TestLayer(nn.Layer):
     def __init__(self):
-        super(TestLayer, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(3, 400)
         self.linear2 = nn.Linear(400, 400)
         self.linear3 = nn.Linear(400, 3)

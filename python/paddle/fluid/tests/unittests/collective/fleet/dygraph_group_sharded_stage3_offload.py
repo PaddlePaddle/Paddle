@@ -15,17 +15,18 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
-
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 epoch = 10
 paddle.seed(2022)
@@ -37,7 +38,7 @@ l2_decay = 1e-4
 
 class MLP(fluid.Layer):
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)

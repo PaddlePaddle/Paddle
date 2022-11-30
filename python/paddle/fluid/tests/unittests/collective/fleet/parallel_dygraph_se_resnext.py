@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
 from paddle.fluid.dygraph.base import to_variable
-import math
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 
 batch_size = 64
 momentum_rate = 0.9
@@ -85,12 +87,12 @@ class ConvBNLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
@@ -111,33 +113,35 @@ class ConvBNLayer(fluid.dygraph.Layer):
 class SqueezeExcitation(fluid.dygraph.Layer):
     def __init__(self, num_channels, reduction_ratio):
 
-        super(SqueezeExcitation, self).__init__()
+        super().__init__()
         self._num_channels = num_channels
-        self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
+        self._pool = paddle.fluid.dygraph.nn.Pool2D(
+            pool_size=0, pool_type='avg', global_pooling=True
+        )
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
         self._squeeze = Linear(
             num_channels,
             num_channels // reduction_ratio,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
-            act='relu',
         )
         stdv = 1.0 / math.sqrt(num_channels / 16.0 * 1.0)
         self._excitation = Linear(
             num_channels // reduction_ratio,
             num_channels,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
-            act='sigmoid',
         )
 
     def forward(self, input):
         y = self._pool(input)
-        y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
+        y = paddle.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
+        y = paddle.nn.functional.relu(y)
         y = self._excitation(y)
+        y = paddle.nn.functional.sigmoid(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
         return y
 
@@ -152,7 +156,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         reduction_ratio,
         shortcut=True,
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -208,7 +212,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 class SeResNeXt(fluid.dygraph.Layer):
     def __init__(self, layers=50, class_dim=102):
-        super(SeResNeXt, self).__init__()
+        super().__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -230,9 +234,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
@@ -245,9 +247,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
@@ -274,9 +274,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=1,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         self.bottleneck_block_list = []
         num_channels = 64
@@ -298,7 +296,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = Pool2D(
+        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True
         )
         stdv = 1.0 / math.sqrt(2048 * 1.0)
@@ -308,8 +306,8 @@ class SeResNeXt(fluid.dygraph.Layer):
         self.out = Linear(
             self.pool2d_avg_output,
             class_dim,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -326,7 +324,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 

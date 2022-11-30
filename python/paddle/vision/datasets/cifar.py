@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pickle
 import tarfile
+
 import numpy as np
 from PIL import Image
-import pickle
 
 import paddle
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -259,9 +260,7 @@ class Cifar100(Cifar10):
         download=True,
         backend=None,
     ):
-        super(Cifar100, self).__init__(
-            data_file, mode, transform, download, backend
-        )
+        super().__init__(data_file, mode, transform, download, backend)
 
     def _init_url_md5_flag(self):
         self.data_url = CIFAR100_URL

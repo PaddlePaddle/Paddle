@@ -12,27 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.fleet.utils.ps_util import DistributedInfer
+import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-import paddle
+from paddle.distributed.fleet.utils.ps_util import DistributedInfer
 
 """
     high level unit test for distribute fleet.
 """
 
-import os
-import sys
-import subprocess
-
-import shutil
 import argparse
-from contextlib import closing
+import os
+import shutil
 import socket
-import time
+import subprocess
+import sys
 import tempfile
+import time
 import unittest
+from contextlib import closing
 
 import paddle
 
@@ -45,7 +44,7 @@ LEARNING_RATE = 0.01
 DIST_UT_PORT = 0
 
 
-class FleetDistRunnerBase(object):
+class FleetDistRunnerBase:
     """
     run_pserver,run_trainer : after init role, using transpiler split program
     net : implment by child class, the network of model

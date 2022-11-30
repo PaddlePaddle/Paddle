@@ -137,7 +137,7 @@ class TestCorrelationOp(unittest.TestCase):
 
 class Net(fluid.dygraph.Layer):
     def __init__(self, name_scope):
-        super(Net, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, x1, x2):
         y = fluid.contrib.correlation(

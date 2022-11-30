@@ -26,6 +26,8 @@ from ..auto_parallel.utils import (
     OP_ROLE_KEY,
     OpRole,
     _get_comm_group,
+    insert_dependencies_for_two_vars,
+    use_standalone_executor,
 )
 from ..auto_parallel.dist_attribute import (
     TensorDistributedAttribute,
@@ -143,7 +145,7 @@ def _is_about_global_norm(
     return rank_id in complete_param_ranks
 
 
-class ClipHelper(object):
+class ClipHelper:
     def __init__(self, params_grads, rank_id, block, dist_context):
         params, _ = zip(*params_grads)
         self.params = list(params)
@@ -221,7 +223,7 @@ class ClipGradByGloblNormPass(PassBase):
     """
 
     def __init__(self):
-        super(ClipGradByGloblNormPass, self).__init__()
+        super().__init__()
         self.set_attr("rank_id", None)
         self.set_attr("dist_context", None)
         self.set_attr("params_grads", None)
@@ -269,7 +271,7 @@ class ClipGradByGloblNormPass(PassBase):
             if op.type in removed_op_out_type:
                 input_name = op.input("X")[0]
                 if input_name.find("@GRAD") != -1:
-                    #'clip_by_norm', 'squared_l2_norm', 'square'
+                    # 'clip_by_norm', 'squared_l2_norm', 'square'
                     param_name = input_name[: input_name.find("@GRAD")]
                     is_local = self.clip_helper._is_local_param(param_name)
                     is_calculate = self.clip_helper._is_calcuate_norm(
@@ -334,6 +336,7 @@ class ClipGradByGloblNormPass(PassBase):
             if op.type == 'sqrt':
                 input_name = op.input("X")[0]
                 input_var = block.vars[input_name]
+                insert_leaf_fill_constant_node = False
                 if paddle.distributed.get_world_size() > 1:
                     offset = 0
                     if input_name in removed_tmp_var:
@@ -356,6 +359,7 @@ class ClipGradByGloblNormPass(PassBase):
                         )
                         offset += 1
                         self.clip_helper._init_dist_attr(fill_constant_op)
+                        insert_leaf_fill_constant_node = True
 
                     allreduce_op = block._insert_op(
                         idx + offset,
@@ -372,6 +376,45 @@ class ClipGradByGloblNormPass(PassBase):
                         'op_namescope', "/gradient_clip_pass"
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
+
+                    if (
+                        use_standalone_executor
+                        and insert_leaf_fill_constant_node
+                    ):
+
+                        # NOTE add naive deps for global norm sync in graph exe
+                        j = idx - 1
+                        prior_op = None
+                        while j > 0:
+                            op_type = block.ops[j].type
+                            if op_type in [
+                                'update_loss_scaling',
+                                'check_finite_and_unscale',
+                            ] or op_type.endswith("_grad"):
+                                prior_op = block.ops[j]
+                                break
+                            j -= 1
+                            print("here: ", block.ops[j])
+                        assert (
+                            prior_op is not None
+                        ), "Unexception: ClipByGlobalNorm could not find priory depend op"
+                        prior_var = block.vars[prior_op.output_arg_names[0]]
+                        assert (
+                            prior_var is not None
+                        ), "Unexception: ClipByGlobalNorm could not find priory depend var"
+                        insert_dependencies_for_two_vars(
+                            block,
+                            idx,
+                            prior_var,
+                            input_var,
+                            self.clip_helper.dist_context,
+                            OpRole.Optimize,
+                            process_mesh=[
+                                -1
+                            ],  # hack to avoid initialize the dist attr for coalesc var
+                            is_recompute=False,
+                            sync=False,
+                        )
 
         for varname in removed_tmp_var:
             block._remove_var(varname, sync=False)

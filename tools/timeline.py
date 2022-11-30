@@ -31,7 +31,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-class _ChromeTraceFormatter(object):
+class _ChromeTraceFormatter:
     def __init__(self):
         self._events = []
         self._metadata = []
@@ -126,7 +126,7 @@ class _ChromeTraceFormatter(object):
             return json.dumps(trace, separators=(',', ':'))
 
 
-class Timeline(object):
+class Timeline:
     def __init__(self, profile_dict):
         self._profile_dict = profile_dict
         self._pid = 0

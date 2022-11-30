@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-from ...fluid import layers as F
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...framework import in_dygraph_mode
 from paddle import _C_ops
+
+from ...fluid import layers as F
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
+from ...framework import in_dygraph_mode
 
 __all__ = []
 
@@ -95,7 +96,7 @@ def _weight_norm(v, g, dim):
     return weight
 
 
-class WeightNorm(object):
+class WeightNorm:
     def __init__(self, name, dim):
         if dim is None:
             dim = -1

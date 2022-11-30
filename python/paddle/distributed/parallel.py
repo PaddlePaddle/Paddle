@@ -13,33 +13,35 @@
 # limitations under the License.
 
 import os
-import warnings
-from multiprocessing import Process  # noqa: F401
-from multiprocessing import Manager  # noqa: F401
 import time
+import warnings
+from multiprocessing import Manager  # noqa: F401
+from multiprocessing import Process  # noqa: F401
+
 import paddle
+from paddle.distributed.collective import (
+    Group,
+    _default_group_name,
+    _get_group_map_by_name,
+    _new_process_group_impl,
+    _set_default_backend,
+    _set_default_store,
+    _set_group_map,
+    _set_group_map_backend,
+    _set_group_map_by_name,
+    _valid_backend_list,
+)
+from paddle.distributed.communication.group import _add_new_group
+from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
+    wait_server_ready,
+)
+from paddle.distributed.fleet.launch_utils import check_backend
 
 # deprecated module import
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
-from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.fleet.base.private_helper_function import (
-    wait_server_ready,
-)  # noqa: F401
-from paddle.distributed.collective import _set_group_map
-from paddle.distributed.collective import _set_group_map_by_name
-from paddle.distributed.collective import _get_group_map_by_name
-from paddle.distributed.collective import _default_group_name
-from paddle.distributed.collective import _valid_backend_list
-from paddle.distributed.collective import _set_default_backend
-from paddle.distributed.collective import _set_default_store
-from paddle.distributed.collective import _new_process_group_impl
-from paddle.distributed.collective import Group
-from paddle.distributed.collective import _set_group_map_backend
-from paddle.distributed.communication.group import _add_new_group
+from paddle.fluid.framework import _set_expected_place, in_dygraph_mode
 
 __all__ = []
 
@@ -97,6 +99,7 @@ def _check_var_exists(var_name):
 
 def init_parallel_env():
     """
+
     Initialize parallel training environment in dynamic graph mode.
 
     Note:
@@ -112,6 +115,7 @@ def init_parallel_env():
 
     Examples:
         .. code-block:: python
+
             # required: gpu
             import paddle
             import paddle.nn as nn
@@ -120,7 +124,7 @@ def init_parallel_env():
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -152,6 +156,7 @@ def init_parallel_env():
 
             if __name__ == '__main__':
                 dist.spawn(train)
+
     """
 
     # 0. get env & check world size
@@ -176,6 +181,7 @@ def init_parallel_env():
         or core.is_compiled_with_xpu()
         or core.is_compiled_with_npu()
         or core.is_compiled_with_mlu()
+        or backend == "xccl"
     ):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend"

@@ -21,7 +21,6 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
 DECLARE_bool(check_nan_inf);
 
 paddle::experimental::Tensor conv2d_ad_func(

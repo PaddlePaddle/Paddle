@@ -14,9 +14,10 @@
 # limitations under the License.
 
 import os
-import numpy as np
 import tempfile
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
@@ -25,7 +26,7 @@ import paddle.nn as nn
 
 class SimpleFCLayer(nn.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
-        super(SimpleFCLayer, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(feature_size, fc_size)
         self._offset = paddle.to_tensor(
             np.random.random((batch_size, fc_size)).astype('float32')
@@ -38,7 +39,7 @@ class SimpleFCLayer(nn.Layer):
 
 class LinearNetWithNone(nn.Layer):
     def __init__(self, feature_size, fc_size):
-        super(LinearNetWithNone, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(feature_size, fc_size)
 
     def forward(self, x):
@@ -74,7 +75,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     None, [in_x]
                 )
             self.assertEqual(
-                "The type of 'layer' in fluid.dygraph.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received <{} 'NoneType'>.".format(
+                "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received <{} 'NoneType'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
@@ -84,7 +85,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     self.layer, 3
                 )
             self.assertEqual(
-                "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'int'>.".format(
+                "The type of 'each element of inputs' in paddle.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'int'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
@@ -94,7 +95,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     self.layer, [True, 1]
                 )
             self.assertEqual(
-                "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'bool'>.".format(
+                "The type of 'each element of inputs' in paddle.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'bool'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
@@ -120,7 +121,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(AssertionError) as e:
                 traced_layer.set_strategy(1, fluid.ExecutionStrategy())
             self.assertEqual(
-                "The type of 'build_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received <{} 'int'>.".format(
+                "The type of 'build_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received <{} 'int'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
@@ -129,7 +130,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(AssertionError) as e:
                 traced_layer.set_strategy(fluid.BuildStrategy(), False)
             self.assertEqual(
-                "The type of 'exec_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received <{} 'bool'>.".format(
+                "The type of 'exec_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received <{} 'bool'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
@@ -158,7 +159,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model([0])
             self.assertEqual(
-                "The type of 'path' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. ".format(
+                "The type of 'path' in paddle.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. ".format(
                     self.type_str, self.type_str
                 ),
                 str(e.exception),
@@ -166,7 +167,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model(path, [0], [None])
             self.assertEqual(
-                "The type of 'each element of fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".format(
+                "The type of 'each element of fetch' in paddle.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".format(
                     self.type_str, self.type_str
                 ),
                 str(e.exception),
@@ -174,7 +175,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model(path, [0], False)
             self.assertEqual(
-                "The type of 'fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".format(
+                "The type of 'fetch' in paddle.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".format(
                     self.type_str, self.type_str, self.type_str
                 ),
                 str(e.exception),
@@ -182,7 +183,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model(path, [None], [0])
             self.assertEqual(
-                "The type of 'each element of feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".format(
+                "The type of 'each element of feed' in paddle.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".format(
                     self.type_str, self.type_str
                 ),
                 str(e.exception),
@@ -190,7 +191,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model(path, True, [0])
             self.assertEqual(
-                "The type of 'feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".format(
+                "The type of 'feed' in paddle.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".format(
                     self.type_str, self.type_str, self.type_str
                 ),
                 str(e.exception),

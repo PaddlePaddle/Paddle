@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
+import inspect
 import os
-import sys
 import pickle
 import shlex
 import shutil
-import inspect
-import numpy as np
+import sys
+import unittest
 from collections import OrderedDict
+
+import numpy as np
+
+import paddle
 from paddle.distributed.fleet.launch_utils import run_with_coverage
 from paddle.distributed.passes.pass_base import PassBase, PassManager
 
@@ -266,7 +268,7 @@ class DistPassTestBase(unittest.TestCase):
 class PassConflictChecker(DistPassTestBase):
     def setUp(self):
         os.environ['DEBUG'] = '1'  # to save the debug directory
-        super(PassConflictChecker, self).setUp()
+        super().setUp()
 
     def pass_config(self):
         raise NotImplementedError()

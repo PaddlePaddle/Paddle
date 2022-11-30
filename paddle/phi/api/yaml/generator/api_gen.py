@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 import re
 
-from api_base import BaseAPI, PREFIX_TENSOR_NAME
+import yaml
+from api_base import PREFIX_TENSOR_NAME, BaseAPI
 
 inplace_out_type_map = {
     "Tensor": "Tensor&",
@@ -31,7 +31,7 @@ inplace_optional_out_type_map = {
 
 class ForwardAPI(BaseAPI):
     def __init__(self, api_item_yaml):
-        super(ForwardAPI, self).__init__(api_item_yaml)
+        super().__init__(api_item_yaml)
         self.is_dygraph_api, self.intermediate_outs = self.parse_intermediate(
             api_item_yaml
         )

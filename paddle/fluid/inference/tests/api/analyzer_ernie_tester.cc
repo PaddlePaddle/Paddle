@@ -92,6 +92,7 @@ void compare(bool use_mkldnn = false) {
 
   AnalysisConfig cfg;
   SetConfig(&cfg, use_mkldnn, false);
+  cfg.DisableMkldnnFcPasses();  // fc passes caused loss in accuracy
   auto pass_builder = cfg.pass_builder();
   pass_builder->DeletePass("constant_folding_pass");
   CompareNativeAndAnalysis(

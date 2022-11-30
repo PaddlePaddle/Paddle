@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-import paddle.distributed.fleet as fleet
 from test_collective_multi_nodes import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
-from paddle import nn
-import numpy as np
 
+import paddle
+import paddle.distributed.fleet as fleet
+from paddle import nn
 from paddle.distributed.fleet.utils import recompute
 
 
@@ -42,7 +41,7 @@ def weight_init(mp, shape, col=True, seed=1024):
 
 class Criterion(nn.Layer):
     def __init__(self):
-        super(Criterion, self).__init__()
+        super().__init__()
         self.loss_func = nn.MSELoss(reduction="mean")
 
     def forward(self, pred, label):
@@ -52,7 +51,7 @@ class Criterion(nn.Layer):
 
 class RecomputeMatmulBlock(nn.Layer):
     def __init__(self, mp, seed, m, n, k):
-        super(RecomputeMatmulBlock, self).__init__()
+        super().__init__()
         self.mp = mp
         if mp is not None and mp.nranks > 1:
             mp_linear_1 = fleet.meta_parallel.ColumnParallelLinear(
@@ -104,14 +103,14 @@ class ModelPipeline(fleet.meta_parallel.PipelineLayer):
 
         out = nn.Linear(64, 32)
         self.layers_pp.append(out)
-        super(ModelPipeline, self).__init__(
+        super().__init__(
             layers=self.layers_pp, loss_fn=Criterion(), topology=self.topology
         )
 
 
 class Model(nn.Layer):
     def __init__(self, hcg):
-        super(Model, self).__init__()
+        super().__init__()
         paddle.seed(1024)
         dp_linear = nn.Linear(32, 64)
         self.layers_pp = []
@@ -138,6 +137,7 @@ class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
     def check_pass(self, *args, **kwargs):
 
         from common import init_parallel_env
+
         import paddle
         from paddle.distributed import fleet
 

@@ -22,7 +22,7 @@ from paddle import _C_ops, _legacy_C_ops
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
 
-class WeightDecayRegularizer(object):
+class WeightDecayRegularizer:
     """Base class for weight decay regularizers
 
     Defines the common interface of weight-decay regularizers.
@@ -111,7 +111,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
     def __init__(self, regularization_coeff=0.0):
         assert regularization_coeff is not None
-        super(L2DecayRegularizer, self).__init__()
+        super().__init__()
         self._regularization_coeff = regularization_coeff
 
     def __call__(self, param, grad, block):
@@ -224,7 +224,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 
     def __init__(self, regularization_coeff=0.0):
         assert regularization_coeff is not None
-        super(L1DecayRegularizer, self).__init__()
+        super().__init__()
         self._regularization_coeff = regularization_coeff
 
     def __call__(self, param, grad, block):

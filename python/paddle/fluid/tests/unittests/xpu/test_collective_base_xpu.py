@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
-import time
 import os
-import sys
-import subprocess
 import pickle
+import subprocess
+import sys
 import tempfile
+import time
+import unittest
 from contextlib import closing
+
+import numpy as np
+
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
@@ -49,7 +51,7 @@ def DataTypeCast(date_type):
     return np_data_type
 
 
-class TestCollectiveRunnerBase(object):
+class TestCollectiveRunnerBase:
     def get_model(self, train_prog, startup_prog):
         raise NotImplementedError(
             "get model should be implemented by child class."

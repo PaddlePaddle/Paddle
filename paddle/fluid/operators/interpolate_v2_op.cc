@@ -452,8 +452,8 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-        (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+        (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_layout");
@@ -466,7 +466,9 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
       }
     }
 #endif
-    if (var_name == "SizeTensor" || var_name == "Scale") {
+
+    if (var_name == "OutSize" || var_name == "SizeTensor" ||
+        var_name == "Scale") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(
@@ -701,7 +703,8 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "SizeTensor" || var_name == "Scale") {
+    if (var_name == "OutSize" || var_name == "SizeTensor" ||
+        var_name == "Scale") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(

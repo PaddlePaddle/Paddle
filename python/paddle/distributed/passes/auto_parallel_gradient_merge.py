@@ -12,25 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, Dict, Any
+from typing import Any, Dict, List, Tuple
 
 import paddle
-from paddle.framework import core
-from paddle.fluid import layers
-from paddle.fluid.framework import device_guard
-from .pass_base import PassBase, PassType, register_pass
-from paddle.distributed.auto_parallel.utils import (
-    set_var_dist_attr,
-    is_optimize_op,
-    OpRole,
-    OP_ROLE_KEY,
-)
-from paddle.distributed.auto_parallel.utils import (
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
-)
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
+from paddle.distributed.auto_parallel.utils import (
+    OP_ROLE_KEY,
+    OpRole,
+    is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
+)
+from paddle.fluid import layers
+from paddle.fluid.framework import device_guard
+from paddle.framework import core
+
+from .pass_base import PassBase, PassType, register_pass
 
 world_process_group = get_world_process_group()
 
@@ -327,7 +326,7 @@ def parse_program(
 @register_pass("auto_parallel_gradient_merge_pass")
 class GradientMergePass(PassBase):
     def __init__(self):
-        super(GradientMergePass, self).__init__()
+        super().__init__()
         self.set_attr("k_steps", -1)
         self.set_attr("avg", True)
 

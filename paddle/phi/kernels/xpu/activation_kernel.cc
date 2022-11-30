@@ -213,13 +213,37 @@ void PowKernel(const Context& dev_ctx,
                        static_cast<void*>(&pow_factor),
                        sizeof(T));
 
-  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
-  // std::vector<int>& xshape, const std::vector<int>& yshape);
   auto x_dims = vectorize<int>(x.dims());
+  // use [1] to replace [], because xpu not support []
+  if (x_dims.size() == 0) {
+    x_dims = std::vector<int>({1});
+  }
+
+  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
+  //    std::vector<int>& xshape, const std::vector<int>& yshape);
   int r =
       xpu::broadcast_pow(xpu_context, x_data, factor_data, y_data, x_dims, {1});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
 }
+
+template <typename T>
+struct XPUHardSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
+  float slope;
+  float offset;
+  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int r = xpu_activation_1attr_func<Context, T, XPUType>(
+        dev_ctx, x, out, slope, xpu::hard_sigmoid<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_sigmoid");
+  }
+};
 
 template <typename T>
 struct XPUHardSwishFunctor : public funcs::BaseActivationFunctor<T> {
@@ -356,10 +380,10 @@ struct XPUMishFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T, typename Context>
-void SwishKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 float beta,
-                 DenseTensor* out) {
+void SwishRawKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    float beta,
+                    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   int r = xpu::swish(dev_ctx.x_context(),
@@ -402,7 +426,21 @@ struct XPUTanhFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUFloorFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int r = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::floor<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "floor");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Log, XPULogFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Reciprocal, XPUReciprocalFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Relu, XPUReluFunctor)
@@ -415,20 +453,26 @@ DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
                                             XPULeakyReluFunctor,
                                             alpha)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6, XPURelu6Functor, threshold)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6Raw,
+                                            XPURelu6Functor,
+                                            threshold)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
                                             XPUSoftplusFunctor,
                                             beta,
                                             threshold)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
+                                            XPUHardSigmoidFunctor,
+                                            slope,
+                                            offset)
 
 template <typename T, typename Context>
-void HardSwishKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     float threshold,
-                     float scale,
-                     float offset,
-                     DenseTensor* out) {
+void HardSwishRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        float threshold,
+                        float scale,
+                        float offset,
+                        DenseTensor* out) {
   XPUHardSwishFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
@@ -449,16 +493,20 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
+PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(square, SquareKernel)

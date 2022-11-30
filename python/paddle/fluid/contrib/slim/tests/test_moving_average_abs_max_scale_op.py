@@ -60,7 +60,7 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
         moving_average_abs_max_scale_ops = [
             op
             for op in main_program.blocks[0].ops
-            if op.type == u'moving_average_abs_max_scale'
+            if op.type == 'moving_average_abs_max_scale'
         ]
         assert (
             len(moving_average_abs_max_scale_ops) == 1

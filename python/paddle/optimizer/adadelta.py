@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import framework
-from ..framework import in_dygraph_mode
 from paddle import _C_ops
+
+from ..fluid import framework
 from ..fluid.dygraph import no_grad
+from ..framework import in_dygraph_mode
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -68,10 +69,9 @@ class Adadelta(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
             out = linear(inp)
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
@@ -123,7 +123,7 @@ class Adadelta(Optimizer):
             raise ValueError("epsilon is not set.")
         if rho is None:
             raise ValueError("rho is not set.")
-        super(Adadelta, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,

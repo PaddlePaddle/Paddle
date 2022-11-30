@@ -26,7 +26,7 @@ _extra_unsupported_fp16_list = {
 }
 
 
-class AutoMixedPrecisionLists(object):
+class AutoMixedPrecisionLists:
     """
     AutoMixedPrecisionLists is a class for black/white list. It can update
     pre-defined black list and white list according to users' custom black

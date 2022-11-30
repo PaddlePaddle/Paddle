@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
+
+from numpy import append
 
 import paddle
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
     FunctionNameLivenessAnalysis,
 )
 from paddle.utils import gast
-import inspect
-from numpy import append
 
 global_a = []
 
@@ -299,6 +300,8 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     def test4(self):
+        import numpy as np
+
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             for i in range(3):
@@ -310,6 +313,8 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     def test5(self):
+        import numpy as np
+
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             for i in range(3):

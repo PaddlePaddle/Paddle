@@ -96,7 +96,7 @@ def monkey_patch_math_varbase():
         return out
 
     def create_scalar(value, dtype):
-        return create_tensor(value, dtype, shape=[1])
+        return create_tensor(value, dtype, shape=[])
 
     def astype(self, dtype):
         """

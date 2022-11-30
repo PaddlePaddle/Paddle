@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import paddle
-from .base.topology import ParallelMode
-from .meta_parallel import TensorParallel
-from .meta_parallel import (
-    PipelineParallel,
-    ShardingParallel,
-    PipelineParallelWithInterleave,
-    PipelineLayer,
-)
-from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from paddle.distributed import fleet
+from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
+
+from .base.topology import ParallelMode
+from .meta_parallel import (
+    PipelineLayer,
+    PipelineParallel,
+    PipelineParallelWithInterleave,
+    ShardingParallel,
+    TensorParallel,
+)
 
 _grad_scalar = None
 
@@ -47,7 +48,7 @@ def distributed_model(model):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 

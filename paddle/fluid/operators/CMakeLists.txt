@@ -1,5 +1,7 @@
 include(operators)
 
+add_subdirectory(generator)
+
 # solve "math constants not defined" problems caused by the order of inclusion
 # of <cmath> and the definition of macro _USE_MATH_DEFINES
 add_definitions(-D_USE_MATH_DEFINES)
@@ -24,9 +26,6 @@ add_subdirectory(sequence_ops)
 add_subdirectory(string)
 add_subdirectory(jit)
 add_subdirectory(prim_ops)
-if(WITH_MKLDNN)
-    add_subdirectory(mkldnn)
-endif()
 
 
 if(WITH_DISTRIBUTE)
@@ -182,8 +181,6 @@ if (WITH_ASCEND_CL)
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
-# op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
-# op_library(array_to_lod_tensor_op DEPS lod_rank_table_op)
 # op_library(unsqueeze_op DEPS reshape_op)
 # op_library(squeeze_op DEPS reshape_op)
 # op_library(flatten_op DEPS reshape_op)
@@ -244,10 +241,6 @@ if(WITH_UNITY_BUILD)
     # the unity library to lose some symbols.
     # The specified link dependency needs to be displayed here.
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
-endif()
-
-if(WITH_ASCEND_CL)
-cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op scope device_context enforce executor)
 endif()
 
 if (WITH_GPU OR WITH_ASCEND_CL)

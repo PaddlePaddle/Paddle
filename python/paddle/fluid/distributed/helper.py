@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class FileSystem(object):
+class FileSystem:
     """
     A file system that support hadoop client desc.
 
@@ -54,7 +54,7 @@ class FileSystem(object):
         return self.fs_client
 
 
-class MPIHelper(object):
+class MPIHelper:
     """
     MPIHelper is a wrapper of mpi4py, support get_rank get_size etc.
     Args:

@@ -15,19 +15,18 @@
 import os
 import sys
 
+from darknet import ConvBNLayer, DarkNet53_conv_body
+
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from darknet import DarkNet53_conv_body
-from darknet import ConvBNLayer
+from paddle.jit.api import declarative
 
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -132,7 +131,7 @@ cfg.class_num = 80
 
 class YoloDetectionBlock(fluid.dygraph.Layer):
     def __init__(self, ch_in, channel, is_test=True):
-        super(YoloDetectionBlock, self).__init__()
+        super().__init__()
 
         assert channel % 2 == 0, "channel {} cannot be divided by 2".format(
             channel
@@ -199,15 +198,13 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
 
 class Upsample(fluid.dygraph.Layer):
     def __init__(self, scale=2):
-        super(Upsample, self).__init__()
+        super().__init__()
         self.scale = scale
 
     def forward(self, inputs):
         # get dynamic upsample output shape
         shape_nchw = fluid.layers.shape(inputs)
-        shape_hw = fluid.layers.slice(
-            shape_nchw, axes=[0], starts=[2], ends=[4]
-        )
+        shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
         shape_hw.stop_gradient = True
         in_shape = fluid.layers.cast(shape_hw, dtype='int32')
         out_shape = in_shape * self.scale
@@ -222,7 +219,7 @@ class Upsample(fluid.dygraph.Layer):
 
 class YOLOv3(fluid.dygraph.Layer):
     def __init__(self, ch_in, is_train=True, use_random=False):
-        super(YOLOv3, self).__init__()
+        super().__init__()
 
         self.is_train = is_train
         self.use_random = use_random
@@ -247,14 +244,13 @@ class YOLOv3(fluid.dygraph.Layer):
 
             block_out = self.add_sublayer(
                 "block_out_%d" % (i),
-                Conv2D(
-                    num_channels=1024 // (2**i),
-                    num_filters=num_filters,
-                    filter_size=1,
+                paddle.nn.Conv2D(
+                    in_channels=1024 // (2**i),
+                    out_channels=num_filters,
+                    kernel_size=1,
                     stride=1,
                     padding=0,
-                    act=None,
-                    param_attr=ParamAttr(
+                    weight_attr=ParamAttr(
                         initializer=fluid.initializer.Normal(0.0, 0.02)
                     ),
                     bias_attr=ParamAttr(
@@ -297,7 +293,9 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
-                block = fluid.layers.concat(input=[route, block], axis=1)
+                block = fluid.layers.concat(
+                    input=[route, block], axis=1  # noqa: F821
+                )
             route, tip = self.yolo_blocks[i](block)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)
@@ -344,9 +342,7 @@ class YOLOv3(fluid.dygraph.Layer):
                     name="yolo_box" + str(i),
                 )
                 self.boxes.append(boxes)
-                self.scores.append(
-                    fluid.layers.transpose(scores, perm=[0, 2, 1])
-                )
+                self.scores.append(paddle.transpose(scores, perm=[0, 2, 1]))
             self.downsample //= 2
 
         if not self.is_train:

@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from . import Layer
 from ..layers import (
-    sigmoid,
-    tanh,
     concat,
     fill_constant,
     matmul,
-    elementwise_add,
     elementwise_mul,
     split,
 )
@@ -132,15 +130,15 @@ class LSTMCell(Layer):
         use_cudnn_impl=True,
         dtype='float64',
     ):
-        super(LSTMCell, self).__init__(dtype)
+        super().__init__(dtype)
 
         self._hidden_size = hidden_size
         self._input_size = input_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        self._gate_activation = gate_activation or sigmoid
-        self._activation = activation or tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._use_cudnn_impl = use_cudnn_impl
 
         if self._use_cudnn_impl:
@@ -218,23 +216,23 @@ class LSTMCell(Layer):
 
         if self._use_cudnn_impl:
             igates = matmul(input, y=self._weight_ih, transpose_y=True)
-            igates = elementwise_add(igates, self._bias_ih)
+            igates = paddle.add(igates, self._bias_ih)
             hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
-            hgates = elementwise_add(hgates, self._bias_hh)
+            hgates = paddle.add(hgates, self._bias_hh)
 
             chunked_igates = split(igates, num_or_sections=4, dim=1)
             chunked_hgates = split(hgates, num_or_sections=4, dim=1)
 
-            ingate = elementwise_add(chunked_igates[0], chunked_hgates[0])
+            ingate = paddle.add(chunked_igates[0], chunked_hgates[0])
             ingate = self._gate_activation(ingate)
 
-            forgetgate = elementwise_add(chunked_igates[1], chunked_hgates[1])
+            forgetgate = paddle.add(chunked_igates[1], chunked_hgates[1])
             forgetgate = self._gate_activation(forgetgate)
 
-            cellgate = elementwise_add(chunked_igates[2], chunked_hgates[2])
+            cellgate = paddle.add(chunked_igates[2], chunked_hgates[2])
             cellgate = self._activation(cellgate)
 
-            outgate = elementwise_add(chunked_igates[3], chunked_hgates[3])
+            outgate = paddle.add(chunked_igates[3], chunked_hgates[3])
             outgate = self._gate_activation(outgate)
 
             new_cell = (forgetgate * pre_cell) + (ingate * cellgate)
@@ -245,16 +243,16 @@ class LSTMCell(Layer):
             concat_input_hidden = concat([input, pre_hidden], 1)
             gate_input = matmul(x=concat_input_hidden, y=self._weight)
 
-            gate_input = elementwise_add(gate_input, self._bias)
+            gate_input = paddle.add(gate_input, self._bias)
             i, j, f, o = split(gate_input, num_or_sections=4, dim=-1)
-            new_cell = elementwise_add(
-                elementwise_mul(
+            new_cell = paddle.add(
+                paddle.multiply(
                     pre_cell,
-                    self._gate_activation(
-                        elementwise_add(f, self._forget_bias)
-                    ),
+                    self._gate_activation(paddle.add(f, self._forget_bias)),
                 ),
-                elementwise_mul(sigmoid(i), tanh(j)),
+                paddle.multiply(
+                    paddle.nn.functional.sigmoid(i), paddle.tanh(j)
+                ),
             )
             new_hidden = self._activation(new_cell) * self._gate_activation(o)
 
@@ -350,15 +348,15 @@ class GRUCell(Layer):
         use_cudnn_impl=True,
         dtype='float64',
     ):
-        super(GRUCell, self).__init__()
+        super().__init__()
 
         self._hidden_size = hidden_size
         self._input_size = input_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        self._gate_activation = gate_activation or sigmoid
-        self._activation = activation or tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._use_cudnn_impl = use_cudnn_impl
 
         if self._use_cudnn_impl:
@@ -465,21 +463,21 @@ class GRUCell(Layer):
         if self._use_cudnn_impl:
 
             igates = matmul(input, y=self._weight_ih, transpose_y=True)
-            igates = elementwise_add(igates, self._bias_ih)
+            igates = paddle.add(igates, self._bias_ih)
             hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
-            hgates = elementwise_add(hgates, self._bias_hh)
+            hgates = paddle.add(hgates, self._bias_hh)
 
             chunked_igates = split(igates, num_or_sections=3, dim=1)
             chunked_hgates = split(hgates, num_or_sections=3, dim=1)
 
-            reset_gate = elementwise_add(chunked_igates[0], chunked_hgates[0])
+            reset_gate = paddle.add(chunked_igates[0], chunked_hgates[0])
             reset_gate = self._gate_activation(reset_gate)
 
-            input_gate = elementwise_add(chunked_igates[1], chunked_hgates[1])
+            input_gate = paddle.add(chunked_igates[1], chunked_hgates[1])
             input_gate = self._gate_activation(input_gate)
 
             _temp = reset_gate * chunked_hgates[2]
-            new_gate = elementwise_add(chunked_igates[2], _temp)
+            new_gate = paddle.add(chunked_igates[2], _temp)
             new_gate = self._activation(new_gate)
 
             new_hidden = (pre_hidden - new_gate) * input_gate + new_gate
@@ -490,7 +488,7 @@ class GRUCell(Layer):
 
             gate_input = matmul(x=concat_input_hidden, y=self._gate_weight)
 
-            gate_input = elementwise_add(gate_input, self._gate_bias)
+            gate_input = paddle.add(gate_input, self._gate_bias)
             gate_input = self._gate_activation(gate_input)
             r, u = split(gate_input, num_or_sections=2, dim=1)
 
@@ -499,7 +497,7 @@ class GRUCell(Layer):
             candidate = matmul(
                 concat([input, r_hidden], 1), self._candidate_weight
             )
-            candidate = elementwise_add(candidate, self._candidate_bias)
+            candidate = paddle.add(candidate, self._candidate_bias)
 
             c = self._activation(candidate)
             new_hidden = u * pre_hidden + (1 - u) * c

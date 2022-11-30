@@ -74,7 +74,7 @@ class TensorWrapper {
     } else {
 #ifndef PADDLE_NO_PYTHON
       if (SavedTensorsHooks::GetInstance().IsEnable() &&
-          tensor.is_dense_tensor()) {
+          tensor.is_dense_tensor() && tensor.initialized()) {
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
         intermidiate_tensor_.set_impl(

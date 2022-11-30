@@ -16,21 +16,22 @@ import os
 import tempfile
 import unittest
 
+import numpy
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
-import paddle.fluid.core as core
-import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import (
     Program,
-    program_guard,
+    _test_eager_guard,
     convert_np_dtype_to_dtype_,
+    program_guard,
 )
-from paddle.fluid.framework import _test_eager_guard
-import paddle
 from paddle.io import Dataset
-import numpy
 
 
 class TestOptimizer(unittest.TestCase):
@@ -1354,7 +1355,7 @@ class TestOptimizerDtype(unittest.TestCase):
     def check_with_dtype(self, dtype):
         class MyLayer(paddle.nn.Layer):
             def __init__(self, dtype):
-                super(MyLayer, self).__init__()
+                super().__init__()
                 self._w = self.create_parameter([2, 3], dtype=dtype)
                 self._b = self.create_parameter([2, 3], dtype=dtype)
 
@@ -1400,7 +1401,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
 
         class SimpleNet(paddle.nn.Layer):
             def __init__(self, input_size, output_size):
-                super(SimpleNet, self).__init__()
+                super().__init__()
                 self.linears = paddle.nn.LayerList(
                     [
                         paddle.nn.Linear(input_size, output_size)

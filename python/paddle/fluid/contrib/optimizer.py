@@ -120,7 +120,7 @@ class Momentum(Optimizer):
         assert momentum is not None
         predicate = lambda regular: isinstance(regular, L2DecayRegularizer)
         py_regular = None if predicate(regularization) else regularization
-        super(Momentum, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=py_regular,

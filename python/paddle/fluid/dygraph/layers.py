@@ -62,6 +62,17 @@ _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')
 
 
+def _scope_dist2single(dist_scope):
+    mapping = {
+        "row_parallel_linear": "linear",
+        "column_parallel_linear": "linear",
+        "vocab_parallel_embedding": "embedding",
+        # "parallel_cross_entropy": "cross_entropy", while mp_layer has parallel_cross_entropy,
+        # but there is no parameters so the mapping of parallel_cross_entropy is not neccessary.
+    }
+    return mapping.get(dist_scope, dist_scope)
+
+
 def _convert_camel_to_snake(name):
     s1 = _first_cap_re.sub(r'\1_\2', name)
     return _all_cap_re.sub(r'\1_\2', s1).lower()
@@ -78,7 +89,7 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
-class HookRemoveHelper(object):
+class HookRemoveHelper:
     """A HookRemoveHelper that can be used to remove hook."""
 
     next_hook_id = 0
@@ -94,7 +105,7 @@ class HookRemoveHelper(object):
             del hooks[self._hook_id]
 
 
-class Layer(object):
+class Layer:
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -118,7 +129,7 @@ class Layer(object):
             import paddle
             class MyLayer(paddle.nn.Layer):
                 def __init__(self):
-                    super(MyLayer, self).__init__()
+                    super().__init__()
                     self._linear = paddle.nn.Linear(1, 1)
                     self._dropout = paddle.nn.Dropout(p=0.5)
                 def forward(self, input):
@@ -137,6 +148,7 @@ class Layer(object):
         self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
+            name_scope = _scope_dist2single(name_scope)
         self._full_name = unique_name.generate(name_scope)
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
@@ -165,20 +177,21 @@ class Layer(object):
 
     def train(self):
         """
+
         Sets this Layer and all its sublayers to training mode.
         This only effects certain modules like `Dropout` and `BatchNorm`.
 
         Returns:
             None
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 import paddle
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self._linear = paddle.nn.Linear(1, 1)
                         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -220,7 +233,7 @@ class Layer(object):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self._linear = paddle.nn.Linear(1, 1)
                         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -248,6 +261,7 @@ class Layer(object):
 
     def apply(self, fn):
         """
+
         Applies ``fn`` recursively to every sublayer (as returned by ``.sublayers()``)
         as well as self. Typical use includes initializing the parameters of a model.
 
@@ -255,7 +269,7 @@ class Layer(object):
             fn (function): a function to be applied to each sublayer
 
         Returns:
-            Layer: self
+            Layer, self
 
         Example::
             .. code-block:: python
@@ -275,6 +289,7 @@ class Layer(object):
               net.apply(init_weights)
 
               print(net.state_dict())
+
         """
         for layer in self.children():
             layer.apply(fn)
@@ -284,10 +299,12 @@ class Layer(object):
         return self
 
     def full_name(self):
-        """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
+        """
+
+        Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
 
         Returns:
-            str: full name of this layer.
+            str, full name of this layer.
 
         Example::
             .. code-block:: python
@@ -296,7 +313,7 @@ class Layer(object):
 
                 class LinearNet(paddle.nn.Layer):
                     def __init__(self):
-                        super(LinearNet, self).__init__(name_scope = "demo_linear_net")
+                        super().__init__(name_scope = "demo_linear_net")
                         self._linear = paddle.nn.Linear(1, 1)
 
                     def forward(self, x):
@@ -309,7 +326,9 @@ class Layer(object):
         return self._full_name
 
     def register_forward_post_hook(self, hook):
-        """Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
+        """
+
+        Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
 
         It should have the following form, `input` and `output` of the `hook` is `input` and `output` of the `Layer` respectively.
         User can use forward post-hook to change the output of the Layer or perform information statistics tasks on the Layer.
@@ -320,7 +339,7 @@ class Layer(object):
             hook(function): a function registered as a forward post-hook
 
         Returns:
-            HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
+            HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
             .. code-block:: python
@@ -352,13 +371,16 @@ class Layer(object):
 
                 # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
                 assert (out0.numpy() == (out1.numpy()) * 2).any()
+
         """
         hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
     def register_forward_pre_hook(self, hook):
-        """Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
+        """
+
+        Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
 
         It should have the following form, `input` of the `hook` is `input` of the `Layer`,
         hook can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if
@@ -371,7 +393,7 @@ class Layer(object):
             hook(function): a function registered as a forward pre-hook
 
         Returns:
-            HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
+            HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
             .. code-block:: python
@@ -441,7 +463,7 @@ class Layer(object):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self._linear = paddle.nn.Linear(1, 1)
                         w_tmp = self.create_parameter([1,1])
                         self.add_parameter("w_tmp", w_tmp)
@@ -490,7 +512,7 @@ class Layer(object):
                     def __init__(self,
                                 in_features,
                                 out_features):
-                        super(MyLinear, self).__init__()
+                        super().__init__()
                         self.linear = paddle.nn.Linear( 10, 10)
 
                         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
@@ -542,7 +564,7 @@ class Layer(object):
                     def __init__(self,
                                 in_features,
                                 out_features):
-                        super(MyLinear, self).__init__()
+                        super().__init__()
                         self.linear = paddle.nn.Linear( 10, 10)
 
                         self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
@@ -569,18 +591,20 @@ class Layer(object):
         )
 
     def parameters(self, include_sublayers=True):
-        """Returns a list of all Parameters from current layer and its sub-layers.
+        """
+
+        Returns a list of all Parameters from current layer and its sub-layers.
 
         Returns:
-            list of Tensor : a list of Parameters.
+            list of Tensor, a list of Parameters.
 
         Examples:
             .. code-block:: python
 
-            import paddle
+                import paddle
 
-            linear = paddle.nn.Linear(1,1)
-            print(linear.parameters())  # print linear_0.w_0 and linear_0.b_0
+                linear = paddle.nn.Linear(1,1)
+                print(linear.parameters())  # print linear_0.w_0 and linear_0.b_0
 
         """
         ret = [
@@ -592,7 +616,9 @@ class Layer(object):
         return ret
 
     def children(self):
-        """Returns an iterator over immediate children layers.
+        """
+
+        Returns an iterator over immediate children layers.
 
         Yields:
             Layer: a child layer
@@ -642,13 +668,15 @@ class Layer(object):
                 yield name, layer
 
     def sublayers(self, include_self=False):
-        """Returns a list of sub layers.
+        """
+
+        Returns a list of sub layers.
 
         Parameters:
             include_self(bool, optional): Whether return self as sublayers. Default: False
 
         Returns:
-            list of Layer : a list of sub layers.
+            list of Layer, a list of sub layers.
 
         Examples:
             .. code-block:: python
@@ -657,7 +685,7 @@ class Layer(object):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self._linear = paddle.nn.Linear(1, 1)
                         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -793,9 +821,7 @@ class Layer(object):
         """
 
         if '_buffers' not in self.__dict__:
-            raise ValueError(
-                "super(YourLayer, self).__init__() should be called first"
-            )
+            raise ValueError("super().__init__() should be called first")
         elif not isinstance(name, str):
             raise TypeError(
                 "The name of buffer should be a string, but received {}.".format(
@@ -829,13 +855,14 @@ class Layer(object):
 
     def buffers(self, include_sublayers=True):
         """
+
         Returns a list of all buffers from current layer and its sub-layers.
 
         Parameters:
             include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
 
         Returns:
-            list of Tensor : a list of buffers.
+            list of Tensor, a list of buffers.
 
         Examples:
             .. code-block:: python
@@ -1010,7 +1037,9 @@ class Layer(object):
         raise ValueError("Layer shouldn't implement backward")
 
     def add_sublayer(self, name, sublayer):
-        """Adds a sub Layer instance.
+        """
+
+        Adds a sub Layer instance.
 
         Added sublayer can be accessed by self.name
 
@@ -1018,7 +1047,7 @@ class Layer(object):
             name(str): name of this sublayer.
             sublayer(Layer): an instance of Layer.
         Returns:
-            Layer: the sublayer passed in.
+            Layer, the sublayer passed in.
 
         Examples:
             .. code-block:: python
@@ -1027,7 +1056,7 @@ class Layer(object):
 
                 class MySequential(paddle.nn.Layer):
                     def __init__(self, *layers):
-                        super(MySequential, self).__init__()
+                        super().__init__()
                         if len(layers) > 0 and isinstance(layers[0], tuple):
                             for name, layer in layers:
                                 self.add_sublayer(name, layer)
@@ -1045,6 +1074,7 @@ class Layer(object):
                 model = MySequential(fc1, fc2)
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
+
         """
         assert isinstance(sublayer, Layer) or sublayer is None
 
@@ -1060,7 +1090,7 @@ class Layer(object):
             name(str): name of this sublayer.
             parameter(Parameter): an instance of Parameter.
         Returns:
-            Parameter: the parameter passed in.
+            Parameter, the parameter passed in.
         Examples:
             .. code-block:: python
 
@@ -1068,7 +1098,7 @@ class Layer(object):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self._linear = paddle.nn.Linear(1, 1)
                         w_tmp = self.create_parameter([1,1])
                         self.add_parameter("w_tmp", w_tmp)
@@ -1082,9 +1112,7 @@ class Layer(object):
 
         """
         if '_parameters' not in self.__dict__:
-            raise RuntimeError(
-                "super(YourLayer, self).__init__() should be called firstly."
-            )
+            raise RuntimeError("super().__init__() should be called firstly.")
         elif not isinstance(name, str):
             raise TypeError(
                 "The name of parameter should be a string, but received {}.".format(
@@ -1223,9 +1251,7 @@ class Layer(object):
         params = self.__dict__.get('_parameters', None)
         if isinstance(value, framework.Parameter):
             if params is None:
-                raise ValueError(
-                    "super(YourLayer, self).__init__() should be called first"
-                )
+                raise ValueError("super().__init__() should be called first")
             if len(self._loaddict_holder) > 0:
                 assert (
                     value.name in self._loaddict_holder
@@ -1250,7 +1276,7 @@ class Layer(object):
             if isinstance(value, Layer):
                 if layers is None:
                     raise ValueError(
-                        "super(YourLayer, self).__init__() should be called first"
+                        "super().__init__() should be called first"
                     )
 
                 _remove_if_exist(self.__dict__, self._parameters, self._buffers)
@@ -1268,7 +1294,7 @@ class Layer(object):
                 if isinstance(value, (core.VarBase, core.eager.Tensor)):
                     if _buffers is None:
                         raise ValueError(
-                            "super(YourLayer, self).__init__() should be called first"
+                            "super().__init__() should be called first"
                         )
                     _remove_if_exist(
                         self.__dict__, self._parameters, self._sub_layers
@@ -1340,7 +1366,7 @@ class Layer(object):
 
                 class Mylayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(Mylayer, self).__init__()
+                        super().__init__()
                         self.linear1 = paddle.nn.Linear(10, 10)
                         self.linear2 = paddle.nn.Linear(5, 5)
                         self.conv2d = paddle.nn.Conv2D(3, 2, 3)
@@ -1497,6 +1523,7 @@ class Layer(object):
         use_hook=True,
     ):
         '''
+
         Get all parameters and buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
@@ -1505,7 +1532,7 @@ class Layer(object):
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
 
         Retruns:
-            dict: a dict contains all the parameters and persistable buffers.
+            dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
             .. code-block:: python
@@ -1573,7 +1600,8 @@ class Layer(object):
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
-            None
+            missing_keys(list):A list of str containing the missing keys
+            unexpected_keys(list):A list of str containing the unexpected keys
 
         Examples:
             .. code-block:: python
@@ -1588,15 +1616,20 @@ class Layer(object):
                 emb.set_state_dict(para_state_dict)
 
         '''
+        missing_keys = []
+        match_keys = set()
+        unexpected_keys = []
 
         def _check_match(key, param):
             state = state_dict.get(key, None)
             if state is None:
+                missing_keys.append(key)
                 raise ValueError(
                     "{} is not found in the provided dict.".format(key)
                 )
             if isinstance(state, dict) or isinstance(state, list):
                 if len(state) != len(param):
+                    missing_keys.append(key)
                     raise ValueError(
                         "{} receieves the length of {}, "
                         "but the expected shape is {}".format(
@@ -1604,6 +1637,7 @@ class Layer(object):
                         )
                     )
                 else:
+                    match_keys.add(key)
                     return param, state
             else:
                 state_shape = (
@@ -1613,22 +1647,26 @@ class Layer(object):
                 )
 
                 if list(state_shape) != list(param.shape):
+                    missing_keys.append(key)
                     raise ValueError(
                         "{} receives a shape {}, but the expected shape is {}.".format(
                             key, list(state_shape), list(param.shape)
                         )
                     )
+                match_keys.add(key)
                 return param, state
 
         matched_param_state = []
-        for key, param in self.state_dict(use_hook=False).items():
+        for key, param in self._state_dict_impl(use_hook=False).items():
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
                 warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
-
+        for key in state_dict.keys():
+            if key not in match_keys:
+                unexpected_keys.append(key)
         if _non_static_mode():
             for param, state in matched_param_state:
                 param.set_value(state)
@@ -1665,6 +1703,8 @@ class Layer(object):
                 raise ValueError(
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
+
+        return missing_keys, unexpected_keys
 
     def to(self, device=None, dtype=None, blocking=None):
         '''

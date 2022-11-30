@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestBatchNorm(unittest.TestCase):
@@ -369,7 +370,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
         self.init_test()
 
-    ### train mode
+    # train mode
     def init_test(self):
         self.use_global_stats = True
         self.trainable_statistics = False
@@ -400,21 +401,21 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
 
 
 class TestBatchNormUseGlobalStatsCase1(TestBatchNormUseGlobalStats):
-    ### test mode
+    # test mode
     def init_test(self):
         self.use_global_stats = False
         self.trainable_statistics = True
 
 
 class TestBatchNormUseGlobalStatsCase2(TestBatchNormUseGlobalStats):
-    ### train mode
+    # train mode
     def init_test(self):
         self.use_global_stats = False
         self.trainable_statistics = False
 
 
 class TestBatchNormUseGlobalStatsCase3(TestBatchNormUseGlobalStats):
-    ### test mode
+    # test mode
     def init_test(self):
         self.use_global_stats = True
         self.trainable_statistics = True

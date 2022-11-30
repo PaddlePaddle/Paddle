@@ -427,6 +427,10 @@ void AnalysisPredictor::InitDeviceContexts() {
               memory::allocation::AllocatorFacade::Instance()
                   .GetZeroAllocator(place_)
                   .get());
+          gpu_context->SetHostZeroAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetZeroAllocator(platform::CPUPlace())
+                  .get());
           gpu_context->SetGenerator(
               framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
@@ -864,13 +868,12 @@ void AnalysisPredictor::MkldnnPreSet(
     const std::vector<std::vector<int>> &inputs_shape) {
 #ifdef PADDLE_WITH_MKLDNN
   VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
-          << platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id();
+          << phi::OneDNNContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
-    platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNDeviceContextThreadLocals::
-            kMKLDNNSessionID_CacheClearing);
+    phi::OneDNNContext::tls().set_cur_mkldnn_session_id(
+        phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs_shape.size(); ++i) {
@@ -879,9 +882,9 @@ void AnalysisPredictor::MkldnnPreSet(
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str(ss.str());
+    phi::OneDNNContext::tls().set_cur_input_shape_str(ss.str());
   }
-  platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
+  phi::OneDNNContext::tls().set_cur_input_shape_cache_capacity(
       config_.mkldnn_cache_capacity_);
 
 #endif
@@ -891,11 +894,11 @@ void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
-      static_cast<platform::MKLDNNDeviceContext *>(
+      static_cast<phi::OneDNNContext *>(
           (&platform::DeviceContextPool::Instance())->Get(platform::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
     if (VLOG_IS_ON(2)) {
-      auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
+      auto shape_blob_size = static_cast<phi::OneDNNContext *>(
                                  (&platform::DeviceContextPool::Instance())
                                      ->Get(platform::CPUPlace()))
                                  ->GetShapeBlobSize();
@@ -1071,7 +1074,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
-  argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
+  argument_.SetEnableIrOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
@@ -1150,6 +1153,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
     argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_.SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
@@ -1184,6 +1188,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuEnableModelRuntimeExecutor(
+      config_.ipu_enable_model_runtime_executor_);
   argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
   argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
@@ -1217,48 +1223,35 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
-  auto passes = config_.pass_builder()->AllPasses();
+  auto *pass_builder = config_.pass_builder();
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
               << ", we will use a new PassStrategy. Note that only the GPU "
                  "backend is supported for now.";
-    passes.clear();
+    pass_builder->ClearPasses();
+    const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
     if (config_.tensorrt_engine_enabled()) {
       for (const auto &pass : kTrtLowerPrecisionPasses) {
-        passes.push_back(pass);
+        if (deleted_passes.count(pass)) continue;
+        pass_builder->AppendPass(pass);
       }
     } else if (config_.use_gpu()) {
       for (const auto &pass : kGpuLowerPrecisionPasses) {
-        passes.push_back(pass);
-      }
-    }
-
-    const auto &deleted_passes = config_.pass_builder()->GetAllDeletedPasses();
-    for (const auto &it : deleted_passes) {
-      auto iterator = std::find(passes.begin(), passes.end(), it);
-      if (iterator != passes.end()) {
-        passes.erase(iterator);
-      }
-    }
-
-    if (config_.ir_debug_) {
-      auto it = std::begin(passes);
-      while (it != std::end(passes)) {
-        if (*it != "graph_viz_pass") {
-          it = passes.insert(it + 1, "graph_viz_pass");
-        } else {
-          ++it;
-        }
+        if (deleted_passes.count(pass)) continue;
+        pass_builder->AppendPass(pass);
       }
     }
   }
+  if (config_.ir_debug_) {
+    pass_builder->TurnOnDebug();
+  }
   if (!config_.ir_optim()) {
-    passes.clear();
+    argument_.SetEnableIrOptim(false);
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
   }
   argument_.SetDisableLogs(config_.glog_info_disabled());
-  argument_.SetIrAnalysisPasses(passes);
-  argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
+  argument_.SetIrAnalysisPasses(pass_builder->AllPasses());
+  argument_.SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
 
   // mixed precison.
@@ -2132,7 +2125,9 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   }
   x->predictor_stream_ = stream;
   x->Init(scope_, inference_program_);
+#ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
+#endif
   return std::unique_ptr<PaddlePredictor>(x);
 }
 
@@ -2224,6 +2219,7 @@ USE_TRT_CONVERTER(elementwise_div_weight);
 USE_TRT_CONVERTER(elementwise_min_weight);
 USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
+USE_TRT_CONVERTER(elementwise_floordiv_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
 USE_TRT_CONVERTER(elementwise_div_tensor);
@@ -2231,6 +2227,7 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
+USE_TRT_CONVERTER(elementwise_floordiv_tensor);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
@@ -2238,6 +2235,7 @@ USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(bmm);
+USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(exp);
@@ -2254,10 +2252,12 @@ USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
+USE_TRT_CONVERTER(fill_any_like);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(where);
 USE_TRT_CONVERTER(swish);
 USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);
@@ -2265,6 +2265,7 @@ USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
+USE_TRT_CONVERTER(multihead_matmul_roformer);
 USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
@@ -2322,12 +2323,14 @@ USE_TRT_CONVERTER(celu)
 USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
+USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
 USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
+USE_TRT_CONVERTER(take_along_axis)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

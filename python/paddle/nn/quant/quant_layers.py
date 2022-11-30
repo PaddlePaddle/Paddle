@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.framework import core
-from paddle.utils import unique_name
-from paddle.framework import ParamAttr
-from paddle.fluid.framework import _varbase_creator
-from paddle.nn.initializer import Constant
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.nn import functional as F
 import logging
+
+import paddle
+from paddle import _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _varbase_creator
 from paddle.fluid.log_helper import get_logger
-from paddle import _legacy_C_ops
-from paddle import in_dynamic_mode
+from paddle.framework import ParamAttr, core
 from paddle.nn import Layer
+from paddle.nn import functional as F
+from paddle.nn.initializer import Constant
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
+from paddle.utils import unique_name
 
 __all__ = [
     'FakeQuantAbsMax',
@@ -65,7 +64,7 @@ class FakeQuantAbsMax(Layer):
         quant_on_weight=False,
         reduce_type=None,
     ):
-        super(FakeQuantAbsMax, self).__init__()
+        super().__init__()
         self._quant_bits = quant_bits
         self._name = name
         self._reduce_type = reduce_type
@@ -165,7 +164,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         dtype='float32',
         reduce_type=None,
     ):
-        super(FakeQuantMovingAverageAbsMax, self).__init__()
+        super().__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._reduce_type = reduce_type
@@ -300,7 +299,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
         assert (
             quant_on_weight
         ), "Channel_wise only can be used on weight quantization."
-        super(FakeQuantChannelWiseAbsMax, self).__init__()
+        super().__init__()
         self._quant_bits = quant_bits
         self._quant_axis = quant_axis
         self._dtype = dtype
@@ -407,7 +406,7 @@ class MovingAverageAbsMaxScale(Layer):
         :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
         :math:`Out = X`
         """
-        super(MovingAverageAbsMaxScale, self).__init__()
+        super().__init__()
         self._moving_rate = moving_rate
         self._reduce_type = reduce_type
         scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
@@ -531,7 +530,7 @@ class QuantizedConv2D(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedConv2D, self).__init__()
+        super().__init__()
         # For Conv2D
         self._groups = getattr(layer, '_groups')
         self._stride = getattr(layer, '_stride')
@@ -613,14 +612,17 @@ class QuantizedConv2D(Layer):
 
 class QuantizedConv2DTranspose(Layer):
     """
+
     The computational logic of QuantizedConv2DTranspose is the same with Conv2DTranspose.
     The only difference is that its inputs are all fake quantized.
 
     Examples:
        .. code-block:: python
+
           import paddle
           import paddle.nn as nn
           from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
+
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
           conv = nn.Conv2DTranspose(4, 6, (3, 3))
           conv_quantized = QuantizedConv2DTranspose(conv)
@@ -630,6 +632,7 @@ class QuantizedConv2DTranspose(Layer):
           y_np = y_var.numpy()
           print(y_np.shape, y_quantized_np.shape)
           # (2, 6, 10, 10), (2, 6, 10, 10)
+
     """
 
     def __init__(
@@ -650,7 +653,7 @@ class QuantizedConv2DTranspose(Layer):
 
         The arguments are the same as ImperativeQuantAware.
         """
-        super(QuantizedConv2DTranspose, self).__init__()
+        super().__init__()
         # For Conv2DTranspose
         self._groups = getattr(layer, '_groups')
         self._stride = getattr(layer, '_stride')
@@ -744,7 +747,7 @@ class QuantizedLinear(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedLinear, self).__init__()
+        super().__init__()
         # For Linear
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
@@ -816,7 +819,7 @@ class QuantizedColumnParallelLinear(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedColumnParallelLinear, self).__init__()
+        super().__init__()
         '''
 
         '''
@@ -912,7 +915,7 @@ class QuantizedRowParallelLinear(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedRowParallelLinear, self).__init__()
+        super().__init__()
         assert (
             weight_quant_layer is None
         ), "When quantizing RowParallelLinear, weight_quant_layer cannot defined by yourself."
@@ -1015,7 +1018,7 @@ class MAOutputScaleLayer(Layer):
         r"""
         Construct
         """
-        super(MAOutputScaleLayer, self).__init__()
+        super().__init__()
         self._layer = layer
         if name is None:
             name = layer.full_name()
@@ -1053,7 +1056,7 @@ class FakeQuantMAOutputScaleLayer(Layer):
         **kwargs
     ):
 
-        super(FakeQuantMAOutputScaleLayer, self).__init__()
+        super().__init__()
         self._layer = layer
         self._fake_quant_output = _get_fake_quant_type(
             'moving_average_abs_max',

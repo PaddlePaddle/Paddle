@@ -16,10 +16,10 @@ import copy
 import inspect
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Block, Variable
+from paddle.fluid.framework import Block, Parameter, Variable
+
 from .dist_attribute import TensorDistributedAttribute
-from .utils import _linear_idx2coordinate
+from .utils import __no_shape_var_type__, _linear_idx2coordinate
 
 
 class DistributedTensor:
@@ -208,12 +208,7 @@ class DistributedTensor:
 
     def _init_default_dist_attr(self):
         if self._dist_attr.dims_mapping is None:
-            if (
-                self.serial_tensor.type == core.VarDesc.VarType.READER
-                or self.serial_tensor.type
-                == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                or self.serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES
-            ):
+            if self.serial_tensor.type in __no_shape_var_type__:
                 tensor_shape = []
             else:
                 tensor_shape = self._serial_tensor.shape
@@ -221,11 +216,7 @@ class DistributedTensor:
             self._dist_attr.dims_mapping = tensor_dims_mapping
 
     def validate_dist_attr(self):
-        if (
-            self.serial_tensor.type == core.VarDesc.VarType.READER
-            or self.serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            or self.serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES
-        ):
+        if self.serial_tensor.type in __no_shape_var_type__:
             return True
         tensor_shape = self.serial_tensor.shape
         if len(tensor_shape) != len(self.dist_attr.dims_mapping):
@@ -316,7 +307,7 @@ class DistributedTensor:
         def _copy_kwargs(serial_tensor):
             kwargs = {}
             no_need_copy_args = ["self", "block", "shape", "name"]
-            arg_spec = inspect.getargspec(Variable.__init__)
+            arg_spec = inspect.getfullargspec(Variable.__init__)
 
             for key in arg_spec.args:
                 # TODO: Check the copied attribute from serial tensor whether valid

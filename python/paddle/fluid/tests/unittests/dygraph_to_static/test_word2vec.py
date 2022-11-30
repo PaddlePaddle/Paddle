@@ -14,13 +14,16 @@
 
 import math
 import random
+import paddle
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import unittest
 
+import paddle
 from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 
 def fake_text():
@@ -220,7 +223,7 @@ def build_batch(dataset, batch_size, epoch_num):
 
 class SkipGram(fluid.dygraph.Layer):
     def __init__(self, name_scope, vocab_size, embedding_size, init_scale=0.1):
-        super(SkipGram, self).__init__(name_scope)
+        super().__init__(name_scope)
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
 
@@ -255,14 +258,14 @@ class SkipGram(fluid.dygraph.Layer):
 
         # center_words_emb = [batch_size, embedding_size]
         # target_words_emb = [batch_size, embedding_size]
-        word_sim = fluid.layers.elementwise_mul(
-            center_words_emb, target_words_emb
+        word_sim = paddle.multiply(center_words_emb, target_words_emb)
+        word_sim = paddle.sum(word_sim, axis=-1)
+
+        pred = paddle.nn.functional.sigmoid(word_sim)
+
+        loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+            word_sim, label
         )
-        word_sim = fluid.layers.reduce_sum(word_sim, dim=-1)
-
-        pred = fluid.layers.sigmoid(word_sim)
-
-        loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
         loss = fluid.layers.reduce_mean(loss)
 
         return pred, loss

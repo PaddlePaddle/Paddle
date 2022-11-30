@@ -12,29 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
+from paddle.device import (
+    get_all_custom_device_type,
+    is_compiled_with_cuda,
+    is_compiled_with_npu,
+    is_compiled_with_rocm,
+)
+from paddle.fluid.framework import (
+    _global_flags,
+    _in_legacy_dygraph,
+    in_dygraph_mode,
+)
+
 from ...device import get_cudnn_version
-from ...static import Variable
+from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.layers import nn
 from ...fluid.layers.utils import (
-    convert_to_list,
-    _is_symmetric_padding,
     _contain_var,
     _convert_to_tensor_list,
+    _is_symmetric_padding,
+    convert_to_list,
 )
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.layer_helper import LayerHelper
-from ...tensor.manipulation import unsqueeze, squeeze
-from ...fluid.layers import nn
-from paddle import _C_ops, _legacy_C_ops
-from paddle import get_flags
-from paddle import in_dynamic_mode
-from paddle.device import is_compiled_with_cuda
-from paddle.device import is_compiled_with_npu
-from paddle import in_dynamic_mode
-from paddle import get_flags
-from paddle.device import is_compiled_with_rocm
-from paddle.fluid.framework import _global_flags
-from paddle.fluid.framework import _in_legacy_dygraph
-from paddle.fluid.framework import in_dygraph_mode
+from ...framework import no_grad
+from ...static import Variable
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -150,15 +153,20 @@ def _conv_nd(
             if isinstance(bias, tuple):
                 bias = bias[0]
             if len(bias.shape) < len(x.shape):
-                tmp_bias = _C_ops.reshape(
+                bias = _C_ops.reshape(
                     bias,
                     [1 for i in range(channel_dim)]
                     + bias.shape
                     + [1 for i in range(len(x.shape) - channel_dim - 1)],
                 )
-                return _C_ops.add(pre_bias, tmp_bias)
-            else:
-                return _C_ops.add(pre_bias, bias)
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if 'npu' in get_all_custom_device_type():
+                with no_grad():
+                    bias_storage = _C_ops.npu_identity(
+                        bias, 3
+                    )  # ACL_FORMAT_NC1HWC0 = 3
+                    bias_storage._share_underline_tensor_to(bias)
+            return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
 
@@ -172,7 +180,6 @@ def _conv_nd(
             groups,
             dilation,
             data_format,
-            use_cudnn,
         )
         if bias is not None:
             channel_dim = (
@@ -368,26 +375,22 @@ def conv1d(
 
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
-          x = np.array([[[4, 8, 1, 9],
-            [7, 2, 0, 9],
-            [6, 9, 2, 6]]]).astype(np.float32)
-          w=np.array(
-          [[[9, 3, 4],
-            [0, 0, 7],
-            [2, 5, 6]],
-           [[0, 3, 4],
-            [2, 9, 7],
-            [5, 6, 8]]]).astype(np.float32)
 
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d(x_var, w_var)
-          y_np = y_var.numpy()
-          print(y_np)
+          x = paddle.to_tensor([[[4, 8, 1, 9],
+                                 [7, 2, 0, 9],
+                                 [6, 9, 2, 6]]], dtype="float32")
+          w = paddle.to_tensor([[[9, 3, 4],
+                                 [0, 0, 7],
+                                 [2, 5, 6]],
+                                [[0, 3, 4],
+                                 [2, 9, 7],
+                                 [5, 6, 8]]], dtype="float32")
 
-          # [[[133. 238.]
-          #   [160. 211.]]]
+          y = F.conv1d(x, w)
+          print(y)
+          # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[133., 238.],
+          #          [160., 211.]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -488,7 +491,7 @@ def conv1d(
                 conv2d_data_format,
             )
         else:
-            out = getattr(_C_ops, l_type)(
+            out = _C_ops.depthwise_conv2d(
                 x,
                 weight,
                 stride,
@@ -501,7 +504,6 @@ def conv1d(
                 -1,
                 False,
                 False,
-                use_cudnn,
             )
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
@@ -753,8 +755,26 @@ def conv2d(
                 data_format,
             )
             if bias is not None:
-                out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-                return out
+                channel_dim = (
+                    channel_dim + len(x.shape)
+                    if channel_dim < 0
+                    else channel_dim
+                )
+                if len(bias.shape) < len(x.shape):
+                    bias = _C_ops.reshape(
+                        bias,
+                        [1 for i in range(channel_dim)]
+                        + bias.shape
+                        + [1 for i in range(len(x.shape) - channel_dim - 1)],
+                    )
+                # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+                if 'npu' in get_all_custom_device_type():
+                    with no_grad():
+                        bias_storage = _C_ops.npu_identity(
+                            bias, 3
+                        )  # ACL_FORMAT_NC1HWC0 = 3
+                        bias_storage._share_underline_tensor_to(bias)
+                return _C_ops.add(pre_bias, bias)
             else:
                 return pre_bias
 
@@ -905,24 +925,20 @@ def conv1d_transpose(
     Examples:
         .. code-block:: python
 
-
-
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
 
           # shape: (1, 2, 4)
-          x=np.array([[[4, 0, 9, 7],
-                       [8, 0, 9, 2,]]]).astype(np.float32)
+          x = paddle.to_tensor([[[4, 0, 9, 7],
+                                [8, 0, 9, 2,]]], dtype="float32")
           # shape: (2, 1, 2)
-          w=np.array([[[7, 0]],
-                      [[4, 2]]]).astype(np.float32)
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d_transpose(x_var, w_var)
-          print(y_var)
+          w = paddle.to_tensor([[[7, 0]],
+                                [[4, 2]]], dtype="float32")
 
-          # [[[60. 16. 99. 75.  4.]]]
+          y = F.conv1d_transpose(x, w)
+          print(y)
+          # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[60., 16., 99., 75., 4. ]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:

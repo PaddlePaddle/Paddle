@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
+
 from ...fluid.data_feeder import check_type
 from ...fluid.initializer import NumpyArrayInitializer
 
@@ -98,4 +99,4 @@ class Assign(NumpyArrayInitializer):
         if isinstance(value, paddle.static.Variable):
             value = value.numpy()
 
-        super(Assign, self).__init__(value)
+        super().__init__(value)

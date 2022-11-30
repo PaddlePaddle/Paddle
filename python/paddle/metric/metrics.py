@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import abc
+
 import numpy as np
 
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import _non_static_mode, _varbase_creator
 import paddle
 from paddle import _legacy_C_ops
+
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import _non_static_mode, _varbase_creator
+from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -240,7 +242,7 @@ class Accuracy(Metric):
     """
 
     def __init__(self, topk=(1,), name=None, *args, **kwargs):
-        super(Accuracy, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.topk = topk
         self.maxk = max(topk)
         self._init_name(name)
@@ -373,7 +375,7 @@ class Precision(Metric):
 
           class Data(paddle.io.Dataset):
               def __init__(self):
-                  super(Data, self).__init__()
+                  super().__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
@@ -400,7 +402,7 @@ class Precision(Metric):
     """
 
     def __init__(self, name='precision', *args, **kwargs):
-        super(Precision, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tp = 0  # true positive
         self.fp = 0  # false positive
         self._name = name
@@ -506,7 +508,7 @@ class Recall(Metric):
 
           class Data(paddle.io.Dataset):
               def __init__(self):
-                  super(Data, self).__init__()
+                  super().__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
@@ -533,7 +535,7 @@ class Recall(Metric):
     """
 
     def __init__(self, name='recall', *args, **kwargs):
-        super(Recall, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tp = 0  # true positive
         self.fn = 0  # false negative
         self._name = name
@@ -650,7 +652,7 @@ class Auc(Metric):
 
           class Data(paddle.io.Dataset):
               def __init__(self):
-                  super(Data, self).__init__()
+                  super().__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
@@ -681,7 +683,7 @@ class Auc(Metric):
     def __init__(
         self, curve='ROC', num_thresholds=4095, name='auc', *args, **kwargs
     ):
-        super(Auc, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._curve = curve
         self._num_thresholds = num_thresholds
 

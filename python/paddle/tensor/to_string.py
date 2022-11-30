@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import numpy as np
-from ..framework import core
+
 from paddle.fluid.data_feeder import check_type, convert_dtype
+
+from ..framework import core
 
 __all__ = []
 
 
-class PrintOptions(object):
+class PrintOptions:
     precision = 8
     threshold = 1000
     edgeitems = 3

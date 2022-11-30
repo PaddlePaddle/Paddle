@@ -41,7 +41,7 @@ def func_error_in_compile_time(x):
 @paddle.jit.to_static
 def func_error_in_compile_time_2(x):
     x = fluid.dygraph.to_variable(x)
-    x = fluid.layers.reshape(x, shape=[1, 2])
+    x = paddle.reshape(x, shape=[1, 2])
     return x
 
 
@@ -49,7 +49,7 @@ def func_error_in_compile_time_2(x):
 def func_error_in_runtime(x):
     x = fluid.dygraph.to_variable(x)
     two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
-    x = fluid.layers.reshape(x, shape=[1, two])
+    x = paddle.reshape(x, shape=[1, two])
     return x
 
 
@@ -67,8 +67,8 @@ def func_decorated_by_other_2():
 
 class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def __init__(self, fc_size=20):
-        super(LayerErrorInCompiletime, self).__init__()
-        self._linear = fluid.dygraph.Linear(fc_size, fc_size)
+        super().__init__()
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
 
     @paddle.jit.to_static(
         input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')]
@@ -82,7 +82,7 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
 
 class LayerErrorInCompiletime2(fluid.dygraph.Layer):
     def __init__(self):
-        super(LayerErrorInCompiletime2, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self):
@@ -101,14 +101,14 @@ def func_error_in_runtime_with_empty_line(x):
     x = fluid.dygraph.to_variable(x)
     two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
 
-    x = fluid.layers.reshape(x, shape=[1, two])
+    x = paddle.reshape(x, shape=[1, two])
 
     return x
 
 
 class SuggestionErrorTestNet(paddle.nn.Layer):
     def __init__(self):
-        super(SuggestionErrorTestNet, self).__init__()
+        super().__init__()
         self.inner_net = SuggestionErrorTestNet2()
 
     @paddle.jit.to_static
@@ -118,7 +118,7 @@ class SuggestionErrorTestNet(paddle.nn.Layer):
 
 class SuggestionErrorTestNet2:
     def __init__(self):
-        super(SuggestionErrorTestNet2, self).__init__()
+        super().__init__()
         self.w = paddle.to_tensor([2.0])
 
     def forward(self, x):
@@ -290,7 +290,7 @@ class TestErrorStaticLayerCallInCompiletime_2(
             ),
             'def func_error_in_compile_time_2(x):',
             'x = fluid.dygraph.to_variable(x)',
-            'x = fluid.layers.reshape(x, shape=[1, 2])',
+            'x = paddle.reshape(x, shape=[1, 2])',
             '<--- HERE',
             'return x',
         ]
@@ -340,7 +340,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
             ),
             'x = fluid.dygraph.to_variable(x)',
             'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
-            'x = fluid.layers.reshape(x, shape=[1, two])',
+            'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
             'return x',
         ]
@@ -356,7 +356,7 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
                 self.filepath
             ),
             'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
-            'x = fluid.layers.reshape(x, shape=[1, two])',
+            'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
             'return x',
         ]
@@ -496,7 +496,7 @@ class TestNumpyApiErr(unittest.TestCase):
 
 class test_set_state_dict_err_layer(paddle.nn.Layer):
     def __init__(self):
-        super(test_set_state_dict_err_layer, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(5, 2)
 
     @paddle.jit.to_static

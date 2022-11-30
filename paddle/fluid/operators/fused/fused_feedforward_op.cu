@@ -44,14 +44,9 @@ static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup* pg = map->get(ring_id);
     auto pg_nccl = static_cast<distributed::ProcessGroupNCCL*>(pg);
-
-    std::vector<phi::DenseTensor> in_tensor;
-    std::vector<phi::DenseTensor> out_tensor;
-    in_tensor.push_back(tensor);
-    out_tensor.push_back(tensor);
     paddle::distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::SUM;
-    auto task = pg_nccl->AllReduce(in_tensor, out_tensor, opts, true, true);
+    auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
     task->Wait();
   } else {
     auto dtype = platform::ToNCCLDataType(

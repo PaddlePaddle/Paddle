@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 import os
-import sys
 from io import BytesIO
 import tempfile
 
@@ -65,7 +64,7 @@ def random_batch_reader():
 
 class LinearNet(nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
     def forward(self, x):
@@ -74,7 +73,7 @@ class LinearNet(nn.Layer):
 
 class LayerWithLargeParameters(paddle.nn.Layer):
     def __init__(self):
-        super(LayerWithLargeParameters, self).__init__()
+        super().__init__()
         self._l = paddle.nn.Linear(10, LARGE_PARAM)
 
     def forward(self, x):
@@ -149,11 +148,7 @@ class TestSaveLoadPickle(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.save(save_dict, path, 5)
 
-        protocols = [
-            2,
-        ]
-        if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
-            protocols += [3, 4]
+        protocols = [2, 3, 4]
         for protocol in protocols:
             paddle.save(save_dict, path, pickle_protocol=protocol)
             dict_load = paddle.load(path)
@@ -309,9 +304,7 @@ class TestSaveLoadAny(unittest.TestCase):
             ):
                 self.step_size = step_size
                 self.gamma = gamma
-                super(StepDecay, self).__init__(
-                    learning_rate, last_epoch, verbose
-                )
+                super().__init__(learning_rate, last_epoch, verbose)
 
             def get_lr(self):
                 i = self.last_epoch // self.step_size

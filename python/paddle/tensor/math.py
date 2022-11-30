@@ -14,47 +14,49 @@
 """
 math functions
 """
+
+# TODO: define math functions
+
 import numpy as np
 
-from paddle.common_ops_import import VarDesc
-from paddle.common_ops_import import dygraph_only
-from paddle.common_ops_import import templatedoc
-from paddle.common_ops_import import dygraph_utils
-
-from .manipulation import cast
-from .creation import _complex_to_real_dtype
-from .layer_function_generator import generate_layer_fn
-
 import paddle
-from ..static import Variable
-from ..framework import (
-    core,
-    in_dygraph_mode,
-    _non_static_mode,
-    LayerHelper,
-    _in_legacy_dygraph,
-)
-from ..fluid.framework import _in_legacy_dygraph
-from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
+from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
+
 from ..fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
     check_dtype,
+    check_type,
+    check_variable_and_dtype,
     convert_dtype,
 )
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ..fluid.layers import utils
-
-# TODO: define math functions
+from ..fluid.framework import _in_legacy_dygraph
+from ..fluid.layers import elementwise_sub, utils
+from ..framework import (
+    LayerHelper,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    _varbase_creator,
+    convert_np_dtype_to_dtype_,
+    core,
+    in_dygraph_mode,
+)
+from ..static import Variable
+from .creation import _complex_to_real_dtype
+from .layer_function_generator import generate_layer_fn, templatedoc
+from .manipulation import cast
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401
+from .ops import acosh  # noqa: F401
 from .ops import asin  # noqa: F401
+from .ops import asinh  # noqa: F401
+from .ops import atan  # noqa: F401
+from .ops import atanh  # noqa: F401
 from .ops import ceil  # noqa: F401
 from .ops import ceil_  # noqa: F401
 from .ops import cos  # noqa: F401
-from .ops import tan  # noqa: F401
-from .ops import sinh  # noqa: F401
 from .ops import cosh  # noqa: F401
+from .ops import erf  # noqa: F401
 from .ops import exp  # noqa: F401
 from .ops import exp_  # noqa: F401
 from .ops import expm1  # noqa: F401
@@ -66,18 +68,12 @@ from .ops import round  # noqa: F401
 from .ops import round_  # noqa: F401
 from .ops import rsqrt  # noqa: F401
 from .ops import rsqrt_  # noqa: F401
-from .ops import square  # noqa: F401
-from .ops import atan  # noqa: F401
-from .ops import erf  # noqa: F401
+from .ops import sin  # noqa: F401
+from .ops import sinh  # noqa: F401
 from .ops import sqrt  # noqa: F401
 from .ops import sqrt_  # noqa: F401
-from .ops import sin  # noqa: F401
-from .ops import asinh  # noqa: F401
-from .ops import acosh  # noqa: F401
-from .ops import atanh  # noqa: F401
-
-from ..fluid.layers import elementwise_sub
-from paddle import _C_ops, _legacy_C_ops
+from .ops import square  # noqa: F401
+from .ops import tan  # noqa: F401
 
 __all__ = []
 
@@ -93,6 +89,44 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP32,
     VarDesc.VarType.FP64,
 ]
+
+
+def _get_reduce_axis(axis, x):
+    """
+    Internal function for max, min, amax and amin.
+    It computes the attribute reduce_all value based on axis.
+    """
+    if axis is not None and not isinstance(axis, list):
+        if isinstance(axis, (tuple, range)):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis = [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(
+                    type(axis)
+                )
+            )
+    if axis is None:
+        axis = []
+    if axis == [] or len(axis) == len(x.shape):
+        reduce_all = True
+    else:
+        reduce_all = False
+    return reduce_all, axis
+
+
+def _get_reduce_axis_with_tensor(axis, x):
+    if isinstance(axis, Variable):
+        if axis.shape[0] == len(x.shape):
+            reduce_all = True
+        else:
+            reduce_all = False
+    else:
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        if utils._contain_var(axis):
+            axis = utils._convert_to_tensor_list(axis)
+    return reduce_all, axis
 
 
 def log(x, name=None):
@@ -234,7 +268,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
-    """
+    r"""
+
     stanh activation.
 
     .. math::
@@ -245,8 +280,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         scale_a (float, optional): The scale factor a of the input. Default is 0.67.
         scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1130,7 +1164,7 @@ def fmax(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.fmax(x, y, axis)
+        return _C_ops.fmax(x, y)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type
@@ -1198,7 +1232,7 @@ def fmin(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.fmin(x, y, axis)
+        return _C_ops.fmin(x, y)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type
@@ -1265,7 +1299,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     dtype_flag = False
     if dtype is not None:
@@ -1274,6 +1307,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
+
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     if _in_legacy_dygraph():
         if dtype_flag:
@@ -1319,14 +1354,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             'int64',
             'complex64',
             'complex128',
-            u'bool',
-            u'float16',
-            u'float32',
-            u'float64',
-            u'int32',
-            u'int64',
-            u'complex64',
-            u'complex128',
         ],
         'sum',
     )
@@ -2204,19 +2231,9 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         out2 = paddle.logsumexp(x, 1) # [2.15317821, 3.15684602]
 
     """
-    if isinstance(axis, int):
-        axis = [axis]
-    reduce_all = (
-        True
-        if axis is None or len(axis) == 0 or len(axis) == len(x.shape)
-        else False
-    )
-    if axis is None or len(axis) == 0:
-        axis = [0]
+    reduce_all, axis = _get_reduce_axis(axis, x)
 
     if in_dygraph_mode():
-        if reduce_all:
-            axis = range(len(x.shape))
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     if _in_legacy_dygraph():
         return _legacy_C_ops.logsumexp(
@@ -2282,44 +2299,6 @@ def inverse(x, name=None):
         type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
     )
     return out
-
-
-def _get_reduce_axis(axis, x):
-    """
-    Internal function for max, min, amax and amin.
-    It computes the attribute reduce_all value based on axis.
-    """
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, (tuple, range)):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis = [axis]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(
-                    type(axis)
-                )
-            )
-    if axis is None:
-        axis = []
-    if axis == [] or len(axis) == len(x.shape):
-        reduce_all = True
-    else:
-        reduce_all = False
-    return reduce_all, axis
-
-
-def _get_reduce_axis_with_tensor(axis, x):
-    if isinstance(axis, Variable):
-        if axis.shape[0] == len(x.shape):
-            reduce_all = True
-        else:
-            reduce_all = False
-    else:
-        reduce_all, axis = _get_reduce_axis(axis, x)
-        if utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
-    return reduce_all, axis
 
 
 def max(x, axis=None, keepdim=False, name=None):
@@ -2400,9 +2379,9 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_max(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2502,10 +2481,10 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_min(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2515,8 +2494,6 @@ def min(x, axis=None, keepdim=False, name=None):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min'
     )
-    if not isinstance(axis, Variable) and utils._contain_var(axis):
-        axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -2617,10 +2594,10 @@ def amax(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amax(x, axis, keepdim)
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amax(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2731,11 +2708,11 @@ def amin(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amin(x, axis, keepdim)
-    elif _in_legacy_dygraph():
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
+    if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amin(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
@@ -3681,35 +3658,13 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
 
-    dim = axis
-    if isinstance(dim, Variable):
-        reduce_all = True if axis.shape[0] == len(x.shape) else False
-    else:
-        if dim is not None and not isinstance(dim, list):
-            if isinstance(dim, tuple):
-                dim = list(dim)
-            elif isinstance(dim, int):
-                dim = [dim]
-            else:
-                raise TypeError(
-                    "The type of axis must be int, list or tuple, but received {}".format(
-                        type(dim)
-                    )
-                )
-
-        reduce_all = (
-            True
-            if dim is None or len(dim) == 0 or len(dim) == len(x.shape)
-            else False
-        )
-        if dim is None or len(dim) == 0:
-            dim = [0]
-
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
-        return _C_ops.prod(x, dim, keepdim, reduce_all)
+        return _C_ops.prod(x, axis, keepdim, reduce_all)
+
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_prod(
-            x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all
+            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
 
     helper = LayerHelper('reduce_prod', **locals())
@@ -3717,13 +3672,11 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod'
     )
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if not isinstance(dim, Variable) and utils._contain_var(dim):
-        dim = utils._convert_to_tensor_list(dim)
     helper.append_op(
         type='reduce_prod',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'dim': dim, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+        attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
     )
     return out
 
@@ -3904,32 +3857,19 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    if axis is not None and not isinstance(axis, (list, tuple)):
-        axis = [axis]
-
-    if not axis:
-        reduce_all_flag = True
-    else:
-        if len(axis) == len(x.shape):
-            reduce_all_flag = True
-        else:
-            reduce_all_flag = False
-
     if in_dygraph_mode():
-        if reduce_all_flag:
-            axis = range(len(x.shape))
         return _C_ops.all(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
-        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_all(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
+            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
 
     attrs = {
-        'dim': axis if axis is not None and axis != [] and axis != () else [0],
+        'dim': axis,
         'keep_dim': keepdim,
-        'reduce_all': reduce_all_flag,
+        'reduce_all': reduce_all,
     }
     check_variable_and_dtype(x, 'x', ['bool'], 'all')
 
@@ -3993,32 +3933,19 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    if axis is not None and not isinstance(axis, (list, tuple)):
-        axis = [axis]
-
-    if not axis:
-        reduce_all_flag = True
-    else:
-        if len(axis) == len(x.shape):
-            reduce_all_flag = True
-        else:
-            reduce_all_flag = False
-
     if in_dygraph_mode():
-        if reduce_all_flag:
-            axis = range(len(x.shape))
         return _C_ops.any(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
-        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_any(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
+            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
 
     attrs = {
-        'dim': axis if axis is not None and axis != [] and axis != () else [0],
+        'dim': axis,
         'keep_dim': keepdim,
-        'reduce_all': reduce_all_flag,
+        'reduce_all': reduce_all,
     }
 
     check_variable_and_dtype(x, 'x', ['bool'], 'any')

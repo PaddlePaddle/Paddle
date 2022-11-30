@@ -384,10 +384,13 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           std::string dtype = is_no_need_buffer_var
                                   ? "unknown_dtype"
                                   : GetDtype(*scope, var_name);
+          std::string place = is_no_need_buffer_var
+                                  ? "unknown_place"
+                                  : GetPlace(*scope, var_name);
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
-          ss << "(" << GetPlace(*scope, var_name) << ")";
+          ss << "(" << place << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -511,7 +514,7 @@ void OperatorBase::CheckAllInputOutputSet() const {
   }
 
   for (auto& out : info_->Proto().outputs()) {
-    if (!out.dispensable() && !out.extra()) {
+    if (!out.dispensable() && !out.extra() && !out.intermediate()) {
       PADDLE_ENFORCE_NE(
           outputs_.find(out.name()),
           outputs_.end(),
@@ -913,7 +916,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
       out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
-      if (in_tensor.layout() != DataLayout::kMKLDNN)
+      if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
         out_tensor->set_layout(in_tensor.layout());
     }
@@ -978,7 +981,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
     //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
     //    in Compute()
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
+    if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
   }
@@ -1006,7 +1009,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
       return ((op_with_kernel.kernel_type()) &&
               (op_with_kernel.kernel_type()->data_layout_ ==
-               phi::DataLayout::kMKLDNN));
+               phi::DataLayout::ONEDNN));
     } catch (const std::bad_cast& exp) {
       return false;
     }
@@ -1362,6 +1365,39 @@ bool OperatorWithKernel::SupportsMKLDNN(
   }
 }
 
+bool OperatorWithKernel::SupportsCUDNN(
+    const proto::VarType::Type data_type) const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  paddle::experimental::DataType phi_data_type =
+      framework::TransToPhiDataType(data_type);
+  auto has_phi_kernel = std::any_of(
+      phi_kernels.begin(),
+      phi_kernels.end(),
+      [phi_data_type](phi::KernelKeyMap::const_reference kern_pair) {
+        return kern_pair.first.backend() == phi::Backend::GPUDNN &&
+               kern_pair.first.dtype() == phi_data_type;
+      });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kCUDNN &&
+                   kern_pair.first.data_type_ == data_type;
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
@@ -1408,13 +1444,13 @@ bool OperatorWithKernel::SupportsKernelType(
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
-    tmp_kernel_type.data_layout_ = framework::DataLayout::kMKLDNN;
+    tmp_kernel_type.data_layout_ = framework::DataLayout::ONEDNN;
     return kernels.find(tmp_kernel_type) != kernels.end();
   }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+  if (this->CanCUDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
     return kernels.find(tmp_kernel_type) != kernels.end();
@@ -1426,16 +1462,34 @@ bool OperatorWithKernel::SupportsKernelType(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  // NOTE(jiahongyu): Only mkldnn kernels need to check "use_mkldnn" attribute,
-  // hence we first call function SupportsMKLDNN. If we check "use_mkldnn"
-  // attribute first, it will cause error because some codes add "use_mkldnn"
-  // attribute to non-mkldnn ops.
-  if (!this->SupportsMKLDNN(data_type)) {
-    return false;
+  return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
+         platform::is_cpu_place(ctx.GetPlace()) &&
+         this->SupportsMKLDNN(data_type);
+}
+
+bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                                        proto::VarType::Type data_type) const {
+  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
+                   paddle::platform::is_gpu_place(ctx.GetPlace());
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (use_cudnn) {
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+    use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
   }
-  const std::string use_mkldnn_attr = "use_mkldnn";
-  return ctx.HasAttr(use_mkldnn_attr) && ctx.Attr<bool>(use_mkldnn_attr) &&
-         platform::is_cpu_place(ctx.GetPlace());
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA)
+  if (use_cudnn && data_type == framework::proto::VarType::BF16) {
+    PADDLE_ENFORCE_GE(
+        platform::DnnVersion(),
+        8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
+#endif  // PADDLE_WITH_CUDA
+
+  return use_cudnn && this->SupportsCUDNN(data_type);
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -1586,7 +1640,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi_kernel_name = kernel_signature_->name;
 
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
-// LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
+// LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
 // here. There are three statements in if condition:
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
@@ -1597,12 +1651,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           !paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
-        kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
+        kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+      if (this->CanCUDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
 #endif
@@ -1751,7 +1805,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     this->Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
-        Type(), Attrs(), infer_shape_ctx, *runtime_ctx);
+        Type(), Attrs(), infer_shape_ctx, *runtime_ctx, Id());
   }
 
   if (FLAGS_enable_unused_var_check) {
@@ -1846,12 +1900,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
-    expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(ctx)) {
+  if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
@@ -2244,16 +2298,16 @@ Scope* OperatorWithKernel::PrepareData(
         // Var without buffer may be needed
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
-        // MKL-DNN shape of Var may differ from kNHWC Var
+        // oneDNN shape of Var may differ from kNHWC Var
         // In such situation corressponding resized Var
         // has to be created and registered
-        if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+        if ((tensor_in->layout() == DataLayout::ONEDNN) &&
             (var->IsType<phi::DenseTensor>() == true) &&
-            (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
-            (paddle::platform::MKLDNNDeviceContext::tls()
-                 .get_cur_paddle_data_layout() == DataLayout::kNHWC) &&
+            (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
+            (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+             DataLayout::kNHWC) &&
             (tensor_in->dims().size() >= 3)) {
-          // Mixed execution : MKL-DNN and GPU is not supported!
+          // Mixed execution : oneDNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
           }
@@ -2261,9 +2315,9 @@ Scope* OperatorWithKernel::PrepareData(
           in_vars->at(i) = trans_var;
           auto out = trans_var->GetMutable<phi::DenseTensor>();
           out->Resize(tensor_in->dims());
-          platform::MatchShapeToLayout(
+          phi::funcs::MatchShapeToLayout(
               out, tensor_in->layout(), DataLayout::kNHWC);
-          VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
+          VLOG(7) << "Created reshaped dummy input based on oneDNN "
                      "phi::DenseTensor , "
                      "but kNHWC layout"
                   << in_name << " in Operator " << type_;
@@ -2502,13 +2556,6 @@ void OperatorWithKernel::ParseInputDataType(
       }
     }
     if (t != nullptr) {
-      PADDLE_ENFORCE_EQ(t->IsInitialized(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "The %s Op's Input Variable `%s` "
-                            "contains uninitialized phi::DenseTensor.",
-                            Type(),
-                            name));
       *data_type = paddle::framework::TransToProtoVarType(t->dtype());
     }
   }
@@ -2708,10 +2755,10 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
   // When the op is first oneDNN op (there was some non oneDNN op
   // previously)
   // then we also need to rotate shape NHWC -> NCWH
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN) &&
-      paddle::platform::MKLDNNDeviceContext::tls()
-              .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN) &&
+      phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+          phi::DataLayout::kNHWC) {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(),
                                    phi::DataLayout::kNHWC);
@@ -3186,6 +3233,29 @@ void OperatorWithKernel::BuildPhiKernelContext(
   }
   VLOG(4) << "Done attributes";
 
+// Clear All old attrs before add new attrs,
+// because sometimes old attrs may be misused.
+#if defined(PADDLE_WITH_MKLDNN)
+  if (phi::OneDNNContext::classof(dev_ctx)) {
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    one_dnn_ctx->ClearDnnAttr();
+  }
+#endif
+
+  // Note(YuanRisheng): Now, we can't open code below.
+  // Because some unittest run OLD dygraph and ExtraAttr is not supported in OLD
+  // dygraph. So, here we use trick that dev_ctx is a global object. We can
+  // store ExtraAttr in static graph and when unittest run OLD dygraph, it can
+  // obtain these ExtraAttr. We can open this code when OLD dygraph is no longer
+  // used.
+  /*
+  #if defined(PADDLE_WITH_CUDA)
+    if(phi::GPUContext::classof(dev_ctx)) {
+      phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+      gpu_dnn_ctx->ClearDnnAttr();
+    }
+  #endif
+  */
   // For compatible with Op with extra attrs for specific backend
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();

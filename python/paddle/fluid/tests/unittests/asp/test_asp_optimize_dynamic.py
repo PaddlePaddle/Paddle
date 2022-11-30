@@ -14,15 +14,17 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
-import numpy as np
 
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.conv1 = paddle.nn.Conv2D(
             in_channels=3, out_channels=2, kernel_size=3, padding=2
         )

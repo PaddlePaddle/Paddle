@@ -25,7 +25,7 @@ from .utils import (
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
 
 
-class NodeVarType(object):
+class NodeVarType:
     """
     Enum class of python variable types. We have to know some variable types
     during compile time to transfer AST. For example, a string variable and a
@@ -112,7 +112,7 @@ class NodeVarType(object):
         return NodeVarType.UNKNOWN
 
 
-class AstNodeWrapper(object):
+class AstNodeWrapper:
     """
     Wrapper for python gast.node. We need a node wrapper because gast.node
     doesn't store all required information when we are transforming AST.
@@ -127,7 +127,7 @@ class AstNodeWrapper(object):
         self.node_var_type = {NodeVarType.UNKNOWN}
 
 
-class AstVarScope(object):
+class AstVarScope:
     """
     AstVarScope is a class holding the map from current scope variable to its
     type.
@@ -181,7 +181,7 @@ class AstVarScope(object):
         return self.parent_scope.get_var_type(var_name)
 
 
-class AstVarEnv(object):
+class AstVarEnv:
     """
     A class maintains scopes and mapping from name strings to type.
     """
@@ -231,7 +231,7 @@ class AstVarEnv(object):
         return cur_scope_dict
 
 
-class StaticAnalysisVisitor(object):
+class StaticAnalysisVisitor:
     """
     A class that does static analysis
     """

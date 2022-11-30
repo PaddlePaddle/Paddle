@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-
 import functools
-import unittest
-import numpy as np
-
 import gc
+import math
+import unittest
+
+import numpy as np
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
@@ -275,7 +274,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
 
 class TestNoSliceVar(TranspilerTest):
     def setUp(self):
-        super(TestNoSliceVar, self).setUp()
+        super().setUp()
 
     def transpiler_test_impl(self):
         config = fluid.DistributeTranspilerConfig()
@@ -381,7 +380,7 @@ class TestFakeInit(TranspilerTest):
             ),
         )
 
-        neg_word_reshape = fluid.layers.reshape(inputs[2], shape=[-1, 1])
+        neg_word_reshape = paddle.reshape(inputs[2], shape=[-1, 1])
         neg_word_reshape.stop_gradient = True
 
         neg_emb_w = fluid.layers.embedding(
@@ -391,7 +390,7 @@ class TestFakeInit(TranspilerTest):
             param_attr=fluid.ParamAttr(name='emb_w', learning_rate=1.0),
         )
 
-        neg_emb_w_re = fluid.layers.reshape(
+        neg_emb_w_re = paddle.reshape(
             neg_emb_w, shape=[-1, neg_num, embedding_size]
         )
 
@@ -402,10 +401,10 @@ class TestFakeInit(TranspilerTest):
             param_attr=fluid.ParamAttr(name='emb_b', learning_rate=1.0),
         )
 
-        neg_emb_b_vec = fluid.layers.reshape(neg_emb_b, shape=[-1, neg_num])
+        neg_emb_b_vec = paddle.reshape(neg_emb_b, shape=[-1, neg_num])
 
         true_logits = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(
+            paddle.sum(
                 fluid.layers.elementwise_mul(input_emb, true_emb_w),
                 dim=1,
                 keep_dim=True,
@@ -413,14 +412,12 @@ class TestFakeInit(TranspilerTest):
             true_emb_b,
         )
 
-        input_emb_re = fluid.layers.reshape(
-            input_emb, shape=[-1, 1, embedding_size]
-        )
+        input_emb_re = paddle.reshape(input_emb, shape=[-1, 1, embedding_size])
 
         neg_matmul = fluid.layers.matmul(
             input_emb_re, neg_emb_w_re, transpose_y=True
         )
-        neg_matmul_re = fluid.layers.reshape(neg_matmul, shape=[-1, neg_num])
+        neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
         neg_logits = fluid.layers.elementwise_add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
         label_ones = fluid.layers.fill_constant_batch_size_like(
@@ -430,15 +427,15 @@ class TestFakeInit(TranspilerTest):
             true_logits, shape=[-1, neg_num], value=0.0, dtype='float32'
         )
 
-        true_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        true_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             true_logits, label_ones
         )
-        neg_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        neg_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             neg_logits, label_zeros
         )
         cost = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(true_xent, dim=1),
-            fluid.layers.reduce_sum(neg_xent, dim=1),
+            paddle.sum(true_xent, axis=1),
+            paddle.sum(neg_xent, axis=1),
         )
         avg_cost = fluid.layers.reduce_mean(cost)
 
@@ -1353,7 +1350,7 @@ class TestRemoteNce(TestDistLookupTableBase):
             )
         )
 
-        cost = fluid.layers.nce(
+        cost = paddle.static.nn.nce(
             input=input,
             label=label,
             num_total_classes=num_total_classes,
@@ -1442,14 +1439,18 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             ),
         )
 
-        cost = fluid.layers.hsigmoid(
-            input=emb,
-            label=label,
+        loss = paddle.nn.HSigmoidLoss(
+            feature_size=emb.shape[1],
             num_classes=num_total_classes,
-            path_table=path_table,
-            path_code=path_code,
             is_custom=True,
             is_sparse=is_sparse,
+        )
+
+        cost = loss(
+            input=emb,
+            label=label,
+            path_table=path_table,
+            path_code=path_code,
         )
         avg_cost = paddle.mean(cost)
         # optimizer
@@ -1471,9 +1472,9 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 for name in ["epmap", "table_names", "epmap"]:
                     assert op.has_attr(name)
                     if name == "epmap":
-                        assert op.attr(name)[0] == u'127.0.0.1:6174'
+                        assert op.attr(name)[0] == '127.0.0.1:6174'
                     elif name == "table_names":
-                        assert op.attr(name)[0] == u'hierarchical_sigmoid_0.w_0'
+                        assert op.attr(name)[0] == 'hierarchical_sigmoid_0.w_0'
                     else:
                         assert op.attr(name) == 3
             elif op.type == "lookup_table":
@@ -1484,7 +1485,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
         for op in trainer.blocks[0].ops:
             if op.type == "recv":
                 assert len(op.output("Out")) == 1
-                assert op.output("Out")[0] == u'hierarchical_sigmoid_0.b_0'
+                assert op.output("Out")[0] == 'hierarchical_sigmoid_0.b_0'
                 op_count += 1
         assert op_count == 1
 

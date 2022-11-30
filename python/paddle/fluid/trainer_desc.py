@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-class TrainerDesc(object):
+class TrainerDesc:
     '''
     Set proto from python to c++.
     Can be initialized from train_desc.
@@ -322,15 +322,15 @@ class MultiTrainer(TrainerDesc):
     '''
 
     def __init__(self):
-        super(MultiTrainer, self).__init__()
+        super().__init__()
         pass
 
     def _set_program(self, program):
-        super(MultiTrainer, self)._set_program(program)
+        super()._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super(MultiTrainer, self)._gen_trainer_desc()
+        super()._gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -344,15 +344,15 @@ class DistMultiTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super(DistMultiTrainer, self).__init__()
+        super().__init__()
         pass
 
     def _set_program(self, program):
-        super(DistMultiTrainer, self)._set_program(program)
+        super()._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super(DistMultiTrainer, self)._gen_trainer_desc()
+        super()._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
         if self._program is None:
             raise RuntimeError("None Program")
@@ -368,15 +368,15 @@ class HeterXpuTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super(HeterXpuTrainer, self).__init__()
+        super().__init__()
         pass
 
     def _set_program(self, program):
-        super(HeterXpuTrainer, self)._set_program(program)
+        super()._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super(HeterXpuTrainer, self)._gen_trainer_desc()
+        super()._gen_trainer_desc()
         self.proto_desc.class_name = "HeterXpuTrainer"
         if self._program is None:
             raise RuntimeError("None Program")
@@ -392,15 +392,15 @@ class PSGPUTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super(PSGPUTrainer, self).__init__()
+        super().__init__()
         pass
 
     def _set_program(self, program):
-        super(PSGPUTrainer, self)._set_program(program)
+        super()._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super(PSGPUTrainer, self)._gen_trainer_desc()
+        super()._gen_trainer_desc()
         self.proto_desc.class_name = "PSGPUTrainer"
         if self._program is None:
             raise RuntimeError("None Program")
@@ -416,15 +416,15 @@ class HeterPipelineTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super(HeterPipelineTrainer, self).__init__()
+        super().__init__()
         pass
 
     def _set_program(self, program):
-        super(HeterPipelineTrainer, self)._set_program(program)
+        super()._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super(HeterPipelineTrainer, self)._gen_trainer_desc()
+        super()._gen_trainer_desc()
         self.proto_desc.class_name = "HeterPipelineTrainer"
         if self._program is None:
             raise RuntimeError("None Program")
@@ -440,15 +440,15 @@ class PipelineTrainer(TrainerDesc):
     """
 
     def __init__(self):
-        super(PipelineTrainer, self).__init__()
+        super().__init__()
         pass
 
     def _set_program(self, program):
-        super(PipelineTrainer, self)._set_program(program)
+        super()._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super(PipelineTrainer, self)._gen_trainer_desc()
+        super()._gen_trainer_desc()
         self.proto_desc.class_name = "PipelineTrainer"
         if self._program is None:
             raise RuntimeError("None Program")

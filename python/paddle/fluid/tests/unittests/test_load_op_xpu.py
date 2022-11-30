@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle
 
 
 @unittest.skipIf(
@@ -47,7 +49,7 @@ class TestLoadOpXpu(unittest.TestCase):
             )
         exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
-        fluid.io.save_persistables(
+        paddle.distributed.io.save_persistables(
             exe, dirname=self.model_path, main_program=main_prog
         )
 

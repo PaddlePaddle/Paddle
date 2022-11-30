@@ -19,8 +19,8 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.dy2static.loop_transformer import NameVisitor
+from paddle.jit.api import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -153,7 +153,7 @@ def while_loop_bool_op2(x):
 
 
 def while_loop_class_var(x):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -179,7 +179,7 @@ def loop_var_contains_property(x):
 
 
 def for_loop_class_var(max_len):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4

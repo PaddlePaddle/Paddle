@@ -13,22 +13,24 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
+
 import numpy as np
+from test_imperative_base import new_program_scope
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.framework import _test_eager_guard
 
 
 class RecurrentTest(fluid.Layer):
     def __init__(self, name_scope):
-        super(RecurrentTest, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, in1, in2):
         out = fluid.layers.mul(in1, in2)
-        sum_out = fluid.layers.reduce_sum(out)
+        sum_out = paddle.sum(out)
         return sum_out, out
 
 

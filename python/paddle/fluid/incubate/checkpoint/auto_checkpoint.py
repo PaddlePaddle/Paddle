@@ -69,7 +69,7 @@ def _thread_checker():
     ), "auto checkpoint must run under main thread"
 
 
-class AutoCheckpointChecker(object):
+class AutoCheckpointChecker:
     def __init__(self):
         self._run_env = None
         self._platform = None

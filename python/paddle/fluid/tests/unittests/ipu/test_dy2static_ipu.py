@@ -14,16 +14,15 @@
 
 import tempfile
 import unittest
+from functools import partial
 
 import numpy as np
+
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    ProgramCache,
-)
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
 from paddle.jit import to_static
+from paddle.jit.dy2static.program_translator import ProgramCache
 from paddle.optimizer.lr import LRScheduler
-from functools import partial
 
 
 class SimpleLayer(paddle.nn.Layer):
@@ -34,7 +33,7 @@ class SimpleLayer(paddle.nn.Layer):
         use_reduction=True,
         use_identity_loss=True,
     ):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self.loss_op = loss_op
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1
@@ -46,7 +45,7 @@ class SimpleLayer(paddle.nn.Layer):
     @to_static()
     def forward(self, x, target=None):
         x = self.conv(x)
-        x = paddle.fluid.layers.flatten(x, axis=1)
+        x = paddle.flatten(x, 1, -1)
         if target is not None:
             if self.use_softmax:
                 x = paddle.fluid.layers.softmax(x)
@@ -238,7 +237,7 @@ class TestWithoutIdentityLoss2(TestBase):
 
 class TestWithoutIdentityLoss3(TestBase):
     def set_op_attrs(self):
-        self.loss_op = partial(paddle.fluid.layers.kldiv_loss, reduction="none")
+        self.loss_op = partial(paddle.nn.functional.kl_div, reduction="none")
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
@@ -272,7 +271,7 @@ class TestWithoutIdentityLoss4(TestBase):
 
 class TestWithoutIdentityLoss5(TestBase):
     def set_op_attrs(self):
-        self.loss_op = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
+        self.loss_op = paddle.nn.functional.binary_cross_entropy_with_logits
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')

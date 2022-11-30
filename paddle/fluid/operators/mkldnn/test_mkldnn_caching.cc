@@ -34,7 +34,7 @@ USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
 USE_OP_ITSELF(relu);
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
-USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d);
 PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
 
@@ -52,8 +52,7 @@ class CacheTester {
     // Clear oneDNN cache
     auto &pool = platform::DeviceContextPool::Instance();
     platform::CPUPlace place;
-    onednn_dev_ctx_ =
-        dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
+    onednn_dev_ctx_ = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
@@ -63,7 +62,7 @@ class CacheTester {
   }
 
  private:
-  platform::MKLDNNDeviceContext *onednn_dev_ctx_;
+  phi::OneDNNContext *onednn_dev_ctx_;
 };
 
 template <typename T>

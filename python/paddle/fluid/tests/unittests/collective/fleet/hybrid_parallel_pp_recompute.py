@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+
+import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.fluid import layers
-import paddle.nn.functional as F
-from paddle.distributed.fleet.meta_parallel import PipelineLayer, LayerDesc
-from paddle.fluid.dygraph.layers import Layer
 import paddle.nn as nn
+import paddle.nn.functional as F
+from paddle import framework
+from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+from paddle.fluid import layers
+from paddle.fluid.dygraph.layers import Layer
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -43,7 +46,7 @@ dim_feedforward = 4 * d_model
 
 class EmbeddingNet(Layer):
     def __init__(self):
-        super(EmbeddingNet, self).__init__()
+        super().__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
         self.position_embeddings = nn.Embedding(vocab_size, hidden_size)
 
@@ -56,7 +59,7 @@ class EmbeddingNet(Layer):
 
 class TransformerNet(Layer):
     def __init__(self):
-        super(TransformerNet, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.linear2 = nn.Linear(dim_feedforward, d_model)
 
@@ -86,21 +89,31 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
-    def forward(self, x):
-        return super().forward(x)
+    def forward(self, tensors):
+        if framework.in_dygraph_mode():
+            stable, x = tensors
+            return stable, super().forward(x)
+        else:
+            return super().forward(tensors)
 
 
 class TransformerNetPipe(TransformerNet):
-    def forward(self, x):
-        output = super().forward(x)
-        return output
+    def forward(self, tensors):
+        if framework.in_dygraph_mode():
+            stable, x = tensors
+            output = super().forward(x)
+            return stable, output
+        else:
+            return super().forward(tensors)
 
 
 class CriterionPipe(Layer):
     def __init__(self):
-        super(CriterionPipe, self).__init__()
+        super().__init__()
 
     def forward(self, out, label):
+        if framework.in_dygraph_mode():
+            out = out[-1]
         loss = out.mean()
         return loss
 
@@ -169,7 +182,8 @@ class TestDistPPTraning(unittest.TestCase):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
-            loss = model.train_batch([x, x], optimizer, scheduler)
+            input_ = (x, x) if framework.in_dygraph_mode() else x
+            loss = model.train_batch([input_, x], optimizer, scheduler)
             # TODO(shenliang03) add utest for loss
             print("loss: ", loss)
 

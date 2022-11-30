@@ -29,7 +29,7 @@ from paddle.fluid.optimizer import (
     MomentumOptimizer,
 )
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 from paddle.nn import ReLU, ReLU6, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
@@ -54,7 +54,7 @@ _logger = get_logger(
 
 class ImperativeLenet(fluid.dygraph.Layer):
     def __init__(self, num_classes=10):
-        super(ImperativeLenet, self).__init__()
+        super().__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
         fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
@@ -117,7 +117,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         x = self.features(inputs)
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1, -1)
         x = self.fc(x)
         return x
 

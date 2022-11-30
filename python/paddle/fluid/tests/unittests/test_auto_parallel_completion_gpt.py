@@ -18,14 +18,14 @@ import unittest
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.tensor as tensor
 import paddle.utils as utils
-from paddle.fluid import layers
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
-import paddle.static as static
-from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
+from paddle.fluid import layers
+from paddle.nn.layer.transformer import _convert_param_attr_to_list
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -55,7 +55,7 @@ class MultiHeadAttention(nn.Layer):
         topo=None,
         fuse=False,
     ):
-        super(MultiHeadAttention, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
         self.vdim = vdim if vdim is not None else embed_dim
@@ -258,7 +258,7 @@ class TransformerDecoder(nn.Layer):
     def __init__(
         self, decoder_layers, num_layers, norm=None, hidden_size=None, topo=None
     ):
-        super(TransformerDecoder, self).__init__()
+        super().__init__()
 
         self.topo = topo
         self.num_layers = num_layers
@@ -361,7 +361,7 @@ class TransformerDecoderLayer(nn.Layer):
         self._config.pop("self")
         self._config.pop("__class__", None)  # py3
 
-        super(TransformerDecoderLayer, self).__init__()
+        super().__init__()
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
         self.normalize_before = normalize_before
@@ -464,7 +464,7 @@ class GPTEmbeddings(nn.Layer):
         initializer_range=0.02,
         topo=None,
     ):
-        super(GPTEmbeddings, self).__init__()
+        super().__init__()
         if topo is None or topo.mp_info.size == 1:
             self.word_embeddings = nn.Embedding(
                 vocab_size,
@@ -531,7 +531,7 @@ class GPTModel(nn.Layer):
         pad_token_id=0,
         topo=None,
     ):
-        super(GPTModel, self).__init__()
+        super().__init__()
 
         self.pad_token_id = pad_token_id
         self.initializer_range = initializer_range
@@ -616,9 +616,7 @@ class GPTModel(nn.Layer):
             )
             position_ids = position_ids.unsqueeze(0)
             # .expand_as(input_ids)
-            position_ids = paddle.fluid.layers.expand_as(
-                position_ids, input_ids
-            )
+            position_ids = paddle.expand_as(position_ids, input_ids)
         embedding_output = self.embeddings(
             input_ids=input_ids, position_ids=position_ids
         )
@@ -658,7 +656,7 @@ class GPTForPretraining(nn.Layer):
     """
 
     def __init__(self, gpt):
-        super(GPTForPretraining, self).__init__()
+        super().__init__()
         self.gpt = gpt
         self.share_param = False
         self.weight = self.gpt.embeddings.word_embeddings.weight
@@ -720,7 +718,7 @@ class GPTPretrainingCriterion(nn.Layer):
     """
 
     def __init__(self, topo=None):
-        super(GPTPretrainingCriterion, self).__init__()
+        super().__init__()
         if topo is None or topo.mp_info.size == 1:
             self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
         else:

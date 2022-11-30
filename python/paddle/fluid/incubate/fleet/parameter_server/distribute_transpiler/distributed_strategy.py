@@ -31,7 +31,7 @@ from paddle.fluid.transpiler.distribute_transpiler import (
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
-class TrainerRuntimeConfig(object):
+class TrainerRuntimeConfig:
     def __init__(self):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
@@ -160,7 +160,7 @@ class TrainerRuntimeConfig(object):
         return self.display(self.get_communicator_flags())
 
 
-class PSLibRuntimeConfig(object):
+class PSLibRuntimeConfig:
     def __init__(self):
         self.runtime_configs = {}
 
@@ -168,7 +168,7 @@ class PSLibRuntimeConfig(object):
         return self.runtime_configs
 
 
-class DistributedStrategy(object):
+class DistributedStrategy:
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
         self._trainer_runtime_config = TrainerRuntimeConfig()
@@ -341,7 +341,7 @@ class DistributedStrategy(object):
 
 class SyncStrategy(DistributedStrategy):
     def __init__(self):
-        super(SyncStrategy, self).__init__()
+        super().__init__()
         self.check_program_config()
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
@@ -369,7 +369,7 @@ class SyncStrategy(DistributedStrategy):
 
 class AsyncStrategy(DistributedStrategy):
     def __init__(self):
-        super(AsyncStrategy, self).__init__()
+        super().__init__()
         self.check_program_config()
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
@@ -395,7 +395,7 @@ class AsyncStrategy(DistributedStrategy):
 
 class HalfAsyncStrategy(DistributedStrategy):
     def __init__(self):
-        super(HalfAsyncStrategy, self).__init__()
+        super().__init__()
         self.check_program_config()
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
@@ -422,7 +422,7 @@ class HalfAsyncStrategy(DistributedStrategy):
 
 class GeoStrategy(DistributedStrategy):
     def __init__(self, update_frequency=100):
-        super(GeoStrategy, self).__init__()
+        super().__init__()
         self._program_config.geo_sgd_need_push_nums = update_frequency
         self.check_program_config()
         self.check_trainer_runtime_config()
@@ -456,7 +456,7 @@ class GeoStrategy(DistributedStrategy):
         self._build_strategy.async_mode = True
 
 
-class StrategyFactory(object):
+class StrategyFactory:
     def __init_(self):
         pass
 

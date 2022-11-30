@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
@@ -217,6 +219,22 @@ class TestMaxOp(OpTest):
         self.check_output(check_eager=True)
 
 
+class TestMaxOp_ZeroDim(OpTest):
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.python_api = paddle.max
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.attrs = {'dim': []}
+        self.outputs = {
+            'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework."
@@ -229,6 +247,22 @@ class TestMinOp(OpTest):
         self.python_api = paddle.min
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [2]}
+        self.outputs = {
+            'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestMinOp_ZeroDim(OpTest):
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_min"
+        self.python_api = paddle.min
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.attrs = {'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
         }
@@ -297,6 +331,21 @@ class TestProdOp(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
+class TestProdOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.prod
+        self.op_type = "reduce_prod"
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].prod()}
+        self.attrs = {'dim': [], 'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
 class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -356,6 +405,18 @@ class TestAllOp(OpTest):
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].all()}
         self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestAllOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.all
+        self.op_type = "reduce_all"
+        self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
+        self.outputs = {'Out': self.inputs['X'].all()}
+        self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -459,6 +520,18 @@ class TestAnyOp(OpTest):
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestAnyOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.any
+        self.op_type = "reduce_any"
+        self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
+        self.outputs = {'Out': self.inputs['X'].any()}
+        self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -843,10 +916,10 @@ class TestReduceSumOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_sum, x1)
+            self.assertRaises(TypeError, paddle.sum, x1)
             # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
+            self.assertRaises(TypeError, paddle.sum, x2)
 
 
 class API_TestSumOp(unittest.TestCase):

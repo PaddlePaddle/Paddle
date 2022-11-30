@@ -23,26 +23,23 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import numpy as np
 from collections import OrderedDict
 
-import paddle
-from paddle.fluid import core
-from paddle.optimizer import Optimizer
-from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed.collective import (
-    _get_global_group,
-    new_group,
-    broadcast,
-    wait,
-)
+import numpy as np
 
-from ...utils.internal_storage import ParamStorage, GradStorage
+import paddle
+import paddle.distributed as dist
+from paddle.distributed.collective import _get_global_group, new_group
+from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.framework import core
+from paddle.optimizer import Optimizer
+
 from ...meta_parallel.sharding.sharding_utils import (
+    ShardingClipGrad,
     Type,
     device_guard,
-    ShardingClipGrad,
 )
+from ...utils.internal_storage import GradStorage, ParamStorage
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
 alignment = {"gpu": 256, "cpu": 4096}
@@ -169,12 +166,12 @@ class ShardingOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
-            broadcast(
+            dist.broadcast(
                 p, src=self._global_root_rank, group=self.group, sync_op=True
             )
 
         # Multi stream operation will be supported later
-        wait(tensor=p, group=self.group, use_calc_stream=True)
+        dist.wait(tensor=p, group=self.group, use_calc_stream=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -456,7 +453,7 @@ class ShardingOptimizerStage2(Optimizer):
         # Exchange all the shards with the other ranks
         for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
-                broadcast(
+                dist.broadcast(
                     tensor=internal_storage.buffer,
                     src=self.group.ranks[dst_rank],
                     group=self.group,
@@ -464,7 +461,7 @@ class ShardingOptimizerStage2(Optimizer):
                 )
 
             # Multi stream operation will be supported later
-            wait(
+            dist.wait(
                 tensor=internal_storage.buffer,
                 group=self.group,
                 use_calc_stream=True,

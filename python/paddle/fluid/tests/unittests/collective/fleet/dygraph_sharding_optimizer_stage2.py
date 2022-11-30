@@ -15,16 +15,17 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
-from paddle.fluid.framework import _test_eager_guard
-
-from paddle.distributed.fleet.utils.internal_storage import GradStorage
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import (
     ShardingOptimizerStage2,
 )
+from paddle.distributed.fleet.utils.internal_storage import GradStorage
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 base_lr = 0.1
 momentum_rate = 0.9
@@ -37,7 +38,7 @@ class_dim = 102
 
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._linear1 = Linear(10, 10)
         self._linear2 = Linear(10, 10)

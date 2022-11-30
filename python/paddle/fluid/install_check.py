@@ -38,14 +38,14 @@ __all__ = ['run_check']
 
 class SimpleLayer(Layer):
     def __init__(self, input_size):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(
             input_size, 3, param_attr=ParamAttr(initializer=Constant(value=0.1))
         )
 
     def forward(self, inputs):
         x = self._linear1(inputs)
-        x = layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 

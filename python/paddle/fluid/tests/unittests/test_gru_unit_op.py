@@ -14,12 +14,14 @@
 
 import math
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle.fluid as fluid
 from paddle import fluid
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import gru_unit
-from paddle.fluid.framework import program_guard, Program
 
 
 class TestGRUUnitAPIError(unittest.TestCase):
@@ -209,7 +211,7 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
     def set_inputs(self, origin_mode=False):
         batch_size = self.batch_size
         frame_size = self.frame_size
-        super(TestGRUUnitOpWithBias, self).set_inputs()
+        super().set_inputs()
         self.inputs['Bias'] = np.random.uniform(
             -0.1, 0.1, (1, frame_size * 3)
         ).astype(self.dtype)

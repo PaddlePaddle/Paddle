@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import math
+import random
+import unittest
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import random
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -59,7 +60,7 @@ class RandomWeight:
 weight = RandomWeight()
 
 
-class LayerMixin(object):
+class LayerMixin:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
@@ -269,7 +270,7 @@ def concat_states(states, bidirectional=False, state_components=1):
 
 class RNN(LayerMixin):
     def __init__(self, cell, is_reverse=False, time_major=False):
-        super(RNN, self).__init__()
+        super().__init__()
         self.cell = cell
         if not hasattr(self.cell, "call"):
             # for non-dygraph mode, `rnn` api uses cell.call
@@ -291,7 +292,7 @@ class RNN(LayerMixin):
 
 class BiRNN(LayerMixin):
     def __init__(self, cell_fw, cell_bw, time_major=False):
-        super(BiRNN, self).__init__()
+        super().__init__()
         self.cell_fw = cell_fw
         self.cell_bw = cell_bw
         self.time_major = time_major
@@ -366,7 +367,7 @@ class LSTM(RNNMixin):
         dropout=0.0,
         time_major=False,
     ):
-        super(LSTM, self).__init__()
+        super().__init__()
 
         if direction in ["forward", "backward"]:
             is_reverse = direction == "backward"

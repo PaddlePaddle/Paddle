@@ -15,14 +15,14 @@
 import unittest
 
 import paddle
+import paddle.fluid.core as core
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.utils as utils
-from paddle.fluid import layers
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
-import paddle.fluid.core as core
+from paddle.fluid import layers
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -37,7 +37,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

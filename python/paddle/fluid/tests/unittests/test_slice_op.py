@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle
-from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard
 
 paddle.enable_static()
 
@@ -298,7 +299,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
+            # 'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
             'decrease_axis': self.decrease_axis,
@@ -335,8 +336,8 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
-            #'ends': self.ends_infer,
+            # 'starts': self.starts,
+            # 'ends': self.ends_infer,
             'infer_flags': self.infer_flags,
         }
 
@@ -369,8 +370,8 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
-            #'ends': self.ends,
+            # 'starts': self.starts,
+            # 'ends': self.ends,
             'infer_flags': self.infer_flags,
             'decrease_axis': self.decrease_axis,
         }
@@ -412,7 +413,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
+            # 'starts': self.starts,
             'ends': self.ends_infer,
             'infer_flags': self.infer_flags,
         }
@@ -716,7 +717,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                     slice_arr, axis=self.axis, use_stack=True
                 )
 
-            loss = fluid.layers.reduce_sum(output)
+            loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
             g_vars = list(
                 map(

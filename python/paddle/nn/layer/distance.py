@@ -20,6 +20,7 @@ __all__ = []
 
 class PairwiseDistance(Layer):
     r"""
+
     It computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
@@ -38,14 +39,14 @@ class PairwiseDistance(Layer):
             Generally, no setting is required. Default: None.
 
     Shape:
-        x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
-            is the dimension of the data. Available data type is float32, float64.
-        y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
-        output: The same dtype as input tensor.
+        - x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
+          is the dimension of the data. Available data type is float32, float64.
+        - y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
+        - output: The same dtype as input tensor.
             - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
-                depending on whether the input has data shaped as :math:`[N, D]`.
+              depending on whether the input has data shaped as :math:`[N, D]`.
             - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
-                depending on whether the input has data shaped as :math:`[N, D]`.
+              depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
         .. code-block:: python
@@ -60,7 +61,7 @@ class PairwiseDistance(Layer):
     """
 
     def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
-        super(PairwiseDistance, self).__init__()
+        super().__init__()
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim

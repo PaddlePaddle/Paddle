@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
-from launch_function_helper import wait, _find_free_port
+import unittest
 from multiprocessing import Process
+
+from launch_function_helper import _find_free_port, wait
 
 os.environ['GLOG_vmodule'] = str("gen_nccl_id_op*=10,gen_comm_id*=10")
 

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
 import os
 import time
-import numbers
 import warnings
 
 import numpy as np
@@ -69,7 +69,7 @@ def config_callbacks(
     return cbk_list
 
 
-class CallbackList(object):
+class CallbackList:
     def __init__(self, callbacks=None):
         # copy
         self.callbacks = [c for c in callbacks]
@@ -129,7 +129,7 @@ class CallbackList(object):
         self._call(name, step, logs)
 
 
-class Callback(object):
+class Callback:
     """
     Base class used to build new callbacks. And new callbacks could also
     terminate training by setting `model.stop_training=True`.
@@ -797,7 +797,7 @@ class EarlyStopping(Callback):
         baseline=None,
         save_best_model=True,
     ):
-        super(EarlyStopping, self).__init__()
+        super().__init__()
         self.monitor = monitor
         self.patience = patience
         self.verbose = verbose
@@ -1242,7 +1242,7 @@ class ReduceLROnPlateau(Callback):
         cooldown=0,
         min_lr=0,
     ):
-        super(ReduceLROnPlateau, self).__init__()
+        super().__init__()
 
         self.monitor = monitor
         if factor >= 1.0:

@@ -25,7 +25,7 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 

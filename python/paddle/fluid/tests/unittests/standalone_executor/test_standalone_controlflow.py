@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from paddle.fluid import core, framework
-from paddle.fluid.framework import Program, program_guard
-import paddle.fluid.layers as layers
 
 import numpy as np
+
+import paddle
+import paddle.fluid.layers as layers
+from paddle.fluid import core, framework
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 

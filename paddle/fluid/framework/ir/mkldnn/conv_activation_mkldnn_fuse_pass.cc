@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = phi::funcs::GetSupportedActivations();
   std::vector<std::string> conv_types = {"conv2d"};
 
   for (auto& act_type : act_types) {
@@ -64,7 +64,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
@@ -145,7 +145,7 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
       OpDesc* conv_op = node->inputs[0]->Op();
       OpDesc* act_op = activation_op->Op();
 
-      auto attr_map = paddle::platform::GetAttributeMap(act_type);
+      auto attr_map = phi::funcs::GetAttributeMap(act_type);
       for (const auto& attrs : attr_map) {
         if (act_op->HasAttr(attrs.first)) {
           conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));

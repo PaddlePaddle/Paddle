@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.autograd.py_layer import LegacyPyLayer, EagerPyLayer
+from paddle.autograd.py_layer import EagerPyLayer, LegacyPyLayer
 from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
@@ -458,7 +459,7 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
 
             def forward(self, data):
                 data = data**2
@@ -495,7 +496,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -532,7 +533,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -565,7 +566,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -596,7 +597,7 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
 
             def forward(self, data):
                 z = cus_pylayer_op.apply(data)

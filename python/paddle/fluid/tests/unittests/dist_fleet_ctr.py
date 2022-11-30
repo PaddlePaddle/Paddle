@@ -15,17 +15,17 @@
 Distribute CTR model for test fleet api
 """
 
+import os
 import shutil
 import tempfile
 import time
 
+import ctr_dataset_reader
+import numpy as np
+from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-import os
-import numpy as np
-
-import ctr_dataset_reader
-from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 paddle.enable_static()
 
@@ -331,7 +331,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dataset.set_pipe_command('python ctr_dataset_reader.py')
         dataset.load_into_memory()
 
-        dataset.global_shuffle(fleet, 12)  ##TODO: thread configure
+        dataset.global_shuffle(fleet, 12)  # TODO: thread configure
         shuffle_data_size = dataset.get_shuffle_data_size(fleet)
         local_data_size = dataset.get_shuffle_data_size()
         data_size_list = fleet.util.all_gather(local_data_size)

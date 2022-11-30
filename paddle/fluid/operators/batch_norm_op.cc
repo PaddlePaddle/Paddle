@@ -158,12 +158,17 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                           bias_dim[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
+  ctx->ShareLoD("X", "Y");
   VLOG(4) << x_dims;
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
-  ctx->SetOutputDim("SavedMean", {C});
-  ctx->SetOutputDim("SavedVariance", {C});
-  ctx->ShareLoD("X", "Y");
+  if (!test_mode) {
+    ctx->SetOutputDim("SavedMean", {C});
+    ctx->SetOutputDim("SavedVariance", {C});
+  }
+  if (ctx->HasOutput("ReserveSpace")) {
+    ctx->SetOutputDim("ReserveSpace", {-1});
+  }
 }
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
@@ -208,8 +213,8 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
@@ -345,7 +350,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
         true,
         platform::errors::InvalidArgument(
             "Using global stats during training is not supported "
-            "in gradient op kernel of batch_norm_mkldnn_op now."));
+            "in oneDNN version of batch_norm_gradient kernel now."));
   }
 
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
@@ -378,8 +383,8 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
@@ -398,8 +403,8 @@ framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
@@ -520,8 +525,8 @@ framework::OpKernelType BatchNormDoubleGradOp::GetExpectedKernelType(
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
     t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

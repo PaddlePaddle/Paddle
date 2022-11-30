@@ -27,7 +27,7 @@ from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.framework import IrGraph, _test_eager_guard
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
@@ -57,7 +57,7 @@ def get_vaild_warning_num(warning, w):
 
 class ImperativeLenet(fluid.dygraph.Layer):
     def __init__(self, num_classes=10):
-        super(ImperativeLenet, self).__init__()
+        super().__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
         fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
@@ -121,7 +121,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = self.features(inputs)
 
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1, -1)
         x = self.fc(x)
         return x
 

@@ -66,6 +66,12 @@ struct EngineConfig {
   std::string nnadapter_subgraph_partition_config_path;
   std::vector<std::string> nnadapter_model_cache_token;
   std::vector<std::vector<char>> nnadapter_model_cache_buffer;
+
+  bool use_opencl{};
+  std::string opencl_bin_path = "./";
+  std::string opencl_bin_name = "lite_opencl_kernel.bin";
+  paddle::lite_api::CLTuneMode opencl_tune_mode{};
+  paddle::lite_api::CLPrecisionType opencl_precision_type{};
 };
 
 class EngineManager {

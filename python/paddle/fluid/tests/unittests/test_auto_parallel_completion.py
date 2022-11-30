@@ -17,14 +17,14 @@ import unittest.mock
 
 import paddle
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
+import paddle.static as static
 import paddle.tensor as tensor
-from paddle.fluid import layers
-from paddle.distributed.fleet import auto
+import paddle.utils as utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
+from paddle.fluid import layers
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -40,7 +40,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(
@@ -230,7 +230,7 @@ class AttentionLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(AttentionLayer, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.sequence_len = sequence_len
         self.embed_dim = self.hidden_size
@@ -434,7 +434,7 @@ class DecoderLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.max_position_embeddings = max_position_embeddings

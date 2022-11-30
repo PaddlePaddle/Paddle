@@ -95,7 +95,7 @@ class Beta(exponential_family.ExponentialFamily):
             paddle.stack([self.alpha, self.beta], -1)
         )
 
-        super(Beta, self).__init__(self._dirichlet._batch_shape)
+        super().__init__(self._dirichlet._batch_shape)
 
     @property
     def mean(self):

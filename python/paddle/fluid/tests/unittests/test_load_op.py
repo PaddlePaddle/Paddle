@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import os
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 
 
 class TestLoadOp(unittest.TestCase):
@@ -42,7 +45,7 @@ class TestLoadOp(unittest.TestCase):
             )
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        fluid.io.save_persistables(
+        paddle.distributed.io.save_persistables(
             exe,
             dirname=os.path.join(self.temp_dir.name, "./model"),
             main_program=main_prog,

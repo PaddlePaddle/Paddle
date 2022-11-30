@@ -17,12 +17,11 @@ import sys
 import time
 import numpy as np
 import struct
-from collections import namedtuple
 
 __all__ = []
 
 
-class ProgressBar(object):
+class ProgressBar:
     """progress bar"""
 
     def __init__(
@@ -57,16 +56,7 @@ class ProgressBar(object):
         )
 
     def _get_max_width(self):
-        if sys.version_info > (3, 3):
-            from shutil import get_terminal_size
-        else:
-            try:
-                from backports.shutil_get_terminal_size import get_terminal_size
-            except:
-
-                def get_terminal_size():
-                    terminal_size = namedtuple("terminal_size", "columns lines")
-                    return terminal_size(80, 24)
+        from shutil import get_terminal_size
 
         terminal_width, _ = get_terminal_size()
         terminal_width = terminal_width if terminal_width > 0 else 80

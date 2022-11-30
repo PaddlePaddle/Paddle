@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+from unittest import TestCase
+
+import numpy as np
+
 import paddle
 import paddle.nn.initializer as I
-import numpy as np
-import unittest
 from paddle.fluid.framework import _test_eager_guard
-from unittest import TestCase
 
 
 class TestDeformConv2D(TestCase):
@@ -141,7 +143,7 @@ class TestDeformConv2D(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.fluid.layers.deformable_conv(
+            y_v1 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=None,
@@ -158,7 +160,7 @@ class TestDeformConv2D(TestCase):
                 modulated=False,
             )
 
-            y_v2 = paddle.fluid.layers.deformable_conv(
+            y_v2 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=mask,
@@ -357,7 +359,7 @@ class TestDeformConv2DFunctional(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.fluid.layers.deformable_conv(
+            y_v1 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=None,
@@ -374,7 +376,7 @@ class TestDeformConv2DFunctional(TestCase):
                 modulated=False,
             )
 
-            y_v2 = paddle.fluid.layers.deformable_conv(
+            y_v2 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=mask,

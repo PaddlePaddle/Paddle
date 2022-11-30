@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import tempfile
 import os
+import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
-import paddle.profiler as profiler
-import paddle.profiler.utils as utils
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.io import Dataset, DataLoader
+import paddle.profiler as profiler
+import paddle.profiler.utils as utils
+from paddle.io import DataLoader, Dataset
 
 
 class TestProfiler(unittest.TestCase):
@@ -367,7 +369,7 @@ class RandomDataset(Dataset):
 
 class SimpleNet(nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.fc = nn.Linear(100, 10)
 
     def forward(self, image, label=None):

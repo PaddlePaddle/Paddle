@@ -126,14 +126,14 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-class KVHTTPServer(HTTPServer, object):
+class KVHTTPServer(HTTPServer):
     """
     it is a http server storing kv pairs.
     """
 
     def __init__(self, port, handler):
         """Init."""
-        super(KVHTTPServer, self).__init__(('', port), handler)
+        super().__init__(('', port), handler)
         self.delete_kv_lock = threading.Lock()
         self.delete_kv = {}
         self.kv_lock = threading.Lock()

@@ -13,27 +13,23 @@
 # limitations under the License.
 
 import math
+from collections.abc import Sequence
 from functools import reduce
 
 import numpy as np
+
 import paddle
-from paddle import framework
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
-from paddle.nn import Layer, LayerList
+from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import flatten, map_structure
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import core
-from paddle.static import default_startup_program
-from paddle.static import program_guard
+from paddle.nn import Layer
+from paddle.nn import functional as F
+from paddle.nn import initializer as I
+from paddle.static import default_startup_program, program_guard
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from .container import LayerList
 
 __all__ = []
 
@@ -188,7 +184,7 @@ class RNNCellBase(Layer):
                 return True
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
@@ -332,7 +328,7 @@ class SimpleRNNCell(RNNCellBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(SimpleRNNCell, self).__init__()
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
@@ -491,7 +487,7 @@ class LSTMCell(RNNCellBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(LSTMCell, self).__init__()
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
@@ -650,7 +646,7 @@ class GRUCell(RNNCellBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(GRUCell, self).__init__()
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
                 "hidden_size of {} must be greater than 0, but now equals to {}".format(
@@ -772,7 +768,7 @@ class RNN(Layer):
     """
 
     def __init__(self, cell, is_reverse=False, time_major=False):
-        super(RNN, self).__init__()
+        super().__init__()
         self.cell = cell
         if not hasattr(self.cell, "call"):
             # for non-dygraph mode, `rnn` api uses cell.call
@@ -846,7 +842,7 @@ class BiRNN(Layer):
     """
 
     def __init__(self, cell_fw, cell_bw, time_major=False):
-        super(BiRNN, self).__init__()
+        super().__init__()
         self.cell_fw = cell_fw
         self.cell_bw = cell_bw
         if cell_fw.input_size != cell_bw.input_size:
@@ -902,7 +898,7 @@ class RNNBase(LayerList):
         bias_ih_attr=None,
         bias_hh_attr=None,
     ):
-        super(RNNBase, self).__init__()
+        super().__init__()
         bidirectional_list = ["bidirectional", "bidirect"]
         self.mode = mode
         self.input_size = input_size
@@ -1301,7 +1297,7 @@ class SimpleRNN(RNNBase):
         else:
             raise ValueError("Unknown activation '{}'".format(activation))
         self.activation = activation
-        super(SimpleRNN, self).__init__(
+        super().__init__(
             mode,
             input_size,
             hidden_size,
@@ -1427,7 +1423,7 @@ class LSTM(RNNBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(LSTM, self).__init__(
+        super().__init__(
             "LSTM",
             input_size,
             hidden_size,
@@ -1546,7 +1542,7 @@ class GRU(RNNBase):
         bias_hh_attr=None,
         name=None,
     ):
-        super(GRU, self).__init__(
+        super().__init__(
             "GRU",
             input_size,
             hidden_size,

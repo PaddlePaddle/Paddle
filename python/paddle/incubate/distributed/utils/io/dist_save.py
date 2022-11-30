@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-import re
-import paddle
-from paddle.distributed.fleet.utils.log_util import logger
-from paddle.fluid.framework import dygraph_only
 import copy
+import re
 import sys
 
+import paddle
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.utils.log_util import logger
+from paddle.fluid.framework import dygraph_only
 
-__all__ = ["save"]
+from .save_for_auto import save_for_auto_inference
+
+__all__ = ["save", "save_for_auto_inference"]
 
 
 @dygraph_only

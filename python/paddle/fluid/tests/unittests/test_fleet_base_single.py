@@ -12,24 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import os
+
+import numpy as np
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 else:
     os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices.split(',')[0]
+import unittest
+
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
-import unittest
 import paddle.nn as nn
 
 
 class LinearNet(nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 

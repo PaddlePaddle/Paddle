@@ -16,19 +16,19 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 namespace funcs {
 
-using paddle::framework::To32BitIndex;
+using phi::To32BitIndex;
 
 template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                phi::DenseTensor* tensor,
                                                T num) {
-  auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
+  auto t = phi::EigenVector<T>::Flatten(*tensor);
   t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
 }
 
@@ -60,8 +60,8 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   for (int i = 0; i < Rank; i++) {
     permute[i] = axis[i];
   }
-  auto eigen_in = paddle::framework::EigenTensor<T, Rank>::From(in);
-  auto eigen_out = paddle::framework::EigenTensor<T, Rank>::From(*out);
+  auto eigen_in = phi::EigenTensor<T, Rank>::From(in);
+  auto eigen_out = phi::EigenTensor<T, Rank>::From(*out);
   auto* dev = context.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
@@ -89,8 +89,8 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                         size,
                         out->numel()));
 
-  auto in = paddle::framework::EigenMatrix<T>::From(input);
-  auto vec = paddle::framework::EigenVector<T>::Flatten(*out);
+  auto in = phi::EigenMatrix<T>::From(input);
+  auto vec = phi::EigenVector<T>::Flatten(*out);
 
   vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{0}}));
 }
@@ -151,8 +151,8 @@ void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& context,
                         in_dims[0],
                         out->numel()));
 
-  auto in = paddle::framework::EigenMatrix<T>::From(input);
-  auto vec = paddle::framework::EigenVector<T>::Flatten(*out);
+  auto in = phi::EigenMatrix<T>::From(input);
+  auto vec = phi::EigenVector<T>::Flatten(*out);
 
   vec.device(*context.eigen_device()) = in.mean(Eigen::array<int, 1>({{1}}));
 }
@@ -217,8 +217,8 @@ void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                         in_dims[0],
                         out->numel()));
 
-  auto in = paddle::framework::EigenMatrix<T>::From(input);
-  auto vec = paddle::framework::EigenVector<T>::Flatten(*out);
+  auto in = phi::EigenMatrix<T>::From(input);
+  auto vec = phi::EigenVector<T>::Flatten(*out);
 
   vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{1}}));
 }
