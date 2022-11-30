@@ -11,14 +11,16 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-import unittest
-import os
-import time
-import sys
-import random
 import functools
+import os
+import random
+import sys
+import time
+import unittest
+
 import numpy as np
 from PIL import Image
+
 import paddle
 import paddle.fluid as fluid
 from paddle.dataset.common import download
@@ -159,7 +161,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def tearDown(self):
         cmd = 'rm -rf post_training_quantization'
         os.system(cmd)
-        pass
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):

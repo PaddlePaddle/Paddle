@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import unittest
-import paddle
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
@@ -43,13 +44,13 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         for _ in range(20):
             bs = layers.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
-        batch_pos = layers.expand(
+        batch_pos = paddle.expand(
             layers.unsqueeze(paddle.arange(0, bs, 1, dtype=bs.dtype), [1]),
-            [1, beam_size],
+            [-1, beam_size],
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = stop_gradient
-        score = layers.gather_nd(x, topk_coordinates)
+        score = paddle.gather_nd(x, topk_coordinates)
         layers.increment(x=step_idx, value=1.0, in_place=True)
         layers.array_write(score, i=step_idx, array=scores)
         length_cond = layers.less_than(x=step_idx, y=max_len)

@@ -52,7 +52,7 @@ class TestGroupNormOpError(unittest.TestCase):
             def test_x_type():
                 input = np.random.random(2, 100, 3, 5).astype('float32')
                 groups = 2
-                fluid.layers.group_norm(input, groups)
+                paddle.static.nn.group_norm(input, groups)
 
             self.assertRaises(TypeError, test_x_type)
 
@@ -61,7 +61,7 @@ class TestGroupNormOpError(unittest.TestCase):
                     name='x2', shape=[2, 100, 3, 5], dtype='int32'
                 )
                 groups = 2
-                fluid.layers.group_norm(x2, groups)
+                paddle.static.nn.group_norm(x2, groups)
 
             self.assertRaises(TypeError, test_x_dtype)
 
@@ -219,7 +219,7 @@ class TestGroupNormException(unittest.TestCase):
         data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
 
         def attr_data_format():
-            out = fluid.layers.group_norm(
+            out = paddle.static.nn.group_norm(
                 input=data, groups=2, data_layout="NDHW"
             )
 

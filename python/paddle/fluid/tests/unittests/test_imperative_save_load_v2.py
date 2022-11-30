@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-import numpy as np
-import paddle
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
-
-import tempfile
+from paddle.optimizer import Adam
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -76,10 +77,10 @@ class SimpleLSTMRNN(fluid.Layer):
         self.hidden_array = []
 
         for i in range(self._num_layers):
-            pre_hidden = fluid.layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = fluid.layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
             pre_hidden = paddle.reshape(
@@ -91,7 +92,7 @@ class SimpleLSTMRNN(fluid.Layer):
 
         res = []
         for index in range(self._num_steps):
-            self._input = fluid.layers.slice(
+            self._input = paddle.slice(
                 input_embedding, axes=[1], starts=[index], ends=[index + 1]
             )
             self._input = paddle.reshape(
@@ -128,17 +129,17 @@ class SimpleLSTMRNN(fluid.Layer):
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
             )
         real_res = fluid.layers.concat(res, 0)
-        real_res = fluid.layers.transpose(x=real_res, perm=[1, 0, 2])
+        real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
         last_hidden = fluid.layers.concat(self.hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_hidden = fluid.layers.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
         last_cell = fluid.layers.concat(self.cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_cell = fluid.layers.transpose(x=last_cell, perm=[1, 0, 2])
+        last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
         return real_res, last_hidden, last_cell
 
 
@@ -229,7 +230,7 @@ class PtbModel(fluid.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 

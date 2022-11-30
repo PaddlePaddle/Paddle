@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import time
-import os
 import functools
+import glob
+import os
+import random
+import tarfile
 import time
 from functools import partial
 from os.path import expanduser
-import glob
-import random
-import tarfile
 
+import numpy as np
+from test_dist_base import RUN_STEP, TestDistRunnerBase, runtime_main
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
-import paddle
+import paddle.nn.functional as F
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -1148,7 +1149,7 @@ def multi_head_attention(
 
         # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -1160,7 +1161,7 @@ def multi_head_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
         return paddle.reshape(
@@ -1172,7 +1173,7 @@ def multi_head_attention(
         """
         Scaled Dot-Product Attention
         """
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
@@ -1304,7 +1305,7 @@ def prepare_encoder(
             ),
         )
 
-    src_word_emb = layers.scale(x=src_word_emb, scale=src_emb_dim**0.5)
+    src_word_emb = paddle.scale(x=src_word_emb, scale=src_emb_dim**0.5)
     src_pos_enc = layers.embedding(
         src_pos,
         size=[src_max_len, src_emb_dim],
@@ -1579,7 +1580,7 @@ def transformer(
     # cancel padding index in calculating the loss.
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
-        label = layers.label_smooth(
+        label = F.label_smooth(
             label=layers.one_hot(input=label, depth=trg_vocab_size),
             epsilon=label_smooth_eps,
         )
@@ -1590,8 +1591,8 @@ def transformer(
         soft_label=True if label_smooth_eps else False,
     )
     weighted_cost = cost * weights
-    sum_cost = layers.reduce_sum(weighted_cost)
-    token_num = layers.reduce_sum(weights)
+    sum_cost = paddle.sum(weighted_cost)
+    token_num = paddle.sum(weights)
     avg_cost = sum_cost / token_num
     avg_cost.stop_gradient = True
     return sum_cost, avg_cost, predict, token_num
@@ -1836,7 +1837,7 @@ def fast_decode(
                 input=layers.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
@@ -1862,7 +1863,7 @@ def fast_decode(
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
             length_cond = layers.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
-            layers.logical_and(x=length_cond, y=finish_cond, out=cond)
+            paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 
         finished_ids, finished_scores = layers.beam_search_decode(
             ids, scores, beam_size=beam_size, end_id=eos_idx

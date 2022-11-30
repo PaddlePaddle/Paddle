@@ -13,6 +13,7 @@
 # limitations under the License
 
 import unittest
+
 from paddle.distributed.auto_parallel.process_mesh_v2 import (
     ProcessMesh,
     compute_compatible_process_mesh,

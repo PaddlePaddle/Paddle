@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 import re
 
-from api_base import BaseAPI, PREFIX_TENSOR_NAME
+import yaml
+from api_base import PREFIX_TENSOR_NAME, BaseAPI
 
 inplace_out_type_map = {
     "Tensor": "Tensor&",

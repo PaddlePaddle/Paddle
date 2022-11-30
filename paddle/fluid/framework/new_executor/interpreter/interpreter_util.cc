@@ -116,14 +116,13 @@ AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
-  VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
-  // NOTE(zhiqiu): use the second queue of size of, so only one thread is used.
-  if (FLAGS_new_executor_serial_run) {
-    queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
-                          std::move(fn));
-  } else {
-    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
-  }
+  // queue_idx=0 : kCpuSync or kGpuSync
+  // queue_idx=1 : kGPUAsync
+  // when serial_run, always make queue_idx=1, so only one thread is used
+  size_t queue_idx =
+      (op_func_type == OpFuncType::kGpuAsync || FLAGS_new_executor_serial_run);
+  VLOG(8) << "Add task: " << queue_idx;
+  queue_group_->AddTask(queue_idx, std::move(fn));
 }
 
 bool IsCommunicationOp(const std::string& op_name) {
@@ -303,7 +302,7 @@ void BuildVariableScope(const framework::BlockDesc& block,
 OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
                              const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
-    return OpFuncType::kQueueSync;
+    return OpFuncType::kCpuSync;
   }
 
   PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place),
@@ -312,19 +311,19 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
 
   // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
   // computing. They execute serially in device thread and block CUDA kernel
-  // launching in other GPU OPs. To improve performance, set them as kQueueSync
+  // launching in other GPU OPs. To improve performance, set them as kGpuSync
   // and so that they would be dispatched to host thread.
   std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
   if (op->Type() == kCoalesceTensor &&
       op->Attr<bool>("set_constant") == false &&
       op->Attr<bool>("copy_data") == false) {
-    return OpFuncType::kQueueSync;
+    return OpFuncType::kGpuSync;
   }
 
   if (op->Type() == "shape") {
-    return OpFuncType::kQueueSync;
+    return OpFuncType::kGpuSync;
   }
-  return OpFuncType::kQueueAsync;
+  return OpFuncType::kGpuAsync;
 }
 
 void CreateAllOps(const framework::BlockDesc& block,
@@ -490,14 +489,6 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
-  std::unordered_set<int> no_data_transform_index;
-  for (auto& it : op_func_node->input_index) {
-    for (auto& id : it.second) {
-      no_data_transform_index.emplace(id);
-    }
-  }
-  op_func_node->no_data_transform_index =
-      no_data_transform_index;  // all index is no-need-transform
   op_func_node->dev_ctx_ = dev_ctx;
 }
 

@@ -13,15 +13,21 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Linear, Layer
+from paddle.fluid import Embedding, LayerNorm, Layer
+from paddle.nn import Linear
 from paddle.fluid.dygraph import to_variable, guard
-from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid import core
 import numpy as np
+import paddle.nn.functional as F
+from paddle.jit import TracedLayer
 
 np.set_printoptions(suppress=True)
 
@@ -426,12 +432,13 @@ class PrePostProcessLayer(Layer):
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
-        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
+        self._i2h = Linear(d_hid, d_inner_hid)
         self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
         hidden = self._i2h(x)
+        hidden = paddle.nn.functional.relu(hidden)
         if self._dropout_rate:
             hidden = fluid.layers.dropout(
                 hidden,
@@ -479,15 +486,16 @@ class MultiHeadAttentionLayer(Layer):
         reshaped_q = paddle.reshape(
             x=q, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
+
+        transpose_q = paddle.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
         reshaped_k = paddle.reshape(
             x=k, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
+        transpose_k = paddle.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
         reshaped_v = paddle.reshape(
             x=v, shape=[0, 0, self._n_head, self._d_value]
         )
-        transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+        transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
         product = fluid.layers.matmul(
@@ -513,7 +521,7 @@ class MultiHeadAttentionLayer(Layer):
         # combine heads
         if len(out.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
-        trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(out, perm=[0, 2, 1, 3])
         final_out = paddle.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
@@ -690,7 +698,7 @@ class PrepareEncoderDecoderLayer(Layer):
 
     def forward(self, src_word, src_pos):
         src_word_emb = self._input_emb(src_word)
-        src_word_emb = fluid.layers.scale(
+        src_word_emb = paddle.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5
         )
         # # TODO change this to fit dynamic length input
@@ -1087,7 +1095,7 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
-            label_out = fluid.layers.label_smooth(
+            label_out = F.label_smooth(
                 label=fluid.layers.one_hot(
                     input=label, depth=self._trg_vocab_size
                 ),
@@ -1100,8 +1108,8 @@ class TransFormer(Layer):
             soft_label=True if self._label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = fluid.layers.reduce_sum(weighted_cost)
-        token_num = fluid.layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, predict, token_num

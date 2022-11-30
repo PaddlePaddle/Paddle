@@ -30,7 +30,7 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import (
+from paddle.jit.dy2static.partial_program import (
     add_build_strategy_for,
     LazyInitialized,
 )
@@ -522,7 +522,7 @@ class _ProgramHolder:
         with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = nn.scale(
+                var = paddle.scale(
                     var, 1.0, name="translated_layer/scale_{}".format(i)
                 )
                 scale_output_vars.append(var)

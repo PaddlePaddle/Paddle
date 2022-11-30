@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-
 import functools
-import unittest
-import numpy as np
-
 import gc
+import math
+import unittest
+
+import numpy as np
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
@@ -405,7 +404,7 @@ class TestFakeInit(TranspilerTest):
         neg_emb_b_vec = paddle.reshape(neg_emb_b, shape=[-1, neg_num])
 
         true_logits = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(
+            paddle.sum(
                 fluid.layers.elementwise_mul(input_emb, true_emb_w),
                 dim=1,
                 keep_dim=True,
@@ -428,15 +427,15 @@ class TestFakeInit(TranspilerTest):
             true_logits, shape=[-1, neg_num], value=0.0, dtype='float32'
         )
 
-        true_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        true_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             true_logits, label_ones
         )
-        neg_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        neg_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             neg_logits, label_zeros
         )
         cost = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(true_xent, dim=1),
-            fluid.layers.reduce_sum(neg_xent, dim=1),
+            paddle.sum(true_xent, axis=1),
+            paddle.sum(neg_xent, axis=1),
         )
         avg_cost = fluid.layers.reduce_mean(cost)
 
@@ -1351,7 +1350,7 @@ class TestRemoteNce(TestDistLookupTableBase):
             )
         )
 
-        cost = fluid.layers.nce(
+        cost = paddle.static.nn.nce(
             input=input,
             label=label,
             num_total_classes=num_total_classes,
@@ -1440,14 +1439,18 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             ),
         )
 
-        cost = fluid.layers.hsigmoid(
-            input=emb,
-            label=label,
+        loss = paddle.nn.HSigmoidLoss(
+            feature_size=emb.shape[1],
             num_classes=num_total_classes,
-            path_table=path_table,
-            path_code=path_code,
             is_custom=True,
             is_sparse=is_sparse,
+        )
+
+        cost = loss(
+            input=emb,
+            label=label,
+            path_table=path_table,
+            path_code=path_code,
         )
         avg_cost = paddle.mean(cost)
         # optimizer

@@ -582,6 +582,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     Examples:
         .. code-block:: python
 
+            import paddle
             import numpy as np
             import paddle.fluid as fluid
 
@@ -591,7 +592,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
             batch_size = 32
             max_iter = 20
 
-
+            paddle.enable_static()
             def gen_train_data():
                 x_data = np.random.uniform(0, 255, (batch_size, 3, image_height,
                                                     image_width)).astype('float64')
@@ -601,12 +602,12 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
 
             def get_focal_loss(pred, label, fg_num, num_classes):
-                pred = fluid.layers.reshape(pred, [-1, num_classes])
-                label = fluid.layers.reshape(label, [-1, 1])
+                pred = paddle.reshape(pred, [-1, num_classes])
+                label = paddle.reshape(label, [-1, 1])
                 label.stop_gradient = True
                 loss = fluid.layers.sigmoid_focal_loss(
                     pred, label, fg_num, gamma=2.0, alpha=0.25)
-                loss = fluid.layers.reduce_sum(loss)
+                loss = paddle.sum(loss)
                 return loss
 
 
@@ -628,7 +629,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
                     fg_label = fluid.layers.greater_equal(label, data)
                     fg_label = fluid.layers.cast(fg_label, dtype='int32')
-                    fg_num = fluid.layers.reduce_sum(fg_label)
+                    fg_num = paddle.sum(fg_label, dtype='int32')
                     fg_num.stop_gradient = True
                     avg_loss = get_focal_loss(output, label, fg_num, num_classes)
                     return avg_loss
@@ -774,7 +775,7 @@ def detection_output(
         code_type='decode_center_size',
     )
     scores = nn.softmax(input=scores)
-    scores = nn.transpose(scores, perm=[0, 2, 1])
+    scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype
@@ -1738,7 +1739,9 @@ def ssd_loss(
     conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
-        return nn.flatten(x=var, axis=2)
+        out = paddle.flatten(var, 2, -1)
+        out = paddle.flatten(out, 0, 1)
+        return out
 
     # 1. Find matched bounding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -1765,7 +1768,7 @@ def ssd_loss(
     target_label.stop_gradient = True
     conf_loss = softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
-    actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape = paddle.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
@@ -1847,9 +1850,9 @@ def ssd_loss(
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
     loss = paddle.reshape(x=loss, shape=actual_shape)
-    loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
+    loss = paddle.sum(loss, axis=1, keepdim=True)
     if normalize:
-        normalizer = nn.reduce_sum(target_loc_weight)
+        normalizer = paddle.sum(target_loc_weight)
         loss = loss / normalizer
 
     return loss
@@ -2334,8 +2337,15 @@ def multi_box_head(
     """
 
     def _reshape_with_axis_(input, axis=1):
-        out = nn.flatten(x=input, axis=axis)
-        return out
+        # Note : axis!=0 in current references to this func
+        # if axis == 0:
+        #     x = paddle.flatten(input, 0, -1)
+        #     x = paddle.unsqueeze(x, 0)
+        #     return x
+        # else:
+        x = paddle.flatten(input, axis, -1)
+        x = paddle.flatten(x, 0, axis - 1)
+        return x
 
     def _is_list_or_tuple_(data):
         return isinstance(data, list) or isinstance(data, tuple)
@@ -2443,8 +2453,8 @@ def multi_box_head(
             stride=stride,
         )
 
-        mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
+        mbox_loc = paddle.transpose(mbox_loc, perm=[0, 2, 3, 1])
+        mbox_loc_flatten = paddle.flatten(mbox_loc, 1, -1)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -2456,8 +2466,9 @@ def multi_box_head(
             padding=pad,
             stride=stride,
         )
-        conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        conf_loc_flatten = nn.flatten(conf_loc, axis=1)
+
+        conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
+        conf_loc_flatten = paddle.flatten(conf_loc, 1, -1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
