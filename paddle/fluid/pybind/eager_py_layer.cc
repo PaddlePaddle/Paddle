@@ -448,7 +448,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     if (!PyTuple_Check(outputs) && !PyList_Check(outputs)) {
       Py_XDECREF(outputs);
       outputs = PyTuple_GetItem(outputs_tuple, 0);
-      // Py_INCREF(outputs);
+      Py_INCREF(outputs);
       Py_XDECREF(outputs_tuple);
     }
   }
