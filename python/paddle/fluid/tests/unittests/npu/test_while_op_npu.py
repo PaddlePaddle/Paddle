@@ -53,7 +53,7 @@ class TestWhileOp(unittest.TestCase):
         array_len = layers.fill_constant(shape=[1], dtype='int32', value=5)
         array_len = layers.cast(array_len, 'int64')
         array_len.stop_gradient = True
-        cond = layers.ones(shape=[1], dtype='int32')
+        cond = paddle.ones(shape=[1], dtype='int32')
         cond = layers.cast(cond, 'bool')
         j = layers.fill_constant(shape=[1], dtype='int32', value=1)
         j = layers.cast(j, 'int64')
@@ -62,7 +62,7 @@ class TestWhileOp(unittest.TestCase):
         array_len2 = layers.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
         cond2 = paddle.logical_or(x=j, y=array_len2)
-        cond2 = layers.ones(shape=[1], dtype='int32')
+        cond2 = paddle.ones(shape=[1], dtype='int32')
         cond2 = layers.cast(cond2, 'bool')
         while_op = paddle.static.nn.control_flow.While(cond=cond)
         while_op2 = paddle.static.nn.control_flow.While(cond=cond2)

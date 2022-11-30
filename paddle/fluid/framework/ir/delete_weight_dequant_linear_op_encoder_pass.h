@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,21 @@
 
 #pragma once
 
-#include <string>
-
-#include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
-namespace inference {
-namespace analysis {
+namespace framework {
+namespace ir {
 
-struct Argument;
-
-class IrGraphToProgramPass : public AnalysisPass {
+class DeleteWeightDequantLinearOpEncoderPass : public FusePassBase {
  public:
-  void RunImpl(Argument *argument) override;
+  DeleteWeightDequantLinearOpEncoderPass();
+  virtual ~DeleteWeightDequantLinearOpEncoderPass() {}
 
-  std::string repr() const override { return "ir_graph_to_param_pass"; }
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-}  // namespace analysis
-}  // namespace inference
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle

@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/size_kernel.h"
+#include "paddle/phi/kernels/numel_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/size_kernel_impl.h"
+#include "paddle/phi/kernels/impl/numel_kernel_impl.h"
 
-PD_REGISTER_KERNEL(size,
-                   CPU,
+PD_REGISTER_KERNEL(numel,
+                   GPU,
                    ALL_LAYOUT,
-                   phi::SizeKernel,
-                   uint8_t,
+                   phi::NumelKernel,
                    int16_t,
                    int,
                    int64_t,
