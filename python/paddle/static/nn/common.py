@@ -179,6 +179,7 @@ def fc(
     )
 
 
+@static_only
 def instance_norm(
     input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
 ):
@@ -522,6 +523,7 @@ def data_norm(
     return helper.append_activation(data_norm_out)
 
 
+@static_only
 @templatedoc()
 def group_norm(
     input,
