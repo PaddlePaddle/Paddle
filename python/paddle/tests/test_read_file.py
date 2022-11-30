@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import os
-import cv2
-import shutil
-import unittest
 import tempfile
+import unittest
+
+import cv2
 import numpy as np
 
 import paddle
-from paddle.vision.ops import read_file, decode_jpeg
+from paddle.vision.ops import decode_jpeg, read_file
 
 
 class TestReadFile(unittest.TestCase):
-
     def setUp(self):
         fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -52,11 +51,13 @@ class TestReadFile(unittest.TestCase):
             place = paddle.CUDAPlace(0)
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
-            out = exe.run(paddle.static.default_main_program(),
-                          fetch_list=[img])
+            out = exe.run(
+                paddle.static.default_main_program(), fetch_list=[img]
+            )
 
-            np.testing.assert_equal(out[0].shape,
-                                    img_cv2.transpose(2, 0, 1).shape)
+            np.testing.assert_equal(
+                out[0].shape, img_cv2.transpose(2, 0, 1).shape
+            )
 
     def test_read_file_decode_jpeg_dynamic(self):
         self.read_file_decode_jpeg()

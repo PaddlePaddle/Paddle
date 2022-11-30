@@ -90,8 +90,7 @@ TEST(test_prepare_op, test_prepare_op) {
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
   platform::CPUPlace place;
-  vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
-      place);
+  vin->MutableVar()->GetMutable<phi::DenseTensor>()->mutable_data<float>(place);
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
@@ -114,7 +113,7 @@ TEST(test_prepare_op, test_prepare_op) {
                               {}));
 }
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
 
 TEST(test_prepare_op, test_get_tensor_from_var) {
   std::shared_ptr<imperative::VarBase> vout_error(
@@ -138,7 +137,7 @@ TEST(test_prepare_op, test_prepare_data) {
   std::vector<int64_t> dims = {2, 5};
 
   // prepare an cpu only input
-  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
   vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
@@ -177,7 +176,7 @@ TEST(test_prepare_op, test_prepare_data) {
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<framework::LoDTensor>().place(), gpu_place));
+          vb->Var().Get<phi::DenseTensor>().place(), gpu_place));
     }
   }
 }
@@ -195,7 +194,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   std::vector<int64_t> dims = {2, 5};
 
   // prepare an cpu only input
-  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
   vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
@@ -234,7 +233,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<framework::LoDTensor>().place(), cpu_place));
+          vb->Var().Get<phi::DenseTensor>().place(), cpu_place));
     }
   }
 }
@@ -259,5 +258,5 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 USE_OP_ITSELF(split);
 USE_OP_ITSELF(relu);
 #ifdef PADDLE_WITH_MKLDNN
-PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 #endif

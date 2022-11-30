@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid.core as core
+
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.fluid.op import Operator
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestGetTensorFromSelectedRowsError(unittest.TestCase):
@@ -42,7 +42,6 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
 
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):
-
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():

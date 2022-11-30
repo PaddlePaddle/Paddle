@@ -28,6 +28,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
   auto dims = dims_arr.GetData();
   dev_ctx.template Alloc<XPUType>(x_grad);
   const auto* out_data = out_grad.data<XPUType>();
@@ -52,6 +53,14 @@ void ReduceSumGradKernel(const Context& dev_ctx,
     } else {
       ydims[i] = x.dims()[i];
     }
+  }
+
+  // use [1] to replace [], because xpu not support []
+  if (xdims.size() == 0) {
+    xdims = std::vector<int>({1});
+  }
+  if (ydims.size() == 0) {
+    ydims = std::vector<int>({1});
   }
 
   int r = xpu::broadcast<XPUType>(

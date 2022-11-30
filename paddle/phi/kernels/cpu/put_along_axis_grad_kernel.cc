@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/put_along_axis_grad_kernel.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -37,11 +37,10 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
       true,
       errors::PreconditionNotMet("PutAlongAxisGradOpKernel only runs on CPU."));
 
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
+  const auto& index_type = index.dtype();
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-    if (index_type == paddle::framework::proto::VarType::INT32) {
+    if (index_type == DataType::INT32) {
       paddle::operators::cpu_scatter_input_grad_kernel<T, int32_t>(
           // Here passing an unused argument out_grad, because it's
           // convenient to instantiate a bunch of template function with the
@@ -60,10 +59,10 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   if (value_grad) {
     value_grad->Resize(index.dims());
     value_grad->mutable_data<T>(dev_ctx.GetPlace());
-    if (index_type == paddle::framework::proto::VarType::INT32) {
+    if (index_type == DataType::INT32) {
       paddle::operators::cpu_gather_kernel<T, int32_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
-    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+    } else if (index_type == DataType::INT64) {
       paddle::operators::cpu_gather_kernel<T, int64_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
     }

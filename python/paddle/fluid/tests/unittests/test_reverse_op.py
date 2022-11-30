@@ -12,25 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from op_test import OpTest
+from test_attribute_var import UnittestBase
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
-
-from paddle.fluid.framework import program_guard, Program
-from test_attribute_var import UnittestBase
+from paddle.fluid import core
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestReverseOp(OpTest):
-
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [0]
@@ -54,63 +52,54 @@ class TestReverseOp(OpTest):
 
 
 class TestCase0(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [1]
 
 
 class TestCase0_neg(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [-1]
 
 
 class TestCase1(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [0, 1]
 
 
 class TestCase1_neg(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [0, -1]
 
 
 class TestCase2(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [0, 2]
 
 
 class TestCase2_neg(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [0, -2]
 
 
 class TestCase3(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [1, 2]
 
 
 class TestCase3_neg(TestReverseOp):
-
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [-1, -2]
 
 
 class TestCase4(unittest.TestCase):
-
     def test_error(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -118,9 +107,9 @@ class TestCase4(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            label = fluid.layers.data(name="label",
-                                      shape=[1, 1, 1, 1, 1, 1, 1, 1],
-                                      dtype="int64")
+            label = fluid.layers.data(
+                name="label", shape=[1, 1, 1, 1, 1, 1, 1, 1], dtype="int64"
+            )
             rev = fluid.layers.reverse(label, axis=[-1, -2])
 
         def _run_program():
@@ -131,11 +120,13 @@ class TestCase4(unittest.TestCase):
 
 
 class TestReverseLoDTensorArray(unittest.TestCase):
-
     def setUp(self):
         self.shapes = [[5, 25], [5, 20], [5, 5]]
-        self.place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.exe = fluid.Executor(self.place)
 
     def run_program(self, arr_len, axis=0):
@@ -148,7 +139,8 @@ class TestReverseLoDTensorArray(unittest.TestCase):
                 x.stop_gradient = False
                 inputs.append(x)
                 inputs_data.append(
-                    np.random.random(self.shapes[i]).astype('float32'))
+                    np.random.random(self.shapes[i]).astype('float32')
+                )
 
             tensor_array = fluid.layers.create_array(dtype='float32')
             for i in range(arr_len):
@@ -157,16 +149,21 @@ class TestReverseLoDTensorArray(unittest.TestCase):
 
             reverse_array = fluid.layers.reverse(tensor_array, axis=axis)
             output, _ = fluid.layers.tensor_array_to_tensor(reverse_array)
-            loss = fluid.layers.reduce_sum(output)
+            loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
             input_grads = list(
-                map(main_program.global_block().var,
-                    [x.name + "@GRAD" for x in inputs]))
+                map(
+                    main_program.global_block().var,
+                    [x.name + "@GRAD" for x in inputs],
+                )
+            )
 
             feed_dict = dict(zip([x.name for x in inputs], inputs_data))
-            res = self.exe.run(main_program,
-                               feed=feed_dict,
-                               fetch_list=input_grads + [output.name])
+            res = self.exe.run(
+                main_program,
+                feed=feed_dict,
+                fetch_list=input_grads + [output.name],
+            )
 
             return np.hstack(inputs_data[::-1]), res
 
@@ -174,7 +171,7 @@ class TestReverseLoDTensorArray(unittest.TestCase):
         gt, res = self.run_program(arr_len=3)
         self.check_output(gt, res)
         # test with tuple type of axis
-        gt, res = self.run_program(arr_len=3, axis=(0, ))
+        gt, res = self.run_program(arr_len=3, axis=(0,))
         self.check_output(gt, res)
 
     def test_case2(self):
@@ -203,7 +200,6 @@ class TestReverseLoDTensorArray(unittest.TestCase):
 
 
 class TestReverseAxisTensor(UnittestBase):
-
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
@@ -229,8 +225,9 @@ class TestReverseAxisTensor(UnittestBase):
             gt = res[0][::-1, :, ::-1]
             np.testing.assert_allclose(res[1], gt)
 
-            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
-                                               exe)
+            paddle.static.save_inference_model(
+                self.save_path, [x], [feat, out], exe
+            )
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
             gt = infer_outs[0][::-1, :, ::-1]
@@ -250,7 +247,6 @@ class TestReverseAxisTensor(UnittestBase):
 
 
 class TestReverseAxisListTensor(TestReverseAxisTensor):
-
     def path_prefix(self):
         return 'reverse_tensors'
 
@@ -263,15 +259,18 @@ class TestReverseAxisListTensor(TestReverseAxisTensor):
         out = paddle.fluid.layers.reverse(x, axes)
 
         # check attrs
-        axis_attrs = paddle.static.default_main_program().block(
-            0).ops[-1].all_attrs()["axis"]
+        axis_attrs = (
+            paddle.static.default_main_program()
+            .block(0)
+            .ops[-1]
+            .all_attrs()["axis"]
+        )
         self.assertTrue(axis_attrs[0].name, axes[0].name)
         self.assertTrue(axis_attrs[1].name, axes[1].name)
         return out
 
 
 class TestReverseDoubleGradCheck(unittest.TestCase):
-
     def reverse_wrapper(self, x):
         return fluid.layers.reverse(x[0], [0, 1])
 
@@ -286,17 +285,13 @@ class TestReverseDoubleGradCheck(unittest.TestCase):
         out = fluid.layers.reverse(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.double_grad_check([data],
-                                           out,
-                                           x_init=[data_arr],
-                                           place=place,
-                                           eps=eps)
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(self.reverse_wrapper,
-                                                       [data],
-                                                       out,
-                                                       x_init=[data_arr],
-                                                       place=place)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.reverse_wrapper, [data], out, x_init=[data_arr], place=place
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -308,7 +303,6 @@ class TestReverseDoubleGradCheck(unittest.TestCase):
 
 
 class TestReverseTripleGradCheck(unittest.TestCase):
-
     def reverse_wrapper(self, x):
         return fluid.layers.reverse(x[0], [0, 1])
 
@@ -323,17 +317,13 @@ class TestReverseTripleGradCheck(unittest.TestCase):
         out = fluid.layers.reverse(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.triple_grad_check([data],
-                                           out,
-                                           x_init=[data_arr],
-                                           place=place,
-                                           eps=eps)
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.triple_grad_check_for_dygraph(self.reverse_wrapper,
-                                                       [data],
-                                                       out,
-                                                       x_init=[data_arr],
-                                                       place=place)
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.reverse_wrapper, [data], out, x_init=[data_arr], place=place
+        )
 
     def test_grad(self):
         paddle.enable_static()

@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest as unittest
+
+import paddle.fluid as fluid
 
 
 class TestGetAndSetFlags(unittest.TestCase):
-
     def test_api(self):
         flags = {
             'FLAGS_eager_delete_tensor_gb': 1.0,
-            'FLAGS_check_nan_inf': True
+            'FLAGS_check_nan_inf': True,
         }
 
         fluid.set_flags(flags)
@@ -38,7 +38,6 @@ class TestGetAndSetFlags(unittest.TestCase):
 
 
 class TestGetAndSetFlagsErrors(unittest.TestCase):
-
     def test_errors(self):
         flags_list = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
         flag = 1

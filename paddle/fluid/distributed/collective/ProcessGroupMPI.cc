@@ -15,7 +15,6 @@
 #include "paddle/fluid/distributed/collective/ProcessGroupMPI.h"
 #include <chrono>
 #include "paddle/fluid/distributed/collective/Common.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 
 constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {

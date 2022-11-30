@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -24,8 +21,9 @@ class TestDygraphShardingOptimizerStage2(TestMultipleGpus):
 
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_optimizer_stage2(self):
-        self.run_mnist_2gpu('dygraph_sharding_optimizer_stage2.py',
-                            eager_mode=False)
+        self.run_mnist_2gpu(
+            'dygraph_sharding_optimizer_stage2.py', eager_mode=False
+        )
 
 
 if __name__ == "__main__":

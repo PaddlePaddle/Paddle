@@ -56,7 +56,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -93,6 +92,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
+#include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -180,6 +180,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#endif
+
+#if defined(PADDLE_WITH_RPC)
+#include "paddle/fluid/pybind/rpc.h"
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
@@ -548,7 +552,7 @@ static void inline CreateVariableIfNotExist(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
-        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
@@ -606,6 +610,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindEager(&m);
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
+  BindXpuStream(&m);
   BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -696,14 +701,14 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
-    framework::Tensor tensor;
+    phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
-      paddle::framework::TensorFromDLPack(dl, &tensor);
+      paddle::framework::TensorFromDLPack(dmt, &tensor);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (dl.device.device_type == kDLGPU) {
-      paddle::framework::TensorFromDLPack(dl, &tensor);
+      paddle::framework::TensorFromDLPack(dmt, &tensor);
     }
 #endif
     return tensor;
@@ -848,6 +853,8 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
+  m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
+
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
@@ -929,8 +936,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](const Variable &var) -> float { return var.Get<float>(); })
       .def(
           "get_tensor",
-          [](Variable &self) -> LoDTensor * {
-            return self.GetMutable<LoDTensor>();
+          [](Variable &self) -> phi::DenseTensor * {
+            return self.GetMutable<phi::DenseTensor>();
           },
           py::return_value_policy::reference)
       .def("get_bytes",
@@ -1318,6 +1325,10 @@ All parameter, weight, gradient are variables in Paddle.
                         paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetZeroAllocator(place)
                             .get());
+                    context->SetHostZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(paddle::platform::CPUPlace())
+                            .get());
                     return context;
                   })
       .def_static(
@@ -1341,6 +1352,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(place)
+          .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
       return context;
 #endif
@@ -1402,6 +1417,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
+        .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetZeroAllocator(paddle::platform::CPUPlace())
         .get());
       context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -1609,7 +1628,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](Executor &self,
               ExecutorPrepareContext *ctx,
               Scope *scope,
-              std::map<std::string, const LoDTensor *> *feed_targets,
+              std::map<std::string, const phi::DenseTensor *> *feed_targets,
               std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true,
               bool create_vars = true,
@@ -1691,11 +1710,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               Scope *scope,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<phi::DenseTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
-               framework::LoDTensor t;
+               phi::DenseTensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);
@@ -1811,7 +1830,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const LoDTensor &,
+            const phi::DenseTensor &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("set_feed_variable",
@@ -1826,7 +1845,7 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
-            return py::cast(PADDLE_GET(LoDTensor, var));
+            return py::cast(PADDLE_GET(phi::DenseTensor, var));
           } else {
             return py::cast(PADDLE_GET(LoDTensorArray, var));
           }
@@ -1877,7 +1896,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("__len__", [](LoDTensorArray &self) { return self.size(); })
       .def("__setitem__",
-           [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
+           [](LoDTensorArray &self, size_t i, const phi::DenseTensor &t) {
              PADDLE_ENFORCE_LT(i,
                                self.size(),
                                platform::errors::InvalidArgument(
@@ -1888,7 +1907,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def(
           "append",
-          [](LoDTensorArray &self, const LoDTensor &t) {
+          [](LoDTensorArray &self, const phi::DenseTensor &t) {
             self.emplace_back();
             self.back().ShareDataWith(t);
             self.back().set_lod(t.lod());
@@ -1935,7 +1954,10 @@ All parameter, weight, gradient are variables in Paddle.
             py::list res(self.size());
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
-                auto &data = PADDLE_GET(LoDTensor, self[i]);
+                auto &data = PADDLE_GET(phi::DenseTensor, self[i]);
+                res[i] = py::cast(std::move(data));
+              } else if (data_is_sparse_coo_tensor(self[i])) {
+                auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else {
                 auto &data = PADDLE_GET(LoDTensorArray, self[i]);
@@ -1953,9 +1975,9 @@ All parameter, weight, gradient are variables in Paddle.
 
       .def(
           "append",
-          [](FetchList &self, const LoDTensor &t) {
+          [](FetchList &self, const phi::DenseTensor &t) {
             self.emplace_back();
-            auto &lod_tensor = PADDLE_GET(LoDTensor, self.back());
+            auto &lod_tensor = PADDLE_GET(phi::DenseTensor, self.back());
             lod_tensor.ShareDataWith(t);
             lod_tensor.set_lod(t.lod());
           },
@@ -1984,7 +2006,7 @@ All parameter, weight, gradient are variables in Paddle.
               py::list tmp(self[i].size());
               for (size_t j = 0; j < self[i].size(); ++j) {
                 if (data_is_lod_tensor(self[i][j])) {
-                  auto &var = PADDLE_GET(LoDTensor, self[i][j]);
+                  auto &var = PADDLE_GET(phi::DenseTensor, self[i][j]);
                   tmp[j] = py::cast(std::move(var));
                 } else {
                   auto &var = PADDLE_GET(LoDTensorArray, self[i][j]);
@@ -2054,7 +2076,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
-  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+  m.def("nvprof_nvtx_push", [](const std::string &name) {
+    platform::CudaNvtxRangePush(name, platform::NvtxRangeColor::Green);
+  });
   m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
@@ -2237,6 +2261,9 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::HostPythonNode::input_shapes)
       .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
       .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
+      .def_readwrite("attributes",
+                     &paddle::platform::HostPythonNode::attributes)
+      .def_readwrite("op_id", &paddle::platform::HostPythonNode::op_id)
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",
@@ -2310,10 +2337,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
-  m.def("enable_input_shape_recorder",
-        &paddle::platform::EnableInputShapeRecorder);
-  m.def("disable_input_shape_recorder",
-        &paddle::platform::DisableInputShapeRecorder);
+  m.def("enable_op_info_recorder", &paddle::platform::EnableOpInfoRecorder);
+  m.def("disable_op_info_recorder", &paddle::platform::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
@@ -2598,6 +2623,19 @@ All parameter, weight, gradient are variables in Paddle.
   BindNeighborSampleResult(&m);
   BindGraphGpuWrapper(&m);
 #endif
+#endif
+#if defined(PADDLE_WITH_RPC)
+  BindWorkerInfo(&m);
+  BindFuture(&m);
+  InitAndSetAgentInstance(&m);
+  InvokeRpc(&m);
+  StartWorker(&m);
+  StartClient(&m);
+  StopWorker(&m);
+  GetWorkerInfo(&m);
+  GetWorkerInfoByRank(&m);
+  GetCurrentWorkerInfo(&m);
+  GetAllWorkerInfos(&m);
 #endif
 }
 }  // namespace pybind

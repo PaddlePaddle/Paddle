@@ -37,7 +37,7 @@ namespace operators {
 template <typename DeviceContext>
 struct FillConstantVisitor {
   FillConstantVisitor(const DeviceContext &dev_ctx,
-                      framework::LoDTensor *tensor,
+                      phi::DenseTensor *tensor,
                       const float value,
                       framework::proto::VarType::Type dtype,
                       const framework::ExecutionContext &context)
@@ -92,7 +92,7 @@ struct FillConstantVisitor {
   }
 
   const DeviceContext &dev_ctx_;
-  framework::LoDTensor *tensor_;
+  phi::DenseTensor *tensor_;
   float value_;
   framework::proto::VarType::Type dtype_;
   const framework::ExecutionContext &context_;
@@ -104,8 +104,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_var_names = context.InputNames("Input");
     auto out_var_names = context.OutputNames("Output");
-    const auto &in_tensors = context.MultiInput<framework::LoDTensor>("Input");
-    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
+    const auto &in_tensors = context.MultiInput<phi::DenseTensor>("Input");
+    auto out_tensors = context.MultiOutput<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE_GT(in_var_names.size(),
                       static_cast<size_t>(0),
@@ -120,7 +120,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                           in_var_names.size(),
                           out_var_names.size()));
 
-    // Input & Output check: only support LoDTensor
+    // Input & Output check: only support phi::DenseTensor
     bool has_not_init_in_vars = false;
     for (size_t i = 0; i < in_tensors.size(); ++i) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -227,7 +227,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                        align_size);
 
     // Alloc the continuous space
-    auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
+    auto fused_tensor = context.Output<phi::DenseTensor>("FusedOutput");
     void *fused_tensor_ptr =
         fused_tensor->Resize(phi::make_ddim({static_cast<int64_t>(numel)}))
             .mutable_data(context.GetPlace(),
@@ -317,7 +317,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
 
  private:
   void GetMemSizeAndDtype(
-      const std::vector<const framework::LoDTensor *> &lod_tensors,
+      const std::vector<const phi::DenseTensor *> &lod_tensors,
       const std::vector<std::string> var_names,
       size_t *numel,
       const size_t &size_of_dtype,
@@ -414,7 +414,7 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -426,17 +426,17 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(vector<LoDTensor>) The input tensors of"
+             "(vector<phi::DenseTensor>) The input tensors of"
              " coalesce_tensor operator.")
         .AsDuplicable();
     AddOutput("Output",
-              "(vector<LoDTensor>) The output "
+              "(vector<phi::DenseTensor>) The output "
               "tensors of coalesce_tensor operator. And the address "
               "of output tensors are continuous, they are sliced from the "
               "tensor of FusedOutput.")
         .AsDuplicable();
     AddOutput("FusedOutput",
-              "(LoDTensor) The output tensor "
+              "(phi::DenseTensor) The output tensor "
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
     AddAttr<int>("dtype", "The output data type.");

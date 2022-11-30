@@ -11,15 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..runtime.collective_runtime import CollectiveRuntime
-from ..runtime.parameter_server_runtime import ParameterServerRuntime
 from ...ps.the_one_ps import TheOnePSRuntime
+from ..runtime.collective_runtime import CollectiveRuntime
 
 __all__ = []
 
 
-class RuntimeFactory(object):
-
+class RuntimeFactory:
     def __init__(self):
         pass
 

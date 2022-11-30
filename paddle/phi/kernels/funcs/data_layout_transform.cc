@@ -48,16 +48,16 @@ void* GetDataFromTensor(const DenseTensor& tensor,
     case dnnl::memory::data_type::bf16:
       return to_void_cast(tensor.data<dtype::bfloat16>());
     default:
-      PADDLE_THROW(errors::InvalidArgument("Wrong mkldnn type provided."));
+      PADDLE_THROW(errors::InvalidArgument("Wrong oneDNN type provided."));
   }
 }
 
-void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const DenseTensor& in,
-                                    DenseTensor* out,
-                                    Place place,
-                                    bool always_copy) {
+void TransDataLayoutFromOneDNN(DataLayout in_layout,
+                               DataLayout out_layout,
+                               const DenseTensor& in,
+                               DenseTensor* out,
+                               Place place,
+                               bool always_copy) {
   // Set default as NCHW in case not specified
   out_layout = out_layout == DataLayout::ANY ? DataLayout::NCHW : out_layout;
 
@@ -115,8 +115,6 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
   out->set_layout(DataLayout::kNCHW);
   VLOG(10) << "out->layout: " << out->layout() << " in->dims: " << in.dims()
            << " out->dims: " << out->dims();
-  // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(OneDNNMemoryFormat::undef);
 }
 
 #endif

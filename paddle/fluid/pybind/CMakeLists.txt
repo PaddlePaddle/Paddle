@@ -22,7 +22,6 @@ set(PYBIND_DEPS
     analysis_predictor
     imperative_profiler
     imperative_flag
-    save_load_util
     dlpack_tensor
     device_context
     gloo_wrapper
@@ -48,6 +47,20 @@ if(WITH_PSCORE)
   if(WITH_HETERPS)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()
+endif()
+if(WITH_RPC)
+  set(PYBIND_DEPS
+      ${PYBIND_DEPS}
+      paddle_rpc
+      brpc
+      ssl
+      crypto
+      protobuf
+      zlib
+      leveldb
+      snappy
+      gflags
+      glog)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -124,6 +137,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
     op_function1.cc
@@ -144,21 +158,15 @@ if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
-    if(WITH_PSCORE)
-      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
-    endif()
+  endif()
+  if(WITH_XPU_BKCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_bkcl)
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
   endif()
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_mpi)
-  endif()
-  if(WITH_ASCEND_CL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
-    if(WITH_PSCORE)
-      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
-    endif()
   endif()
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_custom)
@@ -170,6 +178,7 @@ if(WITH_PYTHON)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
+set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
@@ -190,7 +199,7 @@ endif()
 
 if(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
   )
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -201,11 +210,11 @@ endif()
 if(WITH_PSCORE)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
-        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
     )
   else()
     set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
     )
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -216,6 +225,24 @@ if(WITH_PSCORE)
   list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
+endif()
+
+if(WITH_RPC)
+  if(WITH_ARM_BRPC)
+    set(DISTRIBUTE_COMPILE_FLAGS
+        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    )
+  else()
+    set(DISTRIBUTE_COMPILE_FLAGS
+        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    )
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
+  endif()
+  set_source_files_properties(rpc.cc PROPERTIES COMPILE_FLAGS
+                                                ${DISTRIBUTE_COMPILE_FLAGS})
+  set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
@@ -263,6 +290,10 @@ if(WITH_PYTHON)
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
+  endif()
+
+  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
   add_executable(op_function_generator op_function_generator.cc)
@@ -577,29 +608,55 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
+  # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
+  # add a prefix `lib` by default, but on Windows, cc_library(paddle SHARED ..)
+  # will not add prefix, so it generate paddle.lib and paddle.pyd,
+  # we need to pay attention to the difference
+  set(SHARD_LIB_NAME paddle)
+  if(WIN32)
+    set(SHARD_LIB_NAME libpaddle)
+  endif()
+  set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
   cc_library(
-    libpaddle SHARED
+    ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
+  # TODO(zhiqiu): some symbols not exported even setting the following
+  # property. Need to find a better way.
+
+  # if(WIN32)
+  #   set_property(TARGET ${SHARD_LIB_NAME}
+  #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  # endif()
+
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-    add_dependencies(libpaddle legacy_eager_codegen)
-    add_dependencies(libpaddle eager_legacy_op_function_generator_cmd)
+    add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
+    add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)
   endif()
 
   if(NOT APPLE AND NOT WIN32)
-    target_link_libraries(libpaddle rt)
+    target_link_libraries(${SHARD_LIB_NAME} rt)
   endif()
 
   if(WITH_ROCM)
-    target_link_libraries(libpaddle ${ROCM_HIPRTC_LIB})
+    target_link_libraries(${SHARD_LIB_NAME} ${ROCM_HIPRTC_LIB})
   endif()
 
   if(WITH_MPI)
-    target_link_libraries(libpaddle ${MPI_CXX_LIBRARIES})
+    target_link_libraries(${SHARD_LIB_NAME} ${MPI_CXX_LIBRARIES})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  target_link_libraries(libpaddle ${os_dependency_modules})
-  add_dependencies(libpaddle op_function_generator_cmd)
+  target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
+  add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
+
+  if(APPLE)
+    string(REGEX REPLACE ".+/(.+)" "\\1" PYTHON_LIBRARY_NAME
+                         ${PYTHON_LIBRARIES})
+    # target_link_libraries(${SHARD_LIB_NAME} "-Wl,-rpath,${PYTHON_LIBRARY_NAME}")
+  else()
+    target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
+  endif()
+
 endif()

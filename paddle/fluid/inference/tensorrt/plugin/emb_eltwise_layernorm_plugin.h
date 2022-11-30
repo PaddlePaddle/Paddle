@@ -95,7 +95,7 @@ class EmbEltwiseLayernormPluginDynamicImpl
   int hidden_size_;
   float eps_;
 
-  framework::Tensor in_ptr_tensor_, emb_ptr_tensor_;
+  phi::DenseTensor in_ptr_tensor_, emb_ptr_tensor_;
   int device_id_{0};
   bool is_initialized_{false};
 };
@@ -303,10 +303,11 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, eps_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,

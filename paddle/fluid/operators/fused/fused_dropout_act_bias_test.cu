@@ -49,8 +49,8 @@ struct TestFusedDropoutActBias {
   bool is_upscale_in_train;
   bool is_test;  // default false,  Set to true for inference only
   bool has_bias = true;
-  framework::Tensor src, bias, out, mask;
-  framework::Tensor dsrc, dbias;
+  phi::DenseTensor src, bias, out, mask;
+  phi::DenseTensor dsrc, dbias;
 
   std::vector<T> src_vec, bias_vec, out_vec, mask_vec;
   std::vector<T> correct_out, correct_dsrc, correct_dbias;

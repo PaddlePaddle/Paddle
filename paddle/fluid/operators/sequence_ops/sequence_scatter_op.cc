@@ -22,8 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 class SequenceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:

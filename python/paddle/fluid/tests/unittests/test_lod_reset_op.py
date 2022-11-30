@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
 class TestLodResetOpByAttr(OpTest):
-
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float64")
@@ -46,7 +45,6 @@ class TestLodResetOpByAttr(OpTest):
 
 
 class TestLodResetOpByInput(OpTest):
-
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float64")
@@ -57,7 +55,7 @@ class TestLodResetOpByInput(OpTest):
         target_lod = [4, 3, 3]
         self.inputs = {
             'X': (x, lod),
-            'Y': np.array([target_offset_lod]).astype('int32')
+            'Y': np.array([target_offset_lod]).astype('int32'),
         }
         self.outputs = {'Out': (x, [target_lod])}
 
@@ -71,7 +69,6 @@ class TestLodResetOpByInput(OpTest):
 
 
 class TestLodResetOpBoth(OpTest):
-
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float64")
@@ -81,7 +78,7 @@ class TestLodResetOpBoth(OpTest):
         target_lod_in = [4, 3, 3]
         self.inputs = {
             'X': (x, lod),
-            'Y': np.array(target_offset_lod_in).astype('int32')
+            'Y': np.array(target_offset_lod_in).astype('int32'),
         }
         self.attrs = {'target_lod': target_offset_lod_attr}
         self.outputs = {'Out': (x, [target_lod_in])}
@@ -96,7 +93,6 @@ class TestLodResetOpBoth(OpTest):
 
 
 class TestLodResetOpYIsLoDTensor(OpTest):
-
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float64")
@@ -116,7 +112,6 @@ class TestLodResetOpYIsLoDTensor(OpTest):
 
 
 class TestLodAppendOpByAttr(OpTest):
-
     def setUp(self):
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float64")
@@ -140,7 +135,6 @@ class TestLodAppendOpByAttr(OpTest):
 
 
 class TestLodResetOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input must be Variable.
@@ -150,13 +144,12 @@ class TestLodResetOpError(unittest.TestCase):
 
             # Input(x) dtype must be float32 or float64 or int32 or int64
             for dtype in ["bool", "float16"]:
-                x2 = fluid.layers.data(name='x2' + dtype,
-                                       shape=[4],
-                                       dtype=dtype)
-                y2 = fluid.layers.data(name='y2' + dtype,
-                                       shape=[4],
-                                       dtype='int32',
-                                       lod_level=2)
+                x2 = fluid.layers.data(
+                    name='x2' + dtype, shape=[4], dtype=dtype
+                )
+                y2 = fluid.layers.data(
+                    name='y2' + dtype, shape=[4], dtype='int32', lod_level=2
+                )
                 self.assertRaises(TypeError, fluid.layers.lod_reset, x2, y2)
 
 

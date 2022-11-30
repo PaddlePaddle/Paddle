@@ -88,12 +88,12 @@ template <typename T>
 class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto x = ctx.Input<Tensor>("X");
-    auto y = ctx.Input<Tensor>("Y");
-    auto* squared_x = ctx.Output<Tensor>("SquaredX");
-    auto* squared_y = ctx.Output<Tensor>("SquaredY");
-    auto* squared_xy = ctx.Output<Tensor>("SquaredXY");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto y = ctx.Input<phi::DenseTensor>("Y");
+    auto* squared_x = ctx.Output<phi::DenseTensor>("SquaredX");
+    auto* squared_y = ctx.Output<phi::DenseTensor>("SquaredY");
+    auto* squared_xy = ctx.Output<phi::DenseTensor>("SquaredXY");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
     T scalar = static_cast<T>(ctx.Attr<float>("scalar"));
 

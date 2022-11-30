@@ -12,28 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
-
     def __init__(self):
-        super(LeNetDygraph, self).__init__()
-        self.features = nn.Sequential(nn.Conv2D(1, 6, 3, stride=1, padding=1),
-                                      nn.ReLU(),
-                                      paddle.fluid.dygraph.Pool2D(2, 'max', 2),
-                                      nn.Conv2D(6, 16, 5, stride=1, padding=0),
-                                      nn.ReLU(),
-                                      paddle.fluid.dygraph.Pool2D(2, 'max', 2))
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            nn.ReLU(),
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            nn.ReLU(),
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+        )
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -41,7 +40,6 @@ class LeNetDygraph(fluid.dygraph.Layer):
 
 
 class TestLayerChildren(unittest.TestCase):
-
     def func_apply_init_weight(self):
         with fluid.dygraph.guard():
             net = LeNetDygraph()

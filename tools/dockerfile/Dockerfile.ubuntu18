@@ -55,9 +55,7 @@ ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 
 RUN apt-get update && \
-  apt-get install -y python2.7 python2.7-dev \
-  python3.6 python3.6-dev \
-  python3.7 python3.7-dev \
+  apt-get install -y python3.7 python3.7-dev \
   python3.8 python3.8-dev python3.8-distutils \
   python3.9 python3.9-dev python3.9-distutils && \
   rm /usr/bin/python && ln -s /usr/bin/python3.7 /usr/bin/python && \
@@ -69,24 +67,19 @@ RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b
 WORKDIR /home/setuptools-50.3.2
 RUN python3.9 setup.py build && python3.9 setup.py install && \
   python3.8 setup.py build && python3.8 setup.py install && \
-  python3.7 setup.py build && python3.7 setup.py install && \
-  python3.6 setup.py build && python3.6 setup.py install
-WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e442e80deffbb8d0676b93261d761b1f0ef8fb/setuptools-40.6.2.zip && apt-get -y install unzip && unzip setuptools-40.6.2.zip
-WORKDIR /home/setuptools-40.6.2
-RUN python2.7 setup.py build && python2.7 setup.py install
+  python3.7 setup.py build && python3.7 setup.py install
+
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
 WORKDIR pip-20.0.1
-RUN python2.7 setup.py install && \
-  python3.9 setup.py install && \
+
+RUN python3.9 setup.py install && \
   python3.8 setup.py install && \
-  python3.7 setup.py install && \
-  python3.6 setup.py install
+  python3.7 setup.py install
 
 WORKDIR /home
-RUN rm setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
-    rm -r setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
+RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
+    rm -r setuptools-50.3.2 pip-20.0.1
 RUN rm /usr/local/bin/pip && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip && \
   rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
 
@@ -116,42 +109,32 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-RUN pip3.6 --no-cache-dir install ipython==5.3.0 && \
-    pip3.6 --no-cache-dir install ipykernel==4.6.0 wheel && \
-    pip3.7 --no-cache-dir install ipython==5.3.0 && \
+RUN pip3.7 --no-cache-dir install ipython==5.3.0 && \
     pip3.7 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.8 --no-cache-dir install ipython==5.3.0 && \
     pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.9 --no-cache-dir install ipython==5.3.0 && \
-    pip3.9 --no-cache-dir install ipykernel==4.6.0 wheel && \
-    pip2.7 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
-    pip2.7 --no-cache-dir install ipykernel==4.6.0 wheel 
+    pip3.9 --no-cache-dir install ipykernel==4.6.0 wheel
 
 #For docstring checker
-RUN pip3.6 --no-cache-dir install pytest astroid isort && \
-    pip3.7 --no-cache-dir install pytest astroid isort && \
+RUN pip3.7 --no-cache-dir install pytest astroid isort && \
     pip3.8 --no-cache-dir install pytest astroid isort && \
-    pip3.9 --no-cache-dir install pytest astroid isort && \
-    pip2.7 --no-cache-dir install pytest astroid isort
+    pip3.9 --no-cache-dir install pytest astroid isort
 
 #For pre-commit
-RUN pip3.6 --no-cache-dir install --upgrade pip==20.3.3 && \
-    pip3.7 --no-cache-dir install --upgrade pip && \
+RUN pip3.7 --no-cache-dir install --upgrade pip && \
     pip3.8 --no-cache-dir install --upgrade pip && \
     pip3.9 --no-cache-dir install --upgrade pip
 
-RUN pip3.6 --no-cache-dir install pre-commit==2.1.1 pylint==2.12.0 && \
-    pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
-    pip3.6 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
 COPY ./python/requirements.txt /root/
-RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.7 --no-cache-dir install -r /root/requirements.txt && \
+RUN pip3.7 --no-cache-dir install -r /root/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
     pip3.9 --no-cache-dir install -r /root/requirements.txt
 

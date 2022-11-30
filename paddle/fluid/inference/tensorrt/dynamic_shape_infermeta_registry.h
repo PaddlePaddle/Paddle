@@ -23,6 +23,11 @@ namespace tensorrt {
 USE_TRT_DYNAMIC_INFER_META_FN(gather_nd);
 USE_TRT_DYNAMIC_INFER_META_FN(yolo_box);
 USE_TRT_DYNAMIC_INFER_META_FN(instance_norm);
+USE_TRT_DYNAMIC_INFER_META_FN(unfold);
+USE_TRT_DYNAMIC_INFER_META_FN(scatter_nd_add);
+USE_TRT_DYNAMIC_INFER_META_FN(pad3d);
+USE_TRT_DYNAMIC_INFER_META_FN(inverse);
+USE_TRT_DYNAMIC_INFER_META_FN(grid_sampler);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

@@ -21,9 +21,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void TransDataDevice(const Tensor& in,
+void TransDataDevice(const phi::DenseTensor& in,
                      const platform::Place& dst_place,
-                     Tensor* out);
+                     phi::DenseTensor* out);
 
 }  // namespace framework
 }  // namespace paddle

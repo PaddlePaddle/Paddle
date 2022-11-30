@@ -23,9 +23,9 @@ namespace operators {
 
 namespace scatter = phi::funcs::scatter;
 
-static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
+static inline float GetAttrFromTensor(const phi::DenseTensor* tensor) {
   const float* tensor_data = tensor->data<float>();
-  framework::Tensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place())) {
     paddle::framework::TensorCopySync(
         *tensor, platform::CPUPlace(), &cpu_tensor);

@@ -15,9 +15,13 @@
 import astor
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+)
 from paddle.fluid.dygraph.dygraph_to_static import utils
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 
@@ -139,9 +143,11 @@ class AttributeJstTransformer(BaseTransformer):
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.interested_name = set([
-            'size',
-        ])
+        self.interested_name = set(
+            [
+                'size',
+            ]
+        )
         self.root = node
 
     def transform(self):
@@ -151,12 +157,21 @@ class AttributeJstTransformer(BaseTransformer):
     def visit_Attribute(self, node):
         assert isinstance(node, gast.Attribute)
         assert isinstance(node.attr, str)
-        if isinstance(node.ctx,
-                      gast.Load) and node.attr in self.interested_name:
+        if (
+            isinstance(node.ctx, gast.Load)
+            and node.attr in self.interested_name
+        ):
             attr = node.attr
             value = node.value
-            node = gast.parse("_jst.Attr({}, \"{}\")".format(
-                ast_to_source_code(value).strip(), attr)).body[0].value
+            node = (
+                gast.parse(
+                    "_jst.Attr({}, \"{}\")".format(
+                        ast_to_source_code(value).strip(), attr
+                    )
+                )
+                .body[0]
+                .value
+            )
         self.generic_visit(node)
         return node
 

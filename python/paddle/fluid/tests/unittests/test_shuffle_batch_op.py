@@ -13,19 +13,16 @@
 # limitations under the License.
 """This is unit test of Test shuffle_batch Op."""
 
-from __future__ import print_function, division
-import unittest
-import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from op_test import OpTest
 import os
-import random
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
+import paddle.fluid as fluid
 
 
 class TestShuffleBatchOpBase(OpTest):
-
     def gen_random_array(self, shape, low=0, high=1):
         rnd = (high - low) * np.random.random(shape) + low
         return rnd.astype(self.dtype)
@@ -37,15 +34,16 @@ class TestShuffleBatchOpBase(OpTest):
         # NOTE: shuffle_batch is not supported on Windows
         if os.name == 'nt':
             return [fluid.CPUPlace()]
-        return super(TestShuffleBatchOpBase, self)._get_places()
+        return super()._get_places()
 
     def setUp(self):
         self.op_type = 'shuffle_batch'
         self.dtype = np.float64
         self.shape = self.get_shape()
         x = self.gen_random_array(self.shape)
-        seed = np.random.random_integers(low=10, high=100,
-                                         size=(1, )).astype('int64')
+        seed = np.random.random_integers(low=10, high=100, size=(1,)).astype(
+            'int64'
+        )
         self.inputs = {'X': x, 'Seed': seed}
         self.outputs = {
             'Out': np.array([]).astype(x.dtype),
@@ -82,7 +80,6 @@ class TestShuffleBatchOpBase(OpTest):
 
 
 class TestShuffleBatchOp2(TestShuffleBatchOpBase):
-
     def get_shape(self):
         return (4, 30)
 

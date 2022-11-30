@@ -66,9 +66,12 @@ void SetOp(ProgramDesc* prog,
              type == "nearest_interp" || type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-  } else if (type == "slice" || type == "shape") {
+  } else if (type == "slice") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
+  } else if (type == "split") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs});
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -131,7 +134,7 @@ void InitTensorHolder(Scope* scope,
                       const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
+  auto tensor = x->GetMutable<phi::DenseTensor>();
   tensor->mutable_data(
       place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
@@ -151,7 +154,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
   for (auto& v : variable_names) {
     if (v.compare(var_without_scale) == 0) continue;
     InitTensorHolder(&scope, place, v.c_str());
-    LoDTensor tensor;
+    phi::DenseTensor tensor;
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
     ptr[0] = SCALE;
@@ -467,7 +470,7 @@ static const std::initializer_list<std::string> variable_names_immutable_ops = {
 void TestImmutableOp(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, tested_op, tested_op, {"b"}, {"c"}, true, "int8");
@@ -520,7 +523,7 @@ void TestImmutableOpBetweenNonQuantizedOp(const std::string tested_op) {
 void TestImmutableOpWithManyOutputs(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
 
   SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, true, "float32");
@@ -559,9 +562,9 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
 const std::vector<std::string> immutables = {"reshape2",
                                              "transpose2",
                                              "slice",
-                                             "shape",
                                              "nearest_interp",
-                                             "nearest_interp_v2"};
+                                             "nearest_interp_v2",
+                                             "split"};
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 

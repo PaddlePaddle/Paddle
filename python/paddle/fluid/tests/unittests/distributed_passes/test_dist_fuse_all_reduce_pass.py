@@ -12,23 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.passes import new_pass, PassManager
 import unittest
+
 from dist_pass_test_base import DistPassTestBase
 from model_zoo import resnet_model
 
+from paddle.distributed.passes import PassManager, new_pass
+
 
 class TestFuseAllReducePass(DistPassTestBase):
-
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([
-            new_pass("fuse_elewise_add_act"),
-            new_pass("fuse_all_reduce", {"max_memory_size": 1024 * 1024})
-        ])
+        pass_manager = PassManager(
+            [
+                new_pass("fuse_elewise_add_act"),
+                new_pass("fuse_all_reduce", {"max_memory_size": 1024 * 1024}),
+            ]
+        )
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 

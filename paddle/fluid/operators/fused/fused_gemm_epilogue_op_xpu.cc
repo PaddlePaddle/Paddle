@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
@@ -32,12 +32,13 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* y = ctx.Input<Tensor>("Y");
-    const Tensor* bias = ctx.Input<Tensor>("Bias");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
+    const phi::DenseTensor* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    Tensor* out = ctx.Output<Tensor>("Out");
-    Tensor* reserve_space = ctx.Output<Tensor>("ReserveSpace");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
+    phi::DenseTensor* reserve_space =
+        ctx.Output<phi::DenseTensor>("ReserveSpace");
 
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
@@ -112,15 +113,16 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
-    const Tensor* dout = ctx.Input<Tensor>("DOut");
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* y = ctx.Input<Tensor>("Y");
+    const phi::DenseTensor* dout = ctx.Input<phi::DenseTensor>("DOut");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
 
-    const Tensor* reserve_space = ctx.Input<Tensor>("ReserveSpace");
+    const phi::DenseTensor* reserve_space =
+        ctx.Input<phi::DenseTensor>("ReserveSpace");
 
-    Tensor* dx = ctx.Output<Tensor>("DX");
-    Tensor* dy = ctx.Output<Tensor>("DY");
-    Tensor* dbias = ctx.Output<Tensor>("DBias");
+    phi::DenseTensor* dx = ctx.Output<phi::DenseTensor>("DX");
+    phi::DenseTensor* dy = ctx.Output<phi::DenseTensor>("DY");
+    phi::DenseTensor* dbias = ctx.Output<phi::DenseTensor>("DBias");
 
     std::string activation = "none";
     if (ctx.HasAttr("activation")) {

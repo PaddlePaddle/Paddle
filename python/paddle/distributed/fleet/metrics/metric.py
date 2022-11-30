@@ -14,9 +14,11 @@
 """Fleet Metrics"""
 
 import math
+
 import numpy as np
-from paddle.static import Variable
+
 import paddle
+from paddle.static import Variable
 
 __all__ = []
 
@@ -37,7 +39,7 @@ def sum(input, scope=None, util=None):
 
           # in model.py
           input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
+          cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = fluid.layers.elementwise_add(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
@@ -77,9 +79,9 @@ def max(input, scope=None, util=None):
 
           # in model.py
           input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
+          cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_max(cnt, global_cnt)
+          tmp = paddle.maximum(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
@@ -117,7 +119,7 @@ def min(input, scope=None, util=None):
 
           # in model.py
           input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
+          cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = fluid.layers.elementwise_min(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
@@ -257,7 +259,8 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         abserr = np.array(scope.find_var(abserr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
-            scope.find_var(total_ins_num.name).get_tensor())
+            scope.find_var(total_ins_num.name).get_tensor()
+        )
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
 
@@ -306,7 +309,8 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
-            scope.find_var(total_ins_num.name).get_tensor())
+            scope.find_var(total_ins_num.name).get_tensor()
+        )
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
@@ -355,7 +359,8 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
-            scope.find_var(total_ins_num.name).get_tensor())
+            scope.find_var(total_ins_num.name).get_tensor()
+        )
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)

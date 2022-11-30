@@ -12,24 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import os
-import paddle
-import re
-import collections
-import time
 import paddle.distributed.fleet as fleet
 
 
 class MyDataset(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             elements = line.strip().split()[0:]
-            output = [("show", [int(elements[0])]),
-                      ("click", [int(elements[1])]),
-                      ("slot1", [int(elements[2])])]
+            output = [
+                ("show", [int(elements[0])]),
+                ("click", [int(elements[1])]),
+                ("slot1", [int(elements[2])]),
+            ]
             yield output
 
         return data_iter

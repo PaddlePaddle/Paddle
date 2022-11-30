@@ -12,34 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
+import os
 import unittest
 
 import paddle
-import numpy as np
-import random
-import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle import framework
-import os
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
 
 class ColumnLinearNet(fluid.dygraph.Layer):
-
     def __init__(self, input_size, output_size):
-        super(ColumnLinearNet, self).__init__()
+        super().__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
             in_features=input_size,
             out_features=output_size,
             weight_attr=None,
             has_bias=True,
             gather_output=True,
-            name="test_column_linear")
+            name="test_column_linear",
+        )
 
     def forward(self, x):
         output = self.parallel_linear(x)
@@ -47,15 +40,15 @@ class ColumnLinearNet(fluid.dygraph.Layer):
 
 
 class RowLinearNet(fluid.dygraph.Layer):
-
     def __init__(self, input_size, output_size):
-        super(RowLinearNet, self).__init__()
+        super().__init__()
         self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
             in_features=input_size,
             out_features=output_size,
             has_bias=True,
             input_is_parallel=False,
-            name="test_row_linear")
+            name="test_row_linear",
+        )
 
     def forward(self, x):
         output = self.parallel_linear(x)
@@ -63,11 +56,11 @@ class RowLinearNet(fluid.dygraph.Layer):
 
 
 class EmbeddingNet(fluid.dygraph.Layer):
-
     def __init__(self, vocab_size, hidden_size):
-        super(EmbeddingNet, self).__init__()
+        super().__init__()
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            vocab_size, hidden_size)
+            vocab_size, hidden_size
+        )
 
     def forward(self, x):
         output = self.embedding(x)
@@ -75,11 +68,11 @@ class EmbeddingNet(fluid.dygraph.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
-
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "2"
         os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+            "PADDLE_TRAINER_ENDPOINTS"
+        ] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
 
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -104,19 +97,22 @@ class TestDistTraning(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[None, input_size])
             y = model_a(x)
 
-            #print(main_program)
+            # print(main_program)
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
             self.assertEqual(
-                ops, ['c_identity', 'matmul_v2', 'elementwise_add', 'c_concat'])
+                ops, ['c_identity', 'matmul_v2', 'elementwise_add', 'c_concat']
+            )
 
             weight = model_a.parallel_linear.weight
             bias = model_a.parallel_linear.bias
             self.assertEqual(
                 weight.shape,
-                (input_size, output_size // self.model_parallel_size))
-            self.assertEqual(bias.shape,
-                             (output_size // self.model_parallel_size, ))
+                (input_size, output_size // self.model_parallel_size),
+            )
+            self.assertEqual(
+                bias.shape, (output_size // self.model_parallel_size,)
+            )
 
     def test_row_parallel_layer(self):
         main_program, startup_program = self.get_program()
@@ -127,19 +123,21 @@ class TestDistTraning(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[None, input_size])
             y = model_a(x)
 
-            #print(main_program)
+            # print(main_program)
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
             self.assertEqual(
                 ops,
-                ['c_split', 'matmul_v2', 'c_allreduce_sum', 'elementwise_add'])
+                ['c_split', 'matmul_v2', 'mp_allreduce_sum', 'elementwise_add'],
+            )
 
             weight = model_a.parallel_linear.weight
             bias = model_a.parallel_linear.bias
             self.assertEqual(
                 weight.shape,
-                (input_size // self.model_parallel_size, output_size))
-            self.assertEqual(bias.shape, (output_size, ))
+                (input_size // self.model_parallel_size, output_size),
+            )
+            self.assertEqual(bias.shape, (output_size,))
 
     def test_parallel_embedding(self):
         main_program, startup_program = self.get_program()
@@ -150,20 +148,21 @@ class TestDistTraning(unittest.TestCase):
             # model_a
             model_a = EmbeddingNet(vocab_size, hidden_size)
 
-            x = paddle.static.data(name='x',
-                                   shape=[None, seq_len],
-                                   dtype='int64')
+            x = paddle.static.data(
+                name='x', shape=[None, seq_len], dtype='int64'
+            )
             y = model_a(x)
 
-            #print(main_program)
+            # print(main_program)
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
-            self.assertEqual(ops, ['c_embedding', 'c_allreduce_sum'])
+            self.assertEqual(ops, ['c_embedding', 'mp_allreduce_sum'])
 
             weight = model_a.embedding.weight
             self.assertEqual(
                 weight.shape,
-                (vocab_size // self.model_parallel_size, hidden_size))
+                (vocab_size // self.model_parallel_size, hidden_size),
+            )
 
     def test_parallel_cross_entropy(self):
         main_program, startup_program = self.get_program()
@@ -177,17 +176,19 @@ class TestDistTraning(unittest.TestCase):
             model_a = fleet.meta_parallel.ParallelCrossEntropy()
 
             x = paddle.static.data(
-                name='x', shape=[batch_size, seq_length, class_size_per_card])
-            label = paddle.static.data(name='label',
-                                       shape=[batch_size, seq_length],
-                                       dtype='int64')
+                name='x', shape=[batch_size, seq_length, class_size_per_card]
+            )
+            label = paddle.static.data(
+                name='label', shape=[batch_size, seq_length], dtype='int64'
+            )
             loss_a = model_a(x, label)
 
-            #print(main_program)
+            # print(main_program)
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
-            self.assertEqual(ops,
-                             ['unsqueeze2', 'c_softmax_with_cross_entropy'])
+            self.assertEqual(
+                ops, ['unsqueeze2', 'c_softmax_with_cross_entropy']
+            )
 
 
 if __name__ == '__main__':

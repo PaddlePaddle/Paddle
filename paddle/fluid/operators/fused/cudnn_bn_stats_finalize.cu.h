@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 namespace dynload = platform::dynload;
 template <typename T>
 using BatchNormParamType =
@@ -54,8 +54,8 @@ struct BNStatsFinalizeArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  platform::TensorDescriptor in_desc;
-  platform::TensorDescriptor out_desc;
+  phi::backends::gpu::TensorDescriptor in_desc;
+  phi::backends::gpu::TensorDescriptor out_desc;
 };
 
 template <typename T>
