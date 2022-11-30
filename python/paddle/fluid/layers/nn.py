@@ -96,8 +96,6 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'relu',
-    'log',
-    'prelu',
     'unique',
     'unique_with_counts',
     'elementwise_add',
