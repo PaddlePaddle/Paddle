@@ -1005,12 +1005,18 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (out_dx_dims != x_help.dims()) {
         out_d_x->Resize(x_help.dims());
       }
+      if (ddy) {
+        ddy_conj = Conj<T>(dev_ctx, ddy_help);
+      }
     }
     DDim out_dy_dims;
     if (out_d_y) {
       out_dy_dims = out_d_y->dims();
       if (out_dy_dims != y_help.dims()) {
         out_d_y->Resize(y_help.dims());
+      }
+      if (ddx) {
+        ddx_conj = Conj<T>(dev_ctx, ddx_help);
       }
     }
     DDim out_d_dout_dims;
@@ -1019,10 +1025,10 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (out_d_dout_dims != dout_help.dims()) {
         out_d_dout->Resize(dout_help.dims());
       }
-      if (ddx) {
+      if (ddx && !ddx_conj.IsInitialized()) {
         ddx_conj = Conj<T>(dev_ctx, ddx_help);
       }
-      if (ddy) {
+      if (ddy && !ddy_conj.IsInitialized()) {
         ddy_conj = Conj<T>(dev_ctx, ddy_help);
       }
     }
@@ -1032,6 +1038,8 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (out_d_ddx_dims != x_help.dims()) {
         out_d_ddx->Resize(x_help.dims());
       }
+      dout_conj = Conj<T>(dev_ctx, dout_help);
+      y_conj = Conj<T>(dev_ctx, y_help);
     }
     DDim out_d_ddy_dims;
     if (out_d_ddy) {
@@ -1039,11 +1047,10 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (out_d_ddy_dims != y_help.dims()) {
         out_d_ddy->Resize(y_help.dims());
       }
-    }
-    if (out_d_ddx || out_d_ddy) {
+      if (dout_conj.IsInitialized()) {
+        dout_conj = Conj<T>(dev_ctx, dout_help);
+      }
       x_conj = Conj<T>(dev_ctx, x_help);
-      y_conj = Conj<T>(dev_ctx, y_help);
-      dout_conj = Conj<T>(dev_ctx, dout_help);
     }
 
     bool d_dout_flag = false;
