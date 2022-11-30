@@ -2219,6 +2219,8 @@ class AdamOptimizer(Optimizer):
             import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
+
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
@@ -2247,6 +2249,7 @@ class AdamOptimizer(Optimizer):
             import paddle.fluid as fluid
             import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
 
+            paddle.enable_static()
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
@@ -2636,6 +2639,8 @@ class AdamaxOptimizer(Optimizer):
           import numpy
           import paddle
 
+          paddle.enable_static()
+
           # First create the Executor.
           place = fluid.CPUPlace() # fluid.CUDAPlace(0)
           exe = fluid.Executor(place)
@@ -2811,6 +2816,8 @@ class DpsgdOptimizer(Optimizer):
           import paddle.fluid as fluid
           import numpy
           import paddle
+
+          paddle.enable_static()
 
           # First create the Executor.
           place = fluid.CPUPlace() # fluid.CUDAPlace(0)
@@ -3277,6 +3284,7 @@ class RMSPropOptimizer(Optimizer):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            paddle.enable_static()
 
             place = fluid.CPUPlace()
             main = fluid.Program()
@@ -3494,7 +3502,7 @@ class FtrlOptimizer(Optimizer):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
-
+            paddle.enable_static()
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
@@ -3673,7 +3681,7 @@ class LambOptimizer(AdamOptimizer):
 
             import paddle.fluid as fluid
             import paddle
-
+            paddle.enable_static()
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
             cost = paddle.mean(hidden)
@@ -3881,7 +3889,7 @@ class ModelAverage(Optimizer):
         import paddle.fluid as fluid
         import numpy
         import paddle
-
+        paddle.enable_static()
         # First create the Executor.
         place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -4059,6 +4067,7 @@ class ModelAverage(Optimizer):
             import paddle.fluid as fluid
             import numpy
             import paddle
+            paddle.enable_static()
 
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
@@ -4114,6 +4123,7 @@ class ModelAverage(Optimizer):
             import paddle.fluid as fluid
             import numpy
             import paddle
+            paddle.enable_static()
 
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)

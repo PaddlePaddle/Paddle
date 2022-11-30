@@ -59,6 +59,7 @@ class SGD(Optimizer):
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
 
             inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
             linear = paddle.nn.Linear(10, 10)

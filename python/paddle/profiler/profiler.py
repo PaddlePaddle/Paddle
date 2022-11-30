@@ -406,6 +406,7 @@ class Profiler:
 
                 import paddle
                 import paddle.profiler as profiler
+                paddle.enable_static()
 
                 class RandomDataset(paddle.io.Dataset):
                     def __init__(self, num_samples):

@@ -293,6 +293,7 @@ def decorate_bf16(
             import numpy as np
             import paddle
             import paddle.nn.functional as F
+            paddle.enable_static()
 
             def run_example_code():
                 place = paddle.CPUPlace(0)

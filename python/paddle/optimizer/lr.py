@@ -1063,6 +1063,7 @@ class StepDecay(LRScheduler):
 
             import paddle
             import numpy as np
+            paddle.enable_static()
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1160,6 +1161,7 @@ class LambdaDecay(LRScheduler):
 
             import paddle
             import numpy as np
+            paddle.enable_static()
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1261,6 +1263,7 @@ class ReduceOnPlateau(LRScheduler):
 
             import paddle
             import numpy as np
+            paddle.enable_static()
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1493,6 +1496,7 @@ class CosineAnnealingDecay(LRScheduler):
 
             import paddle
             import numpy as np
+            paddle.enable_static()
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1610,6 +1614,7 @@ class MultiplicativeDecay(LRScheduler):
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1691,6 +1696,7 @@ class OneCycleLR(LRScheduler):
 
             import paddle
             import numpy as np
+            paddle.enable_static()
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1934,6 +1940,7 @@ class CyclicLR(LRScheduler):
 
             import paddle
             import numpy as np
+            paddle.enable_static()
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)

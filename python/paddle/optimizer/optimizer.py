@@ -137,6 +137,7 @@ class Optimizer:
 
             #Take the subclass adam as an example
             import paddle
+            paddle.enable_static()
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
             out = linear(inp)
@@ -1109,6 +1110,7 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle
+                paddle.enable_static()
 
                 inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
                 linear = paddle.nn.Linear(10, 10)
@@ -1374,6 +1376,8 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle
+                paddle.enable_static()
+
                 linear = paddle.nn.Linear(10, 10)
                 input = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
                 out = linear(input)

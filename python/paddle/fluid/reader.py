@@ -421,6 +421,7 @@ class DataLoader:
             import paddle.nn as nn
             import paddle.nn.functional as F
             from paddle.io import Dataset, BatchSampler, DataLoader
+            paddle.enable_static()
 
             BATCH_NUM = 20
             BATCH_SIZE = 16

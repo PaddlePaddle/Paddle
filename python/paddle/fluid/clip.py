@@ -120,6 +120,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
 
             import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             BATCH_SIZE = 128
             CLIP_MAX = 2e-6
             CLIP_MIN = -1e-6

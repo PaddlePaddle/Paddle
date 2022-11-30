@@ -83,6 +83,7 @@ class Momentum(Optimizer):
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
 
             inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
