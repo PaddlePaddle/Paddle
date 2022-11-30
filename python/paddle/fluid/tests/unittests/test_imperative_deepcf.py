@@ -76,7 +76,7 @@ class DMF(fluid.Layer):
         for ul, il in zip(self._user_layers, self._item_layers):
             users = ul(users)
             items = il(items)
-        return fluid.layers.elementwise_mul(users, items)
+        return paddle.multiply(users, items)
 
 
 class MLP(fluid.Layer):
