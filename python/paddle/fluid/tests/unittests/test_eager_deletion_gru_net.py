@@ -41,9 +41,7 @@ def gru_net(
     gru_h = fluid.layers.dynamic_gru(input=fc0, size=hid_dim, is_reverse=False)
     gru_max = fluid.layers.sequence_pool(input=gru_h, pool_type='max')
     gru_max_tanh = paddle.tanh(gru_max)
-    fc1 = paddle.static.nn.fc(
-        input=gru_max_tanh, size=hid_dim2, activation='tanh'
-    )
+    fc1 = paddle.static.nn.fc(x=gru_max_tanh, size=hid_dim2, activation='tanh')
     prediction = paddle.static.nn.fc(
         x=fc1, size=class_dim, activation='softmax'
     )

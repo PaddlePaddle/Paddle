@@ -44,9 +44,7 @@ class TestFetchUnmerged(unittest.TestCase):
             pool_type='avg',
             act="relu",
         )
-        hidden = paddle.static.nn.fc(
-            input=conv_pool_2, size=32, activation='relu'
-        )
+        hidden = paddle.static.nn.fc(x=conv_pool_2, size=32, activation='relu')
         prediction = paddle.static.nn.fc(
             x=hidden, size=10, activation='softmax'
         )

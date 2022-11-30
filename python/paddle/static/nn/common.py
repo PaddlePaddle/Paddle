@@ -148,7 +148,7 @@ def fc(
           # x: [[[0.1 0.2]
           #      [0.3 0.4]]]
           out = paddle.static.nn.fc(
-              input=x,
+              x=x,
               size=1,
               num_flatten_dims=2,
               weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),

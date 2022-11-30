@@ -47,7 +47,7 @@ def conv_net(img, label):
         act="relu",
     )
     prediction = paddle.static.nn.fc(
-        input=conv_pool_2, size=10, activation='softmax'
+        x=conv_pool_2, size=10, activation='softmax'
     )
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)

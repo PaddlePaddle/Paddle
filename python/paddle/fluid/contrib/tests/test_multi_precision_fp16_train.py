@@ -109,9 +109,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
         )
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         net = resnet_cifar10(images)
-        logits = paddle.static.nn.fc(
-            input=net, size=classdim, activation="softmax"
-        )
+        logits = paddle.static.nn.fc(x=net, size=classdim, activation="softmax")
         cost = fluid.layers.softmax_with_cross_entropy(
             logits, label, return_softmax=False
         )

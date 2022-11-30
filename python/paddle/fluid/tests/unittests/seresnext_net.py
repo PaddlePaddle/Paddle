@@ -169,9 +169,7 @@ def SE_ResNeXt50Small(use_feed):
         else fluid.layers.dropout(x=pool, dropout_prob=0.2, seed=1)
     )
     # Classifier layer:
-    prediction = paddle.static.nn.fc(
-        input=dropout, size=1000, activation='softmax'
-    )
+    prediction = paddle.static.nn.fc(x=dropout, size=1000, activation='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
     return loss

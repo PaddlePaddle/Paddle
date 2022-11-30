@@ -584,7 +584,7 @@ def transformer(
     # the pre-softmax linear transformation.
     predict = paddle.reshape(
         x=paddle.static.nn.fc(
-            input=dec_output,
+            x=dec_output,
             size=trg_vocab_size,
             weight_attr=fluid.initializer.Xavier(uniform=False),
             bias_attr=False,

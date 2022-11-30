@@ -126,9 +126,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         else:
             raise ValueError("%s network is not supported" % net_type)
 
-        logits = paddle.static.nn.fc(
-            input=net, size=classdim, activation="softmax"
-        )
+        logits = paddle.static.nn.fc(x=net, size=classdim, activation="softmax")
         cost, predict = fluid.layers.softmax_with_cross_entropy(
             logits, label, return_softmax=True
         )
@@ -511,7 +509,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
 
                 net = vgg16_bn_drop(image)
                 logits = paddle.static.nn.fc(
-                    input=net, size=10, activation="softmax"
+                    x=net, size=10, activation="softmax"
                 )
                 cost, predict = fluid.layers.softmax_with_cross_entropy(
                     logits, label, return_softmax=True

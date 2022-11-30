@@ -65,9 +65,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 fc_1 = paddle.static.nn.fc(
                     x=input_x, size=64, activation='tanh'
                 )
-                fc_2 = paddle.static.nn.fc(
-                    input=fc_1, size=256, activation='tanh'
-                )
+                fc_2 = paddle.static.nn.fc(x=fc_1, size=256, activation='tanh')
                 prediction = paddle.static.nn.fc(
                     x=[fc_2], size=2, activation='softmax'
                 )
@@ -81,9 +79,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
     def pp_net(self, main_prog, startup_prog, pp_degree=2):
         def fc_block(input_x):
-            fc_1 = paddle.static.nn.fc(
-                input=input_x, size=64, activation='tanh'
-            )
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
             fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
             fc_3 = paddle.static.nn.fc(x=fc_2, size=64, activation='tanh')
             return fc_3

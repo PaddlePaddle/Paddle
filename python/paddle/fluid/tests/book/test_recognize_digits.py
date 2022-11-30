@@ -29,9 +29,7 @@ BATCH_SIZE = 64
 
 
 def loss_net(hidden, label):
-    prediction = paddle.static.nn.fc(
-        input=hidden, size=10, activation='softmax'
-    )
+    prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)
     acc = fluid.layers.accuracy(input=prediction, label=label)

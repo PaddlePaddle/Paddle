@@ -43,9 +43,7 @@ def lstm_net(
     )
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = paddle.tanh(lstm_max)
-    fc1 = paddle.static.nn.fc(
-        input=lstm_max_tanh, size=hid_dim2, activation='tanh'
-    )
+    fc1 = paddle.static.nn.fc(x=lstm_max_tanh, size=hid_dim2, activation='tanh')
     prediction = paddle.static.nn.fc(
         x=fc1, size=class_dim, activation='softmax'
     )

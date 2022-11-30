@@ -118,9 +118,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     else:
         raise ValueError("%s network is not supported" % net_type)
 
-    predict = paddle.static.nn.fc(
-        input=net, size=classdim, activation='softmax'
-    )
+    predict = paddle.static.nn.fc(x=net, size=classdim, activation='softmax')
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = paddle.mean(cost)
     acc = fluid.layers.accuracy(input=predict, label=label)
