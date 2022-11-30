@@ -196,7 +196,7 @@ void PSGPUWrapper::add_key_to_gputask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(0) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
-  size_t slot_num = slot_vector_.size() - 1;
+  size_t slot_num = (size_t)slot_num_for_pull_feature_;
   // no slot_fea mode and whole_hbm mode, only keep one unique_sort action
   if (slot_num > 0 && FLAGS_gpugraph_storage_mode !=
                           paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
@@ -361,7 +361,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   // 8卡数据分片
   size_t device_num = heter_devices_.size();
   std::vector<std::thread> threads;
-  size_t slot_num = slot_vector_.size() - 1;  // node slot 9008 in slot_vector
+  size_t slot_num = (size_t)slot_num_for_pull_feature_;  // node slot 9008 in slot_vector
   auto& local_dim_keys = gpu_task->feature_dim_keys_;  // [shard_num, 0, keys]]
   double divide_nodeid_cost = 0;
   double get_feature_id_cost = 0;
@@ -644,8 +644,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
 
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
-  size_t slot_num = slot_vector_.size() - 1;  // node slot 9008 in slot_vector
-  if (slot_num > 0 && FLAGS_gpugraph_storage_mode !=
+  if (slot_num_for_pull_feature_ > 0 && FLAGS_gpugraph_storage_mode !=
                           paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
     add_slot_feature(gpu_task);
   }
@@ -1191,8 +1190,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       threads[j] = std::thread(build_ps_thread, i, j, len, feature_value_size);
     }
     // build feature table
-    size_t slot_num = slot_vector_.size() - 1;  // node slot 9008 in slot_vector
-    if (slot_num > 0 &&
+    if (slot_num_for_pull_feature_ > 0 &&
         (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
                                             MEM_EMB_FEATURE_AND_GPU_GRAPH ||
          FLAGS_gpugraph_storage_mode ==
