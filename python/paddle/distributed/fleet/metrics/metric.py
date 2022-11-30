@@ -14,9 +14,11 @@
 """Fleet Metrics"""
 
 import math
+
 import numpy as np
-from paddle.static import Variable
+
 import paddle
+from paddle.static import Variable
 
 __all__ = []
 

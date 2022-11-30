@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import paddle
+from paddle import framework
+from paddle.autograd import no_grad
+from paddle.fluid import layers
 from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.framework import core
+
+from ...base.topology import ParallelMode
 from ...utils.hybrid_parallel_util import (
     fused_allreduce_gradients,
     sharding_reduce_gradients,
 )
-from ...base.topology import ParallelMode
-from paddle.autograd import no_grad
-from paddle import framework
 from ...utils.log_util import logger
-from paddle.framework import core
-from paddle.fluid import layers
 
 __all__ = []
 

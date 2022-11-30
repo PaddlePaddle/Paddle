@@ -17,9 +17,9 @@ import unittest
 
 import paddle
 from paddle.jit.api import (
-    _run_save_pre_hooks,
     _clear_save_pre_hooks,
     _register_save_pre_hook,
+    _run_save_pre_hooks,
 )
 
 _counter = 0

@@ -14,8 +14,9 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
 from paddle.autograd import PyLayer
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (

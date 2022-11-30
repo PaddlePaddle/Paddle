@@ -13,26 +13,28 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid import Linear
-from test_imperative_base import new_program_scope
+from paddle.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 
 
 class Discriminator(fluid.Layer):
     def __init__(self):
         super().__init__()
-        self._fc1 = Linear(1, 32, act='elu')
+        self._fc1 = Linear(1, 32)
         self._fc2 = Linear(32, 1)
 
     def forward(self, inputs):
         x = self._fc1(inputs)
+        x = paddle.nn.functional.elu(x)
         x = self._fc2(x)
         return x
 
@@ -40,13 +42,15 @@ class Discriminator(fluid.Layer):
 class Generator(fluid.Layer):
     def __init__(self):
         super().__init__()
-        self._fc1 = Linear(2, 64, act='elu')
-        self._fc2 = Linear(64, 64, act='elu')
+        self._fc1 = Linear(2, 64)
+        self._fc2 = Linear(64, 64)
         self._fc3 = Linear(64, 1)
 
     def forward(self, inputs):
         x = self._fc1(inputs)
+        x = paddle.nn.functional.elu(x)
         x = self._fc2(x)
+        x = paddle.nn.functional.elu(x)
         x = self._fc3(x)
         return x
 
