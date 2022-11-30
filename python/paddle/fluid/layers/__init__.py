@@ -20,8 +20,6 @@ from . import tensor
 from .tensor import *
 from . import control_flow
 from .control_flow import *
-from . import device
-from .device import *
 from . import math_op_patch
 from .math_op_patch import *
 from . import loss
@@ -40,7 +38,6 @@ __all__ += nn.__all__
 __all__ += io.__all__
 __all__ += tensor.__all__
 __all__ += control_flow.__all__
-__all__ += device.__all__
 __all__ += detection.__all__
 __all__ += metric.__all__
 __all__ += learning_rate_scheduler.__all__
