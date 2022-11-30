@@ -662,7 +662,7 @@ def py_reader(
          loss = network(img, label)
 
          fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
-         exe = fluid.ParallelExecutor(use_cuda=True)
+         exe = paddle.static.Executor(place=paddle.CUDAPlace(0))
          for epoch_id in range(10):
              reader.start()
              try:
@@ -728,24 +728,22 @@ def py_reader(
          fluid.Executor(fluid.CUDAPlace(0)).run(train_startup_prog)
          fluid.Executor(fluid.CUDAPlace(0)).run(test_startup_prog)
 
-         train_exe = fluid.ParallelExecutor(use_cuda=True,
-                                            loss_name=train_loss.name,
-                                            main_program=train_main_prog)
-         test_exe = fluid.ParallelExecutor(use_cuda=True,
-                                           loss_name=test_loss.name,
-                                           main_program=test_main_prog)
+         place = paddle.CUDAPlace(0)
+         train_exe = paddle.static.Executor(place=place)
+         test_exe = paddle.static.Executor(place=place)
+
          for epoch_id in range(10):
              train_reader.start()
              try:
                  while True:
-                    train_exe.run(fetch_list=[train_loss.name])
+                    train_exe.run(program=train_main_prog, fetch_list=[train_loss.name])
              except fluid.core.EOFException:
                  train_reader.reset()
 
          test_reader.start()
          try:
              while True:
-                 test_exe.run(fetch_list=[test_loss.name])
+                 test_exe.run(program=test_main_prog, fetch_list=[test_loss.name])
          except fluid.core.EOFException:
              test_reader.reset()
     """
