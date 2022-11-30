@@ -595,9 +595,9 @@ def _rnn_dynamic_graph(
         mask = paddle.transpose(mask, [1, 0])
 
     if is_reverse:
-        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
+        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
         mask = (
-            tensor.reverse(mask, axis=[0])
+            paddle.reverse(mask, axis=[0])
             if sequence_length is not None
             else None
         )
@@ -626,7 +626,7 @@ def _rnn_dynamic_graph(
 
     if is_reverse:
         final_outputs = map_structure(
-            lambda x: tensor.reverse(x, axis=time_step_index), final_outputs
+            lambda x: paddle.reverse(x, axis=time_step_index), final_outputs
         )
 
     final_states = new_states
@@ -681,8 +681,8 @@ def _rnn_static_graph(
         )
         mask = paddle.transpose(mask, [1, 0])
     if is_reverse:
-        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
-        mask = tensor.reverse(mask, axis=[0]) if sequence_length else None
+        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
+        mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
     # StaticRNN
     rnn = control_flow.StaticRNN()
@@ -711,7 +711,7 @@ def _rnn_static_graph(
 
     if is_reverse:
         final_outputs = map_structure(
-            lambda x: tensor.reverse(x, axis=[0]), final_outputs
+            lambda x: paddle.reverse(x, axis=[0]), final_outputs
         )
 
     if not time_major:
@@ -1251,7 +1251,7 @@ class BeamSearchDecoder(Decoder):
             value=False,
             force_cpu=True,
         )
-        init_lengths = tensor.zeros_like(init_inputs)
+        init_lengths = paddle.zeros_like(init_inputs)
         init_inputs = (
             self.embedding_fn(init_inputs) if self.embedding_fn else init_inputs
         )
@@ -1304,7 +1304,7 @@ class BeamSearchDecoder(Decoder):
                 self.noend_mask_tensor, "float64"
             )
 
-        step_log_probs = nn.log(nn.softmax(logits))
+        step_log_probs = paddle.log(nn.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
         log_probs = nn.elementwise_add(
             x=step_log_probs, y=beam_state.log_probs, axis=0
@@ -1482,7 +1482,7 @@ def _dynamic_decode_imperative(
         initial_finished,
     )
     cond = paddle.logical_not((nn.reduce_all(initial_finished)))
-    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     outputs = None
 
     step_idx = 0
@@ -1596,7 +1596,7 @@ def _dynamic_decode_declarative(
         )
     while_op = control_flow.While(cond, is_test=is_test)
 
-    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     sequence_lengths.stop_gradient = True
 
     if is_test:
@@ -3529,8 +3529,8 @@ def beam_search(
                 name='probs', shape=[None, 10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
-                x=fluid.layers.log(x=topk_scores),
-                y=fluid.layers.reshape(pre_scores, shape=[-1]),
+                x=paddle.log(x=topk_scores),
+                y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0)
             selected_ids, selected_scores = fluid.layers.beam_search(
                 pre_ids=pre_ids,

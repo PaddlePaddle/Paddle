@@ -234,7 +234,7 @@ class TestMathOpPatches(unittest.TestCase):
         a = fluid.layers.data(name="a", shape=[1], dtype='float32')
         b = fluid.layers.data(name="b", shape=[1], dtype='float32')
 
-        one = fluid.layers.ones(shape=[1], dtype='int32')
+        one = paddle.ones(shape=[1], dtype='int32')
         zero = fluid.layers.zeros(shape=[1], dtype='int32')
         cond = one == zero
         c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
