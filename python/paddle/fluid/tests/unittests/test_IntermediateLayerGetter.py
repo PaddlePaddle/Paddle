@@ -39,12 +39,12 @@ class TestBase:
         )
 
     def init_model(self):
-        self.model = paddle.vision.models.resnet50(pretrained=False)
+        self.model = None
 
     @paddle.no_grad()
     def test_inter_result(self):
 
-        inp = paddle.randn([1, 3, 224, 224])
+        inp = paddle.randn([1, 3, 80, 80])
         inter_oup = self.new_model(inp)
 
         for layer_name, layer in self.model.named_children():
@@ -62,34 +62,29 @@ class TestBase:
                 self.assertTrue((inter_oup[feat_name] == inp).all())
 
 
-class TestIntermediateLayerGetterResNet50(TestBase, unittest.TestCase):
+class TestIntermediateLayerGetterResNet18(TestBase, unittest.TestCase):
     def init_model(self):
-        self.model = paddle.vision.models.resnet50(pretrained=False)
+        self.model = paddle.vision.models.resnet18(pretrained=False)
 
 
-class TestIntermediateLayerGetterDenseNet201(TestBase, unittest.TestCase):
+class TestIntermediateLayerGetterDenseNet121(TestBase, unittest.TestCase):
     def init_model(self):
-        self.model = paddle.vision.models.densenet201(pretrained=False)
+        self.model = paddle.vision.models.densenet121(pretrained=False)
 
 
-class TestIntermediateLayerGetterVGG19(TestBase, unittest.TestCase):
+class TestIntermediateLayerGetterVGG11(TestBase, unittest.TestCase):
     def init_model(self):
-        self.model = paddle.vision.models.vgg19(pretrained=False)
+        self.model = paddle.vision.models.vgg11(pretrained=False)
 
 
-class TestIntermediateLayerGetterMobileNetV3Large(TestBase, unittest.TestCase):
+class TestIntermediateLayerGetterMobileNetV3Small(TestBase, unittest.TestCase):
     def init_model(self):
-        self.model = paddle.vision.models.MobileNetV3Large()
+        self.model = paddle.vision.models.MobileNetV3Small()
 
 
 class TestIntermediateLayerGetterShuffleNetV2(TestBase, unittest.TestCase):
     def init_model(self):
-        self.model = paddle.vision.models.ShuffleNetV2()
-
-
-class TestIntermediateLayerGetterAlexNet(TestBase, unittest.TestCase):
-    def init_model(self):
-        self.model = paddle.vision.models.AlexNet()
+        self.model = paddle.vision.models.shufflenet_v2_x0_25()
 
 
 if __name__ == "__main__":

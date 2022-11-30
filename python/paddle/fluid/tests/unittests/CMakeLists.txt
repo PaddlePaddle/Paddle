@@ -1229,9 +1229,6 @@ if(WITH_GLOO)
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height_gloo
                        PROPERTIES TIMEOUT 120)
 endif()
-if(NOT WITH_GPU)
-  set_tests_properties(test_IntermediateLayerGetter PROPERTIES TIMEOUT 100)
-endif()
 
 if($ENV{USE_STANDALONE_EXECUTOR})
   # these test will fail in some server due to PR#42149, temporarily set it use old executor.
