@@ -47,6 +47,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
 from paddle.distributed.utils.log_utils import get_logger
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.optimizer import Optimizer
+import warnings
 
 logger_ = get_logger(logging.WARNING)
 
@@ -140,7 +141,7 @@ def group_sharded_parallel(
 
     params_fp16 = list(filter(check_dtype, model.parameters()))
     if scaler is None and len(params_fp16) > 0:
-        raise ValueError("Please enter the correct scaler.")
+        warnings.warn("Please enter the correct scaler.")
     # convert model/optimizer/scaler
     if level in ['os', 'os_g']:
         logger_.info("*" * 30)
