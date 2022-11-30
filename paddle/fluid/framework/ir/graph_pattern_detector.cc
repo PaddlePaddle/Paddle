@@ -2347,14 +2347,8 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-#if CUDNN_VERSION >= 8000
-std::unordered_set<std::string> conv_act_set(
-    {"identity", "relu", "sigmoid", "tanh"});
-#else
-std::unordered_set<std::string> conv_act_set({"identity", "relu"});
-#endif
-
-PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseaddAct::operator()(
+    PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())
@@ -2551,7 +2545,8 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
   return reshape2_out;
 }
 
-PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseadd2Act::operator()(
+    PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input("conv2d", "Filter")
