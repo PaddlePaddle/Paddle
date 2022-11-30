@@ -25,7 +25,6 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.nn import Linear
 from paddle.jit.api import declarative
 from paddle.jit import ProgramTranslator
