@@ -435,7 +435,7 @@ class BaseModel(fluid.dygraph.Layer):
             cell_outputs = self._split_batch_beams(step_input)
             cell_outputs = self.fc(cell_outputs)
 
-            step_log_probs = fluid.layers.log(
+            step_log_probs = paddle.log(
                 paddle.nn.functional.softmax(cell_outputs)
             )
             noend_array = [-self.kinf] * self.tar_vocab_size
