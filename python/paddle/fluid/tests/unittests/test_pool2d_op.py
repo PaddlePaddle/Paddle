@@ -1179,35 +1179,35 @@ class TestPool2DAPI(unittest.TestCase):
         out_2 = paddle.nn.functional.avg_pool2d(
             x=input_NHWC,
             kernel_size=ksize,
-            pool_padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
+            padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
             data_format="NHWC",
         )
 
         out_3 = paddle.nn.functional.avg_pool2d(
             x=input_NCHW,
             kernel_size=ksize,
-            pool_padding=[[0, 0], [0, 0], [1, 1], [1, 1]],
+            padding=[[0, 0], [0, 0], [1, 1], [1, 1]],
             data_format="NCHW",
         )
 
         out_4 = paddle.nn.functional.avg_pool2d(
             x=input_NCHW,
             kernel_size=ksize,
-            pool_padding=[1, 2, 1, 0],
+            padding=[1, 2, 1, 0],
             data_format="NCHW",
         )
         # test VALID
         out_5 = paddle.nn.functional.avg_pool2d(
             x=input_NCHW,
             kernel_size=ksize,
-            pool_padding="VALID",
+            padding="VALID",
             data_format="NCHW",
         )
 
         out_6 = paddle.nn.functional.max_pool2d(
             x=input_NHWC,
             kernel_size=ksize,
-            pool_padding="VALID",
+            padding="VALID",
             data_format="NHWC",
         )
 
@@ -1215,14 +1215,14 @@ class TestPool2DAPI(unittest.TestCase):
         out_7 = paddle.nn.functional.avg_pool2d(
             x=input_NCHW,
             kernel_size=[4, 4],
-            pool_padding="SAME",
+            padding="SAME",
             data_format="NCHW",
         )
 
         out_8 = paddle.nn.functional.max_pool2d(
             x=input_NHWC,
             kernel_size=[4, 4],
-            pool_padding="SAME",
+            padding="SAME",
             data_format="NHWC",
         )
 
@@ -1230,7 +1230,7 @@ class TestPool2DAPI(unittest.TestCase):
         out_9 = paddle.nn.functional.avg_pool2d(
             x=input_NHWC_negetive,
             kernel_size=ksize,
-            pool_padding=[0, 0],
+            padding=[0, 0],
             data_format="NHWC",
         )
         assert out_9.shape == (2, -1, 3, 3)
@@ -1238,7 +1238,7 @@ class TestPool2DAPI(unittest.TestCase):
         out_10 = paddle.nn.functional.avg_pool2d(
             x=input_NCHW_negetive,
             kernel_size=ksize,
-            pool_padding=[0, 0],
+            padding=[0, 0],
             data_format="NCHW",
         )
         assert out_10.shape == (2, 3, -1, -1)
@@ -1378,7 +1378,7 @@ class TestPool2DAPI_Error(unittest.TestCase):
             out_2 = paddle.nn.functional.max_pool2d(
                 x=input_NHWC,
                 kernel_size=ksize,
-                pool_padding=[1, 1],
+                padding=[1, 1],
                 data_format="NHWCC",
             )
 
@@ -1389,7 +1389,7 @@ class TestPool2DAPI_Error(unittest.TestCase):
             out_3 = paddle.nn.functional.max_pool2d(
                 x=input_NHWC,
                 kernel_size=ksize,
-                pool_padding="VALIDSAME",
+                padding="VALIDSAME",
                 data_format="NHWC",
             )
 
@@ -1400,7 +1400,7 @@ class TestPool2DAPI_Error(unittest.TestCase):
             out_4 = paddle.nn.functional.max_pool2d(
                 x=input_NHWC,
                 kernel_size=ksize,
-                pool_padding="VALID",
+                padding="VALID",
                 ceil_mode=True,
                 data_format="NHWC",
             )
@@ -1412,7 +1412,7 @@ class TestPool2DAPI_Error(unittest.TestCase):
             out_5 = paddle.nn.functional.max_pool2d(
                 x=input_NHWC,
                 kernel_size=ksize,
-                pool_padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
+                padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
                 data_format="NHWC",
             )
 

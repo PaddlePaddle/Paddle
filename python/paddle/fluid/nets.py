@@ -264,14 +264,14 @@ def img_conv_group(
 
     if pool_type == 'max':
         pool_out = paddle.nn.functional.max_pool2d(
-            x=conv_out,
+            x=tmp,
             kernel_size=pool_size,
             stride=pool_stride,
             padding=pool_padding,
         )
     else:
         pool_out = paddle.nn.functional.avg_pool2d(
-            x=conv_out,
+            x=tmp,
             kernel_size=pool_size,
             stride=pool_stride,
             padding=pool_padding,
