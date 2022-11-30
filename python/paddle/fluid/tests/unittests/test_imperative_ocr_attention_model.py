@@ -25,7 +25,6 @@ from paddle.fluid.dygraph.nn import (
     BatchNorm,
     Embedding,
     GRUUnit,
-    Linear,
 )
 from paddle.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
