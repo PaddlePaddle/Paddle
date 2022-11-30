@@ -144,7 +144,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       auto* shape_data = shape_tensor->data<int>();
 
       auto shape =
-          std::vector<long int>(shape_data, shape_data + shape_tensor->numel());
+          std::vector<int64_t>(shape_data, shape_data + shape_tensor->numel());
       out_dims = ValidateShape(shape, x_dims);
     }
   }
@@ -179,7 +179,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  static framework::DDim ValidateShape(const std::vector<long int>& shape,
+  static framework::DDim ValidateShape(const std::vector<int64_t>& shape,
                                        const framework::DDim& in_dims) {
     const int64_t in_size = phi::product(in_dims);
     auto in_dims_vec = phi::vectorize(in_dims);
