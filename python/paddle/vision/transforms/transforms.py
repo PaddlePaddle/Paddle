@@ -137,6 +137,7 @@ class BaseTransform:
     calling logic:
 
         ..code-block:: test
+
             if keys is None:
                 _get_params -> _apply_image()
             else:
@@ -156,8 +157,8 @@ class BaseTransform:
 
                 - "image": input image, with shape of (H, W, C)
                 - "coords": coordinates, with shape of (N, 2)
-                - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,the 1st "xy" represents
-                top left point of a box,the 2nd "xy" represents right bottom point.
+                - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,the 1st "xy" represents\
+                  top left point of a box,the 2nd "xy" represents right bottom point.
                 - "mask": map used for segmentation, with shape of (H, W, 1)
 
             You can also customize your data types only if you implement the corresponding
