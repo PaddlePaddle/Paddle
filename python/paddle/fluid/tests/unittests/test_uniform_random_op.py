@@ -213,7 +213,7 @@ class TestUniformRandomOpError(unittest.TestCase):
                 x2 = fluid.layers.data(
                     name='x2', shape=[4, 784], dtype='float32'
                 )
-                paddle.uniform(x2, 'int32')
+                paddle.uniform(x2, 'float32')
 
             self.assertRaises(TypeError, test_dtype)
 
