@@ -21,7 +21,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
@@ -214,8 +213,8 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
