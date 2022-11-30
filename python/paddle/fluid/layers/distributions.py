@@ -659,9 +659,9 @@ class MultivariateNormalDiag(Distribution):
     def _det(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_all = paddle.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = paddle.diag(
-            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
+            paddle.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         det_diag = paddle.prod(value + one_all - one_diag)
 
@@ -670,9 +670,9 @@ class MultivariateNormalDiag(Distribution):
     def _inv(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_all = paddle.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = paddle.diag(
-            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
+            paddle.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         inv_diag = paddle.pow(value, (one_all - 2 * one_diag))
 
