@@ -1304,7 +1304,7 @@ class BeamSearchDecoder(Decoder):
                 self.noend_mask_tensor, "float64"
             )
 
-        step_log_probs = nn.log(nn.softmax(logits))
+        step_log_probs = paddle.log(nn.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
         log_probs = nn.elementwise_add(
             x=step_log_probs, y=beam_state.log_probs, axis=0
@@ -3529,8 +3529,8 @@ def beam_search(
                 name='probs', shape=[None, 10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
-                x=fluid.layers.log(x=topk_scores),
-                y=fluid.layers.reshape(pre_scores, shape=[-1]),
+                x=paddle.log(x=topk_scores),
+                y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0)
             selected_ids, selected_scores = fluid.layers.beam_search(
                 pre_ids=pre_ids,
