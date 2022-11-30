@@ -24,6 +24,27 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+template <typename T>
+inline std::string GetCpuHintString(const std::string& op_type,
+                                    const std::string& var_name,
+                                    const phi::Place& place,
+                                    int device_id = -1) {
+  std::string dtype_str = DataTypeToString(DataTypeTrait<T>::DataType());
+  if (dtype_str == "::paddle::platform::float16") {
+    dtype_str = "float16";
+  }
+
+  std::stringstream ss;
+  if (platform::is_gpu_place(place)) {
+    ss << "[device=gpu:" << device_id << "] ";
+  } else {
+    ss << "[device=cpu] ";
+  }
+  ss << "[op=" << op_type << "] [tensor=" << var_name
+     << "] [dtype=" << dtype_str << "]";
+  return ss.str();
+}
+
 template <typename DeviceContext>
 struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& op_type,

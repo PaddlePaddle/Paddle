@@ -326,30 +326,20 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
   }
 }
 
-template <>
 template <typename T>
-void TensorCheckerVisitor<phi::GPUContext>::apply(
-    typename std::enable_if<
-        std::is_floating_point<T>::value ||
-        std::is_same<T, ::paddle::platform::complex<float>>::value ||
-        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
-    const {
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(tensor_.place()));
-  int dev_id = tensor_.place().device;
+static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
+                                 const std::string& op_type,
+                                 const std::string& var_name,
+                                 int dev_id) {
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()),
       true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
                                    multi_op_var2gpu_str_mutex().size()));
 
-  std::string dtype_str = DataTypeToString(DataTypeTrait<T>::DataType());
-  if (dtype_str == "::paddle::platform::float16") {
-    dtype_str = "float16";
-  }
-  std::string op_var = "[op=" + op_type_ + "] [tensor=" + var_name_ +
-                       "] [dtype=" + dtype_str + "]";
-  char* gpu_str_ptr = NULL;
+  std::string op_var =
+      GetCpuHintString<T>(ctx.GetPlace(), op_type, var_namedev_id);
+  char* gpu_str_ptr = nullptr;
 
   {
     auto& op_var2gpu_str_mutex = multi_op_var2gpu_str_mutex().at(dev_id);
@@ -358,9 +348,9 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
       auto gpu_str_tensor = paddle::memory::Alloc(
-          dev_ctx->GetPlace(),
+          ctx.GetPlace(),
           op_var.length() + 1,
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx->stream())));
+          phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
 
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
@@ -378,13 +368,13 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                                 iter->first.c_str(),
                                                 op_var.length() + 1,
                                                 hipMemcpyHostToDevice,
-                                                dev_ctx->stream()));
+                                                ctx.stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
                                                  iter->first.c_str(),
                                                  op_var.length() + 1,
                                                  cudaMemcpyHostToDevice,
-                                                 dev_ctx->stream()));
+                                                 ctx.stream()));
 #endif
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
@@ -397,6 +387,22 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
       gpu_str_ptr = reinterpret_cast<char*>(iter->second->ptr());
     }
   }
+  return gpu_str_ptr;
+}
+
+template <>
+template <typename T>
+void TensorCheckerVisitor<phi::GPUContext>::apply(
+    typename std::enable_if<
+        std::is_floating_point<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
+    const {
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(tensor_.place()));
+  int dev_id = tensor_.place().device;
+  char* gpu_str_ptr =
+      GetHintGpuStringPtr<T>(*dev_ctx, op_type_, var_name_, dev_id);
 
 #ifdef __HIPCC__
   // HIP will throw GPU memory access fault if threads > 256
