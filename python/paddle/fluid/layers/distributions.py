@@ -264,7 +264,7 @@ class Uniform(Distribution):
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return nn.log(lb * ub) - nn.log(self.high - self.low)
+        return paddle.log(lb * ub) - paddle.log(self.high - self.low)
 
     def entropy(self):
         """Shannon entropy in nats.
@@ -273,7 +273,7 @@ class Uniform(Distribution):
           Variable: Shannon entropy of uniform distribution.The data type is float32.
 
         """
-        return nn.log(self.high - self.low)
+        return paddle.log(self.high - self.low)
 
 
 class Normal(Distribution):
@@ -412,7 +412,9 @@ class Normal(Distribution):
             self.loc + self.scale, batch_shape, self.loc.dtype, 0.0
         )
         return (
-            0.5 + 0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp))
+            0.5
+            + 0.5 * math.log(2 * math.pi)
+            + paddle.log((self.scale + zero_tmp))
         )
 
     def log_prob(self, value):
@@ -430,7 +432,7 @@ class Normal(Distribution):
         )
 
         var = self.scale * self.scale
-        log_scale = nn.log(self.scale)
+        log_scale = paddle.log(self.scale)
         return (
             -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
             - log_scale
@@ -454,7 +456,7 @@ class Normal(Distribution):
         var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
         t1 = t1 * t1
-        return 0.5 * (var_ratio + t1 - 1.0 - nn.log(var_ratio))
+        return 0.5 * (var_ratio + t1 - 1.0 - paddle.log(var_ratio))
 
 
 class Categorical(Distribution):
@@ -538,13 +540,14 @@ class Categorical(Distribution):
         )
         e_logits = paddle.exp(logits)
         other_e_logits = paddle.exp(other_logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
-        other_z = nn.reduce_sum(other_e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+        other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
-        kl = nn.reduce_sum(
-            prob * (logits - nn.log(z) - other_logits + nn.log(other_z)),
-            dim=-1,
-            keep_dim=True,
+        kl = paddle.sum(
+            prob
+            * (logits - paddle.log(z) - other_logits + paddle.log(other_z)),
+            axis=-1,
+            keepdim=True,
         )
 
         return kl
@@ -558,10 +561,11 @@ class Categorical(Distribution):
         """
         logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
         e_logits = paddle.exp(logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+
         prob = e_logits / z
-        entropy = -1.0 * nn.reduce_sum(
-            prob * (logits - nn.log(z)), dim=-1, keep_dim=True
+        entropy = -1.0 * paddle.sum(
+            prob * (logits - paddle.log(z)), axis=-1, keepdim=True
         )
 
         return entropy
@@ -658,9 +662,9 @@ class MultivariateNormalDiag(Distribution):
     def _det(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_all = paddle.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
-            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
+            paddle.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         det_diag = paddle.prod(value + one_all - one_diag)
 
@@ -669,9 +673,9 @@ class MultivariateNormalDiag(Distribution):
     def _inv(self, value):
 
         batch_shape = list(value.shape)
-        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_all = paddle.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
-            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
+            paddle.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         inv_diag = paddle.pow(value, (one_all - 2 * one_diag))
 
@@ -686,7 +690,7 @@ class MultivariateNormalDiag(Distribution):
         """
         entropy = 0.5 * (
             self.scale.shape[0] * (1.0 + math.log(2 * math.pi))
-            + nn.log(self._det(self.scale))
+            + paddle.log(self._det(self.scale))
         )
 
         return entropy
@@ -703,13 +707,15 @@ class MultivariateNormalDiag(Distribution):
         """
         check_type(other, 'other', MultivariateNormalDiag, 'kl_divergence')
 
-        tr_cov_matmul = nn.reduce_sum(self._inv(other.scale) * self.scale)
+        tr_cov_matmul = paddle.sum(self._inv(other.scale) * self.scale)
         loc_matmul_cov = nn.matmul(
             (other.loc - self.loc), self._inv(other.scale)
         )
         tri_matmul = nn.matmul(loc_matmul_cov, (other.loc - self.loc))
         k = list(self.scale.shape)[0]
-        ln_cov = nn.log(self._det(other.scale)) - nn.log(self._det(self.scale))
+        ln_cov = paddle.log(self._det(other.scale)) - paddle.log(
+            self._det(self.scale)
+        )
         kl = 0.5 * (tr_cov_matmul + tri_matmul - k + ln_cov)
 
         return kl

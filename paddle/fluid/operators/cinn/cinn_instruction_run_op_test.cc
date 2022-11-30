@@ -74,7 +74,7 @@ class TestCinnInstructionRunOp : public ::testing::Test {
     // so a cinn_instruction_run_op will throw an error
     framework::Scope scope;
     InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
-    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(test_op_out_name)->GetMutable<phi::DenseTensor>();
     ASSERT_THROW(cinn_instruction_run_op->Run(scope, place),
                  paddle::platform::EnforceNotMet);
 
@@ -83,7 +83,7 @@ class TestCinnInstructionRunOp : public ::testing::Test {
     // of both type float and int
     cinn_launch_op->Run(scope, place);
     scope.EraseVars({"x", "y", test_op_out_name});
-    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(test_op_out_name)->GetMutable<phi::DenseTensor>();
     InitVariablesWithRandomValue<int>({"x", "y"}, {30, 40}, place, &scope);
     cinn_launch_op->Run(scope, place);
   }
@@ -92,8 +92,8 @@ class TestCinnInstructionRunOp : public ::testing::Test {
     // Run ops and check the computation results
     framework::Scope scope;
     InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
-    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
-    scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(test_op_out_name)->GetMutable<phi::DenseTensor>();
+    scope.Var(add_op_out_name)->GetMutable<phi::DenseTensor>();
     elementwise_add_op->Run(scope, place);
     cinn_launch_op->Run(scope, place);
     CompareOpResult<float>(scope.GetVar(test_op_out_name),

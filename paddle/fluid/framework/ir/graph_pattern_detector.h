@@ -928,6 +928,27 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(ele_y);
 };
 
+// the backward of ele_add(act(x), y)
+// the act is inplace.
+// op: elementwise_add_grad + act_grad
+// named nodes: elementwise_add_grad, act_grad
+//              ele_y, d_ele_y, d_intermeiate_out, intermediate_out, d_x
+struct ActElewiseAddInplaceGrad : public PatternBase {
+  ActElewiseAddInplaceGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "act_elewise_add_grad1") {}
+
+  // ele_add_grad: in["Y", "Out@GRAD"], out["IntermediateOut@GRAD", "Y@GRAD"]
+  // act_grad: in["IntermediateOut", "IntermediateOut@GRAD"], out["X@GRAD"]
+  PDNode* operator()(PDNode* d_out_var, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad_op);
+  PATTERN_DECL_NODE(act_grad_op);
+  // // declare variable node's name
+  PATTERN_DECL_NODE(intermediate_var);
+  PATTERN_DECL_NODE(d_intermediate_var);
+};
+
 // The following patterns are used to fuse linear and act (ReLu or GeLU)
 // formula: act(F.linear(x))
 // op: matmul_v2 + elementwise_add + act
@@ -1752,6 +1773,39 @@ struct DeleteQuantDequantFilterOpPattern : public PatternBase {
 struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
   DeleteWeightQuantDequantLinearOpPattern(PDPattern* pattern,
                                           const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpEncoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(while0);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpDecoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
       : PatternBase(pattern,
                     name_scope,
                     "delete_weight_quant_dequant_linear_op_pattern") {}

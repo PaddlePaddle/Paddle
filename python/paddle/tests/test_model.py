@@ -12,31 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import os
-import numpy as np
 import shutil
 import tempfile
+import unittest
+
+import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle import to_tensor
-from paddle.nn import Conv2D, Linear, ReLU, Sequential
-
-from paddle import Model
-from paddle.static import InputSpec
-from paddle.nn.layer.loss import CrossEntropyLoss
+import paddle.jit as jit
+import paddle.vision.models as models
+from paddle import Model, fluid, to_tensor
+from paddle.hapi.model import prepare_distributed_context
+from paddle.io import Dataset, DistributedBatchSampler
+from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.metric import Accuracy
+from paddle.nn import Conv2D, Linear, ReLU, Sequential
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-import paddle.vision.models as models
-import paddle.fluid.dygraph.jit as jit
-from paddle.io import DistributedBatchSampler, Dataset
-from paddle.hapi.model import prepare_distributed_context
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    ProgramTranslator,
-)
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -61,7 +56,7 @@ class LeNetDygraph(paddle.nn.Layer):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1, -1)
             x = self.fc(x)
         return x
 
@@ -163,7 +158,7 @@ def dynamic_train(model, dataloader):
     for inputs, labels in dataloader:
         outputs = model(inputs)
         loss = CrossEntropyLoss(reduction="sum")(outputs, labels)
-        avg_loss = fluid.layers.reduce_sum(loss)
+        avg_loss = paddle.sum(loss)
         avg_loss.backward()
         optim.minimize(avg_loss)
         model.clear_gradients()
@@ -510,7 +505,7 @@ class TestModelFunction(unittest.TestCase):
             m.train()
             output = m(to_tensor(data))
             loss = CrossEntropyLoss(reduction='sum')(output, to_tensor(label))
-            avg_loss = fluid.layers.reduce_sum(loss)
+            avg_loss = paddle.sum(loss)
             avg_loss.backward()
             optim.minimize(avg_loss)
             m.clear_gradients()

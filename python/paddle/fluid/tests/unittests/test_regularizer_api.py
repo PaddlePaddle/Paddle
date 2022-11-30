@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import random
 import unittest
 from functools import partial
-import contextlib
+
 import numpy as np
-import random
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def bow_net(
@@ -134,7 +136,7 @@ class TestRegularizer(unittest.TestCase):
             para_sum = []
             for para in param_list:
                 para_mul = paddle.square(x=para)
-                para_sum.append(fluid.layers.reduce_sum(input=para_mul))
+                para_sum.append(paddle.sum(para_mul))
             avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
@@ -167,11 +169,13 @@ class TestRegularizer(unittest.TestCase):
         paddle.enable_static()
         l1 = paddle.regularizer.L1Decay(0.1)
         l2 = paddle.regularizer.L2Decay(0.01)
-        fc_param_attr = fluid.ParamAttr(regularizer=l1)
+        fc_param_attr = paddle.ParamAttr(
+            regularizer=paddle.regularizer.L1Decay()
+        )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = fluid.layers.uniform_random([2, 2, 3])
             out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
-            loss = fluid.layers.reduce_sum(out)
+            loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
             sgd.minimize(loss)
         with fluid.dygraph.guard():
@@ -181,11 +185,11 @@ class TestRegularizer(unittest.TestCase):
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 
-            linear1 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear1 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
-            linear2 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear2 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
 
             loss1 = linear1(input)

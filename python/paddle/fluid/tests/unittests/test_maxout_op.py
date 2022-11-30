@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
@@ -120,21 +121,6 @@ class TestMaxoutAPI(unittest.TestCase):
         out3 = F.maxout(x, self.groups, -1)
         out3_ref = maxout_forward_naive(self.x_np, self.groups, -1)
         np.testing.assert_allclose(out3_ref, out3.numpy(), rtol=1e-05)
-        paddle.enable_static()
-
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.maxout(x, groups=self.groups, axis=self.axis)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
-
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.fluid.layers.maxout(x, groups=self.groups, axis=self.axis)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):

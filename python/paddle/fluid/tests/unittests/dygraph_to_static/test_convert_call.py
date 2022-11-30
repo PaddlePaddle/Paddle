@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
+from paddle.jit import ProgramTranslator
+from paddle.jit.dy2static.convert_call_func import (
     CONVERSION_OPTIONS,
 )
 from test_program_translator import get_source_code
@@ -155,23 +155,23 @@ class MyLayer(fluid.dygraph.Layer):
         super().__init__()
 
         self.conv = MyConvLayer()
-        self.fc = fluid.dygraph.Linear(
-            input_dim=5,
-            output_dim=1,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+        self.fc = paddle.nn.Linear(
+            in_features=5,
+            out_features=1,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
+        self.act = paddle.nn.ReLU()
 
     @paddle.jit.to_static
     def forward(self, inputs):
         h = self.conv(inputs)
         out = self.fc(h)
-        return out
+        return self.act(out)
 
 
 class TestRecursiveCall2(unittest.TestCase):

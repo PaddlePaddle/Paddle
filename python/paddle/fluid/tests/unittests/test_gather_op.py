@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
-from paddle.framework import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.framework import core
 
 
 def gather_numpy(x, index, axis):

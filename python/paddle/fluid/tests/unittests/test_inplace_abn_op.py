@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+import unittest
+
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
@@ -73,9 +75,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 # may have same name, multiply 1. to generate
                 # a new Variable for fetch
                 bn = bn * 1.0
-
                 sigmoid = paddle.nn.functional.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                out = paddle.sum(sigmoid)
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)

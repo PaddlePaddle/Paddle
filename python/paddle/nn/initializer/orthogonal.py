@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.initializer import Initializer
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid import framework
-from paddle.utils import unique_name
-from ...fluid.dygraph import no_grad
 from paddle import _C_ops
+from paddle.utils import unique_name
+
+from ...fluid import framework
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.dygraph import no_grad
+from ...fluid.initializer import Initializer
 
 __all__ = []
 
