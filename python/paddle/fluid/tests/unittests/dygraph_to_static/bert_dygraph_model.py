@@ -424,7 +424,7 @@ class PretrainModelLayer(Layer):
             logits=next_sent_fc_out, label=labels, return_softmax=True
         )
 
-        next_sent_acc = fluid.layers.accuracy(
+        next_sent_acc = paddle.static.accuracy(
             input=next_sent_softmax, label=labels
         )
 

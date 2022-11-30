@@ -28,8 +28,8 @@ from . import loss
 from .loss import *
 from . import detection
 from .detection import *
-from . import metric_op
-from .metric_op import *
+from paddle.static.nn import metric
+from paddle.static.nn.metric import *
 from .learning_rate_scheduler import *
 from .collective import *
 from .distributions import *
@@ -43,7 +43,7 @@ __all__ += tensor.__all__
 __all__ += control_flow.__all__
 __all__ += device.__all__
 __all__ += detection.__all__
-__all__ += metric_op.__all__
+__all__ += metric.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += distributions.__all__
 __all__ += sequence_lod.__all__

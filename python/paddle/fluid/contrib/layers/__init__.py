@@ -16,10 +16,10 @@ from . import nn
 from .nn import *
 
 from .rnn_impl import *
-from . import metric_op
-from .metric_op import *
+from paddle.static.nn import metric
+from paddle.static.nn.metric import *
 
 __all__ = []
 __all__ += nn.__all__
 __all__ += rnn_impl.__all__
-__all__ += metric_op.__all__
+__all__ += metric.__all__
