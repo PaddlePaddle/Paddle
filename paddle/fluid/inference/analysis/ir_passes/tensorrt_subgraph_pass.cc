@@ -539,6 +539,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
   trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
+  trt_engine->SetWithDynamicShape(Get<bool>("with_dynamic_shape"));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -555,7 +556,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   // 如果开启了动态shape，但没有给 shape_info
   // 表明要在运行时边 run 边 build
-  if (Get<bool>("with_dynamic_shape") && min_input_shape == {}) {
+  if (Get<bool>("with_dynamic_shape") && min_input_shape.empty()) {
     return;
   }
 

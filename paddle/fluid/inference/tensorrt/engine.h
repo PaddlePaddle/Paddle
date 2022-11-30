@@ -479,6 +479,7 @@ class TensorRTEngine {
       if (!min_input_shape_.count(name)) {
         min_input_shape_[name] = input_shape;
         max_input_shape_[name] = input_shape;
+        optim_input_shape_[name] = input_shape;
         min_change = true;
         max_change = true;
         ret = true;
@@ -509,17 +510,16 @@ class TensorRTEngine {
             max_input_shape_[name][d] = input_shape[d];
           }
         }
+        if (min_change)
+          LOG(INFO) << "refactor shape range: " << name << ", min_shape from "
+                    << Vec2Str(bak_min_shape) << " to "
+                    << Vec2Str(min_input_shape_[name]);
+        if (max_change)
+          LOG(INFO) << "refactor shape range: " << name << ", max_shape from "
+                    << Vec2Str(bak_max_shape) << " to "
+                    << Vec2Str(max_input_shape_[name]);
+        if (min_change || max_change) changed->push_back(name);
       }
-
-      if (min_change)
-        LOG(INFO) << "refactor shape range: " << name << ", min_shape from "
-                  << Vec2Str(bak_min_shape) << " to "
-                  << Vec2Str(min_input_shape_[name]);
-      if (max_change)
-        LOG(INFO) << "refactor shape range: " << name << ", max_shape from "
-                  << Vec2Str(bak_max_shape) << " to "
-                  << Vec2Str(max_input_shape_[name]);
-      if (min_change || max_change) changed->push_back(name);
     }
     return ret;
   }

@@ -345,7 +345,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto t_shape = phi::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
       }
-
       if (!allow_build_at_runtime_) {
         std::map<std::string, std::vector<int>> min_input_shape =
             trt_engine->min_input_shape();
@@ -374,8 +373,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
             runtime_input_shape, &shape_changed_name);
         if (is_adjusted) {
           LOG(INFO) << "Adjust dynamic shape range, rebuild trt engine!";
-          trt_engine->ResetContext();
-          trt_engine->ClearTensorMap();
+          if (trt_engine->engine()) {
+            trt_engine->ResetContext();
+            trt_engine->ClearTensorMap();
+          }
           auto *anc = scope.parent();
           while (anc && anc->parent()) {
             anc = anc->parent();
