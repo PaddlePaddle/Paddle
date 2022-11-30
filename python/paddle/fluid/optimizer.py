@@ -475,9 +475,10 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    linear = paddle.nn.Linear(10, 10)
 
                     adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
 
@@ -576,6 +577,7 @@ class Optimizer:
 
                 import paddle.fluid as fluid
                 import numpy as np
+                import paddle
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
@@ -587,7 +589,7 @@ class Optimizer:
                 # example2: PiecewiseDecay is used, return the step learning rate
                 with fluid.dygraph.guard():
                     inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    linear = paddle.nn.Linear(10, 10)
                     inp = fluid.dygraph.to_variable(inp)
                     out = linear(inp)
                     loss = fluid.layers.reduce_mean(out)
@@ -1340,12 +1342,13 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 with fluid.dygraph.guard():
                     value = np.arange(26).reshape(2, 13).astype("float32")
                     a = fluid.dygraph.to_variable(value)
-                    linear = fluid.Linear(13, 5, dtype="float32")
+                    linear = paddle.nn.Linear(13, 5)
                     # This can be any optimizer supported by dygraph.
                     adam = fluid.optimizer.Adam(learning_rate = 0.01,
                                                 parameter_list = linear.parameters())
