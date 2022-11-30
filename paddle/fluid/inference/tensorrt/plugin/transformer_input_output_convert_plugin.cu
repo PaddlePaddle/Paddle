@@ -112,14 +112,16 @@ bool TransformerInputConvertPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     2,
-                    platform::errors::InvalidArgument("Must have 2 inputs, "
-                                                      "but got %d input(s). ",
-                                                      nbInputs));
+                    platform::errors::InvalidArgument(
+                        "TransformerInputConvertPlugin must have 2 inputs, "
+                        "but got %d input(s). ",
+                        nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     4,
-                    platform::errors::InvalidArgument("Must have 4 output, "
-                                                      "but got %d output(s). ",
-                                                      nbOutputs));
+                    platform::errors::InvalidArgument(
+                        "TransformerInputConvertPlugin must have 4 outputs, "
+                        "but got %d output(s). ",
+                        nbOutputs));
   if (pos == 0) {  //  input
     return inOut[pos].format == nvinfer1::TensorFormat::kLINEAR &&
            inOut[pos].type == nvinfer1::DataType::kHALF;
@@ -251,14 +253,16 @@ bool TransformerOutputConvertPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     3,
-                    platform::errors::InvalidArgument("Must have 3 inputs, "
-                                                      "but got %d input(s). ",
-                                                      nbInputs));
+                    platform::errors::InvalidArgument(
+                        "TransformerOutputConvertPlugin must have 3 inputs, "
+                        "but got %d input(s). ",
+                        nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     1,
-                    platform::errors::InvalidArgument("Must have 1 output, "
-                                                      "but got %d output(s). ",
-                                                      nbOutputs));
+                    platform::errors::InvalidArgument(
+                        "TransformerOutputConvertPlugin must have 1 output, "
+                        "but got %d output(s). ",
+                        nbOutputs));
   if (pos == 0) {  // qkv plugin output(varlen)
     return inOut[pos].format == nvinfer1::TensorFormat::kLINEAR &&
            inOut[pos].type == nvinfer1::DataType::kHALF;
