@@ -19,7 +19,7 @@
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
@@ -51,25 +51,11 @@ void ReshapeGradKernel(const Context& dev_ctx,
       reorder_dst_memory_p->get_desc().reshape(vectorize(x_dims)));
 }
 
-template <typename Context>
-void ReshapeDoubleGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad,
-                             const DenseTensor& x_grad_grad,
-                             DenseTensor* out_grad_grad) {
-  ReshapeGradKernel(dev_ctx, x_grad_grad, out_grad_grad);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(reshape_grad,
                    OneDNN,
                    ONEDNN,
                    phi::ReshapeGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(reshape_double_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ReshapeDoubleGradKernel,
                    float,
                    phi::dtype::bfloat16) {}
