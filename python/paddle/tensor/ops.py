@@ -451,7 +451,7 @@ def ceil(x, name=None):
     return out
 
 
-def cos(x, name=None):
+def cos_x(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
 
