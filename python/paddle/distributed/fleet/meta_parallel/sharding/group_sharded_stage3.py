@@ -351,7 +351,12 @@ class GroupShardedStage3(nn.Layer):
             elif p.trainable:
                 self._unslice_params.add(_UnsliceParam(p))
 
-        assert id(layer) not in self._trainable_params.keys()
+        if id(layer) in self._trainable_params.keys():
+            for p in current_params:
+                assert (
+                    not p.trainable
+                ), "stage3 only support share untrainable params for model now."
+
         self._trainable_params[id(layer)] = current_params
 
         for param in self._trainable_params[id(layer)]:
