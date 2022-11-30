@@ -760,7 +760,7 @@
     func : silu
   backward : silu_grad
 
-- op : sin
+- op : sina
   args : (Tensor x)
   output : Tensor
   infer_meta :
