@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -36,30 +37,15 @@ class TestBF16Pass(unittest.TestCase):
                 "-m",
                 "paddle.distributed.launch",
                 "--devices",
-                "0",
+                "0,1",
                 "--log_dir",
                 tmp_dir.name,
                 launch_model_path,
             ]
         )
-        # cmd = (
-        #     [sys.executable, "-u"]
-        #     + coverage_args
-        #     + [
-        #         "-m",
-        #         "paddle.distributed.launch",
-        #         "--devices",
-        #         "0,1",
-        #         "--log_dir",
-        #         tmp_dir.name,
-        #         launch_model_path,
-        #     ]
-        # )
-
-        # process = subprocess.Popen(cmd)
-        os.system(cmd)
-        # process.wait()
-        # self.assertEqual(process.returncode, 0)
+        process = subprocess.Popen(cmd)
+        process.wait()
+        self.assertEqual(process.returncode, 0)
 
         tmp_dir.cleanup()
 
