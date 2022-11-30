@@ -20,7 +20,7 @@ from .break_continue_transformer import (
     ForToWhileTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException

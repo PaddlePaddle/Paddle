@@ -13,15 +13,19 @@
 # limitations under the License
 
 import copy
+
 import paddle
 from paddle.fluid.framework import Variable
-from .dist_attribute import OperatorDistributedAttribute
-from .dist_attribute import append_op_input_suffix
-from .dist_attribute import append_op_output_suffix
+
+from .dist_attribute import (
+    OperatorDistributedAttribute,
+    append_op_input_suffix,
+    append_op_output_suffix,
+)
 from .utils import (
+    __no_shape_var_type__,
     convert_to_shard_spec,
     verify_shard_spec,
-    __no_shape_var_type__,
 )
 
 

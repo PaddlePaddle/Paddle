@@ -17,6 +17,7 @@ import time
 import unittest
 
 import numpy as np
+
 import paddle
 
 PRINT_STEP = 20

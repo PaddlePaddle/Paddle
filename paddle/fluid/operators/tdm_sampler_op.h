@@ -33,17 +33,16 @@ using Tensor = phi::DenseTensor;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
-using LoDTensor = phi::DenseTensor;
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 
 template <typename T, typename TreeT = int, typename OutT = int>
 void TDMSamplerInner(const framework::ExecutionContext &context,
-                     const LoDTensor &input_tensor,
-                     const LoDTensor &travel_lod_tensor,
-                     const LoDTensor &layer_lod_tensor,
-                     LoDTensor *out_tensor,
-                     LoDTensor *label_tensor,
-                     LoDTensor *mask_tensor) {
+                     const phi::DenseTensor &input_tensor,
+                     const phi::DenseTensor &travel_lod_tensor,
+                     const phi::DenseTensor &layer_lod_tensor,
+                     phi::DenseTensor *out_tensor,
+                     phi::DenseTensor *label_tensor,
+                     phi::DenseTensor *mask_tensor) {
   auto neg_samples_num_vec =
       context.Attr<std::vector<int>>("neg_samples_num_list");
   auto layer_offset_lod = context.Attr<std::vector<int>>("layer_offset_lod");
