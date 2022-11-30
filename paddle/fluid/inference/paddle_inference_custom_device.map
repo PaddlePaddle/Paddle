@@ -1,14 +1,6 @@
 {
 	global:
 		extern "C++" {
-			*paddle::AnalysisConfig::*;
-			*paddle::PaddlePredictor::*;
-			*paddle::CreatePaddlePredictor*;
-			*paddle::NativePaddlePredictor*;
-			*paddle::AnalysisPredictor*;
-			*paddle::PaddleDtypeSize*;
-			*paddle::ZeroCopyTensor*;
-
 			*paddle_infer::GetVersion*;
 			*paddle_infer::UpdateDllFlag*;
 			*paddle_infer::experimental::InternalUtils*;
@@ -22,15 +14,49 @@
 			*paddle_infer::contrib::TensorUtils*;
 			*paddle_infer::contrib::Status*;
 			*paddle_infer::services::PredictorPool*;
+			*paddle_infer::LayoutConvert*;
 
 			*paddle::experimental*;
+			*paddle::internal*;
+			*paddle::get_version*;
+			*paddle::LiteNNAdapterConfig*;
+			*paddle::AnalysisConfig::*;
+			*paddle::PaddlePredictor::*;
+			*paddle::CreatePaddlePredictor*;
+			*paddle::NativePaddlePredictor*;
+			*paddle::AnalysisPredictor*;
+			*paddle::PaddleDtypeSize*;
+			*paddle::ZeroCopyTensor*;
+			*paddle::*Strategy*;
+			*paddle::NativeConfig*;
+			*paddle::PaddleBuf*;
+			*paddle::PaddleTensor*;
+			*paddle::UpdateDllFlag*;
+			*paddle::MakeCipher*;
+			*paddle::DistConfig*;
+			*paddle::DefaultGPUPlace*;
 
-			*paddle::imperative*;
-			*paddle::detailv3*;
-			*paddle::framework*;
-			*paddle::operators*;
+			*paddle::LoadCustomOperatorLib*;
+			*paddle::RegisterAllCustomOperator*;
+
+			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
+			/* FD needs some symbols hidden, how to do that. */
+
+			/* *paddle::distributed*; */
+			*paddle::distributed::FleetWrapper*;
+			*paddle::distributed::TensorTable*;
+			*paddle::distributed::TableManager*;
+
+			*paddle::inference*;
+
+			*paddle::platform::GetExportedFlagInfoMap*;
+
+			/* *paddle::framework*; */
+			*paddle::framework::InterpreterCore*;
+			*paddle::framework::Executor*;
 		};
 
+		/* The following symbols need to reconsider. */
 		*Pass*;
 		*profile*;
 		*phi*;
