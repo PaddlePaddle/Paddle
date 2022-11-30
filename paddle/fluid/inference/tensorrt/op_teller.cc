@@ -113,7 +113,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #endif
       if (op_type == "logical_not") {
-#if !IS_TRT_VERSION_GE(8400)
+#if !IS_TRT_VERSION_GE(7000)
         VLOG(3) << op_type << " op does not support tensorrt.";
         return false;
 #endif
