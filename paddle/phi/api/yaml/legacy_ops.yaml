@@ -1465,9 +1465,9 @@
   args : (Tensor x)
   output : Tensor(size)
   infer_meta :
-    func : SizeInferMeta
+    func : NumelInferMeta
   kernel :
-    func : size
+    func : numel
   data_transform:
     skip_transform : x
 

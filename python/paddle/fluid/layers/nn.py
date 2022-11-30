@@ -98,7 +98,6 @@ __all__ = [
     'resize_nearest',
     'relu',
     'log',
-    'prelu',
     'unique',
     'unique_with_counts',
     'elementwise_add',
@@ -1852,7 +1851,7 @@ def pool2d(
 
     pool_padding = update_padding(pool_padding, data_format)
     if in_dygraph_mode():
-        input = input._use_cudnn(use_cudnn)
+        input = input._use_gpudnn(use_cudnn)
         return _C_ops.pool2d(
             input,
             pool_size,
@@ -5328,112 +5327,6 @@ def relu(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out}
-    )
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
-def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
-    r"""
-
-    prelu activation.
-
-    .. math::
-        prelu(x) = max(0, x) + \alpha * min(0, x)
-
-    There are three modes for the activation:
-
-    .. code-block:: text
-
-        all: All elements share same alpha.
-        channel: Elements in same channel share same alpha.
-        element: All elements do not share alpha. Each element has its own alpha.
-
-    Parameters:
-        x (Tensor): The input Tensor or LoDTensor with data type float32.
-        mode (str): The mode for weight sharing.
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
-            weight (alpha), it can be create by ParamAttr. None by default.
-            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-        data_format(str, optional): Data format that specifies the layout of input.
-            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor, A tensor with the same shape and data type as x.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([-1., 2., 3.])
-            param = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(0.2))
-            out = paddle.static.nn.prelu(x, 'all', param)
-            # [-0.2, 2., 3.]
-
-    """
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
-
-    helper = LayerHelper('prelu', **locals())
-    if mode not in ['all', 'channel', 'element']:
-        raise ValueError('mode should be one of all, channel, element.')
-
-    alpha_shape = [1]
-    if mode == 'channel':
-
-        true_data_format = [
-            'NC',
-            'NCL',
-            'NCHW',
-            'NCDHW',
-            'NLC',
-            'NHWC',
-            'NDHWC',
-        ]
-        if data_format not in true_data_format:
-            raise ValueError(
-                "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
-            )
-
-        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
-
-        assert (
-            len(x.shape) >= 2
-        ), "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
-        # NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
-        # To be consistent with Prelu, it is simplified.
-        # NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
-        # NOTE(GuoxiaWang): support NHWC data format
-        if data_format == 'NHWC':
-            alpha_shape = [1, 1, 1, x.shape[-1]]
-        else:
-            alpha_shape = [1, x.shape[1], 1, 1]
-
-    elif mode == 'element':
-        assert (
-            len(x.shape) >= 1
-        ), "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
-        alpha_shape = [1] + list(x.shape)[1:]
-    dtype = helper.input_dtype(input_param_name='x')
-    alpha = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=alpha_shape,
-        dtype=dtype,
-        is_bias=False,
-        default_initializer=Constant(0.25),
-    )
-    if in_dygraph_mode():
-        return _C_ops.prelu(x, alpha, data_format, mode)
-
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="prelu",
-        inputs={"X": x, 'Alpha': alpha},
-        attrs={"mode": mode, "data_format": data_format},
-        outputs={"Out": out},
     )
     return out
 
