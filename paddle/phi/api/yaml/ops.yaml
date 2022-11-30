@@ -761,7 +761,7 @@
   backward : silu_grad
 
 - op : sina
-  args : (Tensor x)
+  args : (Tensor x, int a)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
