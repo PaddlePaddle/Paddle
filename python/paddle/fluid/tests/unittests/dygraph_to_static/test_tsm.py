@@ -335,10 +335,10 @@ def train(args, fake_data_reader, to_static):
                     input=outputs, label=labels, ignore_index=-1
                 )
                 avg_loss = paddle.mean(loss)
-                acc_top1 = fluid.layers.accuracy(
+                acc_top1 = paddle.metric.accuracy(
                     input=outputs, label=labels, k=1
                 )
-                acc_top5 = fluid.layers.accuracy(
+                acc_top5 = paddle.metric.accuracy(
                     input=outputs, label=labels, k=5
                 )
 

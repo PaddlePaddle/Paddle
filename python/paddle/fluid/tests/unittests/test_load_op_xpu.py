@@ -61,7 +61,7 @@ class TestLoadOpXpu(unittest.TestCase):
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             var = layers.create_tensor(dtype='float32')
-            layers.load(var, file_path=self.model_path + '/w')
+            paddle.static.load(var, file_path=self.model_path + '/w')
 
         exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)

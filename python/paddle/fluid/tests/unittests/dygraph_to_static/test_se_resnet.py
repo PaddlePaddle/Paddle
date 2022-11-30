@@ -347,8 +347,8 @@ class SeResNeXt(fluid.dygraph.Layer):
         loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
         avg_loss = paddle.mean(x=loss)
 
-        acc_top1 = fluid.layers.accuracy(input=softmax_out, label=label, k=1)
-        acc_top5 = fluid.layers.accuracy(input=softmax_out, label=label, k=5)
+        acc_top1 = paddle.metric.accuracy(input=softmax_out, label=label, k=1)
+        acc_top5 = paddle.metric.accuracy(input=softmax_out, label=label, k=5)
         return out, avg_loss, acc_top1, acc_top5
 
 

@@ -48,10 +48,11 @@ from .dataloader.dataloader_iter import (
     default_collate_fn,
 )
 from .dataloader.batch_sampler import _InfiniteIterableSampler
-from .layers.io import (
+
+from paddle.framework.io import (
     monkey_patch_reader_methods,
-    _copy_reader_var_,
     double_buffer,
+    _copy_reader_var_,
 )
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
@@ -1668,7 +1669,7 @@ class PyReader(DataLoaderBase):
 
     Examples:
         1. If iterable = False, the created PyReader object is almost the
-           same as :code:`fluid.layers.py_reader()`. Operators would be
+           same as :code:`paddle.framework.io.py_reader()`. Operators would be
            inserted into the program. User should call :code:`start()`
            before each epoch and catch :code:`fluid.core.EOFException`
            thrown by :code:`Executor.run()` when epoch ends. Once the

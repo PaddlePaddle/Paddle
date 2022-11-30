@@ -2895,7 +2895,7 @@ class TestLayer(LayerTest):
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
             predict = fluid.layers.softmax(input=fc_out)
-            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            result = paddle.metric.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
@@ -2911,7 +2911,9 @@ class TestLayer(LayerTest):
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)
             predict = fluid.layers.softmax(fc_out)
-            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+            dynamic_out = paddle.metric.accuracy(
+                input=predict, label=label, k=5
+            )
 
         np.testing.assert_array_equal(static_out[0], dynamic_out.numpy())
 

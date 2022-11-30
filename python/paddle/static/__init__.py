@@ -58,7 +58,7 @@ from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 from ..fluid.io import save  # noqa: F401
-from ..fluid.io import load  # noqa: F401
+from ..framework.io import static_load as load  # noqa: F401
 from ..fluid.io import load_program_state  # noqa: F401
 from ..fluid.io import set_program_state  # noqa: F401
 
@@ -69,7 +69,6 @@ from ..fluid.io import batch  # noqa: F401
 from ..fluid.layers import create_parameter  # noqa: F401
 from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.layers.metric_op import auc  # noqa: F401
-from ..fluid.layers.metric_op import accuracy  # noqa: F401
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
 
@@ -117,7 +116,6 @@ __all__ = [  # noqa
     'mlu_places',
     'Variable',
     'create_global_var',
-    'accuracy',
     'auc',
     'device_guard',
     'create_parameter',

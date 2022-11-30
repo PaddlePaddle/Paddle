@@ -107,14 +107,14 @@ class TestProgram(unittest.TestCase):
 
     def test_program_inference_optimize(self):
         def net():
-            reader = fluid.layers.py_reader(
+            reader = paddle.framework.io.py_reader(
                 capacity=10,
                 shapes=[[-1, 10], [-1, 1]],
                 lod_levels=[0, 0],
                 dtypes=['float32', 'int64'],
                 use_double_buffer=True,
             )
-            in_data, label = fluid.layers.read_file(reader)
+            in_data, label = paddle.framework.io.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
             loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label)
@@ -174,14 +174,14 @@ class TestProgram(unittest.TestCase):
 
     def test_remove_training_info(self):
         def net():
-            reader = fluid.layers.py_reader(
+            reader = paddle.framework.io.py_reader(
                 capacity=10,
                 shapes=[[-1, 10], [-1, 1]],
                 lod_levels=[0, 0],
                 dtypes=['float32', 'int64'],
                 use_double_buffer=True,
             )
-            in_data, label = fluid.layers.read_file(reader)
+            in_data, label = paddle.framework.io.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
             loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label)

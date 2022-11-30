@@ -32,7 +32,7 @@ def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)
-    acc = fluid.layers.accuracy(input=prediction, label=label)
+    acc = paddle.metric.accuracy(input=prediction, label=label)
     return prediction, avg_loss, acc
 
 

@@ -547,8 +547,8 @@ def train_mobilenet(args, to_static):
                     input=softmax_out, label=label
                 )
                 avg_loss = paddle.mean(x=loss)
-                acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+                acc_top1 = paddle.metric.accuracy(input=out, label=label, k=1)
+                acc_top5 = paddle.metric.accuracy(input=out, label=label, k=5)
                 t_start_back = time.time()
 
                 loss_data.append(avg_loss.numpy())

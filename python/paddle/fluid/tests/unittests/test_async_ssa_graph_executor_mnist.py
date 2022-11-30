@@ -59,7 +59,7 @@ def convolutional_neural_network(use_py_reader):
         prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_loss = paddle.mean(loss)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.metric.accuracy(input=prediction, label=label)
         i = fluid.layers.zeros(shape=[1], dtype='int64')
         array = fluid.layers.array_write(x=prediction, i=i)
         fluid.layers.increment(i)

@@ -510,7 +510,7 @@ class Accuracy(MetricBase):
         if self.weight == 0:
             raise ValueError(
                 "There is no data in Accuracy Metrics. \
-                Please check layers.accuracy output has added to Accuracy."
+                Please check paddle.metric.accuracy output has added to Accuracy."
             )
         return self.value / self.weight
 

@@ -129,7 +129,7 @@ class TestImperativeQat(unittest.TestCase):
                     img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
                     out = lenet(img)
-                    acc = fluid.layers.accuracy(out, label)
+                    acc = paddle.metric.accuracy(out, label)
                     loss = fluid.layers.cross_entropy(out, label)
                     avg_loss = paddle.mean(loss)
                     avg_loss.backward()
@@ -160,10 +160,10 @@ class TestImperativeQat(unittest.TestCase):
                     label = fluid.dygraph.to_variable(y_data)
 
                     out = lenet(img)
-                    acc_top1 = fluid.layers.accuracy(
+                    acc_top1 = paddle.metric.accuracy(
                         input=out, label=label, k=1
                     )
-                    acc_top5 = fluid.layers.accuracy(
+                    acc_top5 = paddle.metric.accuracy(
                         input=out, label=label, k=5
                     )
 
@@ -200,7 +200,7 @@ class TestImperativeQat(unittest.TestCase):
             label = fluid.dygraph.to_variable(y_data)
             lenet.eval()
             fp32_out = lenet(test_img)
-            fp32_acc = fluid.layers.accuracy(fp32_out, label).numpy()
+            fp32_acc = paddle.metric.accuracy(fp32_out, label).numpy()
 
         with tempfile.TemporaryDirectory(prefix="qat_save_path_") as tmpdir:
             # save inference quantized model
@@ -237,7 +237,7 @@ class TestImperativeQat(unittest.TestCase):
             )
             paddle.disable_static()
             quant_out = fluid.dygraph.to_variable(quant_out)
-            quant_acc = fluid.layers.accuracy(quant_out, label).numpy()
+            quant_acc = paddle.metric.accuracy(quant_out, label).numpy()
             paddle.enable_static()
             delta_value = fp32_acc - quant_acc
             self.assertLessEqual(delta_value, self.diff_threshold)
