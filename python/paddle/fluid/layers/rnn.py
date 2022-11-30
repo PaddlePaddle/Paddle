@@ -2589,7 +2589,7 @@ def dynamic_lstm(
             data = fluid.data(name='x', shape=[None], dtype='int64', lod_level=1)
             emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
 
-            forward_proj = paddle.static.nn.fc(x=emb, size=hidden_dim * 4,
+            forward_proj = paddle.static.nn.fc(input=emb, size=hidden_dim * 4,
                                            bias_attr=False)
 
             forward, cell = fluid.layers.dynamic_lstm(
@@ -2989,7 +2989,7 @@ def dynamic_lstmp(
             data = fluid.data(name='sequence', shape=[None], dtype='int64', lod_level=1)
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
-            fc_out = paddle.static.nn.fc(x=emb, size=hidden_dim * 4,
+            fc_out = paddle.static.nn.fc(input=emb, size=hidden_dim * 4,
                                     activation=None, bias_attr=None)
             proj_out, last_c = fluid.layers.dynamic_lstmp(input=fc_out,
                                                     size=hidden_dim * 4,
@@ -3207,7 +3207,7 @@ def dynamic_gru(
                       lod_level=1)
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = paddle.static.nn.fc(x=emb, size=hidden_dim * 3)
+            x = paddle.static.nn.fc(input=emb, size=hidden_dim * 3)
             hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
     """
 
@@ -3370,7 +3370,7 @@ def gru_unit(
             data = fluid.data(name='step_data', shape=[None], dtype='int64')
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
-            x = paddle.static.nn.fc(x=emb, size=hidden_dim * 3)
+            x = paddle.static.nn.fc(input=emb, size=hidden_dim * 3)
             pre_hidden = fluid.data(
                 name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
             hidden = fluid.layers.gru_unit(

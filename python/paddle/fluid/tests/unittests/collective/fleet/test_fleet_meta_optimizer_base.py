@@ -39,7 +39,9 @@ class TestFleetMetaOptimizerBase(unittest.TestCase):
                 fc_1 = paddle.static.nn.fc(
                     x=input_x, size=64, activation='tanh'
                 )
-                fc_2 = paddle.static.nn.fc(x=fc_1, size=256, activation='tanh')
+                fc_2 = paddle.static.nn.fc(
+                    input=fc_1, size=256, activation='tanh'
+                )
                 prediction = paddle.static.nn.fc(
                     x=[fc_2], size=2, activation='softmax'
                 )

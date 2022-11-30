@@ -95,7 +95,7 @@ def vgg16_bn_drop(input):
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
-    fc1 = paddle.static.nn.fc(x=drop, size=4096, activation=None)
+    fc1 = paddle.static.nn.fc(input=drop, size=4096, activation=None)
     bn = fluid.layers.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = paddle.static.nn.fc(X=drop2, size=4096, activation=None)
@@ -118,7 +118,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
     else:
         raise ValueError("%s network is not supported" % net_type)
 
-    predict = paddle.static.nn.fc(x=net, size=classdim, activation='softmax')
+    predict = paddle.static.nn.fc(
+        input=net, size=classdim, activation='softmax'
+    )
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = paddle.mean(cost)
     acc = fluid.layers.accuracy(input=predict, label=label)

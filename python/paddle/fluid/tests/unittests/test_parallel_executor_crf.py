@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import unittest
-
-import paddle
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid import compiler
+import paddle.fluid.core as core
+import unittest
+import paddle
+import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -81,7 +80,7 @@ def db_lstm(
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        paddle.static.nn.fc(x=emb, size=hidden_dim, activation='tanh')
+        paddle.static.nn.fc(input=emb, size=hidden_dim, activation='tanh')
         for emb in emb_layers
     ]
 

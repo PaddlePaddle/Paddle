@@ -331,7 +331,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
         x = fluid.data(name='x', shape=[None, 13], dtype='int64')
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
-        y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
+        y_predict = paddle.static.nn.fc(input=x_emb, size=1, name='my_fc')
         loss = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
         param_names = [
@@ -383,7 +383,7 @@ class TestGradientsWithOptimizer(unittest.TestCase):
 
         with fluid.program_guard(main, startup):
             img = static.data(name='image', shape=[None, 784])
-            pred = static.nn.fc(x=img, size=10, activation='relu')
+            pred = static.nn.fc(input=img, size=10, activation='relu')
             loss = paddle.mean(pred)
             opt = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 

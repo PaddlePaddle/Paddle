@@ -28,8 +28,10 @@ class TestGradientScale(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
     def mlp(self, input_x, input_y, hid_dim=128, label_dim=2):
-        fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
-        fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
+        fc_1 = paddle.static.nn.fc(
+            input=input_x, size=hid_dim, activation='tanh'
+        )
+        fc_2 = paddle.static.nn.fc(input=fc_1, size=hid_dim, activation='tanh')
         prediction = paddle.static.nn.fc(
             x=[fc_2], size=label_dim, activation='softmax'
         )

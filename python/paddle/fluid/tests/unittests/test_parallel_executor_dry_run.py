@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import os
-import unittest
-
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+import unittest
+import logging
+import os
 
 os.environ['CPU_NUM'] = str(4)
 
@@ -80,9 +79,9 @@ class TestMNISTDryRun(TestBase):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         hidden = img
         for _ in range(10):
-            hidden = paddle.static.nn.fc(x=img, size=200, activation='tanh')
+            hidden = paddle.static.nn.fc(input=img, size=200, activation='tanh')
         prediction = paddle.static.nn.fc(
-            x=hidden, size=10, activation='softmax'
+            input=hidden, size=10, activation='softmax'
         )
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_loss = paddle.mean(loss)

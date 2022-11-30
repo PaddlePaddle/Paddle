@@ -25,9 +25,9 @@ prog = fluid.framework.Program()
 with fluid.program_guard(main_program=prog):
     image = fluid.layers.data(name='x', shape=[784], dtype='float32')
 
-    hidden1 = paddle.static.nn.fc(x=image, size=128, activation='relu')
-    hidden2 = paddle.static.nn.fc(x=hidden1, size=64, activation='relu')
-    predict = paddle.static.nn.fc(x=hidden2, size=10, activation='softmax')
+    hidden1 = paddle.static.nn.fc(input=image, size=128, activation='relu')
+    hidden2 = paddle.static.nn.fc(input=hidden1, size=64, activation='relu')
+    predict = paddle.static.nn.fc(input=hidden2, size=10, activation='softmax')
 
     label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 

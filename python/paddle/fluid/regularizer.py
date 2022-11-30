@@ -75,8 +75,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-                hidden = paddle.static.nn.fc(x=data, size=128, activation='relu')
-                prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
+                hidden = paddle.static.nn.fc(input=data, size=128, activation='relu')
+                prediction = paddle.static.nn.fc(input=hidden, size=10, activation='softmax')
                 loss = fluid.layers.cross_entropy(input=prediction, label=label)
                 avg_loss = fluid.layers.mean(loss)
             optimizer = fluid.optimizer.Adagrad(
@@ -190,8 +190,8 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-                hidden = paddle.static.nn.fc(x=data, size=128, activation='relu')
-                prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
+                hidden = paddle.static.nn.fc(input=data, size=128, activation='relu')
+                prediction = paddle.static.nn.fc(input=hidden, size=10, activation='softmax')
                 loss = fluid.layers.cross_entropy(input=prediction, label=label)
                 avg_loss = fluid.layers.mean(loss)
             optimizer = fluid.optimizer.Adagrad(

@@ -1796,7 +1796,7 @@ def append_backward(
             x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
             y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
             x_emb = paddle.static.nn.embedding(x, size=[100, 256])
-            y_predict = paddle.static.nn.fc(x=x_emb, size=1, activation=None, name='my_fc')
+            y_predict = paddle.static.nn.fc(input=x_emb, size=1, activation=None, name='my_fc')
             loss = F.square_error_cost(input=y_predict, label=y)
             avg_loss = paddle.mean(loss)
 
@@ -2481,7 +2481,7 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
             paddle.enable_static()
 
             img = static.data(name='image', shape=[None, 784])
-            pred = static.nn.fc(x=img, size=10, activation='relu')
+            pred = static.nn.fc(input=img, size=10, activation='relu')
             loss = paddle.mean(pred)
             opt_ops, pram_grads = paddle.fluid.backward.gradients_with_optimizer(static.default_main_program(), opt)
             print(opt_ops)

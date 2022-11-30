@@ -38,8 +38,8 @@ def bow_net(
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
     bow_tanh = paddle.tanh(bow)
-    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
-    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
+    fc_1 = paddle.static.nn.fc(input=bow_tanh, size=hid_dim, activation="tanh")
+    fc_2 = paddle.static.nn.fc(input=fc_1, size=hid_dim2, activation="tanh")
     prediction = paddle.static.nn.fc(
         x=[fc_2], size=class_dim, activation="softmax"
     )

@@ -1029,7 +1029,7 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
                 data = paddle.static.data(
                     shape=[2, 2], name='X', dtype='float32'
                 )
-            hidden = paddle.static.nn.fc(x=data, size=10)
+            hidden = paddle.static.nn.fc(input=data, size=10)
             loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)

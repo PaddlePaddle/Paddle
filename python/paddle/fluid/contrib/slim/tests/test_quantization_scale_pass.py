@@ -53,8 +53,10 @@ def conv_net(img, label):
         pool_type='avg',
         act="relu",
     )
-    hidden = paddle.static.nn.fc(x=conv_pool_2, size=100, activation='relu')
-    prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
+    hidden = paddle.static.nn.fc(input=conv_pool_2, size=100, activation='relu')
+    prediction = paddle.static.nn.fc(
+        input=hidden, size=10, activation='softmax'
+    )
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)
     return avg_loss

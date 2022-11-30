@@ -50,8 +50,12 @@ def conv_net(img, label):
         act="relu",
     )
     with fluid.name_scope("skip_quant"):
-        hidden = paddle.static.nn.fc(x=conv_pool_1, size=100, activation='relu')
-    prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
+        hidden = paddle.static.nn.fc(
+            input=conv_pool_1, size=100, activation='relu'
+        )
+    prediction = paddle.static.nn.fc(
+        input=hidden, size=10, activation='softmax'
+    )
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)
     return avg_loss

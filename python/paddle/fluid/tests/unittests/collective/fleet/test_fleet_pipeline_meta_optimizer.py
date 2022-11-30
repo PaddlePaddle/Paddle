@@ -45,11 +45,13 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             with static.device_guard("gpu:all"):
                 input_z = input_z * 1.0
                 input_z.stop_gradient = True
-            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_1 = paddle.static.nn.fc(
+                input=input_x, size=64, activation='tanh'
+            )
             fc_1 = fc_1 * input_z
 
         with static.device_guard("gpu:1"):
-            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(input=fc_1, size=64, activation='tanh')
             # for pipeline check_pipeline_persist_var coverage
             fc_2.persistable = True
             fc_2 = fc_2 * input_z

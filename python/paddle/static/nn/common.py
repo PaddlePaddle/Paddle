@@ -33,7 +33,7 @@ __all__ = []
 
 @static_only
 def fc(
-    x,
+    input,
     size,
     num_flatten_dims=1,
     weight_attr=None,
@@ -82,7 +82,7 @@ def fc(
                    [0.3, 0.4]]]
         x.shape = (1, 2, 2) # 1 is batch_size
 
-        out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+        out = paddle.static.nn.fc(input=x, size=1, num_flatten_dims=2)
 
         # Get the output:
         out.data = [[0.83234344], [0.34936576]]
@@ -96,14 +96,14 @@ def fc(
         x1.data = [[[0.1, 0.2, 0.3]]]
         x1.shape = (1, 1, 3)
 
-        out = paddle.static.nn.fc(x=[x0, x1], size=2)
+        out = paddle.static.nn.fc(input=[x0, x1], size=2)
 
         # Get the output:
         out.data = [[0.18669507, 0.1893476]]
         out.shape = (1, 2)
 
     Args:
-        x (Tensor|list[Tensor]|tuple[Tensor]): A tensor or a list/tuple of tensors. The number of dimensions
+        input (Tensor|list[Tensor]|tuple[Tensor]): A tensor or a list/tuple of tensors. The number of dimensions
             of each tensor is at least 2. The data type should be float16, float32 or float64.
         size (int): The number of output units in this layer, which also means the feature
             size of output tensor.
@@ -148,7 +148,7 @@ def fc(
           # x: [[[0.1 0.2]
           #      [0.3 0.4]]]
           out = paddle.static.nn.fc(
-              x=x,
+              input=x,
               size=1,
               num_flatten_dims=2,
               weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
@@ -163,7 +163,7 @@ def fc(
           x1 = paddle.static.data(name="x1", shape=[1, 1, 3], dtype="float32")
           # x1: [[[0.1 0.2 0.3]]]
           out = paddle.static.nn.fc(
-              x=[x0, x1],
+              input=[x0, x1],
               size=2,
               weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
               bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))

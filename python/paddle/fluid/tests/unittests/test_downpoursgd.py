@@ -56,7 +56,9 @@ class TestListenAndServOp(unittest.TestCase):
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = paddle.static.nn.fc(x=x_emb, size=1, activation=None)
+            y_predict = paddle.static.nn.fc(
+                input=x_emb, size=1, activation=None
+            )
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
@@ -118,7 +120,9 @@ class TestListenAndServOp(unittest.TestCase):
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = paddle.static.nn.fc(x=x_emb, size=1, activation=None)
+            y_predict = paddle.static.nn.fc(
+                input=x_emb, size=1, activation=None
+            )
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
@@ -178,7 +182,9 @@ class TestListenAndServOp(unittest.TestCase):
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = paddle.static.nn.fc(x=x_emb, size=1, activation=None)
+            y_predict = paddle.static.nn.fc(
+                input=x_emb, size=1, activation=None
+            )
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)

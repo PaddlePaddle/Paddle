@@ -64,13 +64,13 @@ def stacked_lstm_net(
     # add bias attr
 
     # TODO(qijun) linear act
-    fc1 = paddle.static.nn.fc(x=emb, size=hid_dim)
+    fc1 = paddle.static.nn.fc(input=emb, size=hid_dim)
     lstm1, cell1 = fluid.layers.dynamic_lstm(input=fc1, size=hid_dim)
 
     inputs = [fc1, lstm1]
 
     for i in range(2, stacked_num + 1):
-        fc = paddle.static.nn.fc(x=inputs, size=hid_dim)
+        fc = paddle.static.nn.fc(input=inputs, size=hid_dim)
         lstm, cell = fluid.layers.dynamic_lstm(
             input=fc, size=hid_dim, is_reverse=(i % 2) == 0
         )

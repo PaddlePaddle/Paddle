@@ -244,8 +244,8 @@ class TestMulNet(unittest.TestCase):
             sum_2 = paddle.add(c, d)
             result = paddle.fluid.layers.mul(sum_1, sum_2)
 
-            fc_1 = paddle.static.nn.fc(x=result, size=8)
-            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
+            fc_1 = paddle.static.nn.fc(input=result, size=8)
+            prediction = paddle.static.nn.fc(input=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)
@@ -321,8 +321,8 @@ class TestMulNet3_2(unittest.TestCase):
             sum_2 = paddle.add(c, d)
             result = paddle.fluid.layers.mul(sum_1, sum_2)
 
-            fc_1 = paddle.static.nn.fc(x=result, size=8)
-            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
+            fc_1 = paddle.static.nn.fc(input=result, size=8)
+            prediction = paddle.static.nn.fc(input=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)
@@ -401,8 +401,8 @@ class TestMulNet3_2_xc2(unittest.TestCase):
             result = paddle.fluid.layers.mul(sum_1, sum_2, x_num_col_dims=2)
             result_re = paddle.reshape(result, shape=[2, 15])
 
-            fc_1 = paddle.static.nn.fc(x=result_re, size=8)
-            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
+            fc_1 = paddle.static.nn.fc(input=result_re, size=8)
+            prediction = paddle.static.nn.fc(input=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)
@@ -476,14 +476,14 @@ class TestMulNet4_2(unittest.TestCase):
 
             sum_1 = paddle.add(a, b)  # [12, 5]
             sum_2 = paddle.add(c, d)  # [12, 5]
-            fc_1 = paddle.static.nn.fc(x=sum_1, size=2)  # [12, 2]
+            fc_1 = paddle.static.nn.fc(input=sum_1, size=2)  # [12, 2]
             fc_1_re_shape = paddle.reshape(fc_1, shape=[2, 3, 2, 2])
-            fc_2 = paddle.static.nn.fc(x=sum_2, size=2)  # [12, 2]
+            fc_2 = paddle.static.nn.fc(input=sum_2, size=2)  # [12, 2]
             result = paddle.fluid.layers.mul(
                 fc_1_re_shape, fc_2
             )  # [2, 3, 2, 2] * [12, 2]
 
-            prediction = paddle.static.nn.fc(x=result, size=2, activation='softmax')
+            prediction = paddle.static.nn.fc(input=result, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)

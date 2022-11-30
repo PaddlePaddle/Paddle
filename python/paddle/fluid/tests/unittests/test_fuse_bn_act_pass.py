@@ -48,7 +48,9 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 act='relu',
                 data_layout='NHWC',
             )
-            hidden3 = paddle.static.nn.fc(x=hidden2, size=32, activation='relu')
+            hidden3 = paddle.static.nn.fc(
+                input=hidden2, size=32, activation='relu'
+            )
             hidden4 = fluid.layers.batch_norm(
                 input=hidden3, act='relu', data_layout='NHWC'
             )

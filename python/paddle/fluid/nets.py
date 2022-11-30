@@ -548,7 +548,9 @@ def scaled_dot_product_attention(
         q = paddle.static.nn.fc(
             x=queries, size=queries.shape[-1], num_flatten_dims=2
         )
-        k = paddle.static.nn.fc(x=keys, size=keys.shape[-1], num_flatten_dims=2)
+        k = paddle.static.nn.fc(
+            input=keys, size=keys.shape[-1], num_flatten_dims=2
+        )
         v = paddle.static.nn.fc(
             x=values, size=values.shape[-1], num_flatten_dims=2
         )

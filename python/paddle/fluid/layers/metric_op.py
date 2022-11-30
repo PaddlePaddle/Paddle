@@ -67,7 +67,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
             paddle.enable_static()
             data = static.data(name="input", shape=[-1, 32, 32], dtype="float32")
             label = static.data(name="label", shape=[-1,1], dtype="int")
-            fc_out = static.nn.fc(x=data, size=10)
+            fc_out = static.nn.fc(input=data, size=10)
             predict = F.softmax(x=fc_out)
             result = static.accuracy(input=predict, label=label, k=5)
             place = paddle.CPUPlace()
@@ -187,7 +187,7 @@ def auc(
 
             data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            fc_out = paddle.static.nn.fc(x=data, size=2)
+            fc_out = paddle.static.nn.fc(input=data, size=2)
             predict = paddle.nn.functional.softmax(x=fc_out)
             result=paddle.static.auc(input=predict, label=label)
 
@@ -210,7 +210,7 @@ def auc(
             data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = paddle.static.data(name="label", shape=[-1], dtype="int")
             ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='float64')
-            fc_out = paddle.static.nn.fc(x=data, size=2)
+            fc_out = paddle.static.nn.fc(input=data, size=2)
             predict = paddle.nn.functional.softmax(x=fc_out)
             result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
 

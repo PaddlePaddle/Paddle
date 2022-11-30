@@ -86,7 +86,7 @@ def residual_block(num, quant_skip_pattern=None):
         pool = fluid.layers.pool2d(
             input=hidden, pool_size=2, pool_type='avg', pool_stride=2
         )
-    fc = paddle.static.nn.fc(x=pool, size=10)
+    fc = paddle.static.nn.fc(input=pool, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
     loss = paddle.mean(loss)
     return loss
@@ -112,7 +112,7 @@ def conv_net(img, label, quant_skip_pattern):
         pool_type='avg',
         act="relu",
     )
-    hidden = paddle.static.nn.fc(x=conv_pool_2, size=100, activation='relu')
+    hidden = paddle.static.nn.fc(input=conv_pool_2, size=100, activation='relu')
     with fluid.name_scope(quant_skip_pattern):
         prediction = paddle.static.nn.fc(
             x=hidden, size=10, activation='softmax'
@@ -761,7 +761,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             input=hidden, pool_size=2, pool_type='max', pool_stride=2
         )
         pool_add = fluid.layers.elementwise_add(x=pool1, y=pool2, act='relu')
-    fc = paddle.static.nn.fc(x=pool_add, size=10)
+    fc = paddle.static.nn.fc(input=pool_add, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
     loss = paddle.mean(loss)
     return loss

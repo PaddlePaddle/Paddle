@@ -53,9 +53,11 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             input=input_x, size=[100, 10], is_sparse=True
         )
 
-        fc_1 = paddle.static.nn.fc(x=emb, size=64, activation='tanh')
-        fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
-        prediction = paddle.static.nn.fc(x=[fc_2], size=2, activation='softmax')
+        fc_1 = paddle.static.nn.fc(input=emb, size=64, activation='tanh')
+        fc_2 = paddle.static.nn.fc(input=fc_1, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(
+            input=[fc_2], size=2, activation='softmax'
+        )
         cost = paddle.fluid.layers.cross_entropy(
             input=prediction, label=input_y
         )
