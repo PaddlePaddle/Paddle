@@ -146,13 +146,6 @@ class FcOpConverter : public OpConverter {
     // Declare inputs
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
     auto x_dim = X->getDimensions();
-
-    std::cout << "fc::::: " << op_desc.Input(i_name).front()
-              << "nbDims : " << x_dim.nbDims << std::endl;
-    for (int i = 0; i < x_dim.nbDims; ++i) {
-      std::cout << "fc.dims: " << x_dim.d[i] << std::endl;
-    }
-
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(
