@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import random
 import unittest
 from functools import partial
-import contextlib
+
 import numpy as np
-import random
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.fluid.regularizer as regularizer
 from paddle.fluid.backward import append_backward
@@ -257,7 +259,9 @@ class TestRegularizer(unittest.TestCase):
     def test_repeated_regularization(self):
         l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
         l2 = fluid.regularizer.L2Decay(regularization_coeff=0.01)
-        fc_param_attr = fluid.ParamAttr(regularizer=l1)
+        fc_param_attr = paddle.ParamAttr(
+            regularizer=paddle.regularizer.L1Decay()
+        )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = paddle.uniform([2, 2, 3])
             out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
@@ -271,11 +275,11 @@ class TestRegularizer(unittest.TestCase):
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 
-            linear1 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear1 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
-            linear2 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear2 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
 
             loss1 = linear1(input)

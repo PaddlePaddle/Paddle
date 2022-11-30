@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from scipy.special import expit, erf
-
 from op_test import OpTest, convert_float_to_uint16
+from scipy.special import erf, expit
+
 import paddle
-import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 

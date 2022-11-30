@@ -16,10 +16,11 @@ import io
 import pickle
 
 import numpy as np
+
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.framework as framework
 import paddle.distributed.communication.stream as stream
+import paddle.fluid.framework as framework
 
 
 def all_gather(tensor_list, tensor, group=None, sync_op=True):
