@@ -79,17 +79,17 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",        "relu6",     "sigmoid",
-        "elu",         "selu",      "softsign",
-        "softplus",    "stanh",     "thresholded_relu",
-        "exp",         "log",       "sqrt",
-        "abs",         "sin",       "cos",
-        "tan",         "tanh",      "sinh",
-        "cosh",        "asin",      "acos",
-        "atan",        "asinh",     "atanh",
-        "ceil",        "floor",     "erf",
-        "reciprocal",  "silu",      "celu",
-        "tanh_shrink", "logsigmoid"};
+        "relu",        "relu6",      "sigmoid",
+        "elu",         "selu",       "softsign",
+        "softplus",    "stanh",      "thresholded_relu",
+        "exp",         "log",        "sqrt",
+        "abs",         "sin",        "cos",
+        "tan",         "tanh",       "sinh",
+        "cosh",        "asin",       "acos",
+        "atan",        "asinh",      "atanh",
+        "ceil",        "floor",      "erf",
+        "reciprocal",  "silu",       "celu",
+        "tanh_shrink", "logsigmoid", "logical_not"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -112,6 +112,22 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
+      if (op_type == "logical_not") {
+#if !IS_TRT_VERSION_GE(8400)
+        VLOG(3) << op_type << " op does not support tensorrt.";
+        return false;
+#endif
+        int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
+        int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
+        if (in_dtype != 0 || out_dtype != 0) {
+          VLOG(3) << "logical_not only supports inputs and outputs of BOOL";
+          return false;
+        }
+        if (!with_dynamic_shape) {
+          VLOG(3) << "static shape mode is not supported for TRT logical_not";
+          return false;
+        }
+      }
     }
 
     // In static shape mode in TRT, we can't allow that op's input is a
@@ -2342,6 +2358,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "floor",
       "rsqrt",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
@@ -2472,6 +2489,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "floor",
       "rsqrt",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
