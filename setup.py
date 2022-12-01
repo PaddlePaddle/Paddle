@@ -829,8 +829,8 @@ def get_package_data_and_package_dir():
         shutil.copy(envir_var.get("GNU_RT_LIB_2"), libs_path)
 
     if envir_var.get("WITH_MKL") == 'ON':
-        shutil.copy(envir_var.get("MKLML_SHARED_LIB"), libs_path)  # -------
-        shutil.copy(envir_var.get("MKLML_SHARED_IOMP_LIB"), libs_path)  #
+        shutil.copy(envir_var.get("MKLML_SHARED_LIB"), libs_path)
+        shutil.copy(envir_var.get("MKLML_SHARED_IOMP_LIB"), libs_path)
         package_data['paddle.libs'] += [
             ('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_suffix,
             ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_suffix,
@@ -1218,7 +1218,7 @@ def get_setup_parameters():
         'paddle.inference.contrib',
         'paddle.inference.contrib.utils',
         'paddle.fluid',
-        'paddle.fluid.inference',
+        # 'paddle.fluid.inference',
         'paddle.fluid.dygraph',
         'paddle.fluid.dygraph.dygraph_to_static',
         'paddle.fluid.dygraph.amp',
@@ -1309,7 +1309,6 @@ def get_setup_parameters():
     ]
 
     # packages=find_packages('python',exclude=['tools'])
-
     # get scripts
     paddle_bins = ''
     if not envir_var.get("WIN32"):
@@ -1360,13 +1359,13 @@ def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
-    os.system('pip install ninja')
+    # os.system('pip install ninja')
     # Execute the build process,cmake and make
     if cmake_and_make:
         build_steps()
 
     # envir_dict is environment variables after cmake
-    sys.path.append("/build/python/")
+    sys.path.append(TOP_DIR + "/build/python/")
     from build.python.env_dict import env_dict
 
     global envir_var

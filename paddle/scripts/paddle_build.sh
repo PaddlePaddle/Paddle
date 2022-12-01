@@ -1911,7 +1911,6 @@ function precise_card_test_single {
         find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
-        wait
         # python
         ls python-coverage.data.*
         if [[ $? == 0 ]]
