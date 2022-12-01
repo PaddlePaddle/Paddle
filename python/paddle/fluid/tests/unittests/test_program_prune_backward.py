@@ -76,7 +76,7 @@ def simple_fc_net_with_accuracy(use_feed):
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
-    accuracy_out = fluid.layers.accuracy(input=prediction, label=label, k=5)
+    accuracy_out = paddle.static.accuracy(input=prediction, label=label, k=5)
     return loss
 
 

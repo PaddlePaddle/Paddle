@@ -548,8 +548,8 @@ class ModelAverage(Optimizer):
         # backup param value to grad
         layers.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
-        tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
-        sum = layers.sum(x=[sum_1, sum_2, sum_3])
+        tmp = paddle.add_n([num_accumulates, old_num_accumulates])
+        sum = paddle.add_n([sum_1, sum_2, sum_3])
         tmp = layers.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )

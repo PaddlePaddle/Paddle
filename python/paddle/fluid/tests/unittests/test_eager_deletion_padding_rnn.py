@@ -468,7 +468,7 @@ def lm_model(
     )
 
     loss = paddle.reshape(loss, shape=[-1, num_steps])
-    loss = layers.reduce_mean(loss, dim=[0])
+    loss = paddle.mean(loss, axis=[0])
     loss = paddle.sum(loss)
 
     loss.persistable = True

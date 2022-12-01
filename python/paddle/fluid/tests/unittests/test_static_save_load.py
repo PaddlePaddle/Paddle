@@ -13,18 +13,20 @@
 # limitations under the License.
 
 
+import errno
+import os
+import pickle
+import tempfile
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
-from test_imperative_base import new_program_scope
-import numpy as np
-import pickle
-import os
-import errno
-import tempfile
 
 paddle.enable_static()
 
@@ -239,7 +241,7 @@ class PtbModel(fluid.Layer):
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell

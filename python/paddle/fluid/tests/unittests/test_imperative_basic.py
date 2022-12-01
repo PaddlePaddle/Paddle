@@ -19,8 +19,8 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 import paddle.fluid.dygraph_utils as dygraph_utils
+from paddle.fluid import core
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
