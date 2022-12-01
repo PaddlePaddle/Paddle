@@ -21,13 +21,9 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import (
-    BatchNorm,
-    GRUUnit,
-    Linear,
-)
-from paddle.nn import Linear
+from paddle.fluid.dygraph.nn import BatchNorm, GRUUnit
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 
 class Config:

@@ -21,18 +21,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import (
-    NCE,
-    BatchNorm,
-    GroupNorm,
-    LayerNorm,
-    NCE,
-    PRelu,
-)
+from paddle.fluid.dygraph.nn import NCE, BatchNorm, GroupNorm, LayerNorm, PRelu
 from paddle.nn import Linear
-import numpy as np
-import os
-import tempfile
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
