@@ -424,14 +424,7 @@ PD_REGISTER_KERNEL(subtract,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
-PD_REGISTER_KERNEL(multiply,
-                   OneDNN,
-                   ONEDNN,
-                   phi::MultiplyKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   int8_t,
-                   uint8_t) {}
+
 PD_REGISTER_KERNEL(
     divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {}
 #endif

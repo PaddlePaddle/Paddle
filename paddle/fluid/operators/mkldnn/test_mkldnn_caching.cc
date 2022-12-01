@@ -30,7 +30,7 @@
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(elementwise_mul);
-PD_DECLARE_KERNEL(multiply_raw, OneDNN, ONEDNN);
+USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
 USE_OP_ITSELF(relu);
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
