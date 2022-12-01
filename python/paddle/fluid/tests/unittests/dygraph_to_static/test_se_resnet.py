@@ -25,11 +25,11 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.nn import Linear
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 SEED = 2020
 np.random.seed(SEED)

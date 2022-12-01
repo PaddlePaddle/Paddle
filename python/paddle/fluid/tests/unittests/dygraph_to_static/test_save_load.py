@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import tempfile
-import paddle
+import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-
-from paddle.jit import ProgramTranslator
-from paddle.fluid.optimizer import AdamOptimizer
 from test_fetch_feed import Linear
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.optimizer import AdamOptimizer
+from paddle.jit import ProgramTranslator
 
 np.random.seed(2020)
 

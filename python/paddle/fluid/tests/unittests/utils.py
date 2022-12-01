@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle
-
-from paddle.fluid.framework import _dygraph_guard
-import paddle.fluid as fluid
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import _dygraph_guard
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
