@@ -164,8 +164,6 @@ void FloatToHalfPass::SetDefaultBlacklist() const {
       "c_softmax_with_cross_entropy",
       "cross_entropy",
       "cross_entropy2",
-      "layer_norm",
-      "group_norm",
       // slower than fp32
       "conv2d_transpose",
       // default fp32 can avoid return inf when the sum value large than 65504
