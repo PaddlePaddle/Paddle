@@ -108,7 +108,7 @@ class TestWhereOpError(unittest.TestCase):
     def test_api(self):
         with program_guard(Program(), Program()):
             cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
-            result = fluid.layers.where(cond)
+            result = paddle.nonzero(cond)
 
             exe = fluid.Executor(paddle.device.MLUPlace(0))
             exe.run(fluid.default_startup_program())
@@ -119,7 +119,7 @@ class TestWhereOpError(unittest.TestCase):
 class TestWhereRaiseError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.where([10])
+            paddle.nonzero([10])
 
         self.assertRaises(TypeError, test_type)
 
