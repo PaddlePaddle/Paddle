@@ -964,7 +964,7 @@ class ShardingPass(PassBase):
                     idx,
                     block.var(group.coalesce_dep_varname),
                     group.coalesce_var,
-                    self.dist_context,
+                    self._dist_context,
                     OpRole.Backward,
                     process_mesh=[
                         -1
