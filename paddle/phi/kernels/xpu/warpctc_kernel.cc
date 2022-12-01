@@ -68,6 +68,15 @@ void WarpctcKernel(const Context& dev_ctx,
                         "but received %d. ",
                         sequence_width));
 
+  int lm_workspace = (max_sequence_length + 1) *
+                         (2 * max_target_seq_length + sequence_width + 1) *
+                         sizeof(T) +
+                     (7 * max_target_seq_length + 3) * sizeof(int);
+  PADDLE_ENFORCE_LE(lm_workspace,
+                    6144,
+                    phi::errors::InvalidArgument(
+                        "Input size is too large for xpu in warpctc kernel"));
+
   loss->Resize(phi::make_ddim({num_sequences, 1}));
   dev_ctx.template Alloc<T>(loss);
 
