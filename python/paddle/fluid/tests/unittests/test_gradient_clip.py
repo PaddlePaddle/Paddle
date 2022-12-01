@@ -169,8 +169,9 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     # test whether the output is right when use 'set_gradient_clip'
     def test_old_gradient_clip(self):
         def func(params_grads):
-            clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
-            fluid.clip.set_gradient_clip(clip)
+            clip = paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
+
+            # fluid.clip.set_gradient_clip(clip)
             return fluid.clip.append_gradient_clip_ops(params_grads)
 
         self.clip_gradient = func
