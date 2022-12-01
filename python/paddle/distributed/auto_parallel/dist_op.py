@@ -373,3 +373,27 @@ class DistributedOperatorHelper:
             default_dist_ctx.add_dist_op_for_program(dist_op)
 
         return output
+
+
+# class RecomputeOperatorHelper:
+#     def __init__(self, op):
+#         self._op = op
+
+#     def __call__(self, *args, **kwargs):
+#         default_prog = paddle.fluid.default_main_program()
+#         cur_block = default_prog.current_block()
+#         op_size = len(cur_block.ops)
+#         output = self._op(*args, **kwargs)
+#         new_op_size = len(cur_block.ops)
+
+#         from .dist_context import get_default_distributed_context
+
+#         default_dist_ctx = get_default_distributed_context()
+#         for idx in range(op_size, new_op_size - 1):
+#             op = cur_block.ops[idx]
+#             dist_op = DistributedOperator(op)
+#             dist_op.dist_attr.is_recompute = True
+
+#             default_dist_ctx.add_dist_op_for_program(dist_op)
+
+#         return output

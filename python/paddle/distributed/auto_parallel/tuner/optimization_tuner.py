@@ -35,7 +35,6 @@ from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import (
-    clear_all_process_groups,
     get_all_process_groups,
 )
 from paddle.distributed.auto_parallel.utils import debug_program
@@ -94,6 +93,7 @@ def get_metric(results):
 
 
 def parse_results(results):
+    print("results:", results)
     if results['Throughtput'] > 0:
         return "Throughtput: {} step / s.".format(results['Throughtput'])
     et = results.get("ErrorType", None)
@@ -107,7 +107,7 @@ def parse_results(results):
 # all env need to be start a new pass are member of dist context
 def _copy_context(ref_dist_context):
 
-    clear_all_process_groups()
+    # clear_all_process_groups()
 
     new_dist_context = DistributedContext()
     new_dist_context._serial_main_program = (
@@ -193,7 +193,6 @@ class OptimizationTuner:
 
     def __init__(
         self,
-        user_configs,
         dist_context,
         dataset,
         inputs_spec,
@@ -202,7 +201,7 @@ class OptimizationTuner:
         rank,
     ):
 
-        self._config = TuningConfig(user_configs, dist_context._strategy)
+        self._config = TuningConfig(dist_context.strategy)
         # should not modify dist context from calling function
         self._baseline_dist_context = _copy_context(dist_context)
         self._baseline_completer = Completer(self._baseline_dist_context)

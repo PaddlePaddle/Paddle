@@ -49,7 +49,11 @@ from .dist_loader import (
     DistributedDataLoader,
 )
 from .strategy import Strategy
-from .process_group import new_process_group, get_all_process_groups
+from .process_group import (
+    new_process_group,
+    get_all_process_groups,
+    get_world_process_group,
+)
 from .dist_context import DistributedContext, get_default_distributed_context
 from .interface import CollectionNames, get_collection
 from .cost.estimate_cost import get_cost_from_engine
@@ -610,7 +614,9 @@ class Engine:
         if mode != "train":
             serial_main_prog = serial_main_prog.clone(for_test=True)
 
-        auto_utils.set_recompute_ckpts(self._model, self._strategy)
+        auto_utils.set_recompute_ckpts(
+            self._model, self._strategy, serial_main_prog
+        )
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
@@ -650,7 +656,6 @@ class Engine:
         from .tuner.optimization_tuner import OptimizationTuner
 
         self._optimization_tuner = OptimizationTuner(
-            self._tuning.to_dict(),
             self._dist_contexts[mode],
             dataset,
             self._inputs_spec,
@@ -658,7 +663,7 @@ class Engine:
             batch_size=batch_size,
             rank=self._cur_rank,
         )
-
+        print("[engine] world_ranks:", get_world_process_group().ranks)
         self._optimization_tuner.tune()
 
         if self._tuning.run_after_tuning:

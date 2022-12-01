@@ -23,12 +23,10 @@ from functools import reduce
 
 import paddle.fluid.core as core
 from paddle.fluid.framework import Variable
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.auto_parallel.process_group import (
-    get_all_process_groups,
-)
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
-from paddle.distributed.auto_parallel.dist_attribute import (
+
+from .process_group import get_all_process_groups
+from .dist_attribute import (
     TensorDistributedAttribute,
     OperatorDistributedAttribute,
 )
@@ -1894,11 +1892,28 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     server_socket.close()
 
 
-def set_recompute_ckpts(model, strategy):
-    from .interface import _g_recompute_idx
+def _is_recompute_op(op):
+    return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
+        'op_namescope'
+    )
 
-    if _g_recompute_idx > -1:
-        return
+
+def get_checkpoints_from_program(program):
+    pass
+
+    ops = program.global_block().ops
+    if not any([_is_recompute_op(op) for op in ops]):
+        return []
+
+    checkpoints = []
+    for idx, op in enumerate(ops):
+        if not _is_recompute_op(op):
+            checkpoints.extend(op.output_arg_names)
+
+    return checkpoints
+
+
+def set_recompute_ckpts(model, strategy, program):
 
     recompute = strategy.recompute
     if not recompute.enable:
@@ -1919,12 +1934,9 @@ def set_recompute_ckpts(model, strategy):
         exact_ckpts = recompute.checkpoints
 
     # modify strategy
-    recompute.checkpoints = exact_ckpts[:]
-    logs = {
-        'Model Class': model.__class__.__name__,
-        'Applied Recompute ckpts': exact_ckpts,
-    }
-    logging.info(logs)
+    recompute.checkpoints = exact_ckpts[:] or get_checkpoints_from_program(
+        program
+    )
 
 
 def get_input_split_info(cur_rank, var, dist_context):

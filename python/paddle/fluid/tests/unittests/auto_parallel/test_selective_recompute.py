@@ -39,7 +39,7 @@ def generate_model(use_new_recompute, recompute_granularity):
     gpt = GPTModel(
         vocab_size=1000,
         hidden_size=64,
-        num_hidden_layers=2,
+        num_hidden_layers=16,
         num_attention_heads=8,
         intermediate_size=256,
         hidden_act="gelu",
@@ -69,7 +69,15 @@ def apply_pass(use_recompute=False, no_recompute_segments=[]):
     if use_recompute:
         recompute = strategy.recompute
         recompute.enable = True
+        recompute.enable_tuning = True
         recompute.no_recompute_segments = no_recompute_segments
+
+    tuning = strategy.tuning
+    tuning.enable = True
+    tuning.profile_start_step = 1
+    tuning.profile_end_step = 5
+    tuning.run_after_tuning = True
+    tuning.verbose = True
     return strategy
 
 
@@ -128,47 +136,51 @@ class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
 
     def test_recompute_pass(self):
         # mp2 training
-        mp_engine = self.get_engine()
-        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(history.history["loss"])
+        # mp_engine = self.get_engine()
+        # history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        # mp_losses = np.array(history.history["loss"])
 
         # mp2 recompute with old api
-        rc4_engine = self.get_engine(True, False)
-        history = rc4_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc4_losses = np.array(history.history["loss"])
-        self.check_results(mp_losses, rc4_losses)
+        # rc4_engine = self.get_engine(True, False)
+        # history = rc4_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        # print("***"*30)
+        # print(rc4_engine.main_program)
+        # rc4_losses = np.array(history.history["loss"])
+        # self.check_results(mp_losses, rc4_losses)
 
         # mp2 recompute core_attn
-        rc1_engine = self.get_engine(True, True, "core_attn", [0])
-        history = rc1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc1_losses = np.array(history.history["loss"])
-        self.check_results(mp_losses, rc1_losses)
+        # rc1_engine = self.get_engine(True, True, "core_attn", [0])
+        # history = rc1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        # rc1_losses = np.array(history.history["loss"])
+        # self.check_results(mp_losses, rc1_losses)
 
-        # mp2 recompute full_attn
-        rc2_engine = self.get_engine(True, True, "full_attn")
-        history = rc2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc2_losses = np.array(history.history["loss"])
-        self.check_results(mp_losses, rc2_losses)
+        # # mp2 recompute full_attn
+        # rc2_engine = self.get_engine(True, True, "full_attn")
+        # history = rc2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        # rc2_losses = np.array(history.history["loss"])
+        # self.check_results(mp_losses, rc2_losses)
 
         # mp2 recompute full
         rc3_engine = self.get_engine(True, True, "full")
-        history = rc3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        history = rc3_engine._tune(self.dataset, 3, batch_size=self.batch_size)
+        print("***" * 30)
+        print(rc3_engine.main_program)
         rc3_losses = np.array(history.history["loss"])
-        self.check_results(mp_losses, rc3_losses)
+        # self.check_results(mp_losses, rc3_losses)
 
-        rc0_vars = self.recompute_vars(mp_engine.main_program)
-        rc1_vars = self.recompute_vars(rc1_engine.main_program)
-        rc2_vars = self.recompute_vars(rc2_engine.main_program)
-        rc3_vars = self.recompute_vars(rc3_engine.main_program)
+    #     rc0_vars = self.recompute_vars(mp_engine.main_program)
+    #     rc1_vars = self.recompute_vars(rc1_engine.main_program)
+    #     rc2_vars = self.recompute_vars(rc2_engine.main_program)
+    #     rc3_vars = self.recompute_vars(rc3_engine.main_program)
 
-        assert rc0_vars == []
-        assert len(rc1_vars) < len(rc2_vars) and len(rc2_vars) < len(rc3_vars)
+    #     assert rc0_vars == []
+    #     assert len(rc1_vars) < len(rc2_vars) and len(rc2_vars) < len(rc3_vars)
 
-    def test_recompute_pass_error(self):
+    # def test_recompute_pass_error(self):
 
-        with self.assertRaises(AssertionError):
-            rc_engine = self.get_engine(True, True, "full", [2])
-            history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+    #     with self.assertRaises(AssertionError):
+    #         rc_engine = self.get_engine(True, True, "full", [2])
+    #         history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
 
 
 if __name__ == "__main__":

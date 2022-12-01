@@ -222,6 +222,7 @@ def profiler(args):
     with open(args.ctx_filename, 'rb') as f:
         profile_ctx = pickle.load(f, encoding='latin1')
 
+    print(profile_ctx)
     init_comm(profile_ctx)
 
     main_program, startup_program, loss_var = load_programs(profile_ctx)

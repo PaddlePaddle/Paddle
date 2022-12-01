@@ -32,12 +32,6 @@ from paddle.distributed.auto_parallel.utils import (
 )
 
 
-def _to_be_recomputed(op):
-    return op.has_attr('op_namescope') and "/auto_parallel/rc_" in op.attr(
-        'op_namescope'
-    )
-
-
 class RecomputeState(ProgramStats):
     def __init__(self, block, ops):
         super().__init__(block=block, ops=ops)
@@ -45,8 +39,6 @@ class RecomputeState(ProgramStats):
         self._ops = ops
         # {varname: {as_input_ops: op_idx, as_output_ops: op_idx}}
         self.var_op_deps = {}
-        # {segment_name: op_idx}
-        self.seg_op_deps = {}
 
     def build_stats(self):
         for i, op in enumerate(self._ops):
@@ -66,63 +58,38 @@ class RecomputeState(ProgramStats):
                     self.var_op_deps[name]["var_as_input_ops"] = []
                     self.var_op_deps[name]["var_as_output_ops"] = [i]
 
-            if not _to_be_recomputed(op):
-                continue
-
-            seg_name = op.attr('op_namescope')
-            if seg_name not in self.seg_op_deps:
-                self.seg_op_deps[seg_name] = [i]
-            else:
-                assert (
-                    self.seg_op_deps[seg_name][-1] + 1 == i
-                ), "The recompute segment's ops should be continuous"
-                self.seg_op_deps[seg_name].extend([i])
-
     def get_recompute_segments(
-        self, checkpoints_list=None, no_recompute_segments=[]
+        self, checkpoints, no_recompute_segments=[], is_logging=True
     ):
-        """get recompute segments and checkpoints"""
+        """get recompute segments from checkpoints"""
         segments = []
-        checkpoints = checkpoints_list or []
-
-        if len(checkpoints) == 0:
-            # the segments is marked by `auto.recompute()` api
-            for segment_idx in self.seg_op_deps.values():
-                if len(segment_idx) == 1:
+        start_idx = -1
+        pre_segment_end_idx = -1
+        while start_idx + 1 < len(checkpoints):
+            if start_idx == -1:
+                ckpt_name = checkpoints[start_idx + 1]
+                if ckpt_name not in self.var_op_deps:
+                    start_idx += 1
                     continue
-                segments.append([segment_idx[0], segment_idx[-1] + 1])
-                checkpoints.extend(self._ops[segment_idx[-1]].output_arg_names)
-        else:
-            # the segments is marked by `strategy.checkpoints` api
-            start_idx = -1
-            pre_segment_end_idx = -1
-            while start_idx + 1 < len(checkpoints):
-                if start_idx == -1:
-                    ckpt_name = checkpoints[start_idx + 1]
-                    if ckpt_name not in self.var_op_deps:
-                        start_idx += 1
-                        continue
-                    op_idx_list = self.var_op_deps[ckpt_name][
-                        "var_as_output_ops"
-                    ]
-                    if op_idx_list:
-                        segments.append([0, max(op_idx_list) + 1])
-                else:
-                    flag, min_idx, max_idx = self.is_subgraph(
-                        [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
+                op_idx_list = self.var_op_deps[ckpt_name]["var_as_output_ops"]
+                if op_idx_list and max(op_idx_list) > 0:
+                    segments.append([0, max(op_idx_list) + 1])
+            else:
+                flag, min_idx, max_idx = self.is_subgraph(
+                    [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
+                )
+                if flag:
+                    min_idx = self._update_segment_start(
+                        min_idx, pre_segment_end_idx
                     )
-                    if flag:
-                        min_idx = self._update_segment_start(
-                            min_idx, pre_segment_end_idx
+                    segments.append([min_idx, max_idx + 1])
+                else:
+                    logging.info(
+                        "Could not recompute op range [{}] - [{}] ".format(
+                            min_idx, max_idx + 1
                         )
-                        segments.append([min_idx, max_idx + 1])
-                    else:
-                        logging.info(
-                            "Could not recompute op range [{}] - [{}] ".format(
-                                min_idx, max_idx + 1
-                            )
-                        )
-                start_idx += 1
+                    )
+            start_idx += 1
 
         if no_recompute_segments:
             for i in reversed(sorted(no_recompute_segments)):
@@ -133,16 +100,19 @@ class RecomputeState(ProgramStats):
                 )
                 segments.pop(i)
 
+        if not is_logging:
+            return segments
+
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info("recompute segment[{}]".format(i))
-            logging.info(
+            print("recompute segment[{}]".format(i))
+            print(
                 "segment start op: [{}]: [{}] [{}]".format(
                     self._ops[idx1].desc.type(),
                     self._ops[idx1].desc.input_arg_names(),
                     self._ops[idx1].desc.output_arg_names(),
                 )
             )
-            logging.info(
+            print(
                 "segment end op: [{}]: [{}] [{}]".format(
                     self._ops[idx2 - 1].desc.type(),
                     self._ops[idx2 - 1].desc.input_arg_names(),
@@ -150,10 +120,7 @@ class RecomputeState(ProgramStats):
                 )
             )
 
-        return segments, checkpoints
-
-    def is_recompute(self):
-        return any([_to_be_recomputed(op) for op in self._ops])
+        return segments
 
     def modify_forward_desc_for_recompute(self, dist_context):
         """
@@ -209,7 +176,6 @@ class RecomputeState(ProgramStats):
                 outputs={"Out": seed_var},
                 attrs={"seed": seed, "force_cpu": True},
             )
-            seed_op._set_attr('op_namescope', cur_op.attr('op_namescope'))
             # set new seed op's dist_attr
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 seed_op, ref_process_mesh, ref_dims_mapping, dist_context
@@ -291,12 +257,13 @@ class RecomputePass(PassBase):
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("no_grad_set", None)
-        self.set_attr("no_recompute_segments", [])
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
             return False
         if self.get_attr("loss") is None:
+            return False
+        if self.get_attr("checkpoints") is None:
             return False
         return True
 
@@ -317,18 +284,17 @@ class RecomputePass(PassBase):
 
         # 1. build recompute state
         rc_state = RecomputeState(main_block, op_path)
-        if not rc_state.is_recompute() and not checkpoints:
-            return
-
         # 2. get the segments to be recomputed
         rc_state.modify_forward_desc_for_recompute(self._dist_context)
         rc_state.build_stats()
-        checkpoints = rc_state.sort_checkpoints(checkpoints or [])
-        segments, checkpoints = rc_state.get_recompute_segments(
+        checkpoints = rc_state.sort_checkpoints(checkpoints)
+        segments = rc_state.get_recompute_segments(
             checkpoints, no_recompute_segments
         )
-        if segments == [] or checkpoints == []:
+        if segments == []:
             return
+
+        print("segments:", segments)
 
         # 3. get vars that should be hold in memory
         vars_should_be_hold = []
@@ -337,7 +303,7 @@ class RecomputePass(PassBase):
                 rc_state.get_out_of_subgraph_vars(segment[0], segment[1])
             )
         cross_vars = set(vars_should_be_hold) - set(checkpoints)
-        logging.info(
+        print(
             "found [{}] vars which cross recompute segment: [{}],"
             "better checkpoints might be set to reduce those vars".format(
                 len(cross_vars), cross_vars
@@ -347,6 +313,7 @@ class RecomputePass(PassBase):
         vars_should_be_hold.extend(rc_state.get_input_nodes())
         vars_should_be_hold = list(set(vars_should_be_hold))
         vars_in_memory = vars_should_be_hold + checkpoints
+        print("The vars hold in memory: [{}]".format(list(set(vars_in_memory))))
 
         # 4. get the fwd ops desc to be recomputed.
         var_name_dict = {}  # varname --> varname.subprog_XXX
