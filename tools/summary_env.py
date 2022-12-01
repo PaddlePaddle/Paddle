@@ -39,8 +39,8 @@ def get_paddle_info():
         envs['paddle_version'] = paddle.__version__
         envs['paddle_with_cuda'] = paddle.fluid.core.is_compiled_with_cuda()
     except:
-        envs['paddle_version'] = None
-        envs['paddle_with_cuda'] = None
+        envs['paddle_version'] = 'N/A'
+        envs['paddle_with_cuda'] = 'N/A'
 
 
 def get_os_info():
@@ -54,8 +54,8 @@ def get_os_info():
         plat = "Windows"
         ver = platform.win32_ver()[0]
     else:
-        plat = None
-        ver = None
+        plat = 'N/A'
+        ver = 'N/A'
     envs['os_info'] = "{0} {1}".format(plat, ver)
 
 
@@ -78,7 +78,7 @@ def get_cuda_info():
     if out:
         envs['cuda_version'] = out.split('V')[-1].strip()
     else:
-        envs['cuda_version'] = None
+        envs['cuda_version'] = 'N/A'
 
 
 def get_cudnn_info():
@@ -87,7 +87,7 @@ def get_cudnn_info():
         if out:
             return out.split(' ')[-1].strip()
         else:
-            return None
+            return 'N/A'
 
     if platform.system() == "Windows":
         cudnn_dll_path = run_shell_command('where cudnn*')
@@ -97,7 +97,7 @@ def get_cudnn_info():
             )
             cmd = 'type "{0}" | findstr "{1}" | findstr /v "CUDNN_VERSION"'
         else:
-            envs['cudnn_version'] = None
+            envs['cudnn_version'] = 'N/A'
             return
     else:
         cudnn_header_path = run_shell_command(
@@ -116,7 +116,10 @@ def get_cudnn_info():
         cmd.format(cudnn_header_path, 'CUDNN_PATCHLEVEL')
     )
 
-    envs['cudnn_version'] = "{0}.{1}.{2}".format(major, minor, patch_level)
+    if major != 'N/A':
+        envs['cudnn_version'] = "{0}.{1}.{2}".format(major, minor, patch_level)
+    else:
+        envs['cudnn_version'] = 'N/A'
 
 
 def get_driver_info():
@@ -126,7 +129,7 @@ def get_driver_info():
             driver_ver.split('Driver Version:')[1].strip().split(' ')[0]
         )
     else:
-        driver_ver = None
+        driver_ver = 'N/A'
     envs['nvidia_driver_version'] = driver_ver
 
 
