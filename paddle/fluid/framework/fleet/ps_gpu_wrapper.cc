@@ -526,7 +526,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
       feature_list_size[i] = sub_graph_feas[i].feature_size;
     }
   } else {
-    PADDLE_ENFORCE_EQ(1, 0, " FLAGS_gpugraph_storage_mode is not adaptived ");
+    VLOG(0) << "FLAGS_gpugraph_storage_mode is not adaptived";
   }
   time_stage.Pause();
   get_feature_id_cost = time_stage.ElapsedSec();

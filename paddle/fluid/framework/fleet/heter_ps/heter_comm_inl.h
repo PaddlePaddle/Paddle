@@ -241,10 +241,9 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::reset_table(
     const OptimizerConfig &sgd_config,
     const OptimizerConfig &embedx_config,
     bool infer_mode) {
-  PADDLE_ENFORCE(dev_id < device_num_,
-                 "dev id %d more than device num %d",
-                 dev_id,
-                 device_num_);  // NOLINT
+  PADDLE_ENFORCE_LT(dev_id, device_num_,
+          paddle::platform::errors::InvalidArgument(
+              "dev id %d more than device num %d", dev_id, device_num_));
 #if defined(PADDLE_WITH_CUDA)
   platform::CUDADeviceGuard guard(resource_->dev_id(dev_id));
 #endif
