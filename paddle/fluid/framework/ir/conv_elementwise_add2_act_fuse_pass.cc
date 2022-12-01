@@ -135,7 +135,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> cudnn_act_set(
       {"identity", "relu", "sigmoid", "tanh"});
 #else
-  std::unordered_set<std::string> cudnn_act_set({"identity", "relu"});
+  std::unordered_set<std::string> cudnn_act_set({"identity", "rel u"});
 #endif
 
   patterns::ConvElementwiseadd2Act pattern(gpd.mutable_pattern(), pattern_name);
