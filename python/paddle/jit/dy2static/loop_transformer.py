@@ -35,15 +35,12 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import (
     FunctionNameLivenessAnalysis,
 )
 from .ifelse_transformer import ARGS_NAME
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     ForLoopTuplePreTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     ForNodeVisitor,
 )
+
 from paddle.fluid.dygraph.dygraph_to_static.utils import (
     GetterSetterHelper,
     create_name_str,

@@ -17,13 +17,14 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 
 
 class SimpleFCLayer(fluid.dygraph.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(feature_size, fc_size)
+        self._linear = paddle.nn.Linear(feature_size, fc_size)
         self._offset = fluid.dygraph.to_variable(
             np.random.random((batch_size, fc_size)).astype('float32')
         )
@@ -71,7 +72,7 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
                 static_out = traced_layer([in_x])[0]
                 np.testing.assert_array_equal(dygraph_out_numpy, static_out)
 
-                loss = fluid.layers.reduce_mean(dygraph_out)
+                loss = paddle.mean(dygraph_out)
                 loss.backward()
 
                 optimizer.minimize(loss)

@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy as np
 import math
 import sys
+import unittest
+from decimal import ROUND_HALF_UP, Decimal
+
+import numpy as np
 from op_test import OpTest
 
-from decimal import Decimal, ROUND_HALF_UP
+import paddle
 
 
 def _round(x):
