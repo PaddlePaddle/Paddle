@@ -13,3 +13,5 @@
 # limitations under the License.
 
 # TODO: define the basic tensor classes
+class Tensor:
+    pass
