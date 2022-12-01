@@ -99,7 +99,7 @@ class SimpleNetWithCond:
 
         sum_xy = fluid.layers.elementwise_add(param_x, param_y, name='sum_xy')
         sub_yz = fluid.layers.elementwise_sub(param_y, param_z, name='sub_yz')
-        useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
+        useless = paddle.static.nn.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
             cond_yz = fluid.layers.elementwise_add(

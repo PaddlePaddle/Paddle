@@ -33,10 +33,10 @@ class TestLoadOp(unittest.TestCase):
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             input = fluid.data('input', shape=[-1, 4], dtype='float32')
-            output = layers.fc(
+            output = paddle.static.nn.fc(
                 input,
                 4,
-                param_attr=fluid.ParamAttr(
+                weight_attr=fluid.ParamAttr(
                     name='w',
                     initializer=fluid.initializer.NumpyArrayInitializer(
                         self.ones
