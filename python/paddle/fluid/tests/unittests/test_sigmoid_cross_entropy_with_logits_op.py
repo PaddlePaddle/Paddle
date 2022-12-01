@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 from op_test import OpTest
-from scipy.special import logit
-from scipy.special import expit
-import unittest
-from paddle.fluid import Program, program_guard
-import paddle.fluid as fluid
+from scipy.special import expit, logit
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):

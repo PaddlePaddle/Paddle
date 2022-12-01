@@ -14,14 +14,13 @@
 
 import math
 import random
-import paddle
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
+
+import numpy as np
 
 import paddle
 from paddle.nn import Embedding
+import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 
