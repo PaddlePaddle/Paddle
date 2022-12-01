@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/slogdeterminant_kernel.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/slogdeterminant_kernel_impl.h"
-
-PD_REGISTER_KERNEL(
-    slogdet, GPU, ALL_LAYOUT, phi::SlogDeterminantKernel, float, double) {}
+PD_REGISTER_BASE_KERNEL_NAME(generate_proposals_v2, generate_proposals);
+PD_REGISTER_BASE_KERNEL_NAME(generate_proposals_v2_grad,
+                             generate_proposals_grad);
