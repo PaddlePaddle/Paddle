@@ -22,6 +22,10 @@ Paddle version: {paddle_version}
 Paddle With CUDA: {paddle_with_cuda}
 
 OS: {os_info}
+GCC version: {gcc_version}
+Clang version: {clang_version}
+CMake version: {cmake_version}
+Libc version: {libc_version}
 Python version: {python_version}
 
 CUDA version: {cuda_version}
@@ -57,6 +61,44 @@ def get_os_info():
         plat = 'N/A'
         ver = 'N/A'
     envs['os_info'] = "{0} {1}".format(plat, ver)
+
+
+def get_gcc_version():
+    try:
+        envs['gcc_version'] = (
+            run_shell_command("gcc --version").split('\n')[0].split("gcc ")[1]
+        )
+    except:
+        envs['gcc_version'] = 'N/A'
+
+
+def get_clang_version():
+    try:
+        envs['clang_version'] = (
+            run_shell_command("clang --version")
+            .split('\n')[0]
+            .split("clang version ")[1]
+        )
+    except:
+        envs['clang_version'] = 'N/A'
+
+
+def get_cmake_version():
+    try:
+        envs['cmake_version'] = (
+            run_shell_command("cmake --version")
+            .split('\n')[0]
+            .split("cmake ")[1]
+        )
+    except:
+        envs['cmake_version'] = 'N/A'
+
+
+def get_libc_version():
+    if platform.system() == "Linux":
+        envs['libc_version'] = ' '.join(platform.libc_ver())
+    else:
+        envs['libc_version'] = 'N/A'
 
 
 def get_python_info():
@@ -136,6 +178,10 @@ def get_driver_info():
 def main():
     get_paddle_info()
     get_os_info()
+    get_gcc_version()
+    get_clang_version()
+    get_cmake_version()
+    get_libc_version()
     get_python_info()
     get_cuda_info()
     get_cudnn_info()
