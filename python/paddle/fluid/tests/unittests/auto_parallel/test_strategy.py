@@ -14,6 +14,7 @@
 
 # import yaml
 import unittest
+
 from paddle.distributed.fleet import auto
 
 

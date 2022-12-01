@@ -95,7 +95,6 @@ struct Fc : public PatternBase {
 
   PATTERN_DECL_NODE(fc_input);
   PATTERN_DECL_NODE(fc_op);
-  PATTERN_DECL_NODE(fc_out);
 };
 
 struct Activation : public PatternBase {
@@ -107,6 +106,17 @@ struct Activation : public PatternBase {
   PATTERN_DECL_NODE(activation_input);
   PATTERN_DECL_NODE(activation_op);
   PATTERN_DECL_NODE(activation_out);
+};
+
+struct FusedTokenPrune : public PatternBase {
+  FusedTokenPrune(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "fused_token_prune") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(fused_token_prune_input);
+  PATTERN_DECL_NODE(fused_token_prune_op);
+  PATTERN_DECL_NODE(fused_token_prune_output);
 };
 }  // namespace patterns
 

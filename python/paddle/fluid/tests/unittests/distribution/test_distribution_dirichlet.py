@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-import paddle
-import scipy.stats
-
-from config import ATOL, DEVICES, RTOL
 import parameterize as param
+import scipy.stats
+from config import ATOL, DEVICES, RTOL
+
+import paddle
 
 np.random.seed(2022)
 

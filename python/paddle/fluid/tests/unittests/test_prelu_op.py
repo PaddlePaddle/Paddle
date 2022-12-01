@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program
-from op_test import OpTest, skip_check_grad_ci
-import paddle
 import paddle.nn.functional as F
+from paddle.fluid import Program
 from paddle.fluid.framework import _test_eager_guard
 
 

@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import paddle
-from .process_mesh import ProcessMesh
-from .process_mesh import get_current_process_mesh
+
 from .dist_context import get_default_distributed_context
-from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
+from .dist_tensor import DistributedTensor
+from .process_mesh import ProcessMesh, get_current_process_mesh
 from .utils import (
-    verify_shard_spec,
-    convert_to_dims_mapping,
     __no_shape_var_type__,
+    convert_to_dims_mapping,
+    verify_shard_spec,
 )
 
 

@@ -31,7 +31,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 

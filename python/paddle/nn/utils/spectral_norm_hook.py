@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import paddle
-from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
-from ..layer.common import Linear
+
 from .. import functional as F
+from ..layer.common import Linear
+from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
 
 __all__ = []
 

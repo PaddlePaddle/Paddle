@@ -12,21 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..framework import core
-from ..framework import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.data_feeder import check_type
-
-from .creation import assign
-from .creation import _complex_to_real_dtype
-
 # TODO: define functions to get tensor attributes
-import paddle
-from paddle import _C_ops, _legacy_C_ops
-from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 import numpy as np
+
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..framework import LayerHelper, core
+from ..static import Variable
+from .creation import _complex_to_real_dtype, assign
 
 __all__ = []
 

@@ -18,15 +18,14 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 template <typename T>
 class ShardIndexNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     VLOG(4) << "start kernel";
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int index_num = context.Attr<int>("index_num");
     int nshards = context.Attr<int>("nshards");
     int shard_id = context.Attr<int>("shard_id");

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 from paddle.text.datasets import WMT14, WMT16

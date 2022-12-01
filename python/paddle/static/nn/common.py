@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import static_only, Variable, _non_static_mode
-
-from paddle.fluid.data_feeder import check_dtype
-
 from paddle.common_ops_import import (
+    LayerHelper,
     check_type,
     check_variable_and_dtype,
     utils,
-    LayerHelper,
 )
+from paddle.fluid.data_feeder import check_dtype
+from paddle.fluid.framework import Variable, _non_static_mode, static_only
+from paddle.fluid.initializer import Constant, Normal
+from paddle.fluid.layers.layer_function_generator import templatedoc
+from paddle.fluid.param_attr import ParamAttr
 
 __all__ = []
 
@@ -174,6 +175,767 @@ def fc(
         act=activation,
         name=name,
     )
+
+
+def instance_norm(
+    input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
+):
+    r"""
+    :api_attr: Static Graph
+
+    **Instance Normalization Layer**
+
+    Can be used as a normalizer function for convolution or fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Instance Normalization: The Missing Ingredient for
+    Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
+
+    Args:
+        input(Tensor): The rank of input tensor can be 2, 3, 4, 5.
+            The data type is float32 or float64.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+         If the Initializer of the param_attr is not set, the parameter is initialized
+         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+             Default: None.
+        bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+         If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             If the bias_attr is set to False, instance_norm will not create bias_attr.
+         Default: None.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        A Tensor which is the result after applying instance normalization on the input,
+        has same shape and data type with input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x, size=200)
+            hidden2 = paddle.static.nn.instance_norm(hidden1)
+    """
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'instance_norm'
+    )
+    if param_attr is False:
+        assert (
+            bias_attr is False
+        ), "param_attr and bias_attr must be set to False at the same time in instance_norm"
+
+    helper = LayerHelper('instance_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # use fp32 for in parameter
+    if dtype == paddle.framework.core.VarDesc.VarType.FP16:
+        dtype = paddle.framework.core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
+                len(input.shape), input_shape
+            )
+        )
+    channel_num = input_shape[1]
+
+    param_shape = [channel_num]
+
+    if param_attr and bias_attr:
+        # create parameter
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0),
+        )
+        bias = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=True,
+            default_initializer=Constant(0.0),
+        )
+
+    # create output
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+
+    instance_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    inputs = {"X": input}
+    if param_attr and bias_attr:
+        inputs["Scale"] = scale
+        inputs["Bias"] = bias
+
+    helper.append_op(
+        type="instance_norm",
+        inputs=inputs,
+        outputs={
+            "Y": instance_norm_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance,
+        },
+        attrs={
+            "epsilon": epsilon,
+        },
+    )
+
+    return instance_norm_out
+
+
+@static_only
+def data_norm(
+    input,
+    act=None,
+    epsilon=1e-05,
+    param_attr=None,
+    data_layout='NCHW',
+    in_place=False,
+    name=None,
+    moving_mean_name=None,
+    moving_variance_name=None,
+    do_model_average_for_mean_and_var=True,
+    slot_dim=-1,
+    sync_stats=False,
+    summary_decay_rate=0.9999999,
+    enable_scale_and_shift=False,
+):
+    r"""
+    :api_attr: Static Graph
+
+    **Data Normalization Layer**
+
+    This op can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Args:
+        input(Tensor): The input Tensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
+            should do model average when model average is enabled.
+        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we
+            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
+            If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
+            is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
+            the show number and judge if the show number is zero. If so, we choose to skip normalization on this
+            embedding.
+        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
+            summary messages.
+        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
+        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
+
+    Returns:
+        Tensor: A tensor which is the result after applying data normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.randn(shape=[32,100])
+            hidden2 = paddle.static.nn.data_norm(input=x)
+    """
+    helper = LayerHelper('data_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    batch_size_default = 1e4
+    batch_sum_default = 0.0
+    batch_square_sum_default = 1e4
+    scale_w_default = 1.0
+    bias_default = 0.0
+
+    if param_attr and isinstance(param_attr, dict):
+        batch_size_default = param_attr.get("batch_size", 1e4)
+        batch_sum_default = param_attr.get("batch_sum", 0.0)
+        batch_square_sum_default = param_attr.get("batch_square", 1e4)
+    if enable_scale_and_shift:
+        scale_w_default = param_attr.get("scale_w", 1.0)
+        bias_default = param_attr.get("bias", 0.0)
+
+    # create scale and shift(bias) when enable_scale_and_shift is True
+    if name is None:
+        name = "dn"
+    if enable_scale_and_shift:
+        scale_w = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.scale_w',
+                initializer=Constant(value=float(scale_w_default)),
+                trainable=True,
+            ),
+            shape=param_shape,
+            dtype=input.dtype,
+        )
+        bias = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.bias',
+                initializer=Constant(value=float(bias_default)),
+                trainable=True,
+            ),
+            shape=param_shape,
+            dtype=input.dtype,
+        )
+    # create parameter
+    batch_size = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_size',
+            initializer=Constant(value=float(batch_size_default)),
+            trainable=True,
+        ),
+        shape=param_shape,
+        dtype=input.dtype,
+    )
+
+    batch_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_sum',
+            initializer=Constant(value=float(batch_sum_default)),
+            trainable=True,
+        ),
+        shape=param_shape,
+        dtype=input.dtype,
+    )
+
+    batch_square_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_square_sum',
+            initializer=Constant(value=float(batch_square_sum_default)),
+            trainable=True,
+        ),
+        shape=param_shape,
+        dtype=input.dtype,
+    )
+
+    means = helper.create_variable(dtype=dtype, stop_gradient=True)
+    scales = helper.create_variable(dtype=dtype, stop_gradient=True)
+
+    data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
+
+    inputs = {
+        "X": input,
+        "BatchSize": batch_size,
+        "BatchSum": batch_sum,
+        "BatchSquareSum": batch_square_sum,
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "data_layout": data_layout,
+        "sync_stats": sync_stats,
+        "summary_decay_rate": summary_decay_rate,
+    }
+    if slot_dim > 0:
+        attrs["slot_dim"] = slot_dim
+    if enable_scale_and_shift:
+        attrs["enable_scale_and_shift"] = enable_scale_and_shift
+    if enable_scale_and_shift:
+        inputs["scale_w"] = scale_w
+        inputs["bias"] = bias
+    helper.append_op(
+        type="data_norm",
+        inputs=inputs,
+        outputs={
+            "Y": data_norm_out,
+            "Means": means,
+            "Scales": scales,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum,
+        },
+        attrs=attrs,
+    )
+
+    return helper.append_activation(data_norm_out)
+
+
+@templatedoc()
+def group_norm(
+    input,
+    groups,
+    epsilon=1e-05,
+    param_attr=None,
+    bias_attr=None,
+    act=None,
+    data_layout='NCHW',
+    name=None,
+):
+    """
+    :api_attr: Static Graph
+
+    **Group Normalization Layer**
+
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
+
+    Parameters:
+        input(Tensor): Tensor with dimension greater than 1, the data type is float32 or float64.
+        groups(int): The number of groups that divided from channels, the data type
+            is int32.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero, the data type is float32. Default: 1e-05.
+        param_attr(ParamAttr|bool, optional): ParamAttr object that specifies weight parameter
+            attribute. If a bool type, only False is supported, which means there is no weight parameter.
+            Default: None, the default weight parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        bias_attr(ParamAttr|bool, optional): ParamAttr object that specifies bias parameter
+            attribute. If a bool type, only False is supported, which means there is no bias parameter.
+            Default: None, the default bias parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        act(str, optional): Activation to be applied to the output of group normalization.
+        data_layout(str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, *]`.
+        name (str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: A Tensor has same data type and data format with `input`.
+
+    Examples:
+       .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            data = paddle.static.data(name='data', shape=[2, 8, 32, 32], dtype='float32')
+            x = paddle.static.nn.group_norm(input=data, groups=4)
+            print(x.shape) # [2, 8, 32, 32]
+    """
+    helper = LayerHelper('group_norm', **locals())
+    dtype = helper.input_dtype()
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'group_norm'
+    )
+    # create intput and parameters
+    inputs = {'X': input}
+    input_shape = input.shape
+    if len(input_shape) < 2:
+        raise ValueError(
+            f"The dimensions of Op(static.nn.group_norm)'s input should be more than 1. But received {len(input_shape)}"
+        )
+    if data_layout != 'NCHW' and data_layout != 'NHWC':
+        raise ValueError(
+            "Param(data_layout) of Op(static.nn.group_norm) got wrong value: received "
+            + data_layout
+            + " but only NCHW or NHWC supported."
+        )
+    channel_num = input_shape[1] if data_layout == 'NCHW' else input_shape[-1]
+    param_shape = [channel_num]
+    if param_attr:
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0),
+        )
+        inputs['Scale'] = scale
+    if bias_attr:
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
+        )
+        inputs['Bias'] = bias
+
+    # create output
+    mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    group_norm_out = helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="group_norm",
+        inputs=inputs,
+        outputs={
+            "Y": group_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={
+            "epsilon": epsilon,
+            "groups": groups,
+            "data_layout": data_layout,
+        },
+    )
+
+    return helper.append_activation(group_norm_out)
+
+
+def conv3d(
+    input,
+    num_filters,
+    filter_size,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=None,
+    param_attr=None,
+    bias_attr=None,
+    use_cudnn=True,
+    act=None,
+    name=None,
+    data_format="NCDHW",
+):
+    r"""
+    :api_attr: Static Graph
+
+    The convolution3D layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
+    channels, D is the depth of the feature, H is the height of the feature,
+    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    but adds one dimension(depth). If bias attribution and activation type are
+    provided, bias is added to the output of the convolution, and the
+    corresponding activation function is applied to the final result.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = \sigma (W \\ast X + b)
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
+
+        - Output:
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        .. math::
+
+            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+
+    Args:
+        input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
+            type of input is float16 or float32 or float64.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size (int|tuple): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_depth, filter_size_height,
+            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
+            filter_size_width = filter_size.
+        stride (int|tuple): The stride size. It means the stride in convolution. If stride is a
+            tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
+            Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
+        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Default: padding = 0.
+        dilation (int|tuple): The dilation size. It means the spacing between the kernel points.
+            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height,
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
+            Default: dilation = 1.
+        groups (int): The groups number of the Conv3d Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as param_attr. If it is set to None, the parameter
+            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
+            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
+        name(str|None): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
+           None by default.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+
+    Returns:
+        A Variable holding Tensor representing the conv3d, whose data type is
+        the same with input. If act is None, the tensor variable storing the
+        convolution result, and if act is not None, the tensor variable storing
+        convolution and non-linearity activation result.
+
+    Raises:
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
+            or the element corresponding to the input's channel is not 0.
+        ShapeError: If the input is not 5-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels * groups.
+        ShapeError: If the number of output channels is not be divided by groups.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          paddle.enable_static()
+          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+          res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+          place = paddle.CPUPlace()
+          exe = paddle.static.Executor(place)
+          exe.run(paddle.static.default_startup_program())
+          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+          output = exe.run(feed={"data": x}, fetch_list=[res])
+          print(output)
+    """
+
+    l_type = 'conv3d'
+    assert param_attr is not False, "param_attr should not be False here."
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError(
+            "Attr(use_cudnn) should be True or False. Received "
+            "Attr(use_cudnn): %s. " % str(use_cudnn)
+        )
+
+    if data_format not in ["NCDHW", "NDHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
+            "Attr(data_format): %s." % str(data_format)
+        )
+
+    channel_last = data_format == "NDHWC"
+    if len(input.shape) != 5:
+        raise ValueError(
+            "Input should be 5D tensor, but received input with the shape of {}".format(
+                input.shape
+            )
+        )
+    num_channels = input.shape[4] if channel_last else input.shape[1]
+    if num_channels < 0:
+        raise ValueError(
+            "The channel dimmention of the input(%s) should be defined. "
+            "Received: %s." % (str(input.shape), str(num_channels))
+        )
+
+    if groups is None:
+        num_filter_channels = num_channels
+    elif groups <= 0:
+        raise ValueError(
+            "the groups of conv3d should be greater than 0. Received groups: {}".format(
+                groups
+            )
+        )
+    else:
+        if num_channels % groups != 0:
+            raise ValueError(
+                "The number of input channels must be divisible by Attr(groups). "
+                "Received: number of channels(%s), groups(%s)."
+                % (str(num_channels), str(groups))
+            )
+        num_filter_channels = num_channels // groups
+
+    filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
+    stride = utils.convert_to_list(stride, 3, 'stride')
+    dilation = utils.convert_to_list(dilation, 3, 'dilation')
+
+    def _update_padding(padding, data_format):
+        def is_list_or_tuple(ele):
+            if isinstance(ele, list) or isinstance(ele, tuple):
+                return True
+            return False
+
+        if is_list_or_tuple(padding) and len(padding) == 5:
+            if is_list_or_tuple(padding[0]) and (data_format == "NCDHW"):
+                if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding)
+                    )
+                padding = padding[2:5]
+                padding = [ele for a_list in padding for ele in a_list]
+            elif is_list_or_tuple(padding[0]) and (data_format == "NDHWC"):
+                if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding)
+                    )
+                padding = padding[1:4]
+                padding = [ele for a_list in padding for ele in a_list]
+            padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
+        elif is_list_or_tuple(padding) and len(padding) == 6:
+            padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
+        else:
+            padding = utils.convert_to_list(padding, 3, 'padding')
+
+        return padding
+
+    padding_algorithm = "EXPLICIT"
+    if isinstance(padding, str):
+        padding = padding.upper()
+        if padding not in ["SAME", "VALID"]:
+            raise ValueError(
+                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
+                % str(padding)
+            )
+        if padding == "VALID":
+            padding_algorithm = "VALID"
+            padding = [0, 0, 0]
+        elif padding == "SAME":
+            padding_algorithm = "SAME"
+            padding = [0, 0, 0]
+
+    padding = _update_padding(padding, data_format)
+
+    input_shape = input.shape
+    filter_shape = [num_filters, num_filter_channels] + filter_size
+
+    def _get_default_param_initializer():
+        filter_elem_num = (
+            filter_size[0] * filter_size[1] * filter_size[2] * num_channels
+        )
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num)
+            )
+
+        std = (2.0 / filter_elem_num) ** 0.5
+        return Normal(0.0, std, 0)
+
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype,
+        default_initializer=_get_default_param_initializer(),
+    )
+
+    pre_bias = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type=l_type,
+        inputs={
+            'Input': input,
+            'Filter': filter_param,
+        },
+        outputs={"Output": pre_bias},
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'use_cudnn': use_cudnn,
+            'use_mkldnn': False,
+            "padding_algorithm": padding_algorithm,
+            "data_format": data_format,
+        },
+    )
+
+    if data_format == 'NCDHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
+
+    return helper.append_activation(pre_act)
 
 
 def conv2d_transpose(
@@ -1319,3 +2081,109 @@ def deform_conv2d(
             modulated=True,
             name=name,
         )
+
+
+@static_only
+def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
+    r"""
+
+    prelu activation.
+
+    .. math::
+        prelu(x) = max(0, x) + \alpha * min(0, x)
+
+    There are three modes for the activation:
+
+    .. code-block:: text
+
+        all: All elements share same alpha.
+        channel: Elements in same channel share same alpha.
+        element: All elements do not share alpha. Each element has its own alpha.
+
+    Parameters:
+        x (Tensor): The input Tensor or LoDTensor with data type float32.
+        mode (str): The mode for weight sharing.
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
+            weight (alpha), it can be create by ParamAttr. None by default. \
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        name (str, optional): Name for the operation (optional, default is None). \
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A tensor with the same shape and data type as x.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.static.data(name="x", shape=[None,5,10,10], dtype="float32")
+            mode = 'channel'
+            output = paddle.static.nn.prelu(
+                x,mode,param_attr=paddle.ParamAttr(name='alpha'))
+
+    """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
+
+    helper = LayerHelper('prelu', **locals())
+    if mode not in ['all', 'channel', 'element']:
+        raise ValueError('mode should be one of all, channel, element.')
+
+    alpha_shape = [1]
+    if mode == 'channel':
+
+        true_data_format = [
+            'NC',
+            'NCL',
+            'NCHW',
+            'NCDHW',
+            'NLC',
+            'NHWC',
+            'NDHWC',
+        ]
+        if data_format not in true_data_format:
+            raise ValueError(
+                "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+            )
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
+
+        assert (
+            len(x.shape) >= 2
+        ), "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        # NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
+        # To be consistent with Prelu, it is simplified.
+        # NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
+        # NOTE(GuoxiaWang): support NHWC data format
+        if data_format == 'NHWC':
+            alpha_shape = [1, 1, 1, x.shape[-1]]
+        else:
+            alpha_shape = [1, x.shape[1], 1, 1]
+
+    elif mode == 'element':
+        assert (
+            len(x.shape) >= 1
+        ), "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        alpha_shape = [1] + list(x.shape)[1:]
+    dtype = helper.input_dtype(input_param_name='x')
+    alpha = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=alpha_shape,
+        dtype=dtype,
+        is_bias=False,
+        default_initializer=paddle.nn.initializer.Constant(0.25),
+    )
+
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="prelu",
+        inputs={"X": x, 'Alpha': alpha},
+        attrs={"mode": mode, "data_format": data_format},
+        outputs={"Out": out},
+    )
+    return out

@@ -13,14 +13,12 @@
 # limitations under the License.
 
 import unittest
-from paddle.distributed.passes.pass_base import (
-    register_pass,
-    PassBase,
-    new_pass,
-)
+
+from paddle.distributed.passes.pass_base import PassBase
 from paddle.distributed.passes.pass_base import (
     _make_rule_from_white_lists_dict as make_white_lists_rule,
 )
+from paddle.distributed.passes.pass_base import new_pass, register_pass
 
 
 class TestConcretePass(PassBase):

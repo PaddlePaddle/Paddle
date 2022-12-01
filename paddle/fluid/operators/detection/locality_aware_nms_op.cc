@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 class LocalityAwareNMSOp : public framework::OperatorWithKernel {
  public:
@@ -352,15 +351,15 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* boxes_input = ctx.Input<LoDTensor>("BBoxes");
-    auto* scores_input = ctx.Input<LoDTensor>("Scores");
-    auto* outs = ctx.Output<LoDTensor>("Out");
+    auto* boxes_input = ctx.Input<phi::DenseTensor>("BBoxes");
+    auto* scores_input = ctx.Input<phi::DenseTensor>("Scores");
+    auto* outs = ctx.Output<phi::DenseTensor>("Out");
     auto& score_dims = scores_input->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
-    LoDTensor scores;
-    LoDTensor boxes;
+    phi::DenseTensor scores;
+    phi::DenseTensor boxes;
     paddle::framework::TensorCopySync(
         *scores_input, platform::CPUPlace(), &scores);
     paddle::framework::TensorCopySync(
@@ -476,10 +475,12 @@ class LocalityAwareNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether detections are normalized.")
         .SetDefault(true);
     AddOutput("Out",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 6] "
+              "represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax] or "
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 10] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 10] "
+              "represents the "
               "detections. Each row has 10 values: "
               "[label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the "
               "total number of detections in this mini-batch."
@@ -501,7 +502,7 @@ Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
-image, the offsets in first dimension of LoDTensor are called LoD, the number
+image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.
 

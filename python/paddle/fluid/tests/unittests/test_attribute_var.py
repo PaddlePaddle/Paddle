@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.inference as paddle_infer
-from paddle.fluid.framework import program_guard, Program
-from paddle.fluid.framework import OpProtoHolder
-import numpy as np
+from paddle.fluid.framework import OpProtoHolder, Program, program_guard
 
 paddle.enable_static()
 
