@@ -314,7 +314,7 @@ class TestBeamSearchOpError(unittest.TestCase):
             probs = fluid.data(name='probs', shape=[10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=4)
             accu_scores = fluid.layers.elementwise_add(
-                x=fluid.layers.log(x=topk_scores),
+                x=paddle.log(x=topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
