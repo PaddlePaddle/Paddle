@@ -162,7 +162,7 @@
   backward : conj_grad
 
 - op : cos
-  args : (Tensor x)
+  args : (Tensor x, int axis)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
