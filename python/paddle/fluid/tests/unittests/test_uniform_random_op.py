@@ -213,7 +213,7 @@ class TestUniformRandomOpError(unittest.TestCase):
                 x2 = fluid.layers.data(
                     name='x2', shape=[4, 784], dtype='float32'
                 )
-                paddle.uniform(x2, 'float32')
+                paddle.uniform(x2)
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -582,7 +582,7 @@ class TestUniformDtype(unittest.TestCase):
                 paddle.enable_static()
                 return
             paddle.set_device('gpu')
-            out = paddle.uniform([2, 3], dtype="float32")
+            out = paddle.uniform([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         test_default_fp64()
