@@ -67,7 +67,7 @@ class SimpleNet(fluid.Layer):
         projection = fluid.layers.matmul(
             x_emb, paddle.transpose(self.embedding.weight, perm=[1, 0])
         )
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
+        projection = paddle.add(projection, self.softmax_bias)
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False

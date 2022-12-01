@@ -21,7 +21,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph import Layer, to_variable
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
@@ -34,8 +33,8 @@ class Policy(Layer):
     def __init__(self):
         super().__init__()
 
-        self.affine1 = nn.Linear(4, 128)
-        self.affine2 = nn.Linear(128, 2)
+        self.affine1 = paddle.nn.Linear(4, 128)
+        self.affine2 = paddle.nn.Linear(128, 2)
         self.dropout_ratio = 0.6
 
         self.saved_log_probs = []
@@ -123,7 +122,7 @@ def train(args, place, to_static):
             mask = to_variable(_mask)
             mask.stop_gradient = True
 
-            loss_probs = fluid.layers.log(loss_probs)
+            loss_probs = paddle.log(loss_probs)
             loss_probs = paddle.multiply(loss_probs, mask)
             loss_probs = paddle.sum(loss_probs, axis=-1)
 

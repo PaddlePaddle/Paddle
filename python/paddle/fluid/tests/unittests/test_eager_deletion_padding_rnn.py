@@ -169,7 +169,7 @@ def lm_model(
                 nn = layers.concat([input, pre_hidden], 1)
                 gate_input = layers.matmul(x=nn, y=weight_1)
 
-                gate_input = layers.elementwise_add(gate_input, bias)
+                gate_input = paddle.add(gate_input, bias)
                 i = paddle.slice(
                     gate_input, axes=[1], starts=[0], ends=[hidden_size]
                 )
@@ -293,7 +293,7 @@ def lm_model(
                 nn = layers.concat([input, pre_hidden], 1)
                 gate_input = layers.matmul(x=nn, y=weight_1)
 
-                gate_input = layers.elementwise_add(gate_input, bias)
+                gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
 
                 c = pre_cell * paddle.nn.functional.sigmoid(
@@ -460,7 +460,7 @@ def lm_model(
     )
 
     projection = layers.matmul(rnn_out, softmax_weight)
-    projection = layers.elementwise_add(projection, softmax_bias)
+    projection = paddle.add(projection, softmax_bias)
     projection = paddle.reshape(projection, shape=[-1, vocab_size])
 
     loss = layers.softmax_with_cross_entropy(
