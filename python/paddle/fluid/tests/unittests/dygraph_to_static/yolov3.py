@@ -22,9 +22,6 @@ import paddle.fluid as fluid
 from paddle import _legacy_C_ops
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from darknet import DarkNet53_conv_body
-from darknet import ConvBNLayer
 from paddle.jit.api import declarative
 
 

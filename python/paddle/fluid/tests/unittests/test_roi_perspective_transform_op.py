@@ -16,8 +16,6 @@ import unittest
 from math import floor, sqrt
 
 import numpy as np
-from math import sqrt
-from math import floor
 
 
 def gt_e(a, b):

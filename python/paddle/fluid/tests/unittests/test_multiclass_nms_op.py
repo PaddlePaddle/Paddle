@@ -20,10 +20,7 @@ from op_test import OpTest
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import (
-    _non_static_mode,
-    in_dygraph_mode,
-)
+from paddle.fluid import _non_static_mode, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
