@@ -265,7 +265,7 @@ class SkipGram(fluid.dygraph.Layer):
         loss = paddle.nn.functional.binary_cross_entropy_with_logits(
             word_sim, label
         )
-        loss = fluid.layers.reduce_mean(loss)
+        loss = paddle.mean(loss)
 
         return pred, loss
 

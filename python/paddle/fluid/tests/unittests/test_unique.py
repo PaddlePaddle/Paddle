@@ -74,13 +74,13 @@ class TestRandom(TestUniqueOp):
 class TestUniqueRaiseError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.unique([10])
+            paddle.unique([10])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data = fluid.data(shape=[10], dtype="float16", name="input")
-            fluid.layers.unique(data)
+            paddle.unique(data)
 
         self.assertRaises(TypeError, test_dtype)
 
