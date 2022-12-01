@@ -1524,9 +1524,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
     if (!all_kernels_must_compute_runtime_shape_) {
-      phi::dynload::nvtxRangePushA("infershape");
+      // phi::dynload::nvtxRangePushA("infershape");
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-      phi::dynload::nvtxRangePop();
+      // phi::dynload::nvtxRangePop();
     }
     phi::dynload::nvtxRangePushA("kernel compute");
     (*phi_kernel_)(impl_->getKernelContext());

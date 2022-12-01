@@ -676,7 +676,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
     SearchResult<AlgoT> result;
     bool use_autotune = false;
     auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
-    SetConvMathType(ctx, dtype, args.cdesc);
+    // SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
       result = SearchAlgorithmBase<CK>::FindAlgoDeterministic(args);
@@ -690,13 +690,19 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
       auto key = args.ConvertToConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConv(
           SearchAlgorithmBase<CK>::kAlgoType);
-      bool find_in_cache = cache.Find(key);
+      phi::autotune::ConvAutoTuneResult* tmp;
+      bool find_in_cache = cache.Find(key, &tmp);
       if (find_in_cache) {
-        auto t = cache.Get(key);
-        result.algo = static_cast<AlgoT>(t.algo);
-        result.workspace_size = t.workspace_size;
-        result.exhaustive_search = t.exhaustive_search;
+        // auto t = cache.Get(key);
+        // LOG(ERROR) << "found";
+        result.algo = static_cast<AlgoT>(tmp->algo);
+        result.workspace_size = tmp->workspace_size;
+        result.exhaustive_search = tmp->exhaustive_search;
+        return result;
+      } else {
+        LOG(ERROR) << "not found";
       }
+
       if (!result.exhaustive_search) {
         // In conv2d_tranpose, enable_autotune is set to false because some
         // algorithm picked by exhaustive search method produce wrong result.
@@ -789,29 +795,50 @@ struct ConvRunner<T, ConvKind::kForward> {
 
     auto cudnn_handle = ctx.cudnn_handle();
 
+    // for (int i = 0; i < groups; i++) {
+    //   workspace_handle->RunFunc(
+    //       [&](void* workspace_ptr) {
+    //         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionForward(
+    //             cudnn_handle,
+    //             &alpha,
+    //             args.idesc.desc(),
+    //             input_ptr + i * group_offset_in,
+    //             args.wdesc.desc(),
+    //             filter_ptr + i * group_offset_filter,
+    //             args.cdesc.desc(),
+    //             search_result.algo,
+    //             workspace_ptr,
+    //             workspace_size,
+    //             &beta,
+    //             args.odesc.desc(),
+    //             output_ptr + i * group_offset_out));
+    //       },
+    //       workspace_size);
+    // }
+
+    if (workspace_size > workspace_handle->WorkspaceSize()) {
+      workspace_handle->ReallocWorkspace(workspace_size);
+    }
+    auto workspace_ptr = workspace_handle->raw_ptr();
     for (int i = 0; i < groups; i++) {
-      workspace_handle->RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionForward(
-                cudnn_handle,
-                &alpha,
-                args.idesc.desc(),
-                input_ptr + i * group_offset_in,
-                args.wdesc.desc(),
-                filter_ptr + i * group_offset_filter,
-                args.cdesc.desc(),
-                search_result.algo,
-                workspace_ptr,
-                workspace_size,
-                &beta,
-                args.odesc.desc(),
-                output_ptr + i * group_offset_out));
-          },
-          workspace_size);
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionForward(
+          cudnn_handle,
+          &alpha,
+          args.idesc.desc(),
+          input_ptr + i * group_offset_in,
+          args.wdesc.desc(),
+          filter_ptr + i * group_offset_filter,
+          args.cdesc.desc(),
+          search_result.algo,
+          workspace_ptr,
+          workspace_size,
+          &beta,
+          args.odesc.desc(),
+          output_ptr + i * group_offset_out));
     }
 
     phi::dynload::nvtxRangePop();
-    phi::dynload::nvtxRangePushA("fin real call");
+    // phi::dynload::nvtxRangePushA("fin real call");
   }
 };
 

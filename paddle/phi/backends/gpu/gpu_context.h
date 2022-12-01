@@ -67,6 +67,8 @@ class DnnWorkspaceHandle {
 
   void ResetWorkspace();
 
+  void* raw_ptr() { return allocation_ ? allocation_->ptr() : nullptr; }
+
   void ReallocWorkspace(size_t required_workspace_bytes);
 
   DnnWorkspaceHandle(DnnWorkspaceHandle&&) = default;

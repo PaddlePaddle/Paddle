@@ -163,12 +163,17 @@ class AlgorithmsCache {
     return hash_[key];
   }
 
-  bool Find(const KeyT& key) {
+  bool Find(const KeyT& key, AlgorithmT** ptr = nullptr) {
     bool ret = false;
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (hash_.find(key) != hash_.end()) {
+    auto find_it = hash_.find(key);
+    if (find_it != hash_.end()) {
       cache_hits_++;
       ret = true;
+
+      if (ptr != nullptr) {
+        *ptr = &(find_it->second);
+      }
     } else {
       cache_misses_++;
     }

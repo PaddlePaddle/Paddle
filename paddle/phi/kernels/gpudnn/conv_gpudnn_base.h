@@ -122,6 +122,7 @@ struct ConvArgsBase {
   // // data foramt
   // GPUDNNDataLayout data_layout;
 
+  ConvArgsBase() {}
   ConvArgsBase(const HandleT& h,
                const phi::DenseTensor* x,
                const phi::DenseTensor* w,
