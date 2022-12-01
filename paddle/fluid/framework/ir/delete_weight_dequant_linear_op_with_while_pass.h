@@ -20,10 +20,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class DeleteWeightDequantLinearOpDecoderPass : public FusePassBase {
+class DeleteWeightDequantLinearOpWithWhilePass : public FusePassBase {
  public:
-  DeleteWeightDequantLinearOpDecoderPass();
-  virtual ~DeleteWeightDequantLinearOpDecoderPass() {}
+  DeleteWeightDequantLinearOpWithWhilePass();
+  virtual ~DeleteWeightDequantLinearOpWithWhilePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

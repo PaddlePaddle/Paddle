@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/delete_weight_dequant_linear_op_decoder_pass.h"
+#include "paddle/fluid/framework/ir/delete_weight_dequant_linear_op_with_while_pass.h"
 
 #include <algorithm>
 #include <memory>
@@ -30,10 +30,11 @@ namespace ir {
   GET_IR_NODE(weight_dequantize_linear_op_scale); \
   GET_IR_NODE(weight_dequantize_linear_op);       \
   GET_IR_NODE(weight_dequantize_linear_op_out);   \
-  GET_IR_NODE(any_op2);
+  GET_IR_NODE(any_op2);                           \
+  GET_IR_NODE(while0);
 
-DeleteWeightDequantLinearOpDecoderPass::
-    DeleteWeightDequantLinearOpDecoderPass() {
+DeleteWeightDequantLinearOpWithWhilePass::
+    DeleteWeightDequantLinearOpWithWhilePass() {
   AddOpCompat(OpCompat("quantize_linear"))
       .AddInput("X")
       .IsTensor()
@@ -270,19 +271,21 @@ DeleteWeightDequantLinearOpDecoderPass::
       .End();
 }
 // Delete dequantize_linear_op, then dequantize weight
-void DeleteWeightDequantLinearOpDecoderPass::ApplyImpl(ir::Graph* graph) const {
+void DeleteWeightDequantLinearOpWithWhilePass::ApplyImpl(
+    ir::Graph* graph) const {
   const std::string pattern_name =
-      "delete_weight_dequant_linear_op_decoder_pattern";
+      "delete_weight_dequant_linear_op_encoder_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::InvalidArgument(
-                              "Scope in DeleteWeightDequantLinearOpDecoderPass "
-                              "should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::InvalidArgument(
+          "Scope in DeleteWeightDequantLinearOpWithWhilePass "
+          "should not be null."));
   // Create pattern
-  patterns::DeleteWeightDequantLinearOpDecoderPattern pattern(
+  patterns::DeleteWeightDequantLinearOpWithWhilePattern pattern(
       gpd.mutable_pattern(), pattern_name);
   pattern();
   int found_count = 0;
@@ -293,7 +296,7 @@ void DeleteWeightDequantLinearOpDecoderPass::ApplyImpl(ir::Graph* graph) const {
     GET_NODES;
     /*
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "delete_weight_dequant_linear_op_pass "
+      LOG(WARNING) << "delete_weight_dequant_linear_op_dequant_weight_pass "
                       "compat check failed.";
       return;
     }
@@ -345,6 +348,13 @@ void DeleteWeightDequantLinearOpDecoderPass::ApplyImpl(ir::Graph* graph) const {
           "per-channel quantization"));
     }
 
+    auto while_Xs = while0->Op()->Input("X");
+    while_Xs.erase(std::remove(std::begin(while_Xs),
+                               std::end(while_Xs),
+                               weight_dequantize_linear_op_out->Name()),
+                   std::end(while_Xs));
+    while0->Op()->SetInput("X", while_Xs);
+
     nodes2rm.insert(weight_dequantize_linear_op_scale);
     nodes2rm.insert(weight_dequantize_linear_op);
     nodes2rm.insert(weight_dequantize_linear_op_out);
@@ -358,10 +368,7 @@ void DeleteWeightDequantLinearOpDecoderPass::ApplyImpl(ir::Graph* graph) const {
     found_count++;
   };
   gpd(graph, handler);
-  if (is_int8) {
-    auto& enable_int8 = graph->Get<bool>("enable_int8");
-    enable_int8 = true;
-  }
+  graph->Set("enable_int8", new bool(is_int8));
   AddStatis(found_count);
 }
 
@@ -369,5 +376,5 @@ void DeleteWeightDequantLinearOpDecoderPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(delete_weight_dequant_linear_op_decoder_pass,
-              paddle::framework::ir::DeleteWeightDequantLinearOpDecoderPass);
+REGISTER_PASS(delete_weight_dequant_linear_op_with_while_pass,
+              paddle::framework::ir::DeleteWeightDequantLinearOpWithWhilePass);

@@ -84,16 +84,16 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "adaptive_pool2d_convert_global_pass",       //
-      "shuffle_channel_detect_pass",           //
-      "quant_conv2d_dequant_fuse_pass",        //
-      "delete_fill_constant_op_pass",          //
-      "delete_quant_dequant_op_pass",          //
-      "delete_quant_dequant_filter_op_pass",   //
-      "delete_weight_dequant_linear_op_pass",  //
-      "delete_quant_dequant_linear_op_pass",   //
-      "identity_scale_op_clean_pass",          //
-      "add_support_int8_pass",                 //
+  "adaptive_pool2d_convert_global_pass",                      //
+      "shuffle_channel_detect_pass",                          //
+      "quant_conv2d_dequant_fuse_pass",                       //
+      "delete_fill_constant_op_pass",                         //
+      "delete_quant_dequant_op_pass",                         //
+      "delete_quant_dequant_filter_op_pass",                  //
+      "delete_weight_dequant_linear_op_dequant_weight_pass",  //
+      "delete_quant_dequant_linear_op_pass",                  //
+      "identity_scale_op_clean_pass",                         //
+      "add_support_int8_pass",                                //
       // "fc_fuse_pass",                        //
       "simplify_with_basic_ops_pass",  //
 
@@ -166,8 +166,8 @@ const std::vector<std::string> kLiteSubgraphPasses({
 const std::vector<std::string> kGpuLowerPrecisionPasses{
     "simplify_with_basic_ops_pass",
     "delete_quant_dequant_linear_op_pass",
-    "delete_weight_dequant_linear_op_encoder_pass",
-    "delete_weight_dequant_linear_op_decoder_pass",
+    "delete_weight_dequant_linear_op_with_while_pass",
+    "delete_weight_dequant_linear_op_pass",
     "map_depthwise_conv_to_conv_pass",
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
@@ -209,8 +209,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
     "is_test_pass",                                                     //
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
-        "delete_weight_dequant_linear_op_encoder_pass",                 //
-        "delete_weight_dequant_linear_op_decoder_pass",                 //
+        "delete_weight_dequant_linear_op_with_while_pass",              //
+        "delete_weight_dequant_linear_op_pass",                         //
         "map_depthwise_conv_to_conv_pass",                              //
         "conv_bn_fuse_pass",                                            //
         "conv_eltwiseadd_bn_fuse_pass",                                 //
