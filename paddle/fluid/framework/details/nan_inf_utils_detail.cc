@@ -134,30 +134,71 @@ static void InitWhiteListFormEnv() {
   }
 }
 
-template <typename T, typename MT>
-static void PrintNanInfCpu(const T* value_ptr,
-                           const size_t numel,
+template <
+    typename T,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+static void CheckNanInfCpu(const T* value_ptr,
+                           const int64_t numel,
                            const std::string& cpu_hint_str) {
+  using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
+
+#ifdef _OPENMP
+  int num_threads = omp_get_num_threads();
+#else
+  int num_threads = 1;
+#endif
+
+  std::vector<int64_t> thread_num_nan(num_threads, 0);
+  std::vector<int64_t> thread_num_inf(num_threads, 0);
+  std::vector<MT> thread_min_value(num_threads, std::numeric_limits<MT>::max());
+  std::vector<MT> thread_max_value(num_threads, std::numeric_limits<MT>::min());
+  std::vector<MT> thread_mean_value(num_threads, static_cast<MT>(0));
+
+#ifdef _OPENMP
+#pragma omp parallel num_threads(num_threads)
+#endif
+  {
+#ifdef _OPENMP
+    int64_t tid = omp_get_thread_num();
+    int64_t chunk_size = (numel + num_threads - 1) / num_threads;
+    int64_t begin = tid * chunk_size;
+    int64_t end = chunk_size + begin > numel ? numel : chunk_size + begin;
+#else
+    int64_t tid = 0;
+    int64_t begin = 0;
+    int64_t end = numel;
+#endif
+    for (int64_t i = begin; i < end; ++i) {
+      MT value = static_cast<MT>(value_ptr[i]);
+
+      thread_min_value[tid] = std::min(thread_min_value[tid], value);
+      thread_max_value[tid] = std::max(thread_max_value[tid], value);
+      thread_mean_value[tid] += value / static_cast<MT>(numel);
+
+      if (std::isnan(value)) {
+        thread_num_nan[tid] += 1;
+      } else if (std::isinf(value)) {
+        thread_num_inf[tid] += 1;
+      }
+    }
+  }
+
   bool has_nan = false;
   bool has_inf = false;
-
   MT min_value = std::numeric_limits<MT>::max();
   MT max_value = std::numeric_limits<MT>::min();
   MT mean_value = static_cast<MT>(0);
-
-  // CPU print num value
-  for (size_t i = 0; i < numel; ++i) {
-    MT value = value_ptr[i];
-
-    min_value = std::min(min_value, value);
-    max_value = std::max(max_value, value);
-    mean_value += value / static_cast<MT>(numel);
-
-    if (std::isnan(value)) {
+  for (int i = 0; i < num_threads; ++i) {
+    if (thread_num_nan[i] > 0) {
       has_nan = true;
-    } else if (std::isinf(value)) {
+    } else if (thread_num_inf[i] > 0) {
       has_inf = true;
     }
+    min_value = std::min(thread_min_value[i], min_value);
+    max_value = std::max(thread_max_value[i], max_value);
+    mean_value += thread_mean_value[i];
   }
 
   PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
@@ -172,51 +213,22 @@ static void PrintNanInfCpu(const T* value_ptr,
 
 template <
     typename T,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
-static void CheckNanInfCpu(const T* value_ptr,
-                           const size_t numel,
-                           const std::string& cpu_hint_str) {
-  using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
-
-  int64_t num_nan_inf = 0;
-#if defined _OPENMP && _OPENMP >= 201307
-#pragma omp parallel for simd reduction(+ : num_nan_inf)
-#elif defined _OPENMP
-#pragma omp parallel for reduction(+ : num_nan_inf)
-#endif
-  for (size_t i = 0; i < numel; ++i) {
-    if (std::isnan(value_ptr[i]) || std::isinf(value_ptr[i])) {
-      num_nan_inf += 1;
-    }
-  }
-
-  if (num_nan_inf > 0) {
-    PrintNanInfCpu<T, MT>(value_ptr, numel, cpu_hint_str);
-  }
-}
-
-template <
-    typename T,
     std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
                          std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
 void CheckNanInfCpu(const T* value_ptr,
-                    const size_t numel,
+                    const int64_t numel,
                     const std::string& cpu_hint_str) {
   using RealType = typename T::value_type;
 
   RealType real_sum = 0.0f;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
   RealType imag_sum = 0.0f;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
+
+#pragma omp parallel for reduction(+ : real_sum) reduction(+ : imag_sum)
+  for (int64_t i = 0; i < numel; ++i) {
+    T value = value_ptr[i];
+    real_sum += (value.real - value.real);
+    imag_sum += (value.imag - value.imag);
   }
 
   if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
