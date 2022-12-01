@@ -21,14 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import (
-    NCE,
-    BatchNorm,
-    Embedding,
-    GroupNorm,
-    NCE,
-    PRelu,
-)
+from paddle.fluid.dygraph.nn import NCE, BatchNorm, Embedding, GroupNorm, PRelu
 from paddle.nn import Linear
 
 
