@@ -504,7 +504,9 @@ class BaseModel(fluid.dygraph.Layer):
 
         predicted_ids = paddle.stack(predicted_ids)
         parent_ids = paddle.stack(parent_ids)
-        predicted_ids = fluid.layers.gather_tree(predicted_ids, parent_ids)
+        predicted_ids = paddle.nn.functional.gather_tree(
+            predicted_ids, parent_ids
+        )
         predicted_ids = self._transpose_batch_time(predicted_ids)
         return predicted_ids
 

@@ -15,16 +15,15 @@
 import unittest
 
 import numpy as np
+from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
