@@ -36,7 +36,7 @@ StaticGraphInferNoNeedBufferVarsContext::
     StaticGraphInferNoNeedBufferVarsContext(const VariableNameMap &inputs,
                                             const VariableNameMap &outputs,
                                             const AttributeMap &attrs)
-    : InferNoNeedBufferVarsContext(attrs), inputs_(inputs), outputs_(outputs) {}
+    : InferNoNeedBufferVarsContext(attrs), outputs_(outputs) {}
 
 bool StaticGraphInferNoNeedBufferVarsContext::HasOutput(
     const std::string &slot) const {
@@ -53,7 +53,7 @@ DyGraphInferNoNeedBufferVarsContext::DyGraphInferNoNeedBufferVarsContext(
     const imperative::NameVarMap<imperative::VariableWrapper> &inputs,
     const imperative::NameVarMap<imperative::VariableWrapper> &outputs,
     const AttributeMap &attrs)
-    : InferNoNeedBufferVarsContext(attrs), inputs_(inputs), outputs_(outputs) {}
+    : InferNoNeedBufferVarsContext(attrs), outputs_(outputs) {}
 
 bool DyGraphInferNoNeedBufferVarsContext::HasOutput(
     const std::string &slot) const {

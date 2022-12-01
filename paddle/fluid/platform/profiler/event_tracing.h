@@ -97,7 +97,8 @@ class RecordEvent {
                          const std::string& attr);
 
   bool is_enabled_{false};
-  // Event name
+  // bool is_pushed_{false};
+  //  Event name
   std::string* name_{nullptr};
   const char* shallow_copy_name_{nullptr};
   uint64_t start_ns_;

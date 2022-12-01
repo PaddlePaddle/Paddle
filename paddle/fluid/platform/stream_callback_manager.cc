@@ -107,16 +107,16 @@ void StreamCallbackManager<Stream>::Wait() const {
 }
 
 #ifdef PADDLE_WITH_CUDA
-template struct StreamCallbackManager<gpuStream_t>;
+template class StreamCallbackManager<gpuStream_t>;
 #endif
 #ifdef PADDLE_WITH_HIP
-template struct StreamCallbackManager<hipStream_t>;
+template class StreamCallbackManager<hipStream_t>;
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-template struct StreamCallbackManager<aclrtStream>;
+template class StreamCallbackManager<aclrtStream>;
 #endif
 #ifdef PADDLE_WITH_MLU
-template struct StreamCallbackManager<mluStream>;
+template class StreamCallbackManager<mluStream>;
 #endif
 
 }  // namespace platform

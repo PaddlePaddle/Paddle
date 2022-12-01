@@ -44,10 +44,10 @@ class GPUContextAllocation : public Allocation {
         underlying_allocation_(std::move(allocation)) {}
 
   ~GPUContextAllocation() {
-    PADDLE_ENFORCE_NOT_NULL(
-        dev_ctx_,
-        platform::errors::PreconditionNotMet(
-            "Device context is not set for GPUContextAllocation"));
+    // PADDLE_ENFORCE_NOT_NULL(
+    //     dev_ctx_,
+    //     platform::errors::PreconditionNotMet(
+    //         "Device context is not set for GPUContextAllocation"));
     auto *p_allocation = underlying_allocation_.release();
     VLOG(4) << "Adding callback to delete GPUContextAllocation at "
             << p_allocation;
@@ -89,9 +89,9 @@ class GPUContextAllocator : public Allocator {
     if (event_) {
       platform::CUDADeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
+      hipEventDestroy(event_);
 #else
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event_));
+      cudaEventDestroy(event_);
 #endif
     }
   }

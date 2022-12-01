@@ -34,7 +34,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_PSLIB
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
+#endif
+
 std::shared_ptr<FleetWrapper> FleetWrapper::s_instance_ = NULL;
 bool FleetWrapper::is_initialized_ = false;
 std::mutex FleetWrapper::ins_mutex;

@@ -126,23 +126,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
     int64_t offset,
     int64_t numel,
     bool sync_op) {
-  return Send(tensor,
-              dst_rank,
-              offset,
-              numel,
-              sync_op,
-              /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
-    phi::DenseTensor*,
-    int dst_rank,
-    int64_t offset,
-    int64_t numel,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "ProcessGroup%s does not support send.", GetBackendName()));
+  return ProcessGroup::Send(tensor,
+                            dst_rank,
+                            offset,
+                            numel,
+                            sync_op,
+                            /*use_calc_stream*/ false);
 }
 
 // TODO(sunyilun): methods below will be removed later

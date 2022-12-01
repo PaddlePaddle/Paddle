@@ -252,7 +252,7 @@ struct GPUContext::Impl {
       phi::DestroyDnnHandle(dnn_handle_);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (nccl_comm_) {
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
+        dynload::ncclCommDestroy(nccl_comm_);
       }
 #endif
       phi::DestroyBlasHandle(blas_handle_);

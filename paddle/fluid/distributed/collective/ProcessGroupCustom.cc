@@ -300,7 +300,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
 }
 
 const phi::DeviceContext& ProcessGroupCustom::GetDeviceContext(
-    const Place& place) const {
+    const Place& place, bool use_calc_stream) const {
   const std::string key = GetKeyFromPlace(place);
   const auto& iter = places_to_ctx_.find(key);
   PADDLE_ENFORCE_NE(

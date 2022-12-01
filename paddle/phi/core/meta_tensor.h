@@ -24,7 +24,8 @@ limitations under the License. */
 namespace phi {
 
 // TODO(chenweihang): add other flags if needed
-struct MetaConfig {
+class MetaConfig {
+ public:
   bool is_runtime{true};
   bool is_run_mkldnn_kernel{false};
   MetaConfig() = default;

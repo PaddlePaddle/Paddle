@@ -986,6 +986,7 @@ class AllocatorFacadePrivate {
   AllocatorMap allocators_;
   static AllocatorMap zero_size_allocators_;
   static AllocatorMap system_allocators_;
+  // bool allow_free_idle_chunk_;
   bool is_stream_safe_cuda_allocator_used_;
 };
 AllocatorFacadePrivate::AllocatorMap

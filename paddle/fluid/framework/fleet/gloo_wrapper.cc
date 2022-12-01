@@ -26,7 +26,9 @@ namespace rendezvous {
 class HTTPStore;
 class Store;
 
+#ifdef PADDLE_WITH_GLOO
 constexpr int kNodeSize = 136;
+#endif
 
 HdfsStore::HdfsStore(const std::string& path) {
   path_ = path;

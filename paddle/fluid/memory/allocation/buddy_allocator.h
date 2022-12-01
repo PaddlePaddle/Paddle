@@ -100,6 +100,7 @@ class BuddyAllocator {
   size_t min_chunk_size_;  // the minimum size of each chunk
   size_t max_chunk_size_;  // the maximum size of each chunk
 
+  // size_t realloc_size_ = 0;        // the size of re-allocated chunk
   size_t extra_padding_size_ = 0;  // the size of padding to the size of memory
                                    // to alloc, especially used in NPU
 

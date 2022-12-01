@@ -1610,6 +1610,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
                                 uint32_t* cmatch,
                                 uint32_t* rank);
   virtual void PutToFeedVec(const Record* ins_vec, int num);
+  virtual void PutToFeedVec(const std::vector<PvInstance>& pv_vec);
 };
 
 class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
