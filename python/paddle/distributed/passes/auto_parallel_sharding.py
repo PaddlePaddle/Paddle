@@ -35,7 +35,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
     get_var_numel,
     get_logger,
-    use_standalone_executor,
     is_loss_grad_op,
     is_backward_op,
     is_optimize_op,
@@ -648,7 +647,7 @@ class ShardingPass(PassBase):
 
     def _optimization_pass(self, main_program, startup_program):
 
-        if not use_standalone_executor() or self.stage <= 1:
+        if self.stage <= 1:
             return
 
         self.grad_coalesce_prefix = 'sharding_coalecse_grad_'
@@ -663,8 +662,7 @@ class ShardingPass(PassBase):
         sharding_info = self.sharding_infos[0]
 
         with paddle.static.program_guard(main_program, startup_program):
-            if self.enable_overlap:
-                self._gradient_sync_optimization(sharding_info)
+            self._gradient_sync_optimization(sharding_info)
             if self.bucket_size_numel > 1:
                 if self.stage == 2:
                     self._fuse_overlap_parameter_comm_stage_two(sharding_info)
@@ -678,6 +676,7 @@ class ShardingPass(PassBase):
         coalesce_to_group_map, grad_name_to_group_map = self._group_grads(
             main_block, sharding_info
         )
+        # if use_standalone_executor() and self.enable_overlap:
         # overlap_grad_comm()
 
     def _fuse_overlap_parameter_comm_stage_two(self, sharding_info):
