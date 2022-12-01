@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
-import paddle
 
 
 class TestSquareErrorCost(unittest.TestCase):
