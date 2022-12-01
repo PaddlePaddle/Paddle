@@ -3262,7 +3262,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
-    auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
+    auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);
     SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
   }
   // TODO(chenweihang): Since the pass will still `SetAttr` in the OpDesc,
@@ -3277,7 +3277,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (const auto& attr_iter : attrs) {
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
-    auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
+    auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);
     SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
   }
   VLOG(4) << "Done runtime attributes";

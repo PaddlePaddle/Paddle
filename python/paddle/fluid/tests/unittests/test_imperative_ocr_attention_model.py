@@ -21,14 +21,9 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import (
-    BatchNorm,
-    Embedding,
-    GRUUnit,
-    Linear,
-)
-from paddle.nn import Linear
+from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GRUUnit, Linear
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 
 class Config:
@@ -306,9 +301,7 @@ class SimpleAttention(fluid.dygraph.Layer):
             decoder_state_proj_reshape,
             [-1, encoder_proj.shape[1], -1],
         )
-        concated = fluid.layers.elementwise_add(
-            encoder_proj, decoder_state_expand
-        )
+        concated = paddle.add(encoder_proj, decoder_state_expand)
         concated = paddle.tanh(x=concated)
         attention_weight = self.fc_2(concated)
 
@@ -362,7 +355,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             )
             fc_1 = self.fc_1_layer(context)
             fc_2 = self.fc_2_layer(current_word)
-            decoder_inputs = fluid.layers.elementwise_add(x=fc_1, y=fc_2)
+            decoder_inputs = paddle.add(x=fc_1, y=fc_2)
 
             h, _, _ = self.gru_unit(decoder_inputs, hidden_mem)
             hidden_mem = h
