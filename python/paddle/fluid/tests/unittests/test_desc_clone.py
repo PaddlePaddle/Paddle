@@ -185,9 +185,7 @@ class TestCloneWithStopGradient(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
-            hidden1 = paddle.static.nn.fc(
-                input=img, size=200, activation='relu'
-            )
+            hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
             hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
             loss = fluid.layers.cross_entropy(
@@ -214,9 +212,7 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
             true = paddle.ones(shape=[1], dtype="float32")
-            hidden1 = paddle.static.nn.fc(
-                input=img, size=200, activation='relu'
-            )
+            hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
 
             cond = paddle.equal(true, true)
@@ -259,9 +255,7 @@ class TestCloneWithRaise(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
             true = paddle.ones(shape=[1], dtype="float32")
-            hidden1 = paddle.static.nn.fc(
-                input=img, size=200, activation='relu'
-            )
+            hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
 
             cond = paddle.equal(true, true)
