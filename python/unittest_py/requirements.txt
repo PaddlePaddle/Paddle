@@ -1,3 +1,4 @@
+# TODO(gsq7474741): 这里要求的python版本是否需要更新？
 pynacl==1.4.0 ; python_version == "3.6"
 PyGithub
 coverage==5.5

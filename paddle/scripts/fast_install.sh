@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# TODO(gsq7474741): 这个脚本现在还在使用嘛？
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");

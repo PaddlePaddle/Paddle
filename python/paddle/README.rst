@@ -1,3 +1,4 @@
+# TODO(gsq7474741): 这个文档还在使用吗？如果在使用，需要更新一下。
 
 --------------------------------------------------------------------------------
 
@@ -43,7 +44,6 @@ We provide users with four installation methods ,which are pip, conda, docker an
 ##### On MacOS:
 
 - **MacOS version 10.11/10.12/10.13/10.14 (64 bit) (not support GPU version yet)**
-
 - **Python version 2.7.15+/3.5.1+/3.6/3.7/3.8 (64 bit)**
 
 - **pip or pip3 version 9.0.1+ (64 bit)**

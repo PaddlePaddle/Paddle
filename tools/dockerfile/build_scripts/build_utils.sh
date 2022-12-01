@@ -64,7 +64,7 @@ function do_cpython_build {
     local prefix="/opt/_internal/cpython-${py_ver}${dir_suffix}"
     mkdir -p ${prefix}/lib
     # -Wformat added for https://bugs.python.org/issue17547 on Python 2.6
-
+    # TODO(gsq7474741): 这里要求的python版本是否需要更新？
     if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.6) ]; then
         wget -q --no-check-certificate https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
         tar -zxf sqlite-autoconf-3250300.tar.gz
@@ -93,9 +93,6 @@ function do_cpython_build {
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as
     # bin/python.
-    if [ -e ${prefix}/bin/python3.6 ]; then
-        ln -s python3.6 ${prefix}/bin/python
-    fi
     if [ -e ${prefix}/bin/python3.7 ]; then
         ln -s python3.7 ${prefix}/bin/python
     fi
@@ -106,6 +103,7 @@ function do_cpython_build {
         ln -s python3.9 ${prefix}/bin/python
     fi
     # NOTE Make libpython shared library visible to python calls below
+    # TODO(gsq7474741): 这里要求的python版本是否需要更新？
     if [ -e ${prefix}/bin/python3.6 ]; then
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python ez_setup.py
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m easy_install pip
@@ -136,7 +134,7 @@ function build_cpython {
     rm -f Python-$py_ver.tgz
 }
 
-
+# TODO(gsq7474741): 这里不知道怎么解决
 function build_cpythons {
     for py_ver in $@; do
         if [ ${py_ver} == "2.7.15" ]; then
