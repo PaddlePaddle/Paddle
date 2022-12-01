@@ -435,11 +435,13 @@ class TrtConvertLessEqualTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
-            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8400:
-                return 0, 7
-            elif not dynamic_shape:
+            if (
+                ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8400
+                or not dynamic_shape
+            ):
                 return 2, 5
-            return 1, 3
+            else:
+                return 1, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
