@@ -24,6 +24,7 @@ from ...tensor.manipulation import reshape
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import _varbase_creator
 from ...static import Variable
+from .activation import log_softmax
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
@@ -1826,6 +1827,122 @@ def ctc_loss(
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths)
+    elif reduction == 'sum':
+        loss_out = paddle.sum(loss_out)
+    return loss_out
+
+
+def rnnt_loss(
+    logits,
+    labels,
+    logits_lengths,
+    label_lengths,
+    blank=0,
+    reduction='mean',
+    fastemit_lambda=0.001,
+):
+    """
+
+    An operator integrating the open source Warp-Transducer library (https://github.com/b-flo/warp-transducer.git)
+    to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
+
+    Parameters:
+        logits (Tensor): The logits sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
+        labels (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
+        logits_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
+        blank (int, optional): The blank label index of RNN-T loss, which is in the half-opened interval [0, B). The data type must be int32. Default is 0.
+        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the batch_size, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+        fastemit_lambda (float, default 0.001) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
+
+    Returns:
+        Tensor, The RNN-T loss between ``logtis`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logtis``.
+
+    Examples:
+
+        .. code-block:: python
+
+            # declarative mode
+    """
+
+    def warprnnt(
+        input, label, input_length, label_length, blank=0, fastemit_lambda=0.001
+    ):
+        num_threads = 1
+        if in_dygraph_mode():
+            grad, loss_out = _C_ops.warprnnt(
+                input,
+                label,
+                input_length,
+                label_length,
+                blank,
+                fastemit_lambda,
+                num_threads,
+            )
+            return loss_out
+        if _non_static_mode():
+            grad, loss_out = _legacy_C_ops.warprnnt(
+                input,
+                label,
+                input_length,
+                label_length,
+                'blank',
+                blank,
+                'fastemit_lambda',
+                fastemit_lambda,
+                'num_threads',
+                num_threads,
+            )
+            return loss_out
+        helper = LayerHelper('warprnnt', **locals())
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], "warprnnt"
+        )
+        check_variable_and_dtype(label, 'label', ['int32'], "warprnnt")
+        check_variable_and_dtype(
+            input_length, 'LogitsLength', ['int64'], "warprnnt"
+        )
+        check_variable_and_dtype(
+            label_length, 'LabelLength', ['int64'], "warprnnt"
+        )
+        this_inputs = {
+            'Logits': [input],
+            'Label': [label],
+            'LogitsLength': [input_length],
+            'LabelLength': [label_length],
+        }
+
+        loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type='warprnnt',
+            inputs=this_inputs,
+            outputs={'WarpRNNTGrad': [grad_out], 'Loss': [loss_out]},
+            attrs={
+                'blank': blank,
+                'fastemit_lambda': fastemit_lambda,
+                'num_threads': num_threads,
+            },
+        )
+        return loss_out
+
+    B = logits.shape[0]
+    if logits.place.is_cpu_place():
+        # NOTE manually done log_softmax for CPU version,
+        # log_softmax is computed within GPU version.
+        logits = log_softmax(logits, -1)
+
+    # (B, 1)
+    loss_out = warprnnt(
+        logits, labels, logits_lengths, label_lengths, blank, fastemit_lambda
+    )
+
+    # (B,)
+    loss_out = paddle.squeeze(loss_out, [-1])
+    assert reduction in ['mean', 'sum', 'none']
+    if reduction == 'mean':
+        loss_out = paddle.sum(loss_out) / B
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out
