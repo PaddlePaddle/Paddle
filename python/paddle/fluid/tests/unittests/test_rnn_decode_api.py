@@ -75,9 +75,7 @@ class DecoderCell(layers.RNNCell):
             layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
         )
         if encoder_padding_mask is not None:
-            attn_scores = layers.elementwise_add(
-                attn_scores, encoder_padding_mask
-            )
+            attn_scores = paddle.add(attn_scores, encoder_padding_mask)
         attn_scores = layers.softmax(attn_scores)
         attn_out = paddle.squeeze(
             layers.matmul(attn_scores, encoder_output), [1]
