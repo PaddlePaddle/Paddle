@@ -305,6 +305,7 @@ class WhileOp : public framework::OperatorBase {
         cond_data = GetCondData(
             scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
+
       scope.DeleteScope(&current_scope);
     }
   }
