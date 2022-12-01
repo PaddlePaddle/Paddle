@@ -343,14 +343,12 @@ class TrtConvertLessEqualTest(TrtLayerAutoScanTest):
                             "op_inputs": {"X": ["input_data1"]},
                             "op_outputs": {"Out": ["cast_output_data1"]},
                             "op_attrs": dics[1],
-                            "outputs_dtype": {"cast_output_data1": np.bool},
                         },
                         {
                             "op_type": "cast",
                             "op_inputs": {"X": ["input_data2"]},
                             "op_outputs": {"Out": ["cast_output_data2"]},
                             "op_attrs": dics[1],
-                            "outputs_dtype": {"cast_output_data2": np.bool},
                         },
                         {
                             "op_type": op_type,
