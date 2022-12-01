@@ -27,10 +27,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8200:
-            if (
-                program_config.ops[0].type == "sign"
-                or program_config.ops[0].type == "round"
-            ):
+            if program_config.ops[0].type == "round":
                 return False
         return True
 
@@ -52,7 +49,6 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "log",
                     "sqrt",
                     "abs",
-                    "neg",
                     "sin",
                     "cos",
                     "tan",
@@ -68,7 +64,6 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "floor",
                     "rsqrt",
                     "reciprocal",
-                    "sign",
                     "round",
                 ]:
                     self.dims = dims

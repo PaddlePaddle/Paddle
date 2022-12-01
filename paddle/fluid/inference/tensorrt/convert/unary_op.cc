@@ -77,7 +77,6 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
         {"sqrt", {nvinfer1::UnaryOperation::kSQRT}},
         {"reciprocal", {nvinfer1::UnaryOperation::kRECIP}},
         {"abs", {nvinfer1::UnaryOperation::kABS}},
-        {"neg", {nvinfer1::UnaryOperation::kNEG}},
         {"sin", {nvinfer1::UnaryOperation::kSIN}},
         {"cos", {nvinfer1::UnaryOperation::kCOS}},
         {"tan", {nvinfer1::UnaryOperation::kTAN}},
@@ -95,10 +94,8 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
          {nvinfer1::UnaryOperation::kSQRT, nvinfer1::UnaryOperation::kRECIP}},
 #if IS_TRT_VERSION_GE(7000)
         {"erf", {nvinfer1::UnaryOperation::kERF}},
-        {"not", {nvinfer1::UnaryOperation::kNOT}},
 #endif
 #if IS_TRT_VERSION_GE(8200)
-        {"sign", {nvinfer1::UnaryOperation::kSIGN}},
         {"round", {nvinfer1::UnaryOperation::kROUND}},
 #endif
 };
@@ -120,10 +117,6 @@ class SqrtOpConverter : public UnaryOpConverter {
 class AbsOpConverter : public UnaryOpConverter {
  public:
   AbsOpConverter() { op_type_ = "abs"; }
-};
-class NegOpConverter : public UnaryOpConverter {
- public:
-  NegOpConverter() { op_type_ = "neg"; }
 };
 class SinOpConverter : public UnaryOpConverter {
  public:
@@ -191,14 +184,6 @@ class ErfOpConverter : public UnaryOpConverter {
  public:
   ErfOpConverter() { op_type_ = "erf"; }
 };
-class NotOpConverter : public UnaryOpConverter {
- public:
-  NotOpConverter() { op_type_ = "not"; }
-};
-class SignOpConverter : public UnaryOpConverter {
- public:
-  SignOpConverter() { op_type_ = "sign"; }
-};
 class RoundOpConverter : public UnaryOpConverter {
  public:
   RoundOpConverter() { op_type_ = "round"; }
@@ -213,7 +198,6 @@ REGISTER_TRT_OP_CONVERTER(exp, ExpOpConverter);
 REGISTER_TRT_OP_CONVERTER(log, LogOpConverter);
 REGISTER_TRT_OP_CONVERTER(sqrt, SqrtOpConverter);
 REGISTER_TRT_OP_CONVERTER(abs, AbsOpConverter);
-REGISTER_TRT_OP_CONVERTER(neg, NegOpConverter);
 REGISTER_TRT_OP_CONVERTER(sin, SinOpConverter);
 REGISTER_TRT_OP_CONVERTER(cos, CosOpConverter);
 REGISTER_TRT_OP_CONVERTER(tan, TanOpConverter);
@@ -223,6 +207,7 @@ REGISTER_TRT_OP_CONVERTER(asin, AsinOpConverter);
 REGISTER_TRT_OP_CONVERTER(acos, AcosOpConverter);
 REGISTER_TRT_OP_CONVERTER(atan, AtanOpConverter);
 REGISTER_TRT_OP_CONVERTER(asinh, AsinhOpConverter);
+REGISTER_TRT_OP_CONVERTER(acosh, AcoshOpConverter);
 REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
@@ -230,9 +215,7 @@ REGISTER_TRT_OP_CONVERTER(rsqrt, RsqrtOpConverter);
 REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
 #if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
-REGISTER_TRT_OP_CONVERTER(logical_not, NotOpConverter);
 #endif
 #if IS_TRT_VERSION_GE(8200)
-REGISTER_TRT_OP_CONVERTER(sign, SignOpConverter);
 REGISTER_TRT_OP_CONVERTER(round, RoundOpConverter);
 #endif

@@ -67,8 +67,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("sparse_multihead_matmul");
 #endif
 #if IS_TRT_VERSION_GE(8200)
-    teller_set.insert("sign");
-    int8_teller_set.insert("sign");
     teller_set.insert("round");
     int8_teller_set.insert("round");
 #endif
@@ -85,19 +83,18 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",        "relu6",      "sigmoid",
-        "elu",         "selu",       "softsign",
-        "softplus",    "stanh",      "thresholded_relu",
-        "exp",         "log",        "sqrt",
-        "abs",         "sin",        "cos",
-        "tan",         "tanh",       "sinh",
-        "cosh",        "asin",       "acos",
-        "atan",        "asinh",      "acosh",
-        "atanh",       "ceil",       "celu",
-        "erf",         "floor",      "neg",
-        "round",       "sign",       "silu",
-        "logical_not", "reciprocal", "tanh_shrink",
-        "logsigmoid"};
+        "relu",        "relu6",       "sigmoid",
+        "elu",         "selu",        "softsign",
+        "softplus",    "stanh",       "thresholded_relu",
+        "exp",         "log",         "sqrt",
+        "abs",         "sin",         "cos",
+        "tan",         "tanh",        "sinh",
+        "cosh",        "asin",        "acos",
+        "atan",        "asinh",       "acosh",
+        "atanh",       "ceil",        "celu",
+        "erf",         "floor",       "round",
+        "silu",        "logical_not", "reciprocal",
+        "tanh_shrink", "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2336,7 +2333,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "log",
       "sqrt",
       "abs",
-      "neg",
       "sin",
       "cos",
       "tan",
@@ -2469,7 +2465,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "log",
       "sqrt",
       "abs",
-      "neg",
       "sin",
       "cos",
       "tan",
