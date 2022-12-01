@@ -259,10 +259,13 @@ def is_api_in_module(node, module_prefix):
 
     func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
+        import paddle  # noqa: F401
         import paddle.fluid as fluid  # noqa: F401
         import paddle.fluid.dygraph as dygraph  # noqa: F401
         import paddle.fluid.layers as layers  # noqa: F401
         import paddle.jit.dy2static as _jst  # noqa: F401
+        from paddle.fluid.dygraph import to_variable  # noqa: F401
+        from paddle import to_tensor  # noqa: F401
 
         return eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
@@ -313,6 +316,7 @@ def is_numpy_api(node):
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
+    import paddle.fluid as fluid  # noqa: F401
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -393,6 +397,7 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
+    import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
         "issubclass({}, fluid.dygraph.Layer)".format(class_src)
