@@ -972,7 +972,7 @@ class ShardingPass(PassBase):
                     is_recompute=False,
                     sync=False,
                 )
-        block.sync_with_cpp()
+        block._sync_with_cpp()
 
         return coalesce_to_group_map, grad_name_to_group_map
 
