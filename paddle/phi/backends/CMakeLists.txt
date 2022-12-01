@@ -70,4 +70,4 @@ endif()
 cc_library(
   processgroup_comm_utils
   SRCS processgroup_comm_utils.cc
-  DEPS ${COMM_UTILS_DEPS})
+  DEPS ${COMM_UTILS_DEPS} ${DEVICE_EVENT_LIBS})
