@@ -30,8 +30,6 @@ class BCEWithLogitsLoss(Layer):
     r"""
 
     This operator combines the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
-    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-    layer and some reduce operations.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 
 namespace paddle {

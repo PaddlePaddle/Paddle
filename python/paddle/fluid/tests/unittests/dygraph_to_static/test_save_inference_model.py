@@ -15,16 +15,15 @@
 import os
 import tempfile
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.jit.dy2static.partial_program import (
-    partial_program_from,
-)
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.dy2static.partial_program import partial_program_from
 
 SEED = 2020
 
@@ -39,7 +38,7 @@ program_translator = ProgramTranslator()
 class SimpleFcLayer(fluid.dygraph.Layer):
     def __init__(self, fc_size):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(fc_size, fc_size)
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
 
     @declarative
     def forward(self, x):
