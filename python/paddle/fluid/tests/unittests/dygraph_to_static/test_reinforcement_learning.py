@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, Layer
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 
@@ -122,7 +122,7 @@ def train(args, place, to_static):
             mask = to_variable(_mask)
             mask.stop_gradient = True
 
-            loss_probs = fluid.layers.log(loss_probs)
+            loss_probs = paddle.log(loss_probs)
             loss_probs = paddle.multiply(loss_probs, mask)
             loss_probs = paddle.sum(loss_probs, axis=-1)
 
