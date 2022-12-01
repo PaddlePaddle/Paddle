@@ -23,11 +23,11 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.nn import Linear
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import AdamOptimizer
+from paddle.nn import Linear
 
 SEED = 2020
 
