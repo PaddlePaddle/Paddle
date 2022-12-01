@@ -16,10 +16,13 @@ import itertools
 import unittest
 
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import (
     AdadeltaOptimizer,
     AdagradOptimizer,
@@ -36,10 +39,6 @@ from paddle.fluid.optimizer import (
     RecomputeOptimizer,
     RMSPropOptimizer,
 )
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
-
-from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.

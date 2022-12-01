@@ -3490,7 +3490,7 @@ class TestBook(LayerTest):
                 name="input", shape=[13, 11], dtype='float32'
             )
 
-            out = layers.sum(input)
+            out = paddle.add_n(input)
             return out
 
     def make_slice(self):

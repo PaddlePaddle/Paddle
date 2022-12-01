@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import (
 from paddle.nn import Linear
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
+from paddle.nn import Linear
 
 
 def position_encoding_init(n_position, d_pos_vec):

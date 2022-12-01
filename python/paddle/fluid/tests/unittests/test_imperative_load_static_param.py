@@ -30,9 +30,6 @@ from paddle.fluid.dygraph.nn import (
     PRelu,
 )
 from paddle.nn import Linear
-import numpy as np
-import os
-import tempfile
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
