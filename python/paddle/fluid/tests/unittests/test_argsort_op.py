@@ -91,7 +91,7 @@ class TestArgsortOpCPU(unittest.TestCase):
             label = fluid.layers.data(
                 name="label", shape=self.input_shape, dtype=self.dtype
             )
-            self.sorted_x, self.index = paddle.argsort(
+            self.sorted_x = paddle.argsort(
                 x=x, axis=self.axis, descending=self.descending
             )
             self.sorted_x.stop_gradient = False
