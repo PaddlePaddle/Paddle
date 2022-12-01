@@ -162,7 +162,7 @@
   backward : conj_grad
 
 - op : cos
-  args : (Tensor x, int axis)
+  args : (Tensor x)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -866,6 +866,15 @@
   kernel :
     func : tanh_shrink
   backward : tanh_shrink_grad
+
+- op : test_op
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : cos
+  backward : cos_grad
 
 - op : thresholded_relu
   args : (Tensor x, float threshold = 1.0)
