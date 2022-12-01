@@ -793,7 +793,7 @@ class ShardingPass(PassBase):
         # not backward op, sharding for inference
         if first_backward_op is None:
             return
-        first_backward_varname = first_backward_op.out_arg_names[0]
+        first_backward_varname = first_backward_op.output_arg_names[0]
 
         cur_group = VarGroup(max_fuse_numel)
         grad_groups = []
@@ -813,7 +813,7 @@ class ShardingPass(PassBase):
                     op.type == "c_reduce_sum"
                 ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
 
-                grad_name = op.out_arg_names[0]
+                grad_name = op.output_arg_names[0]
                 param_name = _get_base_name_from_grad_name(grad_name)
                 rank = sharding_info.get_var_rank(param_name)
                 grad_var = block.var(grad_name)
@@ -841,7 +841,7 @@ class ShardingPass(PassBase):
                         ops[i + 1].type == "c_allreduce_sum"
                     ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
                     assert (
-                        ops[i + 1].out_arg_names[0] == grad_name
+                        ops[i + 1].output_arg_names[0] == grad_name
                     ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
                     cur_group.allreduce_op_indices.append(i + 1)
                     i += 1
@@ -904,7 +904,7 @@ class ShardingPass(PassBase):
 
             if idx in modify_reduce_op_map:
                 group = modify_reduce_op_map[idx]
-                grad_name = op.out_arg_names[0]
+                grad_name = op.output_arg_names[0]
                 assert (
                     grad_name == group.vars[-1].name
                 ), "Unexception: it is supposed to sync [{}] but got [{}]".format(
@@ -919,7 +919,7 @@ class ShardingPass(PassBase):
                 group = coalesce_op_map[idx]
                 first_grad_name = group.vars[0].name
                 assert (
-                    first_grad_name in op.out_arg_names
+                    first_grad_name in op.output_arg_names
                 ), "Unexception: op is supposed to generate grad [{}] but got [{}]".format(
                     first_grad_name, str(op)
                 )
