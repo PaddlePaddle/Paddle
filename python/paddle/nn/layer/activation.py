@@ -14,10 +14,11 @@
 
 # TODO: define activation functions of neural network
 
-from ..initializer import Constant
 from paddle.framework import get_default_dtype
-from .. import functional as F
 from paddle.nn import Layer
+
+from .. import functional as F
+from ..initializer import Constant
 
 __all__ = []
 

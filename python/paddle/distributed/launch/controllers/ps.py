@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .controller import Controller, ControleMode
-
 import json
-import os, shutil
+import os
+import shutil
+
+from .controller import ControleMode, Controller
 
 
 class PSController(Controller):

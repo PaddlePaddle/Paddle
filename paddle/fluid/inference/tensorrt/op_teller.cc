@@ -596,6 +596,36 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "take_along_axis") {
+#if IS_TRT_VERSION_GE(8200)
+      if (!with_dynamic_shape) return false;
+      auto* block = desc.Block();
+      auto input_var_name = desc.Input("Input")[0];
+      auto index_var_name = desc.Input("Index")[0];
+      auto* input_var_desc = block->FindVar(input_var_name);
+      auto* index_var_desc = block->FindVar(index_var_name);
+
+      // The index input must be int32 datatype.
+      if (index_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+        VLOG(3) << "take_along_axis op Index input data type must be int32";
+        return false;
+      }
+
+      const auto input_shape = input_var_desc->GetShape();
+      const auto index_shape = index_var_desc->GetShape();
+      if (input_shape.size() != index_shape.size()) {
+        VLOG(3) << "take_along_axis op Index input dims size ["
+                << index_shape.size() << " ] not equal to input dims size ["
+                << input_shape.size() << "]";
+        return false;
+      }
+#else
+      VLOG(3) << "take_along_axis op is only supported by trt8.2 above ";
+      return false;
+#endif
+    }
+
     if (op_type == "anchor_generator") {
       if (!with_dynamic_shape) return false;
     }
@@ -2317,6 +2347,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "rsqrt",
       "reciprocal",
       "erf",
       "softmax",
@@ -2406,6 +2437,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "layernorm_shift_partition",
       "reverse_roll",
+      "take_along_axis",
       "tanh_shrink",
       "logsigmoid",
       "preln_layernorm_shift_partition",
@@ -2446,6 +2478,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "rsqrt",
       "reciprocal",
       "erf",
       "softmax",
@@ -2537,6 +2570,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layernorm_shift_partition",
       "reverse_roll",
       "tanh_shrink",
+      "take_along_axis",
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "merge_layernorm",

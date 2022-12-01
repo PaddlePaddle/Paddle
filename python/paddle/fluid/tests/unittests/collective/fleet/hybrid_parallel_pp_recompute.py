@@ -22,6 +22,7 @@ import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import framework
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 from paddle.fluid import layers
 from paddle.fluid.dygraph.layers import Layer
@@ -88,14 +89,22 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
-    def forward(self, x):
-        return super().forward(x)
+    def forward(self, tensors):
+        if framework.in_dygraph_mode():
+            stable, x = tensors
+            return stable, super().forward(x)
+        else:
+            return super().forward(tensors)
 
 
 class TransformerNetPipe(TransformerNet):
-    def forward(self, x):
-        output = super().forward(x)
-        return output
+    def forward(self, tensors):
+        if framework.in_dygraph_mode():
+            stable, x = tensors
+            output = super().forward(x)
+            return stable, output
+        else:
+            return super().forward(tensors)
 
 
 class CriterionPipe(Layer):
@@ -103,6 +112,8 @@ class CriterionPipe(Layer):
         super().__init__()
 
     def forward(self, out, label):
+        if framework.in_dygraph_mode():
+            out = out[-1]
         loss = out.mean()
         return loss
 
@@ -171,7 +182,8 @@ class TestDistPPTraning(unittest.TestCase):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
-            loss = model.train_batch([x, x], optimizer, scheduler)
+            input_ = (x, x) if framework.in_dygraph_mode() else x
+            loss = model.train_batch([input_, x], optimizer, scheduler)
             # TODO(shenliang03) add utest for loss
             print("loss: ", loss)
 

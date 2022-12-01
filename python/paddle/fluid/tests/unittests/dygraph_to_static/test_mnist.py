@@ -12,23 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import tempfile
+import unittest
 from time import time
 
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Linear, Pool2D
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _test_eager_guard
-
-from predictor_utils import PredictorTools
+from paddle.fluid.optimizer import AdamOptimizer
+from paddle.nn import Linear
 
 SEED = 2020
 
@@ -70,7 +69,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=None,
         )
 
-        self._pool2d = Pool2D(
+        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -103,12 +102,9 @@ class MNIST(fluid.dygraph.Layer):
         self._fc = Linear(
             self.pool_2_shape,
             10,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
-                )
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=scale)
             ),
-            act="softmax",
         )
 
     def forward(self, inputs, label=None):
@@ -127,6 +123,7 @@ class MNIST(fluid.dygraph.Layer):
         x = self._simple_img_conv_pool_2(x)
         x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
+        x = paddle.nn.functional.softmax(x)
         return x
 
 

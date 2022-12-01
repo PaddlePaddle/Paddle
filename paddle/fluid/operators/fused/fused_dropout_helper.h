@@ -154,7 +154,6 @@ class FusedDropoutHelper {
                            MaskType* mask,
                            const float quant_last_in_scale = 1.0,
                            const float* dequant_out_scale_data = nullptr,
-                           const int quant_out_scale_offset = 0,
                            const float quant_next_in_scale = 1.0) {
     auto increment = GetIncrement(ctx);
     LaunchResidualDropoutBias<T, MaskType, InType, OutType>(
@@ -173,7 +172,6 @@ class FusedDropoutHelper {
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
-        quant_out_scale_offset,
         quant_next_in_scale);
   }
 
@@ -212,7 +210,6 @@ class FusedDropoutHelper {
                       MaskType* mask,
                       const float quant_last_in_scale = 1.0,
                       const float* dequant_out_scale_data = nullptr,
-                      const int quant_out_scale_offset = 0,
                       const float quant_next_in_scale = 1.0,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
@@ -237,7 +234,6 @@ class FusedDropoutHelper {
             ctx,
             quant_last_in_scale,
             dequant_out_scale_data,
-            quant_out_scale_offset,
             quant_next_in_scale,
             quant_round_type,
             quant_max_bound,
@@ -260,7 +256,6 @@ class FusedDropoutHelper {
             ctx,
             quant_last_in_scale,
             dequant_out_scale_data,
-            quant_out_scale_offset,
             quant_next_in_scale,
             quant_round_type,
             quant_max_bound,
@@ -287,7 +282,6 @@ class FusedDropoutHelper {
                                     ctx,
                                     quant_last_in_scale,
                                     dequant_out_scale_data,
-                                    quant_out_scale_offset,
                                     quant_next_in_scale,
                                     quant_round_type,
                                     quant_max_bound,
@@ -454,7 +448,6 @@ class FusedDropoutLayerNormHelper
       LayerNormParamType<T>* variance,
       const float quant_last_in_scale = 1.0,
       const float* dequant_out_scale_data = nullptr,
-      const int quant_out_scale_offset = 0,
       const float quant_next_in_scale = 1.0,
       const int quant_round_type = 1,
       const float quant_max_bound = 127.0,
@@ -494,7 +487,6 @@ class FusedDropoutLayerNormHelper
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
-        quant_out_scale_offset,
         quant_next_in_scale,
         quant_round_type,
         quant_max_bound,
