@@ -15,8 +15,9 @@
 import unittest
 
 import numpy as np
-import paddle
 from op_test import OpTest, randomize_probability
+
+import paddle
 
 
 class TestBprLossOp1(OpTest):
