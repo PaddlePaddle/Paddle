@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .tensor import Tensor
 """
 math functions
 """
@@ -129,7 +135,7 @@ def _get_reduce_axis_with_tensor(axis, x):
     return reduce_all, axis
 
 
-def log(x, name=None):
+def log(x: Tensor, name: str = None) -> Tensor:
     r"""
     Calculates the natural log of the given input Tensor, element-wise.
 
@@ -583,7 +589,7 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-def add(x, y, name=None):
+def add(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Elementwise Add Operator.
     Add two tensors element-wise
@@ -671,7 +677,7 @@ def add_(x, y, name=None):
         return out
 
 
-def subtract(x, y, name=None):
+def subtract(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Substract two tensors element-wise. The equation is:
 
@@ -765,7 +771,7 @@ def subtract_(x, y, name=None):
         return out
 
 
-def divide(x, y, name=None):
+def divide(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Divide two tensors element-wise. The equation is:
 
@@ -809,7 +815,7 @@ def divide(x, y, name=None):
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def floor_divide(x, y, name=None):
+def floor_divide(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
 
@@ -850,7 +856,7 @@ def floor_divide(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def remainder(x, y, name=None):
+def remainder(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     r"""
     Mod two tensors element-wise. The equation is:
 
@@ -916,7 +922,7 @@ mod = remainder  # noqa: F841
 floor_mod = remainder  # noqa: F841
 
 
-def multiply(x, y, name=None):
+def multiply(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     multiply two tensors element-wise. The equation is:
 
@@ -972,7 +978,7 @@ def multiply(x, y, name=None):
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def maximum(x, y, name=None):
+def maximum(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
@@ -1038,7 +1044,7 @@ def maximum(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def minimum(x, y, name=None):
+def minimum(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
 
@@ -1104,7 +1110,7 @@ def minimum(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def fmax(x, y, name=None):
+def fmax(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
     If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
@@ -1172,7 +1178,7 @@ def fmax(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def fmin(x, y, name=None):
+def fmin(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
     If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
@@ -2251,7 +2257,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     return out
 
 
-def inverse(x, name=None):
+def inverse(x: Tensor, name: str = None) -> Tensor:
     """
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
@@ -2731,7 +2737,7 @@ def amin(x, axis=None, keepdim=False, name=None):
     return out
 
 
-def log1p(x, name=None):
+def log1p(x: Tensor, name: str = None) -> Tensor:
     r"""
     Calculates the natural log of the given input tensor, element-wise.
 
@@ -2769,7 +2775,7 @@ def log1p(x, name=None):
     return out
 
 
-def log2(x, name=None):
+def log2(x: Tensor, name: str = None) -> Tensor:
     r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
@@ -2821,7 +2827,7 @@ def log2(x, name=None):
     return out
 
 
-def log10(x, name=None):
+def log10(x: Tensor, name: str = None) -> Tensor:
     r"""
     Calculates the log to the base 10 of the given input tensor, element-wise.
 
@@ -3225,7 +3231,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
 
 
 @templatedoc(op_type="kron")
-def kron(x, y, name=None):
+def kron(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     """
 
     ${comment}
@@ -3494,7 +3500,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
     return out
 
 
-def isfinite(x, name=None):
+def isfinite(x: Tensor, name: str = None) -> Tensor:
     """
 
     Return whether every element of input tensor is finite number or not.
@@ -3528,7 +3534,7 @@ def isfinite(x, name=None):
     return out
 
 
-def isinf(x, name=None):
+def isinf(x: Tensor, name: str = None) -> Tensor:
     """
 
     Return whether every element of input tensor is `+/-INF` or not.
@@ -3562,7 +3568,7 @@ def isinf(x, name=None):
     return out
 
 
-def isnan(x, name=None):
+def isnan(x: Tensor, name: str = None) -> Tensor:
     """
 
     Return whether every element of input tensor is `NaN` or not.
@@ -3681,7 +3687,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     return out
 
 
-def sign(x, name=None):
+def sign(x: Tensor, name: str = None) -> Tensor:
     """
     Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
@@ -3716,7 +3722,7 @@ def sign(x, name=None):
     return out
 
 
-def tanh(x, name=None):
+def tanh(x: Tensor, name: str = None) -> Tensor:
     r"""
     Tanh Activation Operator.
 
@@ -3988,7 +3994,7 @@ def broadcast_shape(x_shape, y_shape):
     return core.broadcast_shape(x_shape, y_shape)
 
 
-def conj(x, name=None):
+def conj(x: Tensor, name: str = None) -> Tensor:
     r"""
     This function computes the conjugate of the Tensor elementwisely.
 
@@ -4036,7 +4042,7 @@ def conj(x, name=None):
     return out
 
 
-def digamma(x, name=None):
+def digamma(x: Tensor, name: str = None) -> Tensor:
     r"""
     Calculates the digamma of the given input tensor, element-wise.
 
@@ -4075,7 +4081,7 @@ def digamma(x, name=None):
     return out
 
 
-def lgamma(x, name=None):
+def lgamma(x: Tensor, name: str = None) -> Tensor:
     r"""
     Calculates the lgamma of the given input tensor, element-wise.
 
@@ -4139,7 +4145,7 @@ def neg(x, name=None):
     )
 
 
-def atan2(x, y, name=None):
+def atan2(x: Tensor, y: Tensor, name: str = None) -> Tensor:
     r"""
     Element-wise arctangent of x/y with consideration of the quadrant.
 
@@ -4264,7 +4270,7 @@ def logit(x, eps=None, name=None):
     return out
 
 
-def lerp(x, y, weight, name=None):
+def lerp(x: Tensor, y: Tensor, weight: Tensor, name: str = None) -> Tensor:
     r"""
     Does a linear interpolation between x and y based on weight.
 
@@ -4342,7 +4348,7 @@ def lerp_(x, y, weight, name=None):
     return _legacy_C_ops.lerp_(x, y, weight)
 
 
-def erfinv(x, name=None):
+def erfinv(x: Tensor, name: str = None) -> Tensor:
     r"""
     The inverse error function of x. Please refer to :ref:`api_paddle_erf`
 
@@ -4825,7 +4831,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             axes,
             'infer_flags',
             infer_flags,
-            *attrs_1
+            *attrs_1,
         )
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
@@ -4841,7 +4847,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             axes,
             'infer_flags',
             infer_flags,
-            *attrs_2
+            *attrs_2,
         )
 
         if x.dtype == paddle.bool:
@@ -4916,7 +4922,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         return out
 
 
-def angle(x, name=None):
+def angle(x: Tensor, name: str = None) -> Tensor:
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
     for negative real numbers, the angle is :math:`\pi`.
