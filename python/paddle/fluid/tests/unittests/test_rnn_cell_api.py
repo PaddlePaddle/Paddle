@@ -13,25 +13,21 @@
 # limitations under the License.
 
 import unittest
+
 import numpy
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from paddle.fluid.framework import program_guard, Program
-
-from paddle.fluid.executor import Executor
-from paddle.fluid import framework
-
-from paddle.fluid.layers.rnn import LSTMCell, GRUCell, RNNCell
-from paddle.fluid.layers import rnn as dynamic_rnn
-from paddle.fluid import contrib
-from paddle.fluid.contrib.layers import basic_lstm
+import paddle.fluid.layers as layers
 import paddle.fluid.layers.utils as utils
-
-import numpy as np
-import paddle
+from paddle.fluid import contrib, framework
+from paddle.fluid.contrib.layers import basic_lstm
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.layers import rnn as dynamic_rnn
+from paddle.fluid.layers.rnn import GRUCell, LSTMCell, RNNCell
 
 
 class TestLSTMCellError(unittest.TestCase):
@@ -746,5 +742,4 @@ class TestSeq2SeqModel(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

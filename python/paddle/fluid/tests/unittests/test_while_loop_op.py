@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -296,7 +297,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         res = exe.run(
             main_program,
             feed={'i': feed_i, 'x': feed_x},
-            fetch_list=[mean.name, i.grad_name, x.grad_name],
+            fetch_list=[mean.name, x.grad_name],
         )
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
