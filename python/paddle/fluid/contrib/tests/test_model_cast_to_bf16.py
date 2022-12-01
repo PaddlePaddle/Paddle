@@ -168,8 +168,11 @@ class TestModelCastBF16(unittest.TestCase):
             lambda prog: amp.bf16.rewrite_program_bf16(
                 prog,
                 amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_bf16_list={'elementwise_add'},
-                    custom_fp32_varnames={'elementwise_add_0.tmp_0'},
+                    custom_bf16_list={'elementwise_add', 'add'},
+                    custom_fp32_varnames={
+                        'elementwise_add_0.tmp_0',
+                        'add_0.tmp_0',
+                    },
                 ),
             )
         )
@@ -180,8 +183,8 @@ class TestModelCastBF16(unittest.TestCase):
                 prog,
                 startup_prog,
                 amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_bf16_list={'elementwise_add'},
-                    custom_fp32_list={'elementwise_mul'},
+                    custom_bf16_list={'elementwise_add', 'add'},
+                    custom_fp32_list={'elementwise_mul', 'multiply'},
                 ),
                 use_bf16_guard=True,
             ),
