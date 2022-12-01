@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
 import paddle
 
 from functools import wraps
 
 
 def deco1(fun):
-
     @wraps(fun)
     def inner(*args, **kwargs):
         print('in decos.deco1, added 1')
@@ -31,9 +29,7 @@ def deco1(fun):
 
 
 def deco2(x=0):
-
     def inner_deco(func):
-
         @wraps(func)
         def inner(*args, **kwargs):
             print('in decos.deco2, added {}'.format(x))

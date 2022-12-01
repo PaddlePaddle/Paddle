@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import unittest
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 
 
 # Special case
 class TrtConvertConv3dTransposeTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8400:
@@ -37,56 +36,60 @@ class TrtConvertConv3dTransposeTest(TrtLayerAutoScanTest):
             return np.ones([batch, num_channels, 4, 20, 30]).astype(np.float32)
 
         def generate_weight1(num_channels, attrs: List[Dict[str, Any]]):
-            return np.random.random([num_channels, 64, 3, 3,
-                                     3]).astype(np.float32)
+            return np.random.random([num_channels, 64, 3, 3, 3]).astype(
+                np.float32
+            )
 
         num_channels = 128
         batch = 1
         # in_channels
         self.num_channels = num_channels
-        dics = [{
-            "data_fromat": 'NCHW',
-            "dilations": [1, 1, 1],
-            "padding_algorithm": 'EXPLICIT',
-            "groups": 1,
-            "paddings": [1, 1, 1],
-            "strides": [2, 2, 2],
-            "output_padding": [1, 1, 1],
-            "output_size": [],
-        }]
+        dics = [
+            {
+                "data_fromat": 'NCHW',
+                "dilations": [1, 1, 1],
+                "padding_algorithm": 'EXPLICIT',
+                "groups": 1,
+                "paddings": [1, 1, 1],
+                "strides": [2, 2, 2],
+                "output_padding": [1, 1, 1],
+                "output_size": [],
+            }
+        ]
 
-        ops_config = [{
-            "op_type": "conv3d_transpose",
-            "op_inputs": {
-                "Input": ["input_data"],
-                "Filter": ["conv3d_weight"]
-            },
-            "op_outputs": {
-                "Output": ["output_data"]
-            },
-            "op_attrs": dics[0]
-        }]
+        ops_config = [
+            {
+                "op_type": "conv3d_transpose",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["conv3d_weight"],
+                },
+                "op_outputs": {"Output": ["output_data"]},
+                "op_attrs": dics[0],
+            }
+        ]
         ops = self.generate_op_config(ops_config)
 
         program_config = ProgramConfig(
             ops=ops,
             weights={
-                "conv3d_weight":
-                TensorConfig(
-                    data_gen=partial(generate_weight1, num_channels, dics))
+                "conv3d_weight": TensorConfig(
+                    data_gen=partial(generate_weight1, num_channels, dics)
+                )
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input1, batch,
-                                              num_channels, dics))
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input1, batch, num_channels, dics)
+                )
             },
-            outputs=["output_data"])
+            outputs=["output_data"],
+        )
 
         yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 128, 4, 20, 30],
@@ -114,13 +117,15 @@ class TrtConvertConv3dTransposeTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-3
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-3
+            attrs, True
+        ), 1e-3
 
     def add_skip_trt_case(self):
         pass

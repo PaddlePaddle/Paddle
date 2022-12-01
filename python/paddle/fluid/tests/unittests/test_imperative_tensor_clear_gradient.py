@@ -21,7 +21,6 @@ import numpy as np
 
 
 def _dygraph_guard_(func):
-
     def __impl__(*args, **kwargs):
         if fluid._non_static_mode():
             return func(*args, **kwargs)
@@ -36,7 +35,6 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 
 
 class TestDygraphClearGradient(TestCase):
-
     def setUp(self):
         self.input_shape = [10, 2]
 

@@ -26,8 +26,8 @@ template <typename DeviceContext, typename T>
 class ReduceSumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dims = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");
@@ -43,8 +43,8 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    framework::Tensor cast_x;
-    framework::Tensor cast_out;
+    phi::DenseTensor cast_x;
+    phi::DenseTensor cast_out;
     // NOTE: ReduceSumD only supports fp32 and fp16
     if (framework::TransToProtoVarType(x->dtype()) !=
             framework::proto::VarType::FP32 &&
@@ -106,10 +106,9 @@ template <typename DeviceContext, typename T>
 class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dims = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");

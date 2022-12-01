@@ -13,16 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from .... import core
 from .... import framework
 from .... import global_scope
 from ....log_helper import get_logger
 from ....wrapped_decorator import signature_safe_contextmanager
 from .amp_lists import AutoMixedPrecisionListsBF16
-from ..fp16_utils import find_true_prev_op, find_true_post_op, _rename_arg, \
-    find_op_index, _rename_op_input
+from ..fp16_utils import (
+    find_true_prev_op,
+    find_true_post_op,
+    _rename_arg,
+    find_op_index,
+    _rename_op_input,
+)
 
 import collections
 import struct
@@ -30,17 +33,21 @@ import logging
 import numpy as np
 
 __all__ = [
-    "bf16_guard", "rewrite_program_bf16", "cast_model_to_bf16",
-    "cast_parameters_to_bf16", "convert_float_to_uint16"
+    "bf16_guard",
+    "rewrite_program_bf16",
+    "cast_model_to_bf16",
+    "cast_parameters_to_bf16",
+    "convert_float_to_uint16",
 ]
 
-_logger = get_logger(__name__,
-                     logging.INFO,
-                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 _valid_types = [
-    core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
-    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    core.VarDesc.VarType.LOD_TENSOR,
+    core.VarDesc.VarType.SELECTED_ROWS,
+    core.VarDesc.VarType.LOD_TENSOR_ARRAY,
 ]
 
 _bf16_guard_pattern = "__use_bf16__"
@@ -50,7 +57,8 @@ def convert_float_to_uint16(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
         lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
-        otypes=[np.uint16])(in_list.flat)
+        otypes=[np.uint16],
+    )(in_list.flat)
     return np.reshape(out, in_list.shape)
 
 
@@ -85,7 +93,9 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
 
     for in_name in op.input_names:
         if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
-                'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+            'batch_norm',
+            'fused_bn_add_activation',
+            'layer_norm',
         ]:
             if in_name not in {'X', 'Z'}:
                 continue
@@ -101,26 +111,34 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         name=cast_name,
                         dtype=dest_dtype,
                         persistable=False,
-                        stop_gradient=in_var.stop_gradient)
+                        stop_gradient=in_var.stop_gradient,
+                    )
 
-                    block._insert_op(idx,
-                                     type="cast",
-                                     inputs={"X": in_var},
-                                     outputs={"Out": out_var},
-                                     attrs={
-                                         "in_dtype": in_var.dtype,
-                                         "out_dtype": out_var.dtype
-                                     })
+                    block._insert_op(
+                        idx,
+                        type="cast",
+                        inputs={"X": in_var},
+                        outputs={"Out": out_var},
+                        attrs={
+                            "in_dtype": in_var.dtype,
+                            "out_dtype": out_var.dtype,
+                        },
+                    )
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
-    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.BF16:
+    if (
+        src_dtype == core.VarDesc.VarType.FP32
+        and dest_dtype == core.VarDesc.VarType.BF16
+    ):
         for out_name in op.output_names:
-            if op.type in [
-                    'batch_norm', 'fused_bn_add_activation', 'layer_norm'
-            ] and out_name != 'Y':
+            if (
+                op.type
+                in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']
+                and out_name != 'Y'
+            ):
                 continue
             for out_var_name in op.output(out_name):
                 out_var = block.var(out_var_name)
@@ -133,31 +151,36 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     return num_cast_ops
 
 
-def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
-                         op_var_rename_map):
+def _insert_cast_post_op(
+    block, op, idx, src_dtype, dest_dtype, target_name, op_var_rename_map
+):
     num_cast_ops = 0
     target_var = block.var(target_name)
     if target_var.type not in _valid_types or target_var.dtype == dest_dtype:
         return num_cast_ops
 
-    assert target_var.dtype == src_dtype, \
-        "The real dtype({}) is not equal to the src dtype({})".format(_dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype))
+    assert (
+        target_var.dtype == src_dtype
+    ), "The real dtype({}) is not equal to the src dtype({})".format(
+        _dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype)
+    )
 
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)
     if cast_var is None or cast_var.dtype != dest_dtype:
-        cast_var = block.create_var(name=cast_name,
-                                    dtype=dest_dtype,
-                                    persistable=False,
-                                    stop_gradient=target_var.stop_gradient)
-        block._insert_op(idx,
-                         type="cast",
-                         inputs={"X": target_var},
-                         outputs={"Out": cast_var},
-                         attrs={
-                             "in_dtype": target_var.dtype,
-                             "out_dtype": cast_var.dtype
-                         })
+        cast_var = block.create_var(
+            name=cast_name,
+            dtype=dest_dtype,
+            persistable=False,
+            stop_gradient=target_var.stop_gradient,
+        )
+        block._insert_op(
+            idx,
+            type="cast",
+            inputs={"X": target_var},
+            outputs={"Out": cast_var},
+            attrs={"in_dtype": target_var.dtype, "out_dtype": cast_var.dtype},
+        )
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
 
@@ -194,8 +217,9 @@ def _need_keep_fp32(op, unsupported_op_list, use_bf16_guard):
             return True
 
     if use_bf16_guard:
-        if op.has_attr("op_namescope") and \
-                (_bf16_guard_pattern in op.attr("op_namescope")):
+        if op.has_attr("op_namescope") and (
+            _bf16_guard_pattern in op.attr("op_namescope")
+        ):
             # op in bf16 guard
             return False
         else:
@@ -240,12 +264,14 @@ def are_post_ops_bf16(post_ops, keep_fp32_ops):
     return True
 
 
-def cast_initializers_to_bf16(startup_prog,
-                              amp_lists,
-                              block,
-                              all_ops,
-                              keep_fp32_ops,
-                              to_bf16_var_names=None):
+def cast_initializers_to_bf16(
+    startup_prog,
+    amp_lists,
+    block,
+    all_ops,
+    keep_fp32_ops,
+    to_bf16_var_names=None,
+):
     prepend_ops = startup_prog.global_block().ops
     for op in prepend_ops:
         if str(op.type) in amp_lists.bf16_initializer_list:
@@ -267,17 +293,21 @@ def cast_initializers_to_bf16(startup_prog,
                 for out_var in op_out_vars:
                     if out_var.dtype == core.VarDesc.VarType.FP32:
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
-                    if to_bf16_var_names is not None and out_var.name in to_bf16_var_names:
+                    if (
+                        to_bf16_var_names is not None
+                        and out_var.name in to_bf16_var_names
+                    ):
                         to_bf16_var_names.remove(out_var.name)
-                if op.has_attr('dtype') and op.attr(
-                        'dtype') == core.VarDesc.VarType.FP32:
+                if (
+                    op.has_attr('dtype')
+                    and op.attr('dtype') == core.VarDesc.VarType.FP32
+                ):
                     op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
 
-def cast_model_to_bf16(program,
-                       startup_prog=None,
-                       amp_lists=None,
-                       use_bf16_guard=True):
+def cast_model_to_bf16(
+    program, startup_prog=None, amp_lists=None, use_bf16_guard=True
+):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the bf16 data type. This function will do some special processing for
@@ -309,7 +339,9 @@ def cast_model_to_bf16(program,
                 continue  # processed below
             for in_name in op.input_names:
                 if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                    'batch_norm',
+                    'fused_bn_add_activation',
+                    'layer_norm',
                 } and in_name not in {'X', 'Z'}:
                     continue
                 for in_var_name in op.input(in_name):
@@ -318,13 +350,17 @@ def cast_model_to_bf16(program,
                         in_var = block.var(in_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block --".
-                            format(e))
+                            "-- {}, try to get it in the global block --".format(
+                                e
+                            )
+                        )
                         in_var = global_block.var(in_var_name)
                         if in_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block --".
-                                format(in_var_name))
+                                "-- var {} is got in the global block --".format(
+                                    in_var_name
+                                )
+                            )
 
                     if in_var is None or in_var.type not in _valid_types:
                         continue
@@ -334,13 +370,17 @@ def cast_model_to_bf16(program,
                         to_bf16_var_names.add(in_var_name)
 
                     _logger.debug(
-                        "-- op type: {}, in var name: {}, in var dtype: {} --".
-                        format(op.type, in_var_name, in_var.dtype))
+                        "-- op type: {}, in var name: {}, in var dtype: {} --".format(
+                            op.type, in_var_name, in_var.dtype
+                        )
+                    )
 
             for out_name in op.output_names:
-                if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
-                } and out_name != 'Y':
+                if (
+                    op.type
+                    in {'batch_norm', 'fused_bn_add_activation', 'layer_norm'}
+                    and out_name != 'Y'
+                ):
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None
@@ -348,13 +388,17 @@ def cast_model_to_bf16(program,
                         out_var = block.var(out_var_name)
                     except ValueError as e:
                         _logger.debug(
-                            "-- {}, try to get it in the global block --".
-                            format(e))
+                            "-- {}, try to get it in the global block --".format(
+                                e
+                            )
+                        )
                         out_var = global_block.var(out_var_name)
                         if out_var is not None:
                             _logger.debug(
-                                "-- var {} is got in the global block --".
-                                format(out_var_name))
+                                "-- var {} is got in the global block --".format(
+                                    out_var_name
+                                )
+                            )
 
                     if out_var is None or out_var.type not in _valid_types:
                         continue
@@ -363,11 +407,15 @@ def cast_model_to_bf16(program,
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
 
                     _logger.debug(
-                        "-- op type: {}, out var name: {}, out var dtype: {} --"
-                        .format(op.type, out_var_name, out_var.dtype))
+                        "-- op type: {}, out var name: {}, out var dtype: {} --".format(
+                            op.type, out_var_name, out_var.dtype
+                        )
+                    )
             for attr_name in ['in_dtype', 'out_dtype', 'dtype']:
-                if op.has_attr(attr_name) and op.attr(
-                        attr_name) == core.VarDesc.VarType.FP32:
+                if (
+                    op.has_attr(attr_name)
+                    and op.attr(attr_name) == core.VarDesc.VarType.FP32
+                ):
                     op._set_attr(attr_name, core.VarDesc.VarType.BF16)
             if op.has_attr('use_mkldnn'):
                 op._set_attr('use_mkldnn', True)
@@ -375,8 +423,14 @@ def cast_model_to_bf16(program,
                 op._set_attr('mkldnn_data_type', 'bfloat16')
 
         if startup_prog is not None:
-            cast_initializers_to_bf16(startup_prog, amp_lists, global_block,
-                                      ops, keep_fp32_ops, to_bf16_var_names)
+            cast_initializers_to_bf16(
+                startup_prog,
+                amp_lists,
+                global_block,
+                ops,
+                keep_fp32_ops,
+                to_bf16_var_names,
+            )
 
     # process ops in keep_fp32_ops
     op_var_rename_map = [
@@ -390,14 +444,22 @@ def cast_model_to_bf16(program,
             num_cast_ops = 0
             if op not in keep_fp32_ops:
                 if op in to_bf16_pre_cast_ops:
-                    in_var_cast_num = _insert_cast_op(block, op, idx,
-                                                      core.VarDesc.VarType.FP32,
-                                                      core.VarDesc.VarType.BF16)
+                    in_var_cast_num = _insert_cast_op(
+                        block,
+                        op,
+                        idx,
+                        core.VarDesc.VarType.FP32,
+                        core.VarDesc.VarType.BF16,
+                    )
                     num_cast_ops += in_var_cast_num
             else:
-                pre_cast_num = _insert_cast_op(block, op, idx,
-                                               core.VarDesc.VarType.BF16,
-                                               core.VarDesc.VarType.FP32)
+                pre_cast_num = _insert_cast_op(
+                    block,
+                    op,
+                    idx,
+                    core.VarDesc.VarType.BF16,
+                    core.VarDesc.VarType.FP32,
+                )
                 num_cast_ops += pre_cast_num
                 for out_var_name in op.output_arg_names:
                     out_var = block.vars.get(out_var_name)
@@ -410,10 +472,14 @@ def cast_model_to_bf16(program,
                             if post_op in keep_fp32_ops:
                                 continue
                             post_cast_num = _insert_cast_post_op(
-                                block, op, idx + pre_cast_num + 1,
+                                block,
+                                op,
+                                idx + pre_cast_num + 1,
                                 core.VarDesc.VarType.FP32,
-                                core.VarDesc.VarType.BF16, out_var_name,
-                                op_var_rename_map)
+                                core.VarDesc.VarType.BF16,
+                                out_var_name,
+                                op_var_rename_map,
+                            )
                             num_cast_ops += post_cast_num
             idx += num_cast_ops + 1
 
@@ -484,7 +550,8 @@ def rewrite_program_bf16(main_prog, amp_lists=None):
             continue
 
         if amp_lists.fp32_varnames is not None and _is_in_fp32_varnames(
-                op, amp_lists):
+            op, amp_lists
+        ):
             fp32_op_set.add(op)
             continue
 
@@ -510,11 +577,15 @@ def rewrite_program_bf16(main_prog, amp_lists=None):
                         else:
                             prev_op = in_var.op
                         # if it's one of inputs
-                        if prev_op in fp32_op_set or \
-                                prev_op.type in amp_lists.fp32_list:
+                        if (
+                            prev_op in fp32_op_set
+                            or prev_op.type in amp_lists.fp32_list
+                        ):
                             is_fp32_op = True
-                        elif prev_op in bf16_op_set or \
-                                prev_op.type in amp_lists.bf16_list:
+                        elif (
+                            prev_op in bf16_op_set
+                            or prev_op.type in amp_lists.bf16_list
+                        ):
                             is_bf16_op = True
             if is_fp32_op:
                 fp32_op_set.add(op)
@@ -532,20 +603,30 @@ def rewrite_program_bf16(main_prog, amp_lists=None):
         op = ops[idx]
         num_cast_ops = 0
         if op in fp32_op_set:
-            num_cast_ops = _insert_cast_op(block, op, idx,
-                                           core.VarDesc.VarType.BF16,
-                                           core.VarDesc.VarType.FP32)
+            num_cast_ops = _insert_cast_op(
+                block,
+                op,
+                idx,
+                core.VarDesc.VarType.BF16,
+                core.VarDesc.VarType.FP32,
+            )
         elif op in bf16_op_set:
             if op.has_attr('use_mkldnn'):
                 op._set_attr('use_mkldnn', True)
                 op._set_attr('mkldnn_data_type', 'bfloat16')
-            elif op.has_attr('dtype') and op.attr(
-                    'dtype') == core.VarDesc.VarType.FP32:
+            elif (
+                op.has_attr('dtype')
+                and op.attr('dtype') == core.VarDesc.VarType.FP32
+            ):
                 op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
-            num_cast_ops = _insert_cast_op(block, op, idx,
-                                           core.VarDesc.VarType.FP32,
-                                           core.VarDesc.VarType.BF16)
+            num_cast_ops = _insert_cast_op(
+                block,
+                op,
+                idx,
+                core.VarDesc.VarType.FP32,
+                core.VarDesc.VarType.BF16,
+            )
         else:
             pass
 

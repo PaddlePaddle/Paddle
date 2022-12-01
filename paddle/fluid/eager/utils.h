@@ -257,17 +257,20 @@ class EagerUtils {
     } else {
       tensor_name_str = t.name();
     }
-    const char* TENSOR_INFO_TEMPLATE = "Type: %s, Dtype: %s, Place: %s";
+    const char* TENSOR_INFO_TEMPLATE =
+        "Type: %s, Dtype: %s, Place: %s, Shape: %s";
     std::string tensor_info_str = "";
     if (t.defined()) {
       if (t.initialized()) {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
                                                    t.dtype(),
-                                                   t.place().DebugString());
+                                                   t.place().DebugString(),
+                                                   t.dims());
       } else {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
+                                                   "Unknown",
                                                    "Unknown",
                                                    "Unknown");
       }

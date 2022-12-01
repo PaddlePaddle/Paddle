@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -30,10 +28,10 @@ def sigmoid_array(x):
     return 1 / (1 + np.exp(-x))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
 class TestLogLossOp(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = 'log_loss'
@@ -60,8 +58,9 @@ class TestLogLossOp(OpTest):
         epsilon = self.attrs['epsilon']
         labels = self.inputs['Labels']
         predicted = self.inputs['Predicted']
-        loss = -labels * np.log(predicted + epsilon) - (
-            1 - labels) * np.log(1 - predicted + epsilon)
+        loss = -labels * np.log(predicted + epsilon) - (1 - labels) * np.log(
+            1 - predicted + epsilon
+        )
         self.outputs = {'Loss': loss}
 
     def set_npu(self):
@@ -77,10 +76,10 @@ class TestLogLossOp(OpTest):
         self.check_grad_with_place(self.place, ['Predicted'], 'Loss')
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
 class TestLogLossOpError(unittest.TestCase):
-
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 

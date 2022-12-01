@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
@@ -22,7 +20,6 @@ import paddle
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestFillConstant2DOneDNNOp(OpTest):
-
     def setUp(self):
         self.op_type = "fill_constant"
         self.dtype = np.float32
@@ -64,59 +61,58 @@ class TestFillConstant2DOneDNNOp(OpTest):
         self.check_output()
 
 
-class TestFillZerosLike4DShapeTensorPriorityOneDNNOp(TestFillConstant2DOneDNNOp
-                                                     ):
-
+class TestFillZerosLike4DShapeTensorPriorityOneDNNOp(
+    TestFillConstant2DOneDNNOp
+):
     def set_inputs(self):
         self.inputs = {'ShapeTensor': np.array([5, 6, 7, 8]).astype("int32")}
 
 
 class TestFillZerosLike4DShapeTensorListPriorityOneDNNOp(
-        TestFillConstant2DOneDNNOp):
-
+    TestFillConstant2DOneDNNOp
+):
     def set_inputs(self):
         shape = (4, 5, 6, 7)
         self.shape_tensor_list = []
         for index, elem in enumerate(shape):
-            self.shape_tensor_list.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * elem))
+            self.shape_tensor_list.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * elem)
+            )
 
         self.inputs = {'ShapeTensorList': self.shape_tensor_list}
 
 
 class TestFillZerosLike2DStringValueInfOneDNNOp(TestFillConstant2DOneDNNOp):
-
     def set_attrs(self):
         self.str_value = "inf"
         self.attrs = {'shape': (10, 13), 'use_mkldnn': True, 'str_value': "inf"}
 
 
-class TestFillZerosLike2DStringValueMinusInfOneDNNOp(TestFillConstant2DOneDNNOp
-                                                     ):
-
+class TestFillZerosLike2DStringValueMinusInfOneDNNOp(
+    TestFillConstant2DOneDNNOp
+):
     def set_attrs(self):
         self.str_value = "-inf"
         self.attrs = {
             'shape': (10, 13),
             'use_mkldnn': True,
-            'str_value': "-inf"
+            'str_value': "-inf",
         }
 
 
 class TestFillZerosLike2DStringValueFloatOneDNNOp(TestFillConstant2DOneDNNOp):
-
     def set_attrs(self):
         self.str_value = "0.123"
         self.attrs = {
             'shape': (10, 13),
             'use_mkldnn': True,
-            'str_value': "0.123"
+            'str_value': "0.123",
         }
 
 
 class TestFillZerosLike2DValueTensorPriorityOneDNNOp(
-        TestFillZerosLike2DStringValueFloatOneDNNOp):
-
+    TestFillZerosLike2DStringValueFloatOneDNNOp
+):
     def set_inputs(self):
         self.inputs = {'ValueTensor': np.atleast_1d(2.25).astype("float32")}
 

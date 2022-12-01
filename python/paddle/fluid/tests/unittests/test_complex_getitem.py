@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
@@ -21,7 +20,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexGetitemLayer(unittest.TestCase):
-
     def setUp(self):
         self._places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():

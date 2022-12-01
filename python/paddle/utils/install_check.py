@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-
-import os
 import logging
 import numpy as np
 
@@ -27,13 +24,14 @@ def _simple_network():
     """
     Define a simple network composed by a single linear layer.
     """
-    input = paddle.static.data(name="input",
-                               shape=[None, 2, 2],
-                               dtype="float32")
+    input = paddle.static.data(
+        name="input", shape=[None, 2, 2], dtype="float32"
+    )
     weight = paddle.create_parameter(
         shape=[2, 3],
         dtype="float32",
-        attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(0.1)))
+        attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(0.1)),
+    )
     bias = paddle.create_parameter(shape=[3], dtype="float32")
     linear_out = paddle.nn.functional.linear(x=input, weight=weight, bias=bias)
     out = paddle.tensor.sum(linear_out)
@@ -71,7 +69,8 @@ def _is_cuda_available():
         logging.warning(
             "You are using GPU version PaddlePaddle, but there is no GPU "
             "detected on your machine. Maybe CUDA devices is not set properly."
-            "\n Original Error is {}".format(e))
+            "\n Original Error is {}".format(e)
+        )
         return False
 
 
@@ -86,7 +85,8 @@ def _is_npu_available():
         logging.warning(
             "You are using NPU version PaddlePaddle, but there is no NPU "
             "detected on your machine. Maybe NPU devices is not set properly."
-            "\n Original Error is {}".format(e))
+            "\n Original Error is {}".format(e)
+        )
         return False
 
 
@@ -101,7 +101,8 @@ def _is_xpu_available():
         logging.warning(
             "You are using XPU version PaddlePaddle, but there is no XPU "
             "detected on your machine. Maybe XPU devices is not set properly."
-            "\n Original Error is {}".format(e))
+            "\n Original Error is {}".format(e)
+        )
         return False
 
 
@@ -124,20 +125,22 @@ def _run_dygraph_single(use_cuda, use_xpu, use_npu):
     else:
         paddle.set_device('cpu')
     weight_attr = paddle.ParamAttr(
-        name="weight", initializer=paddle.nn.initializer.Constant(value=0.5))
+        name="weight", initializer=paddle.nn.initializer.Constant(value=0.5)
+    )
     bias_attr = paddle.ParamAttr(
-        name="bias", initializer=paddle.nn.initializer.Constant(value=1.0))
-    linear = paddle.nn.Linear(2,
-                              4,
-                              weight_attr=weight_attr,
-                              bias_attr=bias_attr)
+        name="bias", initializer=paddle.nn.initializer.Constant(value=1.0)
+    )
+    linear = paddle.nn.Linear(
+        2, 4, weight_attr=weight_attr, bias_attr=bias_attr
+    )
     input_np = _prepare_data(1)
     input_tensor = paddle.to_tensor(input_np)
     linear_out = linear(input_tensor)
     out = paddle.tensor.sum(linear_out)
     out.backward()
-    opt = paddle.optimizer.Adam(learning_rate=0.001,
-                                parameters=linear.parameters())
+    opt = paddle.optimizer.Adam(
+        learning_rate=0.001, parameters=linear.parameters()
+    )
     opt.step()
 
 
@@ -158,7 +161,8 @@ def _run_static_single(use_cuda, use_xpu, use_npu):
         with paddle.static.program_guard(train_prog, startup_prog):
             input, out, weight = _simple_network()
             param_grads = paddle.static.append_backward(
-                out, parameter_list=[weight.name])[0]
+                out, parameter_list=[weight.name]
+            )[0]
 
         if use_cuda:
             place = paddle.CUDAPlace(0)
@@ -171,9 +175,11 @@ def _run_static_single(use_cuda, use_xpu, use_npu):
 
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
-        exe.run(train_prog,
-                feed={input.name: _prepare_data(1)},
-                fetch_list=[out.name, param_grads[1].name])
+        exe.run(
+            train_prog,
+            feed={input.name: _prepare_data(1)},
+            fetch_list=[out.name, param_grads[1].name],
+        )
     paddle.disable_static()
 
 
@@ -198,8 +204,8 @@ def _run_static_parallel(use_cuda, use_xpu, use_npu, device_list):
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         compiled_prog = paddle.static.CompiledProgram(
-            train_prog).with_data_parallel(loss_name=loss.name,
-                                           places=device_list)
+            train_prog
+        ).with_data_parallel(loss_name=loss.name, places=device_list)
 
         if use_cuda:
             place = paddle.CUDAPlace(0)
@@ -214,9 +220,11 @@ def _run_static_parallel(use_cuda, use_xpu, use_npu, device_list):
 
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
-        exe.run(compiled_prog,
-                feed={input.name: _prepare_data(len(device_list))},
-                fetch_list=[loss.name])
+        exe.run(
+            compiled_prog,
+            feed={input.name: _prepare_data(len(device_list))},
+            fetch_list=[loss.name],
+        )
     paddle.disable_static()
 
 
@@ -272,8 +280,11 @@ def run_check():
 
     try:
         _run_static_parallel(use_cuda, use_xpu, use_npu, device_list)
-        print("PaddlePaddle works well on {} {}s.".format(
-            device_count, device_str))
+        print(
+            "PaddlePaddle works well on {} {}s.".format(
+                device_count, device_str
+            )
+        )
         print(
             "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
         )
@@ -283,10 +294,15 @@ def run_check():
             "\n 1. There is not enough GPUs visible on your system"
             "\n 2. Some GPUs are occupied by other process now"
             "\n 3. NVIDIA-NCCL2 is not installed correctly on your system. Please follow instruction on https://github.com/NVIDIA/nccl-tests "
-            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
-            .format(device_count, device_str))
+            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html".format(
+                device_count, device_str
+            )
+        )
 
         logging.warning("\n Original Error is: {}".format(e))
-        print("PaddlePaddle is installed successfully ONLY for single {}! "
-              "Let's start deep learning with PaddlePaddle now.".format(
-                  device_str))
+        print(
+            "PaddlePaddle is installed successfully ONLY for single {}! "
+            "Let's start deep learning with PaddlePaddle now.".format(
+                device_str
+            )
+        )

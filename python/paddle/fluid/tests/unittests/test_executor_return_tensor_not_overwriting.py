@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
 class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
-
     def setUp(self):
         pass
 
@@ -32,7 +29,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.out = np.add(self.x, self.y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "elementwise_add"
@@ -46,7 +43,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.out = np.dot(self.x, self.y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "mul"
@@ -69,7 +66,6 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
 
 
 class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
-
     def setUp(self):
         pass
 
@@ -80,7 +76,8 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place)
+                places=place
+            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
@@ -92,7 +89,8 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(
-                places=place)
+                places=place
+            )
         exe = fluid.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out

@@ -22,8 +22,8 @@
 
 #include "paddle/fluid/operators/number_count_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -37,8 +37,8 @@ static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using LoDTensor = phi::DenseTensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void initialize_zero_kernel(T* data, const int length) {
@@ -77,7 +77,7 @@ __global__ void NumberCount(const T* numbers,
 #endif
     }
     if (threadIdx.x % WARP_SIZE == 0) {
-      platform::CudaAtomicAdd(number_count + i, x);
+      phi::CudaAtomicAdd(number_count + i, x);
     }
   }
 }

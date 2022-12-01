@@ -19,17 +19,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class IndexSelectNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* index = ctx.Input<Tensor>("Index");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* index = ctx.Input<phi::DenseTensor>("Index");
     auto dim = ctx.Attr<int>("dim");
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
@@ -50,10 +50,9 @@ template <typename DeviceContext, typename T>
 class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* index = ctx.Input<Tensor>("Index");
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* index = ctx.Input<phi::DenseTensor>("Index");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()

@@ -49,7 +49,7 @@ using framework::paddle2cinn::CinnCompiler;
 
 class TestCinnLaunchOp : public ::testing::Test {
  public:
-  const char* test_op_out_name = "add_op_out";
+  const char* test_op_out_name = "test_op_out";
   const char* add_op_out_name = "add_op_out";
   std::unique_ptr<framework::OperatorBase> cinn_launch_op;
   std::unique_ptr<framework::OperatorBase> elementwise_add_op;

@@ -19,10 +19,7 @@ https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
 parse training set and test set into paddle reader creators.
 """
 
-from __future__ import print_function
-
 import numpy as np
-import six
 import tempfile
 import tarfile
 import os
@@ -34,8 +31,19 @@ __all__ = []
 URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
-    'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
-    'PTRATIO', 'B', 'LSTAT'
+    'CRIM',
+    'ZN',
+    'INDUS',
+    'CHAS',
+    'NOX',
+    'RM',
+    'AGE',
+    'DIS',
+    'RAD',
+    'TAX',
+    'PTRATIO',
+    'B',
+    'LSTAT',
 ]
 
 UCI_TRAIN_DATA = None
@@ -47,14 +55,15 @@ FLUID_MD5_MODEL = '6e6dd637ccd5993961f68bfbde46090b'
 
 def feature_range(maximums, minimums):
     import matplotlib
+
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+
     fig, ax = plt.subplots()
     feature_num = len(maximums)
-    ax.bar(list(range(feature_num)),
-           maximums - minimums,
-           color='r',
-           align='center')
+    ax.bar(
+        list(range(feature_num)), maximums - minimums, color='r', align='center'
+    )
     ax.set_title('feature scale')
     plt.xticks(list(range(feature_num)), feature_names)
     plt.xlim([-1, feature_num])
@@ -73,11 +82,14 @@ def load_data(filename, feature_num=14, ratio=0.8):
 
     data = np.fromfile(filename, sep=' ')
     data = data.reshape(data.shape[0] // feature_num, feature_num)
-    maximums, minimums, avgs = data.max(axis=0), data.min(
-        axis=0), data.sum(axis=0) / data.shape[0]
+    maximums, minimums, avgs = (
+        data.max(axis=0),
+        data.min(axis=0),
+        data.sum(axis=0) / data.shape[0],
+    )
     # if you want to print the distribution of input data, you could use function of feature_range
-    #feature_range(maximums[:-1], minimums[:-1])
-    for i in six.moves.range(feature_num - 1):
+    # feature_range(maximums[:-1], minimums[:-1])
+    for i in range(feature_num - 1):
         data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
     offset = int(data.shape[0] * ratio)
     UCI_TRAIN_DATA = data[:offset]
@@ -88,7 +100,8 @@ def load_data(filename, feature_num=14, ratio=0.8):
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train():
     """
     UCI_HOUSING training set creator.
@@ -113,7 +126,8 @@ def train():
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test():
     """
     UCI_HOUSING test set creator.
@@ -135,10 +149,9 @@ def test():
 
 
 def fluid_model():
-    parameter_tar = paddle.dataset.common.download(FLUID_URL_MODEL,
-                                                   'uci_housing',
-                                                   FLUID_MD5_MODEL,
-                                                   'fit_a_line.fluid.tar')
+    parameter_tar = paddle.dataset.common.download(
+        FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.fluid.tar'
+    )
 
     tar = tarfile.TarFile(parameter_tar, mode='r')
     dirpath = tempfile.mkdtemp()
@@ -151,7 +164,8 @@ def fluid_model():
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def predict_reader():
     """
     It returns just one tuple data to do inference.
@@ -161,13 +175,14 @@ def predict_reader():
     """
     global UCI_TEST_DATA
     load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))
-    return (UCI_TEST_DATA[0][:-1], )
+    return (UCI_TEST_DATA[0][:-1],)
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)

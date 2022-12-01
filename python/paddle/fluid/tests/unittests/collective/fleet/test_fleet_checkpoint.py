@@ -16,18 +16,16 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+from paddle.fluid.incubate.fleet.collective import fleet
 from paddle.fluid.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 import os
-import sys
 
 from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 
 
 class FleetTest(unittest.TestCase):
-
     def _test_checkpoint(self, fs, dir_path):
         file_name = "persistables"
 
@@ -40,8 +38,9 @@ class FleetTest(unittest.TestCase):
 
         image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
         label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-        feeder = fluid.DataFeeder(feed_list=[image, label],
-                                  place=fluid.CPUPlace())
+        feeder = fluid.DataFeeder(
+            feed_list=[image, label], place=fluid.CPUPlace()
+        )
         predict = fluid.layers.fc(input=image, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=predict, label=label)
         avg_loss = paddle.mean(loss)
@@ -55,26 +54,24 @@ class FleetTest(unittest.TestCase):
 
         status = ExeTrainStatus()
         status.epoch_no = 2
-        _, n1 = fleet.save_checkpoint(exe,
-                                      dir_path,
-                                      trainer_id=0,
-                                      train_status=status,
-                                      fs=fs)
+        _, n1 = fleet.save_checkpoint(
+            exe, dir_path, trainer_id=0, train_status=status, fs=fs
+        )
 
         status2 = ExeTrainStatus()
-        fleet.load_checkpoint(exe,
-                              dir_path,
-                              trainer_id=0,
-                              fs=fs,
-                              train_status=status2)
+        fleet.load_checkpoint(
+            exe, dir_path, trainer_id=0, fs=fs, train_status=status2
+        )
         self.assertEqual(status2, status)
 
-        _, n2 = fleet.save_checkpoint(exe,
-                                      dir_path,
-                                      trainer_id=0,
-                                      train_status=status,
-                                      fs=fs,
-                                      remain_all_checkpoint=False)
+        _, n2 = fleet.save_checkpoint(
+            exe,
+            dir_path,
+            trainer_id=0,
+            train_status=status,
+            fs=fs,
+            remain_all_checkpoint=False,
+        )
         self.assertEqual(n2, n1 + 1)
 
         c = CheckpointSaver(fs)
@@ -83,36 +80,42 @@ class FleetTest(unittest.TestCase):
 
         # unnormal
         # test remain_all_checkpoint
-        fleet.save_checkpoint(exe,
-                              dir_path,
-                              trainer_id=0,
-                              train_status=status,
-                              fs=fs,
-                              remain_all_checkpoint=False)
+        fleet.save_checkpoint(
+            exe,
+            dir_path,
+            trainer_id=0,
+            train_status=status,
+            fs=fs,
+            remain_all_checkpoint=False,
+        )
 
         # can't save under a file
         fs = LocalFS()
         cache_path = "./.load_cache"
         fs.touch(cache_path)
         try:
-            fleet.save_checkpoint(exe,
-                                  dir_path,
-                                  trainer_id=0,
-                                  train_status=status,
-                                  fs=fs,
-                                  cache_path=cache_path)
+            fleet.save_checkpoint(
+                exe,
+                dir_path,
+                trainer_id=0,
+                train_status=status,
+                fs=fs,
+                cache_path=cache_path,
+            )
             self.assertFalse(True)
         except:
             pass
 
         # can't load under a file
         try:
-            fleet.load_checkpoint(exe,
-                                  dir_path,
-                                  trainer_id=0,
-                                  train_status=status2,
-                                  fs=fs,
-                                  cache_path=cache_path)
+            fleet.load_checkpoint(
+                exe,
+                dir_path,
+                trainer_id=0,
+                train_status=status2,
+                fs=fs,
+                cache_path=cache_path,
+            )
             self.assertFalse(True)
         except:
             pass

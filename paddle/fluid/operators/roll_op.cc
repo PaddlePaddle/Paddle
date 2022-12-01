@@ -26,8 +26,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class RollOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

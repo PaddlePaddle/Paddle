@@ -20,7 +20,6 @@ import paddle.vision.models as models
 
 
 class TestVisonModels(unittest.TestCase):
-
     def models_infer(self, arch, pretrained=False, batch_norm=False):
 
         x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)

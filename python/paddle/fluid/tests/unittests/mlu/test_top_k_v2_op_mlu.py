@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -41,7 +39,6 @@ def numpy_topk(x, k=1, axis=-1, largest=True):
 
 
 class TestTopkOp(OpTest):
-
     def init_args(self):
         self.k = 3
         self.axis = 1
@@ -57,10 +54,9 @@ class TestTopkOp(OpTest):
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(self.input_data,
-                                     axis=self.axis,
-                                     k=self.k,
-                                     largest=self.largest)
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
         self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
@@ -69,7 +65,6 @@ class TestTopkOp(OpTest):
 
 
 class TestTopkOp1(TestTopkOp):
-
     def init_args(self):
         self.k = 3
         self.axis = 0
@@ -77,7 +72,6 @@ class TestTopkOp1(TestTopkOp):
 
 
 class TestTopkOp2(TestTopkOp):
-
     def init_args(self):
         self.k = 4
         self.axis = 0
@@ -85,7 +79,6 @@ class TestTopkOp2(TestTopkOp):
 
 
 class TestTopkOp3(OpTest):
-
     def init_args(self):
         self.k = 6
         self.axis = 1
@@ -98,15 +91,13 @@ class TestTopkOp3(OpTest):
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(self.input_data,
-                                     axis=self.axis,
-                                     k=self.k,
-                                     largest=self.largest)
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
         self.outputs = {'Out': output, 'Indices': indices}
 
 
 class TestTopkOp4(TestTopkOp):
-
     def init_args(self):
         self.k = 3
         self.axis = 1
@@ -121,15 +112,13 @@ class TestTopkOp4(TestTopkOp):
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(self.input_data,
-                                     axis=self.axis,
-                                     k=self.k,
-                                     largest=self.largest)
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
         self.outputs = {'Out': output, 'Indices': indices}
 
 
 class TestTopkOp5(TestTopkOp):
-
     def init_args(self):
         self.k = 3
         self.axis = 1
@@ -144,15 +133,13 @@ class TestTopkOp5(TestTopkOp):
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(self.input_data,
-                                     axis=self.axis,
-                                     k=self.k,
-                                     largest=self.largest)
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
         self.outputs = {'Out': output, 'Indices': indices}
 
 
 class TestTopkOp6(OpTest):
-
     def init_args(self):
         self.k = 100
         self.axis = 1
@@ -167,15 +154,13 @@ class TestTopkOp6(OpTest):
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(self.input_data,
-                                     axis=self.axis,
-                                     k=self.k,
-                                     largest=self.largest)
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
         self.outputs = {'Out': output, 'Indices': indices}
 
 
 class TestTopKAPI(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(123)
         self.dtype = np.float32
@@ -221,22 +206,23 @@ class TestTopKAPI(unittest.TestCase):
         np.testing.assert_allclose(paddle_result[1].numpy(), numpy_result[1])
         # test case for basic test case 7 for the unsorted
         paddle_result = paddle.topk(input_tensor, k=2, axis=1, sorted=False)
-        sort_paddle = numpy_topk(np.array(paddle_result[0].numpy()),
-                                 axis=1,
-                                 k=2)
+        sort_paddle = numpy_topk(
+            np.array(paddle_result[0].numpy()), axis=1, k=2
+        )
         numpy_result = numpy_topk(self.input_data, k=2, axis=1)
         np.testing.assert_allclose(sort_paddle[0], numpy_result[0])
 
     def run_static(self, place):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
-            input_tensor = paddle.static.data(name="x",
-                                              shape=[6, 7, 8],
-                                              dtype="float32")
-            large_input_tensor = paddle.static.data(name="large_x",
-                                                    shape=[2, 1030],
-                                                    dtype="float32")
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input_tensor = paddle.static.data(
+                name="x", shape=[6, 7, 8], dtype="float32"
+            )
+            large_input_tensor = paddle.static.data(
+                name="large_x", shape=[2, 1030], dtype="float32"
+            )
             k_tensor = paddle.static.data(name="k", shape=[1], dtype="int32")
             result1 = paddle.topk(input_tensor, k=2)
             result2 = paddle.topk(input_tensor, k=2, axis=-1)
@@ -250,18 +236,29 @@ class TestTopKAPI(unittest.TestCase):
             exe = paddle.static.Executor(place)
             input_data = np.random.rand(10, 20).astype("float32")
             large_input_data = np.random.rand(2, 100).astype("float32")
-            paddle_result = exe.run(feed={
-                "x": self.input_data,
-                "large_x": self.large_input_data,
-                "k": np.array([2]).astype("int32")
-            },
-                                    fetch_list=[
-                                        result1[0], result1[1], result2[0],
-                                        result2[1], result3[0], result3[1],
-                                        result4[0], result4[1], result5[0],
-                                        result5[1], result6[0], result6[1],
-                                        result7[0], result7[1]
-                                    ])
+            paddle_result = exe.run(
+                feed={
+                    "x": self.input_data,
+                    "large_x": self.large_input_data,
+                    "k": np.array([2]).astype("int32"),
+                },
+                fetch_list=[
+                    result1[0],
+                    result1[1],
+                    result2[0],
+                    result2[1],
+                    result3[0],
+                    result3[1],
+                    result4[0],
+                    result4[1],
+                    result5[0],
+                    result5[1],
+                    result6[0],
+                    result6[1],
+                    result7[0],
+                    result7[1],
+                ],
+            )
             numpy_result = numpy_topk(self.input_data, k=2)
             np.testing.assert_allclose(paddle_result[0], numpy_result[0])
             np.testing.assert_allclose(paddle_result[1], numpy_result[1])
@@ -271,16 +268,14 @@ class TestTopKAPI(unittest.TestCase):
             numpy_result = numpy_topk(self.input_data, k=2, axis=1)
             np.testing.assert_allclose(paddle_result[4], numpy_result[0])
             np.testing.assert_allclose(paddle_result[5], numpy_result[1])
-            numpy_result = numpy_topk(self.input_data,
-                                      k=2,
-                                      axis=1,
-                                      largest=False)
+            numpy_result = numpy_topk(
+                self.input_data, k=2, axis=1, largest=False
+            )
             np.testing.assert_allclose(paddle_result[6], numpy_result[0])
             np.testing.assert_allclose(paddle_result[7], numpy_result[1])
-            numpy_result = numpy_topk(self.input_data,
-                                      k=2,
-                                      axis=-1,
-                                      largest=False)
+            numpy_result = numpy_topk(
+                self.input_data, k=2, axis=-1, largest=False
+            )
             np.testing.assert_allclose(paddle_result[8], numpy_result[0])
             np.testing.assert_allclose(paddle_result[9], numpy_result[1])
             numpy_result = numpy_topk(self.large_input_data, k=1, axis=-1)

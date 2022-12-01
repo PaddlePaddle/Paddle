@@ -25,6 +25,7 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceKernel<T, Context>(dev_ctx,
                            x,
                            dims,
@@ -35,9 +36,5 @@ void SumRawKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_raw,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::SumRawKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    sum_raw, OneDNN, ONEDNN, phi::SumRawKernel, float, phi::dtype::bfloat16) {}

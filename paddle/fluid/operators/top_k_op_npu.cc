@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void gen_assist_seq(framework::Tensor* assit_tensor,
+void gen_assist_seq(phi::DenseTensor* assit_tensor,
                     int64_t dim,
                     const framework::ExecutionContext& ctx) {
   const int64_t dimx2 = dim;
@@ -42,9 +42,9 @@ class TopkNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // read input
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
-    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
@@ -55,7 +55,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     auto size = input->dims().size();
     // dim is the last dimension of input
     auto dim = input->dims()[size - 1];
-    framework::Tensor assist_seq_tensor;
+    phi::DenseTensor assist_seq_tensor;
     assist_seq_tensor.Resize({2 * dim});
     assist_seq_tensor.mutable_data<T>(ctx.GetPlace());
     gen_assist_seq(&assist_seq_tensor, dim, ctx);

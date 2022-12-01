@@ -61,7 +61,6 @@ void LayerNormKernel(const Context &dev_ctx,
                      const paddle::optional<DenseTensor> &bias_opt,
                      float epsilon,
                      int begin_norm_axis,
-                     bool is_test,
                      DenseTensor *y,
                      DenseTensor *mean,
                      DenseTensor *var) {

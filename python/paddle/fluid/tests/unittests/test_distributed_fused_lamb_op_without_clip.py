@@ -17,7 +17,6 @@ import unittest
 
 
 class TestDistributedFusedLambWithoutClip(unittest.TestCase):
-
     def test_1(self):
         run_test(clip_after_allreduce=True, max_global_norm=-1.0)
 

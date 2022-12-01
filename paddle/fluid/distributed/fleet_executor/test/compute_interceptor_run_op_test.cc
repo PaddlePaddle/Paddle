@@ -55,8 +55,8 @@ std::vector<framework::OperatorBase*> GetOps() {
 framework::Scope* GetScope() {
   framework::Scope* scope = new framework::Scope();
 
-  scope->Var("x")->GetMutable<framework::LoDTensor>();
-  scope->Var("out")->GetMutable<framework::LoDTensor>();
+  scope->Var("x")->GetMutable<phi::DenseTensor>();
+  scope->Var("out")->GetMutable<phi::DenseTensor>();
   return scope;
 }
 

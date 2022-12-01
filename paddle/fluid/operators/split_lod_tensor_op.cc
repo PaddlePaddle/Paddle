@@ -52,12 +52,12 @@ class SplitLoDTensorOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
+    auto &x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
     auto *out_true =
-        scope.FindVar(Output("OutTrue"))->GetMutable<framework::LoDTensor>();
+        scope.FindVar(Output("OutTrue"))->GetMutable<phi::DenseTensor>();
     auto *out_false =
-        scope.FindVar(Output("OutFalse"))->GetMutable<framework::LoDTensor>();
+        scope.FindVar(Output("OutFalse"))->GetMutable<phi::DenseTensor>();
     auto level = static_cast<size_t>(Attr<int>("level"));
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
@@ -65,7 +65,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+    std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
@@ -107,7 +107,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     }
 
     for (size_t t = 0; t < 2; ++t) {
-      framework::LoDTensor *out;
+      phi::DenseTensor *out;
       if (t == 0) {
         out = out_false;
       } else {

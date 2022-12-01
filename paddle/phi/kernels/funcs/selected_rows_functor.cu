@@ -15,7 +15,7 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -127,7 +127,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
     // Since index in rows of SelectedRows can be duplicate, we can not use
     // tensor_out[index] += selected_rows[index]; Instead, we have to use
     // AtomicAdd to avoid concurrent write error.
-    paddle::platform::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
+    phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
   }
 }
 }  // namespace
@@ -279,7 +279,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
   for (int index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    paddle::platform::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
+    phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
   }
 }
 }  // namespace
@@ -360,7 +360,7 @@ __global__ void MergeAddKernel(const T* input,
   input += ty * row_numel;
   out += out_idx * row_numel;
   for (int index = tid; index < row_numel; index += block_size) {
-    paddle::platform::CudaAtomicAdd(out + index, input[index]);
+    phi::CudaAtomicAdd(out + index, input[index]);
   }
 }
 
@@ -623,9 +623,9 @@ struct UpdateToTensor<phi::GPUContext, T> {
     auto* in1_data = in1_value.template data<T>();
     auto* in2_data = input2->data<T>();
 
-    dim3 threads(paddle::platform::PADDLE_CUDA_NUM_THREADS, 1);
+    dim3 threads(phi::PADDLE_CUDA_NUM_THREADS, 1);
     dim3 grid(in1_rows.size(), 1);
-    UpdateToTensorKernel<T, paddle::platform::PADDLE_CUDA_NUM_THREADS>
+    UpdateToTensorKernel<T, phi::PADDLE_CUDA_NUM_THREADS>
         <<<grid, threads, 0, context.stream()>>>(
             in1_data, in1_rows.cuda_data(), op, in2_data, in1_row_numel);
   }

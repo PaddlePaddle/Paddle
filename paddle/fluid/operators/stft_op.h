@@ -27,7 +27,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class StftKernel : public framework::OpKernel<T> {
@@ -38,9 +38,9 @@ class StftKernel : public framework::OpKernel<T> {
   */
   void Compute(const framework::ExecutionContext& ctx) const override {
     using C = paddle::platform::complex<T>;
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* window = ctx.Input<Tensor>("Window");
-    Tensor* out = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* window = ctx.Input<phi::DenseTensor>("Window");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<C>(ctx.GetPlace());
 
     const size_t x_rank = x->dims().size();
@@ -109,9 +109,9 @@ class StftGradKernel : public framework::OpKernel<T> {
     using C = paddle::platform::complex<T>;
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    const Tensor* window = ctx.Input<Tensor>("Window");
-    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const phi::DenseTensor* window = ctx.Input<phi::DenseTensor>("Window");
+    const auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
 
     const size_t dy_rank = dy->dims().size();

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import numpy as np
 from paddle.fluid import core
 
@@ -45,10 +44,10 @@ class ProcessMesh(core.ProcessMesh):
     """
 
     def __init__(self, mesh, dim_names=None):
-        if not isinstance(mesh, list) and \
-           not isinstance(mesh, np.ndarray):
+        if not isinstance(mesh, list) and not isinstance(mesh, np.ndarray):
             raise ValueError(
-                'The mesh must be an instance of list or np.ndarray.')
+                'The mesh must be an instance of list or np.ndarray.'
+            )
         if isinstance(mesh, list):
             mesh = np.array(mesh)
 
@@ -57,24 +56,29 @@ class ProcessMesh(core.ProcessMesh):
         self._shape = list(self._mesh.shape)
 
         self._process_ids = self._mesh.flatten().tolist()
-        assert all(isinstance(p, int) for p in self._process_ids), \
-            ("All elements of the mesh must be integer")
-        assert min(
-            self._process_ids) >= 0, ('All elements of the mesh must be >= 0.')
+        assert all(
+            isinstance(p, int) for p in self._process_ids
+        ), "All elements of the mesh must be integer"
+        assert (
+            min(self._process_ids) >= 0
+        ), 'All elements of the mesh must be >= 0.'
         unique_process_ids = set(self._process_ids)
         assert len(unique_process_ids) == len(
-            self._process_ids), ('All elements of the mesh must be unique.')
+            self._process_ids
+        ), 'All elements of the mesh must be unique.'
 
         if dim_names is not None:
-            assert len(dim_names) == len(self._shape), \
-                ("The length of dims_names must be same as the shape of the mesh.")
+            assert len(dim_names) == len(
+                self._shape
+            ), "The length of dims_names must be same as the shape of the mesh."
             self._dim_names = dim_names
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
 
         # Follow the requirement for using pybind11
-        core.ProcessMesh.__init__(self, self._shape, self._process_ids,
-                                  self._dim_names)
+        core.ProcessMesh.__init__(
+            self, self._shape, self._process_ids, self._dim_names
+        )
 
     @property
     def mesh(self):
@@ -108,15 +112,20 @@ def compute_compatible_process_mesh(process_meshes):
 
     compatible_result = None
     for process_mesh in process_meshes:
-        compatible, compatible_result = _compute_compatible_of_two_process_meshes(
-            compatible_result, process_mesh)
+        (
+            compatible,
+            compatible_result,
+        ) = _compute_compatible_of_two_process_meshes(
+            compatible_result, process_mesh
+        )
         if not compatible:
             return None
     if compatible_result.empty():
         return None
     if isinstance(compatible_result, core.ProcessMesh):
         mesh = np.array(compatible_result.process_ids).reshape(
-            compatible_result.shape)
+            compatible_result.shape
+        )
         return ProcessMesh(mesh, compatible_result.dim_names)
     elif isinstance(compatible_result, ProcessMesh):
         return ProcessMesh(compatible_result.mesh, compatible_result.dim_names)

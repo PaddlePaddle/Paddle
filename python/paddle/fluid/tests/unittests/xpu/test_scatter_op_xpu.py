@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -22,13 +20,17 @@ sys.path.append("..")
 
 import paddle
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper, type_dict_str_to_numpy
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+    type_dict_str_to_numpy,
+)
 
 paddle.enable_static()
 
 
 class XPUTestScatterOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'scatter'
         self.use_dynamic_create_class = True
@@ -49,7 +51,7 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             'init_index_np': index_np,
             'init_updates_np': updates_np,
             'init_output_np': output_np,
-            'test_name': 'case1'
+            'test_name': 'case1',
         }
         test_data_case.append(data_dict)
 
@@ -64,7 +66,7 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             'init_index_np': index_np,
             'init_updates_np': updates_np,
             'init_output_np': output_np,
-            'test_name': 'case2'
+            'test_name': 'case2',
         }
         test_data_case.append(data_dict)
 
@@ -82,16 +84,21 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             'init_index_np': index_np,
             'init_updates_np': updates_np,
             'init_output_np': output_np,
-            'test_name': 'case3'
+            'test_name': 'case3',
         }
         test_data_case.append(data_dict)
 
         for data_dict in test_data_case:
             for index_type in ['int32', 'int64']:
                 for overwrite in [True, False]:
-                    class_name = 'XPUTestScatterOp_index_type_' + data_dict[
-                        'test_name'] + '_' + str(index_type) + '_' + str(
-                            overwrite)
+                    class_name = (
+                        'XPUTestScatterOp_index_type_'
+                        + data_dict['test_name']
+                        + '_'
+                        + str(index_type)
+                        + '_'
+                        + str(overwrite)
+                    )
                     attr_dict = data_dict
                     attr_dict['index_type'] = type_dict_str_to_numpy[index_type]
                     attr_dict['init_overwrite'] = overwrite
@@ -99,13 +106,16 @@ class XPUTestScatterOp(XPUOpTestWrapper):
         return base_class, classes
 
     class TestScatterOp(XPUOpTest):
-
         def setUp(self):
             self.init_config()
-            self.index_type = np.int32 if not hasattr(
-                self, 'index_type') else self.index_type
-            self.overwrite = True if not hasattr(
-                self, 'init_overwrite') else self.init_overwrite
+            self.index_type = (
+                np.int32 if not hasattr(self, 'index_type') else self.index_type
+            )
+            self.overwrite = (
+                True
+                if not hasattr(self, 'init_overwrite')
+                else self.init_overwrite
+            )
 
             if not hasattr(self, 'init_ref_np'):
                 self.ref_np = np.ones((3, 50)).astype(self.dtype)
@@ -122,7 +132,7 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             self.inputs = {
                 'X': self.ref_np,
                 'Ids': self.index_np,
-                'Updates': self.updates_np
+                'Updates': self.updates_np,
             }
             self.attrs = {'overwrite': self.overwrite}
             self.outputs = {'Out': self.output_np}

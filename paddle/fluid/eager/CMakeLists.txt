@@ -79,6 +79,10 @@ cc_library(
        hook_utils)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  target_link_libraries(utils ${PYTHON_LIBRARIES})
+endif()
+
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_library(
     saved_tensors_hooks
     SRCS saved_tensors_hooks.cc

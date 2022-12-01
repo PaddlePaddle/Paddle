@@ -139,7 +139,7 @@ class ReadOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
-          scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
+          scope.FindVar(out_arg_names[i])->GetMutable<phi::DenseTensor>();
       if (need_check_feed[i]) {
         auto in_dims = ins[i].dims();
         PADDLE_ENFORCE_EQ(

@@ -13,9 +13,7 @@
 # limitations under the License.
 """To get a list of prec ut """
 
-import sys
 import os
-import platform
 
 
 def get_prec_ut_list(all_test_cases, prec_test_cases):
@@ -49,5 +47,5 @@ if __name__ == '__main__':
     file_path = os.path.join(BUILD_DIR, 'all_ut_list')
     with open(file_path, 'r') as f:
         all_test_cases = f.read()
-    #prec_test_cases = sys.argv[2]
+    # prec_test_cases = sys.argv[2]
     get_prec_ut_list(all_test_cases, prec_test_cases)

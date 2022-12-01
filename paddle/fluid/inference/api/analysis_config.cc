@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
@@ -136,7 +137,8 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
                                bool autotune,
                                const std::string &autotune_file,
                                const std::string &precision,
-                               bool adaptive_seqlen) {
+                               bool adaptive_seqlen,
+                               bool enable_multi_stream) {
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
   xpu_locked_ = locked;
@@ -144,6 +146,7 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
   xpu_autotune_file_ = autotune_file;
   xpu_precision_ = precision;
   xpu_adaptive_seqlen_ = adaptive_seqlen;
+  xpu_enable_multi_stream_ = enable_multi_stream;
   Update();
 }
 
@@ -157,14 +160,17 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 }
 
 void AnalysisConfig::EnableNpu(int device_id) {
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL)
   use_npu_ = true;
   npu_device_id_ = device_id;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = "npu";
 #else
   LOG(ERROR) << "Please compile with npu to EnableNpu()";
   use_npu_ = false;
 #endif
-
   Update();
 }
 
@@ -199,11 +205,130 @@ void AnalysisConfig::EnableIpu(int ipu_device_num,
 void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16,
                                   int ipu_replica_num,
                                   float ipu_available_memory_proportion,
-                                  bool ipu_enable_half_partial) {
+                                  bool ipu_enable_half_partial,
+                                  bool ipu_enable_model_runtime_executor) {
   ipu_enable_fp16_ = ipu_enable_fp16;
   ipu_replica_num_ = ipu_replica_num;
   ipu_available_memory_proportion_ = ipu_available_memory_proportion;
   ipu_enable_half_partial_ = ipu_enable_half_partial;
+  ipu_enable_model_runtime_executor_ = ipu_enable_model_runtime_executor;
+
+  Update();
+}
+
+void AnalysisConfig::SetIpuCustomInfo(
+    const std::vector<std::vector<std::string>> &ipu_custom_ops_info,
+    const std::map<std::string, bool> &ipu_custom_patterns) {
+  ipu_custom_ops_info_ = ipu_custom_ops_info;
+  for (auto iter = ipu_custom_patterns.begin();
+       iter != ipu_custom_patterns.end();
+       iter++) {
+    if (iter->second == true) {
+      ipu_custom_patterns_.push_back(
+          std::vector<std::string>{iter->first, "True"});
+    } else if (iter->second == false) {
+      ipu_custom_patterns_.push_back(
+          std::vector<std::string>{iter->first, "False"});
+    }
+  }
+
+  Update();
+}
+
+void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
+  std::ifstream fin(config_path, std::ios::in);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fin.is_open()),
+      true,
+      platform::errors::NotFound(
+          "Cannot open file %s, please confirm whether the file is normal.",
+          config_path));
+  std::string line;
+  while (std::getline(fin, line)) {
+    // remove all space
+    line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+
+    std::string key;
+    std::string value;
+    std::istringstream stream(line);
+    // Split string to key and value based on the first `,`
+    std::getline(stream, key, ',');
+    std::getline(stream, value);
+
+    auto string2bool = [](std::string s) {
+      std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+        return ::tolower(c);
+      });
+      return s == "true" || s == "1";
+    };
+
+    // ipu_custom_ops_info:
+    // [[paddle_op_name, popart_op_name, domain, version], [paddle_op_name,
+    // popart_op_name, domain, version]...]
+    // ipu_custom_patterns:
+    // [[paddle_op_name, enable_pattern], [paddle_op_name, enable_pattern]...]
+    auto string2vector = [](std::string s) {
+      std::vector<std::vector<std::string>> custom_info;
+      s.erase(0, 1);
+      s.pop_back();
+
+      std::string one;
+      std::istringstream s_stream(s);
+      while (std::getline(s_stream, one, ']')) {
+        if (!one.empty()) {
+          // remove `[`
+          one.erase(0, 1);
+          custom_info.push_back(paddle::string::Split(one, ','));
+        }
+      }
+      return custom_info;
+    };
+
+    if (ipu_config_mapper_.find(key) == ipu_config_mapper_.end()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "invalid key {} in IPU config: ", key));
+    }
+    switch (ipu_config_mapper_.at(key)) {
+      case ipu_config_code::ipu_device_num:
+        ipu_device_num_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_micro_batch_size:
+        ipu_micro_batch_size_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_enable_pipelining:
+        ipu_enable_pipelining_ = string2bool(value);
+        break;
+      case ipu_config_code::ipu_batches_per_step:
+        ipu_batches_per_step_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_enable_fp16:
+        ipu_enable_fp16_ = string2bool(value);
+        break;
+      case ipu_config_code::ipu_replica_num:
+        ipu_replica_num_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_available_memory_proportion:
+        ipu_available_memory_proportion_ = std::stof(value);
+        break;
+      case ipu_config_code::ipu_enable_half_partial:
+        ipu_enable_half_partial_ = string2bool(value);
+        break;
+      case ipu_config_code::ipu_custom_ops_info:
+        ipu_custom_ops_info_ = string2vector(value);
+        break;
+      case ipu_config_code::ipu_custom_patterns:
+        ipu_custom_patterns_ = string2vector(value);
+        break;
+      case ipu_config_code::ipu_enable_model_runtime_executor:
+        ipu_enable_model_runtime_executor_ = string2bool(value);
+        break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "invalid key {} in IPU config", key));
+        break;
+    }
+  }
 
   Update();
 }
@@ -246,7 +371,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(opt_cache_dir_);
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
-  CP_MEMBER(calibration_file_path_);
 
   CP_MEMBER(use_fc_padding_);
   // GPU related.
@@ -325,6 +449,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_autotune_file_);
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
+  CP_MEMBER(xpu_enable_multi_stream_);
+
+  // Lite OpenCL Related
+  CP_MEMBER(use_opencl_);
 
   // NPU related.
   CP_MEMBER(use_npu_);
@@ -359,6 +487,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_replica_num_);
   CP_MEMBER(ipu_available_memory_proportion_);
   CP_MEMBER(ipu_enable_half_partial_);
+  CP_MEMBER(ipu_enable_model_runtime_executor_);
+  CP_MEMBER(ipu_custom_ops_info_);
+  CP_MEMBER(ipu_custom_patterns_);
 
   // fleet exe related
   CP_MEMBER(dist_config_);
@@ -367,6 +498,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_custom_device_);
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
+
+  // JITLayer relate
+  CP_MEMBER(apply_optim_);
+  CP_MEMBER(skip_load_params_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -489,6 +624,16 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
+void AnalysisConfig::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  disable_mkldnn_fc_passes_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
+  disable_mkldnn_fc_passes_ = false;
+#endif
+  Update();
+}
+
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -518,14 +663,6 @@ void AnalysisConfig::EnableMkldnnInt8(
   Update();
 }
 
-void AnalysisConfig::SetCalibrationFilePath(
-    const std::string &calibration_file_path) {
-  calibration_file_path_ = calibration_file_path;
-  VLOG(1) << "Set calibration file path of quantize model: " +
-                 calibration_file_path_;
-  Update();
-}
-
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           platform::errors::PreconditionNotMet(
@@ -547,7 +684,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   }
 
   use_tensorrt_ = true;
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
   // when trt version less than 7.2,
   // createExecutionContextWithoutDeviceMemory() has bug.
@@ -774,6 +911,12 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (disable_mkldnn_fc_passes_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->DisableMkldnnFcPasses();
+#endif
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
   if (enable_memory_optim_ && !use_mkldnn_) {
@@ -850,8 +993,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << prog_file_;
   ss << params_file_;
 
-  ss << calibration_file_path_;
-
   ss << use_gpu_;
   ss << use_external_stream_;
   ss << exec_stream_;
@@ -910,6 +1051,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_autotune_file_;
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
+  ss << xpu_enable_multi_stream_;
 
   ss << use_npu_;
   ss << npu_device_id_;
@@ -925,7 +1067,13 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_replica_num_;
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
-
+  ss << ipu_enable_model_runtime_executor_;
+  for (auto custom_op : ipu_custom_ops_info_)
+    for (auto attr : custom_op) ss << attr;
+  ss << ";";
+  for (auto pattern : ipu_custom_patterns_)
+    for (auto attr : pattern) ss << attr;
+  ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
   return ss.str();
 }
@@ -1019,6 +1167,11 @@ void AnalysisConfig::EnableLiteEngine(
   Update();
 }
 
+void AnalysisConfig::EnableOpenCL() {
+  use_opencl_ = true;
+  Update();
+}
+
 void AnalysisConfig::PartiallyRelease() {
   prog_file_.clear();
   prog_file_.shrink_to_fit();
@@ -1038,9 +1191,6 @@ std::string AnalysisConfig::Summary() {
   if (!(prog_file_.empty() && params_file_.empty())) {
     os.InsertRow({"model_file", prog_file_});
     os.InsertRow({"params_file", params_file_});
-  }
-  if (!(calibration_file_path_.empty())) {
-    os.InsertRow({"calibration_file_path", calibration_file_path_});
   }
 
   if (model_from_memory_) {

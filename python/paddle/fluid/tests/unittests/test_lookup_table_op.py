@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci, check_out_dtype
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.compat as cpt
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle.nn.functional as F
 
 
 class TestLookupTableOp(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table"
         table = np.random.random((17, 31)).astype("float64")
@@ -43,12 +39,12 @@ class TestLookupTableOp(OpTest):
 
 
 class TestLookupTableOpWithTensorIds(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table"
         table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(low=0, high=17,
-                                size=(2, 4, 5, 1)).astype("int64")
+        ids = np.random.randint(low=0, high=17, size=(2, 4, 5, 1)).astype(
+            "int64"
+        )
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
@@ -62,9 +58,9 @@ class TestLookupTableOpWithTensorIds(OpTest):
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithPadding(TestLookupTableOp):
-
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -76,20 +72,19 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
-
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
-        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.attrs = {'padding_idx': padding_idx}
         self.check_output()
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
-
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([[0], [4], [3], [5]]).astype("int64")
@@ -142,13 +137,14 @@ class TestLookupTableWIsSelectedRows(unittest.TestCase):
             self.check_with_place(place)
 
 
-class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
-                                                  ):
-
+class TestLookupTableWithTensorIdsWIsSelectedRows(
+    TestLookupTableWIsSelectedRows
+):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.random.randint(low=0, high=6,
-                                      size=(2, 4, 3, 1)).astype("int64")
+        ids_array = np.random.randint(low=0, high=6, size=(2, 4, 3, 1)).astype(
+            "int64"
+        )
         ids_tensor.set(ids_array, place)
         return ids_array
 
@@ -158,7 +154,6 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
 
 
 class TestEmbedOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 1)).astype("int64")
@@ -179,9 +174,9 @@ class TestEmbedOpError(unittest.TestCase):
             def test_param_dtype():
                 # dtype must be float32 or float64
                 input2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
-                fluid.layers.embedding(input=input2,
-                                       size=(10, 64),
-                                       dtype='int64')
+                fluid.layers.embedding(
+                    input=input2, size=(10, 64), dtype='int64'
+                )
 
             self.assertRaises(TypeError, test_param_dtype)
 
@@ -190,11 +185,11 @@ class TestEmbedOpError(unittest.TestCase):
 
 
 class TestLookupTableOpInt8(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.randint(low=-128, high=127,
-                                  size=(17, 31)).astype("int8")
+        table = np.random.randint(low=-128, high=127, size=(17, 31)).astype(
+            "int8"
+        )
         ids = np.random.randint(0, 17, 4).astype("int64")
         ids_expand = np.expand_dims(ids, axis=1)
         self.inputs = {'W': table, 'Ids': ids_expand}
@@ -210,13 +205,14 @@ class TestLookupTableOpInt8(OpTest):
 
 
 class TestLookupTableOpWithTensorIdsInt8(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.randint(low=-128, high=127,
-                                  size=(17, 31)).astype("int8")
-        ids = np.random.randint(low=0, high=17,
-                                size=(2, 4, 5, 1)).astype("int64")
+        table = np.random.randint(low=-128, high=127, size=(17, 31)).astype(
+            "int8"
+        )
+        ids = np.random.randint(low=0, high=17, size=(2, 4, 5, 1)).astype(
+            "int64"
+        )
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
@@ -230,7 +226,6 @@ class TestLookupTableOpWithTensorIdsInt8(OpTest):
 
 
 class TestLookupTableOpWithPaddingInt8(TestLookupTableOpInt8):
-
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -245,14 +240,14 @@ class TestLookupTableOpWithPaddingInt8(TestLookupTableOpInt8):
 
 
 class TestLookupTableOpWithTensorIdsAndPaddingInt8(
-        TestLookupTableOpWithTensorIdsInt8):
-
+    TestLookupTableOpWithTensorIdsInt8
+):
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
-        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.attrs = {'padding_idx': padding_idx}
         self.check_output()
 
     def test_check_grad(self):
@@ -262,7 +257,6 @@ class TestLookupTableOpWithTensorIdsAndPaddingInt8(
 
 
 class TestLookupTableWIsSelectedRowsInt8(unittest.TestCase):
-
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([[0], [4], [3], [5]]).astype("int64")
@@ -316,12 +310,13 @@ class TestLookupTableWIsSelectedRowsInt8(unittest.TestCase):
 
 
 class TestLookupTableWithTensorIdsWIsSelectedRowsInt8(
-        TestLookupTableWIsSelectedRowsInt8):
-
+    TestLookupTableWIsSelectedRowsInt8
+):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.random.randint(low=0, high=6,
-                                      size=(2, 4, 3, 1)).astype("int64")
+        ids_array = np.random.randint(low=0, high=6, size=(2, 4, 3, 1)).astype(
+            "int64"
+        )
         ids_tensor.set(ids_array, place)
         return ids_array
 
@@ -332,11 +327,11 @@ class TestLookupTableWithTensorIdsWIsSelectedRowsInt8(
 
 @skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
 class TestLookupTableOpInt16(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.randint(low=-128, high=127,
-                                  size=(17, 31)).astype("int16")
+        table = np.random.randint(low=-128, high=127, size=(17, 31)).astype(
+            "int16"
+        )
         ids = np.random.randint(0, 17, 4).astype("int64")
         ids_expand = np.expand_dims(ids, axis=1)
         self.inputs = {'W': table, 'Ids': ids_expand}
@@ -348,13 +343,14 @@ class TestLookupTableOpInt16(OpTest):
 
 @skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
 class TestLookupTableOpWithTensorIdsInt16(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.randint(low=-128, high=127,
-                                  size=(17, 31)).astype("int16")
-        ids = np.random.randint(low=0, high=17,
-                                size=(2, 4, 5, 1)).astype("int64")
+        table = np.random.randint(low=-128, high=127, size=(17, 31)).astype(
+            "int16"
+        )
+        ids = np.random.randint(low=0, high=17, size=(2, 4, 5, 1)).astype(
+            "int64"
+        )
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
@@ -364,7 +360,6 @@ class TestLookupTableOpWithTensorIdsInt16(OpTest):
 
 @skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
 class TestLookupTableOpWithPaddingInt16(TestLookupTableOpInt16):
-
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -375,19 +370,18 @@ class TestLookupTableOpWithPaddingInt16(TestLookupTableOpInt16):
 
 @skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
 class TestLookupTableOpWithTensorIdsAndPaddingInt16(
-        TestLookupTableOpWithTensorIdsInt16):
-
+    TestLookupTableOpWithTensorIdsInt16
+):
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
-        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.attrs = {'padding_idx': padding_idx}
         self.check_output()
 
 
 class TestLookupTableWIsSelectedRowsInt16(unittest.TestCase):
-
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([[0], [4], [3], [5]]).astype("int64")
@@ -440,12 +434,13 @@ class TestLookupTableWIsSelectedRowsInt16(unittest.TestCase):
 
 
 class TestLookupTableWithTensorIdsWIsSelectedRowsInt16(
-        TestLookupTableWIsSelectedRowsInt16):
-
+    TestLookupTableWIsSelectedRowsInt16
+):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.random.randint(low=0, high=6,
-                                      size=(2, 4, 3, 1)).astype("int64")
+        ids_array = np.random.randint(low=0, high=6, size=(2, 4, 3, 1)).astype(
+            "int64"
+        )
         ids_tensor.set(ids_array, place)
         return ids_array
 
@@ -455,13 +450,14 @@ class TestLookupTableWithTensorIdsWIsSelectedRowsInt16(
 
 
 class TestOutDtype(unittest.TestCase):
-
     def test_dtype(self):
         api_fn = F.embedding
-        check_out_dtype(api_fn,
-                        in_specs=[([10, 16], 'int64'), ([100, 64], )],
-                        expect_dtypes=['float32', 'float64'],
-                        target_index=1)
+        check_out_dtype(
+            api_fn,
+            in_specs=[([10, 16], 'int64'), ([100, 64],)],
+            expect_dtypes=['float32', 'float64'],
+            target_index=1,
+        )
 
 
 if __name__ == "__main__":

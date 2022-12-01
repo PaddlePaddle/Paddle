@@ -19,16 +19,17 @@ from model_zoo import resnet_model
 
 
 class TestFuseAllReducePass(DistPassTestBase):
-
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([
-            new_pass("fuse_elewise_add_act"),
-            new_pass("fuse_all_reduce", {"max_memory_size": 1024 * 1024})
-        ])
+        pass_manager = PassManager(
+            [
+                new_pass("fuse_elewise_add_act"),
+                new_pass("fuse_all_reduce", {"max_memory_size": 1024 * 1024}),
+            ]
+        )
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 

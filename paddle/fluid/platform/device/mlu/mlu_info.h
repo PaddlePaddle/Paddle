@@ -16,10 +16,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MLU
 #include <cn_api.h>
-#include <cndrv_id.h>
 #include <cnnl.h>
 #include <cnpapi.h>
+#include <cnpapi_cndrv_id.h>
 #include <cnrt.h>
+#include <mlu_op.h>
 #ifdef PADDLE_WITH_CNCL
 #include <cncl.h>
 #endif
@@ -30,11 +31,13 @@ namespace paddle {
 using cnStatus = CNresult;
 using cnrtStatus = cnrtRet_t;
 using cnnlStatus = cnnlStatus_t;
+using mluOpStatus = mluOpStatus_t;
 #ifdef PADDLE_WITH_CNCL
 using cnclStatus = cnclResult_t;
 #endif
 using mluStream = cnrtQueue_t;
 using mluCnnlHandle = cnnlHandle_t;
+using mluOpHandle = mluOpHandle_t;
 using mluEventHandle = cnrtNotifier_t;
 using mluDeviceHandle = CNdev;
 
@@ -48,6 +51,9 @@ int GetMLURuntimeVersion(int id);
 
 //! Get the cnnl version of the ith MLU.
 int GetMLUCnnlVersion(int id);
+
+//! Get the mluOp version of the ith MLU.
+int GetMLUOpVersion(int id);
 
 //! Get the total number of MLU devices in system.
 int GetMLUDeviceCount();

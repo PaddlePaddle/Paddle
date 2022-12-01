@@ -25,7 +25,7 @@ void MeanKernel(const Context& dev_ctx,
                 const IntArray& dims,
                 bool keep_dim,
                 DenseTensor* out) {
-  bool reduce_all = false;
+  bool reduce_all = recompute_reduce_all(x, dims);
   MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
@@ -53,7 +53,7 @@ PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
 
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
-    mean, OneDNN, ALL_LAYOUT, phi::MeanKernel, float, phi::dtype::bfloat16) {}
+    mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)

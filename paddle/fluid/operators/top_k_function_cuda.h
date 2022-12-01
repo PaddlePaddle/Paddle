@@ -26,10 +26,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #define FINAL_MASK 0xffffffff
 #ifdef __HIPCC__
@@ -57,7 +57,7 @@ struct NumericTraits<paddle::platform::float16>
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 inline void GetDims(
     const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
@@ -283,8 +283,10 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
   if (largest) {
 #pragma unroll
     for (int offset = 16; offset > 0; offset >>= 1) {
-      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      T tmp_val =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
@@ -293,8 +295,10 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
   } else {
 #pragma unroll
     for (int offset = 16; offset > 0; offset >>= 1) {
-      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      T tmp_val =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
@@ -354,16 +358,12 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     }
     if (--(*k) == 0) break;
 
-    if (MaxLength < 5) {
-      if (*beam >= MaxLength) break;
-    } else {
-      unsigned mask = 0u;
-      CREATE_SHFL_MASK(mask, true);
-      if (tid_max / 32 == wid) {
-        if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
-            MaxLength)
-          break;
-      }
+    unsigned mask = 0u;
+    CREATE_SHFL_MASK(mask, true);
+    if (tid_max / 32 == wid) {
+      if (phi::backends::gpu::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
+          MaxLength)
+        break;
     }
   }
 }
@@ -718,7 +718,7 @@ __device__ void RadixCountUsingMask(const T* input,
   if (GetLaneId() == 0) {
 #pragma unroll
     for (uint32_t i = 0; i < RadixSize; ++i) {
-      platform::CudaAtomicAdd(&shared_mem[i], counts[i]);
+      phi::CudaAtomicAdd(&shared_mem[i], counts[i]);
     }
   }
 
@@ -933,12 +933,12 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 // use the radix sort for the topk
 template <typename T>
 bool SortTopk(const phi::GPUContext& ctx,
-              const framework::Tensor* input_tensor,
+              const phi::DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
               const int k,
-              framework::Tensor* out_tensor,
-              framework::Tensor* indices_tensor,
+              phi::DenseTensor* out_tensor,
+              phi::DenseTensor* indices_tensor,
               bool largest = true) {
   auto cu_stream = ctx.stream();
 

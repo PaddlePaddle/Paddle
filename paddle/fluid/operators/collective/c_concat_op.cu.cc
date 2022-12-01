@@ -32,8 +32,8 @@ template <typename T>
 class CConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto x = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
@@ -62,7 +62,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                           nranks));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    framework::Tensor temp_out;
+    phi::DenseTensor temp_out;
     framework::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.mutable_data<T>(temp_out_dims, place);
@@ -101,14 +101,14 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                                            stream));
     }
 
-    std::vector<framework::Tensor> inputs;
+    std::vector<phi::DenseTensor> inputs;
     int axis = x->dims().size() - 1;
     auto out_dims = x->dims();
     out_dims[out_dims.size() - 1] *= nranks;
     int rows_per_tensor = x->dims()[0];
     int offset = 0;
     for (int i = 0; i < nranks; i++) {
-      framework::Tensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
+      phi::DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
       inputs.emplace_back(temp);
       offset += rows_per_tensor;
     }

@@ -19,15 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class SquaredL2NormMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &dev_ctx = context.template device_context<MLUDeviceContext>();
-    auto *x = context.Input<Tensor>("X");
-    auto *out = context.Output<Tensor>("Out");
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto place = context.GetPlace();
 
@@ -40,9 +40,9 @@ class SquaredL2NormMLUKernel : public framework::OpKernel<T> {
     MLUCnnl::L2Loss(context, input_desc.get(), GetBasePtr(x), GetBasePtr(out));
 
     // do mul
-    framework::Tensor scale_tensor =
+    phi::DenseTensor scale_tensor =
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
-    framework::Tensor bias_tensor =
+    phi::DenseTensor bias_tensor =
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc scale_desc(scale_tensor);
     MLUCnnlTensorDesc bias_desc(bias_tensor);
@@ -67,9 +67,11 @@ class SquaredL2NormGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &dev_ctx = context.template device_context<MLUDeviceContext>();
-    auto *x = context.Input<Tensor>("X");
-    auto *x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-    auto *out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
         out_grad->numel(),
@@ -108,9 +110,9 @@ class SquaredL2NormGradMLUKernel : public framework::OpKernel<T> {
                       ToCnnlDataType(x->dtype()));
 
     // mul
-    framework::Tensor scale_tensor =
+    phi::DenseTensor scale_tensor =
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
-    framework::Tensor bias_tensor =
+    phi::DenseTensor bias_tensor =
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc scale_desc(scale_tensor);
     MLUCnnlTensorDesc bias_desc(bias_tensor);

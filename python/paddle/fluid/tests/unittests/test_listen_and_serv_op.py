@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from dist_test_utils import *
+import os
+from dist_test_utils import remove_ps_flag, silentremove
 
 silentremove("test_handle_signal_in_serv_op.flag")
 silentremove("test_list_and_serv_run_empty_optimize_block.flag")
 
 import paddle
 import paddle.fluid as fluid
-import signal
-import subprocess
 import time
 import unittest
 from multiprocessing import Process
-from op_test import OpTest
 
 paddle.enable_static()
 
@@ -54,18 +50,21 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     config = fluid.DistributeTranspilerConfig()
     config.sync_mode = sync_mode
     t = fluid.DistributeTranspiler(config=config)
-    t.transpile(trainer_id,
-                pservers=pserver_endpoints,
-                trainers=trainers,
-                sync_mode=sync_mode)
+    t.transpile(
+        trainer_id,
+        pservers=pserver_endpoints,
+        trainers=trainers,
+        sync_mode=sync_mode,
+    )
     pserver_prog = t.get_pserver_program(current_endpoint)
     pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
     exe.run(pserver_startup)
     exe.run(pserver_prog)
 
 
-def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
-                                 trainer_id):
+def run_pserver_with_empty_block(
+    use_cuda, sync_mode, ip, port, trainers, trainer_id
+):
     remove_ps_flag(os.getpid())
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None, bias_attr=False)
@@ -91,15 +90,17 @@ def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
     config.slice_var_up = False
 
     t = fluid.DistributeTranspiler(config=config)
-    t.transpile(trainer_id,
-                pservers=pserver_endpoints,
-                trainers=trainers,
-                sync_mode=sync_mode)
+    t.transpile(
+        trainer_id,
+        pservers=pserver_endpoints,
+        trainers=trainers,
+        sync_mode=sync_mode,
+    )
     pserver_prog = t.get_pserver_program(ps2)
 
     # pserver2 have no parameter
-    assert (len(pserver_prog.blocks) == 2)
-    assert (len(pserver_prog.blocks[1].ops) == 0)
+    assert len(pserver_prog.blocks) == 2
+    assert len(pserver_prog.blocks[1].ops) == 0
 
     pserver_startup = t.get_startup_program(ps2, pserver_prog)
     exe.run(pserver_startup)
@@ -112,7 +113,6 @@ def gen_complete_file_flag(flag_file):
 
 
 class TestListenAndServOp(unittest.TestCase):
-
     def setUp(self):
         self.ps_timeout = 200
         self.ip = "127.0.0.1"
@@ -121,9 +121,17 @@ class TestListenAndServOp(unittest.TestCase):
         self.trainer_id = 0
 
     def _start_pserver(self, use_cuda, sync_mode, pserver_func):
-        p = Process(target=pserver_func,
-                    args=(use_cuda, sync_mode, self.ip, self.port,
-                          self.trainers, self.trainer_id))
+        p = Process(
+            target=pserver_func,
+            args=(
+                use_cuda,
+                sync_mode,
+                self.ip,
+                self.port,
+                self.trainers,
+                self.trainer_id,
+            ),
+        )
         p.daemon = True
         p.start()
         return p

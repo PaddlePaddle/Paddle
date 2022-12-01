@@ -40,7 +40,7 @@ class LoDRankTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
     VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));

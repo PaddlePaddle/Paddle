@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 from paddle.fluid.framework import Program
 
 
 class TestDebugStringFramework(unittest.TestCase):
-
     def test_debug_str(self):
         p = Program()
         p.current_block().create_var(name='t', shape=[0, 1])

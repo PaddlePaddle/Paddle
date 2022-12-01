@@ -64,25 +64,35 @@ def forward_grad(outputs, inputs, grad_inputs=None):
             paddle.disable_static()
     """
     if not utils.prim_enabled():
-        raise RuntimeError('forward_grad must be running on primitive'
-                           'operators, use enable_prim to turn it on.')
+        raise RuntimeError(
+            'forward_grad must be running on primitive'
+            'operators, use enable_prim to turn it on.'
+        )
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(outputs)}.')
+        raise TypeError(
+            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(outputs)}.'
+        )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(inputs)}.')
+        raise TypeError(
+            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(inputs)}.'
+        )
 
-    ys, xs, xs_dot = utils.as_tensors(outputs), utils.as_tensors(
-        inputs), utils.as_tensors(grad_inputs)
+    ys, xs, xs_dot = (
+        utils.as_tensors(outputs),
+        utils.as_tensors(inputs),
+        utils.as_tensors(grad_inputs),
+    )
 
     block = framework.default_main_program().current_block()
     if any(x.block != block for x in xs + ys):
         raise RuntimeError(
             'Variable in inputs and targets should exist in current block of '
-            'main program.')
+            'main program.'
+        )
 
     primx.orig2prim(block)
     ad = primx.Transform(ys[0].block)
@@ -141,22 +151,32 @@ def grad(outputs, inputs, grad_outputs=None):
         # backward.gradients returns a list though the inputs is a signle Tensor.
         # The follow code snippet fixes the problem by return the first element
         # of grad_inputs when the inputs is a signle Tensor.
-        if isinstance(inputs, framework.Variable) and isinstance(
-                grad_inputs, typing.Sequence) and len(grad_inputs) > 0:
+        if (
+            isinstance(inputs, framework.Variable)
+            and isinstance(grad_inputs, typing.Sequence)
+            and len(grad_inputs) > 0
+        ):
             return grad_inputs[0]
         else:
             return grad_inputs
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(outputs)}.')
+        raise TypeError(
+            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(outputs)}.'
+        )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
-                        f'but got {type(inputs)}.')
+        raise TypeError(
+            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'but got {type(inputs)}.'
+        )
 
-    ys, xs, ys_bar = utils.as_tensors(outputs), utils.as_tensors(
-        inputs), utils.as_tensors(grad_outputs)
+    ys, xs, ys_bar = (
+        utils.as_tensors(outputs),
+        utils.as_tensors(inputs),
+        utils.as_tensors(grad_outputs),
+    )
     block = framework.default_main_program().current_block()
     if any((x is not None and x.block != block) for x in xs + ys):
         raise RuntimeError(

@@ -23,31 +23,32 @@ paddle.enable_static()
 
 
 class TestFleetLarsMetaOptimizer(unittest.TestCase):
-
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
+            "PADDLE_TRAINER_ENDPOINTS"
+        ] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
             with fluid.unique_name.guard():
-                input_x = paddle.fluid.layers.data(name="x",
-                                                   shape=[32],
-                                                   dtype='float32')
-                input_y = paddle.fluid.layers.data(name="y",
-                                                   shape=[1],
-                                                   dtype='int64')
+                input_x = paddle.fluid.layers.data(
+                    name="x", shape=[32], dtype='float32'
+                )
+                input_y = paddle.fluid.layers.data(
+                    name="y", shape=[1], dtype='int64'
+                )
 
-                fc_1 = paddle.fluid.layers.fc(input=input_x,
-                                              size=64,
-                                              act='tanh')
+                fc_1 = paddle.fluid.layers.fc(
+                    input=input_x, size=64, act='tanh'
+                )
                 fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
-                prediction = paddle.fluid.layers.fc(input=[fc_2],
-                                                    size=2,
-                                                    act='softmax')
-                cost = paddle.fluid.layers.cross_entropy(input=prediction,
-                                                         label=input_y)
+                prediction = paddle.fluid.layers.fc(
+                    input=[fc_2], size=2, act='softmax'
+                )
+                cost = paddle.fluid.layers.cross_entropy(
+                    input=prediction, label=input_y
+                )
                 avg_cost = paddle.mean(x=cost)
 
                 strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -67,8 +68,9 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Momentum(learning_rate=0.01,
-                                                    momentum=0.9)
+        optimizer = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.01, momentum=0.9
+        )
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -94,16 +96,21 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Momentum(learning_rate=0.01,
-                                                    momentum=0.9)
+        optimizer = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.01, momentum=0.9
+        )
 
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
         ops_without_wd = [
-            op for op in avg_cost.block.ops
-            if op.type == 'lars_momentum' and ("batch_norm" in op.attr(
-                'op_role_var')[0] or ".b" in op.attr('op_role_var')[0])
+            op
+            for op in avg_cost.block.ops
+            if op.type == 'lars_momentum'
+            and (
+                "batch_norm" in op.attr('op_role_var')[0]
+                or ".b" in op.attr('op_role_var')[0]
+            )
         ]
         for op in ops_without_wd:
             self.assertEqual(op.attr('lars_weight_decay')[0], 0)
@@ -111,16 +118,17 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
     def test_lars_apply_with_amp(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        input_x = paddle.fluid.layers.data(name="x",
-                                           shape=[32],
-                                           dtype='float32')
+        input_x = paddle.fluid.layers.data(
+            name="x", shape=[32], dtype='float32'
+        )
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(input=prediction,
-                                                 label=input_y)
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y
+        )
         avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -143,8 +151,9 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
             "exclude_from_weight_decay": ["batch_norm", ".b"],
         }
 
-        optimizer = paddle.fluid.optimizer.Momentum(learning_rate=0.01,
-                                                    momentum=0.9)
+        optimizer = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.01, momentum=0.9
+        )
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

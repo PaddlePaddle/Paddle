@@ -42,9 +42,9 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
     case DataLayout::NDHWC:
       return OneDNNMemoryFormat::ndhwc;
     default:
-      PADDLE_THROW(errors::InvalidArgument(
-          "Fail to convert layout %s to MKLDNN format.",
-          ::paddle::framework::DataLayoutToString(layout)));
+      PADDLE_THROW(
+          errors::InvalidArgument("Fail to convert layout %s to MKLDNN format.",
+                                  ::phi::DataLayoutToString(layout)));
   }
 }
 

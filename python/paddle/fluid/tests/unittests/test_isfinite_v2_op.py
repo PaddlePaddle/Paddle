@@ -31,9 +31,9 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
         x = paddle.fluid.data(name='x', shape=x_np.shape, dtype=dtype)
         res = getattr(paddle.tensor, op_str)(x)
         exe.run(startup_program)
-        static_result = exe.run(main_program,
-                                feed={'x': x_np},
-                                fetch_list=[res])
+        static_result = exe.run(
+            main_program, feed={'x': x_np}, fetch_list=[res]
+        )
     return static_result
 
 
@@ -59,15 +59,16 @@ def run_eager(x_np, op_str, use_gpu=True):
             return dygraph_result
 
 
-def np_data_generator(low, high, np_shape, type, sv_list, op_str, *args,
-                      **kwargs):
+def np_data_generator(
+    low, high, np_shape, type, sv_list, op_str, *args, **kwargs
+):
     x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
     # x_np.shape[0] >= len(sv_list)
     if type in ['float16', 'float32', 'float64']:
         for i, v in enumerate(sv_list):
             x_np[i] = v
     ori_shape = x_np.shape
-    x_np = x_np.reshape((np.product(ori_shape), ))
+    x_np = x_np.reshape((np.product(ori_shape),))
     np.random.shuffle(x_np)
     x_np = x_np.reshape(ori_shape)
     result_np = getattr(np, op_str)(x_np)
@@ -80,35 +81,35 @@ TEST_META_DATA = [
         'high': 1,
         'np_shape': [8, 17, 5, 6, 7],
         'type': 'float16',
-        'sv_list': [np.inf, np.nan]
+        'sv_list': [np.inf, np.nan],
     },
     {
         'low': 0.1,
         'high': 1,
         'np_shape': [11, 17],
         'type': 'float32',
-        'sv_list': [np.inf, np.nan]
+        'sv_list': [np.inf, np.nan],
     },
     {
         'low': 0.1,
         'high': 1,
         'np_shape': [2, 3, 4, 5],
         'type': 'float64',
-        'sv_list': [np.inf, np.nan]
+        'sv_list': [np.inf, np.nan],
     },
     {
         'low': 0,
         'high': 100,
         'np_shape': [11, 17, 10],
         'type': 'int32',
-        'sv_list': [np.inf, np.nan]
+        'sv_list': [np.inf, np.nan],
     },
     {
         'low': 0,
         'high': 999,
         'np_shape': [132],
         'type': 'int64',
-        'sv_list': [np.inf, np.nan]
+        'sv_list': [np.inf, np.nan],
     },
 ]
 
@@ -127,7 +128,6 @@ def test(test_case, op_str, use_gpu=False):
 
 
 class TestCPUNormal(unittest.TestCase):
-
     def test_inf(self):
         test(self, 'isinf')
 
@@ -139,7 +139,6 @@ class TestCPUNormal(unittest.TestCase):
 
 
 class TestCUDANormal(unittest.TestCase):
-
     def test_inf(self):
         test(self, 'isinf', True)
 
@@ -151,7 +150,6 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
-
     def test_bad_input(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):

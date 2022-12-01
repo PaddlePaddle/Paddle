@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
 import unittest
 import os
 import numpy as np
@@ -36,17 +33,21 @@ def get_place(target):
         return fluid.CPUPlace()
     else:
         raise ValueError(
-            "Target `{0}` is not on the support list: `cuda`, `xpu` and `cpu`.".
-            format(target))
+            "Target `{0}` is not on the support list: `cuda`, `xpu` and `cpu`.".format(
+                target
+            )
+        )
 
 
-def train(target,
-          is_sparse,
-          is_parallel,
-          save_dirname,
-          is_local=True,
-          use_bf16=False,
-          pure_bf16=False):
+def train(
+    target,
+    is_sparse,
+    is_parallel,
+    save_dirname,
+    is_local=True,
+    use_bf16=False,
+    pure_bf16=False,
+):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
@@ -55,35 +56,44 @@ def train(target,
     IS_SPARSE = is_sparse
 
     def __network__(words):
-        embed_first = fluid.layers.embedding(input=words[0],
-                                             size=[dict_size, EMBED_SIZE],
-                                             dtype='float32',
-                                             is_sparse=IS_SPARSE,
-                                             param_attr='shared_w')
-        embed_second = fluid.layers.embedding(input=words[1],
-                                              size=[dict_size, EMBED_SIZE],
-                                              dtype='float32',
-                                              is_sparse=IS_SPARSE,
-                                              param_attr='shared_w')
-        embed_third = fluid.layers.embedding(input=words[2],
-                                             size=[dict_size, EMBED_SIZE],
-                                             dtype='float32',
-                                             is_sparse=IS_SPARSE,
-                                             param_attr='shared_w')
-        embed_forth = fluid.layers.embedding(input=words[3],
-                                             size=[dict_size, EMBED_SIZE],
-                                             dtype='float32',
-                                             is_sparse=IS_SPARSE,
-                                             param_attr='shared_w')
+        embed_first = fluid.layers.embedding(
+            input=words[0],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w',
+        )
+        embed_second = fluid.layers.embedding(
+            input=words[1],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w',
+        )
+        embed_third = fluid.layers.embedding(
+            input=words[2],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w',
+        )
+        embed_forth = fluid.layers.embedding(
+            input=words[3],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w',
+        )
 
         concat_embed = fluid.layers.concat(
-            input=[embed_first, embed_second, embed_third, embed_forth], axis=1)
-        hidden1 = fluid.layers.fc(input=concat_embed,
-                                  size=HIDDEN_SIZE,
-                                  act='sigmoid')
-        predict_word = fluid.layers.fc(input=hidden1,
-                                       size=dict_size,
-                                       act='softmax')
+            input=[embed_first, embed_second, embed_third, embed_forth], axis=1
+        )
+        hidden1 = fluid.layers.fc(
+            input=concat_embed, size=HIDDEN_SIZE, act='sigmoid'
+        )
+        predict_word = fluid.layers.fc(
+            input=hidden1, size=dict_size, act='softmax'
+        )
         cost = fluid.layers.cross_entropy(input=predict_word, label=words[4])
         avg_cost = paddle.mean(cost)
         return avg_cost, predict_word
@@ -99,7 +109,8 @@ def train(target,
 
     if not is_parallel:
         avg_cost, predict_word = __network__(
-            [first_word, second_word, third_word, forth_word, next_word])
+            [first_word, second_word, third_word, forth_word, next_word]
+        )
     else:
         raise NotImplementedError()
 
@@ -108,20 +119,24 @@ def train(target,
         sgd_optimizer = paddle.static.amp.bf16.decorate_bf16(
             sgd_optimizer,
             amp_lists=paddle.static.amp.bf16.AutoMixedPrecisionListsBF16(
-                custom_fp32_list={'softmax', 'concat'}, ),
+                custom_fp32_list={'softmax', 'concat'},
+            ),
             use_bf16_guard=False,
-            use_pure_bf16=pure_bf16)
+            use_pure_bf16=pure_bf16,
+        )
 
     sgd_optimizer.minimize(avg_cost, fluid.default_startup_program())
 
-    train_reader = paddle.batch(paddle.dataset.imikolov.train(word_dict, N),
-                                BATCH_SIZE)
+    train_reader = paddle.batch(
+        paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE
+    )
 
     place = get_place(target)
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(
         feed_list=[first_word, second_word, third_word, forth_word, next_word],
-        place=place)
+        place=place,
+    )
 
     def train_loop(main_program):
         exe.run(fluid.default_startup_program())
@@ -130,15 +145,17 @@ def train(target,
 
         for pass_id in range(PASS_NUM):
             for data in train_reader():
-                avg_cost_np = exe.run(main_program,
-                                      feed=feeder.feed(data),
-                                      fetch_list=[avg_cost])
+                avg_cost_np = exe.run(
+                    main_program, feed=feeder.feed(data), fetch_list=[avg_cost]
+                )
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None and not pure_bf16:
                         fluid.io.save_inference_model(
                             save_dirname,
                             ['firstw', 'secondw', 'thirdw', 'forthw'],
-                            [predict_word], exe)
+                            [predict_word],
+                            exe,
+                        )
                     return
                 if math.isnan(float(avg_cost_np[0])):
                     sys.exit("got NaN loss, training failed.")
@@ -162,8 +179,9 @@ def train(target,
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
-            pserver_startup = t.get_startup_program(current_endpoint,
-                                                    pserver_prog)
+            pserver_startup = t.get_startup_program(
+                current_endpoint, pserver_prog
+            )
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
@@ -182,8 +200,11 @@ def infer(target, save_dirname=None):
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = fluid.io.load_inference_model(save_dirname, exe)
 
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
@@ -198,26 +219,18 @@ def infer(target, save_dirname=None):
         recursive_seq_lens = [[1]]
         base_shape = [1]
         # The range of random integers is [low, high]
-        first_word = fluid.create_random_int_lodtensor(recursive_seq_lens,
-                                                       base_shape,
-                                                       place,
-                                                       low=0,
-                                                       high=dict_size - 1)
-        second_word = fluid.create_random_int_lodtensor(recursive_seq_lens,
-                                                        base_shape,
-                                                        place,
-                                                        low=0,
-                                                        high=dict_size - 1)
-        third_word = fluid.create_random_int_lodtensor(recursive_seq_lens,
-                                                       base_shape,
-                                                       place,
-                                                       low=0,
-                                                       high=dict_size - 1)
-        fourth_word = fluid.create_random_int_lodtensor(recursive_seq_lens,
-                                                        base_shape,
-                                                        place,
-                                                        low=0,
-                                                        high=dict_size - 1)
+        first_word = fluid.create_random_int_lodtensor(
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
+        )
+        second_word = fluid.create_random_int_lodtensor(
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
+        )
+        third_word = fluid.create_random_int_lodtensor(
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
+        )
+        fourth_word = fluid.create_random_int_lodtensor(
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
+        )
 
         assert feed_target_names[0] == 'firstw'
         assert feed_target_names[1] == 'secondw'
@@ -226,15 +239,17 @@ def infer(target, save_dirname=None):
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
-        results = exe.run(inference_program,
-                          feed={
-                              feed_target_names[0]: first_word,
-                              feed_target_names[1]: second_word,
-                              feed_target_names[2]: third_word,
-                              feed_target_names[3]: fourth_word
-                          },
-                          fetch_list=fetch_targets,
-                          return_numpy=False)
+        results = exe.run(
+            inference_program,
+            feed={
+                feed_target_names[0]: first_word,
+                feed_target_names[1]: second_word,
+                feed_target_names[2]: third_word,
+                feed_target_names[3]: fourth_word,
+            },
+            fetch_list=fetch_targets,
+            return_numpy=False,
+        )
 
         def to_infer_tensor(lod_tensor):
             infer_tensor = fluid.core.PaddleTensor()
@@ -285,18 +300,26 @@ def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):
         # so only inference is turned on.
         train("cpu", is_sparse, is_parallel, save_dirname)
     else:
-        train(target,
-              is_sparse,
-              is_parallel,
-              save_dirname,
-              use_bf16=use_bf16,
-              pure_bf16=pure_bf16)
+        train(
+            target,
+            is_sparse,
+            is_parallel,
+            save_dirname,
+            use_bf16=use_bf16,
+            pure_bf16=pure_bf16,
+        )
     infer(target, save_dirname)
     temp_dir.cleanup()
 
 
-FULL_TEST = os.getenv('FULL_TEST',
-                      '0').lower() in ['true', '1', 't', 'y', 'yes', 'on']
+FULL_TEST = os.getenv('FULL_TEST', '0').lower() in [
+    'true',
+    '1',
+    't',
+    'y',
+    'yes',
+    'on',
+]
 SKIP_REASON = "Only run minimum number of tests in CI server, to make CI faster"
 
 
@@ -304,15 +327,15 @@ class W2VTest(unittest.TestCase):
     pass
 
 
-def inject_test_method(target,
-                       is_sparse,
-                       is_parallel,
-                       use_bf16=False,
-                       pure_bf16=False):
+def inject_test_method(
+    target, is_sparse, is_parallel, use_bf16=False, pure_bf16=False
+):
     fn_name = "test_{0}_{1}_{2}{3}".format(
-        target, "sparse" if is_sparse else "dense",
+        target,
+        "sparse" if is_sparse else "dense",
         "parallel" if is_parallel else "normal",
-        "_purebf16" if pure_bf16 else "_bf16" if use_bf16 else "")
+        "_purebf16" if pure_bf16 else "_bf16" if use_bf16 else "",
+    )
 
     def __impl__(*args, **kwargs):
         prog = fluid.Program()
@@ -322,20 +345,22 @@ def inject_test_method(target,
             with fluid.program_guard(prog, startup_prog):
                 main(target, is_sparse, is_parallel, use_bf16, pure_bf16)
 
-    if (not fluid.core.is_compiled_with_cuda()
-            or target == "cuda") and is_sparse:
+    if (
+        not fluid.core.is_compiled_with_cuda() or target == "cuda"
+    ) and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server
-        fn = unittest.skipUnless(condition=FULL_TEST,
-                                 reason=SKIP_REASON)(__impl__)
+        fn = unittest.skipUnless(condition=FULL_TEST, reason=SKIP_REASON)(
+            __impl__
+        )
 
     setattr(W2VTest, fn_name, fn)
 
 
 for target in ("cuda", "cpu", "xpu"):
     for is_sparse in (False, True):
-        for is_parallel in (False, ):
+        for is_parallel in (False,):
             inject_test_method(target, is_sparse, is_parallel)
 inject_test_method("cpu", False, False, True)
 inject_test_method("cpu", False, False, True, True)

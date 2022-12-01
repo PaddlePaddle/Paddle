@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
-from parallel_dygraph_sparse_embedding import SimpleNet, fake_sample_reader, TestSparseEmbedding
+from parallel_dygraph_sparse_embedding import (
+    SimpleNet,
+    fake_sample_reader,
+    TestSparseEmbedding,
+)
 
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from test_dist_base import runtime_main
 
 # global configs
 # using small `vocab_size` to test rows number over height
@@ -31,20 +33,22 @@ init_scale = 0.1
 
 
 class TestSparseEmbeddingOverHeight(TestSparseEmbedding):
-
     def get_model(self):
-        model = SimpleNet(hidden_size=hidden_size,
-                          vocab_size=vocab_size,
-                          num_steps=num_steps,
-                          init_scale=init_scale,
-                          is_sparse=True)
+        model = SimpleNet(
+            hidden_size=hidden_size,
+            vocab_size=vocab_size,
+            num_steps=num_steps,
+            init_scale=init_scale,
+            is_sparse=True,
+        )
 
-        train_reader = paddle.batch(fake_sample_reader(),
-                                    batch_size=batch_size,
-                                    drop_last=True)
+        train_reader = paddle.batch(
+            fake_sample_reader(), batch_size=batch_size, drop_last=True
+        )
 
-        optimizer = fluid.optimizer.SGD(learning_rate=0.001,
-                                        parameter_list=model.parameters())
+        optimizer = fluid.optimizer.SGD(
+            learning_rate=0.001, parameter_list=model.parameters()
+        )
 
         return model, train_reader, optimizer
 

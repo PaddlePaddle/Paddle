@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -156,9 +155,9 @@ template <typename T>
 class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<Tensor>("X");
-    auto *Y = context.Input<Tensor>("Y");
-    auto *Out = context.Output<Tensor>("Out");
+    auto *X = context.Input<phi::DenseTensor>("X");
+    auto *Y = context.Input<phi::DenseTensor>("Y");
+    auto *Out = context.Output<phi::DenseTensor>("Out");
     Out->mutable_data<T>(context.GetPlace());
 
     auto x = EigenMatrix<T>::From(*X);
@@ -187,11 +186,11 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<Tensor>("X");
-    auto *Y = context.Input<Tensor>("Y");
-    auto *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dX = context.Output<Tensor>(framework::GradVarName("X"));
-    auto *dY = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto *X = context.Input<phi::DenseTensor>("X");
+    auto *Y = context.Input<phi::DenseTensor>("Y");
+    auto *dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *dY = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     auto x = EigenMatrix<T>::From(*X);
     auto y = EigenMatrix<T>::From(*Y);

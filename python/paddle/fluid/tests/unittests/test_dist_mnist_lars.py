@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 
 
 class TestDistMnist2x2Lars(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False

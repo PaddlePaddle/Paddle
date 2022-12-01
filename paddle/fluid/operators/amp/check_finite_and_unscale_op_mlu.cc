@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
@@ -28,10 +28,10 @@ class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
-    const auto xs = ctx.MultiInput<framework::Tensor>("X");
-    const auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
+    const auto xs = ctx.MultiInput<phi::DenseTensor>("X");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
+    auto* found_inf = ctx.Output<phi::DenseTensor>("FoundInfinite");
 
     found_inf->mutable_data<bool>(dev_ctx.GetPlace());
 
