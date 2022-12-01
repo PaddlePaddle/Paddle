@@ -2115,8 +2115,10 @@ def bilinear_tensor_product(
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
             used. See usage for details in :ref:`api_fluid_ParamAttr` .
+
     Returns:
-        Variable: A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
+        Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
+
     Examples:
         .. code-block:: python
 
