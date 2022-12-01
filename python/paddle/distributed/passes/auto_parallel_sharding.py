@@ -672,14 +672,14 @@ class ShardingPass(PassBase):
                 elif self.stage == 3:
                     self._fuse_overlap_parameter_comm_stage_three(sharding_info)
 
-    def _gradient_sync_optimization(self):
+    def _gradient_sync_optimization(self, sharding_info):
 
         main_block = default_main_program().global_block()
         startup_block = default_startup_program().global_block()
-
-        grad_groups = self._group_grads(main_block, sharding_info)
-        self._coalesce_grads(main_block, sharding_info, grad_groups)
-        overlap_grad_comm()
+        coalesce_to_group_map, grad_name_to_group_map = self._group_grads(
+            main_block, sharding_info
+        )
+        # overlap_grad_comm()
 
     def _fuse_overlap_parameter_comm_stage_two(self, sharding_info):
 
@@ -760,7 +760,7 @@ class ShardingPass(PassBase):
     def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
         pass
 
-    def _group_grads(self, main_block, sharding_info, max_fuse_numel=None):
+    def _group_grads(self, block, sharding_info, max_fuse_numel=None):
         """
         conditions for gradients to be grouped:
             1. group size < max_fuse_numel
@@ -780,8 +780,8 @@ class ShardingPass(PassBase):
 
         gradients inside same group would be fuse into one coalesce tensor
         """
-        ops = main_block.ops
-        if fuse_numel is None:
+        ops = block.ops
+        if max_fuse_numel is None:
             # numel for transformer layer
             h = 4096 + 1
             ffn_numel = 2 * (4 * h) * h
@@ -833,7 +833,7 @@ class ShardingPass(PassBase):
                     cur_group.coalesce_op_idx = i
 
                 grouped_grad_names.add(grad_name)
-                cur_group.reduce_op_idx.append(i)
+                cur_group.reduce_op_indices.append(i)
 
                 if self.partial_sharding and sharding_info.is_in_local_shard(
                     param_name
@@ -845,7 +845,7 @@ class ShardingPass(PassBase):
                     assert (
                         ops[i + 1].out_arg_names[0] == grad_name
                     ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
-                    cur_group.allreduce_op_idx.append(i + 1)
+                    cur_group.allreduce_op_indices.append(i + 1)
                     i += 1
             elif op_depend_on_group(op, cur_group):
                 grad_groups.append(cur_group)
@@ -853,9 +853,20 @@ class ShardingPass(PassBase):
 
             i += 1
 
-        # create coalesce tesnor
+        _logger.info("Sharding Gradient Communication Optimization:")
+        _logger.info(
+            "Original [{}] gradients are fuse into [{}] buckets.".format(
+                len(grouped_grad_names), len(grad_groups)
+            )
+        )
+
+        # create coalesce tesnor and record op idx
         grad_name_to_group_map = {}
-        group_to_grad_name_map = {}
+        coalesce_to_group_map = {}
+        modify_reduce_op_map = {}
+        coalesce_op_map = {}
+        remove_reduce_op_indices = []
+
         for i, group in enumerate(grad_groups):
             if len(group.vars) > 1:
                 group.coalesce_var = block.create_var(
@@ -866,13 +877,82 @@ class ShardingPass(PassBase):
                     persistable=False,
                     stop_gradient=True,
                 )
+                coalesce_op_map[group.coalesce_op_idx] = group
+                last_reduce_op_idx = group.reduce_op_indices.pop()
+                modify_reduce_op_map[last_reduce_op_idx] = group
+                remove_reduce_op_indices.extend(group.reduce_op_indices)
+                if group.is_in_local_shard:
+                    last_allreduce_op_idx = group.allreduce_op_indices.pop()
+                    modify_reduce_op_map[last_allreduce_op_idx] = group
+                    remove_reduce_op_indices.extend(group.allreduce_op_indices)
             else:
                 group.coalesce_var = group.vars[0]
             for grad in group.vars:
                 grad_name_to_group_map[grad.name] = group
-            group_to_grad_name_map[group]
+            coalesce_to_group_map[group.coalesce_var.name] = group
 
-        return grad_groups
+        coalesce_op_set = set(coalesce_op_map.keys())
+        modify_op_set = set(modify_reduce_op_map.keys())
+        remove_op_set = set(remove_reduce_op_indices)
+        confilct = coalesce_op_set.intersection(modify_op_set)
+        assert len(confilct) == 0
+        confilct = coalesce_op_set.intersection(remove_op_set)
+        assert len(confilct) == 0
+        confilct = modify_op_set.intersection(remove_op_set)
+        assert len(confilct) == 0
+
+        # update block
+        for idx, op in reversed(list(enumerate(block.ops))):
+
+            if idx in modify_reduce_op_map:
+                group = modify_reduce_op_map[idx]
+                grad_name = op.out_arg_names[0]
+                assert (
+                    grad_name == group.vars[-1].name
+                ), "Unexception: it is supposed to sync [{}] but got [{}]".format(
+                    group.vars[-1].name, grad_name
+                )
+                op._rename_input(grad_name, group.coalesce_var.name)
+
+            if idx in remove_reduce_op_indices:
+                block._remove_op(idx, sync=False)
+
+            if idx in coalesce_op_map:
+                group = coalesce_op_map[idx]
+                first_grad_name = group.vars[0].name
+                assert (
+                    first_grad_name in op.out_arg_names
+                ), "Unexception: op is supposed to generate grad [{}] but got [{}]".format(
+                    first_grad_name, str(op)
+                )
+                grad_names = [grad.name for grad in group.vars]
+
+                concated_shapes = []
+                concated_ranks = []
+                for grad_ in group.vars:
+                    shape = grad_.shape
+                    concated_shapes.extend(shape)
+                    concated_ranks.append(len(shape))
+
+                coalesce_op = block._insert_op_without_sync(
+                    idx,
+                    type="coalesce_tensor",
+                    inputs={"Input": grad_names},
+                    outputs={
+                        "Output": grad_names,
+                        "FusedOutput": group.coalesce_var,
+                    },
+                    attrs={
+                        "copy_data": False,
+                        "use_align": True,
+                        "dtype": group.dtype,
+                        "concated_shapes": concated_shapes,
+                        "concated_ranks": concated_ranks,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
+
+        return coalesce_to_group_map, grad_name_to_group_map
 
 
 def _insert_init_and_broadcast_op(
@@ -1346,8 +1426,8 @@ class VarGroup(object):
         self.vars = []
         self.coalesce_var = None
         self.coalesce_op_idx = None
-        self.reduce_op_idx = []
-        self.allreduce_op_idx = []
+        self.reduce_op_indices = []
+        self.allreduce_op_indices = []
         self.is_in_local_shard = False
 
     def acceptable(self, param, rank):
