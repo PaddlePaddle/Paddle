@@ -21,10 +21,7 @@ import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.layers import (
-    nn,
-    tensor,
-)
+from paddle.fluid.layers import nn, tensor
 
 
 class Normal(distribution.Distribution):
