@@ -165,7 +165,9 @@ def model():
     mov_combined_features = get_mov_combined_features()
 
     # need cos sim
-    inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
+    inference = paddle.nn.functional.cosine_similarity(
+        x1=usr_combined_features, x2=mov_combined_features
+    )
     scale_infer = paddle.scale(x=inference, scale=5.0)
 
     label = layers.data(name='score', shape=[1], dtype='float32')

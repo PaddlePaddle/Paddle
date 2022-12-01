@@ -27,13 +27,9 @@ from paddle.fluid.dygraph.nn import (
     Embedding,
     GroupNorm,
     LayerNorm,
-    NCE,
     PRelu,
 )
 from paddle.nn import Linear
-import numpy as np
-import os
-import tempfile
 
 
 class TestDygraphLoadStatic(unittest.TestCase):

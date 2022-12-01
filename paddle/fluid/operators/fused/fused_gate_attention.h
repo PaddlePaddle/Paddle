@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.cu.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
@@ -626,9 +626,12 @@ class FMHAGateRef {
                                   phi::DenseTensor* k_transpose_out,
                                   phi::DenseTensor* v_transpose_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, q_out, perm, q_transpose_out);
-    TransposeGPUKernelDriver<T>(dev_ctx_, k_out, perm, k_transpose_out);
-    TransposeGPUKernelDriver<T>(dev_ctx_, v_out, perm, v_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, q_out, perm, q_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, k_out, perm, k_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, v_out, perm, v_transpose_out);
   }
 
   void ComputeQKVTransposeBackward(const phi::DenseTensor& q_transpose_out_grad,
@@ -638,11 +641,11 @@ class FMHAGateRef {
                                    phi::DenseTensor* k_out_grad,
                                    phi::DenseTensor* v_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, q_transpose_out_grad, perm, q_out_grad);
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, k_transpose_out_grad, perm, k_out_grad);
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, v_transpose_out_grad, perm, v_out_grad);
   }
 
@@ -651,14 +654,15 @@ class FMHAGateRef {
   void ComputeQKVTransposeForward(const phi::DenseTensor& qkv_out,
                                   phi::DenseTensor* qkv_transpose_out) {
     std::vector<int> perm = {3, 0, 1, 4, 2, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, qkv_out, perm, qkv_transpose_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, qkv_out, perm, qkv_transpose_out);
   }
 
   void ComputeQKVTransposeBackward(
       const phi::DenseTensor& qkv_transpose_out_grad,
       phi::DenseTensor* qkv_out_grad) {
     std::vector<int> perm = {1, 2, 4, 0, 3, 5};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);
   }
 
@@ -667,13 +671,14 @@ class FMHAGateRef {
   void ComputeQKTVTransposeForward(const phi::DenseTensor& qktv_out,
                                    phi::DenseTensor* fmha_out) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
+    phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
   }
 
   void ComputeQKTVTransposeBackward(const phi::DenseTensor& fmha_out_grad,
                                     phi::DenseTensor* qktv_out_grad) {
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, fmha_out_grad, perm, qktv_out_grad);
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, fmha_out_grad, perm, qktv_out_grad);
   }
 
   // qk_out = qk_out + nonbatched_bias + src_mask

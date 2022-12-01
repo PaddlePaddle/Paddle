@@ -19,13 +19,6 @@ extend_skip_glob = [
     "python/paddle/fluid/tests/unittests/mlu/**",
 
     # These files will be fixed in the future
-    "cmake/**",
-    "paddle/**",
-    "r/**",
-    "tools/**",
-    "python/paddle/[!f]**",
-    "python/paddle/fluid/tests/unittests/[t-z]**",
     "python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py",
-    "python/paddle/fluid/tests/unittests/dygraph_to_static/**",
-    "python/paddle/fluid/tests/unittests/ipu/test_dy2static_ipu.py",
+    "python/paddle/jit/**",
 ]

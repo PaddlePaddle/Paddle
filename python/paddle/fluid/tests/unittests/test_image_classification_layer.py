@@ -84,7 +84,7 @@ class TestLayer(unittest.TestCase):
             image2 = fluid.layers.data(
                 name='pixel2', shape=[3, 48, 48], dtype='float32'
             )
-            fluid.layers.elementwise_add(x=image1, y=image2, act='relu')
+            paddle.nn.functional.relu(paddle.add(x=image1, y=image2))
         print(main_program)
 
 
