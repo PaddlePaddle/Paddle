@@ -949,13 +949,6 @@ class DataLoader:
                 use_multiprocess,
             )
         else:
-            # Because layers.io.double_buffer is not supported anymore, and only when iterable and use_double_buffer
-            # are both True layers.io.double_buffer will be in use, here if itrable is False, use_double_buffer will be
-            # forcely set False to avoid using layers.io.double_buffer.
-            # See line whith 'raise RuntimeError("use_double_buffer is not supported now")' in this file
-            if not iterable:
-                use_double_buffer = False
-
             return GeneratorLoader(
                 feed_list,
                 capacity,
@@ -1358,6 +1351,11 @@ class GeneratorLoader(DataLoaderBase):
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
+            # Because layers.io.double_buffer is not supported anymore, and only when iterable and use_double_buffer
+            # are both True layers.io.double_buffer will be in use, here if itrable is False, use_double_buffer will be
+            # forcely set False to avoid using layers.io.double_buffer.
+            # TODO: keep use_double_buffer
+            self._use_double_buffer = False
             self._init_non_iterable()
 
     def _wait_thread_ends(self):
@@ -1412,7 +1410,6 @@ class GeneratorLoader(DataLoaderBase):
             'lod_tensor_blocking_queue'
         )
         reader_name = data_loader_unique_name_generator('create_py_reader')
-        double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
         var = global_scope().var(queue_name)
         self._queue = core.init_lod_tensor_blocking_queue(
@@ -1457,9 +1454,6 @@ class GeneratorLoader(DataLoaderBase):
             main_prog_var.persistable = True
 
             reader = monkey_patch_reader_methods(main_prog_var)
-
-        if self._use_double_buffer:
-            raise RuntimeError("use_double_buffer is not supported now")
 
         self._reader = reader
 
