@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
+import config
 import numpy as np
+import parameterize
 import scipy.stats
 
 import paddle
-import config
-import parameterize
 
 
 @parameterize.place(config.DEVICES)

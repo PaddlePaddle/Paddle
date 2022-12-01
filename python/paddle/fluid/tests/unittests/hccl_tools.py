@@ -29,10 +29,10 @@
 # limitations under the License.
 # ============================================================================
 """generate hccl config file script"""
-import os
-import sys
 import json
+import os
 import socket
+import sys
 from argparse import ArgumentParser
 
 

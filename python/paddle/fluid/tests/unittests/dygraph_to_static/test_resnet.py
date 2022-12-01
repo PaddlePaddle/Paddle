@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import math
-import time
+import os
 import tempfile
+import time
 import unittest
 
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-from predictor_utils import PredictorTools
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.jit import ProgramTranslator
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -134,7 +133,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=conv2)
+        y = paddle.add(x=short, y=conv2)
 
         layer_helper = fluid.layer_helper.LayerHelper(
             self.full_name(), act='relu'
@@ -166,9 +165,7 @@ class ResNet(fluid.dygraph.Layer):
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
         )
-        self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-        )
+        self.pool2d_max = paddle.nn.MaxPool2D(kernel_size=3, stride=2)
 
         self.bottleneck_block_list = []
         for block in range(len(depth)):
@@ -187,8 +184,7 @@ class ResNet(fluid.dygraph.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
-        self.pool2d_avg = Pool2D(
+        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True
         )
 
@@ -196,11 +192,10 @@ class ResNet(fluid.dygraph.Layer):
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = Linear(
+        self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            act='softmax',
-            param_attr=fluid.param_attr.ParamAttr(
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -211,8 +206,9 @@ class ResNet(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         pred = self.out(y)
+        pred = paddle.nn.functional.softmax(pred)
 
         return pred
 
@@ -311,9 +307,7 @@ class ResNetHelper:
                         )
                     if batch_id == 10:
                         if to_static:
-                            fluid.dygraph.jit.save(
-                                resnet, self.model_save_prefix
-                            )
+                            paddle.jit.save(resnet, self.model_save_prefix)
                         else:
                             fluid.dygraph.save_dygraph(
                                 resnet.state_dict(),
@@ -364,7 +358,7 @@ class ResNetHelper:
 
     def predict_dygraph_jit(self, data):
         with fluid.dygraph.guard(place):
-            resnet = fluid.dygraph.jit.load(self.model_save_prefix)
+            resnet = paddle.jit.load(self.model_save_prefix)
             resnet.eval()
 
             pred_res = resnet(data)

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_op import (
-    conv2d_forward_naive,
     TestConv2DOp,
+    conv2d_forward_naive,
 )
 
 

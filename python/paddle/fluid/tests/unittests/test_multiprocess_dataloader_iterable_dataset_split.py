@@ -14,6 +14,7 @@
 
 import math
 import unittest
+
 import numpy as np
 
 import paddle.fluid as fluid

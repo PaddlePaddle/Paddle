@@ -320,7 +320,7 @@ def _coalesce_tensors(var_groups):
         for g_var in grad_vars:
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
-                nn.reshape(x=g_var, shape=[np.prod(g_var.shape)])
+                paddle.reshape(x=g_var, shape=[np.prod(g_var.shape)])
             )
         coalesced_grad = nn.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(

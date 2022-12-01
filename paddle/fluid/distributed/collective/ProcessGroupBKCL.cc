@@ -260,6 +260,57 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      out_tensor,
+      in_tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        phi::DenseTensor output_t(*output);
+        const auto& place = input.place();
+        auto* calc_ctx = static_cast<phi::XPUContext*>(
+            platform::DeviceContextPool::Instance().Get(place));
+        switch (input.dtype()) {
+          case phi::DataType::FLOAT32:
+            calc_ctx->template Alloc<float>(&output_t);
+            break;
+          case phi::DataType::FLOAT16:
+            calc_ctx->template Alloc<float16>(&output_t);
+            break;
+          case phi::DataType::INT32:
+            calc_ctx->template Alloc<int>(&output_t);
+            break;
+          default:
+            VLOG(0) << "Error: type " << input.dtype() << " not supported for "
+                    << GetBackendName();
+            break;
+        }
+        int ret =
+            bkcl_all_reduce(comm,
+                            input.data(),
+                            output_t.data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            stream);
+        if (rank_ == opts.root_rank) {
+          *output = output_t;
+        }
+        return ret;
+      },
+      CommType::ALLREDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,
@@ -292,14 +343,14 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
-    return *iter->second;
+    return iter->second;
   } else {
     const auto& iter = place_to_comm_ctx_.find(key);
     PADDLE_ENFORCE_NE(iter,
                       place_to_comm_ctx_.end(),
                       platform::errors::InvalidArgument(
                           "Cannot find device context in process group."));
-    return *iter->second;
+    return iter->second.get();
   }
 }
 

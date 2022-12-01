@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 from paddle import fluid
-from paddle.fluid.layers import lstm as LSTM
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import fill_constant
-from paddle.fluid.framework import program_guard, Program
+from paddle.fluid.layers import lstm as LSTM
 
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0

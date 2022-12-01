@@ -15,10 +15,10 @@
 # limitations under the License.
 
 import numpy as np
+from dygraph_sharding_stage2 import MLP, optimizer_setting, reader_decorator
+
 import paddle
 from paddle.distributed import fleet
-from paddle.fluid.framework import _test_eager_guard
-
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import (
     ShardingOptimizerStage2,
 )
@@ -28,8 +28,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
     ShardingScaler,
 )
-
-from dygraph_sharding_stage2 import MLP, reader_decorator, optimizer_setting
+from paddle.fluid.framework import _test_eager_guard
 
 seed = 2021
 epoch = 2

@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 from collections import Counter
+
+import numpy as np
+from test_fetch_feed import Linear, Pool2D
+
 import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
-
-from test_fetch_feed import Pool2D, Linear
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit.dy2static import convert_to_static
 
 
 class TestCacheProgram(unittest.TestCase):
