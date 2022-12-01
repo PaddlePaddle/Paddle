@@ -16,8 +16,8 @@
 import os
 import unittest
 
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 import paddle
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
