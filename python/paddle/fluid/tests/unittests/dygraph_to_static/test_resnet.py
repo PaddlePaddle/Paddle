@@ -17,16 +17,14 @@ import os
 import tempfile
 import time
 import unittest
-import paddle
+
 import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 
 SEED = 2020
