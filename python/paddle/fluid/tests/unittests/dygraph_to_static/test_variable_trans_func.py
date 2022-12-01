@@ -15,9 +15,7 @@
 import unittest
 
 from paddle.jit.dy2static.utils import ast_to_source_code
-from paddle.jit.dy2static.variable_trans_func import (
-    create_fill_constant_node,
-)
+from paddle.jit.dy2static.variable_trans_func import create_fill_constant_node
 
 
 class TestVariableTransFunc(unittest.TestCase):

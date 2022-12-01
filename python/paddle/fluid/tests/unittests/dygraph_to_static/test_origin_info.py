@@ -15,6 +15,8 @@
 import sys
 import unittest
 
+from paddle.jit.api import declarative
+from paddle.jit.dy2static import DygraphToStaticAst
 from paddle.jit.dy2static.origin_info import (
     ORIGI_INFO,
     Location,
@@ -26,8 +28,6 @@ from paddle.jit.dy2static.origin_info import (
     unwrap,
 )
 from paddle.jit.dy2static.utils import ast_to_func
-from paddle.jit.api import declarative
-from paddle.jit.dy2static import DygraphToStaticAst
 
 
 def simple_func(x):
