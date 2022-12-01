@@ -2589,7 +2589,7 @@ def expand_undefined_var(nest1, nest2, names):
     In this case, we should not expand recursively.
     """
     from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
-    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+    from paddle.jit.dy2static.return_transformer import (
         RETURN_VALUE_PREFIX,
     )
 

@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import tempfile
 import shutil
+import tempfile
+import unittest
 
 import paddle
-from paddle.static import InputSpec
 import paddle.vision.transforms as T
-from paddle.vision.datasets import MNIST
 from paddle.fluid.framework import _test_eager_guard
+from paddle.static import InputSpec
+from paddle.vision.datasets import MNIST
 
 
 class MnistDataset(MNIST):

@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -41,9 +41,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     auto& astream = OneDNNContext::tls().get_stream();
-
-    platform::SetInMemDescWithLogicalLayoutFusesSupport(
-        ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
 
     if (ndims == 1) {
       framework::TensorCopy(*x, x->place(), out);
@@ -82,11 +79,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
-        ctx,
-        out,
-        reorder_dst_memory_p->get_desc().permute_axes(
-            TransposeToPermuteAxis(transpose_axis)));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
+        TransposeToPermuteAxis(transpose_axis)));
   }
 
  private:
@@ -180,11 +174,3 @@ REGISTER_OP_KERNEL(transpose_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
-
-REGISTER_OP_KERNEL(transpose2,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNOpKernel<float>,
-                   ops::TransposeMKLDNNOpKernel<uint8_t>,
-                   ops::TransposeMKLDNNOpKernel<int8_t>,
-                   ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);

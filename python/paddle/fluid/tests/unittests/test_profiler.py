@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import tempfile
-import numpy as np
-import paddle
-import paddle.utils as utils
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+import unittest
 
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.profiler as profiler
+import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+import paddle.utils as utils
 from paddle.utils.flops import flops
 
 
@@ -295,6 +296,10 @@ class TestFLOPSAPI(unittest.TestCase):
         )
         self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
+            == 0
         )
 
 

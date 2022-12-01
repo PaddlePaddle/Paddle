@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn.functional import avg_pool3d, max_pool3d
-from paddle.fluid.framework import _test_eager_guard
 from test_pool3d_op import (
     avg_pool3D_forward_naive,
     max_pool3D_forward_naive,
     pool3D_forward_naive,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn.functional import avg_pool3d, max_pool3d
 
 
 class TestPool3D_API(unittest.TestCase):

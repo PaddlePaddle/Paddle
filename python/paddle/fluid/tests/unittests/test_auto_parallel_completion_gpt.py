@@ -18,14 +18,14 @@ import unittest
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.tensor as tensor
 import paddle.utils as utils
-from paddle.fluid import layers
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
-import paddle.static as static
-from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
+from paddle.fluid import layers
+from paddle.nn.layer.transformer import _convert_param_attr_to_list
 
 paddle.enable_static()
 _global_parallel_strategy = None

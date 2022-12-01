@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import math
-import numpy
 import warnings
-from paddle import Tensor
+
+import numpy
+
 import paddle.fluid.core as core
+from paddle import Tensor
+
 from ..fluid.framework import _in_legacy_dygraph
 
 __all__ = [  # noqa
