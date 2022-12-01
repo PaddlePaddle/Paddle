@@ -57,7 +57,7 @@ class DynamicGRU(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.gru_unit = paddle.nn.GRUUnit(
+        self.gru_unit = paddle.nn.GRU(
             size * 3,
             size,
         )

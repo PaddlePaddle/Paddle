@@ -29,7 +29,7 @@ class TestGRUUnitAPIError(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             D = 5
-            layer = paddle.nn.GRUUnit(D * 3, D)
+            layer = paddle.nn.GRU(D * 3, D)
             # the input must be Variable.
             x0 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()

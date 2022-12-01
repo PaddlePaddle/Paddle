@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding, Linear
+from paddle.fluid.dygraph.nn import BatchNorm, Embedding
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
@@ -168,7 +168,7 @@ class DynamicGRU(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.gru_unit = paddle.nn.GRUUnit(
+        self.gru_unit = paddle.nn.GRU(
             size * 3,
             size,
         )
@@ -326,7 +326,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         self.fc_2_layer = Linear(
             decoder_size, decoder_size * 3, bias_attr=False
         )
-        self.gru_unit = paddle.nn.GRUUnit(decoder_size * 3, decoder_size)
+        self.gru_unit = paddle.nn.GRU(decoder_size * 3, decoder_size)
         self.out_layer = Linear(decoder_size, num_classes + 2, bias_attr=None)
 
         self.decoder_size = decoder_size
