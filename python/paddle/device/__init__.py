@@ -17,7 +17,9 @@ import re
 import os
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.distributed.parallel_env import ParallelEnv
+# If use paddle.distributed.parallel_env.Parallel, it will cause
+# cycle import error. It will be replaces later.
+from paddle.fluid.dygraph import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
