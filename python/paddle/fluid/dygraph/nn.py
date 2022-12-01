@@ -1749,6 +1749,7 @@ class NCE(layers.Layer):
         .. code-block:: python
 
             import numpy as np
+            import paddle
             import paddle.fluid as fluid
 
             window_size = 5
@@ -1762,9 +1763,10 @@ class NCE(layers.Layer):
                 for i in range(window_size):
                     words.append(fluid.dygraph.base.to_variable(inp_word[i]))
 
-                emb = fluid.Embedding(
-                    size=[dict_size, 32],
-                    param_attr='emb.w',
+                emb = paddle.nn.Embedding(
+                    dict_size,
+                    32,
+                    weight_attr='emb.w',
                     is_sparse=False)
 
                 embs3 = []

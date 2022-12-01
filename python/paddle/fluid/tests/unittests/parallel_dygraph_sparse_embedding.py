@@ -18,7 +18,6 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
@@ -36,11 +35,11 @@ class SimpleNet(fluid.Layer):
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_steps = num_steps
-        self.embedding = Embedding(
-            size=[self.vocab_size, self.hidden_size],
-            dtype=dtype,
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            self.vocab_size,
+            self.hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
                 )

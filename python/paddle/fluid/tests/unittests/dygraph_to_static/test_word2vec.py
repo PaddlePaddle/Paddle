@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import unittest
 
 import paddle
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Embedding
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 
@@ -228,9 +228,9 @@ class SkipGram(fluid.dygraph.Layer):
         self.embedding_size = embedding_size
 
         self.embedding = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-0.5 / self.embedding_size,
@@ -240,9 +240,9 @@ class SkipGram(fluid.dygraph.Layer):
         )
 
         self.embedding_out = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_out_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-0.5 / self.embedding_size,

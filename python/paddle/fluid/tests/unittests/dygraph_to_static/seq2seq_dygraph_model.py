@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Embedding
 from paddle.jit.api import declarative
 
 INF = 1.0 * 1e5
@@ -122,16 +122,18 @@ class BaseModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -545,17 +547,19 @@ class AttentionModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 name='source_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='target_embedding',
                 initializer=uniform_initializer(init_scale),
             ),

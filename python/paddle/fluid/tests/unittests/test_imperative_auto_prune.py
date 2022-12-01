@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Embedding
 
 
 class AutoPruneLayer0(fluid.Layer):
@@ -117,8 +118,8 @@ class AutoPruneLayer3(fluid.Layer):
 class MyLayer(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super().__init__(dtype=dtype)
-        self.embed0 = fluid.Embedding(size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(size=(vocab_size, size))
+        self.embed0 = Embedding(vocab_size, size)
+        self.embed1 = Embedding(vocab_size, size)
         self.linear_0 = paddle.nn.Linear(input_size, size)
         self.linear_1 = paddle.nn.Linear(input_size, size)
 
@@ -139,8 +140,8 @@ class MyLayer(fluid.Layer):
 class MyLayer2(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super().__init__(dtype=dtype)
-        self.embed0 = fluid.Embedding(size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(size=(vocab_size, size))
+        self.embed0 = Embedding(vocab_size, size)
+        self.embed1 = Embedding(vocab_size, size)
         self.linear_0 = paddle.nn.Linear(input_size, size)
         self.linear_1 = paddle.nn.Linear(input_size, size)
 
