@@ -57,7 +57,7 @@ def dyfunc_with_if_else2(x, col=100):
         #  `x` is Tensor, `col` is not Tensor, and `col` is the return value of `true_fn` after transformed.
         # col = -1
         col = fluid.layers.fill_constant(shape=[1], value=-1, dtype="int64")
-    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
+    if paddle.mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
         x_pow = paddle.pow(x, 2)
