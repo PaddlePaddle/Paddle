@@ -729,8 +729,6 @@ def binary_cross_entropy_with_logits(
 ):
     r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
-    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-    layer and some reduce operations.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -885,8 +883,15 @@ def binary_cross_entropy_with_logits(
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
-        logit, label, name=sigmoid_name
+    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=logit.dtype)
+
+    helper.append_op(
+        type="sigmoid_cross_entropy_with_logits",
+        inputs={"X": logit, "Label": label},
+        attrs={"ignore_index": kIgnoreIndex, 'normalize': False},
+        outputs={"Out": out},
     )
 
     one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)

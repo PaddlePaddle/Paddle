@@ -60,6 +60,15 @@ def register_flops(op_type):
     return register
 
 
+@register_flops("c_embedding")
+def _c_embedding_flops(input_shapes, attrs):
+    """FLOPs computation for c_embedding op.
+    For c_embedding(input):
+        equation: flops = 0
+    """
+    return 0
+
+
 @register_flops("dropout")
 def _dropout_flops(input_shapes, attrs):
     """FLOPs computation for dropout op.

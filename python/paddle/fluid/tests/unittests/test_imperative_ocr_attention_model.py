@@ -21,14 +21,9 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import (
-    BatchNorm,
-    Embedding,
-    GRUUnit,
-    Linear,
-    Pool2D,
-)
+from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GRUUnit, Linear
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 
 class Config:
@@ -112,11 +107,9 @@ class ConvBNPool(fluid.dygraph.Layer):
         self.bn_1_layer = BatchNorm(out_ch[1], act=act, is_test=is_test)
 
         if self.pool:
-            self.pool_layer = Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=2,
-                use_cudnn=use_cudnn,
+            self.pool_layer = paddle.nn.MaxPool2D(
+                kernel_size=2,
+                stride=2,
                 ceil_mode=True,
             )
 
@@ -232,10 +225,10 @@ class EncoderNet(fluid.dygraph.Layer):
         self.ocr_convs = OCRConv(is_test=is_test, use_cudnn=use_cudnn)
 
         self.fc_1_layer = Linear(
-            32, rnn_hidden_size * 3, param_attr=para_attr, bias_attr=False
+            32, rnn_hidden_size * 3, weight_attr=para_attr, bias_attr=False
         )
         self.fc_2_layer = Linear(
-            32, rnn_hidden_size * 3, param_attr=para_attr, bias_attr=False
+            32, rnn_hidden_size * 3, weight_attr=para_attr, bias_attr=False
         )
         self.gru_forward_layer = DynamicGRU(
             size=rnn_hidden_size,
@@ -295,10 +288,8 @@ class SimpleAttention(fluid.dygraph.Layer):
     def __init__(self, decoder_size):
         super().__init__()
 
-        self.fc_1 = Linear(
-            decoder_size, decoder_size, act=None, bias_attr=False
-        )
-        self.fc_2 = Linear(decoder_size, 1, act=None, bias_attr=False)
+        self.fc_1 = Linear(decoder_size, decoder_size, bias_attr=False)
+        self.fc_2 = Linear(decoder_size, 1, bias_attr=False)
 
     def forward(self, encoder_vec, encoder_proj, decoder_state):
 
@@ -310,9 +301,7 @@ class SimpleAttention(fluid.dygraph.Layer):
             decoder_state_proj_reshape,
             [-1, encoder_proj.shape[1], -1],
         )
-        concated = fluid.layers.elementwise_add(
-            encoder_proj, decoder_state_expand
-        )
+        concated = paddle.add(encoder_proj, decoder_state_expand)
         concated = paddle.tanh(x=concated)
         attention_weight = self.fc_2(concated)
 
@@ -344,9 +333,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         self.gru_unit = GRUUnit(
             size=decoder_size * 3, param_attr=None, bias_attr=None
         )
-        self.out_layer = Linear(
-            decoder_size, num_classes + 2, bias_attr=None, act='softmax'
-        )
+        self.out_layer = Linear(decoder_size, num_classes + 2, bias_attr=None)
 
         self.decoder_size = decoder_size
 
@@ -368,11 +355,12 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             )
             fc_1 = self.fc_1_layer(context)
             fc_2 = self.fc_2_layer(current_word)
-            decoder_inputs = fluid.layers.elementwise_add(x=fc_1, y=fc_2)
+            decoder_inputs = paddle.add(x=fc_1, y=fc_2)
 
             h, _, _ = self.gru_unit(decoder_inputs, hidden_mem)
             hidden_mem = h
             out = self.out_layer(h)
+            out = paddle.nn.functional.softmax(out)
             res.append(out)
 
         res1 = fluid.layers.concat(res, axis=1)
@@ -388,7 +376,6 @@ class OCRAttention(fluid.dygraph.Layer):
             Config.encoder_size,
             Config.decoder_size,
             bias_attr=False,
-            act='relu',
         )
         self.embedding = Embedding(
             [Config.num_classes + 2, Config.word_vector_dim], dtype='float32'
@@ -406,6 +393,7 @@ class OCRAttention(fluid.dygraph.Layer):
             backward_first, [-1, backward_first.shape[2]]
         )
         decoder_boot = self.fc(backward_first)
+        decoder_boot = paddle.nn.functional.relu(decoder_boot)
         label_in = paddle.reshape(label_in, [-1])
         trg_embedding = self.embedding(label_in)
 

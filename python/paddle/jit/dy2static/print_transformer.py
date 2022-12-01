@@ -14,39 +14,46 @@
 
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
+    StaticAnalysisVisitor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 
 
-class TensorShapeTransformer(BaseTransformer):
+class PrintTransformer(BaseTransformer):
     """
-    This class transforms variable.shape  into Static Graph Ast.
-    All 'xxx.shape' will be converted int '_jst.Shape(x)'.
+    This class transforms python print function to fluid.layers.Print.
     """
 
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of TensorShapeTransformer."
+        ), "Input non-AstNodeWrapper node for the initialization of PrintTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
+
+        self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
+        self.node_to_wrapper_map = (
+            self.static_analysis_visitor.get_node_to_wrapper_map()
+        )
 
     def transform(self):
         self.visit(self.root)
 
-    def visit_Attribute(self, node):
-        self.generic_visit(node)
-        if node.attr == 'shape':
-            args = ast_to_source_code(node.value).strip()
-            # NOTE(dev): we can deal with paddle.shape in this case, but it's
-            # not pretty to modify into 'convert_shape(paddle)(x)[0]'.
-            if args != 'paddle':
-                convert_shape_func = "_jst.Shape({})".format(args)
-                shape_node = gast.parse(convert_shape_func).body[0].value
-                return shape_node
+    # NOTE: deal with print in PY3
+    def visit_Call(self, node):
+        if isinstance(node.func, gast.Name) and node.func.id == 'print':
+            node = self._create_print_node(node.args)
         return node
+
+    # NOTE: deal with print in PY2
+    def visit_Print(self, node):
+        convert_print_node = self._create_print_node(node.values)
+        return gast.Expr(value=convert_print_node)
+
+    def _create_print_node(self, print_args):
+        convert_print_func = gast.parse('_jst.Print').body[0].value
+        return gast.Call(func=convert_print_func, args=print_args, keywords=[])
