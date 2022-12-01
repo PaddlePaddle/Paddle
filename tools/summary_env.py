@@ -31,6 +31,7 @@ Python version: {python_version}
 CUDA version: {cuda_version}
 cuDNN version: {cudnn_version}
 Nvidia driver version: {nvidia_driver_version}
+Nvidia driver List: {nvidia_gpu_driver}
 """
 
 envs = {}
@@ -179,6 +180,18 @@ def get_driver_info():
     envs['nvidia_driver_version'] = driver_ver
 
 
+def get_nvidia_gpu_driver():
+    if platform.system() != "Windows" and platform.system() != "Linux":
+        envs['nvidia_gpu_driver'] = 'N/A'
+        return
+    nvidia_smi = 'nvidia-smi'
+    gpu_list = run_shell_command(nvidia_smi + " -L")
+    result = "\n"
+    for gpu_info in gpu_list.split("\n"):
+        result += gpu_info.split(" (UUID:")[0] + "\n"
+    envs['nvidia_gpu_driver'] = result
+
+
 def main():
     get_paddle_info()
     get_os_info()
@@ -190,6 +203,7 @@ def main():
     get_cuda_info()
     get_cudnn_info()
     get_driver_info()
+    get_nvidia_gpu_driver()
     print('*' * 40 + envs_template.format(**envs) + '*' * 40)
 
 
