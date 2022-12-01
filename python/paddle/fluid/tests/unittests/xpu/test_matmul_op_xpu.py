@@ -16,16 +16,18 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
-
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):

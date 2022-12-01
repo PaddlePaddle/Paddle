@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import paddle
-import paddle.fluid.core as core
-import paddle.distributed.fleet as fleet
-from paddle.incubate import DistributedFusedLamb
-from paddle.vision.models import resnet18 as resnet
-from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
-from paddle.fluid.clip import ClipGradBase
-import numpy as np
+import distutils
 import os
 import unittest
-from paddle.fluid.clip import _clip_by_global_norm_using_mp_type
-import distutils
+
+import numpy as np
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid.core as core
+from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
+from paddle.fluid.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
+from paddle.incubate import DistributedFusedLamb
+from paddle.vision.models import resnet18 as resnet
 
 
 def get_role_maker():

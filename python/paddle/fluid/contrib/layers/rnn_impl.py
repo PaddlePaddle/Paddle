@@ -153,7 +153,7 @@ class BasicGRUUnit(Layer):
 
         gate_input = paddle.matmul(x=concat_input_hidden, y=self._gate_weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._gate_bias)
+        gate_input = paddle.add(gate_input, self._gate_bias)
 
         gate_input = self._gate_activation(gate_input)
         r, u = layers.split(gate_input, num_or_sections=2, dim=1)
@@ -163,7 +163,7 @@ class BasicGRUUnit(Layer):
         candidate = paddle.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
-        candidate = layers.elementwise_add(candidate, self._candidate_bias)
+        candidate = paddle.add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
         new_hidden = u * pre_hidden + (1 - u) * c
@@ -407,15 +407,15 @@ def basic_gru(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
@@ -718,15 +718,15 @@ def basic_lstm(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden, bw_last_cell = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
@@ -876,18 +876,14 @@ class BasicLSTMUnit(Layer):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
         gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._bias)
+        gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
-        new_cell = layers.elementwise_add(
-            layers.elementwise_mul(
+        new_cell = paddle.add(
+            paddle.multiply(
                 pre_cell,
-                paddle.nn.functional.sigmoid(
-                    layers.elementwise_add(f, self._forget_bias)
-                ),
+                paddle.nn.functional.sigmoid(paddle.add(f, self._forget_bias)),
             ),
-            layers.elementwise_mul(
-                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
-            ),
+            paddle.multiply(paddle.nn.functional.sigmoid(i), paddle.tanh(j)),
         )
         new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
 

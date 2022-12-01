@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-import numpy as np
 import numbers
+import warnings
+from collections import OrderedDict
+
+import numpy as np
 
 import paddle
 import paddle.nn as nn
-from paddle.static import InputSpec
 from paddle.autograd import no_grad
-from collections import OrderedDict
+from paddle.static import InputSpec
 
 __all__ = []
 

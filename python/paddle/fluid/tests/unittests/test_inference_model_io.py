@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import os
 import importlib
+import os
 import tempfile
-import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+import unittest
 import warnings
 
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import (
-    save_inference_model,
     load_inference_model,
+    save_inference_model,
     save_persistables,
 )
 

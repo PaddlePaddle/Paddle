@@ -14,9 +14,10 @@
 import unittest
 
 import paddle
+import paddle.fluid.core as core
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.utils as utils
 import paddle.fluid.core as core
 from paddle.distributed.auto_parallel.operators.common import (
@@ -26,6 +27,10 @@ from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.operators.common import (
+    get_distributed_operator_impl_container,
+)
+from paddle.fluid import layers
 
 paddle.enable_static()
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"

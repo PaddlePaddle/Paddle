@@ -15,15 +15,14 @@
 import os
 import shutil
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
-import paddle
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTSubgraphPassFcTest(InferencePassTest):
@@ -187,7 +186,7 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 name='instance_norm_b',
                 initializer=fluid.initializer.Constant(value=0.0),
             )
-            out = fluid.layers.instance_norm(
+            out = paddle.static.nn.instance_norm(
                 input=data, param_attr=param_attr, bias_attr=bias_attr
             )
         self.feeds = {

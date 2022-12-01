@@ -19,12 +19,12 @@ if(WITH_XPU)
   cc_library(
     kernel_factory
     SRCS kernel_factory.cc
-    DEPS phi_enforce fluid_convert_utils convert_utils xpu_op_list)
+    DEPS phi_enforce convert_utils phi_xpu_op_list)
 else()
   cc_library(
     kernel_factory
     SRCS kernel_factory.cc
-    DEPS phi_enforce fluid_convert_utils)
+    DEPS phi_enforce convert_utils)
 endif()
 cc_library(
   kernel_context
@@ -55,7 +55,7 @@ cc_library(
 cc_library(
   dense_tensor
   SRCS dense_tensor.cc dense_tensor_impl.cc
-  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base ddim)
+  DEPS convert_utils tensor_meta tensor_base ddim)
 
 target_link_libraries(dense_tensor malloc)
 

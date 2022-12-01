@@ -117,8 +117,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
-      var_scope_(scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -206,7 +206,12 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    ExecuteInstructionList(vec_instruction_);
+    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+      VLOG(4) << "Tracing Instruction List";
+      TraceInstructionList(vec_instruction_);
+    } else {
+      ExecuteInstructionList(vec_instruction_);
+    }
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(place_)) {
       platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -257,6 +262,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
+    UpdateSyncOpNum();
   } else {
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
@@ -268,7 +274,12 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    ExecuteInstructionList(vec_instruction_);
+    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+      VLOG(4) << "Tracing Instruction List";
+      TraceInstructionList(vec_instruction_);
+    } else {
+      ExecuteInstructionList(vec_instruction_);
+    }
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(place_)) {
       platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -309,6 +320,22 @@ void InterpreterCore::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
           "execution_config_.skip_gc_vars is "
           "not empty, do not call SetSkipGcVars method repeatedly."));
   execution_config_.skip_gc_vars = skip_gc_vars;
+}
+
+void InterpreterCore::SetJitInputVars(
+    const std::set<std::string>& jit_input_vars) {
+  PADDLE_ENFORCE_EQ(
+      execution_config_.jit_input_vars.empty(),
+      true,
+      platform::errors::PreconditionNotMet(
+          "execution_config_.jit_input_vars can only be initialized once, now "
+          "execution_config_.jit_input_vars is "
+          "not empty, do not call SetJitInputVars method repeatedly."));
+  execution_config_.jit_input_vars = jit_input_vars;
+}
+
+const std::set<std::string>& InterpreterCore::JitInputVars() const {
+  return execution_config_.jit_input_vars;
 }
 
 const VariableScope* InterpreterCore::GetVariableScope() const {
@@ -488,20 +515,43 @@ void InterpreterCore::BuildInplace() {
 }
 
 void InterpreterCore::BuildOperatorDependences() {
-  // analysis the dependences between ops, set the dependecy_count_ and Call
-  // Schedule
-  auto op_nums = vec_instruction_.size();
-  dependecy_count_.resize(op_nums);
-  auto op2downstream = dependency_builder_.Build(
+  // analysis the dependences between ops, add next_instr_list to each instr,
+  // and set the dependecy_count_
+  size_t instr_num = vec_instruction_.size();
+  dependecy_count_.resize(instr_num);
+  auto downstream_map = dependency_builder_.Build(
       vec_instruction_,
       /*is_sequential_run=*/FLAGS_new_executor_sequential_run);
-  for (size_t op = 0; op < vec_instruction_.size(); ++op) {
-    auto op_list = op2downstream[op];
-    std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
-    stream_analyzer_.Schedule(downsteam_vector, &vec_instruction_, op);
 
-    for (auto inst_id : op_list) {
-      dependecy_count_[inst_id]++;
+  for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
+    Instruction& cur_instr = vec_instruction_[instr_id];
+    const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
+
+    if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+      for (size_t next_instr_id : next_instr_ids) {
+        if (vec_instruction_[next_instr_id].KernelType() ==
+            OpFuncType::kGpuAsync) {
+          cur_instr.AddNextInstrInSameThread(next_instr_id);
+        } else {
+          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+        }
+      }
+    } else {
+      bool has_instr_in_same_thread = false;
+      for (size_t next_instr_id : next_instr_ids) {
+        if (!has_instr_in_same_thread &&
+            vec_instruction_[next_instr_id].KernelType() !=
+                OpFuncType::kGpuAsync) {
+          cur_instr.AddNextInstrInSameThread(next_instr_id);
+          has_instr_in_same_thread = true;
+        } else {
+          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+        }
+      }
+    }
+
+    for (size_t next_instr_id : next_instr_ids) {
+      ++dependecy_count_[next_instr_id];
     }
   }
 }
@@ -538,6 +588,32 @@ void InterpreterCore::Convert(
 
   BuildOperatorDependences();
 
+  stream_analyzer_.ConstructEvents(dependency_builder_, &vec_instruction_);
+
+  // add event for the input var of jit program, since there are async copied
+  // from gpu_pinned place to gpu place on compute stream.
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      auto& inst = vec_instruction_[i];
+      if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
+          platform::is_gpu_place(place_)) {
+        for (auto& item : inst.Inputs()) {
+          for (auto var_id : item.second) {
+            auto name = var_scope_.GetNameById(var_id);
+            if (JitInputVars().count(name)) {
+              auto device_event = std::make_shared<platform::DeviceEvent>(
+                  place_, platform::GenerateDeviceEventFlag());
+              VLOG(4) << "Add input event for input: " << name << " of "
+                      << inst.OpBase()->Type();
+              inst.AddEventToWait(
+                  i, device_event, stream_analyzer_.GetWaiterType(inst));
+            }
+          }
+        }
+      }
+    }
+  }
+
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     Instruction& instr = vec_instruction_[op_idx];
@@ -562,9 +638,20 @@ void InterpreterCore::Convert(
         if (var_desc && ins.count(item.first) &&
             !info.IsInArgBufferNeeded(var_desc->Name())) {
           continue;
-        } else if (!block_.HasVar(var_scope_.GetNameById(id))) {
-          VLOG(10) << "[gc_check_inputs] skip gc: "
-                   << var_scope_.GetNameById(id);
+        }
+        // skip when this var is not in block and not a data_transferred var,
+        // which means this var is managed by other block
+        const auto& var_name = var_scope_.GetNameById(id);
+        bool not_owned = !block_.HasVar(var_name);
+        const auto& transferred_vars = var_scope_.DataTransferAddedVars();
+        bool not_transferred =
+            std::all_of(transferred_vars.begin(),
+                        transferred_vars.end(),
+                        [&](const std::pair<std::string, int>& elem) {
+                          return elem.first != var_name;
+                        });
+        if (not_owned && not_transferred) {
+          VLOG(10) << "[gc_check_inputs] skip gc: " << var_name;
           continue;
         }
         gc_check_vars.insert(id);
@@ -635,7 +722,7 @@ void InterpreterCore::Convert(
   BuildSkipShareLoDInfo();
 
   bool inplaced = false;
-  for (auto inst : vec_instruction_) {
+  for (const Instruction& inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
         inst.OpBase()->Type() == "share_data") {
       VLOG(4) << "Already inplaced, skip inplace now.";
@@ -654,6 +741,8 @@ void InterpreterCore::Convert(
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
+
+  AnalyseExecuteOrderForTrace();
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -676,12 +765,12 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
   }
 }
 
-void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+void InterpreterCore::RunOperator(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   SetDeviceId(place);
 
@@ -717,7 +806,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       platform::RecordOpInfoSupplement(op->Type(),
                                        op->Attrs(),
                                        *(instr_node.InnerInferShapeContext()),
-                                       *(instr_node.InnerRuntimeContext()));
+                                       *(instr_node.InnerRuntimeContext()),
+                                       op->Id());
     }
   }
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
@@ -794,8 +884,47 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
         *op,
-        *local_scope_,
+        *local_scope,
         place);  // TODO(xiongkun03) change it to inner scope.
+  }
+}
+
+void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+          << " name:" << instr_node.OpBase()->Type() << " type:"
+          << (instr_node.KernelType() == OpFuncType::kCpuSync
+                  ? "kCpuSync"
+                  : (instr_node.KernelType() == OpFuncType::kGpuSync
+                         ? "kGpuSync"
+                         : "kGpuAsync"))
+          << " runs on " << platform::GetCurrentThreadName();
+
+  auto* op = instr_node.OpBase();
+  platform::RecordEvent instruction_event(
+      op->Type(), platform::TracerEventType::Operator, 1);
+
+  try {
+    instr_node.WaitEvent(place_);
+
+    if (!instr_node.IsArtificial()) {
+      RunOperator(instr_node);
+      CheckGC(instr_node);
+      interpreter::LogDeviceMemoryStats(place_);
+    }
+
+    instr_node.RecordEvent(place_);
+  } catch (platform::EnforceNotMet& ex) {
+    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+  } catch (platform::EOFException&) {
+    exception_holder_.Catch(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << op->Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::current_exception());
+  } catch (...) {
+    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    exception_holder_.Catch(std::current_exception());
   }
 }
 
@@ -812,6 +941,8 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i));
       async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
                                  [this, i] { RunInstructionAsync(i); });
     }
@@ -843,7 +974,6 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::deque<size_t>* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
-  auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
@@ -851,66 +981,21 @@ void InterpreterCore::RunNextInstructions(
     return deps_[next_id]->CheckAndDecrease();
   };
 
-  if (instr.KernelType() == OpFuncType::kQueueAsync) {
-    // move all sync_ops into other threads
-    for (size_t next_id : next_instr.SyncRunIds()) {
-      if (IsReady(next_id)) {
-        async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
-            [this, next_id]() { RunInstructionAsync(next_id); });
-      }
+  for (size_t next_instr_id : instr.NextInstrsInDifferenceThread()) {
+    if (IsReady(next_instr_id)) {
+      async_work_queue_->AddTask(
+          vec_instruction_[next_instr_id].KernelType(),
+          [this, next_instr_id]() { RunInstructionAsync(next_instr_id); });
     }
-    // keep all async_ops running in current thread
-    for (size_t next_id : next_instr.DirectRunIds()) {
-      if (IsReady(next_id)) {
-        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
-          reserved_next_ops->push_back(next_id);
-        } else {
-          reserved_next_ops->push_front(next_id);
-        }
-      }
-    }
-    for (size_t next_id : next_instr.EventRunIds()) {
-      if (IsReady(next_id)) {
-        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
-          reserved_next_ops->push_back(next_id);
-        } else {
-          reserved_next_ops->push_front(next_id);
-        }
-      }
-    }
-  } else {
-    // move async_ops into async_thread
-    for (auto next_id : next_instr.EventRunIds()) {
-      if (IsReady(next_id)) {
-        async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
-            [this, next_id] { RunInstructionAsync(next_id); });
-      }
-    }
+  }
 
-    std::vector<size_t> direct_run_ops = next_instr.SyncRunIds();
-    direct_run_ops.insert(direct_run_ops.end(),
-                          next_instr.DirectRunIds().begin(),
-                          next_instr.DirectRunIds().end());
-
-    int64_t first_op = -1;
-    for (auto next_id : direct_run_ops) {
-      if (IsReady(next_id)) {
-        // only keep one sync op running in current thread
-        if (first_op == -1 &&
-            vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
-          first_op = next_id;
-          continue;
-        }
-        // move rest ops into other threads
-        async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
-            [this, next_id] { RunInstructionAsync(next_id); });
+  for (size_t next_instr_id : instr.NextInstrsInSameThread()) {
+    if (IsReady(next_instr_id)) {
+      if (vec_instruction_[next_instr_id].GetPriority() == Priority::kLowest) {
+        reserved_next_ops->push_back(next_instr_id);
+      } else {
+        reserved_next_ops->push_front(next_instr_id);
       }
-    }
-    if (first_op != -1) {
-      reserved_next_ops->push_front(first_op);
     }
   }
 }
@@ -922,41 +1007,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     instr_id = ready_ops.front();
     ready_ops.pop_front();
     auto& instr_node = vec_instruction_.at(instr_id);
-    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-            << " name:" << instr_node.OpBase()->Type() << " type:"
-            << (instr_node.KernelType() == OpFuncType::kQueueSync
-                    ? "kQueueSync"
-                    : "kQueueAsync")
-            << " runs on " << platform::GetCurrentThreadName();
 
-    auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(
-        op->Type(), platform::TracerEventType::Operator, 1);
-
-    try {
-      interpreter::WaitEvent(instr_node, place_);
-
-      if (!instr_node.IsArtificial()) {
-        RunInstruction(instr_node);
-        CheckGC(instr_node);
-        interpreter::LogDeviceMemoryStats(place_);
-      }
-
-      interpreter::RecordEvent(instr_node, place_);
-    } catch (platform::EnforceNotMet& ex) {
-      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
-      exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
-    } catch (platform::EOFException&) {
-      exception_holder_.Catch(std::current_exception());
-    } catch (std::exception& ex) {
-      LOG(WARNING) << op->Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
-      exception_holder_.Catch(std::current_exception());
-    } catch (...) {
-      LOG(WARNING) << op->Type() << " raises an unknown exception";
-      exception_holder_.Catch(std::current_exception());
-    }
+    RunInstruction(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
@@ -984,7 +1036,7 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
   if (!IsInterpretercoreFastGCEnabled() ||
-      instr.KernelType() != OpFuncType::kQueueAsync) {
+      instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
   platform::RecordEvent record(
@@ -1141,6 +1193,7 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    UpdateSyncOpNum();
     is_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
@@ -1176,6 +1229,141 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
   core = std::make_shared<InterpreterCore>(place, *block, skip_gc_vars, scope);
   core->SetCopyProgram(new_prog);
   return core;
+}
+
+// Note(zhangbo):
+// (1) What is "Trace"?
+// The OP execute scheduling rule adopted by Interpretercore by default is a
+// multi-threaded scheduling mode(see ExecuteInstructionList). By maintaining a
+// high-performance thread pool, the OP's execute scheduling is distributed to
+// the sub threads maintained by the thread pool, but the main thread does not
+// have any tasks. In Trace mode, the executor will execute directly in the main
+// thread according to the pre provided OP sequence(trace_execute_order_),
+// instead of being distributed to the thread pool.
+// (2) When we use "Trace"?
+// In dygraph to static, This scheduling causes that the execution of the
+// forward and backward OPs and the execution of the dygraph optimizer cannot be
+// executed in the same thread. Executing thread switch may cause cpu cache
+// miss. When a model is all KQueueAsync type OPs, all OPs will be distributed
+// to the DeviceThread for execution, and the multithreading scheduling will not
+// have any benefits. Therefore, in the dynamic to static, when the number of
+// KQueueAsync Ops is 0, we choose Trace mode.
+void InterpreterCore::TraceInstructionList(
+    const std::vector<Instruction>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i));
+    }
+  }
+
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto instr_id = trace_execute_order_[idx];
+    auto& instr_node = vec_instruction_.at(instr_id);
+
+    RunInstruction(instr_node);
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      break;
+    }
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+}
+
+void InterpreterCore::RecordMemcpyD2H(const Instruction& instr_node) {
+  // NOTE(zhiqiu): hot fix for jit input var
+  if (instr_node.OpBase()->Type() == interpreter::kMemcpyD2H) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* default_dev_ctx = pool.Get(place_);
+    for (auto& event : instr_node.EventsToWait()) {
+      platform::RecordEvent record(
+          "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+      VLOG(3) << "Record event on default stream in jit_input_var at op: "
+              << instr_node.OpBase()->Type();
+      event.event_->Record(default_dev_ctx);
+    }
+  }
+}
+
+void InterpreterCore::UpdateSyncOpNum() {
+  int64_t sync_op_num = 0;
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    if (vec_instruction_[i].KernelType() == OpFuncType::kCpuSync ||
+        vec_instruction_[i].KernelType() == OpFuncType::kGpuSync) {
+      sync_op_num = sync_op_num + 1;
+    }
+  }
+  sync_op_num_ = sync_op_num;
+  VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
+}
+
+// Note(zhangbo):
+// When there is a KQueueSync type OP in the model, breadth traversal is better
+// than depth traversal. For example: OP(O) ->(direct_run)-> OP(A)
+// ->(sync_run)-> OP(B) OP(O) ->(direct_run)-> OP(C) ->(direct_run)-> OP(D) If B
+// is run before C, B may always block to wait for A to finish executing, but in
+// fact, C can be executed first during this time.
+void InterpreterCore::AnalyseExecuteOrderForTrace() {
+  VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
+  auto op_downstream_map = dependency_builder_.OpDownstreamMap();
+
+  auto IsReady = [this](size_t next_id) {
+    VLOG(4) << "op_id: " << next_id
+            << ", remain deps: " << deps_[next_id]->DynamicDep();
+    return deps_[next_id]->CheckAndDecrease();
+  };
+
+  std::vector<size_t> trace_order;
+  std::deque<size_t> ready_ops;
+
+  for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
+    if (dependecy_count_[instr_id] == 0) {
+      ready_ops.push_back(instr_id);
+    }
+  }
+
+  while (!ready_ops.empty()) {
+    auto now_id = ready_ops.front();
+    ready_ops.pop_front();
+    trace_order.push_back(now_id);
+
+    auto next_op_set = op_downstream_map[now_id];
+
+    for (size_t next_op_id : next_op_set) {
+      if (IsReady(next_op_id)) {
+        ready_ops.push_back(next_op_id);
+      }
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      trace_order.size(),
+      dependecy_count_.size(),
+      platform::errors::PreconditionNotMet(
+          "trace_order size should be equal to dependecy_count_."));
+
+  trace_execute_order_ = trace_order;
 }
 
 }  // namespace framework

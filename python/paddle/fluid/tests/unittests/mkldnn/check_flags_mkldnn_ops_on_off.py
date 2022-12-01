@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import numpy as np
+
 import paddle.fluid as fluid
 import os
 import paddle
+
+from paddle.fluid.framework import _enable_legacy_dygraph, _global_flags
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _global_flags
-from paddle.fluid.framework import _enable_legacy_dygraph
 
 _enable_legacy_dygraph()
 
