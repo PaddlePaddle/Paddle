@@ -74,14 +74,14 @@ class TestAccuracyOpError(unittest.TestCase):
             label = fluid.layers.data(
                 name='label', shape=[-1, 1], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.accuracy, x1, label)
+            self.assertRaises(TypeError, paddle.static.accuracy, x1, label)
             self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
             # The input dtype of accuracy_op must be float32 or float64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.accuracy, x2, label)
+            self.assertRaises(TypeError, paddle.static.accuracy, x2, label)
             self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
             x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
-            fluid.layers.accuracy(input=x3, label=label)
+            paddle.static.accuracy(input=x3, label=label)
             paddle.metric.accuracy(input=x3, label=label)
 
 
