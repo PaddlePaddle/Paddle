@@ -12,19 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Dict, List, Optional
-import numpy as np
 import enum
+from typing import Any, Callable, Dict, List, Optional
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.initializer import NumpyArrayInitializer
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
-
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
-from paddle.fluid.framework import IrGraph, IrNode, Operator
+from paddle.fluid.contrib.slim.quantization import (
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
 from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import (
+    IrGraph,
+    IrNode,
+    Operator,
+    convert_np_dtype_to_dtype_,
+)
+from paddle.fluid.initializer import NumpyArrayInitializer
 
 
 class TensorConfig:

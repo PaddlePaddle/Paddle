@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import os
 import importlib
+import os
 import tempfile
-import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+import unittest
 import warnings
 
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import (
-    save_inference_model,
     load_inference_model,
+    save_inference_model,
     save_persistables,
 )
 
@@ -174,8 +174,8 @@ class TestSaveInferenceModel(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='int32')
             predict = fluid.layers.fc(input=x, size=2, act='softmax')
-            acc = fluid.layers.accuracy(input=predict, label=y)
-            auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+            acc = paddle.static.accuracy(input=predict, label=y)
+            auc_var, batch_auc_var, auc_states = paddle.static.auc(
                 input=predict, label=y
             )
             cost = fluid.layers.cross_entropy(input=predict, label=y)

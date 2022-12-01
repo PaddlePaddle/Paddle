@@ -16,9 +16,7 @@ import contextlib
 import unittest
 
 import numpy as np
-import paddle
 import scipy.fft
-
 from test_fft import (
     ATOL,
     DEVICES,
@@ -28,6 +26,8 @@ from test_fft import (
     place,
     rand_x,
 )
+
+import paddle
 
 
 @contextlib.contextmanager

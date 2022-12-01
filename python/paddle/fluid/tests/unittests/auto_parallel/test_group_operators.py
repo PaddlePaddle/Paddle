@@ -14,6 +14,7 @@
 
 import sys
 import unittest
+
 import numpy as np
 
 import paddle
@@ -22,8 +23,8 @@ import paddle.static as static
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 
@@ -111,16 +112,16 @@ class TestGroupOperators(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
-            RuleBasedTuner,
-        )
         from paddle.distributed.auto_parallel.dist_context import (
             DistributedContext,
+        )
+        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+            RuleBasedTuner,
         )
 
         dist_context = DistributedContext()
         tuner = RuleBasedTuner(dist_context)
-        layers = tuner.group_operators(train_program.global_block().ops)
+        layers = tuner.cluster_operators(train_program.global_block().ops)
         op_types = []
         for layer in layers:
             tmp = []

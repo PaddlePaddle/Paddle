@@ -192,7 +192,7 @@ class FleetUtil:
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+                  stat_neg] = paddle.static.auc(input=binary_predict,\
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
 
@@ -1381,7 +1381,7 @@ class FleetUtil:
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+                  stat_neg] = paddle.static.auc(input=binary_predict,\
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins,\
@@ -1581,7 +1581,7 @@ class FleetUtil:
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+                  stat_neg] = paddle.static.auc(input=binary_predict,\
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins, \

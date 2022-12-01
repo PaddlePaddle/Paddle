@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 import gradient_checker
-import paddle
-
+import numpy as np
 from decorator_helper import prog_scope
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
             eps = 0.005
             atol = 1e-4
             x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
-            z = fluid.layers.instance_norm(input=x)
+            z = paddle.static.nn.instance_norm(input=x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
@@ -63,7 +63,7 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
             eps = 0.005
             atol = 1e-4
             x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
-            z = fluid.layers.instance_norm(
+            z = paddle.static.nn.instance_norm(
                 input=x, param_attr=False, bias_attr=False
             )
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)

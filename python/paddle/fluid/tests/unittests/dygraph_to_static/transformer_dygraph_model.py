@@ -14,19 +14,14 @@
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.dygraph import (
-    Embedding,
-    Layer,
-    LayerNorm,
-    Linear,
-    to_variable,
-)
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
-from paddle.fluid.layers.utils import map_structure
-import paddle
 import paddle.nn.functional as F
+from paddle.fluid.dygraph import Embedding, Layer, LayerNorm, to_variable
+from paddle.fluid.layers.utils import map_structure
+from paddle.jit.api import dygraph_to_static_func
+from paddle.nn import Linear
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -107,28 +102,28 @@ class MultiHeadAttention(Layer):
         self.d_model = d_model
         self.dropout_rate = dropout_rate
         self.q_fc = Linear(
-            input_dim=d_model,
-            output_dim=d_key * n_head,
+            in_features=d_model,
+            out_features=d_key * n_head,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
         self.k_fc = Linear(
-            input_dim=d_model,
-            output_dim=d_key * n_head,
+            in_features=d_model,
+            out_features=d_key * n_head,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
         self.v_fc = Linear(
-            input_dim=d_model,
-            output_dim=d_value * n_head,
+            in_features=d_model,
+            out_features=d_value * n_head,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
         self.proj_fc = Linear(
-            input_dim=d_value * n_head,
-            output_dim=d_model,
+            in_features=d_value * n_head,
+            out_features=d_model,
             bias_attr=False,
-            param_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=fluid.ParamAttr(initializer=param_initializer),
         )
 
     def forward(self, queries, keys, values, attn_bias, cache=None):
@@ -174,11 +169,12 @@ class FFN(Layer):
     def __init__(self, d_inner_hid, d_model, dropout_rate):
         super().__init__()
         self.dropout_rate = dropout_rate
-        self.fc1 = Linear(input_dim=d_model, output_dim=d_inner_hid, act="relu")
-        self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
+        self.fc1 = Linear(d_model, d_inner_hid)
+        self.fc2 = Linear(d_inner_hid, d_model)
 
     def forward(self, x):
         hidden = self.fc1(x)
+        hidden = paddle.nn.functional.relu(hidden)
         if self.dropout_rate:
             hidden = layers.dropout(hidden, dropout_prob=self.dropout_rate)
         out = self.fc2(hidden)
@@ -342,7 +338,7 @@ class WrapEncoder(Layer):
 
     def forward(self, src_word, src_pos, src_slf_attn_bias):
         word_emb = self.word_embedder(src_word)
-        word_emb = layers.scale(x=word_emb, scale=self.emb_dim**0.5)
+        word_emb = paddle.scale(x=word_emb, scale=self.emb_dim**0.5)
         pos_enc = self.pos_encoder(src_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
@@ -546,7 +542,7 @@ class WrapDecoder(Layer):
         caches=None,
     ):
         word_emb = self.word_embedder(trg_word)
-        word_emb = layers.scale(x=word_emb, scale=self.emb_dim**0.5)
+        word_emb = paddle.scale(x=word_emb, scale=self.emb_dim**0.5)
         pos_enc = self.pos_encoder(trg_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
@@ -586,8 +582,8 @@ class CrossEntropyCriterion:
             soft_label=True if self.label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = layers.reduce_sum(weighted_cost)
-        token_num = layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, token_num
@@ -756,19 +752,18 @@ class Transformer(Layer):
 
         def mask_probs(probs, finished, noend_mask_tensor):
             finished = layers.cast(finished, dtype=probs.dtype)
-            probs = layers.elementwise_mul(
+            probs = paddle.multiply(
                 paddle.expand(
                     layers.unsqueeze(finished, [2]),
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
-                axis=-1,
             ) - layers.elementwise_mul(probs, (finished - 1), axis=0)
             return probs
 
         def gather(input, indices, batch_pos):
             topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-            return layers.gather_nd(input, topk_coordinates)
+            return paddle.gather_nd(input, topk_coordinates)
 
         # run encoder
         enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)
@@ -845,7 +840,7 @@ class Transformer(Layer):
             )
             caches = map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
-                fluid.layers.log(fluid.layers.softmax(logits))
+                paddle.log(fluid.layers.softmax(logits))
             )
 
             step_log_probs = mask_probs(
@@ -870,8 +865,8 @@ class Transformer(Layer):
             )
             log_probs = gather(log_probs, topk_indices, batch_pos)
             finished = gather(finished, beam_indices, batch_pos)
-            finished = layers.logical_or(
-                finished, layers.equal(token_indices, end_token_tensor)
+            finished = paddle.logical_or(
+                finished, paddle.equal(token_indices, end_token_tensor)
             )
             trg_word = paddle.reshape(token_indices, [-1, 1])
 
@@ -884,7 +879,7 @@ class Transformer(Layer):
         predict_ids = paddle.stack(predict_ids, axis=0)
         parent_ids = paddle.stack(parent_ids, axis=0)
         finished_seq = paddle.transpose(
-            layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
+            paddle.nn.functional.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )
         finished_scores = topk_scores
 

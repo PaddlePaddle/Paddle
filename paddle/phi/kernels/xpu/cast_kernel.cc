@@ -16,12 +16,10 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace phi {
 

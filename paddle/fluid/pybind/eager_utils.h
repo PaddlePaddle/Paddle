@@ -151,6 +151,49 @@ class PyVoidHook : public egr::VoidHook {
   PyObject* py_func_;
 };
 
+class PyObjectHolder : public egr::PyObjectHolderBase {
+ public:
+  PyObjectHolder() { ptr_ = nullptr; }
+  explicit PyObjectHolder(PyObject* ptr);
+  ~PyObjectHolder() override;
+  void* get() override;
+  void reset(void* ptr) override;
+  void inc_ref() override;
+  void dec_ref() override;
+
+ private:
+  PyObject* ptr_{nullptr};
+};
+
+class PackHook : public egr::PackHookBase {
+ public:
+  explicit PackHook(PyObject* hook);
+
+  ~PackHook();
+
+  std::shared_ptr<egr::PyObjectHolderBase> operator()(
+      const paddle::experimental::Tensor& tensor) override;
+
+  void* operator()(void* py_tensor) override;
+
+ private:
+  PyObject* hook_;
+};
+
+class UnPackHook : public egr::UnPackHookBase {
+ public:
+  explicit UnPackHook(PyObject* hook);
+
+  ~UnPackHook();
+
+  paddle::experimental::Tensor operator()(
+      std::shared_ptr<egr::PyObjectHolderBase> packed_value) override;
+
+  void* operator()(void* packed_value, void* other) override;
+
+ private:
+  PyObject* hook_;
+};
 template <typename Tuple, size_t N>
 struct TupleTensorResult {
   static void Run(const Tuple& out, PyObject* result) {

@@ -153,7 +153,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
         x = self.quant_stub(inputs)
         x = self.features(x)
 
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1, -1)
         x = self.add(x, paddle.to_tensor(0.0))  # For CI
         x = self.fc(x)
         return x
@@ -238,7 +238,7 @@ class ImperativeLenetWithSkipQuant(fluid.dygraph.Layer):
         x = self.relu6_0(x)
         x = self.pool2d_1(x)
 
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1, -1)
 
         x = self.linear_0(x)
         x = self.leaky_relu_0(x)

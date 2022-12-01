@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from scipy.special import erfinv
 from op_test import OpTest
+from scipy.special import erfinv
+
 import paddle
 import paddle.fluid.core as core
 

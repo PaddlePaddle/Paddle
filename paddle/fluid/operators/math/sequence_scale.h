@@ -35,7 +35,8 @@ namespace math {
 
  *
  * \param context       Device context of this functor.
- * \param seq           LoDTensor which is stored in sequence format, the shape
+ * \param seq           phi::DenseTensor which is stored in sequence format, the
+ shape
  *                      is [total_sequence_length, sequence_width] where
  *                      total_sequence_length is the sum of all sequences'
  *                      length.
