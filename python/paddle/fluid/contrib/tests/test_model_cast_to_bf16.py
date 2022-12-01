@@ -105,18 +105,18 @@ class TestModelCastBF16(unittest.TestCase):
             t = layers.data(name='t', shape=[size, size], dtype='float32')
             tt = layers.data(name='tt', shape=[size, size], dtype='float32')
 
-            ret = paddle.add(t, tt)
-            ret = paddle.multiply(ret, t)
+            ret = layers.elementwise_add(t, tt)
+            ret = layers.elementwise_mul(ret, t)
             ret = paddle.reshape(ret, [0, 0])
 
             with amp.bf16.bf16_guard():
-                ret_bf16 = paddle.add(t_bf16, tt_bf16)
-                ret_bf16 = paddle.multiply(ret_bf16, t_bf16)
+                ret_bf16 = layers.elementwise_add(t_bf16, tt_bf16)
+                ret_bf16 = layers.elementwise_mul(ret_bf16, t_bf16)
                 ret_bf16 = paddle.reshape(ret_bf16, [0, 0])
 
             with amp.bf16.bf16_guard():
-                ret_fp32bf16 = paddle.add(t, tt)
-                ret_fp32bf16 = paddle.multiply(ret_fp32bf16, t)
+                ret_fp32bf16 = layers.elementwise_add(t, tt)
+                ret_fp32bf16 = layers.elementwise_mul(ret_fp32bf16, t)
                 ret_fp32bf16 = paddle.reshape(ret_fp32bf16, [0, 0])
 
             (
@@ -147,11 +147,11 @@ class TestModelCastBF16(unittest.TestCase):
             tt = layers.data(name='tt', shape=[size, size], dtype='float32')
 
             with amp.bf16.bf16_guard():
-                ret = paddle.add(t, tt)
+                ret = layers.elementwise_add(t, tt)
                 ret = paddle.reshape(ret, [0, 0])
                 ret = paddle.nn.functional.elu(ret)
-                ret = paddle.multiply(ret, t)
-            ret = paddle.add(ret, tt)
+                ret = layers.elementwise_mul(ret, t)
+            ret = layers.elementwise_add(ret, tt)
 
             static_ret_bf16 = self.get_static_graph_result(
                 feed={'t': n, 'tt': nn},
@@ -168,11 +168,8 @@ class TestModelCastBF16(unittest.TestCase):
             lambda prog: amp.bf16.rewrite_program_bf16(
                 prog,
                 amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_bf16_list={'elementwise_add', 'add'},
-                    custom_fp32_varnames={
-                        'elementwise_add_0.tmp_0',
-                        'add_0.tmp_0',
-                    },
+                    custom_bf16_list={'elementwise_add'},
+                    custom_fp32_varnames={'elementwise_add_0.tmp_0'},
                 ),
             )
         )
@@ -183,8 +180,8 @@ class TestModelCastBF16(unittest.TestCase):
                 prog,
                 startup_prog,
                 amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_bf16_list={'elementwise_add', 'add'},
-                    custom_fp32_list={'elementwise_mul', 'multiply'},
+                    custom_bf16_list={'elementwise_add'},
+                    custom_fp32_list={'elementwise_mul'},
                 ),
                 use_bf16_guard=True,
             ),
