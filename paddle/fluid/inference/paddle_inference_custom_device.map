@@ -47,7 +47,8 @@
 			*paddle::distributed::TensorTable*;
 			*paddle::distributed::TableManager*;
 
-			*paddle::inference*;
+			/* *paddle::inference*; */
+			*paddle::inference::ReadBinaryFile*;
 
 			*paddle::platform::GetExportedFlagInfoMap*;
 
