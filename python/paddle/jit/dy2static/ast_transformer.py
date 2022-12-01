@@ -61,7 +61,7 @@ from .return_transformer import (
 from .create_variable_transformer import (
     CreateVariableTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from .static_analysis import (
     StaticAnalysisVisitor,
 )
 from .tensor_shape_transformer import (
@@ -71,8 +71,8 @@ from .decorator_transformer import (
     DecoratorTransformer,
 )
 
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from . import logging_utils
+from .utils import ast_to_source_code
 
 __all__ = ['DygraphToStaticAst']
 

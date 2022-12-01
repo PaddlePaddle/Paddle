@@ -164,7 +164,7 @@ def multi_head_attention(
 
         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
         product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
-        weights = __softmax(layers.elementwise_add(x=product, y=attn_bias))
+        weights = __softmax(paddle.add(x=product, y=attn_bias))
         if dropout_rate:
             weights = layers.dropout(
                 weights, dropout_prob=dropout_rate, is_test=False
