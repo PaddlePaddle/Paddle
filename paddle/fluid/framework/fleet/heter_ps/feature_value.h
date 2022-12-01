@@ -419,10 +419,10 @@ class CommonFeatureValueAccessor {
     int mf_dim = int(src_val[common_feature_value.MfDimIndex()]);
     dest_val[common_pull_value.MfSizeIndex()] = mf_dim;
     // check
-    PADDLE_ENFORCE_LE(mf_dim,
-                      mf_size,
-                      platform::errors::InvalidArgument(
-                          "mf_dim[%d] <= mf_size[%d]", mf_dim, mf_size));
+    if (mf_dim > mf_size) {
+      printf("mf_dim[%d] <= mf_size[%d]", mf_dim, mf_size);
+      return;
+    }
 
     int embedx_off = common_pull_value.EmbedxWIndex();
     int value_off = common_feature_value.EmbedxWIndex();
