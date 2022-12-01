@@ -267,6 +267,14 @@ class TestFftn(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
+            'test_x_complex',
+            rand_x(4, complex=True),
+            None,
+            None,
+            'backward',
+            TypeError,
+        ),
+        (
             'test_n_nagative',
             rand_x(4),
             (-1, -1),
@@ -287,11 +295,11 @@ class TestFftn(unittest.TestCase):
         ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError),
     ],
 )
-class TestFftnException(unittest.TestCase):
-    def test_static_fftn(self):
+class TestRfftnException(unittest.TestCase):
+    def test_static_rfftn(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(
-                paddle.fft.fftn,
+                paddle.fft.rfftn,
                 self.place,
                 self.x,
                 self.n,

@@ -317,9 +317,9 @@ class RReluTest(OpTest):
         self.lower = 0.1
         self.upper = 0.3
         self.is_test = True
-        self.init_params()
+        self.init_prams()
 
-    def init_params(self):
+    def init_prams(self):
         self.dtype = "float64"
         self.x_shape = [2, 3, 4, 5]
 
@@ -343,13 +343,22 @@ class RReluTest(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class RReluTrainingTest(RReluTest):
+class RReluTrainingTest(OpTest):
     def setUp(self):
         self.op_type = "rrelu"
         self.lower = 0.3
-        self.upper = 0.300000009
+        self.upper = 0.3000009
         self.is_test = False
-        self.init_params()
+        self.init_prams()
+
+
+class RReluTrainingTest(OpTest):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.lower = 0.3
+        self.upper = 0.3000009
+        self.is_test = False
+        self.init_prams()
 
 
 if __name__ == "__main__":
