@@ -1218,7 +1218,6 @@ def get_setup_parameters():
         'paddle.inference.contrib',
         'paddle.inference.contrib.utils',
         'paddle.fluid',
-        # 'paddle.fluid.inference',
         'paddle.fluid.dygraph',
         'paddle.fluid.dygraph.dygraph_to_static',
         'paddle.fluid.dygraph.amp',
