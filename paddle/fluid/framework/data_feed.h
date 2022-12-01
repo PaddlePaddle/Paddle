@@ -1151,6 +1151,8 @@ class DataFeed {
   virtual bool get_epoch_finish() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     return gpu_graph_data_generator_.get_epoch_finish();
+#else
+    return false;
 #endif
   }
 

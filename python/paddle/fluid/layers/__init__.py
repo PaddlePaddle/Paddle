@@ -35,6 +35,7 @@ from .collective import *
 from .distributions import *
 from .sequence_lod import *
 from . import rnn
+from .nn import reduce_sum
 
 __all__ = []
 __all__ += nn.__all__
