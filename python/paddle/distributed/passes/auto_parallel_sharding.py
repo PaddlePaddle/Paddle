@@ -26,6 +26,7 @@ from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 from paddle.distributed.fleet.meta_optimizers.common import (
     is_backward_op,
     is_optimizer_op,
+    ParallelMode,
 )
 from paddle.distributed.auto_parallel.operators.common import (
     is_parameter_related,
@@ -37,6 +38,8 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
     get_var_numel,
     get_logger,
+    use_standalone_executor,
+    is_loss_grad_op,
 )
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -85,7 +88,7 @@ class ShardingPass(PassBase):
         self.set_attr("stage", None)
         self.set_attr("sharding_degree", None)  # for parallelizer
         self.set_attr("degree", None)  # for parallelizer_v2
-        self.set_attr("overlap_grad_comm", None)
+        self.set_attr("enable_overlap", None)
         self.set_attr("bucket_size_numel", None)
         self.set_attr("partition_algor", None)
         self.set_attr("params_grads", [])
@@ -121,7 +124,7 @@ class ShardingPass(PassBase):
             "global_rank"
         ) < 0:
             return False
-        if self.get_attr("overlap_grad_comm") is None:
+        if self.get_attr("enable_overlap") is None:
             return False
         if self.get_attr("bucket_size_numel") is None:
             return False
@@ -140,7 +143,7 @@ class ShardingPass(PassBase):
         )
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
-        self.overlap_grad_comm = self.get_attr("overlap_grad_comm")
+        self.enable_overlap = self.get_attr("enable_overlap")
         self.bucket_size_numel = int(self.get_attr("bucket_size_numel"))
         self.partition_algor = self.get_attr("partition_algor")
         params_grads = self.get_attr("params_grads")
@@ -495,7 +498,7 @@ class ShardingPass(PassBase):
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
-                _insert_reduce_op(
+                reduce_op = _insert_reduce_op(
                     main_block,
                     idx,
                     input_name,
@@ -510,6 +513,9 @@ class ShardingPass(PassBase):
                     main_block._remove_op(idx + 1, sync=False)
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
+                    op._set_attr(
+                        'op_namescope', str('/') + ParallelMode.DataParallel
+                    )
 
             # NOTE:
             # var@GRAD = sum(var@GRAD@RENAME@0, var@GRAD@RENAME@1)
@@ -643,21 +649,230 @@ class ShardingPass(PassBase):
 
     def _optimization_pass(self, main_program, startup_program):
 
+        if not use_standalone_executor() or self.stage <= 1:
+            return
+
+        self.grad_coalesce_prefix = 'sharding_coalecse_grad_'
+        self.param_coalesce_prefix = 'sharding_coalecse_param_'
+
+        # TODO support multiple sub_blocks
+        assert (
+            len(self.sharding_infos) == 1
+        ), "gradient synchronization optimization only support one sharding group right now, but got [{}].".format(
+            len(self.sharding_infos)
+        )
+        sharding_info = self.sharding_infos[0]
+
         with paddle.static.program_guard(main_program, startup_program):
-            if self.overlap_grad_comm:
-                _fuse_overlap_gradient_comm()
-            # TODO support multiple sub_blocks
+            if self.enable_overlap:
+                self._gradient_sync_optimization(sharding_info)
             if self.bucket_size_numel > 1:
                 if self.stage == 2:
-                    _fuse_overlap_parameter_comm_stage_two(
-                        self.sharding_infos,
-                        self._dist_context,
-                        fuse_size=self.bucket_size_numel,
-                    )
+                    self._fuse_overlap_parameter_comm_stage_two(sharding_info)
                 elif self.stage == 3:
-                    _fuse_overlap_parameter_comm_stage_three(
-                        self.sharding_infos, fuse_size=self.bucket_size_numel
-                    )
+                    self._fuse_overlap_parameter_comm_stage_three(sharding_info)
+
+    def _gradient_sync_optimization(self):
+
+        main_block = default_main_program().global_block()
+        startup_block = default_startup_program().global_block()
+
+        grad_groups = self._group_grads(main_block, sharding_info)
+        self._coalesce_grads(main_block, sharding_info, grad_groups)
+        overlap_grad_comm()
+
+    def _fuse_overlap_parameter_comm_stage_two(self, sharding_info):
+
+        main_block = default_main_program().global_block()
+        startup_block = default_startup_program().global_block()
+
+        group_to_param_map, param_to_group_map = group_param(
+            sharding_info, self.bucket_size_numel
+        )
+        _logger.info("Sharding Stage2 Optimization:")
+        _logger.info(
+            "Bucket size is [{}], [{}] Parameters are fused into [{}] Buckets".format(
+                self.bucket_size_numel,
+                len(param_to_group_map.keys()),
+                len(group_to_param_map.keys()),
+            )
+        )
+        for i, group in enumerate(group_to_param_map.keys()):
+
+            assert len(group) >= 1
+            if len(group) > 1:
+                coalesce_var_name = unique_name.generate(
+                    self.param_coalesce_prefix + str(i)
+                )
+                startup_block.create_var(
+                    name=coalesce_var_name,
+                    dtype=group.dtype,
+                    persistable=True,
+                    stop_gradient=True,
+                )
+                group.coalesce_var = main_block.create_var(
+                    name=coalesce_var_name,
+                    dtype=group.dtype,
+                    persistable=True,
+                    stop_gradient=True,
+                )
+                startup_block.append_op(
+                    type="coalesce_tensor",
+                    inputs={"Input": group.vars},
+                    outputs={
+                        "Output": group.vars,
+                        "FusedOutput": group.coalesce_var,
+                    },
+                    attrs={
+                        "copy_data": True,
+                        "use_align": True,
+                        "dtype": group.dtype,
+                        OP_ROLE_KEY: OpRole.Forward,
+                    },
+                )
+            else:
+                group.coalesce_var = group.vars[0]
+            _logger.info(
+                "Bucket[{}] size [{}]MB : {}".format(
+                    i,
+                    sum([get_var_size(p) for p in group.vars]),
+                    [p.name for p in group.vars],
+                )
+            )
+
+            # TODO Overlap broadcast with opt and next forward
+            new_op = main_block.append_op(
+                type='c_broadcast',
+                inputs={'X': group.coalesce_var},
+                outputs={'Out': group.coalesce_var},
+                attrs={
+                    'ring_id': sharding_info.group.id,
+                    'root': group.rank,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize,
+                },
+            )
+
+            # NOTE the current dist context lack the presentation for bucket tensor which
+            # composes many tensor with different dims_mapping. we assign a fake dist attr
+            # for it currently.
+
+    def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
+        pass
+
+    def _group_grads(self, main_block, sharding_info, max_fuse_numel=None):
+        """
+        conditions for gradients to be grouped:
+            1. group size < max_fuse_numel
+            2. same dp group (TODO)
+            3. same src rank
+            4. same dtype
+            5. dependency: grad would NOT be used by other ops within group segment
+
+        main logic:
+            1. record coalesce group
+            2. record all dp allreduce/reduce op idx
+
+            3. insert coalesc op
+            4. insert coalesc dependency (avoid allocate memory too early)
+            5. modify and remove allreduce/reduce op
+            6. ensure sharding-dp hybrid parallel logic
+
+        gradients inside same group would be fuse into one coalesce tensor
+        """
+        ops = main_block.ops
+        if fuse_numel is None:
+            # numel for transformer layer
+            h = 4096 + 1
+            ffn_numel = 2 * (4 * h) * h
+            mha_numel = 3 * h * h + h * h
+            max_fuse_numel = ffn_numel + mha_numel
+
+        first_backward_op = None
+        for op in ops:
+            if is_loss_grad_op(op):
+                first_backward_op = op
+        # not backward op, sharding for inference
+        if first_backward_op is None:
+            return
+        first_backward_varname = first_backward_op.out_arg_names[0]
+
+        cur_group = VarGroup(max_fuse_numel)
+        grad_groups = []
+        grouped_grad_names = set()
+
+        def op_depend_on_group(op, group):
+            vars_ = set(op.input_arg_names + op.output_arg_names)
+            var_names = set([var.name for var in group.vars])
+            return len(vars_.intersection(var_names)) > 0
+
+        # analyze groups
+        i = 0
+        while i < len(ops):
+            op = ops[i]
+            if is_data_parallel_reduce_op(op):
+                assert (
+                    op.type == "c_reduce_sum"
+                ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+
+                grad_name = op.out_arg_names[0]
+                param_name = _get_base_name_from_grad_name(grad_name)
+                rank = sharding_info.get_var_rank(param_name)
+                grad_var = block.var(grad_name)
+                grad_numel = get_var_numel(grad_var)
+
+                if cur_group.acceptable(grad_var, rank):
+                    assert grad_name not in grouped_grad_names
+                    cur_group.collect(grad_var, rank)
+                else:
+                    grad_groups.append(cur_group)
+                    cur_group = VarGroup(max_fuse_numel)
+                    cur_group.collect(grad_var, rank)
+
+                if len(cur_group.vars) == 1:
+                    cur_group.coalesce_op_idx = i
+
+                grouped_grad_names.add(grad_name)
+                cur_group.reduce_op_idx.append(i)
+
+                if self.partial_sharding and sharding_info.is_in_local_shard(
+                    param_name
+                ):
+                    cur_group.is_in_local_shard = True
+                    assert (
+                        ops[i + 1].type == "c_allreduce_sum"
+                    ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                    assert (
+                        ops[i + 1].out_arg_names[0] == grad_name
+                    ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
+                    cur_group.allreduce_op_idx.append(i + 1)
+                    i += 1
+            elif op_depend_on_group(op, cur_group):
+                grad_groups.append(cur_group)
+                cur_group = VarGroup(max_fuse_numel)
+
+            i += 1
+
+        # create coalesce tesnor
+        grad_name_to_group_map = {}
+        group_to_grad_name_map = {}
+        for i, group in enumerate(grad_groups):
+            if len(group.vars) > 1:
+                group.coalesce_var = block.create_var(
+                    name=unique_name.generate(
+                        self.grad_coalesce_prefix + str(i)
+                    ),
+                    dtype=group.dtype,
+                    persistable=False,
+                    stop_gradient=True,
+                )
+            else:
+                group.coalesce_var = group.vars[0]
+            for grad in group.vars:
+                grad_name_to_group_map[grad.name] = group
+            group_to_grad_name_map[group]
+
+        return grad_groups
 
 
 def _insert_init_and_broadcast_op(
@@ -749,6 +964,8 @@ def _insert_reduce_op(
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context
     )
+    new_op._set_attr('op_namescope', str('/') + ParallelMode.DataParallel)
+    return new_op
 
 
 def _get_dp_and_sharding_groups(origin_group, sharding_group_size, rank):
@@ -1018,14 +1235,14 @@ def group_param(sharding_info, fuse_size):
     group_to_param_map = {}
     param_to_group_map = {}
     bucket = []
-    cur_group = ParameterGroup(fuse_size)
+    cur_group = VarGroup(fuse_size)
     for param in sharding_info.params:
         rank = sharding_info.get_var_rank(param.name)
 
         if cur_group.acceptable(param, rank):
             cur_group.collect(param, rank)
         else:
-            cur_group = ParameterGroup(fuse_size)
+            cur_group = VarGroup(fuse_size)
             cur_group.collect(param, rank)
 
         if cur_group in group_to_param_map:
@@ -1036,106 +1253,6 @@ def group_param(sharding_info, fuse_size):
         param_to_group_map[param.name] = cur_group
 
     return group_to_param_map, param_to_group_map
-
-
-def _fuse_overlap_gradient_comm():
-    pass
-
-
-def _fuse_overlap_parameter_comm_stage_two(
-    sharding_infos, dist_context, fuse_size
-):
-
-    assert (
-        len(sharding_infos) == 1
-    ), "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
-        len(sharding_infos)
-    )
-    sharding_info = sharding_infos[0]
-
-    main_block = default_main_program().global_block()
-    startup_block = default_startup_program().global_block()
-
-    group_to_param_map, param_to_group_map = group_param(
-        sharding_info, fuse_size
-    )
-    _logger.info("Sharding Stage2 Optimization:")
-    _logger.info(
-        "Bucket size is [{}], [{}] Parameters are fused into [{}] Buckets".format(
-            fuse_size,
-            len(param_to_group_map.keys()),
-            len(group_to_param_map.keys()),
-        )
-    )
-    for i, group in enumerate(group_to_param_map.keys()):
-
-        assert len(group) >= 1
-        if len(group) > 1:
-            coalesce_var_name = unique_name.generate(
-                'coalecse_param_{}'.format(i)
-            )
-            startup_block.create_var(
-                name=coalesce_var_name,
-                dtype=group.dtype,
-                persistable=True,
-                stop_gradient=True,
-            )
-            group.coalesce_var = main_block.create_var(
-                name=coalesce_var_name,
-                dtype=group.dtype,
-                persistable=True,
-                stop_gradient=True,
-            )
-            startup_block.append_op(
-                type="coalesce_tensor",
-                inputs={"Input": group.params},
-                outputs={
-                    "Output": group.params,
-                    "FusedOutput": group.coalesce_var,
-                },
-                attrs={
-                    "copy_data": True,
-                    "use_align": True,
-                    "dtype": group.dtype,
-                    OP_ROLE_KEY: OpRole.Forward,
-                },
-            )
-        else:
-            group.coalesce_var = group.params[0]
-        _logger.info(
-            "Bucket[{}] size [{}]MB : {}".format(
-                i,
-                sum([get_var_size(p) for p in group.params]),
-                [p.name for p in group.params],
-            )
-        )
-
-        # TODO Overlap broadcast with opt and next forward
-        new_op = main_block.append_op(
-            type='c_broadcast',
-            inputs={'X': group.coalesce_var},
-            outputs={'Out': group.coalesce_var},
-            attrs={
-                'ring_id': sharding_info.group.id,
-                'root': group.rank,
-                'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Optimize,
-            },
-        )
-
-        # NOTE the current dist context lack the presentation for bucket tensor which
-        # composes many tensor with different dims_mapping. we assign a fake dist attr
-        # for it currently.
-
-
-def _fuse_overlap_parameter_comm_stage_three(sharding_infos, fuse_size):
-
-    assert (
-        len(sharding_infos) == 1
-    ), "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
-        len(sharding_infos)
-    )
-    sharding_info = sharding_infos[0]
 
 
 class ShardingInfo(object):
@@ -1220,14 +1337,18 @@ class ShardingInfo(object):
         return self.params_grads.get(param_name, None)
 
 
-class ParameterGroup(object):
+class VarGroup(object):
     def __init__(self, max_size):
         self.max_siez = max_size
         self.dtype = None
         self.rank = -1
         self.numel = 0
-        self.params = []
+        self.vars = []
         self.coalesce_var = None
+        self.coalesce_op_idx = None
+        self.reduce_op_idx = []
+        self.allreduce_op_idx = []
+        self.is_in_local_shard = False
 
     def acceptable(self, param, rank):
         if self.numel == 0:
@@ -1245,7 +1366,7 @@ class ParameterGroup(object):
         self.dtype = param.dtype
         self.rank = rank
         self.numel += get_var_numel(param)
-        self.params.append(param)
+        self.vars.append(param)
 
     def __len__(self):
-        return len(self.params)
+        return len(self.vars)
