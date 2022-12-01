@@ -96,7 +96,6 @@ def get_metric(results):
 
 
 def parse_results(results):
-    print("results:", results)
     if results['Throughtput'] > 0:
         return "Throughtput: {} step / s.".format(results['Throughtput'])
     et = results.get("ErrorType", None)

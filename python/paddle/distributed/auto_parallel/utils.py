@@ -1927,7 +1927,6 @@ def _is_recompute_op(op):
 
 
 def get_checkpoints_from_program(program):
-    pass
 
     ops = program.global_block().ops
     if not any([_is_recompute_op(op) for op in ops]):

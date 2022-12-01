@@ -221,7 +221,6 @@ def profiler(args):
     with open(args.ctx_filename, 'rb') as f:
         profile_ctx = pickle.load(f, encoding='latin1')
 
-    print(profile_ctx)
     init_comm(profile_ctx)
 
     main_program, startup_program, loss_var = load_programs(profile_ctx)
@@ -232,13 +231,12 @@ def profiler(args):
 
     exe = get_executor()
 
-    exe.run(startup_program)
-
-    # profile main
-    duration = 0
-    eval_step = 0
-    data_loader._inner_dataloader.start()
     try:
+        exe.run(startup_program)
+        # profile main
+        duration = 0
+        eval_step = 0
+        data_loader._inner_dataloader.start()
         while eval_step < args.profile_end_step:
             start_time = time.time()
 

@@ -38,11 +38,11 @@ def generate_model(use_new_recompute, recompute_granularity):
     modeling._global_process_mesh = auto.ProcessMesh(mesh=[0], dim_names=["x"])
 
     gpt = GPTModel(
-        vocab_size=1000,
-        hidden_size=64,
-        num_hidden_layers=16,
-        num_attention_heads=8,
-        intermediate_size=256,
+        vocab_size=50304,
+        hidden_size=2048,
+        num_hidden_layers=48,
+        num_attention_heads=16,
+        intermediate_size=2048 * 4,
         hidden_act="gelu",
         hidden_dropout_prob=0.0,
         attention_probs_dropout_prob=0.0,
@@ -57,7 +57,7 @@ def generate_model(use_new_recompute, recompute_granularity):
         recompute_granularity=recompute_granularity,
     )
     model = GPTForPretraining(
-        gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02
+        gpt, vocab_size=50304, hidden_size=2048, initializer_range=0.02
     )
     criterion = GPTPretrainingCriterion()
     return model, criterion
@@ -91,10 +91,14 @@ class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-6
         self.atol = 1e-8
-        self.batch_size = 1
-        self.batch_num = 2
+        self.batch_size = 8
+        self.batch_num = 200
         self.clip_norm = 0.2
-        self.dataset = FakeDataset(self.batch_size * self.batch_num)
+        self.dataset = FakeDataset(
+            self.batch_size * self.batch_num,
+            vocab_size=50304,
+            sequence_len=1024,
+        )
 
     def init(self, engine):
         paddle.seed(2022)
@@ -163,10 +167,9 @@ class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
 
         # mp2 recompute full
         rc3_engine = self.get_engine(True, True, "full")
-        history = rc3_engine._tune(self.dataset, 3, batch_size=self.batch_size)
-        print("***" * 30)
-        print(rc3_engine.main_program)
-        rc3_losses = np.array(history.history["loss"])
+        rc3_engine._tune(self.dataset, 3, batch_size=self.batch_size)
+        # print("***" * 30)
+        # rc3_losses = np.array(history.history["loss"])
         # self.check_results(mp_losses, rc3_losses)
 
     #     rc0_vars = self.recompute_vars(mp_engine.main_program)

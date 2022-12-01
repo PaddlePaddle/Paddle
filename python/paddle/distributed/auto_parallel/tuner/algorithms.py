@@ -168,9 +168,6 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
 
     def collect_model_info(self, main_prog, startup_prog):
         checkpoints = self._config.recompute.get("checkpoints", [])
-        no_recompute_segments = self._config.recompute.get(
-            "no_recompute_segments", []
-        )
 
         rc_state = RecomputeState(
             main_prog.global_block(), main_prog.global_block().ops
@@ -181,65 +178,75 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
             checkpoints, is_logging=False
         )
 
-        self._total_num_trial = len(segments) - len(no_recompute_segments)
-        self._total_segments = list(range(len(segments)))
-        self._tuning_segments = list(
-            set(self._total_segments) - set(no_recompute_segments)
-        )
+        self._total_num_trial = len(segments)
+        self._tuning_segments = list(range(len(segments)))
+        self._trail_left = 0
+        self._trail_right = len(segments) - 1
+        self._trial_idx = int(0 + (len(segments)) / 2)
 
     def _init_spaces(self):
-        self._trial_idx = 0
         self._recompute_mode = "all"
 
     def next_trial(self):
-        if self._recompute_mode == "all":
-            self._recompute_flag = False
-            new_strategy = copy.deepcopy(self._config.dist_strategy)
-            name = "trial-recompute-all-segments"
-            return Trial(new_strategy, name, self.changed_configs)
-        elif self._recompute_mode == "none":
-            self._recompute_flag = False
-            new_strategy = copy.deepcopy(self._config.dist_strategy)
-            recompute = new_strategy.recompute
-            recompute.no_recompute_segments = self._total_segments
-            name = "trial-recompute-none-segments"
-            return Trial(new_strategy, name, self.changed_configs)
-        elif (
-            self._recompute_mode == "part"
-            and self._trial_idx < self._total_num_trial
-        ):
-            index = int(
-                len(self._tuning_segments) * pow(0.5, self._trial_idx + 1)
-            )
-            new_no_recompute = self._tuning_segments[:index]
-            new_strategy = copy.deepcopy(self._config.dist_strategy)
-            recompute = new_strategy.recompute
-            recompute.no_recompute_segments.extend(new_no_recompute)
-            name = "trial-recompute-part-segments [{}]".format(self._trial_idx)
-            return Trial(new_strategy, name, self.changed_configs)
+        if self._trial_idx < self._total_num_trial:
+            if self._recompute_mode == "all":
+                self._recompute_flag = False
+                new_strategy = copy.deepcopy(self._config.dist_strategy)
+                name = "trial-recompute-all-segments"
+                return Trial(new_strategy, name, self.changed_configs)
+            elif self._recompute_mode == "none":
+                self._recompute_flag = False
+                new_strategy = copy.deepcopy(self._config.dist_strategy)
+                recompute = new_strategy.recompute
+                recompute.enable = False
+                recompute.checkpoints = []
+                name = "trial-recompute-none-segments"
+                return Trial(new_strategy, name, self.changed_configs)
+            elif self._recompute_mode == "part":
+                new_no_recompute = self._tuning_segments[: self._trial_idx]
+                new_strategy = copy.deepcopy(self._config.dist_strategy)
+                recompute = new_strategy.recompute
+                recompute.no_recompute_segments.extend(new_no_recompute)
+                name = "trial-recompute-part-segments-idx{}".format(
+                    self._trial_idx
+                )
+                return Trial(new_strategy, name, self.changed_configs)
         else:
             return Trial(None, None, None, status=TrialStatus.STOPPED)
 
     def update(self, results):
 
         et = results.get("ErrorType", None)
-        if et and et == "ResourceExhaustedError":
-            self._trial_idx = self._total_num_trial
-            if self._recompute_mode == "all":
+        if self._recompute_mode == "all":
+            if et and et == "ResourceExhaustedError":
+                self._trial_idx = self._total_num_trial
                 self._logger.info(
-                    "Last trial is failed with OOM, all remaining trials are pruned to save time !"
-                )
-            elif self._recompute_mode == "none":
-                self._logger.info(
-                    "Last trial is failed with OOM, all remaining trials are pruned to save time !"
+                    "Recompute all candidate segments is failed with OOM, please reduce model size or batch size."
                 )
             else:
-                self._logger.info(
-                    "Last trial is failed with OOM, all remaining trials are pruned to save time !"
-                )
-        elif self._recompute_mode == "all":
-            self._recompute_mode = "none"
+                self._recompute_mode = "none"
         elif self._recompute_mode == "none":
-            self._recompute_mode = "part"
+            if et and et == "ResourceExhaustedError":
+                self._recompute_mode = "part"
+            else:
+                self._trial_idx = self._total_num_trial
+                self._logger.info(
+                    "Recompute is unnecessary for this model size, which will reduce the flops."
+                )
         else:
-            self._trial_idx += 1
+            if self._trail_left >= self._trail_right:
+                self._trial_idx = self._total_num_trial
+            elif et and et == "ResourceExhaustedError":
+                self._trail_left = self._trail_left
+                self._trail_right = self._trial_idx - 1
+                self._trial_idx = int(
+                    self._trail_left
+                    + (self._trail_right - self._trail_left) / 2
+                )
+            else:
+                self._trail_left = self._trial_idx + 1
+                self._trail_right = self._trail_right
+                self._trial_idx = int(
+                    self._trail_left
+                    + (self._trail_right - self._trail_left) / 2
+                )
