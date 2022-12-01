@@ -39,7 +39,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import (
     create_get_args_node,
     create_set_args_node,
 )
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import (

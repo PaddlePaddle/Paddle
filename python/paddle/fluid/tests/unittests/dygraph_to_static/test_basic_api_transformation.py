@@ -149,15 +149,15 @@ def dyfunc_Conv2D(input):
 
 
 def dyfunc_Conv3D(input):
-    conv3d = fluid.dygraph.Conv3D(
-        num_channels=3,
-        num_filters=2,
-        filter_size=3,
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.99)
+    conv3d = paddle.nn.Conv3D(
+        in_channels=3,
+        out_channels=2,
+        kernel_size=3,
+        weight_attr=paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
         bias_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
     res = conv3d(input)
@@ -182,16 +182,15 @@ def dyfunc_Conv2DTranspose(input):
 
 
 def dyfunc_Conv3DTranspose(input):
-    conv3dTranspose = fluid.dygraph.nn.Conv3DTranspose(
-        num_channels=3,
-        num_filters=12,
-        filter_size=12,
-        use_cudnn=False,
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.99)
+    conv3dTranspose = paddle.nn.Conv3DTranspose(
+        in_channels=3,
+        out_channels=12,
+        kernel_size=12,
+        weight_attr=paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
-        bias_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+        bias_attr=paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
     ret = conv3dTranspose(input)
@@ -199,28 +198,24 @@ def dyfunc_Conv3DTranspose(input):
 
 
 def dyfunc_Linear(input):
-    fc = fluid.dygraph.Linear(
-        input_dim=10,
-        output_dim=5,
-        act='relu',
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.99)
+    fc = paddle.nn.Linear(
+        in_features=10,
+        out_features=5,
+        weight_attr=paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
-        bias_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+        bias_attr=paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
+    m = paddle.nn.ReLU()
     res = fc(input)
-    return res
+    return m(res)
 
 
 def dyfunc_Pool2D(input):
-    fluid.dygraph.Pool2D(
-        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
-    )
-    pool2d = fluid.dygraph.Pool2D(
-        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
-    )
+    paddle.nn.AvgPool2D(kernel_size=2, stride=1)
+    pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
     res = pool2d(input)
     return res
 
