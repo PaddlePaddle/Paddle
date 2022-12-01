@@ -23,14 +23,11 @@ from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
-from paddle.distributed.fleet.meta_optimizers.common import (
-    is_backward_op,
-    is_optimizer_op,
-    ParallelMode,
-)
+
 from paddle.distributed.auto_parallel.operators.common import (
     is_parameter_related,
     is_data_parallel_reduce_op,
+    ParallelMode,
 )
 from paddle.distributed.auto_parallel.utils import (
     _get_comm_group,
@@ -40,6 +37,8 @@ from paddle.distributed.auto_parallel.utils import (
     get_logger,
     use_standalone_executor,
     is_loss_grad_op,
+    is_backward_op,
+    is_optimize_op,
 )
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -405,7 +404,7 @@ class ShardingPass(PassBase):
 
         should_removed_optimizer_states = []
         for idx, op in reversed(list(enumerate(main_block.ops))):
-            if not is_optimizer_op(op):
+            if not is_optimize_op(op):
                 break
 
             if op.type in _supported_optimizer_type:
@@ -551,7 +550,7 @@ class ShardingPass(PassBase):
                     not_used_param_nane.append(param_name)
 
             for idx, op in reversed(list(enumerate(main_block.ops))):
-                if is_optimizer_op(op):
+                if is_optimize_op(op):
                     continue
 
                 for input_name in op.input_arg_names:
@@ -1087,7 +1086,7 @@ def _is_param_grad_fp32_cast_op(block, op):
 
 def _is_param_fp16_cast_op(block, op, params):
 
-    if is_optimizer_op(op):
+    if is_optimize_op(op):
         return False
     if not _is_desired_cast_op(block, op):
         return False
@@ -1272,7 +1271,7 @@ def re_order_program(block, param_grads, dist_context):
     num_ops = len(block.ops)
     remove_op_indices = []
     # TODO support case when optimizer is not the last op
-    if is_optimizer_op(last_op) and last_op.type in _supported_optimizer_type:
+    if is_optimize_op(last_op) and last_op.type in _supported_optimizer_type:
         # record optimizer
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type not in _supported_optimizer_type:
@@ -1385,7 +1384,7 @@ class ShardingInfo(object):
 
         param_usage = {x: 0 for x in self.param_names}
         for op in block.ops:
-            if is_optimizer_op(op):
+            if is_optimize_op(op):
                 continue
             for input_name in op.input_arg_names:
                 if input_name in self.param_names:
