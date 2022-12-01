@@ -167,6 +167,7 @@ inline std::vector<phi::capi::DenseTensor> PD_MultiInputAt(
   for (size_t i = 0; i < list.size; ++i) {
     ret.emplace_back(data[i]);
   }
+  PD_DeletePointerList(list);
   return ret;
 }
 
@@ -182,6 +183,7 @@ inline std::vector<phi::capi::DenseTensor> PD_MultiOutputAt(
   for (size_t i = 0; i < list.size; ++i) {
     ret.emplace_back(data[i]);
   }
+  PD_DeletePointerList(list);
   return ret;
 }
 
