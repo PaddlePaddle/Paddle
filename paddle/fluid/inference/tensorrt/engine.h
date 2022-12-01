@@ -461,9 +461,12 @@ class TensorRTEngine {
   ShapeMapType optim_shape_tensor() { return optim_shape_tensor_; }
 
   bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
-                               std::vector<std::string>* changed) {
+                               const ShapeMapType& runtime_shape_tensor,
+                               std::vector<std::string>* changed,
+                               std::vector<std::string>* tensor_changed) {
     bool ret = false;
     changed->clear();
+    tensor_changed->clear();
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
@@ -512,6 +515,56 @@ class TensorRTEngine {
                     << Vec2Str(bak_max_shape) << " to "
                     << Vec2Str(max_input_shape_[name]);
         if (min_change || max_change) changed->push_back(name);
+      }
+    }
+    for (const auto& it : runtime_shape_tensor) {
+      auto name = it.first;
+      auto shape_tensor = it.second;
+      bool min_change = false;
+      bool max_change = false;
+      if (!min_shape_tensor_.count(name)) {
+        min_shape_tensor_[name] = shape_tensor;
+        max_shape_tensor_[name] = shape_tensor;
+        optim_shape_tensor_[name] = shape_tensor;
+        min_change = true;
+        max_change = true;
+        ret = true;
+      } else {
+        PADDLE_ENFORCE_EQ(min_shape_tensor_[name].size(),
+                          shape_tensor.size(),
+                          platform::errors::InvalidArgument(
+                              "TRT dynamic_shape min_shape_tensor %s size not "
+                              "equal, the min_shape_tensor[%s].size()=%d"
+                              ", but the runtime_shape_tensor[%s].size()=%d.",
+                              name,
+                              name,
+                              min_shape_tensor_[name].size(),
+                              name,
+                              shape_tensor.size()));
+
+        auto bak_min_shape = min_shape_tensor_[name];
+        auto bak_max_shape = max_shape_tensor_[name];
+        for (size_t d = 0; d < shape_tensor.size(); ++d) {
+          if (shape_tensor[d] < min_shape_tensor_[name][d]) {
+            ret = true;
+            min_change = true;
+            min_shape_tensor_[name][d] = shape_tensor[d];
+          }
+          if (shape_tensor[d] > max_shape_tensor_[name][d]) {
+            ret = true;
+            max_change = true;
+            max_shape_tensor_[name][d] = shape_tensor[d];
+          }
+        }
+        if (min_change)
+          LOG(INFO) << "refactor shape tensor: " << name << ", min_shape from "
+                    << Vec2Str(bak_min_shape) << " to "
+                    << Vec2Str(min_shape_tensor_[name]);
+        if (max_change)
+          LOG(INFO) << "refactor shape range: " << name << ", max_shape from "
+                    << Vec2Str(bak_max_shape) << " to "
+                    << Vec2Str(max_shape_tensor_[name]);
+        if (min_change || max_change) tensor_changed->push_back(name);
       }
     }
     return ret;
