@@ -914,6 +914,7 @@ class ShardingPass(PassBase):
                     group.vars[-1].name, grad_name
                 )
                 op._rename_input(grad_name, group.coalesce_var.name)
+                op._rename_output(grad_name, group.coalesce_var.name)
 
             if idx in remove_reduce_op_indices:
                 block._remove_op(idx, sync=False)
