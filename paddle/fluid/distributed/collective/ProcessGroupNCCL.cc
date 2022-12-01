@@ -17,6 +17,7 @@
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
 #include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -118,14 +119,7 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
 }
 
 ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
-  const std::string& key = GetKeyFromPlace(place);
-  const auto& iter = place_to_comm_ctx_.find(key);
-  PADDLE_ENFORCE_NE(
-      iter,
-      place_to_comm_ctx_.end(),
-      platform::errors::NotFound(
-          "Cannot find the NCCL commmunicator in this process group."));
-  return iter->second->nccl_comm();
+  return platform::NCCLCommContext::Instance().Get(gid_, place)->comm();
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
@@ -506,10 +500,8 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   auto* calc_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   auto comm_ctx = std::make_unique<phi::GPUContext>(place);
-  ncclComm_t nccl_comm;
-  NCCL_CHECK(platform::dynload::ncclCommInitRank(
-      &nccl_comm, GetSize(), nccl_id, GetRank()));
-  comm_ctx->set_nccl_comm(nccl_comm);
+  platform::NCCLCommContext::Instance().CreateComm(
+      &nccl_id, size_, rank_, place.GetDeviceId(), gid_);
 
   place_to_calc_event_.emplace(place_key, place);
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
@@ -553,7 +545,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
 
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
-  auto nccl_comm = comm_ctx->nccl_comm();
+  auto nccl_comm = NCCLComm(place);
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
   fn(nccl_comm, nccl_stream);
 
@@ -628,10 +620,10 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
     platform::CUDADeviceGuard guard(places[i]);
 
     dev_ctx[i].reset(new phi::GPUContext(places[i]));
-    ncclComm_t nccl_comm;
-    NCCL_CHECK(platform::dynload::ncclCommInitRank(
-        &nccl_comm, GetSize(), nccl_id, GetRank()));
-    dev_ctx[i]->set_nccl_comm(nccl_comm);
+    auto* nccl_comm = platform::NCCLCommContext::Instance().CreateComm(
+        &nccl_id, size_, rank_, places[i].GetDeviceId(), gid_);
+    // for compatibility
+    dev_ctx[i]->set_nccl_comm(nccl_comm->comm());
     dev_ctx_raw[i] = dev_ctx[i].get();
   }
 
