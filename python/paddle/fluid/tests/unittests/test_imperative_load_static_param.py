@@ -21,13 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import (
-    NCE,
-    BatchNorm,
-    Embedding,
-    LayerNorm,
-    PRelu,
-)
+from paddle.fluid.dygraph.nn import NCE, BatchNorm, Embedding, LayerNorm, PRelu
 from paddle.nn import Linear
 
 
@@ -124,10 +118,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
         groupnorm_out1 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
         )
         groupnorm_out2 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
         )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')

@@ -386,8 +386,8 @@ class GroupNorm(Layer):
                 shape=param_shape,
                 default_initializer=Constant(1.0),
             )
-            self.weight.stop_gradient = (
-                self._weight_attr is not None
+            self.weight.stop_gradient = self._weight_attr is not None and (
+                hasattr(self._weight_attr, "learning_rate")
                 and self._weight_attr.learning_rate == 0.0
             )
 
@@ -403,8 +403,8 @@ class GroupNorm(Layer):
             self.bias = self.create_parameter(
                 attr=self._bias_attr, shape=param_shape, is_bias=True
             )
-            self.bias.stop_gradient = (
-                self._bias_attr is not None
+            self.bias.stop_gradient = self._bias_attr is not None and (
+                hasattr(self._bias_attr, "learning_rate")
                 and self._bias_attr.learning_rate == 0.0
             )
 

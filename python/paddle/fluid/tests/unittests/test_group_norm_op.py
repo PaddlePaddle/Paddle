@@ -293,7 +293,11 @@ class TestGroupNormException(unittest.TestCase):
 
 class TestGroupNormEager(unittest.TestCase):
     def test_dygraph_api(self):
-        self.dtype = np.float64
+
+        # not supported float64
+        # only support float32
+        self.dtype = np.float32
+
         self.shape = (8, 32, 32)
         input = np.random.random(self.shape).astype(self.dtype)
 
@@ -349,7 +353,11 @@ class TestGroupNormEager_fp32(unittest.TestCase):
 
 class TestGroupNormEager_fp16(unittest.TestCase):
     def test_dygraph_api(self):
+
+        # not supported float16
+        # only support float32
         self.dtype = np.float32
+
         self.shape = (8, 32, 32)
         input = np.random.random(self.shape).astype(self.dtype)
 
