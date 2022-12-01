@@ -14,9 +14,9 @@
 
 import os
 import pickle
+import socket
 import subprocess
 import sys
-import socket
 import tempfile
 import time
 import unittest
