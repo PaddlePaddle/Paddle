@@ -36,12 +36,25 @@ void ConcatKernel(const Context& dev_ctx,
 
   axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
 
+  VLOG(10) << "axis: " << axis << " x.size: " << x.size()
+           << "x[0].dim: " << x[0]->dims().to_str();
+
   std::vector<phi::DDim> x_dims;
   for (size_t i = 0; i < x.size(); ++i) {
     x_dims.push_back(x[i]->dims());
   }
 
-  phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
+  phi::DDim tmp_1dim, out_dims;
+  bool dim_is_0 = (x[0]->dims().size() == 0);
+
+  if (dim_is_0) {
+    out_dims[0] = x.size();
+    tmp_1dim[0] = 1;
+  } else {
+    out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
+  }
+  VLOG(10) << "out dims: " << out_dims.to_str() << "out num:" << out->numel();
+
   out->Resize(out_dims);
   out->mutable_data<T>(dev_ctx.GetPlace());
 
@@ -83,7 +96,7 @@ void ConcatKernel(const Context& dev_ctx,
       if (in->numel() == 0UL) {
         continue;
       }
-      auto in_stride = phi::stride_numel(in->dims());
+      auto in_stride = phi::stride_numel(dim_is_0 ? tmp_1dim : in->dims());
       auto out_stride = phi::stride_numel(out->dims());
       paddle::operators::StridedNumelCopyWithAxis<T>(
           dev_ctx,
@@ -103,6 +116,9 @@ void ConcatKernel(const Context& dev_ctx,
       } else {
         continue;
       }
+    }
+    for (auto it = inputs.begin(); it != inputs.end(); it++) {
+      it->Resize(tmp_1dim);
     }
     phi::funcs::ConcatFunctor<Context, T> functor;
     functor(dev_ctx, inputs, axis, out);
