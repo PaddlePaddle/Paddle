@@ -1360,6 +1360,7 @@ def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
+    os.system('pip install ninja')
     # Execute the build process,cmake and make
     if cmake_and_make:
         build_steps()
