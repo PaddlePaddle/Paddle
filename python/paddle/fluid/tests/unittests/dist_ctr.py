@@ -101,8 +101,8 @@ class TestDistCTR2x2(TestDistRunnerBase):
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
         )
-        acc = fluid.layers.accuracy(input=predict, label=label)
-        auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+        acc = paddle.static.accuracy(input=predict, label=label)
+        auc_var, batch_auc_var, auc_states = paddle.static.auc(
             input=predict, label=label
         )
         cost = fluid.layers.cross_entropy(input=predict, label=label)

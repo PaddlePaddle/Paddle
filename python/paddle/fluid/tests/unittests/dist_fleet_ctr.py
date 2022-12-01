@@ -150,9 +150,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
         )
-        acc = fluid.layers.accuracy(input=predict, label=label)
+        acc = paddle.static.accuracy(input=predict, label=label)
 
-        auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+        auc_var, batch_auc_var, auc_states = paddle.static.auc(
             input=predict, label=label
         )
 

@@ -55,7 +55,7 @@ class SparseLoadOp(unittest.TestCase):
                     ),
                 ),
             )
-            loss = fluid.layers.reduce_mean(fc1)
+            loss = paddle.mean(fc1)
         return loss
 
     def save_origin_model(self, emb_array, fc_array):

@@ -105,7 +105,7 @@ class TestLogNet(unittest.TestCase):
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 

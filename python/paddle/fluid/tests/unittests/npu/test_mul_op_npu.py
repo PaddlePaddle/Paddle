@@ -248,7 +248,7 @@ class TestMulNet(unittest.TestCase):
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -325,7 +325,7 @@ class TestMulNet3_2(unittest.TestCase):
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -405,7 +405,7 @@ class TestMulNet3_2_xc2(unittest.TestCase):
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -486,7 +486,7 @@ class TestMulNet4_2(unittest.TestCase):
             prediction = paddle.static.nn.fc(x=result, size=2, activation='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 

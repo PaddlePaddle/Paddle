@@ -174,8 +174,8 @@ class TestSaveInferenceModel(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='int32')
             predict = paddle.static.nn.fc(x, size=2, activation='softmax')
-            acc = fluid.layers.accuracy(input=predict, label=y)
-            auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+            acc = paddle.static.accuracy(input=predict, label=y)
+            auc_var, batch_auc_var, auc_states = paddle.static.auc(
                 input=predict, label=y
             )
             cost = fluid.layers.cross_entropy(input=predict, label=y)

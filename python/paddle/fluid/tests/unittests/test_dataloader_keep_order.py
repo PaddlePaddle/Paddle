@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import os
 import unittest
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 
 def create_reader(shape, batch_number):
@@ -47,7 +49,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         )
 
         fc = paddle.static.nn.fc(input_data, size=10)
-        loss = fluid.layers.reduce_mean(fc)
+        loss = paddle.mean(fc)
 
         loader.set_batch_generator(
             create_reader(self.shape, self.batch_num),
