@@ -3534,7 +3534,7 @@ class TestBook(LayerTest):
                 name="input", shape=[13, 11], dtype='float32'
             )
 
-            out = layers.sum(input)
+            out = paddle.add_n(input)
             return out
 
     def make_slice(self):
@@ -3669,21 +3669,12 @@ class TestBook(LayerTest):
             )
             return loss
 
-    def make_fsp_matrix(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            y = self._get_data(name="Y", shape=[8, 4, 4], dtype="float32")
-            out = layers.fsp_matrix(x, y)
-            return out
-
     def make_pixel_shuffle(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
-            out = layers.pixel_shuffle(x, upscale_factor=3)
+            out = paddle.nn.functional.pixel_shuffle(x, upscale_factor=3)
             return out
 
     def make_mse_loss(self):

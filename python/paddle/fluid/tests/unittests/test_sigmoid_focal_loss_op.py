@@ -18,7 +18,8 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
-from paddle.fluid import core
+
+import paddle
 
 
 def sigmoid_focal_loss_forward(
@@ -103,15 +104,15 @@ class TestSigmoidFocalLossOp1(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSigmoidFocalLossOp2(TestSigmoidFocalLossOp1):
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = paddle.CUDAPlace(0)
         self.check_output_with_place(place, atol=2e-3)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = paddle.CUDAPlace(0)
         self.check_grad_with_place(
             place, ['X'], 'Out', max_relative_error=0.002
         )
@@ -126,15 +127,15 @@ class TestSigmoidFocalLossOp3(TestSigmoidFocalLossOp1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSigmoidFocalLossOp4(TestSigmoidFocalLossOp3):
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = paddle.CUDAPlace(0)
         self.check_output_with_place(place, atol=2e-3)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = paddle.CUDAPlace(0)
         self.check_grad_with_place(
             place, ['X'], 'Out', max_relative_error=0.002
         )

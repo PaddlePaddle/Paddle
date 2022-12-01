@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -71,7 +71,7 @@ class TestImperativeMnist(unittest.TestCase):
             dy_mask = fluid.dygraph.base.to_variable(mask)
             dy_mask.stop_gradient = True
 
-            loss_probs = fluid.layers.log(loss_probs)
+            loss_probs = paddle.log(loss_probs)
             loss_probs = fluid.layers.elementwise_mul(loss_probs, dy_mask)
             loss_probs = paddle.sum(loss_probs, axis=-1)
 
@@ -139,7 +139,7 @@ class TestImperativeMnist(unittest.TestCase):
 
             st_loss_probs = policy(st_state)
 
-            st_loss_probs = fluid.layers.log(st_loss_probs)
+            st_loss_probs = paddle.log(st_loss_probs)
             st_loss_probs = fluid.layers.elementwise_mul(st_loss_probs, st_mask)
             st_loss_probs = paddle.sum(st_loss_probs, axis=-1)
 

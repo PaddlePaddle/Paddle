@@ -64,7 +64,7 @@ class AdaRoundLoss:
         square_cost = fluid.layers.square_error_cost(
             ada_quantized_output, orig_output
         )
-        recon_loss = fluid.layers.reduce_mean(paddle.sum(square_cost, axis=-1))
+        recon_loss = paddle.mean(paddle.sum(square_cost, axis=-1))
         return recon_loss
 
     def compute_round_loss(self, alpha_v, warm_start, beta):
