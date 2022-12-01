@@ -39,12 +39,12 @@ class PassResultInfoForRuntime {
   }
 
   template <typename T>
-  void Set(int predictor_id, const std::string pass_name, T infos) {
+  void Set(int predictor_id, const std::string& pass_name, T infos) {
     map[predictor_id].emplace(pass_name, infos);
   }
 
   template <typename T>
-  T Get(int predictor_id, const std::string pass_name) {
+  T Get(int predictor_id, const std::string& pass_name) {
     PADDLE_ENFORCE_EQ(
         map.count(predictor_id) && map[predictor_id].count(pass_name),
         true,

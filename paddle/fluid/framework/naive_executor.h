@@ -86,7 +86,7 @@ class NaiveExecutor {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_{nullptr};
 
-  HookFunc hookfunc_{nullptr};
+  std::vector<HookFunc> hookfunc_;
 
   // Record information that tensor_a should ShareBufferWith tensor_b.
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>

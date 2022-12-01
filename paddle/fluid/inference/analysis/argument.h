@@ -141,7 +141,7 @@ struct Argument {
   unique_ptr_t field__##_;
 
   DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
-  DECL_ARGUMENT_FIELD(parent_predictor_id, ParentPredictorID, int);
+  DECL_ARGUMENT_FIELD(root_predictor_id, RootPredictorID, int);
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.

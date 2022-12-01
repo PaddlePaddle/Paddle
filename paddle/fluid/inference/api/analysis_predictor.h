@@ -517,7 +517,7 @@ class AnalysisPredictor : public PaddlePredictor {
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
   int predictor_id_;
-  int parent_predictor_id_{-1};
+  int root_predictor_id_{-1};
 
  private:
   std::vector<Exp_OutputHookFunc> hookfuncs_;

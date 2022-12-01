@@ -239,8 +239,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
     } else if (pass_name == "memory_optimize_pass") {
-      pass->Set("parent_predictor_id",
-                new int(argument->parent_predictor_id()));
+      pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =

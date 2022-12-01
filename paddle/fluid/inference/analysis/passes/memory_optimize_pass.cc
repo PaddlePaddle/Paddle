@@ -327,7 +327,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
   pass_res_info->Set(
-      argument->parent_predictor_id(), "memory_optimize_pass", node2cluster);
+      argument->root_predictor_id(), "memory_optimize_pass", node2cluster);
 
   return;
 }

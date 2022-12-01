@@ -264,7 +264,7 @@ bool AnalysisPredictor::Init(
   }
 
   if (!status_is_cloned_) {
-    parent_predictor_id_ = predictor_id_;
+    root_predictor_id_ = predictor_id_;
   }
 
   // no matter with or without MKLDNN
@@ -625,7 +625,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         inference::analysis::PassResultInfoForRuntime::Instance();
     auto reuse_table =
         pass_res_info->Get<std::unordered_map<std::string, std::string>>(
-            parent_predictor_id_, "memory_optimize_pass");
+            root_predictor_id_, "memory_optimize_pass");
     executor_->MakeReusePlan(reuse_table);
   }
 
@@ -1094,7 +1094,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
-  argument_.SetParentPredictorID(parent_predictor_id_);
+  argument_.SetRootPredictorID(root_predictor_id_);
   argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
@@ -2143,7 +2143,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
-  x->parent_predictor_id_ = this->parent_predictor_id_;
+  x->root_predictor_id_ = this->root_predictor_id_;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
