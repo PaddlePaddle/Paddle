@@ -347,9 +347,6 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
       case ReshapeKernelOpName::squeeze:
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
         break;
-      case ReshapeKernelOpName::squeeze2:
-        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
-        break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenGradOp(ctx, x_dims);
         break;
@@ -408,14 +405,6 @@ REGISTER_OP_KERNEL(
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
     ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
                              ReshapeKernelOpName::squeeze2>);
-
-REGISTER_OP_KERNEL(
-    squeeze2_grad,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
-    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
-                                 ReshapeKernelOpName::squeeze2>);
 
 REGISTER_OP_KERNEL(
     reshape,
