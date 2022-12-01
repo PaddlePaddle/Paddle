@@ -138,7 +138,6 @@ from .math import atan  # noqa: F401
 from .math import ceil  # noqa: F401
 from .math import ceil_  # noqa: F401
 from .math import cos  # noqa: F401
-from .math import test_op  # noqa: F401
 from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401

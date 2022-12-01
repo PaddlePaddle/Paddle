@@ -867,14 +867,6 @@
     func : tanh_shrink
   backward : tanh_shrink_grad
 
-- op : test_op
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : cos
-
 - op : thresholded_relu
   args : (Tensor x, float threshold = 1.0)
   output : Tensor

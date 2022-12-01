@@ -451,10 +451,6 @@ def ceil(x, name=None):
     return out
 
 
-def test_op(x, axis, name=None):
-    return
-
-
 def cos(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
