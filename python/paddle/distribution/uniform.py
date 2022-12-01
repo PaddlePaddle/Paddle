@@ -23,12 +23,7 @@ from paddle.fluid.framework import (
     _non_static_mode,
     in_dygraph_mode,
 )
-from paddle.fluid.layers import (
-    nn,
-    tensor,
-)
-
-import paddle
+from paddle.fluid.layers import nn, tensor
 from paddle.tensor import random
 
 
