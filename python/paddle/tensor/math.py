@@ -74,6 +74,7 @@ from .ops import sqrt  # noqa: F401
 from .ops import sqrt_  # noqa: F401
 from .ops import square  # noqa: F401
 from .ops import tan  # noqa: F401
+from .ops import test_op  # noqa: F401
 
 __all__ = []
 
