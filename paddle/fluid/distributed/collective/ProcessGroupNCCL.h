@@ -161,8 +161,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   static void GroupEnd();
 
-  ncclComm_t NCCLComm(const Place& place) const;
-
   // TODO(liyurui): This API will be moved later
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,

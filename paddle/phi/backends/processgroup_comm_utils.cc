@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/backends/c_comm_lib.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
@@ -46,8 +47,9 @@ ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
 #endif
   if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    return static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)->NCCLComm(
-        place);
+    return paddle::platform::NCCLCommContext::Instance()
+        .Get(global_gid, place)
+        ->comm();
 #else
     return nullptr;
 #endif

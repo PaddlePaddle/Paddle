@@ -31,6 +31,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
@@ -421,10 +422,9 @@ void SyncBatchNormGradFunctor(
 
   if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
           global_gid)) {
-    auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-        paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
-            global_gid));
-    comm = nccl_pg->NCCLComm(x->place());
+    comm = paddle::platform::NCCLCommContext::Instance()
+               .Get(global_gid, x->place())
+               ->comm();
   } else {
     comm = ctx.nccl_comm();
   }

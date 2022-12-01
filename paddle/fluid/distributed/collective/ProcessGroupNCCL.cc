@@ -118,10 +118,6 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
   }
 }
 
-ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
-  return platform::NCCLCommContext::Instance().Get(gid_, place)->comm();
-}
-
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
@@ -545,7 +541,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
 
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
-  auto nccl_comm = NCCLComm(place);
+  auto nccl_comm =
+      platform::NCCLCommContext::Instance().Get(gid_, place)->comm();
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
   fn(nccl_comm, nccl_stream);
 
