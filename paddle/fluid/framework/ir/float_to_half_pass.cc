@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/float_to_mixed_pass.h"
+#include "paddle/fluid/framework/ir/float_to_half_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
@@ -24,7 +24,7 @@ namespace ir {
 
 namespace {
 
-using VarType = FloatToMixedPass::VarType;
+using VarType = FloatToHalfPass::VarType;
 
 bool PhiKernelSupportPrecision(
     const std::string& op_type,
@@ -130,7 +130,7 @@ inline bool IsFloatType(VarType::Type type) {
   return (type == VarType::FP64) || (type == VarType::FP32);
 }
 
-inline bool IsMixedType(VarType::Type type) {
+inline bool IsHalfType(VarType::Type type) {
   return (type == VarType::FP16) || (type == VarType::BF16);
 }
 
@@ -139,7 +139,7 @@ inline bool IsMixedType(VarType::Type type) {
 // The set of ops that support fp16 calculation and are considered
 // numerically-dangerous, slower and whose effects may also be observed in
 // downstream ops.
-void FloatToMixedPass::SetDefaultBlacklist() const {
+void FloatToHalfPass::SetDefaultBlacklist() const {
   black_list_.insert({
       // numerically-dangerous
       "acos",
@@ -173,11 +173,11 @@ void FloatToMixedPass::SetDefaultBlacklist() const {
   });
 }
 
-void FloatToMixedPass::Init(Graph* graph) const {
+void FloatToHalfPass::Init(Graph* graph) const {
   keep_io_types_ = true;
-  mixed_precision_ =
+  half_precision_ =
       static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
-  black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
+  black_list_ = Get<std::unordered_set<std::string>>("half_black_list");
   SetDefaultBlacklist();
 
   auto graph_size = graph->SubGraphsSize();
@@ -202,14 +202,14 @@ void FloatToMixedPass::Init(Graph* graph) const {
   }
 }
 
-void FloatToMixedPass::ApplyImpl(Graph* graph) const {
-  auto enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
-  if (!enable_gpu_mixed) return;
+void FloatToHalfPass::ApplyImpl(Graph* graph) const {
+  auto enable_gpu_half = Get<bool>("enable_gpu_half");
+  if (!enable_gpu_half) return;
 
   CHECK_NOTNULL(graph);
   CHECK_EQ(graph->IsMainGraph(), true);
 
-  FusePassBase::Init("float_to_mixed", graph);
+  FusePassBase::Init("float_to_half", graph);
 
   Init(graph);
   VLOG(4) << "Init done";
@@ -231,9 +231,9 @@ void FloatToMixedPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "RestoreOpOriginType done";
 }
 
-bool FloatToMixedPass::OpSupportPrecision(const std::string& op_type,
-                                          phi::DataType precision,
-                                          phi::Backend backend) const {
+bool FloatToHalfPass::OpSupportPrecision(const std::string& op_type,
+                                         phi::DataType precision,
+                                         phi::Backend backend) const {
   bool support = false;
   if (black_list_.count(op_type) == 0) {
     if (backend == phi::Backend::GPU) {
@@ -243,7 +243,7 @@ bool FloatToMixedPass::OpSupportPrecision(const std::string& op_type,
   return support;
 }
 
-void FloatToMixedPass::SetOpUniqueType() const {
+void FloatToHalfPass::SetOpUniqueType() const {
   int suffix = 0;
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
@@ -262,7 +262,7 @@ void FloatToMixedPass::SetOpUniqueType() const {
   }
 }
 
-void FloatToMixedPass::RestoreOpOriginType() const {
+void FloatToHalfPass::RestoreOpOriginType() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       CHECK_EQ(op_node->IsOp(), true);
@@ -276,7 +276,7 @@ void FloatToMixedPass::RestoreOpOriginType() const {
   }
 }
 
-inline std::string FloatToMixedPass::GetOpOriginalType(
+inline std::string FloatToHalfPass::GetOpOriginalType(
     const std::string& op_type) const {
   if (op_original_type_.count(op_type)) {
     return op_original_type_.at(op_type);
@@ -284,13 +284,13 @@ inline std::string FloatToMixedPass::GetOpOriginalType(
   return op_type;
 }
 
-void FloatToMixedPass::ProcessOpWithDtypeAttr() const {
+void FloatToHalfPass::ProcessOpWithDtypeAttr() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       CHECK_EQ(op_node->IsOp(), true);
 
       auto op_type = op_node->Op()->Type();
-      if (op_run_mixed_.count(op_type) == 0) continue;
+      if (op_run_half_.count(op_type) == 0) continue;
 
       if (op_node->Op()->HasAttr("dtype")) {
         auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
@@ -298,10 +298,10 @@ void FloatToMixedPass::ProcessOpWithDtypeAttr() const {
           op_node->Op()->SetAttr(
               "dtype",
               static_cast<int>(
-                  framework::TransToProtoVarType(mixed_precision_)));
+                  framework::TransToProtoVarType(half_precision_)));
           op_node->Op()->Flush();
           VLOG(4) << "process op with dtype attr: " << op_type << " ( " << dtype
-                  << " --->" << static_cast<int>(mixed_precision_) << " )";
+                  << " --->" << static_cast<int>(half_precision_) << " )";
         }
       }
       if (op_node->Op()->HasAttr("out_dtype")) {
@@ -310,10 +310,10 @@ void FloatToMixedPass::ProcessOpWithDtypeAttr() const {
           op_node->Op()->SetAttr(
               "out_dtype",
               static_cast<int>(
-                  framework::TransToProtoVarType(mixed_precision_)));
+                  framework::TransToProtoVarType(half_precision_)));
           op_node->Op()->Flush();
           VLOG(4) << "process op with out_dtype attr: " << op_type << " ( "
-                  << out_dtype << " --->" << static_cast<int>(mixed_precision_)
+                  << out_dtype << " --->" << static_cast<int>(half_precision_)
                   << " )";
         }
       }
@@ -321,40 +321,39 @@ void FloatToMixedPass::ProcessOpWithDtypeAttr() const {
   }
 }
 
-void FloatToMixedPass::GetOpPrecision() const {
+void FloatToHalfPass::GetOpPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       CHECK_EQ(op_node->IsOp(), true);
 
       auto op_type = op_node->Op()->Type();
-      bool support_mixed = true;
+      bool support_half = true;
       if (GetOpOriginalType(op_type) == "feed" ||
           GetOpOriginalType(op_type) == "fetch") {
-        support_mixed = !keep_io_types_;
+        support_half = !keep_io_types_;
       } else {
-        support_mixed =
-            OpSupportPrecision(GetOpOriginalType(op_type), mixed_precision_);
+        support_half =
+            OpSupportPrecision(GetOpOriginalType(op_type), half_precision_);
       }
 
       if (op_node->Op()->HasAttr("dtype")) {
         auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
-        support_mixed =
-            support_mixed && IsFloatType(static_cast<VarType::Type>(dtype));
+        support_half =
+            support_half && IsFloatType(static_cast<VarType::Type>(dtype));
       } else if (op_node->Op()->HasAttr("out_dtype")) {
         auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
-        support_mixed =
-            support_mixed && IsFloatType(static_cast<VarType::Type>(out_dtype));
+        support_half =
+            support_half && IsFloatType(static_cast<VarType::Type>(out_dtype));
       } else {
         // if op's input var and output var is not dense tensor, the op should
-        // not run mixed.
+        // not run half.
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
           auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
           if (real_in_var_node->Var()->Persistable()) continue;
 
-          support_mixed =
-              support_mixed &&
-              (real_in_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+          support_half = support_half && (real_in_var_node->Var()->GetType() ==
+                                          VarType::LOD_TENSOR);
         }
 
         for (auto* out_var_node : op_node->outputs) {
@@ -362,24 +361,23 @@ void FloatToMixedPass::GetOpPrecision() const {
           auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
           if (real_out_var_node->Var()->Persistable()) continue;
 
-          support_mixed =
-              support_mixed &&
-              (real_out_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+          support_half = support_half && (real_out_var_node->Var()->GetType() ==
+                                          VarType::LOD_TENSOR);
         }
       }
 
-      if (support_mixed) {
-        op_run_mixed_.insert(op_type);
-        VLOG(4) << "support precision: " << op_type << " run at mixed";
+      if (support_half) {
+        op_run_half_.insert(op_type);
+        VLOG(4) << "support precision: " << op_type << " run at half";
       } else {
-        VLOG(4) << "support precision: " << op_type << " not run at mixed";
+        VLOG(4) << "support precision: " << op_type << " not run at half";
       }
     }
   }
 }
 
-void FloatToMixedPass::UpdateOpPrecision() const {
-  std::unordered_set<std::string> vars_should_not_mixed;
+void FloatToHalfPass::UpdateOpPrecision() const {
+  std::unordered_set<std::string> vars_should_not_half;
 
   // var -> the var's all input op
   std::unordered_map<std::string, std::vector<Node*>> var_input_ops;
@@ -404,21 +402,21 @@ void FloatToMixedPass::UpdateOpPrecision() const {
                   << " is output of " << op_type;
         }
 
-        // the select_input op's input var should not convert to mixed. when
+        // the select_input op's input var should not convert to half. when
         // op's output var is select_input op's input var, the op should not run
-        // mixed.
+        // half.
         if (GetOpOriginalType(op_node->Op()->Type()) == "select_input") {
           for (auto* in_var_node : op_node->inputs) {
             CHECK_EQ(in_var_node->IsVar(), true);
             if (in_var_node->Var()->Persistable()) continue;
             if (!VarNodeHasDtype(in_var_node)) continue;
 
-            vars_should_not_mixed.insert(in_var_node->Var()->Name());
+            vars_should_not_half.insert(in_var_node->Var()->Name());
           }
         }
 
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
-        // output var, then op_2 should not run mixed.
+        // output var, then op_2 should not run half.
         if (GetOpOriginalType(op_type) != "feed" &&
             !GpuKernelSupportPrecision(GetOpOriginalType(op_type),
                                        phi::DataType::FLOAT32)) {
@@ -427,7 +425,7 @@ void FloatToMixedPass::UpdateOpPrecision() const {
             if (out_var_node->Var()->Persistable()) continue;
             if (!VarNodeHasDtype(out_var_node)) continue;
 
-            vars_should_not_mixed.insert(out_var_node->Var()->Name());
+            vars_should_not_half.insert(out_var_node->Var()->Name());
           }
         }
       }
@@ -442,7 +440,7 @@ void FloatToMixedPass::UpdateOpPrecision() const {
       for (auto* op_node : nodes) {
         CHECK_EQ(op_node->IsOp(), true);
 
-        if (op_run_mixed_.count(op_node->Op()->Type()) == 0) continue;
+        if (op_run_half_.count(op_node->Op()->Type()) == 0) continue;
 
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
@@ -451,16 +449,16 @@ void FloatToMixedPass::UpdateOpPrecision() const {
           auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
           if (real_in_var_node->Var()->Persistable()) continue;
 
-          if (vars_should_not_mixed.count(real_in_var_node->Var()->Name())) {
-            op_run_mixed_.erase(op_node->Op()->Type());
+          if (vars_should_not_half.count(real_in_var_node->Var()->Name())) {
+            op_run_half_.erase(op_node->Op()->Type());
             precision_updated = true;
             VLOG(4) << op_node->Op()->Type()
-                    << " should not support mixed precision.";
+                    << " should not support half precision.";
             break;
           }
         }
 
-        if (op_run_mixed_.count(op_node->Op()->Type()) == 0) continue;
+        if (op_run_half_.count(op_node->Op()->Type()) == 0) continue;
 
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
@@ -469,24 +467,24 @@ void FloatToMixedPass::UpdateOpPrecision() const {
           auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
           if (real_out_var_node->Var()->Persistable()) continue;
 
-          bool not_run_mixed = false;
+          bool not_run_half = false;
           const auto& input_op_nodes =
               var_input_ops[real_out_var_node->Var()->Name()];
-          if (vars_should_not_mixed.count(real_out_var_node->Var()->Name())) {
-            not_run_mixed = true;
+          if (vars_should_not_half.count(real_out_var_node->Var()->Name())) {
+            not_run_half = true;
           } else {
             for (auto* node : input_op_nodes) {
-              if (op_run_mixed_.count(node->Op()->Type()) == 0) {
-                not_run_mixed = true;
+              if (op_run_half_.count(node->Op()->Type()) == 0) {
+                not_run_half = true;
                 break;
               }
             }
           }
-          if (not_run_mixed) {
-            op_run_mixed_.erase(op_node->Op()->Type());
+          if (not_run_half) {
+            op_run_half_.erase(op_node->Op()->Type());
             precision_updated = true;
             VLOG(4) << op_node->Op()->Type()
-                    << " should not support mixed precision.";
+                    << " should not support half precision.";
             break;
           }
         }
@@ -496,8 +494,8 @@ void FloatToMixedPass::UpdateOpPrecision() const {
 }
 
 // special ops, its weights should not be low precision.
-bool FloatToMixedPass::InputVarsNotConvert(Node* op_node,
-                                           const std::string& var_name) const {
+bool FloatToHalfPass::InputVarsNotConvert(Node* op_node,
+                                          const std::string& var_name) const {
   CHECK_EQ(op_node->IsOp(), true);
   auto* op_desc = op_node->Op();
   if (GetOpOriginalType(op_desc->Type()) == "batch_norm") {
@@ -538,8 +536,8 @@ bool FloatToMixedPass::InputVarsNotConvert(Node* op_node,
   return false;
 }
 
-bool FloatToMixedPass::OutputVarsNotConvert(Node* op_node,
-                                            const std::string& var_name) const {
+bool FloatToHalfPass::OutputVarsNotConvert(Node* op_node,
+                                           const std::string& var_name) const {
   CHECK_EQ(op_node->IsOp(), true);
   auto* op_desc = op_node->Op();
   // batch_norm's input and output (variance and mean) are the same.
@@ -564,12 +562,12 @@ bool FloatToMixedPass::OutputVarsNotConvert(Node* op_node,
   return false;
 }
 
-void FloatToMixedPass::SetVarPrecision() const {
+void FloatToHalfPass::SetVarPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       CHECK_EQ(op_node->IsOp(), true);
 
-      if (op_run_mixed_.count(op_node->Op()->Type())) {
+      if (op_run_half_.count(op_node->Op()->Type())) {
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
@@ -582,8 +580,8 @@ void FloatToMixedPass::SetVarPrecision() const {
 
           if (real_in_var_node->Var()->Persistable()) {
             real_in_var_node->Var()->SetDataType(
-                framework::TransToProtoVarType(mixed_precision_));
-            vars_convert_to_mixed_.insert(in_var_name);
+                framework::TransToProtoVarType(half_precision_));
+            vars_convert_to_half_.insert(in_var_name);
           }
         }
 
@@ -598,9 +596,9 @@ void FloatToMixedPass::SetVarPrecision() const {
           if (OutputVarsNotConvert(op_node, out_var_name)) continue;
 
           real_out_var_node->Var()->SetDataType(
-              framework::TransToProtoVarType(mixed_precision_));
+              framework::TransToProtoVarType(half_precision_));
           if (real_out_var_node->Var()->Persistable()) {
-            vars_convert_to_mixed_.insert(out_var_name);
+            vars_convert_to_half_.insert(out_var_name);
           }
         }
       }
@@ -615,44 +613,44 @@ void FloatToMixedPass::SetVarPrecision() const {
       if (!VarNodeHasDtype(var_node)) continue;
 
       auto var_name = var_node->Var()->Name();
-      if (vars_convert_to_mixed_.count(var_name)) {
+      if (vars_convert_to_half_.count(var_name)) {
         var_node->Var()->SetDataType(
-            framework::TransToProtoVarType(mixed_precision_));
+            framework::TransToProtoVarType(half_precision_));
       }
     }
   }
 }
 
-void FloatToMixedPass::ConvertWeightsData() const {
+void FloatToHalfPass::ConvertWeightsData() const {
   auto* scope = param_scope();
   CHECK_NOTNULL(scope);
 
   auto var_names = scope->LocalVarNames();
   for (const auto& var_name : var_names) {
-    if (vars_convert_to_mixed_.count(var_name)) {
-      VLOG(4) << var_name << "'s data type was convert to mixed";
-#define CONVERT_TENSOR_DTYPE(DTYPE, dtype)                                   \
-  mixed_tensor.set_type(DTYPE);                                              \
-  auto* mixed_data = mixed_tensor.mutable_data<dtype>(platform::CPUPlace()); \
-  for (int64_t i = 0; i < origin_tensor->numel(); i++) {                     \
-    mixed_data[i] = static_cast<dtype>(origin_data[i]);                      \
-  }                                                                          \
-  origin_tensor->clear();                                                    \
-  paddle::framework::TensorCopySync(                                         \
-      mixed_tensor, platform::CPUPlace(), origin_tensor)
+    if (vars_convert_to_half_.count(var_name)) {
+      VLOG(4) << var_name << "'s data type was convert to half";
+#define CONVERT_TENSOR_DTYPE(DTYPE, dtype)                                 \
+  half_tensor.set_type(DTYPE);                                             \
+  auto* half_data = half_tensor.mutable_data<dtype>(platform::CPUPlace()); \
+  for (int64_t i = 0; i < origin_tensor->numel(); i++) {                   \
+    half_data[i] = static_cast<dtype>(origin_data[i]);                     \
+  }                                                                        \
+  origin_tensor->clear();                                                  \
+  paddle::framework::TensorCopySync(                                       \
+      half_tensor, platform::CPUPlace(), origin_tensor)
 
       auto* var = scope->FindLocalVar(var_name);
 
       if (var->IsType<phi::DenseTensor>()) {
         auto* origin_tensor = var->GetMutable<phi::DenseTensor>();
-        phi::DenseTensor mixed_tensor;
-        mixed_tensor.Resize(origin_tensor->dims());
+        phi::DenseTensor half_tensor;
+        half_tensor.Resize(origin_tensor->dims());
         auto* origin_data =
             origin_tensor->mutable_data<float>(platform::CPUPlace());
-        if (mixed_precision_ == phi::DataType::FLOAT16) {
+        if (half_precision_ == phi::DataType::FLOAT16) {
           CONVERT_TENSOR_DTYPE(paddle::experimental::DataType::FLOAT16,
                                phi::dtype::float16);
-        } else if (mixed_precision_ == phi::DataType::BFLOAT16) {
+        } else if (half_precision_ == phi::DataType::BFLOAT16) {
           CONVERT_TENSOR_DTYPE(paddle::experimental::DataType::BFLOAT16,
                                phi::dtype::bfloat16);
         }
@@ -662,7 +660,7 @@ void FloatToMixedPass::ConvertWeightsData() const {
   }
 }
 
-void FloatToMixedPass::InsertCastOp() const {
+void FloatToHalfPass::InsertCastOp() const {
   int suffix = 0;
   std::unordered_map<Node*, Node*> cache;
 
@@ -678,7 +676,7 @@ void FloatToMixedPass::InsertCastOp() const {
       if (op_node->Op()->HasAttr("sub_block")) continue;
 
       VLOG(4) << "process op: " << op_type
-              << " run mixed: " << op_run_mixed_.count(op_type);
+              << " run half: " << op_run_half_.count(op_type);
 
       auto inputs = op_node->inputs;
       for (auto* in_var_node : inputs) {
@@ -693,17 +691,17 @@ void FloatToMixedPass::InsertCastOp() const {
         VLOG(4) << "process var: " << real_in_var_node->Var()->Name()
                 << " with type " << in_var_type;
 
-        if (IsFloatType(in_var_type) && op_run_mixed_.count(op_type)) {
+        if (IsFloatType(in_var_type) && op_run_half_.count(op_type)) {
           DoInsertCastOp(subgraphes_[i],
                          in_var_node,
                          op_node,
                          in_var_type,
-                         framework::TransToProtoVarType(mixed_precision_),
+                         framework::TransToProtoVarType(half_precision_),
                          block_desc,
                          &suffix,
                          &cache);
-        } else if (IsMixedType(in_var_type) &&
-                   op_run_mixed_.count(op_type) == 0) {
+        } else if (IsHalfType(in_var_type) &&
+                   op_run_half_.count(op_type) == 0) {
           DoInsertCastOp(subgraphes_[i],
                          in_var_node,
                          op_node,
@@ -735,4 +733,4 @@ void FloatToMixedPass::InsertCastOp() const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(float_to_mixed_pass, paddle::framework::ir::FloatToMixedPass);
+REGISTER_PASS(float_to_half_pass, paddle::framework::ir::FloatToHalfPass);

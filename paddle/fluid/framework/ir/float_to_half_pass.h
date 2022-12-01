@@ -30,13 +30,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FloatToMixedPass : public FusePassBase {
+class FloatToHalfPass : public FusePassBase {
  public:
   using VarType = framework::proto::VarType;
 
  public:
-  FloatToMixedPass() = default;
-  ~FloatToMixedPass() = default;
+  FloatToHalfPass() = default;
+  ~FloatToHalfPass() = default;
 
  protected:
   void ApplyImpl(Graph* graph) const override;
@@ -75,7 +75,7 @@ class FloatToMixedPass : public FusePassBase {
  private:
   mutable bool keep_io_types_;
   // float16 or bfloat16 now
-  mutable phi::DataType mixed_precision_;
+  mutable phi::DataType half_precision_;
 
   mutable std::unordered_set<std::string> black_list_;
 
@@ -87,10 +87,10 @@ class FloatToMixedPass : public FusePassBase {
   mutable std::vector<std::vector<Node*>> all_op_nodes_;
   // op's unique type -> the op's origin type
   mutable std::unordered_map<std::string, std::string> op_original_type_;
-  // op's unique type -> whether the op run at mixed precision
-  mutable std::unordered_set<std::string> op_run_mixed_;
+  // op's unique type -> whether the op run at half precision
+  mutable std::unordered_set<std::string> op_run_half_;
 
-  mutable std::unordered_set<std::string> vars_convert_to_mixed_;
+  mutable std::unordered_set<std::string> vars_convert_to_half_;
 };
 
 }  // namespace ir
