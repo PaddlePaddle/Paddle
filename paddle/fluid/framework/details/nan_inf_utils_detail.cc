@@ -170,8 +170,12 @@ static void PrintNanInfCpu(const T* value_ptr,
                                 FLAGS_check_nan_inf_level);
 }
 
-template <typename T>
-static void CheckNanInfCpu(const T* value,
+template <
+    typename T,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+static void CheckNanInfCpu(const T* value_ptr,
                            const size_t numel,
                            const std::string& cpu_hint_str) {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
@@ -183,55 +187,33 @@ static void CheckNanInfCpu(const T* value,
 #pragma omp parallel for reduction(+ : num_nan_inf)
 #endif
   for (size_t i = 0; i < numel; ++i) {
-    if (std::isnan(value[i]) || std::isinf(value[i])) {
+    if (std::isnan(value_ptr[i]) || std::isinf(value_ptr[i])) {
       num_nan_inf += 1;
     }
   }
 
   if (num_nan_inf > 0) {
-    PrintNanInfCpu<T, MT>(value, numel, cpu_hint_str);
+    PrintNanInfCpu<T, MT>(value_ptr, numel, cpu_hint_str);
   }
 }
 
-template <>
-void CheckNanInfCpu<paddle::platform::complex<float>>(
-    const paddle::platform::complex<float>* value,
-    const size_t numel,
-    const std::string& cpu_hint_str) {
-  float real_sum = 0.0f;
+template <
+    typename T,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
+                         std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void CheckNanInfCpu(const T* value_ptr,
+                    const size_t numel,
+                    const std::string& cpu_hint_str) {
+  using RealType = typename T::value_type;
+
+  RealType real_sum = 0.0f;
 #pragma omp parallel for reduction(+ : real_sum)
   for (size_t i = 0; i < numel; ++i) {
     real_sum += (value[i].real - value[i].real);
   }
 
-  float imag_sum = 0.0f;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
-  }
-
-  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
-      std::isinf(imag_sum)) {
-    // hot fix for compile failed in gcc4.8
-    // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
-        cpu_hint_str));
-  }
-}
-
-template <>
-void CheckNanInfCpu<paddle::platform::complex<double>>(
-    const paddle::platform::complex<double>* value,
-    const size_t numel,
-    const std::string& cpu_hint_str) {
-  double real_sum = 0.0;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
-  double imag_sum = 0.0;
+  RealType imag_sum = 0.0f;
 #pragma omp parallel for reduction(+ : imag_sum)
   for (size_t i = 0; i < numel; ++i) {
     imag_sum += (value[i].imag - value[i].imag);
