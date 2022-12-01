@@ -243,8 +243,8 @@ struct MatrixEighFunctor<GPUContext, T> {
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnCreateSyevjInfo(&syevj_params));
 
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
-          dev_ctx.cusolver_dn_handle(),
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevjBatched_bufferSize(
+          handle,
           jobz,
           uplo,
           last_dim,
@@ -252,7 +252,8 @@ struct MatrixEighFunctor<GPUContext, T> {
           lda,
           reinterpret_cast<const float *>(out_value),
           &workspace_size,
-          syevj_params));
+          syevj_params,
+          batch_size));
     } else {
       EvdBuffer(dev_ctx.cusolver_dn_handle(),
                 jobz,
@@ -273,18 +274,20 @@ struct MatrixEighFunctor<GPUContext, T> {
       auto *input_data = input_vector + i * vector_stride;
       auto *value_data = out_value + i * values_stride;
       if (use_syevj) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cusolverDnSsyevj(handle,
-                                      jobz,
-                                      uplo,
-                                      last_dim,
-                                      reinterpret_cast<float *>(input_data),
-                                      lda,
-                                      reinterpret_cast<float *>(value_data),
-                                      reinterpret_cast<float *>(work_ptr),
-                                      workspace_size,
-                                      &info_ptr[i],
-                                      syevj_params));
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevjBatched(
+            handle,
+            jobz,
+            uplo,
+            last_dim,
+            reinterpret_cast<float *>(input_data),
+            lda,
+            reinterpret_cast<float *>(value_data),
+            reinterpret_cast<float *>(work_ptr),
+            workspace_size,
+            &info_ptr[i],
+            syevj_params,
+            batch_size));
+        break;
       } else {
         Evd(handle,
             jobz,
