@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
     program_guard,
 )
 from paddle.fluid.initializer import Constant
-from paddle.fluid.layers.device import get_places
 from paddle.fluid.param_attr import ParamAttr
 from paddle.tensor import random
 
@@ -2895,7 +2894,7 @@ class TestLayer(LayerTest):
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
             predict = paddle.nn.functional.softmax(fc_out)
-            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            result = paddle.static.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
@@ -2911,7 +2910,9 @@ class TestLayer(LayerTest):
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)
             predict = paddle.nn.functional.softmax(fc_out)
-            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+            dynamic_out = paddle.static.accuracy(
+                input=predict, label=label, k=5
+            )
 
         np.testing.assert_array_equal(static_out[0], dynamic_out.numpy())
 
@@ -2954,7 +2955,6 @@ class TestBook(LayerTest):
                     )
 
                 else:
-                    assert method.__name__ in ('make_get_places')
                     continue
             if method.__name__ in self.only_static_set:
                 continue
@@ -3200,12 +3200,6 @@ class TestBook(LayerTest):
             data = self._get_data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
             return paddle.nn.functional.softmax(hid, axis=1)
-
-    def make_get_places(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            get_places(device_count=1)
 
     @prog_scope()
     def make_nce(self):
@@ -3677,21 +3671,12 @@ class TestBook(LayerTest):
             out = layers.temporal_shift(x, seg_num=2, shift_ratio=0.2)
             return out
 
-    def make_fsp_matrix(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            y = self._get_data(name="Y", shape=[8, 4, 4], dtype="float32")
-            out = layers.fsp_matrix(x, y)
-            return out
-
     def make_pixel_shuffle(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
-            out = layers.pixel_shuffle(x, upscale_factor=3)
+            out = paddle.nn.functional.pixel_shuffle(x, upscale_factor=3)
             return out
 
     def make_mse_loss(self):
