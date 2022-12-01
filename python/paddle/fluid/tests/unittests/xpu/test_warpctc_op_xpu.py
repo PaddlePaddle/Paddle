@@ -239,7 +239,6 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             logits = np.random.uniform(
                 0.1, 1.0, [sum(self.logits_length), self.num_classes]
             ).astype(self.dtype)
-            print("logits.shape = ", logits.shape)
             softmax = np.apply_along_axis(stable_softmax, 1, logits)
             # labels should not be blank
             labels = np.random.randint(
@@ -416,7 +415,11 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
                 labels = paddle.to_tensor(labels)
 
                 paddle.nn.functional.ctc_loss(
-                    log_probs=softmax, labels=labels, reduction='none'
+                    log_probs=softmax,
+                    labels=labels,
+                    input_lengths=None,
+                    label_lengths=None,
+                    reduction='none',
                 )
 
             paddle.disable_static()

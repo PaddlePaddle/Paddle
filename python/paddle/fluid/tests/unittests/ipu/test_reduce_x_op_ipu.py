@@ -28,7 +28,7 @@ class TestMean(IPUOpTest):
         self.set_test_op()
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_mean
+        self.op = paddle.mean
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]

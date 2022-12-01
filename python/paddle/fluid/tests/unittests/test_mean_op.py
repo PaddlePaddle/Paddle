@@ -383,7 +383,7 @@ class TestMeanAPI(unittest.TestCase):
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = fluid.data("x", shape=[10, 10], dtype="float32")
-            out = fluid.layers.reduce_mean(input=x, dim=1)
+            out = paddle.mean(x=x, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             x_np = np.random.rand(10, 10).astype(np.float32)
@@ -393,7 +393,7 @@ class TestMeanAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
             x = fluid.dygraph.to_variable(x_np)
-            out = fluid.layers.reduce_mean(input=x, dim=1)
+            out = paddle.mean(x=x, axis=1)
         np.testing.assert_allclose(
             out.numpy(), np.mean(x_np, axis=1), rtol=1e-05
         )
