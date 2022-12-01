@@ -175,7 +175,7 @@ void FloatToHalfPass::Init(Graph* graph) const {
   keep_io_types_ = true;
   half_precision_ =
       static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
-  black_list_ = Get<std::unordered_set<std::string>>("half_black_list");
+  black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
   SetDefaultBlacklist();
 
   auto graph_size = graph->SubGraphsSize();
