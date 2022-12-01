@@ -451,7 +451,7 @@ def ceil(x, name=None):
     return out
 
 
-def test_op(x, name=None):
+def test_op(x, axis, name=None):
     return
 
 
