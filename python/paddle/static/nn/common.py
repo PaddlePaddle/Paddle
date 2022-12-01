@@ -2087,10 +2087,8 @@ def bilinear_tensor_product(
     x, y, size, act=None, name=None, param_attr=None, bias_attr=None
 ):
     r"""
-    :api_attr: Static Graph
-    **Bilinear Tensor Product Layer**
     This layer performs bilinear tensor product on two inputs.
-    For example:
+
     .. math::
        out_{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
     In this formula:
@@ -2099,6 +2097,7 @@ def bilinear_tensor_product(
       - :math:`W_{i}`: the i-th learned weight, shape is [M, N].
       - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
+
     Args:
         x (Variable): 2-D input tensor with shape [batch_size, M]. Data type
             is float32 or float64.
