@@ -93,7 +93,9 @@ __global__ void insert_kernel(Table* table,
     uint64_t offset = uint64_t(start_index + i) * feature_value_size;
     kv.second = (Table::mapped_type)(pool + offset);
     auto it = table->insert(kv, op);
-    PADDLE_ENFORCE(it != table->end(), "error: insert fails: table is full");
+    if (it == table->end()) {
+      printf("error: insert fails: table is full");
+    }
   }
 }
 
@@ -150,7 +152,7 @@ __global__ void dy_mf_search_kernel(Table* table,
       float* input = it->second;
       gpu_accessor.PullValueFill(cur, input);
     } else {
-      PADDLE_ENFORCE(false, "warning: pull miss key: %lu", keys[i]);
+      printf("warning: pull miss key: %lu", keys[i]);
     }
   }
 }
@@ -186,7 +188,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       float* cur = (float*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
     } else {
-      PADDLE_ENFORCE(false, "warning: push miss key: %lu", keys[i]);
+      printf("warning: push miss key: %lu", keys[i]);
     }
   }
 }
