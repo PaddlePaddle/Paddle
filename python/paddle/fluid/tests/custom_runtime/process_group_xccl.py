@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
+import unittest
+
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.framework import _test_eager_guard
 
 
 def init_process_group(strategy=None):
@@ -28,7 +29,7 @@ def init_process_group(strategy=None):
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
-    pg_group = core.ProcessGroupCustom(
+    pg_group = core.ProcessGroupCustom.create(
         store,
         ParallelEnv().device_type,
         rank,

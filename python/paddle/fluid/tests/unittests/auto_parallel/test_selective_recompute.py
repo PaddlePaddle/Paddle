@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import sys
 import unittest
-import random
-import numpy as np
-import paddle
 
+import numpy as np
+from get_gpt_model import FakeDataset
+
+import paddle
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from get_gpt_model import FakeDataset
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 

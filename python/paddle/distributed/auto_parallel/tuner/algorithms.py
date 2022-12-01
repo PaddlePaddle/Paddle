@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import copy
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
 
-from ..utils import get_logger
-from .trial import TrialStatus
-from .trial import OptimizationTunerTrial as Trial
 from ...passes.auto_parallel_recompute import RecomputeState
+from ..utils import get_logger
+from .trial import OptimizationTunerTrial as Trial
+from .trial import TrialStatus
 
 
 class AlgorithmBase(ABC):

@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-import numpy as np
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 
 
 class SimpleNet(fluid.Layer):
@@ -73,17 +75,15 @@ class SimpleNet(fluid.Layer):
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
         projection = fluid.layers.matmul(
-            fc, fluid.layers.transpose(self.embedding.weight, perm=[1, 0])
+            fc, paddle.transpose(self.embedding.weight, perm=[1, 0])
         )
-        projection = fluid.layers.reshape(
-            projection, shape=[-1, self.vocab_size]
-        )
+        projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
-        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss
 

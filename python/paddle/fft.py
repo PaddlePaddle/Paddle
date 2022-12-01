@@ -13,14 +13,17 @@
 # limitations under the License.
 
 from typing import Sequence
+
 import numpy as np
+
 import paddle
-from .tensor.attribute import is_floating_point, is_integer
-from .tensor.creation import _real_to_complex_dtype, _complex_to_real_dtype
-from .fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
 from . import _C_ops, _legacy_C_ops
 from .fluid.data_feeder import check_variable_and_dtype
+from .fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .fluid.layer_helper import LayerHelper
+from .tensor.attribute import is_floating_point, is_integer
+from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
 
 __all__ = [
     'fft',
@@ -626,6 +629,7 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
 
 def rfftn(x, s=None, axes=None, norm="backward", name=None):
     """
+
     The N dimensional FFT for real input.
 
     This function computes the N-dimensional discrete Fourier Transform over
@@ -659,9 +663,9 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
             three operations are shown below:
 
                 - "backward": The factor of forward direction and backward direction are ``1``
-                and ``1/n`` respectively;
+                  and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n``
-                and ``1`` respectively;
+                  and ``1`` respectively;
                 - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
@@ -670,36 +674,35 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
             refer to :ref:`api_guide_Name` .
 
     Returns:
-        out(Tensor): complex tensor
+        out(Tensor), complex tensor
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            import paddle
 
-        import paddle
+            # default, all axis will be used to exec fft
+            x = paddle.ones((2, 3, 4))
+            print(paddle.fft.rfftn(x))
+            # Tensor(shape=[2, 3, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+            #        [[[(24+0j), 0j     , 0j     ],
+            #          [0j     , 0j     , 0j     ],
+            #          [0j     , 0j     , 0j     ]],
+            #
+            #         [[0j     , 0j     , 0j     ],
+            #          [0j     , 0j     , 0j     ],
+            #          [0j     , 0j     , 0j     ]]])
 
-        # default, all axis will be used to exec fft
-        x = paddle.ones((2, 3, 4))
-        print(paddle.fft.rfftn(x))
-        # Tensor(shape=[2, 3, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
-        #        [[[(24+0j), 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ]],
-        #
-        #         [[0j     , 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ]]])
-
-        # use axes(2, 0)
-        print(paddle.fft.rfftn(x, axes=(2, 0)))
-        # Tensor(shape=[2, 3, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
-        #        [[[(8+0j), 0j     , 0j     ],
-        #          [(8+0j), 0j     , 0j     ],
-        #          [(8+0j), 0j     , 0j     ]],
-        #
-        #         [[0j     , 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ],
-        #          [0j     , 0j     , 0j     ]]])
+            # use axes(2, 0)
+            print(paddle.fft.rfftn(x, axes=(2, 0)))
+            # Tensor(shape=[2, 3, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+            #        [[[(8+0j), 0j     , 0j     ],
+            #          [(8+0j), 0j     , 0j     ],
+            #          [(8+0j), 0j     , 0j     ]],
+            #
+            #         [[0j     , 0j     , 0j     ],
+            #          [0j     , 0j     , 0j     ],
+            #          [0j     , 0j     , 0j     ]]])
 
     """
     return fftn_r2c(x, s, axes, norm, forward=True, onesided=True, name=name)

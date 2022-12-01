@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import unittest
 
-import contextlib
 import numpy as np
+import seresnext_net
+from fake_reader import fake_imdb_reader
+from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
+from test_parallel_executor_transformer import (
+    DeviceType,
+    get_feed_data_reader,
+    transformer,
+)
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from simple_nets import init_data, simple_fc_net, fc_with_batchnorm
-import seresnext_net
-from test_parallel_executor_transformer import (
-    transformer,
-    get_feed_data_reader,
-    DeviceType,
-)
-from fake_reader import fake_imdb_reader
-import paddle
 
 
 def lstm_net(use_feed):
@@ -50,7 +51,7 @@ def lstm_net(use_feed):
         input=fc0, size=hid_dim * 4, is_reverse=False
     )
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
-    lstm_max_tanh = fluid.layers.tanh(lstm_max)
+    lstm_max_tanh = paddle.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
     prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)

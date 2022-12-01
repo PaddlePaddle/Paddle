@@ -12,38 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import itertools
+import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import (
-    SGDOptimizer,
-    Adam,
-    MomentumOptimizer,
-    LarsMomentumOptimizer,
-    AdagradOptimizer,
-    AdamaxOptimizer,
-    DpsgdOptimizer,
-    DecayedAdagradOptimizer,
     AdadeltaOptimizer,
-    RMSPropOptimizer,
+    AdagradOptimizer,
+    Adam,
+    AdamaxOptimizer,
+    DecayedAdagradOptimizer,
+    DpsgdOptimizer,
+    ExponentialMovingAverage,
     FtrlOptimizer,
     LambOptimizer,
-)
-from paddle.fluid.optimizer import (
-    ModelAverage,
-    DGCMomentumOptimizer,
-    ExponentialMovingAverage,
-    PipelineOptimizer,
+    LarsMomentumOptimizer,
     LookaheadOptimizer,
+    ModelAverage,
+    MomentumOptimizer,
+    PipelineOptimizer,
     RecomputeOptimizer,
+    RMSPropOptimizer,
+    SGDOptimizer,
 )
-from paddle.fluid.dygraph import Linear
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -53,8 +51,8 @@ class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super().__init__()
 
-        self._fc1 = Linear(784, 10)
-        self._fc2 = Linear(10, 10)
+        self._fc1 = paddle.nn.Linear(784, 10)
+        self._fc2 = paddle.nn.Linear(10, 10)
 
     def forward(self, inputs):
         y = self._fc1(inputs)
@@ -141,7 +139,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
-                img = fluid.layers.reshape(img, shape=[batch_size, -1])
+                img = paddle.reshape(img, shape=[batch_size, -1])
                 cost = mlp(img)
                 avg_loss = fluid.layers.reduce_mean(cost)
                 dy_out = avg_loss.numpy()
@@ -180,7 +178,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 name='pixel', shape=[1, 28, 28], dtype='float32'
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            img = fluid.layers.reshape(img, shape=[batch_size, 784])
+            img = paddle.reshape(img, shape=[batch_size, 784])
             cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             optimizer.minimize(avg_loss)
@@ -474,7 +472,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
         with fluid.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
-            linear = fluid.dygraph.nn.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
 
             a = fluid.dygraph.to_variable(a)
 
@@ -505,7 +503,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
         with fluid.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
-            linear = fluid.dygraph.nn.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
 
             a = fluid.dygraph.to_variable(a)
 
@@ -541,7 +539,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
         with fluid.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
-            linear = fluid.dygraph.nn.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
 
             a = fluid.dygraph.to_variable(a)
 
@@ -580,7 +578,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
         with fluid.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
-            linear = fluid.dygraph.nn.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
 
             a = fluid.dygraph.to_variable(a)
 
@@ -952,8 +950,8 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
 class TestImperativeOptimizerList(unittest.TestCase):
     def func_test_parameter_list(self):
         with fluid.dygraph.guard():
-            linear_1 = Linear(10, 10)
-            linear_2 = Linear(10, 10)
+            linear_1 = paddle.nn.Linear(10, 10)
+            linear_2 = paddle.nn.Linear(10, 10)
 
             sgd = SGDOptimizer(
                 1.0,
