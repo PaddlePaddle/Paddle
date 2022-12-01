@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.static as static
-import paddle
 
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.static as static
 
 
 class BackwardNet:
@@ -242,10 +243,8 @@ class SimpleNet(BackwardNet):
             x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
         # merge layers
-        x_merge = fluid.layers.elementwise_add(x_emb, x2_emb, name='x_add_x2')
-        x2_merge = fluid.layers.elementwise_add(
-            x2_emb, x3_emb, name='x2_add_x3'
-        )
+        x_merge = paddle.add(x_emb, x2_emb, name='x_add_x2')
+        x2_merge = paddle.add(x2_emb, x3_emb, name='x2_add_x3')
         # shared fc_w
         predict = fluid.layers.fc(
             input=x_merge,

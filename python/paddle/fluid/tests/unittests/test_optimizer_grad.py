@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 from collections import defaultdict
 
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.backward import _append_grad_suffix_
-
-import paddle
 
 paddle.enable_static()
 
@@ -97,32 +97,26 @@ class SimpleNetWithCond:
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.z),
         )
 
-        sum_xy = fluid.layers.elementwise_add(param_x, param_y, name='sum_xy')
-        sub_yz = fluid.layers.elementwise_sub(param_y, param_z, name='sub_yz')
+        sum_xy = paddle.add(param_x, param_y, name='sum_xy')
+        sub_yz = paddle.subtract(param_y, param_z, name='sub_yz')
         useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
-            cond_yz = fluid.layers.elementwise_add(
-                param_y, param_z, name='sum_cond_yz'
-            )
+            cond_yz = paddle.add(param_y, param_z, name='sum_cond_yz')
             # param_y will not be updated
             param_y.stop_gradient = self.y_no_grad
-            cond_res = fluid.layers.elementwise_add(
-                cond_yz, param_z, name='sum_cond_true'
-            )
-            cond_useless = fluid.layers.elementwise_mul(param_x, param_y)
+            cond_res = paddle.add(cond_yz, param_z, name='sum_cond_true')
+            cond_useless = paddle.multiply(param_x, param_y)
             return cond_res
 
         def cond_false():
-            cond_res = fluid.layers.elementwise_add(
-                param_y, param_z, name='sum_cond_false'
-            )
-            cond_useless = fluid.layers.elementwise_mul(param_z, param_z)
+            cond_res = paddle.add(param_y, param_z, name='sum_cond_false')
+            cond_useless = paddle.multiply(param_z, param_z)
             return cond_res
 
         cond_i = fluid.layers.assign(np.array([cond_i], dtype='float32'))
         sum_cond = fluid.layers.cond(cond_i > 1.0, cond_true, cond_false)
-        sum_all = fluid.layers.sum([sum_xy, sub_yz, sum_cond])
+        sum_all = paddle.add_n([sum_xy, sub_yz, sum_cond])
         mean_out = paddle.mean(sum_all)
         if use_bf16:
             import paddle.static.amp as amp

@@ -326,7 +326,7 @@
     func : conv3d_transpose_grad
 
 - backward_op : crop_grad
-  forward : crop_tensor (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
+  forward : crop (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray offsets)
   output : Tensor(x_grad)
   infer_meta :
@@ -674,12 +674,6 @@
   output : Tensor(x_grad)
   invoke : imag_grad_impl(out_grad, x_grad)
 
-- backward_op : increment_grad
-  forward : increment (Tensor x, float value) -> Tensor(out)
-  args : (Tensor out, float value)
-  output : Tensor(x_grad)
-  invoke : increment (out, -value)
-
 - backward_op : index_add_grad
   forward : index_add(Tensor x, Tensor index,  Tensor add_value, int axis) -> Tensor(out)
   args : (Tensor index, Tensor add_value, Tensor out_grad, int axis)
@@ -748,16 +742,6 @@
     data_type : out_grad
   no_need_buffer : bias
   optional : scale, bias
-
-- backward_op : lerp_grad
-  forward : lerp (Tensor x, Tensor y, Tensor weight) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor weight, Tensor out, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : lerp_grad
 
 - backward_op : linear_interp_grad
   forward : linear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
@@ -1348,15 +1332,6 @@
   backward : reshape_double_grad
   inplace : (out_grad -> x_grad)
 
-- backward_op : reverse_array_grad
-  forward : reverse_array (Tensor[] x, IntArray axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, IntArray axis)
-  output : Tensor[](x_grad){out_grad.size()}
-  infer_meta :
-    func : ReverseArrayInferMeta
-  kernel :
-    func : reverse
-
 - backward_op : reverse_grad
   forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
   args : (Tensor out_grad, IntArray axis)
@@ -1529,7 +1504,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : slogdeterminant_grad
+    func : slogdet_grad
 
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis) -> Tensor(out)
@@ -1738,7 +1713,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : top_k_grad
+    func : topk_grad
 
 - backward_op : transpose_double_grad
   forward : transpose_grad (Tensor grad_out, int[] perm) -> Tensor(grad_x)

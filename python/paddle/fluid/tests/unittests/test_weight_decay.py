@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import contextlib
-
 import unittest
 from functools import partial
-import numpy as np
-import paddle
-import paddle.fluid.core as core
 
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import compiler
 
 
@@ -160,9 +160,7 @@ class TestWeightDecay(unittest.TestCase):
             optimizer.minimize(avg_cost)
 
             for params in param_list:
-                updated_p = fluid.layers.elementwise_sub(
-                    x=params[0], y=params[1]
-                )
+                updated_p = paddle.subtract(x=params[0], y=params[1])
                 fluid.layers.assign(input=updated_p, output=params[0])
 
             if use_parallel_exe:

@@ -21,7 +21,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 
 template <typename T>
@@ -33,7 +32,7 @@ class ShapeMLUKernel : public framework::OpKernel<T> {
     if (in_var->IsType<phi::SelectedRows>()) {
       in_dims = in_var->Get<phi::SelectedRows>().value().dims();
     } else {
-      in_dims = in_var->Get<LoDTensor>().dims();
+      in_dims = in_var->Get<phi::DenseTensor>().dims();
     }
     auto* out_t = ctx.Output<phi::DenseTensor>("Out");
     out_t->Resize({in_dims.size()});

@@ -34,7 +34,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 T bilinear_interp(
@@ -80,7 +79,7 @@ void DeformablePSROIPoolForwardCPUKernel(const int count,
                                          T* top_count,
                                          const int batch_size,
                                          int* roi_batch_id_data,
-                                         const LoDTensor* rois) {
+                                         const phi::DenseTensor* rois) {
   for (int ix = 0; ix < count; ix++) {
     int pw = ix % pooled_width;
     int ph = (ix / pooled_width) % pooled_height;
@@ -174,7 +173,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* trans = ctx.Input<phi::DenseTensor>("Trans");
     auto* out = ctx.Output<phi::DenseTensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
@@ -316,7 +315,7 @@ void DeformablePSROIPoolBackwardAccCPUKernel(const int count,
                                              const int channels_each_class,
                                              const int batch_size,
                                              int* roi_batch_id_data,
-                                             const LoDTensor* rois) {
+                                             const phi::DenseTensor* rois) {
   for (int index = 0; index < count; index++) {
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
@@ -476,7 +475,7 @@ class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<phi::DenseTensor>("Input");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* trans = ctx.Input<phi::DenseTensor>("Trans");
     auto* top_count = ctx.Input<phi::DenseTensor>("TopCount");
     auto* output_grad =
