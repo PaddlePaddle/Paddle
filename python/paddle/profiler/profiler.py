@@ -359,6 +359,7 @@ class Profiler:
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
         profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
+        custom_device_types: Optional[list]: If targets contain profiler.ProfilerTarget.CUSTOM_DEVICE, custom_device_types select the custom device type for profiling. The default value represents all custom devices will be selected.
         with_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
 
     Examples:
