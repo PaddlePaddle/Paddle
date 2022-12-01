@@ -73,7 +73,7 @@ def _c_embedding_flops(input_shapes, attrs):
 def _dropout_flops(input_shapes, attrs):
     """FLOPs computation for dropout op.
     For dropout(input):
-    equation: flops = 0
+        equation: flops = 0
     """
     return 0
 
@@ -190,7 +190,7 @@ def _matmul_v2_flops(input_shapes, attrs):
     """FLOPs computation for matmul_v2 op.
     For matmul_v2(input,other):
         input_shapes = [shape_of_input, shape_of_ohther]
-        shape_of_input =                  [dim1, dim2 ...dim_n_1, dim_n] length:n
+        shape_of_input =                   [dim1, dim2 ...dim_n_1, dim_n] length:n
         shape_of_other = [odim1, odim2 ... odim(n-m) ... odim_m_1, dim_m] length:m
         suppose n > m and dim_n = odim_m_1:
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1))...dim_n_1, dim_m]
@@ -253,7 +253,7 @@ def _relu6_flops(input_shapes, attrs):
 def _silu_flops(input_shapes, attrs):
     return _relu_class_flops(input_shapes, attrs)
 
-    
+
 @register_flops("reshape2")
 def _reshape2_flops(input_shapes, attrs):
     """FLOPs computation for reshape2 op.
@@ -280,5 +280,3 @@ def _transpose2_flops(input_shapes, attrs):
         equation: flops = 0
     """
     return 0
-
-
