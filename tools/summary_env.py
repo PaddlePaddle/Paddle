@@ -144,12 +144,16 @@ def get_cudnn_info():
     else:
         cudnn_header_path = run_shell_command(
             'whereis "cudnn.h" | awk \'{print $2}\''
-        )
+        ).strip('\n')
         if cudnn_header_path:
-            cudnn_header_path = cudnn_header_path.strip()
             cmd = 'cat "{0}" | grep "{1}" | grep -v "CUDNN_VERSION"'
+            if _get_cudnn_ver(cmd.format(cudnn_header_path, 'CUDNN_MAJOR')):
+                cudnn_header_path = run_shell_command(
+                    'whereis "cudnn_version.h" | awk \'{print $2}\''
+                ).strip('\n')
+
         else:
-            envs['cudnn_version'] = None
+            envs['cudnn_version'] = 'N/A'
             return
 
     major = _get_cudnn_ver(cmd.format(cudnn_header_path, 'CUDNN_MAJOR'))
