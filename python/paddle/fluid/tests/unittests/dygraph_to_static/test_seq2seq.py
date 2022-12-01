@@ -18,13 +18,12 @@ import time
 import unittest
 
 import numpy as np
+from seq2seq_dygraph_model import AttentionModel, BaseModel
+from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
+
 import paddle.fluid as fluid
 from paddle.fluid.clip import GradientClipByGlobalNorm
 from paddle.jit import ProgramTranslator
-
-from seq2seq_dygraph_model import BaseModel, AttentionModel
-from seq2seq_utils import Seq2SeqModelHyperParams
-from seq2seq_utils import get_data_iter
 
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()

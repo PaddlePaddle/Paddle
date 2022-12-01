@@ -16,8 +16,9 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Embedding, Layer, Linear
+from paddle.fluid.dygraph import Embedding, Layer
 from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -33,19 +34,18 @@ class PositionwiseFeedForwardLayer(Layer):
         super().__init__()
 
         self._i2h = Linear(
-            input_dim=d_model,
-            output_dim=d_inner_hid,
-            param_attr=fluid.ParamAttr(
+            in_features=d_model,
+            out_features=d_inner_hid,
+            weight_attr=fluid.ParamAttr(
                 name=name + '_fc_0.w_0', initializer=param_initializer
             ),
             bias_attr=name + '_fc_0.b_0',
-            act=hidden_act,
         )
 
         self._h2o = Linear(
-            input_dim=d_inner_hid,
-            output_dim=d_model,
-            param_attr=fluid.ParamAttr(
+            in_features=d_inner_hid,
+            out_features=d_model,
+            weight_attr=fluid.ParamAttr(
                 name=name + '_fc_1.w_0', initializer=param_initializer
             ),
             bias_attr=name + '_fc_1.b_0',
@@ -234,13 +234,12 @@ class BertModelLayer(Layer):
         )
 
         self.pooled_fc = Linear(
-            input_dim=self._emb_size,
-            output_dim=self._emb_size,
-            param_attr=fluid.ParamAttr(
+            in_features=self._emb_size,
+            out_features=self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name="pooled_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="pooled_fc.b_0",
-            act="tanh",
         )
 
         self.pre_process_layer = PrePostProcessLayer(
@@ -295,6 +294,8 @@ class BertModelLayer(Layer):
             input=enc_output, axes=[1], starts=[0], ends=[1]
         )
         next_sent_feat = self.pooled_fc(next_sent_feat)
+
+        next_sent_feat = paddle.tanh(next_sent_feat)
         next_sent_feat = paddle.reshape(
             next_sent_feat, shape=[-1, self._emb_size]
         )
@@ -334,13 +335,12 @@ class PretrainModelLayer(Layer):
         )
 
         self.pooled_fc = Linear(
-            input_dim=self._emb_size,
-            output_dim=self._emb_size,
-            param_attr=fluid.ParamAttr(
+            in_features=self._emb_size,
+            out_features=self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name="mask_lm_trans_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="mask_lm_trans_fc.b_0",
-            act="tanh",
         )
 
         self.mask_lm_out_bias_attr = fluid.ParamAttr(
@@ -350,9 +350,9 @@ class PretrainModelLayer(Layer):
 
         if not self._weight_sharing:
             self.out_fc = Linear(
-                input_dim=self._emb_size,
-                output_dim=self._voc_size,
-                param_attr=fluid.ParamAttr(
+                in_features=self._emb_size,
+                out_features=self._voc_size,
+                weight_attr=fluid.ParamAttr(
                     name="mask_lm_out_fc.w_0",
                     initializer=self._param_initializer,
                 ),
@@ -367,9 +367,9 @@ class PretrainModelLayer(Layer):
             )
 
         self.next_sent_fc = Linear(
-            input_dim=self._emb_size,
-            output_dim=2,
-            param_attr=fluid.ParamAttr(
+            in_features=self._emb_size,
+            out_features=2,
+            weight_attr=fluid.ParamAttr(
                 name="next_sent_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="next_sent_fc.b_0",
@@ -397,6 +397,7 @@ class PretrainModelLayer(Layer):
 
         mask_feat = paddle.gather(reshaped_emb_out, index=mask_pos)
         mask_trans_feat = self.pooled_fc(mask_feat)
+        mask_trans_feat = paddle.tanh(mask_trans_feat)
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 
         if self._weight_sharing:

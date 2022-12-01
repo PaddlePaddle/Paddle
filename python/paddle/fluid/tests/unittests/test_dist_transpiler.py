@@ -403,9 +403,9 @@ class TestFakeInit(TranspilerTest):
 
         neg_emb_b_vec = paddle.reshape(neg_emb_b, shape=[-1, neg_num])
 
-        true_logits = fluid.layers.elementwise_add(
+        true_logits = paddle.add(
             paddle.sum(
-                fluid.layers.elementwise_mul(input_emb, true_emb_w),
+                paddle.multiply(input_emb, true_emb_w),
                 dim=1,
                 keep_dim=True,
             ),
@@ -418,7 +418,7 @@ class TestFakeInit(TranspilerTest):
             input_emb_re, neg_emb_w_re, transpose_y=True
         )
         neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
-        neg_logits = fluid.layers.elementwise_add(neg_matmul_re, neg_emb_b_vec)
+        neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
         label_ones = fluid.layers.fill_constant_batch_size_like(
             true_logits, shape=[-1, 1], value=1.0, dtype='float32'
@@ -427,13 +427,13 @@ class TestFakeInit(TranspilerTest):
             true_logits, shape=[-1, neg_num], value=0.0, dtype='float32'
         )
 
-        true_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        true_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             true_logits, label_ones
         )
-        neg_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        neg_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             neg_logits, label_zeros
         )
-        cost = fluid.layers.elementwise_add(
+        cost = paddle.add(
             paddle.sum(true_xent, axis=1),
             paddle.sum(neg_xent, axis=1),
         )
