@@ -2090,7 +2090,9 @@ def bilinear_tensor_product(
     This layer performs bilinear tensor product on two inputs.
 
     .. math::
+
        out_{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
+
     In this formula:
       - :math:`x`: the first input contains M elements, shape is [batch_size, M].
       - :math:`y`: the second input contains N elements, shape is [batch_size, N].
@@ -2117,11 +2119,14 @@ def bilinear_tensor_product(
         Variable: A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
     Examples:
         .. code-block:: python
+
             import paddle
             paddle.enable_static()
-            layer1 = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
-            layer2 = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
-            tensor = paddle.static.nn.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+
+            x = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
+            y = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
+            tensor = paddle.static.nn.bilinear_tensor_product(x, y, size=1000)
+
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
