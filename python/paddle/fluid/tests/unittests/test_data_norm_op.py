@@ -14,13 +14,15 @@
 """This is unit test of Test data_norm Op."""
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
