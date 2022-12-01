@@ -828,7 +828,7 @@ class ShardingPass(PassBase):
                     cur_group.collect(grad_var, rank)
 
                 if len(cur_group.vars) == 1:
-                    cur_group.coalesce_op_idx = i
+                    cur_group.coalesce_op_idx = i - 1
 
                 grouped_grad_names.add(grad_name)
                 cur_group.reduce_op_indices.append(i)
@@ -893,6 +893,9 @@ class ShardingPass(PassBase):
         modify_op_set = set(modify_reduce_op_map.keys())
         remove_op_set = set(remove_reduce_op_indices)
         confilct = coalesce_op_set.intersection(modify_op_set)
+        print(sorted(list(coalesce_op_set)))
+        print(sorted(list(remove_op_set)))
+        print(sorted(list(coalesce_op_set.intersection(remove_op_set))))
         assert len(confilct) == 0
         confilct = coalesce_op_set.intersection(remove_op_set)
         assert len(confilct) == 0
