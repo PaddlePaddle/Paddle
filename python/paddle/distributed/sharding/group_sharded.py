@@ -12,27 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
+import os
 
 import paddle
-
-from paddle.optimizer import Optimizer
-from paddle.distributed.utils.log_utils import get_logger
-from paddle.fluid.framework import in_dygraph_mode
 
 # Old version
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import (
     ShardingOptimizerStage2,
-)
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
-    ShardingStage2,
-)
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import (
-    ShardingStage3,
-)
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
-    ShardingScaler,
 )
 
 # New version
@@ -48,6 +35,18 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
+    ShardingStage2,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import (
+    ShardingStage3,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
+    ShardingScaler,
+)
+from paddle.distributed.utils.log_utils import get_logger
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.optimizer import Optimizer
 
 logger_ = get_logger(logging.WARNING)
 
