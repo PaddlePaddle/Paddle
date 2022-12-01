@@ -46,7 +46,9 @@ def conv_block():
         pool_stride=2,
         act="relu",
     )
-    prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(
+        x=conv_pool_2, size=10, activation='softmax'
+    )
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)
     return [img, label], avg_loss

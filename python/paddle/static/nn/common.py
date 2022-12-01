@@ -103,7 +103,7 @@ def fc(
         out.shape = (1, 2)
 
     Args:
-        input (Tensor|list[Tensor]|tuple[Tensor]): A tensor or a list/tuple of tensors. The number of dimensions
+        x (Tensor|list[Tensor]|tuple[Tensor]): A tensor or a list/tuple of tensors. The number of dimensions
             of each tensor is at least 2. The data type should be float16, float32 or float64.
         size (int): The number of output units in this layer, which also means the feature
             size of output tensor.
