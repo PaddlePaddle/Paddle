@@ -145,7 +145,7 @@ static void CheckNanInfCpu(const T* value_ptr,
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
 #ifdef _OPENMP
-  int num_threads = omp_get_num_threads();
+  int num_threads = std::max(omp_get_num_threads(), 1);
 #else
   int num_threads = 1;
 #endif
@@ -224,7 +224,9 @@ void CheckNanInfCpu(const T* value_ptr,
   RealType real_sum = 0.0f;
   RealType imag_sum = 0.0f;
 
+#ifdef _OPENMP
 #pragma omp parallel for reduction(+ : real_sum) reduction(+ : imag_sum)
+#endif
   for (int64_t i = 0; i < numel; ++i) {
     T value = value_ptr[i];
     real_sum += (value.real - value.real);
@@ -297,8 +299,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile "
-        "with "
-        "GPU.",
+        "with GPU.",
         var_name));
 #endif
     return;
@@ -333,8 +334,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile "
-        "with "
-        "XPU.",
+        "with XPU.",
         var_name));
 #endif
     return;
