@@ -15,35 +15,34 @@
 import sys
 import time
 import unittest
+
 import numpy as np
-
-import paddle.fluid as fluid
-from paddle.io import DataLoader
-from paddle.fluid.dygraph.nn import Linear
-
 from test_multiprocess_dataloader_iterable_dataset_static import (
-    RandomDataset,
-    RandomBatchedDataset,
-    prepare_places,
-)
-from test_multiprocess_dataloader_iterable_dataset_static import (
-    EPOCH_NUM,
     BATCH_SIZE,
+    CLASS_NUM,
+    EPOCH_NUM,
     IMAGE_SIZE,
     SAMPLE_NUM,
-    CLASS_NUM,
+    RandomBatchedDataset,
+    RandomDataset,
+    prepare_places,
 )
+
+import paddle
+import paddle.fluid as fluid
+from paddle.io import DataLoader
+from paddle.nn import Linear
 
 
 class SimpleFCNet(fluid.dygraph.Layer):
     def __init__(self):
         super().__init__()
 
-        param_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.8)
+        param_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.8)
         )
-        bias_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+        bias_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         )
         self._fcs = []
         in_channel = IMAGE_SIZE
@@ -52,21 +51,22 @@ class SimpleFCNet(fluid.dygraph.Layer):
                 Linear(
                     in_channel,
                     hidden_size,
-                    act='tanh',
-                    param_attr=param_attr,
+                    weight_attr=param_attr,
                     bias_attr=bias_attr,
                 )
             )
+            self._fcs.append(paddle.nn.Tanh())
+
             in_channel = hidden_size
         self._fcs.append(
             Linear(
                 in_channel,
                 CLASS_NUM,
-                act='softmax',
-                param_attr=param_attr,
+                weight_attr=param_attr,
                 bias_attr=bias_attr,
             )
         )
+        self._fcs.append(paddle.nn.Softmax())
 
     def forward(self, image):
         out = image
