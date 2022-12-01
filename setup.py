@@ -593,7 +593,7 @@ def cmake_run(args, build_path):
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
-        cmake_args.append("-GNinja")
+        # cmake_args.append("-GNinja")
         cmake_args += args
         cmake_args.append(TOP_DIR)
         print("cmake_args:", cmake_args)
