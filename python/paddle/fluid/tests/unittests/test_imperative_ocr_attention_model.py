@@ -23,7 +23,6 @@ from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.nn import (
     BatchNorm,
-    Embedding,
     GRUUnit,
     Linear,
 )
@@ -382,8 +381,8 @@ class OCRAttention(fluid.dygraph.Layer):
             Config.decoder_size,
             bias_attr=False,
         )
-        self.embedding = Embedding(
-            [Config.num_classes + 2, Config.word_vector_dim], dtype='float32'
+        self.embedding = paddle.nn.Embedding(
+            Config.num_classes + 2, Config.word_vector_dim
         )
         self.gru_decoder_with_attention = GRUDecoderWithAttention(
             Config.decoder_size, Config.num_classes
