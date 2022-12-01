@@ -660,7 +660,7 @@ struct MergeAdd<phi::XPUContext, T> {
     out.set_height(input.height());
     DenseTensor* out_tensor = out.mutable_value();
     out_tensor->Resize(phi::make_ddim(
-      {static_cast<int64_t>(merged_row.size()), input_width});
+      {static_cast<int64_t>(merge_rows.size()), input_width});
     context.template Alloc<T>(out_tensor);
 
     std::unordered_map<int64_t, size_t> rows_to_id;
@@ -751,7 +751,7 @@ struct MergeAdd<phi::XPUContext, T> {
 
     DenseTensor* out_tensor = out.mutable_value();
     out_tensor->Resize(phi::make_ddim(
-      {static_cast<int64_t>(merged_row_set.size()), input_width});
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
     context.template Alloc<T>(out_tensor);
 
     float* y_data = reinterpret_cast<float*>(out_tensor->data<T>());
