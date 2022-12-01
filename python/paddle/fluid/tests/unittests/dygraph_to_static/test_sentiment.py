@@ -19,12 +19,11 @@ from test_lac import DynamicGRU
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.nn import Linear
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 SEED = 2020
 program_translator = ProgramTranslator()
