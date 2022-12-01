@@ -3035,7 +3035,7 @@ class TestBook(LayerTest):
             startup_program=fluid.default_startup_program(),
         ):
             x = self._get_data(name='x', shape=[13], dtype='float32')
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn(x, size=1, activation=None)
             y = self._get_data(name='y', shape=[1], dtype='float32')
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = paddle.mean(cost)
