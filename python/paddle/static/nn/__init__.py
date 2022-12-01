@@ -62,6 +62,7 @@ from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
 __all__ = [  # noqa
     'fc',
     'batch_norm',
+    'bilinear_tensor_product',
     'embedding',
     'case',
     'cond',
