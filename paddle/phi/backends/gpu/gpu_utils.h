@@ -18,11 +18,11 @@
 
 #include <array>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
-namespace paddle {
-namespace framework {
+namespace phi {
+namespace funcs {
 
 template <typename T, int Size, T DefaultValue>
 struct DeviceArray {
@@ -110,16 +110,16 @@ IntType CeilOrFloor(IntType x, IntType deviser) {
   PADDLE_ENFORCE_GT(
       deviser,
       0,
-      platform::errors::InvalidArgument("deviser should be greater than 0, "
-                                        "but received is:%d",
-                                        deviser));
+      phi::errors::InvalidArgument("deviser should be greater than 0, "
+                                   "but received is:%d",
+                                   deviser));
 
   PADDLE_ENFORCE_GT(
       x,
       0,
-      platform::errors::InvalidArgument("input should be greater than 0, "
-                                        "but received is:%d",
-                                        x));
+      phi::errors::InvalidArgument("input should be greater than 0, "
+                                   "but received is:%d",
+                                   x));
 
   const IntType round_to_zero = x / deviser;
   const IntType inte_result = round_to_zero * deviser;
@@ -140,5 +140,5 @@ IntType CeilOrFloor(IntType x, IntType deviser) {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

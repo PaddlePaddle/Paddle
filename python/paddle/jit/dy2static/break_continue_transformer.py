@@ -20,10 +20,10 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import BaseNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
     create_bool_node,
 )
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     ForNodeVisitor,
 )
 

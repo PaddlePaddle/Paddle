@@ -21,9 +21,9 @@ from utils import DyGraphProgramDescTracerTestHelper
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Linear
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -59,8 +59,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             weight_attr=None,
             bias_attr=None,
         )
-
-        self._pool2d = Pool2D(
+        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -93,12 +92,9 @@ class MNIST(fluid.dygraph.Layer):
         self._fc = Linear(
             self.pool_2_shape,
             10,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
-                )
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=scale)
             ),
-            act="softmax",
         )
 
     def forward(self, inputs):
@@ -106,6 +102,7 @@ class MNIST(fluid.dygraph.Layer):
         x = self._simple_img_conv_pool_2(x)
         x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
+        x = paddle.nn.functional.softmax(x)
         return x
 
 

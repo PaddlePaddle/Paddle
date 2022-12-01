@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 from PIL import Image
 
 import paddle

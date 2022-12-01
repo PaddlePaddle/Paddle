@@ -25,24 +25,24 @@ from paddle.fluid.framework import _test_eager_guard
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()
-        self._linear1 = fluid.dygraph.Linear(
+        self._linear1 = paddle.nn.Linear(
             input_size,
             3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
         )
-        self._linear2 = fluid.dygraph.Linear(
+        self._linear2 = paddle.nn.Linear(
             3,
             4,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
         )
 
