@@ -206,13 +206,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       if (enable_int8) {
         output_fp16 = 1;
       }
-      PADDLE_ENFORCE_EQ(
-          output_fp16,
-          1,
-          platform::errors::InvalidArgument(
-              "Only Precision::KHalf(fp16) is supported when infering "
-              "ernie(bert) model with config.EnableVarseqlen(). "
-              "But Precision::KFloat32 is setted."));
 
       std::vector<nvinfer1::PluginField> fields;
       std::vector<std::string> temp_fields_keys;
