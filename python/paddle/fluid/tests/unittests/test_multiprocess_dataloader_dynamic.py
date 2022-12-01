@@ -15,9 +15,6 @@
 import sys
 import time
 import unittest
-import numpy as np
-import paddle
-from paddle.nn import Linear
 
 import numpy as np
 from test_multiprocess_dataloader_static import (
@@ -31,8 +28,10 @@ from test_multiprocess_dataloader_static import (
     prepare_places,
 )
 
+import paddle
 import paddle.fluid as fluid
 from paddle.io import DataLoader
+from paddle.nn import Linear
 
 
 class SimpleFCNet(fluid.dygraph.Layer):

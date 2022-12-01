@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 
+import paddle
 import paddle.fluid as fluid
 
 
