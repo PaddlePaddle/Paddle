@@ -34,16 +34,16 @@ from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
-from . import logging_utils
-from .convert_call_func import (
+from .dy2static import logging_utils
+from .dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
 )
-from .logging_utils import (
+from .dy2static.logging_utils import (
     set_code_level,
     set_verbosity,
 )
-from .program_translator import (
+from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
     unwrap_decorators,
