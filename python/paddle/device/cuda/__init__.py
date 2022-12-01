@@ -356,7 +356,7 @@ def _set_current_stream(stream):
 def stream_guard(stream):
     '''
     Notes:
-        This API only supports dygraph mode currently.
+        This API only supports dynamic graph mode currently.
 
     A context manager that specifies the current stream context by the given stream.
 

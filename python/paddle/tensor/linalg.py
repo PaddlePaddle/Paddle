@@ -2052,7 +2052,7 @@ def svd(x, full_matrices=False, name=None):
         - S(Tensor), is the singular value decomposition result S.
 
         - VH(Tensor), VH is the conjugate transpose of V, which is the singular value decomposition result V.
-        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+            Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
 
     Examples:
         .. code-block:: python

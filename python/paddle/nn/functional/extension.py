@@ -35,7 +35,7 @@ __all__ = []
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     """
-    Create a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
+    Creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
     are filled by ``input``. By default, a 2D plane formed by the last two dimensions
     of the returned tensor will be selected.
 
