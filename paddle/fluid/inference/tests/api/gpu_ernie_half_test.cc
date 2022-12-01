@@ -164,7 +164,7 @@ TEST(Ernie_gpu_fp16_no_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 1e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 5e-2);
     }
   }
 }
@@ -206,7 +206,7 @@ TEST(Ernie_gpu_fp16_with_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 1e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 5e-2);
     }
   }
 }
@@ -243,7 +243,7 @@ TEST(Ernie_gpu_bf16_no_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 1e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 5e-2);
     }
   }
 }
@@ -285,7 +285,7 @@ TEST(Ernie_gpu_bf16_with_ir, compare_results) {
     }
     float *result = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 1e-2);
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 5e-2);
     }
   }
 }
