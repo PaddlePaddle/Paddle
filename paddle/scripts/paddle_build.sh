@@ -81,12 +81,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
-            #     PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
-            # -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
-            # -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
-                export PYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
-                export PYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
                 pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -96,9 +93,6 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
-            #     PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
-            # -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
-            # -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
@@ -112,12 +106,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
-            #     PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
-            # -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
-            # -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib"
-                export PYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8m/
-                export PYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8m.dylib
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
                 pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -127,12 +118,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
-            #     PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
-            # -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
-            # -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib"
-                export PYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9m/
-                export PYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9m.dylib
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
                 pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -142,12 +130,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
-            #     PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
-            # -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
-            # -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib"
-                export PYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.7m/
-                export PYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.7m.dylib
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
                 pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -159,66 +144,44 @@ function cmake_base() {
             if [ "$1" == "cp36-cp36m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
-            #     export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
-            # -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.6.0/include/python3.6m
-            # -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.6.0/lib/libpython3.so"
-                export PYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.6.0/include/python3.6m
-                export PYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.6.0/lib/libpython3.so
-
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.6.0/bin/python3
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.6.0/include/python3.6m
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.6.0/lib/libpython3.so
                 pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
-            #     export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3.7
-            # -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
-            # -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
-                echo "which pip3.7:"
-                which pip3.7
-                pip3.7 list
             elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
-            #     export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.8.0/bin/python3.8
-            # -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
-            # -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
-                export PYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.8.0/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.6m
-                export PYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
-            #     export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.9.0/bin/python3.9
-            # -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.9.0/include/python3.9
-            # -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.9.0/lib/libpython3.so"
-                export PYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.9.0/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.9.0/include/python3.6m
-                export PYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.9.0/lib/libpython3.so
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
                 pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
-            #     export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.10.0/bin/python3.10
-            # -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.10.0/include/python3.10
-            # -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.10.0/lib/libpython3.so"
-                export PYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.10.0/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.10.0/include/python3.6m
-                export PYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.10.0/lib/libpython3.so
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
            elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
-                # export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
-                #                      -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
-                #                      -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
-                export DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
-                export PYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
-                export PYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so
+                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
+                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
                 /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
@@ -404,10 +367,10 @@ function cmake_base() {
     export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
-    /opt/_internal/cpython-3.7.0/bin/python setup.py install
-    # if [ "$build_error" != 0 ];then
-    #     exit 7;
-    # fi
+    python setup.py install;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
     
 }
 
@@ -555,14 +518,6 @@ EOF
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    echo "---------"
-    ls -l ${PADDLE_ROOT}/build
-#     cat <<EOF
-#     ============================================
-#     Building in /paddle/build ...
-#     ============================================
-# EOF
-#     build_base $@
 
     current_branch=`git branch | grep \* | cut -d ' ' -f2`
     if [ "$current_branch" != "develop_base_pr" ];then
@@ -570,28 +525,12 @@ function build() {
     fi
 }
 
+
 function cmake_gen_and_build() {
     rm -rf ${PADDLE_ROOT}/build
     startTime_s=`date +%s`
-    #cmake_gen $1
-    export CMAKE_BUILD_TYPE=Release PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7 PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so WITH_GPU=OFF WITH_TENSORRT=ON WITH_ROCM=OFF WITH_CINN=OFF WITH_DISTRIBUTE=ON WITH_MKL=OFF WITH_AVX=OFF CUDA_ARCH_NAME=Volta NEW_RELEASE_PYPI=OFF NEW_RELEASE_ALL=OFF NEW_RELEASE_JIT=OFF WITH_PYTHON=ON CUDNN_ROOT=/usr/ WITH_TESTING=ON WITH_COVERAGE=OFF WITH_INCREMENTAL_COVERAGE=OFF CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_CONTRIB=ON WITH_INFERENCE_API_TEST=ON WITH_INFRT=OFF INFERENCE_DEMO_INSTALL_DIR=/root/.cache/inference_demo PY_VERSION=3.7 CMAKE_INSTALL_PREFIX=/paddle/build WITH_PSCORE=ON WITH_PSLIB=OFF WITH_GLOO=ON LITE_GIT_TAG=release/v2.10 WITH_XPU=OFF WITH_MLU=OFF WITH_IPU=OFF WITH_CNCL=OFF XPU_SDK_ROOT= WITH_LITE=OFF WITH_XPU_BKCL=OFF WITH_ARM=OFF WITH_ASCEND=OFF WITH_ASCEND_CL=OFF WITH_ASCEND_INT64=OFF WITH_STRIP=ON ON_INFER=OFF WITH_HETERPS=OFF WITH_FLUID_ONLY=OFF CUDA_ARCH_BIN= WITH_RECORD_BUILDTIME=OFF WITH_UNITY_BUILD=ON WITH_ONNXRUNTIME=OFF WITH_CUDNN_FRONTEND=OFF
-    echo "which python:"
-    which python
-    python setup.py bdist_wheel
-    #python setup.py develop
-    echo "which python:"
-    which python
-    pip3.7 list
-    # echo "pwd:"
-    # pwd
-    # echo "pwd ls:"
-    # ls -l 
-    # cd /workspace/Paddle/build && ls -l
-    # cd ${PADDLE_ROOT}/build/dist && ls -l
-    # cd  /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/ && ls -l
-    # echo "ls 2:"
-    # ll ${PADDLE_ROOT}/build/python/paddle/libs
-    build $2
+    cmake_gen $1
+    #build $2
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
@@ -3780,11 +3719,6 @@ function main() {
         ;;
       cicheck_py37)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        pwd
-        echo "in cichek_py37:"
-        echo "which python:"
-        which python
-        #python ${PADDLE_ROOT}/test_ljd.py
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)

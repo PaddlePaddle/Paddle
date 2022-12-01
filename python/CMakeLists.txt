@@ -22,9 +22,6 @@ set(SETUP_LOG_FILE "setup.py.log")
 
 set(FLUID_CORE_NAME "libpaddle")
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-               ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
                ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
 
@@ -77,7 +74,6 @@ else()
     OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND touch stub.cc
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
-    # COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMENT "Packing whl packages------>>>"
     DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
             pass_desc_py_proto ${PY_FILES})
@@ -96,8 +92,6 @@ if(WITH_TESTING)
   add_subdirectory(paddle/fluid/contrib/tests)
   add_subdirectory(paddle/fluid/contrib/slim/tests)
 endif()
-# install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
-#          DESTINATION opt/paddle/share/wheels)
 
 if(APPLE)
   find_program(INSTALL_NAME_TOOL_EXECUTABLE install_name_tool)
