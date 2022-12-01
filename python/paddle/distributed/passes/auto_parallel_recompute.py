@@ -14,16 +14,6 @@
 
 import logging
 
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
-from paddle.distributed.auto_parallel.utils import (
-    get_loss_op,
-    insert_dependencies_for_two_ops,
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
-    set_dist_op_desc_original_id,
-    set_var_dist_attr,
-)
 from paddle.fluid import core
 from paddle.fluid import framework as framework
 from paddle.fluid import unique_name
@@ -35,6 +25,14 @@ from paddle.fluid.backward import (
     _rename_arg_,
 )
 
+from ..auto_parallel.dist_attribute import OperatorDistributedAttribute
+from ..auto_parallel.utils import (
+    get_loss_op,
+    insert_dependencies_for_two_ops,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_dist_op_desc_original_id,
+    set_var_dist_attr,
+)
 from .pass_base import PassBase, register_pass
 
 
@@ -110,15 +108,15 @@ class RecomputeState(ProgramStats):
             return segments
 
         for i, (idx1, idx2) in enumerate(segments):
-            print("recompute segment[{}]".format(i))
-            print(
+            logging.info("recompute segment[{}]".format(i))
+            logging.info(
                 "segment start op: [{}]: [{}] [{}]".format(
                     self._ops[idx1].desc.type(),
                     self._ops[idx1].desc.input_arg_names(),
                     self._ops[idx1].desc.output_arg_names(),
                 )
             )
-            print(
+            logging.info(
                 "segment end op: [{}]: [{}] [{}]".format(
                     self._ops[idx2 - 1].desc.type(),
                     self._ops[idx2 - 1].desc.input_arg_names(),
@@ -301,8 +299,6 @@ class RecomputePass(PassBase):
         if segments == []:
             return
 
-        print("segments:", segments)
-
         # 3. get vars that should be hold in memory
         vars_should_be_hold = []
         for segment in segments:
@@ -310,7 +306,7 @@ class RecomputePass(PassBase):
                 rc_state.get_out_of_subgraph_vars(segment[0], segment[1])
             )
         cross_vars = set(vars_should_be_hold) - set(checkpoints)
-        print(
+        logging.info(
             "found [{}] vars which cross recompute segment: [{}],"
             "better checkpoints might be set to reduce those vars".format(
                 len(cross_vars), cross_vars
@@ -320,7 +316,6 @@ class RecomputePass(PassBase):
         vars_should_be_hold.extend(rc_state.get_input_nodes())
         vars_should_be_hold = list(set(vars_should_be_hold))
         vars_in_memory = vars_should_be_hold + checkpoints
-        print("The vars hold in memory: [{}]".format(list(set(vars_in_memory))))
 
         # 4. get the fwd ops desc to be recomputed.
         var_name_dict = {}  # varname --> varname.subprog_XXX

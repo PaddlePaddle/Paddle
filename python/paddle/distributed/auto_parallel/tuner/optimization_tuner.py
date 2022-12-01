@@ -31,6 +31,7 @@ from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import (
+    clear_all_process_groups,
     get_all_process_groups,
 )
 from paddle.distributed.auto_parallel.reshard import Resharder
@@ -109,7 +110,7 @@ def parse_results(results):
 # all env need to be start a new pass are member of dist context
 def _copy_context(ref_dist_context):
 
-    # clear_all_process_groups()
+    clear_all_process_groups()
 
     new_dist_context = DistributedContext()
     new_dist_context._serial_main_program = (
