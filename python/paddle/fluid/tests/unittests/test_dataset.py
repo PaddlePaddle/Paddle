@@ -1029,9 +1029,7 @@ class TestDataset2(unittest.TestCase):
                     name=slot, shape=[1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
-            fake_cost = fluid.layers.elementwise_sub(
-                slots_vars[0], slots_vars[-1]
-            )
+            fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
             fake_cost = paddle.mean(fake_cost)
         with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
@@ -1101,9 +1099,7 @@ class TestDataset2(unittest.TestCase):
                     name=slot, shape=[1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
-            fake_cost = fluid.layers.elementwise_sub(
-                slots_vars[0], slots_vars[-1]
-            )
+            fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
             fake_cost = paddle.mean(fake_cost)
         with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
@@ -1234,9 +1230,7 @@ class TestDataset2(unittest.TestCase):
                     name=slot, shape=[1], dtype="float32", lod_level=1
                 )
                 slots_vars.append(var)
-            fake_cost = fluid.layers.elementwise_sub(
-                slots_vars[0], slots_vars[-1]
-            )
+            fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
             fake_cost = paddle.mean(fake_cost)
         with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
