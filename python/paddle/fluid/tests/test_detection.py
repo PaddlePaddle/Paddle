@@ -203,34 +203,6 @@ class TestDetection(unittest.TestCase):
 
         print(str(program))
 
-    def test_ssd_loss(self):
-        program = Program()
-        with program_guard(program):
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
-            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
-            gt_box = layers.data(
-                name='gt_box', shape=[4], lod_level=1, dtype='float32'
-            )
-            gt_label = layers.data(
-                name='gt_label', shape=[1], lod_level=1, dtype='int32'
-            )
-            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
-            self.assertIsNotNone(loss)
-            self.assertEqual(loss.shape[-1], 1)
-        print(str(program))
-
 
 class TestPriorBox(unittest.TestCase):
     def test_prior_box(self):
