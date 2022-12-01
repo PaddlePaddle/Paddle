@@ -21,7 +21,6 @@ import paddle.nn.functional as F
 from paddle.fluid.dygraph import (
     Embedding,
     Layer,
-    LayerNorm,
     to_variable,
 )
 from paddle.nn import Linear
@@ -64,9 +63,9 @@ class PrePostProcessLayer(Layer):
                     self.add_sublayer(
                         "layer_norm_%d"
                         % len([layer for layer in self.children()]),
-                        LayerNorm(
+                        paddle.nn.LayerNorm(
                             normalized_shape=d_model,
-                            param_attr=fluid.ParamAttr(
+                            weight_attr=fluid.ParamAttr(
                                 initializer=fluid.initializer.Constant(1.0)
                             ),
                             bias_attr=fluid.ParamAttr(

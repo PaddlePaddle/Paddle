@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Layer
+from paddle.fluid import Embedding, Layer
 from paddle.nn import Linear
 from paddle.fluid.dygraph import to_variable, guard
 from test_imperative_base import new_program_scope
@@ -402,9 +402,9 @@ class PrePostProcessLayer(Layer):
         super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
-                self._layer_norm = LayerNorm(
+                self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    param_attr=fluid.ParamAttr(
+                    weight_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
