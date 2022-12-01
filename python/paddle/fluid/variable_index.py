@@ -622,7 +622,7 @@ def _setitem_for_tensor_array(var, item, value):
         not _non_static_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
-        from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+        from paddle.jit.dy2static.variable_trans_func import (
             to_static_variable,
         )
         from paddle import cast
