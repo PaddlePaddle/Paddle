@@ -18,15 +18,10 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import (
-    Embedding,
-    Layer,
-    LayerNorm,
-    to_variable,
-)
-from paddle.nn import Linear
+from paddle.fluid.dygraph import Embedding, Layer, LayerNorm, to_variable
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
+from paddle.nn import Linear
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -845,7 +840,7 @@ class Transformer(Layer):
             )
             caches = map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
-                fluid.layers.log(fluid.layers.softmax(logits))
+                paddle.log(fluid.layers.softmax(logits))
             )
 
             step_log_probs = mask_probs(
@@ -882,7 +877,7 @@ class Transformer(Layer):
         predict_ids = paddle.stack(predict_ids, axis=0)
         parent_ids = paddle.stack(parent_ids, axis=0)
         finished_seq = paddle.transpose(
-            layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
+            paddle.nn.functional.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )
         finished_scores = topk_scores
 

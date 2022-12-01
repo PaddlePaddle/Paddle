@@ -1837,7 +1837,7 @@ def fast_decode(
                 x=layers.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )

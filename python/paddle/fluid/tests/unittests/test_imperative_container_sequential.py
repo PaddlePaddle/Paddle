@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from paddle.nn import Linear
 
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 
 class TestImperativeContainerSequential(unittest.TestCase):

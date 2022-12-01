@@ -20,8 +20,7 @@ from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import BatchNorm
+from paddle.fluid import BatchNorm, core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper

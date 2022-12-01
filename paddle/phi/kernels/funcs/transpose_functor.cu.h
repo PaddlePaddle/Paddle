@@ -14,20 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/gpu_utils.h"
-#include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 using Tensor = phi::DenseTensor;
-using Dim3 = framework::Dim3;
-using Index3 = framework::Index3;
 
 struct EqualTo {
   constexpr bool operator()(int a, int b) const { return a == b; }
@@ -118,8 +116,8 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   };
 
   // Converts block idx to tile index, each block process a tile
-  Index3 input_block_tile_index = framework::ConvertTensorIndex<IndexType>(
-      blockIdx.x, tile_aligned_input_dim);
+  Index3 input_block_tile_index =
+      ConvertTensorIndex<IndexType>(blockIdx.x, tile_aligned_input_dim);
 
   // Compute real index align to tile:0, 32, 64...
   Index3 block_tile_index_in_input = {
@@ -130,8 +128,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
 
   // Compute block flat index against input dims.
   IndexType input_origin_block_flat_index =
-      framework::FlatTensorIndex<IndexType>(block_tile_index_in_input,
-                                            input_dims);
+      FlatTensorIndex<IndexType>(block_tile_index_in_input, input_dims);
 
   bool full_tile = true;
   IndexType tile_width = TileY;
@@ -193,8 +190,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   };
 
   IndexType output_origin_block_flat_index =
-      framework::FlatTensorIndex<IndexType>(block_tile_index_in_output,
-                                            output_dims);
+      FlatTensorIndex<IndexType>(block_tile_index_in_output, output_dims);
 
   constexpr IndexType out_effective_thread_num = NumThreads / TileX * TileX;
 
@@ -230,13 +226,13 @@ bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
   PADDLE_ENFORCE_LE(
       TSIZE,
       16,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The tile size should smaller than 16, but received is:%d.", TSIZE));
 
   PADDLE_ENFORCE_EQ(
       (TSIZE & (TSIZE - 1)),
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Data types should be powers of 2, but reived size is:%d.", TSIZE));
 
   const int kMaxLongSideLen = 1024;
@@ -316,7 +312,7 @@ struct NarrowDims2TransposeDispatch {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The length of the longer side of the tile should be power of 2."
             " But received value is:%d.",
             tile_long));
@@ -381,7 +377,7 @@ struct NarrowDims2TransposeDispatch<
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The length of the longer side of the tile should be power of 2."
             " But received value is:%d.",
             tile_long));
@@ -431,7 +427,7 @@ struct NarrowDims2TransposeDispatch<
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The length of the longer side of the tile should be power of 2,"
             " but received is:%d.",
             tile_long));
@@ -459,7 +455,7 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
   PADDLE_ENFORCE_EQ(
       ret,
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "SelectProperTileSize should return true, but return value is:%d.",
           ret));
 
@@ -475,12 +471,12 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
     // to find least wasted threads, which means we need to find tile
     // can split input properly, in another words: num_wasted_threads=0.
     int num_wasted_threads =
-        input_long_edge - framework::CeilOrFloor<int, false>(
-                              input_long_edge, proposed_tile_long_edge) *
-                              proposed_tile_long_edge;
+        input_long_edge -
+        CeilOrFloor<int, false>(input_long_edge, proposed_tile_long_edge) *
+            proposed_tile_long_edge;
 
-    int num_full_tiles = framework::CeilOrFloor<int, false>(
-        input_long_edge, proposed_tile_long_edge);
+    int num_full_tiles =
+        CeilOrFloor<int, false>(input_long_edge, proposed_tile_long_edge);
 
     float cost = num_wasted_threads;
 
@@ -514,8 +510,8 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
   // Here finally get proper long X short tile size.
   Dim3 input_dims_aligned = {
       input_dims[0],
-      framework::CeilOrFloor<int, true>(input_dims[1], select_tile_size_i),
-      framework::CeilOrFloor<int, true>(input_dims[2], select_tile_size_j),
+      CeilOrFloor<int, true>(input_dims[1], select_tile_size_i),
+      CeilOrFloor<int, true>(input_dims[2], select_tile_size_j),
   };
 
   IndexType total_tiles_count = input_dims_aligned[0];
@@ -549,7 +545,7 @@ __global__ void TransposeSimpleKernel(IndexType nthreads,
 
   CUDA_KERNEL_LOOP_TYPE(output_index, nthreads, IndexType) {
     Index3 output_tensor_index =
-        framework::ConvertTensorIndex<IndexType>(output_index, output_dims);
+        ConvertTensorIndex<IndexType>(output_index, output_dims);
 
     Index3 input_tensor_index;
     input_tensor_index[0] = output_tensor_index[pos0];
@@ -557,7 +553,7 @@ __global__ void TransposeSimpleKernel(IndexType nthreads,
     input_tensor_index[2] = output_tensor_index[pos2];
 
     IndexType input_index =
-        framework::FlatTensorIndex<IndexType>(input_tensor_index, input_dims);
+        FlatTensorIndex<IndexType>(input_tensor_index, input_dims);
 
     output[output_index] = input[input_index];
   }
@@ -585,8 +581,8 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
 
     Dim3 input_dims_aligned = {
         input_dims[0],
-        framework::CeilOrFloor<int, true>(input_dims[1], kTileSize),
-        framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
+        CeilOrFloor<int, true>(input_dims[1], kTileSize),
+        CeilOrFloor<int, true>(input_dims[2], kTileSize),
     };
 
     IndexType total_tiles_count = input_dims_aligned[0];
@@ -653,13 +649,13 @@ struct SwapDim0And2InTranspose {
 
 // This function is to combine dimension. fox example:
 // (0, 1, 3, 2) --> (0, 2, 1)
-inline void CombineTransposeDim3(const framework::DDim& shape,
+inline void CombineTransposeDim3(const DDim& shape,
                                  const std::vector<int>& perm,
                                  std::vector<int>* new_perm,
-                                 framework::DDim* new_dims) {
+                                 DDim* new_dims) {
   PADDLE_ENFORCE_EQ(shape.size(),
                     perm.size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         " shape should have the save dim with perm, but"
                         " received shape size is:%d, perm size is:%d.",
                         shape.size(),
@@ -717,7 +713,7 @@ struct TransposeSimple {
                   phi::DenseTensor* out) {
     // First reduce the dimensions of the input tensor if possible.
     std::vector<int> new_perm;
-    framework::DDim new_dims;
+    DDim new_dims;
     CombineTransposeDim3(in.dims(), perm, &new_perm, &new_dims);
 
     // Only use tile copy GPU kernel when dimension is 2 or 3.
@@ -796,7 +792,7 @@ class IdxHelper<N, uint32_t> {
   explicit IdxHelper(const uint32_t* dims) {
     for (int i = N - 1; i >= 0; --i) {
       uint32_t value = i < (N - 1) ? dims[i + 1] * stride_[i + 1] : 1;
-      divmoder_[i] = paddle::platform::FastDivMod(value);
+      divmoder_[i] = phi::kps::details::FastDivMod(value);
       stride_[i] = value;
     }
   }
@@ -817,7 +813,7 @@ class IdxHelper<N, uint32_t> {
 
  private:
   uint32_t stride_[N];
-  paddle::platform::FastDivMod divmoder_[N];
+  phi::kps::details::FastDivMod divmoder_[N];
 };
 
 // Transform index between memory offset and shape coodinate.
@@ -1188,8 +1184,8 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
     ret = TransposeSimple<T>::run(ctx, in, perm, out);
   }
   if (!ret) {
-    auto* tuner =
-        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
+    auto* tuner = phi::autotune::MakeTransposeTuner<T>(
+        funcs::TransCompute<phi::GPUContext, T>);
     tuner->AddCallBack(PermuteAndTranspose<phi::GPUContext, T>);
 
     size_t key = phi::autotune::TransposeKey(
@@ -1208,5 +1204,5 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
