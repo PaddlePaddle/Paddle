@@ -38,6 +38,7 @@ from paddle.distributed.auto_parallel.utils import (
     is_loss_grad_op,
     is_backward_op,
     is_optimize_op,
+    insert_dependencies_for_two_vars,
 )
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -829,6 +830,11 @@ class ShardingPass(PassBase):
 
                 if len(cur_group.vars) == 1:
                     cur_group.coalesce_op_idx = i - 1
+                    # NOTE coalecse dependency: control when allocate memory for gradients
+                    # too early would increase the peak memory requirement, too later would hurt the performance
+                    dep_op = ops[i - 2]
+                    dep_varname = dep_op.output_arg_names[0]
+                    cur_group.coalesce_dep_varname = dep_varname
 
                 grouped_grad_names.add(grad_name)
                 cur_group.reduce_op_indices.append(i)
@@ -953,6 +959,20 @@ class ShardingPass(PassBase):
                         OP_ROLE_KEY: OpRole.Backward,
                     },
                 )
+                depend_op = insert_dependencies_for_two_vars(
+                    block,
+                    idx,
+                    block.var(group.coalesce_dep_varname),
+                    group.coalesce_var,
+                    self.dist_context,
+                    OpRole.Backward,
+                    process_mesh=[
+                        -1
+                    ],  # hack to avoid initialize the dist attr for coalesc var
+                    is_recompute=False,
+                    sync=False,
+                )
+        block.sync_with_cpp()
 
         return coalesce_to_group_map, grad_name_to_group_map
 
@@ -1427,6 +1447,7 @@ class VarGroup(object):
         self.numel = 0
         self.vars = []
         self.coalesce_var = None
+        self.coalesce_dep_varname = None
         self.coalesce_op_idx = None
         self.reduce_op_indices = []
         self.allreduce_op_indices = []
