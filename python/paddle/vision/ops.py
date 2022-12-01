@@ -160,14 +160,14 @@ def yolo_loss(
         downsample_ratio (int): The downsample ratio from network input to YOLOv3
                                 loss input, so 32, 16, 8 should be set for the
                                 first, second, and thrid YOLOv3 loss operators.
-        name (string): The default value is None.  Normally there is no need
-                       for user to set this property.  For more information,
-                       please refer to :ref:`api_guide_Name`
-        gt_score (Tensor): mixup score of ground truth boxes, should be in shape
+        gt_score (Tensor, optional): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
-        use_label_smooth (bool): Whether to use label smooth. Default True.
-        scale_x_y (float): Scale the center point of decoded bounding box.
-                           Default 1.0
+        use_label_smooth (bool, optional): Whether to use label smooth. Default True.
+        name (str, optional): The default value is None. Normally there is no need
+                       for user to set this property. For more information,
+                       please refer to :ref:`api_guide_Name`
+        scale_x_y (float, optional): Scale the center point of decoded bounding box.
+                           Default 1.0.
 
     Returns:
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
@@ -340,14 +340,6 @@ def yolo_box(
     score_{pred} = score_{conf} * score_{class}
     $$
 
-    where the confidence scores follow the formula bellow
-
-    .. math::
-
-        score_{conf} = \begin{case}
-                         obj, \text{if } iou_aware == false \\
-                         obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
-                       \end{case}
 
     Args:
         x (Tensor): The input tensor of YoloBox operator is a 4-D tensor with
@@ -369,15 +361,14 @@ def yolo_box(
                                 :attr:`yolo_box` operator input, so 32, 16, 8
                                 should be set for the first, second, and thrid
                                 :attr:`yolo_box` layer.
-        clip_bbox (bool): Whether clip output bonding box in :attr:`img_size`
+        clip_bbox (bool, optional): Whether clip output bonding box in :attr:`img_size`
                           boundary. Default true.
-        scale_x_y (float): Scale the center point of decoded bounding box.
-                           Default 1.0
-        name (string): The default value is None.  Normally there is no need
-                       for user to set this property.  For more information,
-                       please refer to :ref:`api_guide_Name`
-        iou_aware (bool): Whether use iou aware. Default false
-        iou_aware_factor (float): iou aware factor. Default 0.5
+        name (str, optional): The default value is None. Normally there is no need
+                       for user to set this property. For more information,
+                       please refer to :ref:`api_guide_Name`.
+        scale_x_y (float, optional): Scale the center point of decoded bounding box. Default 1.0
+        iou_aware (bool, optional): Whether use iou aware. Default false.
+        iou_aware_factor (float, optional): iou aware factor. Default 0.5.
 
     Returns:
         Tensor: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
@@ -902,8 +893,8 @@ def deform_conv2d(
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
         x (Tensor): The input image with [N, C, H, W] format. A Tensor with type
@@ -913,26 +904,26 @@ def deform_conv2d(
         weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
-        bias (Tensor, optional): The bias with shape [M,].
+        bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            stride_H = stride_W = stride. Default: 1.
         padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            padding_H = padding_W = padding. Default: 0.
         dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            dilation_H = dilation_W = dilation. Default: 1.
         deformable_groups (int): The number of deformable group partitions.
-            Default: deformable_groups = 1.
+            Default: 1.
         groups (int, optonal): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1.
+            connected to the second half of the input channels. Default: 1.
         mask (Tensor, optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
-            deformable convolution v1.
+            deformable convolution v1. Default: None.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
@@ -1694,10 +1685,10 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
             2D-Tensor with the shape of [num_boxes,4].
             Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates,
             and (x2, y2) is the bottom right coordinates.
-        boxes_num (Tensor): the number of RoIs in each image, data type is int32. Default: None
+        boxes_num (Tensor): the number of RoIs in each image, data type is int32.
         output_size (int or tuple[int, int]): the pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float, optional): multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
-        name(str, optional): for detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+        spatial_scale (float, optional): multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0.
+        name(str, optional): for detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default. Default: None.
 
     Returns:
         pool_out (Tensor): the pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].
@@ -1871,7 +1862,7 @@ def roi_align(
             Default: True.
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
-            default.
+            default. Default: None.
 
     Returns:
         The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
@@ -1971,7 +1962,7 @@ class RoIAlign(Layer):
             data type is int32. If int, h and w are both equal to output_size.
         spatial_scale (float32, optional): Multiplicative spatial scale factor
             to translate ROI coords from their input scale to the scale used
-            when pooling. Default: 1.0
+            when pooling. Default: 1.0.
 
     Returns:
         The output of ROIAlign operator is a 4-D tensor with
