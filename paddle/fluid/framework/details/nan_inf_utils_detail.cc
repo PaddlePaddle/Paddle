@@ -237,9 +237,8 @@ void CheckNanInfCpu(const T* value_ptr,
       std::isinf(imag_sum)) {
     // hot fix for compile failed in gcc4.8
     // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
-        cpu_hint_str));
+    PADDLE_THROW(platform::errors::PreconditionNotMet("Find nan or inf in %s.",
+                                                      cpu_hint_str));
   }
 }
 
