@@ -874,7 +874,6 @@
     func : UnchangedInferMeta
   kernel :
     func : cos
-  backward : cos_grad
 
 - op : thresholded_relu
   args : (Tensor x, float threshold = 1.0)

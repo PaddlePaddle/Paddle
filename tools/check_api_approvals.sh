@@ -65,9 +65,9 @@ api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}
 if [ "$api_yaml_diff" != "" ]; then
     echo_line="API's name and params should be consistent with op's name and params in yaml.
                 The API or Yaml file you changed may cause inconsistent.\n"
-    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, chenwhql) review and approve.\n"
+    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, chenwhql, phlrain) review and approve.\n"
     echo_line="${echo_line}\r\n ${api_yaml_diff}\n"
-    check_approval 1 YuanRisheng zyfncg chenwhql
+    check_approval 1 YuanRisheng zyfncg chenwhql phlrain
 fi
 
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
