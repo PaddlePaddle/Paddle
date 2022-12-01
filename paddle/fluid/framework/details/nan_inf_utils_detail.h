@@ -58,30 +58,24 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
                                        MT mean_value,
                                        int check_nan_inf_level) {
   if (has_nan || has_inf) {
+    printf(
+        "[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
+        "find_inf=%d, "
+        "max=%e, min=%e, mean=%e\n",
+        debug_info,
+        numel,
+        has_nan,
+        has_inf,
+        static_cast<float>(max_value),
+        static_cast<float>(min_value),
+        static_cast<float>(mean_value));
     if (check_nan_inf_level == 0) {
-      PADDLE_ENFORCE(false,
-                     "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
-                     "find_inf=%d, "
-                     "max=%e, min=%e, mean=%e===\n",
-                     debug_info,
-                     numel,
-                     has_nan,
-                     has_inf,
-                     static_cast<float>(max_value),
-                     static_cast<float>(min_value),
-                     static_cast<float>(mean_value));
-    } else if (check_nan_inf_level >= 1) {
-      printf(
-          "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
-          "find_inf=%d, "
-          "max=%e, min=%e, mean=%e===\n",
-          debug_info,
-          numel,
-          has_nan,
-          has_inf,
-          static_cast<float>(max_value),
-          static_cast<float>(min_value),
-          static_cast<float>(mean_value));
+#if defined(__NVCC__) || defined(__HIPCC__)
+      PADDLE_ENFORCE(false, "Find nan or inf in %s.", debug_info);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Find nan or inf in %s.", debug_info));
+#endif
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
     printf("[PRECISION] in %s, numel=%ld, max=%e, min=%e, mean=%e\n",
@@ -105,12 +99,12 @@ inline std::string GetCpuHintString(const std::string& op_type,
 
   std::stringstream ss;
   if (platform::is_gpu_place(place)) {
-    ss << "[device=gpu:" << device_id << "] ";
+    ss << "[device=gpu:" << device_id << ", ";
   } else {
-    ss << "[device=cpu] ";
+    ss << "[device=cpu, ";
   }
-  ss << "[op=" << op_type << "] [tensor=" << var_name
-     << "] [dtype=" << dtype_str << "]";
+  ss << "op=" << op_type << ", tensor=" << var_name << ", dtype=" << dtype_str
+     << "]";
   return ss.str();
 }
 
