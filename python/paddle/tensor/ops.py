@@ -483,7 +483,7 @@ def cos(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.cos(x, 1)
+        return _C_ops.cos(x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.cos(x)
 
