@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-import paddle.distributed.fleet as fleet
 from test_collective_multi_nodes import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
-from paddle import nn
-import numpy as np
 
+import paddle
+import paddle.distributed.fleet as fleet
+from paddle import nn
 from paddle.distributed.fleet.utils import recompute
 
 
@@ -138,6 +137,7 @@ class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
     def check_pass(self, *args, **kwargs):
 
         from common import init_parallel_env
+
         import paddle
         from paddle.distributed import fleet
 

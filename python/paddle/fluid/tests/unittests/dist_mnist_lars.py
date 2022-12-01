@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dist_mnist import cnn_model
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
-from dist_mnist import cnn_model
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()

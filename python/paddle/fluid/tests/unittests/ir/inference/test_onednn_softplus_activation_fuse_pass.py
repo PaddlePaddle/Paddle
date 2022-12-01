@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+from functools import partial
+
 import hypothesis.strategies as st
 import numpy as np
-import unittest
 from auto_scan_test import PassAutoScanTest
-from functools import partial
-from program_config import TensorConfig, ProgramConfig, OpConfig
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):

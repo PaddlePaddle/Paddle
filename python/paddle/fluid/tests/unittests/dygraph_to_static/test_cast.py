@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 
 SEED = 2020
 np.random.seed(SEED)

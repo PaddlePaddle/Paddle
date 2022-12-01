@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 import shutil
 import unittest
-import itertools
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTPoolTest(InferencePassTest):

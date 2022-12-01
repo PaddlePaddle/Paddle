@@ -16,16 +16,16 @@ import collections
 import typing
 import unittest
 
+import config
 import numpy as np
+import utils
+from utils import matmul, mul, nested, o2, reduce, reduce_dim
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.incubate.autograd.utils import as_tensors
 from paddle.fluid.framework import _test_eager_guard
-
-import config
-import utils
-from utils import matmul, mul, nested, o2, reduce, reduce_dim
+from paddle.incubate.autograd.utils import as_tensors
 
 
 def make_v(f, inputs):

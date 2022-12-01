@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -133,7 +134,7 @@ class TestMin(TestMean):
 
 class TestSum(TestMean):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_sum
+        self.op = paddle.paddle.sum
 
 
 class TestLogsumexp(TestMean):

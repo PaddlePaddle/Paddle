@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.base import to_variable
-
 from paddle.fluid.clip import (
-    GradientClipByValue,
-    GradientClipByNorm,
     GradientClipByGlobalNorm,
+    GradientClipByNorm,
+    GradientClipByValue,
 )
+from paddle.fluid.dygraph.base import to_variable
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):

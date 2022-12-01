@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
+import test_collective_api_base as test_collective_base
+
 import paddle
 import paddle.distributed as dist
-import test_collective_api_base as test_collective_base
 
 
 class StreamBroadcastTestCase:

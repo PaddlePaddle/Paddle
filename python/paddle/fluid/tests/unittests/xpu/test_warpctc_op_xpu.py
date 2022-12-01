@@ -16,18 +16,20 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-from test_softmax_op import stable_softmax
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import paddle
-import paddle.nn.functional as F
 from op_test_xpu import XPUOpTest
+from test_softmax_op import stable_softmax
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -212,19 +214,6 @@ class CTCForward(object):
         return self.loss
 
 
-def python_api(
-    logits,
-    label,
-    logits_length=None,
-    labels_length=None,
-    blank=0,
-    norm_by_times=False,
-):
-    return paddle.fluid.layers.warpctc(
-        logits, label, blank, norm_by_times, logits_length, labels_length
-    )
-
-
 class XPUTestWarpCTCOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'warpctc'
@@ -244,14 +233,12 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             self.op_type = "warpctc"
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
-            self.python_api = python_api
             self.python_out_sig = ["Loss"]
             self.config()
 
             logits = np.random.uniform(
                 0.1, 1.0, [sum(self.logits_length), self.num_classes]
             ).astype(self.dtype)
-            print("logits.shape = ", logits.shape)
             softmax = np.apply_along_axis(stable_softmax, 1, logits)
             # labels should not be blank
             labels = np.random.randint(
@@ -325,7 +312,7 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             }
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_eager=False)
 
         def test_check_grad(self):
             self.outputs['WarpCTCGrad'] = self.gradient
@@ -367,44 +354,48 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
 
                 def test_logits_Variable():
                     logits_data = np.random.rand(5, 16, 6).astype(logits.dtype)
-                    fluid.layers.warpctc(
-                        input=logits_data,
-                        label=label,
-                        input_length=logits_length,
-                        label_length=label_length,
+                    paddle.nn.functional.ctc_loss(
+                        log_probs=logits_data,
+                        labels=label,
+                        input_lengths=logits_length,
+                        label_lengths=label_length,
+                        reduction='none',
                     )
 
                 self.assertRaises(TypeError, test_logits_Variable)
 
                 def test_label_Variable():
                     label_data = np.random.randint(0, 5, [5, 1]).astype("int32")
-                    fluid.layers.warpctc(
-                        input=logits,
-                        label=label_data,
-                        input_length=logits_length,
-                        label_length=label_length,
+                    paddle.nn.functional.ctc_loss(
+                        log_probs=logits,
+                        labels=label_data,
+                        input_lengths=logits_length,
+                        label_lengths=label_length,
+                        reduction='none',
                     )
 
                 self.assertRaises(TypeError, test_label_Variable)
 
                 def test_logits_len_Variable():
                     logits_length_data = np.array([5] * 16).astype("int64")
-                    fluid.layers.warpctc(
-                        input=logits,
-                        label=label,
-                        input_length=logits_length_data,
-                        label_length=label_length,
+                    paddle.nn.functional.ctc_loss(
+                        log_probs=logits,
+                        labels=label,
+                        input_lengths=logits_length_data,
+                        label_lengths=label_length,
+                        reduction='none',
                     )
 
                 self.assertRaises(TypeError, test_logits_len_Variable)
 
                 def test_label_len_Variable():
                     label_length_data = np.array([3] * 16).astype("int64")
-                    fluid.layers.warpctc(
-                        input=logits,
-                        label=label,
-                        input_length=logits_length,
-                        label_length=label_length_data,
+                    paddle.nn.functional.ctc_loss(
+                        log_probs=logits,
+                        labels=label,
+                        input_lengths=logits_length,
+                        label_lengths=label_length_data,
+                        reduction='none',
                     )
 
                 self.assertRaises(TypeError, test_label_len_Variable)
@@ -423,7 +414,13 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
                 softmax = paddle.to_tensor(logits)
                 labels = paddle.to_tensor(labels)
 
-                fluid.layers.warpctc(input=softmax, label=labels)
+                paddle.nn.functional.ctc_loss(
+                    log_probs=softmax,
+                    labels=labels,
+                    input_lengths=None,
+                    label_lengths=None,
+                    reduction='none',
+                )
 
             paddle.disable_static()
             self.assertRaises(ValueError, test_dygraph_with_lod)
