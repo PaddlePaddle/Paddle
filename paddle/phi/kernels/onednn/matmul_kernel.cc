@@ -357,8 +357,8 @@ class MulPrimitiveFactory {
 
       Reorder(src_mdesc,
               dst_mdesc,
-              phi::funcs::to_void_cast<T>(data->data<T>()),
-              phi::funcs::to_void_cast<T>(x_tmp.data<T>()));
+              funcs::to_void_cast<T>(data->data<T>()),
+              funcs::to_void_cast<T>(x_tmp.data<T>()));
 
       x_tmp.Resize(data->dims());
       x_tmp.set_mem_desc(dst_mdesc);
@@ -373,7 +373,7 @@ class MulPrimitiveFactory {
   void UpdateDataPointers(const OneDNNContext &dev_ctx,
                           DenseTensor *out,
                           const DenseTensor *in) {
-    x_input_->set_data_handle(phi::funcs::to_void_cast<XT>(in->data<XT>()));
+    x_input_->set_data_handle(funcs::to_void_cast<XT>(in->data<XT>()));
     output_->set_data_handle(dev_ctx.template Alloc<OT>(out));
     out->set_mem_desc(output_->get_desc());
   }
@@ -382,23 +382,22 @@ class MulPrimitiveFactory {
   memory::desc CreateMemDescriptor(
       const DenseTensor *tensor,
       funcs::OneDNNMemoryFormat format,
-      memory::data_type type = phi::funcs::OneDNNGetDataType<T>()) {
-    auto dims = phi::vectorize<int64_t>(tensor->dims());
-    return phi::funcs::OneDNNMemDesc(dims, type, format);
+      memory::data_type type = funcs::OneDNNGetDataType<T>()) {
+    auto dims = vectorize<int64_t>(tensor->dims());
+    return funcs::OneDNNMemDesc(dims, type, format);
   }
 
   template <typename T>
   memory::desc CreateMemDescriptor(
       const std::vector<int64_t> &dims,
       funcs::OneDNNMemoryFormat format,
-      memory::data_type type = phi::funcs::OneDNNGetDataType<T>()) {
-    return phi::funcs::OneDNNMemDesc(dims, type, format);
+      memory::data_type type = funcs::OneDNNGetDataType<T>()) {
+    return funcs::OneDNNMemDesc(dims, type, format);
   }
 
   template <typename T>
   memory CreateMemory(const memory::desc &desc, const DenseTensor *tensor) {
-    return memory(
-        desc, engine_, phi::funcs::to_void_cast<T>(tensor->data<T>()));
+    return memory(desc, engine_, funcs::to_void_cast<T>(tensor->data<T>()));
   }
 
   memory CreateDstMemory(
@@ -410,7 +409,7 @@ class MulPrimitiveFactory {
 
     OT *output_data = dev_ctx.template Alloc<OT>(output, buffer_size);
     output->set_mem_desc(dst_desc);
-    return memory(dst_desc, engine_, phi::funcs::to_void_cast<OT>(output_data));
+    return memory(dst_desc, engine_, funcs::to_void_cast<OT>(output_data));
   }
 
   memory Reorder(const memory::desc &src_desc,
@@ -438,14 +437,14 @@ class MulPrimitiveFactory {
   }
 
   memory TransposeInputY(const DenseTensor *input_y) {
-    auto dims = phi::vectorize<int64_t>(input_y->dims());
+    auto dims = vectorize<int64_t>(input_y->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc =
         CreateMemDescriptor<YT>(dims, funcs::OneDNNMemoryFormat::io);
     auto dst_desc =
         CreateMemDescriptor<YT>(dims, funcs::OneDNNMemoryFormat::oi);
     return Reorder(
-        src_desc, dst_desc, phi::funcs::to_void_cast<YT>(input_y->data<YT>()));
+        src_desc, dst_desc, funcs::to_void_cast<YT>(input_y->data<YT>()));
   }
 
   const engine &engine_;
@@ -464,10 +463,10 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const DenseTensor *input_y,
     const engine &onednn_engine) {
   std::string key = funcs::CreateKey(dev_ctx,
-                                     phi::TransToProtoVarType(input_x->dtype()),
-                                     phi::vectorize(input_x->dims()),
-                                     phi::TransToProtoVarType(input_y->dtype()),
-                                     phi::vectorize(input_y->dims()),
+                                     TransToProtoVarType(input_x->dtype()),
+                                     vectorize(input_x->dims()),
+                                     TransToProtoVarType(input_y->dtype()),
+                                     vectorize(input_y->dims()),
                                      dev_ctx.GetOutputsName("Out")[0]);
   key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
@@ -520,9 +519,9 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
                                  int x_num_col_dims,
                                  int y_num_col_dims,
                                  DenseTensor *out) {
-  PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == AllocationType::CPU,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    errors::PreconditionNotMet(
                         "oneDNN MatmulWithFlatten kernel must use CPUPlace"));
 
   OneDNNContext::tls().log_lib_version();
@@ -539,7 +538,7 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
 
   auto in_md = memory::desc(*dnnl_primitive_desc_query_md(
       mul.get_primitive_desc(), dnnl_query_dst_md, 0));
-  out->set_mem_desc(in_md.reshape(phi::vectorize<int64_t>(out->dims())));
+  out->set_mem_desc(in_md.reshape(vectorize<int64_t>(out->dims())));
 }
 
 template <typename T, typename Context>
