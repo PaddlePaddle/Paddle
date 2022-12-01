@@ -71,7 +71,6 @@ __all__ = [
     'softmax',
     'pool2d',
     'batch_norm',
-    'reduce_mean',
     'reduce_all',
     'reduce_any',
     'dropout',
@@ -2504,63 +2503,6 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         attrs=attrs,
     )
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.mean")
-def reduce_mean(input, dim=None, keep_dim=False, name=None):
-    """
-    Computes the mean of the input tensor's elements along the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (list|int, optional): The dimension along which the mean is computed. If
-            `None`, compute the mean over all elements of :attr:`input`
-            and return a variable with a single element, otherwise it
-            must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim[i] < 0`, the dimension to reduce is
-            :math:`rank(input) + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, results of average on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Raises:
-        TypeError, if out data type is different with the input data type.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_mean(x)  # [0.4375]
-            fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
-            fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
-            fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
-            fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
-    """
-
-    return paddle.mean(x=input, axis=dim, keepdim=keep_dim, name=name)
 
 
 def reduce_all(input, dim=None, keep_dim=False, name=None):
