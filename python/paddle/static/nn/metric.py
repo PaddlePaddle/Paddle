@@ -15,22 +15,16 @@
 All layers just related to metric.
 """
 
-import warnings
-from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
-from ..framework import (
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.initializer import Constant
+from paddle.fluid.framework import (
     Variable,
     _non_static_mode,
     _varbase_creator,
-    _in_legacy_dygraph,
-    in_dygraph_mode,
 )
-from .. import core
-from ..param_attr import ParamAttr
-from . import nn
-from . import tensor
-from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.layers import tensor
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle import _legacy_C_ops
 
 __all__ = ['accuracy', 'auc']
 
