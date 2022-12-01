@@ -29,7 +29,7 @@
 #include "paddle/phi/core/device_context.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/NCCLTools.h"
+#include "paddle/fluid/distributed/collective/nccl_tools.h"
 #endif
 
 #ifdef PADDLE_WITH_RCCL

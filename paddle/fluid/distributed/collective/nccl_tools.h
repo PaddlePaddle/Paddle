@@ -61,6 +61,8 @@ namespace distributed {
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
 
+ncclDataType_t ToNCCLDataType(experimental::DataType type);
+
 std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
 
 // static check for p2p

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/NCCLTools.h"
+#include "paddle/fluid/distributed/collective/nccl_tools.h"
 
 #include "paddle/fluid/distributed/collective/Types.h"
 
@@ -33,6 +33,33 @@ ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
                         "Invalid nccl reduction. Must be ncclMin | ncclMax | "
                         "ncclProd | ncclSum"));
   return it->second;
+}
+
+ncclDataType_t ToNCCLDataType(experimental::DataType type) {
+  if (type == experimental::DataType::FLOAT32) {
+    return ncclFloat;
+  } else if (type == experimental::DataType::FLOAT64) {
+    return ncclDouble;
+  } else if (type == experimental::DataType::INT32) {
+    return ncclInt;
+  } else if (type == experimental::DataType::INT64) {
+    return ncclInt64;
+  } else if (type == experimental::DataType::FLOAT16) {
+    return ncclFloat16;
+  } else if (type == experimental::DataType::UINT8) {
+    return ncclUint8;
+  } else if (type == experimental::DataType::INT8) {
+    return ncclInt8;
+  } else if (type == experimental::DataType::BOOL) {
+    return ncclUint8;
+#if NCCL_VERSION_CODE >= 21000
+  } else if (type == experimental::DataType::BFLOAT16) {
+    return ncclBfloat16;
+#endif
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This datatype in nccl is not supported."));
+  }
 }
 
 std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID) {

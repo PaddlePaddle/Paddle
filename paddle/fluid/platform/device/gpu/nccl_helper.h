@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/nccl_tools.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #ifdef PADDLE_WITH_NCCL
@@ -70,30 +71,7 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
 }
 
 inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
-  if (type == experimental::DataType::FLOAT32) {
-    return ncclFloat;
-  } else if (type == experimental::DataType::FLOAT64) {
-    return ncclDouble;
-  } else if (type == experimental::DataType::INT32) {
-    return ncclInt;
-  } else if (type == experimental::DataType::INT64) {
-    return ncclInt64;
-  } else if (type == experimental::DataType::FLOAT16) {
-    return ncclFloat16;
-  } else if (type == experimental::DataType::UINT8) {
-    return ncclUint8;
-  } else if (type == experimental::DataType::INT8) {
-    return ncclInt8;
-  } else if (type == experimental::DataType::BOOL) {
-    return ncclUint8;
-#if NCCL_VERSION_CODE >= 21000
-  } else if (type == experimental::DataType::BFLOAT16) {
-    return ncclBfloat16;
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "This datatype in nccl is not supported."));
-  }
+  return distributed::ToNCCLDataType(type);
 }
 
 // NOTE(minqiyang): according to the ncclGroupEnd documentations:

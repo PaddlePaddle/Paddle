@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
+#include "paddle/fluid/distributed/collective/Types.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -46,12 +47,6 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
 
-    int64_t recv_numel = in->numel() / nranks;
-    const T* send_buff = in->data<T>();
-    T* recv_buff = out->data<T>();
-    int dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
-
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should ExecutionContext for calc stream.
@@ -60,14 +55,8 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclReduceScatter(send_buff,
-                                             recv_buff,
-                                             recv_numel,
-                                             static_cast<ncclDataType_t>(dtype),
-                                             ncclSum,
-                                             comm->comm(),
-                                             stream));
+    comm->ReduceScatter(out, *in, distributed::ReduceOp::SUM, stream);
+
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
