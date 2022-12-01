@@ -125,7 +125,7 @@ class TestPowNet(unittest.TestCase):
             prediction = fluid.layers.fc(input=fc_1, size=2)
 
             cost = paddle.nn.functional.softmax_with_cross_entropy(prediction, label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 

@@ -319,7 +319,7 @@ class PolicyGradient:
         cost = (
             (paddle.sum(cost) / paddle.sum(length))
             if length is not None
-            else layers.reduce_mean(cost)
+            else paddle.mean(cost)
         )
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(cost)
@@ -405,7 +405,7 @@ class MLE:
         max_seq_len = layers.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
-        loss = layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
