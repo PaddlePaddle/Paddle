@@ -368,7 +368,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_one_hot_v2_op',
     'test_ones_like',
     'test_ones_op',
-    'test_op_name_conflict',
     'test_operator_desc',
     'test_optimizer',
     'test_optimizer_in_control_flow',
