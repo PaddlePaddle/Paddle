@@ -36,7 +36,7 @@ from . import nn  # noqa: F401
 from . import asp  # noqa: F401
 from . import multiprocessing  # noqa: F401
 
-from ..fluid.layers.loss import identity_loss
+from .nn.loss import identity_loss
 
 from ..fluid.incubate import fleet
 from . import xpu

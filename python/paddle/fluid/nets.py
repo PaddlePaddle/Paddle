@@ -390,7 +390,7 @@ def glu(input, dim=-1):
     )
     a, b = layers.split(input, num_or_sections=2, dim=dim)
     act_b = paddle.nn.functional.sigmoid(x=b)
-    out = layers.elementwise_mul(x=a, y=act_b)
+    out = paddle.multiply(x=a, y=act_b)
     return out
 
 
@@ -620,7 +620,7 @@ def scaled_dot_product_attention(
     v = __split_heads(v, num_heads)
 
     key_dim_per_head = keys.shape[-1] // num_heads
-    scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
+    scaled_q = paddle.scale(x=q, scale=key_dim_per_head**-0.5)
     product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
     x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])

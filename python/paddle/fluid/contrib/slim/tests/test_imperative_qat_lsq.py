@@ -117,7 +117,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         x = self.features(inputs)
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1, -1)
         x = self.fc(x)
         return x
 
@@ -170,7 +170,7 @@ class TestImperativeQatLSQ(unittest.TestCase):
                 img = fluid.dygraph.to_variable(x_data)
                 label = fluid.dygraph.to_variable(y_data)
                 out = lenet(img)
-                acc = fluid.layers.accuracy(out, label)
+                acc = paddle.static.accuracy(out, label)
                 loss = fluid.layers.cross_entropy(out, label)
                 avg_loss = paddle.mean(loss)
 
@@ -202,10 +202,10 @@ class TestImperativeQatLSQ(unittest.TestCase):
                     label = fluid.dygraph.to_variable(y_data)
 
                     out = lenet(img)
-                    acc_top1 = fluid.layers.accuracy(
+                    acc_top1 = paddle.static.accuracy(
                         input=out, label=label, k=1
                     )
-                    acc_top5 = fluid.layers.accuracy(
+                    acc_top5 = paddle.static.accuracy(
                         input=out, label=label, k=5
                     )
 

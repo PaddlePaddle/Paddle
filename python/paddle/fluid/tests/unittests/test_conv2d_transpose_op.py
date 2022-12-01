@@ -14,17 +14,19 @@
 
 import os
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.nn as nn
 
 paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from test_attribute_var import UnittestBase
 from op_test import OpTest
+from test_attribute_var import UnittestBase
+
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):

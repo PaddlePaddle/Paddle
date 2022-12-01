@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
-import numpy as np
 import unittest
+
+import numpy as np
+import op_test
+
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils

@@ -14,23 +14,27 @@
 
 # TODO: define random functions
 
-from ..framework import core
-from ..framework import convert_np_dtype_to_dtype_, dygraph_only
-from ..framework import LayerHelper
-from ..fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-    check_shape,
-)
-from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.static import Variable
 from paddle.fluid.framework import (
-    in_dygraph_mode,
-    _in_legacy_dygraph,
     _current_expected_place,
+    _in_legacy_dygraph,
+    in_dygraph_mode,
+)
+from paddle.static import Variable
+
+from ..fluid.data_feeder import (
+    check_dtype,
+    check_shape,
+    check_type,
+    check_variable_and_dtype,
+)
+from ..fluid.layers import utils
+from ..framework import (
+    LayerHelper,
+    convert_np_dtype_to_dtype_,
+    core,
+    dygraph_only,
 )
 
 __all__ = []

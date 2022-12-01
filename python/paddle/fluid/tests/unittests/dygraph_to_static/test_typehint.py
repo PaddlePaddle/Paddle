@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import declarative
+import numpy as np
+
+import paddle.fluid as fluid
+from paddle.jit.api import declarative
 
 SEED = 2020
 np.random.seed(SEED)
