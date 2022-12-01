@@ -160,42 +160,14 @@ static void PrintNanInfCpu(const T* value_ptr,
     }
   }
 
-  if (has_nan || has_inf) {
-    if (FLAGS_check_nan_inf_level == 0) {
-      PADDLE_ENFORCE_EQ(
-          has_nan || has_inf,
-          false,
-          phi::errors::InvalidArgument(
-              "=== [PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
-              "find_inf=%d, max=%e, min=%e, mean=%e===",
-              cpu_hint_str.c_str(),
-              numel,
-              has_nan,
-              has_inf,
-              static_cast<double>(min_value),
-              static_cast<double>(max_value),
-              static_cast<double>(mean_value)));
-    } else if (FLAGS_check_nan_inf_level >= 1) {
-      printf(
-          "=== [PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
-          "find_inf=%d, max=%e, min=%e, mean=%e===\n",
-          cpu_hint_str.c_str(),
-          numel,
-          has_nan,
-          has_inf,
-          static_cast<double>(min_value),
-          static_cast<double>(max_value),
-          static_cast<double>(mean_value));
-    }
-  } else if (NeedPrint<T, MT>(
-                 max_value, min_value, FLAGS_check_nan_inf_level)) {
-    printf("[PRECISION] in %s, numel=%ld, max=%e, min=%e, mean=%e\n",
-           cpu_hint_str.c_str(),
-           numel,
-           static_cast<double>(min_value),
-           static_cast<double>(max_value),
-           static_cast<double>(mean_value));
-  }
+  PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
+                                numel,
+                                has_nan,
+                                has_inf,
+                                max_value,
+                                min_value,
+                                mean_value,
+                                FLAGS_check_nan_inf_level);
 }
 
 template <typename T>

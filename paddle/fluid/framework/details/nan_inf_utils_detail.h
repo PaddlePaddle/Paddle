@@ -48,6 +48,51 @@ HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
   return false;
 }
 
+template <typename T, typename MT>
+HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
+                                       int64_t numel,
+                                       int has_nan,
+                                       int has_inf,
+                                       MT max_value,
+                                       MT min_value,
+                                       MT mean_value,
+                                       int check_nan_inf_level) {
+  if (has_nan || has_inf) {
+    if (check_nan_inf_level == 0) {
+      PADDLE_ENFORCE(false,
+                     "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
+                     "find_inf=%d, "
+                     "max=%e, min=%e, mean=%e===\n",
+                     debug_info,
+                     numel,
+                     has_nan,
+                     has_inf,
+                     static_cast<float>(max_value),
+                     static_cast<float>(min_value),
+                     static_cast<float>(mean_value));
+    } else if (check_nan_inf_level >= 1) {
+      printf(
+          "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
+          "find_inf=%d, "
+          "max=%e, min=%e, mean=%e===\n",
+          debug_info,
+          numel,
+          has_nan,
+          has_inf,
+          static_cast<float>(max_value),
+          static_cast<float>(min_value),
+          static_cast<float>(mean_value));
+    }
+  } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
+    printf("[PRECISION] in %s, numel=%ld, max=%e, min=%e, mean=%e\n",
+           debug_info,
+           numel,
+           static_cast<float>(max_value),
+           static_cast<float>(min_value),
+           static_cast<float>(mean_value));
+  }
+}
+
 template <typename T>
 inline std::string GetCpuHintString(const std::string& op_type,
                                     const std::string& var_name,
