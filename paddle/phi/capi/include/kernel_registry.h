@@ -188,7 +188,7 @@ inline std::vector<phi::capi::DenseTensor> PD_MultiOutputAt(
 template <typename T>
 inline std::vector<T *> PD_GetPointerVector(std::vector<T> *vec) {
   std::vector<T *> ret;
-  for (auto &item : vec) {
+  for (auto &item : *vec) {
     ret.push_back(&item);
   }
   return ret;
