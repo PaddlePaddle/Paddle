@@ -95,7 +95,7 @@ def get_gpt_model(
     return train_program, start_program, loss, gen_data
 
 
-class TestGroupOperators(unittest.TestCase):
+class TestPattern(unittest.TestCase):
     def test_gpt(self):
         modeling.init_global()
         train_program = static.Program()
@@ -128,6 +128,7 @@ class TestGroupOperators(unittest.TestCase):
         graph = convert_to_graph(layer, train_program.global_block())
         print("graph: ", graph)
         print("qkv: ", _PATTERNS["qkv"].attrs["shard_spec"])
+        print("ffn: ", _PATTERNS["ffn"].attrs["shard_spec"])
 
 
 if __name__ == "__main__":
