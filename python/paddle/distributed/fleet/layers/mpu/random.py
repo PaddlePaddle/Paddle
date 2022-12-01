@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import contextlib
+
+import numpy as np
+
+import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.framework import LayerHelper, in_dynamic_mode
 from paddle.static import Variable
-from paddle.framework import in_dynamic_mode
-from paddle.framework import LayerHelper
 
 __all__ = []
 

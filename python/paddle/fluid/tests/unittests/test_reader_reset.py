@@ -15,11 +15,13 @@
 import os
 
 os.environ['CPU_NUM'] = str(1)
+import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle
-import numpy as np
-import unittest
 
 
 class TestReaderReset(unittest.TestCase):

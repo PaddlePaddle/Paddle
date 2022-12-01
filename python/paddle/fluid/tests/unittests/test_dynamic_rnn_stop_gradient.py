@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import unittest
-import paddle
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
@@ -56,7 +57,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         layers.assign(length_cond, cond)
 
     out = layers.tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
-    loss = layers.reduce_mean(out)
+    loss = paddle.mean(out)
     opt = fluid.optimizer.Adam(0.01)
     opt.minimize(loss)
     exe = fluid.Executor(place)

@@ -14,15 +14,17 @@
 
 import os
 import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-import numpy as np
-import paddle
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import Adam
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -226,7 +228,7 @@ class PtbModel(fluid.Layer):
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-import os
 import paddle.fluid as fluid
-import numpy as np
 
 
 class TestFleetBase(unittest.TestCase):

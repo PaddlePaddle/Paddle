@@ -3980,8 +3980,8 @@ class ModelAverage(Optimizer):
         # backup param value to grad
         layers.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
-        tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
-        sum = layers.sum(x=[sum_1, sum_2, sum_3])
+        tmp = paddle.add_n([num_accumulates, old_num_accumulates])
+        sum = paddle.add_n([sum_1, sum_2, sum_3])
         tmp = layers.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
@@ -7298,10 +7298,10 @@ class LookaheadOptimizer:
                     for param_name in params:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
-                        tmp_var = layers.elementwise_add(
-                            layers.elementwise_mul(fast_var, alpha),
-                            layers.elementwise_mul(
-                                slow_var, layers.elementwise_sub(one_var, alpha)
+                        tmp_var = paddle.add(
+                            paddle.multiply(fast_var, alpha),
+                            paddle.multiply(
+                                slow_var, paddle.subtract(one_var, alpha)
                             ),
                         )
                         layers.assign(input=tmp_var, output=slow_var)
