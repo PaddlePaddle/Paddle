@@ -2404,7 +2404,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "merge_layernorm",
       "skip_merge_layernorm",
       // "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "where_index",
+  };
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2532,7 +2534,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table",
       // "lookup_table_v2",
-      "expand_v2"};
+      "expand_v2",
+      "where_index",
+  };
 };
 
 struct GenericPluginTeller : public Teller {

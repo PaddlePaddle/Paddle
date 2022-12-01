@@ -495,6 +495,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       // convert input and copy to TRT engine's buffer
       auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+      VLOG(4) << "trt engine runtime input name(" << x << "), dims(" << t.dims()
+              << ")";
       PADDLE_ENFORCE_GT(
           t.numel(),
           0,
@@ -639,7 +641,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
               nb_dims == origin_output_dims[output_index])
             break;
         }
-        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+        for (int i = 0; i < nb_dims; i++) {
+          VLOG(0) << "ddim " << i << ":" << dims.d[i];
+          ddim.push_back(dims.d[i]);
+        }
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
@@ -691,6 +696,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "nodes in the inconsistent subgraph.\n",
               runtime_batch,
               max_batch_size_));
+    }
+    for (int i = 0; i < static_cast<int>(buffers.size()); i++) {
+      if (buffers[i]) {
+        VLOG(0) << "idx " << i << " is not null";
+      } else {
+        VLOG(0) << "idx " << i << " is null";
+      }
     }
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);

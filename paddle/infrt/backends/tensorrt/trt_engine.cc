@@ -330,6 +330,7 @@ void TrtEngine::DynamicRun(const ::phi::GPUContext& ctx) {
 
   auto input_binds = bindings_.front()->GetInputBindings();
   for (auto bind : input_binds) {
+    VLOG(0) << "bind name: " << bind.name.c_str();
     const int bind_index = engine_->getBindingIndex(bind.name.c_str());
     buffers[bind_index] =
         const_cast<void*>(static_cast<const void*>(bind.buffer->data<float>()));
