@@ -159,10 +159,10 @@ def select_input(inputs, mask):
 
 
 def select_input_with_buildin_type(inputs, mask, name):
-    from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+    from paddle.jit.dy2static.variable_trans_func import (
         to_static_variable,
     )
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
 
     false_var, true_var = inputs
 
@@ -1484,7 +1484,7 @@ def _deal_with_undefined_var(output_vars, loop_vars):
     3. UndefinedVar = List(int)     # create a list of variable
     4. UndefinedVar = value         # create a variable
     """
-    from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    from paddle.jit.dy2static.utils import (
         UndefinedVar,
         create_undefined_variable,
     )
@@ -2552,7 +2552,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
 
 def change_none_to_undefinedvar(nest1, nest2):
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
 
     def map_fn(x):
         if x is None:
@@ -2588,7 +2588,7 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
     from paddle.jit.dy2static.return_transformer import (
         RETURN_VALUE_PREFIX,
     )
