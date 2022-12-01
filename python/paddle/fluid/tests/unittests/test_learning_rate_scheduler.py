@@ -14,13 +14,15 @@
 
 import copy
 import math
-import numpy as np
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
 import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 
 
 def exponential_decay(
