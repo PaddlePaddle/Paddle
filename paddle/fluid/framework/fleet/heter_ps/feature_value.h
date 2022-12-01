@@ -419,8 +419,8 @@ class CommonFeatureValueAccessor {
     int mf_dim = int(src_val[common_feature_value.MfDimIndex()]);
     dest_val[common_pull_value.MfSizeIndex()] = mf_dim;
     // check
-    PADDLE_ENFORCE(
-        mf_dim <= mf_size, "mf_dim[%d] <= mf_size[%d]", mf_dim, mf_size);
+    PADDLE_ENFORCE_LE(
+        mf_dim, mf_size, "mf_dim[%d] <= mf_size[%d]", mf_dim, mf_size);
 
     int embedx_off = common_pull_value.EmbedxWIndex();
     int value_off = common_feature_value.EmbedxWIndex();

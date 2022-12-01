@@ -806,82 +806,74 @@ __global__ void check_valid_values_kernel(const int type,
       auto& c = val[k];
       if (isnan(c)) {
         if (keys != nullptr) {
-          PADDLE_ENFORCE(false,
-                         "nan type %d, id=%lu, offset=%d, float=%f, key=%lu, "
-                         "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
-                         type,
-                         i,
-                         k,
-                         c,
-                         uint64_t(keys[i]),
-                         val[0],
-                         val[1],
-                         val[2],
-                         val[3],
-                         val[4],
-                         val[5],
-                         val[6],
-                         val[7]);
+          if ("nan type %d, id=%lu, offset=%d, float=%f, key=%lu, "
+              "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+              type,
+              i,
+              k,
+              c,
+              uint64_t(keys[i]),
+              val[0],
+              val[1],
+              val[2],
+              val[3],
+              val[4],
+              val[5],
+              val[6],
+              val[7])
+            ;
         } else {
-          PADDLE_ENFORCE(false,
-                         "nan type %d, id=%lu, offset=%d, float=%f\n",
-                         type,
-                         i,
-                         k,
-                         c);
+          if ("nan type %d, id=%lu, offset=%d, float=%f\n", type, i, k, c)
+            ;
         }
       } else if (isinf(c)) {
         if (keys != nullptr) {
-          PADDLE_ENFORCE(false,
-                         "inf type %d, id=%lu, offset=%d, float=%f, key=%lu, "
-                         "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
-                         type,
-                         i,
-                         k,
-                         c,
-                         uint64_t(keys[i]),
-                         val[0],
-                         val[1],
-                         val[2],
-                         val[3],
-                         val[4],
-                         val[5],
-                         val[6],
-                         val[7]);
+          if ("inf type %d, id=%lu, offset=%d, float=%f, key=%lu, "
+              "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+              type,
+              i,
+              k,
+              c,
+              uint64_t(keys[i]),
+              val[0],
+              val[1],
+              val[2],
+              val[3],
+              val[4],
+              val[5],
+              val[6],
+              val[7])
+            ;
         } else {
-          PADDLE_ENFORCE(false,
-                         "inf type %d, id=%lu, offset=%d, float=%f\n",
-                         type,
-                         i,
-                         k,
-                         c);
+          if ("inf type %d, id=%lu, offset=%d, float=%f\n", type, i, k, c)
+            ;
         }
       } else if (int(c) > 1e+30 || int(c) < -(1e+30)) {
         if (keys != nullptr) {
-          PADDLE_ENFORCE(false,
-                         "err type %d, id=%lu, offset=%d, float=%f, key=%lu, "
-                         "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
-                         type,
-                         i,
-                         k,
-                         c,
-                         uint64_t(keys[i]),
-                         val[0],
-                         val[1],
-                         val[2],
-                         val[3],
-                         val[4],
-                         val[5],
-                         val[6],
-                         val[7]);
+          if ("err type %d, id=%lu, offset=%d, float=%f, key=%lu, "
+              "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+              type,
+              i,
+              k,
+              c,
+              uint64_t(keys[i]),
+              val[0],
+              val[1],
+              val[2],
+              val[3],
+              val[4],
+              val[5],
+              val[6],
+              val[7])
+            ;
         } else {
-          PADDLE_ENFORCE(false,
-                         "err type %d, id=%lu, offset=%d, float=%f, int=%d\n",
-                         type,
-                         i,
-                         k,
-                         c,
-                         int(c));
+          if ("err type %d, id=%lu, offset=%d, float=%f, int=%d\n",
+              type,
+              i,
+              k,
+              c,
+              int(c))
+            ;
         }
       }
     }
