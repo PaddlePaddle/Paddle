@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 from paddle import fluid
 from paddle.fluid.framework import Program, program_guard
@@ -28,7 +29,7 @@ class TestGRUUnitAPIError(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             D = 5
-            layer = fluid.dygraph.nn.GRUUnit(size=D * 3)
+            layer = paddle.nn.GRUUnit(D * 3, D)
             # the input must be Variable.
             x0 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()

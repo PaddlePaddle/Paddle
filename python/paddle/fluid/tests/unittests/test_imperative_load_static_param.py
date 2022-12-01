@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import (
-    NCE,
     BatchNorm,
     Embedding,
     GroupNorm,
@@ -214,9 +213,6 @@ class TestDygraphLoadStatic(unittest.TestCase):
 
                     self.layer_norm_1 = LayerNorm([10])
                     self.layer_norm_2 = LayerNorm(10)
-
-                    self.nce1 = NCE(10000, 100)
-                    self.nce2 = NCE(10000, 100)
 
                     self.prelu1 = PRelu("channel", channel=5)
                     self.prelu2 = PRelu("channel", channel=5)
