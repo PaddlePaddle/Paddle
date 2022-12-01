@@ -14,47 +14,49 @@
 """
 math functions
 """
+
+# TODO: define math functions
+
 import numpy as np
 
-from paddle.common_ops_import import VarDesc
-from paddle.common_ops_import import dygraph_only
-from paddle.common_ops_import import templatedoc
-from paddle.common_ops_import import dygraph_utils
-
-from .manipulation import cast
-from .creation import _complex_to_real_dtype
-from .layer_function_generator import generate_layer_fn
-
 import paddle
-from ..static import Variable
-from ..framework import (
-    core,
-    in_dygraph_mode,
-    _non_static_mode,
-    LayerHelper,
-    _in_legacy_dygraph,
-)
-from ..fluid.framework import _in_legacy_dygraph
-from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
+from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
+
 from ..fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
     check_dtype,
+    check_type,
+    check_variable_and_dtype,
     convert_dtype,
 )
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ..fluid.layers import utils
-
-# TODO: define math functions
+from ..fluid.framework import _in_legacy_dygraph
+from ..fluid.layers import elementwise_sub, utils
+from ..framework import (
+    LayerHelper,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    _varbase_creator,
+    convert_np_dtype_to_dtype_,
+    core,
+    in_dygraph_mode,
+)
+from ..static import Variable
+from .creation import _complex_to_real_dtype
+from .layer_function_generator import generate_layer_fn, templatedoc
+from .manipulation import cast
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401
+from .ops import acosh  # noqa: F401
 from .ops import asin  # noqa: F401
+from .ops import asinh  # noqa: F401
+from .ops import atan  # noqa: F401
+from .ops import atanh  # noqa: F401
 from .ops import ceil  # noqa: F401
 from .ops import ceil_  # noqa: F401
 from .ops import cos  # noqa: F401
-from .ops import tan  # noqa: F401
-from .ops import sinh  # noqa: F401
 from .ops import cosh  # noqa: F401
+from .ops import erf  # noqa: F401
 from .ops import exp  # noqa: F401
 from .ops import exp_  # noqa: F401
 from .ops import expm1  # noqa: F401
@@ -66,18 +68,12 @@ from .ops import round  # noqa: F401
 from .ops import round_  # noqa: F401
 from .ops import rsqrt  # noqa: F401
 from .ops import rsqrt_  # noqa: F401
-from .ops import square  # noqa: F401
-from .ops import atan  # noqa: F401
-from .ops import erf  # noqa: F401
+from .ops import sin  # noqa: F401
+from .ops import sinh  # noqa: F401
 from .ops import sqrt  # noqa: F401
 from .ops import sqrt_  # noqa: F401
-from .ops import sin  # noqa: F401
-from .ops import asinh  # noqa: F401
-from .ops import acosh  # noqa: F401
-from .ops import atanh  # noqa: F401
-
-from ..fluid.layers import elementwise_sub
-from paddle import _C_ops, _legacy_C_ops
+from .ops import square  # noqa: F401
+from .ops import tan  # noqa: F401
 
 __all__ = []
 
@@ -1303,7 +1299,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     dtype_flag = False
     if dtype is not None:
@@ -1312,6 +1307,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
+
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     if _in_legacy_dygraph():
         if dtype_flag:
@@ -2382,9 +2379,9 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_max(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2484,10 +2481,10 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_min(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2597,10 +2594,10 @@ def amax(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amax(x, axis, keepdim)
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amax(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2711,11 +2708,11 @@ def amin(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amin(x, axis, keepdim)
-    elif _in_legacy_dygraph():
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
+    if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amin(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
@@ -3860,11 +3857,10 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.all(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_all(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -3937,11 +3933,10 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.any(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_any(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all

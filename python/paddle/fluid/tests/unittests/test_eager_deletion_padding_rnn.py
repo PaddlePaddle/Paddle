@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import os
-
 from paddle.fluid import ParamAttr
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
@@ -143,10 +144,10 @@ def lm_model(
             )
             bias_arr.append(bias_1)
 
-            pre_hidden = layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
             pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
@@ -168,23 +169,23 @@ def lm_model(
                 nn = layers.concat([input, pre_hidden], 1)
                 gate_input = layers.matmul(x=nn, y=weight_1)
 
-                gate_input = layers.elementwise_add(gate_input, bias)
-                i = layers.slice(
+                gate_input = paddle.add(gate_input, bias)
+                i = paddle.slice(
                     gate_input, axes=[1], starts=[0], ends=[hidden_size]
                 )
-                j = layers.slice(
+                j = paddle.slice(
                     gate_input,
                     axes=[1],
                     starts=[hidden_size],
                     ends=[hidden_size * 2],
                 )
-                f = layers.slice(
+                f = paddle.slice(
                     gate_input,
                     axes=[1],
                     starts=[hidden_size * 2],
                     ends=[hidden_size * 3],
                 )
-                o = layers.slice(
+                o = paddle.slice(
                     gate_input,
                     axes=[1],
                     starts=[hidden_size * 3],
@@ -222,11 +223,11 @@ def lm_model(
             c = rnnout[i * 2 + 1]
             m.stop_gradient = True
             c.stop_gradient = True
-            last_h = layers.slice(
+            last_h = paddle.slice(
                 m, axes=[0], starts=[num_steps - 1], ends=[num_steps]
             )
             last_hidden_array.append(last_h)
-            last_c = layers.slice(
+            last_c = paddle.slice(
                 c, axes=[0], starts=[num_steps - 1], ends=[num_steps]
             )
             last_cell_array.append(last_c)
@@ -264,10 +265,10 @@ def lm_model(
             )
             bias_arr.append(bias_1)
 
-            pre_hidden = layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
             pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
@@ -292,7 +293,7 @@ def lm_model(
                 nn = layers.concat([input, pre_hidden], 1)
                 gate_input = layers.matmul(x=nn, y=weight_1)
 
-                gate_input = layers.elementwise_add(gate_input, bias)
+                gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
 
                 c = pre_cell * paddle.nn.functional.sigmoid(
@@ -459,7 +460,7 @@ def lm_model(
     )
 
     projection = layers.matmul(rnn_out, softmax_weight)
-    projection = layers.elementwise_add(projection, softmax_bias)
+    projection = paddle.add(projection, softmax_bias)
     projection = paddle.reshape(projection, shape=[-1, vocab_size])
 
     loss = layers.softmax_with_cross_entropy(
@@ -467,8 +468,8 @@ def lm_model(
     )
 
     loss = paddle.reshape(loss, shape=[-1, num_steps])
-    loss = layers.reduce_mean(loss, dim=[0])
-    loss = layers.reduce_sum(loss)
+    loss = paddle.mean(loss, axis=[0])
+    loss = paddle.sum(loss)
 
     loss.persistable = True
     last_cell.persistable = True

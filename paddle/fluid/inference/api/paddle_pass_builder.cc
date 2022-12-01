@@ -166,6 +166,9 @@ const std::vector<std::string> kLiteSubgraphPasses({
 const std::vector<std::string> kGpuLowerPrecisionPasses{
     "simplify_with_basic_ops_pass",
     "silu_fuse_pass",
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_encoder_pass",
+    "delete_weight_dequant_linear_op_decoder_pass",
     "map_depthwise_conv_to_conv_pass",
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
@@ -205,13 +208,17 @@ const std::vector<std::string> kTrtLowerPrecisionPasses{
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",             //
-    "is_test_pass",                      //
-        "simplify_with_basic_ops_pass",  //
-        "map_depthwise_conv_to_conv_pass",
+    "is_test_pass",                                                     //
+        "simplify_with_basic_ops_pass",                                 //
+        "delete_quant_dequant_linear_op_pass",                          //
+        "delete_weight_dequant_linear_op_encoder_pass",                 //
+        "delete_weight_dequant_linear_op_decoder_pass",                 //
+        "map_depthwise_conv_to_conv_pass",                              //
         "conv_bn_fuse_pass",                                            //
         "conv_eltwiseadd_bn_fuse_pass",                                 //
         "embedding_eltwise_layernorm_fuse_pass",                        //
         "multihead_matmul_fuse_pass_v2",                                //
+        "vit_attention_fuse_pass",                                      //
         "fused_multi_transformer_encoder_pass",                         //
         "fused_multi_transformer_decoder_pass",                         //
         "fused_multi_transformer_encoder_fuse_qkv_pass",                //

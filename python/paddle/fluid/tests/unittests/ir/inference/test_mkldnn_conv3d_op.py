@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-from functools import partial
 import unittest
+from functools import partial
 
-from hypothesis import given
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import MkldnnAutoScanTest
+from hypothesis import given
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMkldnnConv3dOp(MkldnnAutoScanTest):

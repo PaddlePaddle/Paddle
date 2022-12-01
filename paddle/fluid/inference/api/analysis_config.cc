@@ -782,13 +782,7 @@ void AnalysisConfig::Update() {
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
-
-      if (use_tensorrt_) {
-        // Append after the Affine_channel_conv_fuse pass.
-        pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
-      }
     } else if (use_ipu()) {
-      VLOG(1) << "IpuPassStrategy has been used for new.";
       pass_builder_.reset(new IpuPassStrategy);
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
@@ -993,9 +987,6 @@ void AnalysisConfig::Update() {
         "You tried to enable the custom device "
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
-  }
-  if (ir_debug_) {
-    pass_builder()->TurnOnDebug();
   }
 }
 

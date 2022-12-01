@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
-from paddle.vision.models import resnet50
+import paddle
+from paddle.inference import (
+    PlaceType,
+    PrecisionType,
+    convert_to_mixed_precision,
+)
 from paddle.jit import to_static
 from paddle.static import InputSpec
-
-from paddle.inference import PrecisionType, PlaceType
-from paddle.inference import convert_to_mixed_precision
+from paddle.vision.models import resnet50
 
 
 @unittest.skipIf(

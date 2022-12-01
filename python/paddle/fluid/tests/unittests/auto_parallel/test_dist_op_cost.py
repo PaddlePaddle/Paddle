@@ -12,20 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import copy
+import unittest
 
 import paddle
-
-from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
     is_elementwise_op,
 )
-
+from paddle.distributed.fleet import auto
 from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
 from paddle.fluid.backward import append_backward
 
 paddle.enable_static()

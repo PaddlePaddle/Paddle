@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import random
 import os
+import random
 import sys
+import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph import Linear
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 
 class DMF(fluid.Layer):
@@ -43,8 +44,13 @@ class DMF(fluid.Layer):
                     Linear(
                         256 if i == 0 else self._hid_sizes[i - 1],
                         self._hid_sizes[i],
-                        act='relu',
                     ),
+                )
+            )
+            self._user_layers.append(
+                self.add_sublayer(
+                    'user_layer_act_%d' % i,
+                    paddle.nn.ReLU(),
                 )
             )
             self._item_layers.append(
@@ -53,8 +59,13 @@ class DMF(fluid.Layer):
                     Linear(
                         256 if i == 0 else self._hid_sizes[i - 1],
                         self._hid_sizes[i],
-                        act='relu',
                     ),
+                )
+            )
+            self._item_layers.append(
+                self.add_sublayer(
+                    'item_layer_act_%d' % i,
+                    paddle.nn.ReLU(),
                 )
             )
 
@@ -65,7 +76,7 @@ class DMF(fluid.Layer):
         for ul, il in zip(self._user_layers, self._item_layers):
             users = ul(users)
             items = il(items)
-        return fluid.layers.elementwise_mul(users, items)
+        return paddle.multiply(users, items)
 
 
 class MLP(fluid.Layer):
@@ -82,8 +93,13 @@ class MLP(fluid.Layer):
                     Linear(
                         256 * 2 if i == 0 else self._hid_sizes[i - 1],
                         self._hid_sizes[i],
-                        act='relu',
                     ),
+                )
+            )
+            self._match_layers.append(
+                self.add_sublayer(
+                    'match_layer_act_%d' % i,
+                    paddle.nn.ReLU(),
                 )
             )
 
@@ -114,7 +130,7 @@ class DeepCF(fluid.Layer):
 
         self._mlp = MLP()
         self._dmf = DMF()
-        self._match_fc = Linear(128, 1, act='sigmoid')
+        self._match_fc = Linear(128, 1)
 
     def forward(self, users, items):
         # users_emb = self._user_emb(users)
@@ -133,6 +149,7 @@ class DeepCF(fluid.Layer):
             [mlp_predictive, dmf_predictive], axis=len(mlp_predictive.shape) - 1
         )
         prediction = self._match_fc(predictive)
+        prediction = paddle.nn.functional.sigmoid(prediction)
         return prediction
 
 
@@ -254,9 +271,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
-            loss = fluid.layers.reduce_sum(
-                fluid.layers.log_loss(prediction, labels)
-            )
+            loss = paddle.sum(fluid.layers.log_loss(prediction, labels))
             adam = fluid.optimizer.AdamOptimizer(0.01)
             adam.minimize(loss)
 
@@ -309,7 +324,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(users_np[slice : slice + self.batch_size]),
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
-                    loss = fluid.layers.reduce_sum(
+                    loss = paddle.sum(
                         fluid.layers.log_loss(
                             prediction,
                             to_variable(
@@ -343,7 +358,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(users_np[slice : slice + self.batch_size]),
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
-                    loss2 = fluid.layers.reduce_sum(
+                    loss2 = paddle.sum(
                         fluid.layers.log_loss(
                             prediction2,
                             to_variable(
@@ -386,7 +401,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                                 items_np[slice : slice + self.batch_size]
                             ),
                         )
-                        loss = fluid.layers.reduce_sum(
+                        loss = paddle.sum(
                             fluid.layers.log_loss(
                                 prediction,
                                 to_variable(

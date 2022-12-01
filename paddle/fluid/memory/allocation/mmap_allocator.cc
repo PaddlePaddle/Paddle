@@ -74,6 +74,7 @@ void AllocateMemoryMap(
               "File descriptor %s open failed, unable in read-write mode",
               filename.c_str()));
       VLOG(6) << "shm_open: " << filename;
+      MemoryMapFdSet::Instance().Insert(filename);
     }
   } else {
     fd = -1;
@@ -171,11 +172,7 @@ void RefcountedMemoryMapAllocation::close() {
   void *data = map_ptr_;
   CountInfo *info = reinterpret_cast<CountInfo *>(data);
   if (--info->refcount == 0) {
-    PADDLE_ENFORCE_NE(
-        shm_unlink(ipc_name_.c_str()),
-        -1,
-        platform::errors::Unavailable(
-            "could not unlink the shared memory file ", ipc_name_));
+    shm_unlink(ipc_name_.c_str());
     VLOG(6) << "shm_unlink file: " << ipc_name_;
   }
 

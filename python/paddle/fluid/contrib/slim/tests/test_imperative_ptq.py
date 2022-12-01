@@ -150,8 +150,8 @@ class TestImperativePTQ(unittest.TestCase):
             label = paddle.to_tensor(y_data)
 
             out = model(img)
-            acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-            acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+            acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
             eval_acc_top1_list.append(float(acc_top1.numpy()))
 
             if batch_id % 50 == 0:

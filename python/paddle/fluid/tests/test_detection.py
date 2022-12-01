@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.layers import detection
-from paddle.fluid.framework import Program, program_guard
-import unittest
 import contextlib
+import unittest
+
 import numpy as np
 from unittests.test_imperative_base import new_program_scope
-from paddle.fluid.dygraph import base
-from paddle.fluid import core
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+from paddle.fluid import core
+from paddle.fluid.dygraph import base
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.layers import detection
 
 paddle.enable_static()
 

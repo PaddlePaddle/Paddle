@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 paddle.enable_static()
 
@@ -80,7 +82,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
+        batch_acc = paddle.static.accuracy(
             input=predict, label=label, total=batch_size_tensor
         )
 
