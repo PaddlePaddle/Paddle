@@ -318,7 +318,6 @@ tensor_method_func = [  # noqa
     'ceil',
     'ceil_',
     'cos',
-    'test_op',
     'cosh',
     'cumsum',
     'cumprod',
