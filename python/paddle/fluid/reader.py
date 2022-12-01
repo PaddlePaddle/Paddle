@@ -949,6 +949,13 @@ class DataLoader:
                 use_multiprocess,
             )
         else:
+            # Because layers.io.double_buffer is not supported anymore, and only when iterable and use_double_buffer
+            # are both True layers.io.double_buffer will be in use, here if itrable is False, use_double_buffer will be
+            # forcely set False to avoid using layers.io.double_buffer.
+            # See line whith 'raise RuntimeError("use_double_buffer is not supported now")' in this file
+            if not iterable:
+                use_double_buffer = False
+
             return GeneratorLoader(
                 feed_list,
                 capacity,
