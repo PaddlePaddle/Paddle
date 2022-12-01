@@ -104,7 +104,6 @@ __all__ = [
     'elementwise_mul',
     'gaussian_random',
     'sampling_id',
-    'sum',
     'shape',
     'clip',
     'clip_by_norm',
@@ -128,7 +127,6 @@ __all__ = [
     'shard_index',
     'hard_swish',
     'mish',
-    'gather_tree',
     'uniform_random',
     'unbind',
 ]
@@ -5440,78 +5438,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     return out
 
 
-@templatedoc()
-def sum(x):
-    """
-    ${comment}
-
-    Case 1:
-    ::
-        Input:
-            Input. Shape = [2, 3]
-            Input = [[1, 2, 3],
-                     [4, 5, 6]]
-
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[1, 2, 3],
-                      [4, 5, 6]]
-
-    Case 2:
-    ::
-        Input:
-            First input:
-            Input1. Shape = [2, 3]
-            Input1 = [[1, 2, 3],
-                      [4, 5, 6]]
-
-        The second input:
-            Input2. Shape = [2, 3]
-            Input2 = [[7, 8, 9],
-                      [10, 11, 12]]
-
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[8, 10, 12],
-                      [14, 16, 18]]
-
-    Args:
-        x (Variable|list(Variable)): ${x_comment}
-
-    Returns:
-        Variable: ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            input0 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=5)
-            input1 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=3)
-            sum = fluid.layers.sum([input0, input1])
-
-            # You can print out 'sum' via executor.
-            out = fluid.layers.Print(sum, message="the sum of input0 and input1: ")
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_main_program())
-
-            # The printed result is:
-            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
-            # Tensor[sum_0.tmp_0]
-            #    shape: [2,3,]
-            #    dtype: l
-            #    data: 8,8,8,8,8,8,
-
-            # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-    """
-
-    return paddle.add_n(x)
-
-
 def shape(input):
     """
     :alias_main: paddle.shape
@@ -7926,70 +7852,6 @@ def mish(x, threshold=20, name=None):
         attrs={'threshold': threshold},
     )
     return out
-
-
-def gather_tree(ids, parents):
-    r"""
-    To be used after beam search. After beam search, we get selected ids at
-    each time step and the corresponding parents in the search tree. Both ids
-    and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
-    :attr:`gather_tree` is used to backtrace from the last time step and
-    generate the full sequences by collecting selected ids.
-
-    Here is an example:
-
-    .. code-block:: text
-
-            Given:
-                ids = [[[2 2]
-                        [6 1]]
-                       [[3 9]
-                        [6 1]]
-                       [[0 1]
-                        [9 0]]]
-                parents = [[[0 0]
-                            [1 1]]
-                           [[1 0]
-                            [1 0]]
-                           [[0 0]
-                            [0 1]]]
-
-            Then:
-                gather_tree(ids, parents)
-                         = [[[2 2]
-                             [1 6]]
-                            [[3 3]
-                             [6 1]]
-                            [[0 1]
-                             [9 0]]]
-
-    Args:
-        ids(Tensor): A Tensor with shape :attr:`[length, batch_size, beam_size]`
-            and data type :attr:`int32` or :attr:`int64`. It contains the selected
-            ids of all time steps.
-        parents(Tensor): A Tensor with the same shape and data type as :attr:`ids`,
-            It contains the parents corresponding to selected ids when searching
-            among beams.
-
-    Returns:
-            A Tensor with the same shape and data type as :attr:`ids`. \
-            It contains the full sequences. The sequences are collected from \
-            :attr:`ids` by backtracing according to :attr:`parents`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
-
-            parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
-
-            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
-            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
-
-    """
-    return paddle.nn.functional.gather_tree(ids, parents)
 
 
 @deprecated(since="2.0.0", update_to="paddle.uniform")
