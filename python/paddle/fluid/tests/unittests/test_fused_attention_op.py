@@ -21,7 +21,6 @@ import paddle
 import paddle.incubate.nn.functional as incubate_f
 import paddle.nn.functional as F
 from paddle import tensor
-
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm

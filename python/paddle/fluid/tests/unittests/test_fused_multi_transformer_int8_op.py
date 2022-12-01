@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import tensor
 from paddle import _legacy_C_ops, tensor
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout

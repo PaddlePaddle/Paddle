@@ -19,10 +19,6 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
 import paddle.utils as utils
-import paddle.fluid.core as core
-from paddle.distributed.auto_parallel.operators.common import (
-    get_distributed_operator_impl_container,
-)
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )

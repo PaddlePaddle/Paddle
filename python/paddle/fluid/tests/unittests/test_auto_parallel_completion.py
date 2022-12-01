@@ -20,7 +20,6 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
 import paddle.tensor as tensor
-from paddle.distributed.fleet import auto
 import paddle.utils as utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
