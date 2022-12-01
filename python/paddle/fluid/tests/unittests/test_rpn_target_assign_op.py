@@ -13,13 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-from test_generate_proposal_labels_op import _generate_groundtruth
-from test_generate_proposal_labels_op import _bbox_overlaps, _box_to_delta
+from test_generate_proposal_labels_op import (
+    _bbox_overlaps,
+    _box_to_delta,
+    _generate_groundtruth,
+)
+
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def rpn_target_assign(

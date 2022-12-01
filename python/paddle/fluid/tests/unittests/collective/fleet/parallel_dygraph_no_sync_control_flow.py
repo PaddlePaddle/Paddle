@@ -19,6 +19,7 @@ from test_dist_base import runtime_main
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 
 seed = 90
 RUN_STEP = 20
@@ -29,9 +30,9 @@ batch_num = 1000
 class SimpleNetControlFlow(fluid.Layer):
     def __init__(self):
         super().__init__()
-        self.net_a = Linear(input_dim=10, output_dim=20)
-        self.net_b = Linear(input_dim=20, output_dim=5)
-        self.net_c = Linear(input_dim=5, output_dim=10)
+        self.net_a = Linear(10, 20)
+        self.net_b = Linear(20, 5)
+        self.net_c = Linear(5, 10)
         self.step = 0
 
     def forward(self, x):

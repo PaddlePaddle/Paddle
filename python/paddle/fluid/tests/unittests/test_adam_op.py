@@ -614,7 +614,7 @@ class TestAdamOpV2(unittest.TestCase):
             with fluid.unique_name.guard():
                 data = fluid.data(name="data", shape=shape)
                 conv = fluid.layers.conv2d(data, 8, 3)
-                loss = fluid.layers.reduce_mean(conv)
+                loss = paddle.mean(conv)
 
                 beta1 = fluid.layers.create_global_var(
                     shape=[1], value=0.85, dtype='float32', persistable=True
@@ -641,7 +641,7 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
-        linear = fluid.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
 
         adam = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=linear.parameters()
@@ -690,7 +690,7 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
-        linear = fluid.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
         clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(
             0.1, parameters=linear.parameters(), grad_clip=clip
@@ -807,7 +807,7 @@ class TestAdamOptimizer(unittest.TestCase):
                 )
 
                 cost = fluid.layers.cross_entropy(input=prediction, label=label)
-                loss = fluid.layers.reduce_mean(cost)
+                loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
                 epsilon_init = 1e-8
@@ -965,7 +965,7 @@ class TestAdamOptimizer(unittest.TestCase):
         prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        loss = fluid.layers.reduce_mean(cost)
+        loss = paddle.mean(cost)
         adam = fluid.optimizer.Adam(use_global_beta_pow=True)
         adam.minimize(loss)
         self.assertRaises(Exception, adam._get_global_accumulator, 'tmp')
@@ -1095,7 +1095,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             trainable=True,
         )
         if use_param_attr:
-            model = paddle.nn.Linear(5, 5, weight_attr)
+            model = paddle.nn.Linear(5, 5, weight_attr=weight_attr)
         else:
             model = paddle.nn.Linear(5, 5)
 
