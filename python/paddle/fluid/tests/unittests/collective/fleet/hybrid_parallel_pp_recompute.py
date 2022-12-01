@@ -24,7 +24,6 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle import framework
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
-from paddle.fluid import layers
 from paddle.fluid.dygraph.layers import Layer
 
 

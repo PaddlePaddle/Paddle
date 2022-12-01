@@ -79,13 +79,8 @@ class DecoderCell(layers.RNNCell):
                 attn_scores, encoder_padding_mask
             )
         attn_scores = layers.softmax(attn_scores)
-<<<<<<< HEAD
-        attn_out = layers.squeeze(
-            paddle.matmul(attn_scores, encoder_output), [1]
-=======
         attn_out = paddle.squeeze(
-            layers.matmul(attn_scores, encoder_output), [1]
->>>>>>> bb90e378b763ab9b06f97f718fcf84282ca5c3f8
+            paddle.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
         attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)

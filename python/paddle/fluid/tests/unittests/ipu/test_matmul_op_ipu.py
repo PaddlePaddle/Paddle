@@ -150,7 +150,10 @@ class TestCase7(TestBase):
         self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
     def set_op_attrs(self):
-        self.attrs = {"transpose_x": False, "transpose_y": True,}
+        self.attrs = {
+            "transpose_x": False,
+            "transpose_y": True,
+        }
 
 
 class TestCase8(TestBase):

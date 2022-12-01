@@ -18,16 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-<<<<<<< HEAD
-from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.common import Dropout
-from paddle.nn.layer.transformer import _convert_attention_mask
 from paddle import tensor
-import unittest
-=======
 from paddle import _legacy_C_ops, tensor
-from paddle.fluid import layers
->>>>>>> bb90e378b763ab9b06f97f718fcf84282ca5c3f8
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm

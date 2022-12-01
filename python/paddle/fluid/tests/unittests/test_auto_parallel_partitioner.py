@@ -29,7 +29,6 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 
 paddle.enable_static()
 _global_parallel_strategy = None

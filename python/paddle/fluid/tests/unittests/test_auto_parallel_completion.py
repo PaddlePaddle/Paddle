@@ -25,7 +25,6 @@ import paddle.utils as utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 
 paddle.enable_static()
 _global_parallel_strategy = None

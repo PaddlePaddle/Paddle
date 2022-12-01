@@ -18,16 +18,6 @@ import numpy as np
 
 sys.path.append("..")
 
-<<<<<<< HEAD
-import paddle
-import paddle.nn.functional as F
-import paddle.incubate.nn.functional as incubate_f
-from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.common import Linear, Dropout
-from paddle.nn.layer.transformer import _convert_attention_mask
-from paddle import tensor
-=======
->>>>>>> bb90e378b763ab9b06f97f718fcf84282ca5c3f8
 import unittest
 
 from op_test_xpu import XPUOpTest
@@ -41,7 +31,6 @@ import paddle
 import paddle.incubate.nn.functional as incubate_f
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.fluid import layers
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
