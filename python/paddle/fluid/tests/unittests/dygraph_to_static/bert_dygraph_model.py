@@ -17,8 +17,8 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer
-from paddle.nn import Linear
 from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -424,7 +424,7 @@ class PretrainModelLayer(Layer):
             logits=next_sent_fc_out, label=labels, return_softmax=True
         )
 
-        next_sent_acc = fluid.layers.accuracy(
+        next_sent_acc = paddle.static.accuracy(
             input=next_sent_softmax, label=labels
         )
 

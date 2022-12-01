@@ -67,12 +67,10 @@ __all__ = [
     'embedding',
     'linear_chain_crf',
     'crf_decoding',
-    'cos_sim',
     'conv2d',
     'softmax',
     'pool2d',
     'batch_norm',
-    'reduce_mean',
     'reduce_all',
     'reduce_any',
     'dropout',
@@ -97,16 +95,12 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'relu',
-    'log',
-    'unique',
-    'unique_with_counts',
     'elementwise_add',
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
     'gaussian_random',
     'sampling_id',
-    'sum',
     'shape',
     'clip',
     'clip_by_norm',
@@ -120,17 +114,12 @@ __all__ = [
     'get_tensor_from_selected_rows',
     'temporal_shift',
     'py_func',
-    'pixel_shuffle',
-    'fsp_matrix',
     'continuous_value_model',
-    'where',
-    'sign',
     'unfold',
     'deformable_roi_pooling',
     'shard_index',
     'hard_swish',
     'mish',
-    'gather_tree',
     'uniform_random',
     'unbind',
 ]
@@ -1004,43 +993,6 @@ def crf_decoding(input, param_attr, label=None, length=None):
     )
 
     return viterbi_path
-
-
-@templatedoc()
-def cos_sim(X, Y):
-    """
-    ${comment}
-
-    Args:
-        X (Tensor): ${x_comment}.
-        Y (Tensor): ${y_comment}.
-
-    Returns:
-        A Tensor representing the output of cosine(X, Y).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand(shape=[3, 7], dtype='float32')
-            y = paddle.rand(shape=[1, 7], dtype='float32')
-            out = paddle.fluid.layers.cos_sim(x, y)
-            print(out)
-
-    """
-    check_variable_and_dtype(X, 'X', ['float32'], 'cos_sim')
-    check_variable_and_dtype(Y, 'Y', ['float32'], 'cos_sim')
-    helper = LayerHelper('cos_sim', **locals())
-    out = helper.create_variable_for_type_inference(dtype=X.dtype)
-    xnorm = helper.create_variable_for_type_inference(dtype=X.dtype)
-    ynorm = helper.create_variable_for_type_inference(dtype=X.dtype)
-    helper.append_op(
-        type='cos_sim',
-        inputs={'X': [X], 'Y': [Y]},
-        outputs={'Out': [out], 'XNorm': [xnorm], 'YNorm': [ynorm]},
-    )
-    return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.dropout")
@@ -2551,63 +2503,6 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         attrs=attrs,
     )
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.mean")
-def reduce_mean(input, dim=None, keep_dim=False, name=None):
-    """
-    Computes the mean of the input tensor's elements along the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (list|int, optional): The dimension along which the mean is computed. If
-            `None`, compute the mean over all elements of :attr:`input`
-            and return a variable with a single element, otherwise it
-            must be in the range :math:`[-rank(input), rank(input))`. If
-            :math:`dim[i] < 0`, the dimension to reduce is
-            :math:`rank(input) + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, results of average on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Raises:
-        TypeError, if out data type is different with the input data type.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_mean(x)  # [0.4375]
-            fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
-            fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
-            fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
-            fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
-    """
-
-    return paddle.mean(x=input, axis=dim, keepdim=keep_dim, name=name)
 
 
 def reduce_all(input, dim=None, keep_dim=False, name=None):
@@ -5246,47 +5141,6 @@ def resize_nearest(
     )
 
 
-def log(x, name=None):
-    r"""
-    Calculates the natural log of the given input tensor, element-wise.
-
-    .. math::
-
-        Out = \\ln(x)
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-
-    Returns:
-        Tensor: The natural log of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = [[2,3,4], [7,8,9]]
-            x = paddle.to_tensor(x, dtype='float32')
-            res = paddle.log(x)
-            # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.log(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.log(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.relu")
 def relu(x, name=None):
     """
@@ -5518,78 +5372,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     )
 
     return out
-
-
-@templatedoc()
-def sum(x):
-    """
-    ${comment}
-
-    Case 1:
-    ::
-        Input:
-            Input. Shape = [2, 3]
-            Input = [[1, 2, 3],
-                     [4, 5, 6]]
-
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[1, 2, 3],
-                      [4, 5, 6]]
-
-    Case 2:
-    ::
-        Input:
-            First input:
-            Input1. Shape = [2, 3]
-            Input1 = [[1, 2, 3],
-                      [4, 5, 6]]
-
-        The second input:
-            Input2. Shape = [2, 3]
-            Input2 = [[7, 8, 9],
-                      [10, 11, 12]]
-
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[8, 10, 12],
-                      [14, 16, 18]]
-
-    Args:
-        x (Variable|list(Variable)): ${x_comment}
-
-    Returns:
-        Variable: ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            input0 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=5)
-            input1 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=3)
-            sum = fluid.layers.sum([input0, input1])
-
-            # You can print out 'sum' via executor.
-            out = fluid.layers.Print(sum, message="the sum of input0 and input1: ")
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_main_program())
-
-            # The printed result is:
-            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
-            # Tensor[sum_0.tmp_0]
-            #    shape: [2,3,]
-            #    dtype: l
-            #    data: 8,8,8,8,8,8,
-
-            # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-    """
-
-    return paddle.add_n(x)
 
 
 def shape(input):
@@ -7174,121 +6956,6 @@ py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
 
 
-def pixel_shuffle(x, upscale_factor):
-    """
-
-    This op rearranges elements in a tensor of shape [N, C, H, W]
-    to a tensor of shape [N, C/r**2, H*r, W*r].
-    This is useful for implementing efficient sub-pixel convolution
-    with a stride of 1/r.
-    Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
-    Using an Efficient Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_ .
-    by Shi et. al (2016) for more details.
-
-    Parameters:
-
-        x(Variable): 4-D tensor, the data type should be float32 or float64.
-        upscale_factor(int): factor to increase spatial resolution.
-
-    Returns:
-        Out(Variable): Reshaped tensor according to the new dimension.
-
-    Raises:
-        ValueError: If the square of upscale_factor cannot divide the channels of input.
-
-    Examples:
-        .. code-block:: python
-
-            # declarative mode
-            import paddle.fluid as fluid
-            import numpy as np
-            input = fluid.data(name="input", shape=[2,9,4,4])
-            output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-
-            input_data = np.random.rand(2,9,4,4).astype("float32")
-            output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data},
-                fetch_list=[output],
-                return_numpy=True)
-
-            # print(output.shape)
-            # (2L, 1L, 12L, 12L)
-
-    """
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
-    helper = LayerHelper("pixel_shuffle", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    if not isinstance(upscale_factor, int):
-        raise TypeError("upscale factor must be int type")
-
-    helper.append_op(
-        type="pixel_shuffle",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"upscale_factor": upscale_factor},
-    )
-    return out
-
-
-def fsp_matrix(x, y):
-    """
-
-    **FSP matrix op**
-
-    This op is used to calculate the flow of solution procedure (FSP) matrix of two 4-D Tensor feature maps.
-    Given feature map x with shape [x_channel, h, w] and feature map y with shape
-    [y_channel, h, w], we can get the fsp matrix of x and y in two steps:
-
-    1. reshape x into matrix with shape [x_channel, h * w] and reshape and
-       transpose y into matrix with shape [h * w, y_channel].
-    2. multiply x and y to get fsp matrix with shape [x_channel, y_channel].
-
-    The output is a batch of fsp matrices.
-
-    Args:
-
-        x (Variable): A 4-D Tensor feature map with shape [batch_size, x_channel, height, width].
-                      A Tensor with type float32, float64.
-        y (Variable): A 4-D Tensor feature map with shape [batch_size, y_channel, height, width].
-                      The y_channel can be different with the x_channel of Input(X)
-                      while the other dimensions must be the same with Input(X)'s. A Tensor with
-                      type float32, float64.
-
-    Returns:
-
-        fsp matrix (Variable): The output of FSP op with shape [batch_size, x_channel, y_channel].
-        The x_channel is the channel of x and the y_channel is the channel of y. A Tensor with
-        type float32, float64.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            data = fluid.data(name='data', shape=[None, 3, 32, 32])
-            feature_map_0 = fluid.layers.conv2d(data, num_filters=2,
-                                                filter_size=3)
-            feature_map_1 = fluid.layers.conv2d(feature_map_0, num_filters=2,
-                                                filter_size=1)
-            loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
-
-    """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fsp_matrix')
-    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'fsp_matrix')
-    helper = LayerHelper('fsp_matrix', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype(input_param_name='x')
-    )
-    helper.append_op(type='fsp', inputs={'X': x, 'Y': y}, outputs={'Out': out})
-    return out
-
-
 def continuous_value_model(input, cvm, use_cvm=True):
     r"""
 
@@ -7344,192 +7011,6 @@ def continuous_value_model(input, cvm, use_cvm=True):
         attrs={"use_cvm": use_cvm},
     )
     return out
-
-
-def where(condition):
-    """
-    Return an int64 tensor with rank 2, specifying the coordinate of true element in `condition`.
-
-    Args:
-        condition(Variable): A bool tensor with rank at least 1, the data type is bool.
-
-    Returns:
-        Variable, the output data type is int64. : The tensor variable storing a 2-D tensor, which involves all coordinate.
-
-    Examples:
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             import paddle.fluid.layers as layers
-             import numpy as np
-
-             # condition is a tensor [True, False, True]
-             condition = layers.assign(np.array([1, 0, 1], dtype='int32'))
-             condition = layers.cast(condition, 'bool')
-             out = layers.where(condition) # [[0], [2]]
-
-             # condition is a tensor [[True, False], [False, True]]
-             condition = layers.assign(np.array([[1, 0], [0, 1]], dtype='int32'))
-             condition = layers.cast(condition, 'bool')
-             out = layers.where(condition) # [[0, 0], [1, 1]]
-
-             # condition is a tensor [False, False, False]
-             condition = layers.assign(np.array([0, 0, 0], dtype='int32'))
-             condition = layers.cast(condition, 'bool')
-             out = layers.where(condition) # [[]]
-
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.nonzero(condition)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.where_index(condition)
-
-    helper = LayerHelper("where_index", **locals())
-
-    out = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64
-    )
-
-    helper.append_op(
-        type='where_index',
-        inputs={'Condition': condition},
-        outputs={'Out': [out]},
-    )
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.sign")
-def sign(x):
-    r"""
-    This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
-
-    Args:
-        x(Variable|numpy.ndarray): The input variable could be N-D tensor or N-D numpy array, \
-            the input data type is float32 or float64.
-
-    Returns:
-        Variable, the output data type is the same as input data type. : The output sign tensor with identical shape to input :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-
-          # [1.0, 0.0, -1.0]
-          data = fluid.layers.sign(np.array([3.0, 0.0, -2.0], dtype='float32'))
-    """
-
-    helper = LayerHelper("sign", **locals())
-    check_type(x, 'x', (Variable, np.ndarray), 'sign')
-    if isinstance(x, np.ndarray):
-        x = assign(x)
-    check_dtype(x.dtype, 'x', ['float16', 'float32', 'float64'], 'sign')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
-
-    return out
-
-
-def unique(x, dtype='int32'):
-    r"""
-    Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
-
-    Args:
-        x(Tensor): A 1-D input tensor, it's data type should be float32, float64, int32, int64.
-        dtype(np.dtype|str, optional): The type of index tensor: int32, int64. Default: int32.
-
-    Returns:
-        tuple: (out, index). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
-            `index` is an index tensor pointing to `out`, by which user can recover the original `x` tensor.
-
-    Examples:
-        .. code-block:: python
-
-             import numpy as np
-             import paddle.fluid as fluid
-             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
-             out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
-    """
-
-    check_variable_and_dtype(
-        x, "x", ['float32', 'float64', 'int32', 'int64'], "unique"
-    )
-    helper = LayerHelper("unique", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    index = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type='unique',
-        inputs={'X': x},
-        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
-        outputs={'Out': [out], 'Index': [index]},
-    )
-
-    return out, index
-
-
-def unique_with_counts(x, dtype='int32'):
-    r"""
-    This OP return a unique tensor for `x` , and count tensor that the count of unique result in raw input, \
-    and an index tensor pointing to this unique tensor.
-
-    **NOTICE**: This op support the variable type of Tensor only.
-
-    Args:
-        x(Variable): A 1-D input tensor with input shape of :math:`[N]` , the input data type is float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of count and index tensor, it could be int32, int64. Default value is int32.
-
-    Returns:
-        tuple, the variable type in tuple is Tensor, the output :attr:`out` data type is the same as input :attr:`x`, \
-        and data type of output :attr:`index` and :attr:`count` will be int32 or int64.: The :attr:`out` is unique tensor for input :attr:`x`,\
-        the data shape is :math:`[K]`, the `K` may be different to the `N` in shape of :attr:`x`. :attr:`index` is an index tensor pointing\
-        to :attr:`out`, the data shape is :math:`[N]` , the data shape is the same as input :attr:`x`. :attr:`count` is count of unique element in\
-        the :attr:`x`, the data shape is :math:`[K]`, the data shape is the same as output :attr:`out`.
-
-    Examples:
-        .. code-block:: python
-
-             import numpy as np
-             import paddle.fluid as fluid
-             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
-             out, index, count = fluid.layers.unique_with_counts(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
-                                                        # count is [1, 3, 1, 1]
-            # x.shape=(6,) out.shape=(4,), index.shape=(6,), count.shape=(4,)
-    """
-    check_variable_and_dtype(
-        x, "x", ['float32', 'float64', 'int32', 'int64'], "unique_with_counts"
-    )
-    if not (dtype == 'int32' or dtype == 'int64'):
-        raise TypeError(
-            "Op unique_with_counts, index dtype must be int32 or int64"
-        )
-
-    if x is None or len(x.shape) != 1:
-        raise ValueError(
-            "Op unique_with_counts, x must not be null and size of dim must be 1"
-        )
-
-    helper = LayerHelper("unique_with_counts", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    index = helper.create_variable_for_type_inference(dtype)
-
-    count = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type='unique_with_counts',
-        inputs={'X': x},
-        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
-        outputs={'Out': [out], 'Index': [index], 'Count': [count]},
-    )
-
-    return out, index, count
 
 
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
@@ -8006,70 +7487,6 @@ def mish(x, threshold=20, name=None):
         attrs={'threshold': threshold},
     )
     return out
-
-
-def gather_tree(ids, parents):
-    r"""
-    To be used after beam search. After beam search, we get selected ids at
-    each time step and the corresponding parents in the search tree. Both ids
-    and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
-    :attr:`gather_tree` is used to backtrace from the last time step and
-    generate the full sequences by collecting selected ids.
-
-    Here is an example:
-
-    .. code-block:: text
-
-            Given:
-                ids = [[[2 2]
-                        [6 1]]
-                       [[3 9]
-                        [6 1]]
-                       [[0 1]
-                        [9 0]]]
-                parents = [[[0 0]
-                            [1 1]]
-                           [[1 0]
-                            [1 0]]
-                           [[0 0]
-                            [0 1]]]
-
-            Then:
-                gather_tree(ids, parents)
-                         = [[[2 2]
-                             [1 6]]
-                            [[3 3]
-                             [6 1]]
-                            [[0 1]
-                             [9 0]]]
-
-    Args:
-        ids(Tensor): A Tensor with shape :attr:`[length, batch_size, beam_size]`
-            and data type :attr:`int32` or :attr:`int64`. It contains the selected
-            ids of all time steps.
-        parents(Tensor): A Tensor with the same shape and data type as :attr:`ids`,
-            It contains the parents corresponding to selected ids when searching
-            among beams.
-
-    Returns:
-            A Tensor with the same shape and data type as :attr:`ids`. \
-            It contains the full sequences. The sequences are collected from \
-            :attr:`ids` by backtracing according to :attr:`parents`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
-
-            parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
-
-            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
-            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
-
-    """
-    return paddle.nn.functional.gather_tree(ids, parents)
 
 
 @deprecated(since="2.0.0", update_to="paddle.uniform")

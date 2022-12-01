@@ -303,7 +303,7 @@ class BaseModel(fluid.dygraph.Layer):
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss
@@ -435,9 +435,7 @@ class BaseModel(fluid.dygraph.Layer):
             cell_outputs = self._split_batch_beams(step_input)
             cell_outputs = self.fc(cell_outputs)
 
-            step_log_probs = fluid.layers.log(
-                fluid.layers.softmax(cell_outputs)
-            )
+            step_log_probs = paddle.log(fluid.layers.softmax(cell_outputs))
             noend_array = [-self.kinf] * self.tar_vocab_size
             noend_array[self.beam_end_token] = 0
             noend_mask_tensor = to_variable(
@@ -504,7 +502,9 @@ class BaseModel(fluid.dygraph.Layer):
 
         predicted_ids = paddle.stack(predicted_ids)
         parent_ids = paddle.stack(parent_ids)
-        predicted_ids = fluid.layers.gather_tree(predicted_ids, parent_ids)
+        predicted_ids = paddle.nn.functional.gather_tree(
+            predicted_ids, parent_ids
+        )
         predicted_ids = self._transpose_batch_time(predicted_ids)
         return predicted_ids
 
@@ -837,7 +837,7 @@ class AttentionModel(fluid.dygraph.Layer):
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = paddle.sum(loss)
+        loss = paddle.mean(loss, axis=[0])
+        loss = fluid.layers.reduce_sum(loss)
 
         return loss
