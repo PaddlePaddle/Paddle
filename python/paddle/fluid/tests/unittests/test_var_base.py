@@ -1289,7 +1289,7 @@ class TestVarBase(unittest.TestCase):
     def func_test_tensor_str_shape_with_zero(self):
         paddle.disable_static(paddle.CPUPlace())
         x = paddle.ones((10, 10))
-        y = paddle.fluid.layers.where(x == 0)
+        y = paddle.nonzero(x == 0)
         a_str = str(y)
 
         expected = '''Tensor(shape=[0, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
