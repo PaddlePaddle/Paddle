@@ -241,10 +241,10 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         is_optimize_model,
         diff_threshold,
         onnx_format=False,
+        batch_nums=10,
     ):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
-        sample_iterations = self.sample_iterations
 
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
 
@@ -267,7 +267,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         )
         print(
             "Start INT8 post training quantization for {0} on {1} images ...".format(
-                model, sample_iterations * batch_size
+                model, batch_nums * batch_size
             )
         )
         self.generate_quantized_model(
