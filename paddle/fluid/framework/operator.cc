@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -38,7 +39,6 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
 namespace phi {
@@ -2986,12 +2986,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<phi::RawTensor>()) {
-          tensor_out = var->template GetMutable<phi::RawTensor>();
+        } else if (var->template IsType<paddle::framework::RawTensor>()) {
+          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (!var->IsInitialized()) {
           // The following is for RAW type of var
-          tensor_out = var->template GetMutable<phi::RawTensor>();
+          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(

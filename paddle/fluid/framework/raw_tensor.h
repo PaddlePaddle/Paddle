@@ -19,10 +19,14 @@ limitations under the License. */
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/utils/any.h"
 
-namespace phi {
+namespace paddle {
+namespace framework {
 
-class RawTensor : public ExtendedTensor,
-                  public TypeInfoTraits<TensorBase, RawTensor> {
+/// \brief Fluid Kernel and PHI Kernel will be unified in the future.
+/// So, we need a class in PHI that can represent the RAW type in Fluid.
+/// The RawTensor is for PHI Kernel that has RAW type arguments.
+class RawTensor : public phi::ExtendedTensor,
+                  public phi::TypeInfoTraits<phi::TensorBase, RawTensor> {
  public:
   RawTensor() = default;
 
@@ -53,6 +57,24 @@ class RawTensor : public ExtendedTensor,
   }
 
   template <typename T>
+  T* Get() {
+    if (!data_.empty()) {
+      try {
+        return paddle::any_cast<T*>(data_);
+      } catch (paddle::bad_any_cast&) {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Invalid data type error, expected %s, actual %s.",
+            typeid(T).name(),
+            data_type_.name()));
+      }
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unavailable("RawTensor is not initialized, if you want "
+                                   "to create data, you can use GetMutable."));
+    }
+  }
+
+  template <typename T>
   bool IsType() const {
     return std::type_index(typeid(T)) == data_type_;
   }
@@ -63,4 +85,5 @@ class RawTensor : public ExtendedTensor,
   std::type_index data_type_ = std::type_index(typeid(void));
 };
 
-}  // namespace phi
+}  // namespace framework
+}  // namespace paddle

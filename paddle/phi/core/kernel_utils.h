@@ -21,7 +21,6 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
-#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
