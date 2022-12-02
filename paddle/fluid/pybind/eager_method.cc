@@ -1241,10 +1241,9 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             self->tensor.name(), self->tensor, amp_dtype, "set_value");
         value_tensor = egr::EagerAmpAutoCast(
             value_tensor.name(), value_tensor, amp_dtype, "set_value");
-      }
-      if (value_tensor.initialized() &&
-          self->tensor.dtype() != value_tensor.dtype()) {
-        value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+        if (self->tensor.dtype() != value_tensor.dtype()) {
+          value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+        }
       }
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
