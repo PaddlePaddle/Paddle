@@ -241,8 +241,6 @@ class ParallelEnv:
 
 
 def _coalesce_tensors(var_groups):
-    from paddle.fluid.layers import reshape, concat
-
     coalesced_grads_and_grad_vars = []
     for group_id, grad_vars in var_groups.items():
         flattened_vars = []
@@ -250,9 +248,9 @@ def _coalesce_tensors(var_groups):
         for g_var in grad_vars:
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
-                reshape(x=g_var, shape=[np.prod(g_var.shape)])
+                paddle.reshape(x=g_var, shape=[np.prod(g_var.shape)])
             )
-        coalesced_grad = concat(flattened_vars)
+        coalesced_grad = paddle.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(
             [coalesced_grad, grad_vars, g_var_shapes]
         )
