@@ -19,7 +19,6 @@ namespace paddle {
 namespace operators {
 
 
-
 template <typename DeviceContext, typename T>
 class SequenceMaskNPUKernel : public framework::OpKernel<T> {
  public:
