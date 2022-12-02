@@ -118,9 +118,10 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                         weight_scale_nums,
                         1,
                         platform::errors::InvalidArgument(
-                            "When quant_axis == -1, it means use per_layer "
+                            "When quant_axis == -1, it means using per_layer "
                             "dequantization. In this situation, the number of "
-                            "weight_scale should be 1."));
+                            "weight_scale should be 1, but received %d.",
+                            weight_scale_nums));
 
                     calcu_op_desc->SetAttr("weight_scale", weight_scale[0]);
                   } else {
