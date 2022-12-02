@@ -22,62 +22,61 @@ namespace phi {
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                          const std::vector<int64_t> &y_dims,
                          const std::vector<int64_t> &out_dims,
-                         std::vector<int64_t> &x_bd_dims,
-                         std::vector<int64_t> &y_bd_dims,
-                         std::vector<int64_t> &out_bd_dims,
+                         std::vector<int64_t> *x_bd_dims,
+                         std::vector<int64_t> *y_bd_dims,
+                         std::vector<int64_t> *out_bd_dims,
                          bool trans_x,
                          bool trans_y) {
   if (x_dims.size() == 1) {
-    x_bd_dims[x_bd_dims.size() - 1] = x_dims[0];
+    (*x_bd_dims)[x_bd_dims->size() - 1] = x_dims[0];
   } else if (x_dims.size() == 2) {
-    x_bd_dims[x_bd_dims.size() - 1] = x_dims[1];
-    x_bd_dims[x_bd_dims.size() - 2] = x_dims[0];
+    (*x_bd_dims)[x_bd_dims->size() - 1] = x_dims[1];
+    (*x_bd_dims)[x_bd_dims->size() - 2] = x_dims[0];
   } else {
     for (size_t i = 0; i < x_dims.size(); ++i) {
-      x_bd_dims[x_bd_dims.size() - x_dims.size() + i] = x_dims[i];
+      (*x_bd_dims)[x_bd_dims->size() - x_dims.size() + i] = x_dims[i];
     }
   }
   if (y_dims.size() == 1) {
-    y_bd_dims[x_bd_dims.size() - 2] = y_dims[0];
+    (*y_bd_dims)[x_bd_dims->size() - 2] = y_dims[0];
   } else if (y_dims.size() == 2) {
-    y_bd_dims[y_bd_dims.size() - 1] = y_dims[1];
-    y_bd_dims[y_bd_dims.size() - 2] = y_dims[0];
+    (*y_bd_dims)[y_bd_dims->size() - 1] = y_dims[1];
+    (*y_bd_dims)[y_bd_dims->size() - 2] = y_dims[0];
   } else {
     for (size_t i = 0; i < y_dims.size(); ++i) {
-      y_bd_dims[y_bd_dims.size() - y_dims.size() + i] = y_dims[i];
+      (*y_bd_dims)[y_bd_dims->size() - y_dims.size() + i] = y_dims[i];
     }
   }
 
-  for (size_t i = 0; i < x_bd_dims.size() - 2; ++i) {
-    out_bd_dims[i] = std::max(x_bd_dims[i], y_bd_dims[i]);
+  for (size_t i = 0; i < x_bd_dims->size() - 2; ++i) {
+    (*out_bd_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
   }
-  int h_idx = trans_x ? x_bd_dims.size() - 1 : x_bd_dims.size() - 2;
-  int w_idx = trans_y ? y_bd_dims.size() - 2 : y_bd_dims.size() - 1;
+  int h_idx = trans_x ? x_bd_dims->size() - 1 : x_bd_dims->size() - 2;
+  int w_idx = trans_y ? y_bd_dims->size() - 2 : y_bd_dims->size() - 1;
 
-  out_bd_dims[x_bd_dims.size() - 2] = x_bd_dims[h_idx];
-  out_bd_dims[y_bd_dims.size() - 1] = y_bd_dims[w_idx];
-  ;
+  (*out_bd_dims)[x_bd_dims->size() - 2] = (*x_bd_dims)[h_idx];
+  (*out_bd_dims)[y_bd_dims->size() - 1] = (*y_bd_dims)[w_idx];
 }
 
 template <typename T>
 void CalculateGradMatrixDims(const OneDNNContext &dev_ctx,
                              DenseTensor *dx_tmp,
                              DenseTensor *dy_tmp,
-                             std::vector<int64_t> &dx_bd_dims,
-                             std::vector<int64_t> &dy_bd_dims) {
-  for (size_t i = 0; i < dx_bd_dims.size() - 2; ++i) {
-    if (dx_bd_dims[i] != dy_bd_dims[i]) {
-      if (dx_bd_dims[i] == 1) {
-        dx_bd_dims[i] = dy_bd_dims[i];
+                             std::vector<int64_t> *dx_bd_dims,
+                             std::vector<int64_t> *dy_bd_dims) {
+  for (size_t i = 0; i < dx_bd_dims->size() - 2; ++i) {
+    if ((*dx_bd_dims)[i] != (*dy_bd_dims)[i]) {
+      if ((*dx_bd_dims)[i] == 1) {
+        (*dx_bd_dims)[i] = (*dy_bd_dims)[i];
       } else {
-        dy_bd_dims[i] = dx_bd_dims[i];
+        (*dy_bd_dims)[i] = (*dx_bd_dims)[i];
       }
     }
   }
 
-  dx_tmp->Resize(make_ddim(dx_bd_dims));
+  dx_tmp->Resize(make_ddim(*dx_bd_dims));
   dev_ctx.template Alloc<T>(dx_tmp);
-  dy_tmp->Resize(make_ddim(dy_bd_dims));
+  dy_tmp->Resize(make_ddim(*dy_bd_dims));
   dev_ctx.template Alloc<T>(dy_tmp);
 }
 
@@ -135,16 +134,17 @@ void MatmulGradKernel(const Context &dev_ctx,
   CalculateMatrixDims(x_dims,
                       y_dims,
                       dout_dims,
-                      x_bd_dims,
-                      y_bd_dims,
-                      dout_bd_dims,
+                      &x_bd_dims,
+                      &y_bd_dims,
+                      &dout_bd_dims,
                       transpose_x,
                       transpose_y);
 
   std::vector<int64_t> dx_bd_dims(x_bd_dims);
   std::vector<int64_t> dy_bd_dims(y_bd_dims);
 
-  CalculateGradMatrixDims<T>(dev_ctx, &dx_tmp, &dy_tmp, dx_bd_dims, dy_bd_dims);
+  CalculateGradMatrixDims<T>(
+      dev_ctx, &dx_tmp, &dy_tmp, &dx_bd_dims, &dy_bd_dims);
 
   if (transpose_x && transpose_y) {
     funcs::ExecuteMatmul<T, T>(
