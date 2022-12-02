@@ -220,7 +220,7 @@ class TestWithoutIdentityLoss1(TestBase):
 
 class TestWithoutIdentityLoss2(TestBase):
     def set_op_attrs(self):
-        self.loss_op = paddle.fluid.layers.softmax_with_cross_entropy
+        self.loss_op = paddle.paddle.nn.functional.softmax_with_cross_entropy
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
@@ -271,7 +271,7 @@ class TestWithoutIdentityLoss4(TestBase):
 
 class TestWithoutIdentityLoss5(TestBase):
     def set_op_attrs(self):
-        self.loss_op = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
+        self.loss_op = paddle.nn.functional.binary_cross_entropy_with_logits
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')

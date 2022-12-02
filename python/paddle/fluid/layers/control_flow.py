@@ -56,10 +56,8 @@ __all__ = [
     'Switch',
     'increment',
     'array_write',
-    'create_array',
     'less_than',
     'array_read',
-    'array_length',
     'cond',
     'IfElse',
     'StaticRNN',
@@ -159,10 +157,10 @@ def select_input(inputs, mask):
 
 
 def select_input_with_buildin_type(inputs, mask, name):
-    from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+    from paddle.jit.dy2static.variable_trans_func import (
         to_static_variable,
     )
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
 
     false_var, true_var = inputs
 
@@ -1484,7 +1482,7 @@ def _deal_with_undefined_var(output_vars, loop_vars):
     3. UndefinedVar = List(int)     # create a list of variable
     4. UndefinedVar = value         # create a variable
     """
-    from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    from paddle.jit.dy2static.utils import (
         UndefinedVar,
         create_undefined_variable,
     )
@@ -1712,7 +1710,7 @@ def array_write(x, i, array=None):
         ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.numpy().item(0)
         if array is None:
-            array = create_array(x.dtype)
+            array = paddle.tensor.create_array(x.dtype)
         assert isinstance(
             array, list
         ), "The 'array' in array_write must be a list in dygraph mode"
@@ -1748,64 +1746,6 @@ def array_write(x, i, array=None):
         outputs={'Out': [array]},
     )
     return array
-
-
-def create_array(dtype, initialized_list=None):
-    """
-    This OP creates an LOD_TENSOR_ARRAY. It is used as
-    the input of :ref:`api_fluid_layers_array_read` and
-    :ref:`api_fluid_layers_array_write`. Also it can be used
-    with  :ref:`api_fluid_layers_While` to create RNN network.
-
-    Args:
-        dtype (str): The data type of the elements in the lod_tensor_array.
-                     Support data type: float32, float64, int32, int64.
-        initialized_list(list): Used to initialize as default value for created array.
-                    All values in initialized list should be a Tensor.
-
-    Returns:
-        Variable: The empty lod_tensor_array. The data type of elements in Tensor is ``dtype``.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
-
-    """
-    array = []
-    if initialized_list is not None:
-        if not isinstance(initialized_list, (list, tuple)):
-            raise TypeError(
-                "Require type(initialized_list) should be list/tuple, but received {}".format(
-                    type(initialized_list)
-                )
-            )
-        array = list(initialized_list)
-
-    # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
-    for val in array:
-        if not isinstance(val, Variable):
-            raise TypeError(
-                "All values in `initialized_list` should be Variable, but recevied {}.".format(
-                    type(val)
-                )
-            )
-
-    if _non_static_mode():
-        return array
-
-    helper = LayerHelper("array", **locals())
-    tensor_array = helper.create_variable(
-        name="{0}.out".format(helper.name),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype=dtype,
-    )
-
-    for val in array:
-        array_write(x=val, i=array_length(tensor_array), array=tensor_array)
-
-    return tensor_array
 
 
 @templatedoc()
@@ -1954,114 +1894,6 @@ def array_read(array, i):
         outputs={'Out': [out]},
     )
     return out
-
-
-def shrink_memory(x, i, table):
-    """
-    This function creates an operator to shrink rnn memory using the RankTable
-    as mentioned in the input parameter.
-
-    NOTE: This API is very low-level API. It is used by DynamicRNN only.
-
-    Since the Dynamic RNN uses no-padding way to implement RNN. The sequence
-    will be sorted by order, and the length of valid memory will be shrink after
-    each time step.
-
-    Args:
-        x(Variable): The memory object in the previous time step.
-        i(Variable): The step count variable. A int scalar as LoDTensor.
-        table(Variable): The RNNRankTable object.
-
-    Returns:
-        the memory variable after shrink.
-
-    Examples:
-
-        Since this API is very low level API. The example is not provided.
-        Please reference the implementation of class DynamicRNN for detail
-        usage.
-    """
-    helper = LayerHelper('shrink_memory', **locals())
-    check_type(x, 'x', Variable, 'shrink_memory')
-    check_type(i, 'i', Variable, 'shrink_memory')
-    check_type(table, 'table', Variable, 'shrink_memory')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='shrink_rnn_memory',
-        inputs={'X': [x], 'I': [i], 'RankTable': [table]},
-        outputs={'Out': [out]},
-        attrs={},
-    )
-    return out
-
-
-def array_length(array):
-    """
-    This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
-    It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` ,
-    :ref:`api_fluid_layers_While` OP to traverse, read and write LoDTensorArray.
-
-    Args:
-        array (LoDTensorArray): The input array that will be used to compute the length.
-
-    Returns:
-        Variable: 1-D Tensor with shape [1], which is the length of array. Datatype: int64.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            # tmp is 1-D Tensor with shape [10]. We write tmp into arr on subscript 10,
-            # then the length of arr becomes 11.
-            arr = fluid.layers.array_write(tmp, i=i)
-            # return the length of arr
-            arr_len = fluid.layers.array_length(arr)
-
-            # You can use executor to print out the length of LoDTensorArray.
-            input = fluid.layers.Print(arr_len, message="The length of LoDTensorArray:")
-            main_program = fluid.default_main_program()
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(main_program)
-
-            # The printed result is:
-
-            # 1569576542  The length of LoDTensorArray:   The place is:CPUPlace
-            # Tensor[array_length_0.tmp_0]
-            #    shape: [1,]
-            #    dtype: l
-            #    data: 11,
-
-            # 1-D Tensor with shape [1], whose value is 11. It means that the length of LoDTensorArray
-            # is 11.
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-    """
-
-    if _non_static_mode():
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_write must be a list in dygraph mode"
-        return len(array)
-
-    if (
-        not isinstance(array, Variable)
-        or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    ):
-        raise TypeError(
-            "array should be tensor array vairable in array_length Op"
-        )
-
-    helper = LayerHelper('array_length', **locals())
-    tmp = helper.create_variable_for_type_inference(dtype='int64')
-    tmp.stop_gradient = True
-    helper.append_op(
-        type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]}
-    )
-    return tmp
 
 
 class ConditionalBlockGuard(BlockGuard):
@@ -2552,7 +2384,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
 
 def change_none_to_undefinedvar(nest1, nest2):
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
 
     def map_fn(x):
         if x is None:
@@ -2588,7 +2420,7 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
     from paddle.jit.dy2static.return_transformer import (
         RETURN_VALUE_PREFIX,
     )

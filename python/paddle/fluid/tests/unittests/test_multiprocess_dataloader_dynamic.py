@@ -16,6 +16,7 @@ import sys
 import time
 import unittest
 
+import paddle
 import numpy as np
 from test_multiprocess_dataloader_static import (
     BATCH_SIZE,
@@ -28,20 +29,21 @@ from test_multiprocess_dataloader_static import (
     prepare_places,
 )
 
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 from paddle.io import DataLoader
+from paddle.nn import Linear
 
 
 class SimpleFCNet(fluid.dygraph.Layer):
     def __init__(self):
         super().__init__()
 
-        param_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.8)
+        param_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.8)
         )
-        bias_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+        bias_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         )
         self._fcs = []
         in_channel = IMAGE_SIZE
@@ -50,21 +52,21 @@ class SimpleFCNet(fluid.dygraph.Layer):
                 Linear(
                     in_channel,
                     hidden_size,
-                    act='tanh',
-                    param_attr=param_attr,
+                    weight_attr=param_attr,
                     bias_attr=bias_attr,
                 )
             )
+            self._fcs.append(paddle.nn.Tanh())
             in_channel = hidden_size
         self._fcs.append(
             Linear(
                 in_channel,
                 CLASS_NUM,
-                act='softmax',
-                param_attr=param_attr,
+                weight_attr=param_attr,
                 bias_attr=bias_attr,
             )
         )
+        self._fcs.append(paddle.nn.Softmax())
 
     def forward(self, image):
         out = image
@@ -99,7 +101,7 @@ class TestDygraphDataLoader(unittest.TestCase):
                 for image, label in dataloader():
                     out = fc_net(image)
                     loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.reduce_mean(loss)
+                    avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     optimizer.minimize(avg_loss)
                     fc_net.clear_gradients()
@@ -169,7 +171,7 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
                 for image, label in dataloader():
                     out = fc_net(image)
                     loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.reduce_mean(loss)
+                    avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     optimizer.minimize(avg_loss)
                     fc_net.clear_gradients()

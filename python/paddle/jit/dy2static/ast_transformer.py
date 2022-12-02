@@ -18,7 +18,7 @@
 # See details in https://github.com/serge-sans-paille/gast/
 
 import os
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
 from .early_return_transformer import (
@@ -27,52 +27,52 @@ from .early_return_transformer import (
 from .assert_transformer import (
     AssertTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import (
+from .basic_api_transformer import (
     BasicApiTransformer,
 )
 from .break_continue_transformer import (
     BreakContinueTransformer,
     BreakTransformOptimizer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.call_transformer import (
+from .call_transformer import (
     CallTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import (
+from .cast_transformer import (
     CastTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.typehint_transformer import (
+from .typehint_transformer import (
     TypeHintTransformer,
 )
 from .ifelse_transformer import (
     IfElseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
+from .logical_transformer import (
     LogicalTransformer,
 )
 from .loop_transformer import (
     LoopTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.print_transformer import (
+from .print_transformer import (
     PrintTransformer,
 )
 from .return_transformer import (
     ReturnTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import (
+from .create_variable_transformer import (
     CreateVariableTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from .static_analysis import (
     StaticAnalysisVisitor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import (
+from .tensor_shape_transformer import (
     TensorShapeTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import (
+from .decorator_transformer import (
     DecoratorTransformer,
 )
 
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from . import logging_utils
+from .utils import ast_to_source_code
 
 __all__ = ['DygraphToStaticAst']
 

@@ -30,8 +30,6 @@ class BCEWithLogitsLoss(Layer):
     r"""
 
     This operator combines the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
-    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-    layer and some reduce operations.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -524,24 +522,16 @@ class MSELoss(Layer):
     r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
-
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
-
     .. math::
         Out = (input - label)^2
-
     If :attr:`reduction` is set to ``'mean'``, loss is calculated as:
-
     .. math::
         Out = \operatorname{mean}((input - label)^2)
-
     If :attr:`reduction` is set to ``'sum'``, loss is calculated as:
-
     .. math::
         Out = \operatorname{sum}((input - label)^2)
-
     where `input` and `label` are `float32` tensors of same shape.
-
     Parameters:
         reduction (string, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
@@ -549,17 +539,13 @@ class MSELoss(Layer):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-
     Shape:
         input (Tensor): Input tensor, the data type is float32 or float64
         label (Tensor): Label tensor, the data type is float32 or float64
         output (Tensor): output tensor storing the MSE loss of input and label, the data type is same as input.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             mse_loss = paddle.nn.loss.MSELoss()
             input = paddle.to_tensor([1.5])
             label = paddle.to_tensor([1.7])
@@ -598,7 +584,7 @@ class MSELoss(Layer):
             square_out = paddle.sum(square_out)
             return square_out
 
-        return getattr(fluid.layers, reduce_op)(square_out)
+        return paddle.mean(square_out)
 
 
 class L1Loss(Layer):

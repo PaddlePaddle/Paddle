@@ -1585,7 +1585,7 @@ def transformer(
             epsilon=label_smooth_eps,
         )
 
-    cost = layers.softmax_with_cross_entropy(
+    cost = paddle.nn.functional.softmax_with_cross_entropy(
         logits=paddle.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
         soft_label=True if label_smooth_eps else False,
@@ -1837,7 +1837,7 @@ def fast_decode(
                 input=layers.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )

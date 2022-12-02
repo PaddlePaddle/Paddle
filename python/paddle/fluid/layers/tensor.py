@@ -48,7 +48,6 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'create_tensor',
-    'create_parameter',
     'create_global_var',
     'cast',
     'tensor_array_to_tensor',
@@ -60,13 +59,8 @@ __all__ = [
     'argmin',
     'argmax',
     'argsort',
-    'ones',
     'zeros',
-    'reverse',
-    'has_inf',
     'linspace',
-    'zeros_like',
-    'ones_like',
     'diag',
 ]
 
@@ -110,88 +104,6 @@ def create_tensor(dtype, name=None, persistable=False):
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(
         name=helper.name, dtype=dtype, persistable=persistable
-    )
-
-
-def create_parameter(
-    shape, dtype, name=None, attr=None, is_bias=False, default_initializer=None
-):
-    """
-        :api_attr: Static Graph
-
-    This function creates a parameter. The parameter is a learnable variable, which can have
-    gradient, and can be optimized.
-
-    NOTE: this is a very low-level API. This API is useful when you create
-    operator by your self. instead of using layers.
-
-    Parameters:
-        shape (list of int): Shape of the parameter
-        dtype (str): Data type of the parameter
-        name (str, optional): For detailed information, please refer to
-           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        attr (ParamAttr, optional): Attributes of the parameter
-        is_bias (bool, optional): This can affect which default initializer is chosen
-                       when default_initializer is None. If is_bias,
-                       initializer.Constant(0.0) will be used. Otherwise,
-                       Xavier() will be used.
-        default_initializer (Initializer, optional): Initializer for the parameter
-
-    Returns:
-        The created parameter.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            paddle.enable_static()
-            W = paddle.static.create_parameter(shape=[784, 200], dtype='float32')
-    """
-    check_type(shape, 'shape', (list, tuple, numpy.ndarray), 'create_parameter')
-    for item in shape:
-        check_type(
-            item,
-            'item of shape',
-            (
-                int,
-                numpy.uint8,
-                numpy.int8,
-                numpy.int16,
-                numpy.int32,
-                numpy.int64,
-            ),
-            'create_parameter',
-        )
-
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-        ],
-        'create_parameter',
-    )
-    check_type(attr, 'attr', (type(None), ParamAttr), 'create_parameter')
-    check_type(
-        default_initializer,
-        'default_initializer',
-        (type(None), Initializer),
-        'create_parameter',
-    )
-
-    helper = LayerHelper("create_parameter", **locals())
-    if attr is None:
-        attr = ParamAttr(name=name)
-    return helper.create_parameter(
-        attr, shape, convert_dtype(dtype), is_bias, default_initializer
     )
 
 
@@ -1324,35 +1236,6 @@ def argsort(input, axis=-1, descending=False, name=None):
     return out, ids
 
 
-def ones(shape, dtype, force_cpu=False):
-    """
-    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
-    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
-
-    Parameters:
-        shape(tuple|list|Tensor): Shape of output Tensor, the data type of shape is int32 or int64.
-        dtype (np.dtype|str): Data type of output Tensor, it supports
-            bool, float16, float32, float64, int32 and int64.
-        force_cpu (bool, optional): Whether force to store the output Tensor in CPU memory.
-            If :attr:`force_cpu` is False, the output Tensor will be stored in running device memory.
-            Default: False.
-
-    Returns:
-        Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data0 = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
-
-          # shape is a Tensor
-          shape = fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
-          data1 = fluid.layers.ones(shape=shape, dtype='int32') #[[1, 1], [1, 1]]
-    """
-    return fill_constant(value=1.0, **locals())
-
-
 def zeros(shape, dtype, force_cpu=False, name=None):
     """
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
@@ -1382,190 +1265,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
           data1 = fluid.layers.zeros(shape=shape, dtype='int32') #[[0, 0], [0, 0]]
     """
     return fill_constant(value=0.0, **locals())
-
-
-def reverse(x, axis):
-    """
-        :alias_main: paddle.reverse
-        :alias: paddle.reverse,paddle.tensor.reverse,paddle.tensor.manipulation.reverse
-        :old_api: paddle.fluid.layers.reverse
-
-    The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
-
-    .. code-block:: text
-
-        Case 1:
-
-            Given a LoDTensor:
-                x = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
-                axis = [0, 1]
-
-            Then:
-                output = [[8, 7, 6], [5, 4, 3], [2, 1, 0]]
-
-        Case 2:
-
-            Given a LoDTensorArray:
-                x = {[[0, 1], [2, 3]],
-                     [[4, 5, 6]],
-                     [[7],[8], [9]]}
-                axis = 0
-
-            Then:
-                output = {[[7],[8], [9]],
-                          [[4, 5, 6]],
-                          [[0, 1], [2, 3]]}
-
-    Parameters:
-        x (Variable): A tensor or LoDTensorArray to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
-                      If input is a LoDTensorArray, returns a new reversed LoDTensorArray without changing the internal order of each inner tensor.
-        axis (int|tuple|list): A dimension or a set of dimensions of :attr:`x` to reverse. Must be
-            in the range [-rank( :attr:`x` ), rank( :attr:`x` )). If it is a tuple or a list, reversing
-            will be apply on each axis in the tuple or list. If input is a LoDTensorArray, the value of axis shall be 0, or a
-            list [0] or tuple (0, ) with shape [1].
-
-    Returns:
-        Variable: The reversed tensor with the same shape and data type as :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-          data = fluid.layers.assign(np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype='float32')) # [[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]]
-          result1 = fluid.layers.reverse(data, 0) # [[6., 7., 8.], [3., 4., 5.], [0., 1., 2.]]
-          result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
-
-          # example of LoDTensorArray
-          data1 = fluid.layers.assign(np.array([[0, 1, 2]], dtype='float32'))
-          data2 = fluid.layers.assign(np.array([[3, 4, 5]], dtype='float32'))
-          tensor_array = fluid.layers.create_array(dtype='float32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-          fluid.layers.array_write(data1, i, tensor_array)
-          fluid.layers.array_write(data2, i+1, tensor_array)
-
-          reversed_tensor_array = fluid.layers.reverse(tensor_array, 0) # {[[3, 4, 5]], [[0, 1, 2]]}
-    """
-    check_variable_and_dtype(
-        x, 'x', ('float32', 'float64', 'int32', 'int64', 'uint8'), 'reverse'
-    )
-    check_type(axis, 'axis', (int, tuple, list, Variable), 'reverse')
-    if isinstance(axis, int):
-        axis = [axis]
-    if in_dygraph_mode():
-        return _C_ops.reverse(x, axis)
-    helper = LayerHelper("reverse", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reverse',
-        inputs={'X': x},
-        outputs={'Out': [out]},
-        attrs={'axis': axis},
-    )
-    return out
-
-
-def save(x, file_path, overwrite=True):
-    """
-    Saves a variable as a file.
-
-    Args:
-        x(variable): The Tensor/LoDTensor to be saved.
-        file_path(str): The file path where the variable will be saved.
-        overwrite(bool): Whether or not cover the given file when it has already
-            existed. If it's set 'False' and the file is existed, a runtime
-            error will be thrown.
-    """
-    helper = LayerHelper("save", **locals())
-    helper.append_op(
-        type="save",
-        inputs={"input": x},
-        outputs={},
-        args={"file_path": file_path, "overwrite": overwrite},
-    )
-
-
-def save_combine(x, file_path, overwrite=True):
-    """
-    Saves a list of variables into a single file.
-
-    Args:
-        x(list): A list of Tensor/LoDTensor variables to be saved together in
-                 a single file.
-        file_path(str): The file path where variables will be saved.
-        overwrite(bool): Whether or not cover the given file when it has already
-            existed. If it's set 'False' and the file is existed, a runtime
-            error will be thrown.
-
-    Returns:
-        There is no return value.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            v1 = fluid.layers.data(name="data",
-                                   shape=(4, 6),
-                                   dtype="float32")
-            v2 = fluid.layers.data(name="data",
-                                   shape=(6, 8, 4),
-                                   dtype="float32")
-            normed = fluid.layers.save_combine([v1, v2], file_path="output")
-    """
-    helper = LayerHelper("save_combine", **locals())
-    helper.append_op(
-        type="save_combine",
-        inputs={"input": x},
-        outputs={},
-        args={"file_path": file_path, "overwrite": overwrite},
-    )
-
-
-def load_combine(out, file_path):
-    """
-    Loads a list of variable from a single file.
-
-    Args:
-        out(list): The list of variables to be read from the disk file.
-        file_path(str): The path of the disk file.
-    """
-    helper = LayerHelper("load_combine", **locals())
-    helper.append_op(
-        type="load_combine",
-        inputs={},
-        output={"Out": out},
-        args={"file_path": file_path},
-    )
-
-
-def has_inf(x):
-    """
-    Test if any of x contains an infinity number
-
-    Args:
-       x (Tensor): The Tensor to be checked.
-
-    Returns:
-       Tensor: The tensor storing the output, only a bool value, indicating that whether there is infinity number in x or not.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          data = paddle.randn(shape=[4, 32, 32], dtype="float32")
-          res = paddle.fluid.layers.has_inf(data)
-          # [False]
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.isinf(x)
-
-    check_type(x, 'x', (Variable), 'has_inf')
-    helper = LayerHelper("isinf", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
-    return out
 
 
 def linspace(start, stop, num, dtype=None, name=None):
@@ -1683,55 +1382,6 @@ def linspace(start, stop, num, dtype=None, name=None):
     return out
 
 
-def zeros_like(x, out=None):
-    """
-    This OP creates a zeros tensor which has identical shape and dtype
-    with `x`.
-
-    Args:
-        x(Variable): The input tensor which specifies shape and dtype, the
-            input data dtype could be bool, float32, float64, int32, int64.
-        out(Variable, optional): If is :attr:`None` , the op will create the
-            variable as output, the data type and shape of this variable will
-            be same as input :attr:`x`. If is a tensor, the data type and shape
-            need to be same as input :attr:`x`. The default value is :attr:`None` .
-
-    Returns:
-        Variable: The N-D tensor, the element in tensor is related to input
-            data type, if the input data type is bool, the output value is
-            False, otherwise is zero. The output shape is the same as the input.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = fluid.data(name='x', dtype='float32', shape=[3])
-          data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
-
-    """
-    check_variable_and_dtype(
-        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'zeros_like'
-    )
-    helper = LayerHelper("zeros_like", **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        check_variable_and_dtype(
-            out,
-            "out",
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
-            'zeros_like',
-        )
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [x]},
-        attrs={'value': 0, "dtype": x.dtype},
-        outputs={'Out': [out]},
-    )
-    out.stop_gradient = True
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
     r"""
@@ -1782,50 +1432,4 @@ def diag(diagonal):
     )
 
     out.stop_gradient = True
-    return out
-
-
-def ones_like(x, out=None):
-    """
-    **ones_like**
-
-    This function creates a ones tensor which has identical shape and dtype
-    with `x`.
-
-    Args:
-        x(Variable): The input tensor which specifies shape and dtype.
-        out(Variable): The output tensor.
-
-    Returns:
-        out(Variable): The tensor variable storing the output.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
-          data = fluid.layers.ones_like(x) # [1.0, 1.0, 1.0]
-
-    """
-    check_variable_and_dtype(
-        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'ones_like'
-    )
-
-    helper = LayerHelper("ones_like", **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        check_variable_and_dtype(
-            out,
-            "out",
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
-            'ones_like',
-        )
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [x]},
-        attrs={'value': 1.0},
-        outputs={'Out': [out]},
-    )
     return out

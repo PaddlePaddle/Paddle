@@ -17,34 +17,31 @@ from paddle.utils import gast
 
 from collections import defaultdict
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from paddle.jit.dy2static.static_analysis import (
     AstNodeWrapper,
 )
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from paddle.jit.dy2static.static_analysis import NodeVarType
+from paddle.jit.dy2static.static_analysis import (
     StaticAnalysisVisitor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import ast_to_source_code
+from paddle.jit.dy2static.utils import get_attribute_full_name
+from paddle.jit.dy2static.utils import (
     create_nonlocal_stmt_nodes,
     create_get_args_node,
     create_set_args_node,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     FunctionNameLivenessAnalysis,
 )
 from .ifelse_transformer import ARGS_NAME
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     ForLoopTuplePreTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     ForNodeVisitor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+
+from paddle.jit.dy2static.utils import (
     GetterSetterHelper,
     create_name_str,
 )

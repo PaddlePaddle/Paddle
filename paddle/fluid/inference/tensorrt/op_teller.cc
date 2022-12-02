@@ -83,18 +83,18 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",        "relu6",       "sigmoid",
-        "elu",         "selu",        "softsign",
-        "softplus",    "stanh",       "thresholded_relu",
-        "exp",         "log",         "sqrt",
-        "abs",         "sin",         "cos",
-        "tan",         "tanh",        "sinh",
-        "cosh",        "asin",        "acos",
-        "atan",        "asinh",       "acosh",
-        "atanh",       "ceil",        "celu",
-        "erf",         "floor",       "round",
-        "silu",        "logical_not", "reciprocal",
-        "tanh_shrink", "logsigmoid"};
+        "relu",       "relu6",       "sigmoid",
+        "elu",        "selu",        "softsign",
+        "softplus",   "stanh",       "thresholded_relu",
+        "exp",        "log",         "sqrt",
+        "abs",        "sin",         "cos",
+        "tan",        "tanh",        "sinh",
+        "cosh",       "asin",        "acos",
+        "atan",       "asinh",       "acosh",
+        "atanh",      "ceil",        "celu",
+        "erf",        "floor",       "round",
+        "sign",       "silu",        "logical_not",
+        "reciprocal", "tanh_shrink", "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -339,6 +339,29 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       }
+    }
+
+    if (op_type == "sign") {
+#if IS_TRT_VERSION_GE(8200)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "sign op is only supported by trt8.2 above ";
+      return false;
+#endif
+    }
+
+    if (op_type == "logical_not") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "logical_not op is only supported by trt8.4 above because of "
+                 "cast op";
+      return false;
+#endif
     }
 
     if (op_type == "matmul_v2") {
@@ -1482,10 +1505,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "instance_norm") {
-      if (with_dynamic_shape) {
-        VLOG(3) << "trt instance_norm op does not support dynamic shape ";
-        return false;
-      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "input of instance_norm op converter should be 1, got "
                 << desc.Input("X").size();
@@ -2347,9 +2366,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "ceil",
       "floor",
       "rsqrt",
+      "sign",
       "reciprocal",
-      "erf",
       "logical_not",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -2479,9 +2499,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "ceil",
       "floor",
       "rsqrt",
+      "sign",
       "reciprocal",
-      "erf",
       "logical_not",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",

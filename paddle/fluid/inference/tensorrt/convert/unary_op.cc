@@ -92,10 +92,13 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
         {"floor", {nvinfer1::UnaryOperation::kFLOOR}},
         {"rsqrt",
          {nvinfer1::UnaryOperation::kSQRT, nvinfer1::UnaryOperation::kRECIP}},
+        {"logical_not", {nvinfer1::UnaryOperation::kNOT}},
+        {"reciprocal", {nvinfer1::UnaryOperation::kRECIP}},
 #if IS_TRT_VERSION_GE(7000)
         {"erf", {nvinfer1::UnaryOperation::kERF}},
 #endif
 #if IS_TRT_VERSION_GE(8200)
+        {"sign", {nvinfer1::UnaryOperation::kSIGN}},
         {"round", {nvinfer1::UnaryOperation::kROUND}},
 #endif
 };
@@ -175,10 +178,24 @@ class RsqrtOpConverter : public UnaryOpConverter {
  public:
   RsqrtOpConverter() { op_type_ = "rsqrt"; }
 };
+
+class LogicalNotOpConverter : public UnaryOpConverter {
+ public:
+  LogicalNotOpConverter() { op_type_ = "logical_not"; }
+};
+
 class ReciprocalOpConverter : public UnaryOpConverter {
  public:
   ReciprocalOpConverter() { op_type_ = "reciprocal"; }
 };
+
+#if IS_TRT_VERSION_GE(8200)
+class SignOpConverter : public UnaryOpConverter {
+ public:
+  SignOpConverter() { op_type_ = "sign"; }
+};
+#endif
+
 #if IS_TRT_VERSION_GE(7000)
 class ErfOpConverter : public UnaryOpConverter {
  public:
@@ -212,10 +229,12 @@ REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
 REGISTER_TRT_OP_CONVERTER(rsqrt, RsqrtOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_not, LogicalNotOpConverter);
 REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
 #if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
 #endif
 #if IS_TRT_VERSION_GE(8200)
+REGISTER_TRT_OP_CONVERTER(sign, SignOpConverter);
 REGISTER_TRT_OP_CONVERTER(round, RoundOpConverter);
 #endif
