@@ -21,6 +21,7 @@ from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
+from .common import py_func  # noqa: F401
 from .common import prior_box  # noqa: F401
 
 from ...fluid.layers import batch_norm  # noqa: F401
