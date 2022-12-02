@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+import os
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import math
-import unittest
-import numpy as np
-import os
 
 os.environ['CPU_NUM'] = '1'
 

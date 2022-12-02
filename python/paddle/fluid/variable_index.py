@@ -331,10 +331,9 @@ def get_value_for_bool_tensor(var, item):
             )
 
     def idx_not_empty(var, item):
-        from .layers.nn import where
         from ..tensor import gather_nd
 
-        bool_2_idx = where(item == True)
+        bool_2_idx = paddle.nonzero(item == True)
         return gather_nd(var, bool_2_idx)
 
     def idx_empty(var):
@@ -623,7 +622,7 @@ def _setitem_for_tensor_array(var, item, value):
         not _non_static_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
-        from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+        from paddle.jit.dy2static.variable_trans_func import (
             to_static_variable,
         )
         from paddle import cast
@@ -864,13 +863,12 @@ def set_value_for_bool_tensor(var, item, value):
     def idx_not_empty(var, item, value):
         from .framework import Variable
         from .layers import assign
-        from .layers.nn import where
         from ..tensor import gather_nd, scatter_nd_add
 
         if not isinstance(value, Variable):
             value = assign(value).cast(var.dtype)
 
-        idx = where(item)
+        idx = paddle.nonzero(item)
         gather_val = gather_nd(var, idx)
         gather_val_new = value - gather_val
         out = scatter_nd_add(var, idx, gather_val_new)

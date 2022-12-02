@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+import numpy as np
 from op_test import OpTest, skip_check_grad_ci
-from paddle.fluid.framework import _test_eager_guard
 from testsuite import create_op
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
@@ -46,7 +48,7 @@ class TestGroupNormOpError(unittest.TestCase):
             def test_x_type():
                 input = np.random.random(2, 100, 3, 5).astype('float32')
                 groups = 2
-                fluid.layers.group_norm(input, groups)
+                paddle.static.nn.group_norm(input, groups)
 
             self.assertRaises(TypeError, test_x_type)
 
@@ -55,7 +57,7 @@ class TestGroupNormOpError(unittest.TestCase):
                     name='x2', shape=[2, 100, 3, 5], dtype='int32'
                 )
                 groups = 2
-                fluid.layers.group_norm(x2, groups)
+                paddle.static.nn.group_norm(x2, groups)
 
             self.assertRaises(TypeError, test_x_dtype)
 
@@ -245,11 +247,11 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
     def test_case1(self):
         data1 = fluid.data(name='data1', shape=[None, 3, 3, 4], dtype='float64')
-        out1 = fluid.layers.group_norm(
+        out1 = paddle.static.nn.group_norm(
             input=data1, groups=2, data_layout="NHWC"
         )
         data2 = fluid.data(name='data2', shape=[None, 4, 3, 3], dtype='float64')
-        out2 = fluid.layers.group_norm(
+        out2 = paddle.static.nn.group_norm(
             input=data2, groups=2, data_layout="NCHW"
         )
 
@@ -282,7 +284,7 @@ class TestGroupNormException(unittest.TestCase):
         data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
 
         def attr_data_format():
-            out = fluid.layers.group_norm(
+            out = paddle.static.nn.group_norm(
                 input=data, groups=2, data_layout="NDHW"
             )
 
@@ -299,6 +301,66 @@ class TestGroupNormEager(unittest.TestCase):
             tensor_1 = fluid.dygraph.to_variable(input)
             tensor_1.stop_gradient = False
             groupNorm = fluid.dygraph.nn.GroupNorm(channels=32, groups=4)
+            ret1 = groupNorm(tensor_1)
+            ret1.backward()
+            with _test_eager_guard():
+                tensor_eager_1 = fluid.dygraph.to_variable(input)
+                tensor_eager_1.stop_gradient = False
+                groupNorm_eager = fluid.dygraph.nn.GroupNorm(
+                    channels=32, groups=4
+                )
+                ret2 = groupNorm_eager(tensor_eager_1)
+                ret2.backward()
+                self.assertEqual(
+                    (
+                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
+                    ).all(),
+                    True,
+                )
+
+
+class TestGroupNormEager_fp32(unittest.TestCase):
+    def test_dygraph_api(self):
+        self.dtype = np.float32
+        self.shape = (8, 32, 32)
+        input = np.random.random(self.shape).astype(self.dtype)
+
+        with fluid.dygraph.guard():
+            tensor_1 = fluid.dygraph.to_variable(input)
+            tensor_1.stop_gradient = False
+            groupNorm = fluid.dygraph.nn.GroupNorm(
+                channels=32, groups=4, dtype='float32'
+            )
+            ret1 = groupNorm(tensor_1)
+            ret1.backward()
+            with _test_eager_guard():
+                tensor_eager_1 = fluid.dygraph.to_variable(input)
+                tensor_eager_1.stop_gradient = False
+                groupNorm_eager = fluid.dygraph.nn.GroupNorm(
+                    channels=32, groups=4
+                )
+                ret2 = groupNorm_eager(tensor_eager_1)
+                ret2.backward()
+                self.assertEqual(
+                    (
+                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
+                    ).all(),
+                    True,
+                )
+
+
+class TestGroupNormEager_fp16(unittest.TestCase):
+    def test_dygraph_api(self):
+        self.dtype = np.float32
+        self.shape = (8, 32, 32)
+        input = np.random.random(self.shape).astype(self.dtype)
+
+        with fluid.dygraph.guard():
+            tensor_1 = fluid.dygraph.to_variable(input)
+            tensor_1.stop_gradient = False
+            groupNorm = fluid.dygraph.nn.GroupNorm(
+                channels=32, groups=4, dtype='float16'
+            )
             ret1 = groupNorm(tensor_1)
             ret1.backward()
             with _test_eager_guard():

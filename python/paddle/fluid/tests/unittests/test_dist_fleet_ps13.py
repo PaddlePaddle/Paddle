@@ -19,9 +19,9 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -42,8 +42,8 @@ class TestPSPassWithBow(unittest.TestCase):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
             cond = fluid.layers.cast(cond, dtype='float64')
-            cond_3 = fluid.layers.reduce_sum(cond)
-            acc = fluid.layers.elementwise_div(
+            cond_3 = paddle.sum(cond)
+            acc = paddle.divide(
                 cond_3,
                 fluid.layers.fill_constant(
                     shape=[1], value=batch_size * 1.0, dtype='float64'
@@ -53,13 +53,13 @@ class TestPSPassWithBow(unittest.TestCase):
             return acc
 
         def get_loss(cos_q_pt, cos_q_nt):
-            loss_op1 = fluid.layers.elementwise_sub(
+            loss_op1 = paddle.subtract(
                 fluid.layers.fill_constant_batch_size_like(
                     input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
                 ),
                 cos_q_pt,
             )
-            loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
+            loss_op2 = paddle.add(loss_op1, cos_q_nt)
             loss_op3 = paddle.maximum(
                 fluid.layers.fill_constant_batch_size_like(
                     input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
@@ -86,7 +86,7 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=emb_lr,
             ),
         )
-        q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
+        q_emb = paddle.reshape(q_emb, [-1, emb_dim])
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
         q_ss = paddle.nn.functional.softsign(q_sum)
@@ -116,7 +116,7 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=emb_lr,
             ),
         )
-        pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
+        pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
         # vsum
         pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
         pt_ss = paddle.nn.functional.softsign(pt_sum)
@@ -145,7 +145,7 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=emb_lr,
             ),
         )
-        nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
+        nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
         # vsum
         nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
         nt_ss = paddle.nn.functional.softsign(nt_sum)
@@ -160,8 +160,8 @@ class TestPSPassWithBow(unittest.TestCase):
             ),
             bias_attr=fluid.ParamAttr(name="__fc_b__"),
         )
-        cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
-        cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
+        cos_q_pt = paddle.nn.functional.cosine_similarity(q_fc, pt_fc)
+        cos_q_nt = paddle.nn.functional.cosine_similarity(q_fc, nt_fc)
         # loss
         avg_cost = get_loss(cos_q_pt, cos_q_nt)
         # acc

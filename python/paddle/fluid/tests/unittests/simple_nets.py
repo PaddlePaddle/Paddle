@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 
 
 def simple_fc_net_with_inputs(img, label, class_num=10):

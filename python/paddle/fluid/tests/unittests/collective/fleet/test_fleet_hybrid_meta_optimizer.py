@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import os
-import paddle
-import paddle.static as static
 import unittest
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
+import paddle
+import paddle.static as static
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
@@ -993,7 +994,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
             [
                 'recv_v2',
                 'cast',
-                'matmul',
+                'matmul_v2',
                 'cast',
                 'reduce_mean',
                 'elementwise_mul',
@@ -1001,7 +1002,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
                 'cast',
-                'matmul_grad',
+                'matmul_v2_grad',
                 'c_sync_calc_stream',
                 'send_v2',
                 'fill_constant',
@@ -1086,7 +1087,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
             [
                 'recv_v2',
                 'cast',
-                'matmul',
+                'matmul_v2',
                 'cast',
                 'reduce_mean',
                 'elementwise_mul',
@@ -1094,7 +1095,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
                 'cast',
-                'matmul_grad',
+                'matmul_v2_grad',
                 'c_sync_calc_stream',
                 'send_v2',
                 'fill_constant',

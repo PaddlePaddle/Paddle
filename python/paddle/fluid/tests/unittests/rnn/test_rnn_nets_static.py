@@ -19,11 +19,11 @@ from paddle.fluid.layers import sequence_mask
 
 paddle.enable_static()
 
-import numpy as np
 import unittest
 
+import numpy as np
 from convert import convert_params_for_net_static
-from rnn_numpy import SimpleRNN, LSTM, GRU
+from rnn_numpy import GRU, LSTM, SimpleRNN
 
 bidirectional_list = ["bidirectional", "bidirect"]
 

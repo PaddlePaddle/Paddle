@@ -264,7 +264,7 @@ class TestNet(unittest.TestCase):
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             adam = fluid.optimizer.Adam(learning_rate=0.01)
             adam.minimize(loss)
 

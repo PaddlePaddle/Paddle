@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.io import Dataset, DataLoader
 from paddle.fluid.framework import _test_eager_guard
+from paddle.io import DataLoader, Dataset
 
 
 def get_random_images_and_labels(image_shape, label_shape):

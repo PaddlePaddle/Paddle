@@ -25,7 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
@@ -47,15 +46,15 @@ class GRUGradKernel : public framework::OpKernel<T> {
     auto* h0 = context.Input<phi::DenseTensor>("H0");
     auto* weight = context.Input<phi::DenseTensor>("Weight");
     const T* weight_data = weight->data<T>();
-    auto* batch_gate = context.Input<LoDTensor>("BatchGate");
+    auto* batch_gate = context.Input<phi::DenseTensor>("BatchGate");
     auto* batch_reset_hidden_prev =
-        context.Input<LoDTensor>("BatchResetHiddenPrev");
-    auto* batch_hidden = context.Input<LoDTensor>("BatchHidden");
-    auto* hidden = context.Input<LoDTensor>("Hidden");
+        context.Input<phi::DenseTensor>("BatchResetHiddenPrev");
+    auto* batch_hidden = context.Input<phi::DenseTensor>("BatchHidden");
+    auto* hidden = context.Input<phi::DenseTensor>("Hidden");
     auto* hidden_grad =
-        context.Input<LoDTensor>(framework::GradVarName("Hidden"));
+        context.Input<phi::DenseTensor>(framework::GradVarName("Hidden"));
     auto* input_grad =
-        context.Output<LoDTensor>(framework::GradVarName("Input"));
+        context.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     auto* h0_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("H0"));
     auto* weight_grad =
@@ -68,7 +67,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
     int frame_size = hidden_dims[1];
 
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
-    LoDTensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
+    phi::DenseTensor batch_hidden_grad, batch_gate_grad,
+        batch_reset_hidden_prev_grad;
     batch_hidden_grad.mutable_data<T>(hidden_dims, context.GetPlace());
     batch_gate_grad.mutable_data<T>(gate_dims, context.GetPlace());
     batch_reset_hidden_prev_grad.mutable_data<T>(hidden_dims,

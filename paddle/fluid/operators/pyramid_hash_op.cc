@@ -29,7 +29,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -275,12 +274,12 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* bottom = ctx.Input<LoDTensor>("X");
+    auto* bottom = ctx.Input<phi::DenseTensor>("X");
     auto* _blobs_0 = ctx.Input<phi::DenseTensor>("W");
     auto* _blobs_1 = ctx.Input<phi::DenseTensor>("WhiteList");
     auto* _blobs_2 = ctx.Input<phi::DenseTensor>("BlackList");
-    auto* top = ctx.Output<LoDTensor>("Out");
-    auto* drop_pos = ctx.Output<LoDTensor>("DropPos");
+    auto* top = ctx.Output<phi::DenseTensor>("Out");
+    auto* drop_pos = ctx.Output<phi::DenseTensor>("DropPos");
 
     int _num_emb = ctx.Attr<int>("num_emb");
     bool use_filter = ctx.Attr<bool>("use_filter");
@@ -296,7 +295,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
 
     const auto& offset = bottom->lod()[0];
     const auto* bottom_data_ori = bottom->data<int32_t>();
-    auto* buff = ctx.Output<LoDTensor>("X_Temp_Out");
+    auto* buff = ctx.Output<phi::DenseTensor>("X_Temp_Out");
     buff->Resize(phi::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
     float* bottom_data = buff->mutable_data<float>(ctx.GetPlace());
     for (int i = 0; i < bottom->dims()[0]; i++) {
@@ -512,10 +511,10 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* bottom = ctx.Input<LoDTensor>("X");
+    auto* bottom = ctx.Input<phi::DenseTensor>("X");
     auto* _blobs = ctx.Input<phi::DenseTensor>("W");
-    auto* drop_pos = ctx.Input<LoDTensor>("DropPos");
-    auto* top = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* drop_pos = ctx.Input<phi::DenseTensor>("DropPos");
+    auto* top = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     int _num_emb = ctx.Attr<int>("num_emb");
     float _lr = ctx.Attr<float>("lr");
@@ -523,7 +522,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
     int _space_len = ctx.Attr<int>("space_len");
     int _pyramid_layer = ctx.Attr<int>("pyramid_layer");
 
-    auto* buff = ctx.Input<LoDTensor>("X_Temp_Out");
+    auto* buff = ctx.Input<phi::DenseTensor>("X_Temp_Out");
     auto* bottom_data = buff->data<T>();
 
     int _slot_len = bottom->dims()[0];

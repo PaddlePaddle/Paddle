@@ -1942,7 +1942,10 @@ class AddQuantDequantPass:
                     # If already quanted, skip it.
                     skip_quant = False
                     for arg_name in arg_names:
-                        if "quantized.dequantized" in arg_name:
+                        if (
+                            "quantized.dequantized"
+                            or ".quant_dequant" in arg_name
+                        ):
                             skip_quant = True
                             break
                     if skip_quant:
@@ -1965,7 +1968,7 @@ class AddQuantDequantPass:
                         graph.update_input_link(
                             in_node, quant_var_node, op_node
                         )
-            t.update()
+                t.update()
 
         # Backward stage, update input link
         for op_node in all_op_nodes:
@@ -2490,11 +2493,6 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         self.create_var_map = {}
         self.create_op_map = {}
 
-        # marked the variable which has been dequantized.
-        self.dequantized_vars = collections.OrderedDict()
-        self.persistable_vars = []
-        self.processed_vars = []
-
     def _quant_preprocess(self, op_node):
         user_skipped = False
         if isinstance(self._skip_pattern, list):
@@ -2636,6 +2634,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
+        # marked the variable which has been dequantized.
+        self.dequantized_vars = collections.OrderedDict()
+        self.persistable_vars = []
+        self.processed_vars = []
 
         self.persistable_vars = [
             p.name() for p in graph.all_persistable_nodes()
@@ -2810,7 +2812,10 @@ class AddQuantDequantPassV2:
                     # If already quanted, skip it.
                     skip_quant = False
                     for arg_name in arg_names:
-                        if "quantized.dequantized" in arg_name:
+                        if (
+                            "quantized.dequantized"
+                            or ".quant_dequant" in arg_name
+                        ):
                             skip_quant = True
                             break
                     if skip_quant:

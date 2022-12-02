@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -47,7 +48,7 @@ bool constexpr is_int8() {
 
 template <typename T>
 constexpr bool is_bfloat16() {
-  return std::is_same<T, phi::dtype::bfloat16>::value;
+  return std::is_same<T, dtype::bfloat16>::value;
 }
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
@@ -102,7 +103,7 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
     PADDLE_ENFORCE_NE(
         activation_type,
         activation_map.end(),
-        phi::errors::InvalidArgument(
+        errors::InvalidArgument(
             "Activation '%s' not found in oneDNN algorithms mapper",
             fuse_activation));
 
@@ -810,7 +811,7 @@ class SoftmaxOneDNNHandler
     PADDLE_ENFORCE_EQ(
         x->dims(),
         out->dims(),
-        phi::errors::InvalidArgument(
+        errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
     const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
@@ -1145,7 +1146,7 @@ class PReluOneDNNHandler
                      const bool is_test)
       : OneDNNHandlerNoCachingT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             engine, cpu_place) {
-    auto weights_dims = phi::vectorize(weights.dims());
+    auto weights_dims = vectorize(weights.dims());
     // weights must have same size as X only for "element" case
     if (weights.dims().size() != x.dims().size()) {
       auto new_weights_dims = std::vector<int64_t>(x.dims().size(), 1);
@@ -1304,21 +1305,52 @@ class BatchNormOneDNNHandler
         flags);
   }
 
+  BatchNormOneDNNHandler(const dnnl::engine engine,
+                         Place cpu_place,
+                         const float epsilon,
+                         const DenseTensor* in_x,
+                         const DenseTensor* scale,
+                         const DenseTensor* out_grad)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::batch_normalization_forward,
+                                dnnl::batch_normalization_backward>(engine,
+                                                                    cpu_place) {
+    auto scale_tz = vectorize<int64_t>(scale->dims());
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(),
+        1,
+        errors::InvalidArgument(
+            "Dims of scale tensor must be 1, but received scale's size is %d",
+            scale_tz.size()));
+
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_training,
+        in_x->mem_desc(),
+        epsilon,
+        dnnl::normalization_flags::use_scale_shift);
+    this->AcquireBackwardPrimitiveDescriptor(
+        dnnl::prop_kind::backward,
+        out_grad->mem_desc(),
+        in_x->mem_desc(),
+        epsilon,
+        dnnl::normalization_flags::use_scale_shift);
+  }
+
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
       const DenseTensor* scale, const DenseTensor* shift) {
-    auto scale_tz = phi::vectorize(scale->dims());
+    auto scale_tz = vectorize(scale->dims());
     const unsigned int C = scale_tz[0];
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
         1,
-        phi::errors::InvalidArgument(
+        errors::InvalidArgument(
             "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
 
     auto scaleshift_memory =
         this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
 
-    // MKLDNN requires a single piece of memory for scale and shift/bias data
+    // oneDNN requires a single piece of memory for scale and shift/bias data
     auto mem_data_handle =
         reinterpret_cast<T*>(scaleshift_memory->get_data_handle());
     std::copy(scale->data<T>(), scale->data<T>() + C, mem_data_handle);
@@ -1629,6 +1661,85 @@ class PoolingOneDNNHandler
   }
 };
 
+static void SetOutMemDescWithUnsqueeze2FuseSupport(
+    const std::vector<int> fused_unsqueeze2_axes,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const std::vector<int64_t>& op_tz = out_md.dims();
+  std::vector<int64_t> unsqueezed_op_tz(
+      op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+  for (const auto& axis : fused_unsqueeze2_axes) {
+    int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
+    unsqueezed_op_tz[positive_axis] = 1;
+  }
+
+  int j = 0;
+  for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+    if (unsqueezed_op_tz[i] == 0) {
+      unsqueezed_op_tz[i] = op_tz[j++];
+    }
+  }
+  out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+  out->Resize(make_ddim(unsqueezed_op_tz));
+}
+
+static void SetOutMemDescWithReshape2FuseSupport(
+    const std::vector<int> fused_reshape2_shape_,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_.begin(),
+                                            fused_reshape2_shape_.end());
+
+  const int out_shape_numel = out->numel();
+  const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
+                                              fused_reshape2_shape.end(),
+                                              1,
+                                              std::multiplies<int64_t>());
+
+  for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
+    if (fused_reshape2_shape[i] == -1) {
+      fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
+      break;
+    }
+  }
+
+  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+  out->Resize(phi::make_ddim(fused_reshape2_shape));
+}
+
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& dev_ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const auto fused_unsqueeze2_axes =
+      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
+          : std::vector<int>();
+  const auto fused_reshape2_shape =
+      dev_ctx.HasDnnAttr("fused_reshape2_shape")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_reshape2_shape"))
+          : std::vector<int>();
+  const auto fused_squeeze2_axes =
+      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+
+  if (!fused_unsqueeze2_axes.empty()) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(fused_unsqueeze2_axes, out, out_md);
+  } else if (!fused_reshape2_shape.empty()) {
+    SetOutMemDescWithReshape2FuseSupport(fused_reshape2_shape, out, out_md);
+  } else if (!fused_squeeze2_axes.empty()) {
+    out->set_mem_desc(out_md);
+    out->Resize(make_ddim(out_md.dims()));
+  } else {
+    out->set_mem_desc(out_md);
+  }
+}
+
 static DDim RowMatrixDimsFromVector(const DDim& x_dim) {
   return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
 }
@@ -1692,7 +1803,7 @@ static std::vector<int64_t> GetInputStrides(const OneDNNContext& dev_ctx,
 
   auto& MatrixDimsFromVector =
       input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  phi::funcs::MatDescriptor mat_dim = phi::funcs::CreateMatrixDescriptor(
+  MatDescriptor mat_dim = CreateMatrixDescriptor(
       MatrixDimsFromVector(new_dims), 0, transpose_input);
 
   std::vector<int64_t> strides;
@@ -1728,8 +1839,7 @@ static bool IsOutputFused(const OneDNNContext& dev_ctx) {
 }
 
 template <typename XT, typename YT, typename OT>
-class MatmulOneDNNHandler
-    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
+class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatmulOneDNNHandler(const OneDNNContext& dev_ctx,
                       const std::vector<int64_t>& x_org_dims,
@@ -1739,8 +1849,8 @@ class MatmulOneDNNHandler
                       const std::vector<int64_t>& x_strides_override,
                       const std::vector<int64_t>& y_strides_override,
                       bool is_output_fused)
-      : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(
-            dev_ctx.GetEngine(), dev_ctx.GetPlace()) {
+      : OneDNNHandlerNoCachingT<XT, dnnl::matmul>(dev_ctx.GetEngine(),
+                                                  dev_ctx.GetPlace()) {
     // M X K * K X N
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
@@ -1844,9 +1954,11 @@ class MatmulOneDNNHandler
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
+    const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
+                                    ? dev_ctx.GetDnnInput("ResidualData")
+                                    : nullptr;
 
-    if (dev_ctx.HasDnnInput("ResidualData")) {
-      auto* residual_data = dev_ctx.GetDnnInput("ResidualData");
+    if (residual_data) {
       auto residual_data_tz = vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
                                            OneDNNGetDataType<OT>(),
@@ -1863,9 +1975,11 @@ class MatmulOneDNNHandler
 
     AppendActivation(dev_ctx, post_operations);
 
-    if (dev_ctx.HasDnnAttr("fused_output_scale")) {
-      float scale_alpha =
-          PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
+    const float scale_alpha =
+        dev_ctx.HasDnnAttr("fused_output_scale")
+            ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"))
+            : 1.0f;
+    if (scale_alpha != 1.0f) {
       post_operations.append_eltwise(
           1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
@@ -1984,8 +2098,11 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  if (dev_ctx.HasDnnInput("ResidualData")) {
-    auto* residual_data = dev_ctx.GetDnnInput("ResidualData");
+  const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
+                                  ? dev_ctx.GetDnnInput("ResidualData")
+                                  : nullptr;
+
+  if (residual_data) {
     const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});

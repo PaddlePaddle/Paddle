@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, randomize_probability
+
+import paddle
 
 
 class TestBprLossOp1(OpTest):
@@ -46,4 +49,5 @@ class TestBprLossOp1(OpTest):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
