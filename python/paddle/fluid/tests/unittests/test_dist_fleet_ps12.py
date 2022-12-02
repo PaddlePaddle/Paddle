@@ -39,7 +39,7 @@ batch_size = 4
 class TestPSPassWithBow(unittest.TestCase):
     def net(self):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
-            cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
+            cond = paddle.less_than(cos_q_nt, cos_q_pt)
             cond = fluid.layers.cast(cond, dtype='float64')
             cond_3 = paddle.sum(cond)
             acc = paddle.divide(
