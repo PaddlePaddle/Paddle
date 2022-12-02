@@ -33,9 +33,6 @@ from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 
-OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-OpRole = core.op_proto_and_checker_maker.OpRole
-
 __no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
     core.VarDesc.VarType.STEP_SCOPES,
@@ -1184,6 +1181,7 @@ def _get_split_indices(
 
 def set_grad_var_shape(program, dist_context):
     from .operators.common import infer_shape
+    from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
     block = program.global_block()
     vars = block.vars
@@ -1317,6 +1315,10 @@ def set_grad_var_shape(program, dist_context):
                 grad_var.desc.set_shape(ref_shape)
 
 
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OpRole = core.op_proto_and_checker_maker.OpRole
+
+
 def is_forward_op(op):
     op_role = int(op.attr('op_role'))
     return OP_ROLE_KEY in op.attr_names and (
@@ -1410,6 +1412,8 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
 def naive_set_dist_op_attr_for_program_by_mesh(
     new_op, process_mesh, ctx, is_recompute=False
 ):
+    if not is_recompute:
+        return
     assert process_mesh is not None
 
     new_op_dist_attr = OperatorDistributedAttribute()
@@ -1915,39 +1919,6 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     server_socket.close()
 
 
-def set_recompute_ckpts(model, strategy):
-    from .interface import _g_recompute_idx
-
-    if _g_recompute_idx > -1:
-        return
-
-    recompute = strategy.recompute
-    if not recompute.enable:
-        return
-
-    # NOTE: hack to enable recompute in engine api for GPT-3
-    # TODO support more PaddleNLP/CV models here
-    # extract ckpts by specific model
-    if isinstance(model, paddle.nn.Layer):
-        if hasattr(model, "gpt") and model.__class__.__name__ in [
-            'GPTForPretraining',
-            'GPTForPretrainingAuto',
-        ]:
-            exact_ckpts = model.gpt.checkpoints
-        else:
-            exact_ckpts = recompute.checkpoints
-    else:
-        exact_ckpts = recompute.checkpoints
-
-    # modify strategy
-    recompute.checkpoints = exact_ckpts[:]
-    logs = {
-        'Model Class': model.__class__.__name__,
-        'Applied Recompute ckpts': exact_ckpts,
-    }
-    logging.info(logs)
-
-
 def get_input_split_info(cur_rank, var, dist_context):
     # deduce how the input data is split among the cluster
     tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
@@ -2129,13 +2100,13 @@ def insert_dependencies_for_two_ops(
     block,
     idx,
     prior_op,
-    posterior,
+    posterior_op,
     dist_context,
     is_recompute=False,
     sync=False,
 ):
     """
-    dependency: prior_op should be run before posterior
+    dependency: prior_op should be run before posterior_op
     """
 
     assert (
@@ -2144,15 +2115,15 @@ def insert_dependencies_for_two_ops(
         str(prior_op)
     )
     assert (
-        len(posterior.input_arg_names) >= 1
+        len(posterior_op.input_arg_names) >= 1
     ), "second op of dependency should at least have one input. [{}]".format(
-        str(posterior)
+        str(posterior_op)
     )
     prior_op_mesh = dist_context.get_op_dist_attr_for_program(
         prior_op
     ).process_mesh
     posterior_mesh = dist_context.get_op_dist_attr_for_program(
-        posterior
+        posterior_op
     ).process_mesh
     assert (
         prior_op_mesh == posterior_mesh
@@ -2171,25 +2142,79 @@ def insert_dependencies_for_two_ops(
         [block.var(name) for name in prior_op.output_arg_names]
     )
     second_var = _select_best_depend_var(
-        [block.var(name) for name in posterior.input_arg_names]
+        [block.var(name) for name in posterior_op.input_arg_names]
     )
+
+    return insert_dependencies_for_two_vars(
+        block,
+        idx,
+        first_var,
+        second_var,
+        dist_context,
+        OpRole.Backward,
+        prior_op_mesh,
+        is_recompute,
+        sync,
+    )
+
+
+def insert_dependencies_for_two_vars(
+    block,
+    idx,
+    prior_var,
+    post_var,
+    dist_context,
+    oprole,
+    process_mesh=None,
+    is_recompute=False,
+    sync=False,
+):
+    """
+    dependency: op that generates prior_var should be run before op that generates post_var
+    """
+    assert block.has_var(prior_var.name)
+    assert block.has_var(post_var.name)
+    if process_mesh is None:
+        process_mesh = dist_context.get_tensor_dist_attr_for_program(
+            post_var
+        ).process_mesh
+    assert process_mesh is not None
 
     depend_op = block._insert_op_without_sync(
         idx,
         type='nop',
         inputs={
-            "X": first_var,
+            "X": prior_var,
         },
-        outputs={"Out": second_var},
+        outputs={"Out": post_var},
     )
     # depend_op.desc.set_type("depend")
-    depend_op._set_attr(OP_ROLE_KEY, OpRole.Backward)
+    depend_op._set_attr(OP_ROLE_KEY, oprole)
     # depend_op.desc.set_input("Dep", [first_var.name])
     # self.desc.set_output(out_proto.name, out_arg_names)
 
     naive_set_dist_op_attr_for_program_by_mesh(
-        depend_op, prior_op_mesh, dist_context, is_recompute
+        depend_op, process_mesh, dist_context, is_recompute
     )
 
     if sync:
         block._sync_with_cpp()
+
+    return depend_op
+
+
+def is_dep_skip_op(op):
+    if "c_" in op.type:
+        return True
+
+    return False
+
+
+def use_standalone_executor():
+    return os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
+        1,
+        '1',
+        True,
+        'True',
+        'true',
+    ]

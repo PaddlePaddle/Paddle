@@ -39,6 +39,7 @@ from paddle.distributed.auto_parallel.utils import (
     is_backward_op,
     is_optimize_op,
     insert_dependencies_for_two_vars,
+    is_dep_skip_op,
 )
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -832,7 +833,10 @@ class ShardingPass(PassBase):
                     cur_group.coalesce_op_idx = i - 1
                     # NOTE coalecse dependency: control when allocate memory for gradients
                     # too early would increase the peak memory requirement, too later would hurt the performance
-                    dep_op = ops[i - 2]
+                    j = 2
+                    while is_dep_skip_op(ops[i - j]):
+                        j += 1
+                    dep_op = ops[i - j]
                     dep_varname = dep_op.output_arg_names[0]
                     cur_group.coalesce_dep_varname = dep_varname
 
