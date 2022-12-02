@@ -262,13 +262,14 @@ class RecomputePass(PassBase):
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("no_grad_set", None)
+        self.set_attr("no_recompute_segments", [])
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
             return False
         if self.get_attr("loss") is None:
             return False
-        if self.get_attr("checkpoints") is None:
+        if not self.get_attr("checkpoints"):
             return False
         return True
 
