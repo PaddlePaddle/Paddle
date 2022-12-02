@@ -3653,10 +3653,21 @@ function run_setup(){
     export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+
+    if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
+        make clean
+    fi
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
     python setup.py install;build_error=$?
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+
 }
 function main() {
     local CMD=$1
@@ -3870,9 +3881,8 @@ function main() {
       cicheck_py37)
         #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         #run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-
         run_setup ${PYTHON_ABI:-""} ${parallel_number}
-        run_linux_cpu_tests ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
@@ -3885,6 +3895,7 @@ function main() {
         ;;
       build_gpubox)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        #run setup ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
