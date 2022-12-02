@@ -13,28 +13,28 @@
 # limitations under the License.
 
 import warnings
-from functools import reduce, partial
+from functools import partial, reduce
+
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import Program, Variable
-from paddle.fluid.framework import Operator
 from paddle.common_ops_import import (
     LayerHelper,
     _non_static_mode,
-    convert_dtype,
     check_type,
     check_variable_and_dtype,
+    convert_dtype,
 )
-from paddle.fluid.layers.utils import (
-    assert_same_structure,
-    map_structure,
-    hold_mutable_vars,
-    copy_mutable_vars,
-    is_sequence,
-)
+from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
 from paddle.fluid.layers.control_flow import cond
+from paddle.fluid.layers.utils import (
+    assert_same_structure,
+    copy_mutable_vars,
+    hold_mutable_vars,
+    is_sequence,
+    map_structure,
+)
 
 
 class BlockGuard:

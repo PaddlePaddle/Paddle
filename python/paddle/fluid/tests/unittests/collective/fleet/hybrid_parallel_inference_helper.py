@@ -84,7 +84,9 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                 )
                 print(cond_int.shape)
                 cond = paddle.less_than(x=step_idx, y=max_len)
-                while_op = paddle.static.nn.control_flow.While(cond, is_test=True)
+                while_op = paddle.static.nn.control_flow.While(
+                    cond, is_test=True
+                )
 
             with while_op.block():
                 with paddle.fluid.device_guard(f'{device}:all'):
