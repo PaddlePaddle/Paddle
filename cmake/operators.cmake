@@ -399,6 +399,8 @@ function(op_library TARGET)
   foreach(cc_src ${cc_srcs})
     # pybind USE_OP_ITSELF
     set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cc_src} ${pybind_file})
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
@@ -436,6 +438,8 @@ function(op_library TARGET)
   # message("cu_srcs ${cu_srcs}")
   foreach(cu_src ${cu_srcs})
     set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cu_src} ${pybind_file})
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
