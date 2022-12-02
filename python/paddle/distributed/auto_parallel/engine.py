@@ -26,8 +26,8 @@ import paddle.distributed.auto_parallel.utils as auto_utils
 import paddle.utils as utils
 from paddle import fluid, static
 from paddle.distributed import fleet
-from paddle.fluid import Variable, core
 from paddle.distributed.parallel_env import ParallelEnv
+from paddle.fluid import Variable, core
 from paddle.fluid.executor import _to_name_str, global_scope
 from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device

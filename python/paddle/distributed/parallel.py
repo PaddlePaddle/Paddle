@@ -36,13 +36,13 @@ from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F40
     wait_server_ready,
 )
 from paddle.distributed.fleet.launch_utils import check_backend
-
-# deprecated module import
-from .parallel_env import ParallelEnv
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import _set_expected_place, in_dygraph_mode
+
+# deprecated module import
+from .parallel_env import ParallelEnv
 
 __all__ = []
 

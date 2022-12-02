@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.fluid.framework import Program, dygraph_not_support, core
+from paddle.fluid.framework import Program, core, dygraph_not_support
 
 
 def _save_distributed_persistables(executor, dirname, main_program):

@@ -19,14 +19,14 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import DataParallel
 from paddle.distributed.parallel_env import (
     _coalesce_tensors,
     _reshape_inplace,
     _split_tensors,
 )
+from paddle.fluid import core
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.parallel import DataParallel
 
 
 class MyLayer(fluid.Layer):

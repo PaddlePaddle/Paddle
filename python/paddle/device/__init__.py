@@ -17,6 +17,7 @@ import re
 import os
 from paddle.fluid import core
 from paddle.fluid import framework
+
 # If use paddle.distributed.parallel_env.Parallel, it will cause
 # cycle import error. It will be replaces later.
 from paddle.fluid.dygraph import ParallelEnv

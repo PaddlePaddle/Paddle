@@ -13,18 +13,15 @@
 # limitations under the License.
 
 import os
-import numpy as np
 from collections import OrderedDict
+
+import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid import framework
+from paddle.fluid import core, framework
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import (
-    ParamBase,
-    _in_legacy_dygraph,
-)
+from paddle.fluid.framework import ParamBase, _in_legacy_dygraph
 
 
 class ParallelEnv:

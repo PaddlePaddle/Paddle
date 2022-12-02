@@ -14,13 +14,13 @@
 
 import paddle
 from paddle import framework
-from paddle.fluid import core
 from paddle.distributed.parallel_env import (
     _split_tensors,
     build_groups,
     sync_params_buffers,
 )
-from paddle.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid import core
+from paddle.framework import _in_legacy_dygraph, in_dygraph_mode
 
 from .log_util import logger
 

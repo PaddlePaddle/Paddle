@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import paddle
-
-from paddle.distributed.parallel_env import ParallelEnv
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
 )
+from paddle.distributed.parallel_env import ParallelEnv
 from paddle.fluid import core, framework
 from paddle.fluid.contrib.slim.quantization import (
     AddQuantDequantPassV2,

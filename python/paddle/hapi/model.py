@@ -28,6 +28,7 @@ import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
 from paddle.distributed.fleet.base import role_maker
+from paddle.distributed.parallel_env import ParallelEnv
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -37,7 +38,6 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
 from paddle.fluid.io import is_belong_to_optimizer
-from paddle.distributed.parallel_env import ParallelEnv
 from paddle.fluid.layers import collective
 from paddle.fluid.layers.utils import flatten
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
