@@ -44,6 +44,10 @@ class RecomputeState(ProgramStats):
         # {varname: {as_input_ops: op_idx, as_output_ops: op_idx}}
         self.var_op_deps = {}
 
+    @property
+    def ops(self):
+        return self._ops
+
     def build_stats(self):
         for i, op in enumerate(self._ops):
             for name in op.desc.input_arg_names():
@@ -62,9 +66,7 @@ class RecomputeState(ProgramStats):
                     self.var_op_deps[name]["var_as_input_ops"] = []
                     self.var_op_deps[name]["var_as_output_ops"] = [i]
 
-    def get_recompute_segments(
-        self, checkpoints, no_recompute_segments=[], is_logging=True
-    ):
+    def get_recompute_segments(self, checkpoints, no_recompute_segments=[]):
         """get recompute segments from checkpoints"""
         segments = []
         start_idx = -1
@@ -103,26 +105,6 @@ class RecomputeState(ProgramStats):
                     i, len(segments)
                 )
                 segments.pop(i)
-
-        if not is_logging:
-            return segments
-
-        for i, (idx1, idx2) in enumerate(segments):
-            logging.info("recompute segment[{}]".format(i))
-            logging.info(
-                "segment start op: [{}]: [{}] [{}]".format(
-                    self._ops[idx1].desc.type(),
-                    self._ops[idx1].desc.input_arg_names(),
-                    self._ops[idx1].desc.output_arg_names(),
-                )
-            )
-            logging.info(
-                "segment end op: [{}]: [{}] [{}]".format(
-                    self._ops[idx2 - 1].desc.type(),
-                    self._ops[idx2 - 1].desc.input_arg_names(),
-                    self._ops[idx2 - 1].desc.output_arg_names(),
-                )
-            )
 
         return segments
 
@@ -299,6 +281,23 @@ class RecomputePass(PassBase):
         )
         if segments == []:
             return
+
+        for i, (idx1, idx2) in enumerate(segments):
+            logging.info("recompute segment[{}]".format(i))
+            logging.info(
+                "segment start op: [{}]: [{}] [{}]".format(
+                    rc_state.ops[idx1].desc.type(),
+                    rc_state.ops[idx1].desc.input_arg_names(),
+                    rc_state.ops[idx1].desc.output_arg_names(),
+                )
+            )
+            logging.info(
+                "segment end op: [{}]: [{}] [{}]".format(
+                    rc_state.ops[idx2 - 1].desc.type(),
+                    rc_state.ops[idx2 - 1].desc.input_arg_names(),
+                    rc_state.ops[idx2 - 1].desc.output_arg_names(),
+                )
+            )
 
         # 3. get vars that should be hold in memory
         vars_should_be_hold = []

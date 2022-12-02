@@ -174,9 +174,7 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
         )
         rc_state.build_stats()
         checkpoints = rc_state.sort_checkpoints(checkpoints)
-        segments = rc_state.get_recompute_segments(
-            checkpoints, is_logging=False
-        )
+        segments = rc_state.get_recompute_segments(checkpoints)
 
         self._total_num_trial = len(segments)
         self._tuning_segments = list(range(len(segments)))
@@ -231,7 +229,7 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
             else:
                 self._trial_idx = self._total_num_trial
                 self._logger.info(
-                    "Recompute is unnecessary for this model size, which will reduce the flops."
+                    "Recompute is unnecessary for this model size, which will reduce the Throughtput."
                 )
         else:
             if self._trail_left >= self._trail_right:
