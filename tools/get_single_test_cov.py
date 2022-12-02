@@ -125,7 +125,7 @@ def getCovinfo(rootPath, test):
     else:
         print("get coverage.info succesfully")
     os.system(
-        "lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/eager/*' '/paddle/paddle/fluid/jit/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        "lcov --extract coverage.info '/paddle/paddle/fluid/*' '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
     )
     coverage_info_tmp = './coverage.info.tmp'
     coverage_tmp_size = os.path.getsize(coverage_info_tmp)
@@ -135,7 +135,7 @@ def getCovinfo(rootPath, test):
     else:
         print("get coverage.info.tmp succesfully")
 
-    os.system('rm -rf ./coverage.info' % ut_map_path)
+    os.system('rm -rf ./coverage.info')
     os.system('mv ./coverage.info.tmp %s' % ut_map_path)
     getFNDAFile(rootPath, test)
     analysisFNDAFile(rootPath, test)
