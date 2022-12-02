@@ -18,6 +18,7 @@ from .sparsity import decorate  # noqa: F401
 from .sparsity import prune_model  # noqa: F401
 from .sparsity import set_excluded_layers  # noqa: F401
 from .sparsity import reset_excluded_layers  # noqa: F401
+from . import sparsity
 
 __all__ = [  # noqa
     'calculate_density',
