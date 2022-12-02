@@ -465,12 +465,12 @@ def lm_model(
     projection = paddle.add(projection, softmax_bias)
     projection = paddle.reshape(projection, shape=[-1, vocab_size])
 
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=projection, label=y, soft_label=False
     )
 
     loss = paddle.reshape(loss, shape=[-1, num_steps])
-    loss = layers.reduce_mean(loss, dim=[0])
+    loss = paddle.mean(loss, axis=[0])
     loss = paddle.sum(loss)
 
     loss.persistable = True

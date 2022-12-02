@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.utils as utils
 
 
 class TestNormalization(unittest.TestCase):
@@ -39,7 +40,7 @@ class TestNormalization(unittest.TestCase):
             append_batch_size=False,
         )
         data.stop_gradient = False
-        l2_norm = self.l2_normalize(data, axis=axis, epsilon=epsilon)
+        l2_norm = utils.l2_norm(data, axis=axis, epsilon=epsilon)
         out = paddle.sum(l2_norm, axis=None)
 
         fluid.backward.append_backward(loss=out)

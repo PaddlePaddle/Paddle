@@ -25,7 +25,7 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
 
 

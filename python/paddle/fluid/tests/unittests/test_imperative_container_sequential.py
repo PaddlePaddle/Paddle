@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from paddle.nn import Linear
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 
 class TestImperativeContainerSequential(unittest.TestCase):
@@ -32,7 +33,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
             model1[1] = Linear(1, 3)
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 3])
-            loss1 = fluid.layers.reduce_mean(res1)
+            loss1 = paddle.mean(res1)
             loss1.backward()
 
             l1 = Linear(10, 1)
@@ -53,7 +54,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
             res2 = model2(data)
             self.assertListEqual(res2.shape, [5, 4])
 
-            loss2 = fluid.layers.reduce_mean(res2)
+            loss2 = paddle.mean(res2)
             loss2.backward()
 
     def test_sequential(self):
@@ -71,7 +72,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
             model1[1] = Linear(1, 3)
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 3])
-            loss1 = fluid.layers.reduce_mean(res1)
+            loss1 = paddle.mean(res1)
             loss1.backward()
 
             l1 = Linear(10, 1)
@@ -92,7 +93,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
             res2 = model2(data)
             self.assertListEqual(res2.shape, [5, 4])
 
-            loss2 = fluid.layers.reduce_mean(res2)
+            loss2 = paddle.mean(res2)
             loss2.backward()
 
     def test_sequential_list_params(self):
