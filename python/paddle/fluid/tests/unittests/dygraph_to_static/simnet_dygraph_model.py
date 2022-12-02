@@ -114,7 +114,7 @@ class ReduceMeanLayer:
         """
         operation
         """
-        mean = fluid.layers.reduce_mean(input)
+        mean = paddle.mean(input)
         return mean
 
 

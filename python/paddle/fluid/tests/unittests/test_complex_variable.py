@@ -33,7 +33,7 @@ class TestComplexVariable(unittest.TestCase):
         with dg.guard():
             x = dg.to_variable(a, "x")
             y = dg.to_variable(b)
-            out = paddle.fluid.layers.elementwise_add(x, y)
+            out = paddle.add(x, y)
             self.assertIsNotNone("{}".format(out))
 
         np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)

@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
     program_guard,
 )
 from paddle.fluid.initializer import Constant
-from paddle.fluid.layers.device import get_places
 from paddle.fluid.param_attr import ParamAttr
 from paddle.tensor import random
 
@@ -619,11 +618,11 @@ class TestLayer(LayerTest):
             t5 = layers.data(name='t5', shape=[3, 3], dtype='float32')
             t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
 
-            ret = layers.elementwise_add(t, t2)
+            ret = paddle.add(t, t2)
             ret = paddle.pow(ret, t3)
-            ret = layers.elementwise_div(ret, t4)
-            ret = layers.elementwise_sub(ret, t5)
-            ret = layers.elementwise_mul(ret, t6)
+            ret = paddle.divide(ret, t4)
+            ret = paddle.subtract(ret, t5)
+            ret = paddle.multiply(ret, t6)
 
             static_ret = self.get_static_graph_result(
                 feed={'t': n, 't2': n2, 't3': n3, 't4': n4, 't5': n5, 't6': n6},
@@ -632,18 +631,18 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+                ret = paddle.add(to_variable(n), to_variable(n2))
                 ret = paddle.pow(ret, to_variable(n3))
-                ret = layers.elementwise_div(ret, to_variable(n4))
-                ret = layers.elementwise_sub(ret, to_variable(n5))
-                dy_eager_ret = layers.elementwise_mul(ret, to_variable(n6))
+                ret = paddle.divide(ret, to_variable(n4))
+                ret = paddle.subtract(ret, to_variable(n5))
+                dy_eager_ret = paddle.multiply(ret, to_variable(n6))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
-            ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+            ret = paddle.add(to_variable(n), to_variable(n2))
             ret = paddle.pow(ret, to_variable(n3))
-            ret = layers.elementwise_div(ret, to_variable(n4))
-            ret = layers.elementwise_sub(ret, to_variable(n5))
-            dy_ret = layers.elementwise_mul(ret, to_variable(n6))
+            ret = paddle.divide(ret, to_variable(n4))
+            ret = paddle.subtract(ret, to_variable(n5))
+            dy_ret = paddle.multiply(ret, to_variable(n6))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -2607,10 +2606,10 @@ class TestLayer(LayerTest):
 
     def test_cond(self):
         def less_than_branch(a, b):
-            return fluid.layers.elementwise_add(a, b)
+            return paddle.add(a, b)
 
         def greater_equal_branch(a, b):
-            return fluid.layers.elementwise_sub(a, b)
+            return paddle.subtract(a, b)
 
         with self.static_graph():
             a = fluid.layers.fill_constant(
@@ -2895,7 +2894,7 @@ class TestLayer(LayerTest):
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
             predict = fluid.layers.softmax(input=fc_out)
-            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            result = paddle.static.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
@@ -2911,7 +2910,9 @@ class TestLayer(LayerTest):
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)
             predict = fluid.layers.softmax(fc_out)
-            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+            dynamic_out = paddle.static.accuracy(
+                input=predict, label=label, k=5
+            )
 
         np.testing.assert_array_equal(static_out[0], dynamic_out.numpy())
 
@@ -2954,7 +2955,6 @@ class TestBook(LayerTest):
                     )
 
                 else:
-                    assert method.__name__ in ('make_get_places')
                     continue
             if method.__name__ in self.only_static_set:
                 continue
@@ -3037,7 +3037,9 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[13], dtype='float32')
             y_predict = layers.fc(input=x, size=1, act=None)
             y = self._get_data(name='y', shape=[1], dtype='float32')
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -3201,12 +3203,6 @@ class TestBook(LayerTest):
             hid = layers.fc(input=data, size=20)
             return layers.softmax(hid, axis=1)
 
-    def make_get_places(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            get_places(device_count=1)
-
     @prog_scope()
     def make_nce(self):
         window_size = 5
@@ -3262,23 +3258,31 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name='x', shape=[16], dtype='float32')
             y = self._get_data(name='label', shape=[1], dtype='int64')
-            loss, softmax = layers.softmax_with_cross_entropy(
+            loss, softmax = paddle.nn.functional.softmax_with_cross_entropy(
                 x, y, return_softmax=True
             )
             self.assertIsNotNone(loss)
             self.assertIsNotNone(softmax)
 
-            loss = layers.softmax_with_cross_entropy(x, y)
+            loss = paddle.nn.functional.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
 
             x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
             y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
             y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
             y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
-            loss1 = layers.softmax_with_cross_entropy(x1, y1, axis=1)
-            loss2 = layers.softmax_with_cross_entropy(x1, y2, axis=2)
-            loss3 = layers.softmax_with_cross_entropy(x1, y3, axis=3)
-            loss4 = layers.softmax_with_cross_entropy(x1, y3, axis=-1)
+            loss1 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y1, axis=1
+            )
+            loss2 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y2, axis=2
+            )
+            loss3 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=3
+            )
+            loss4 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=-1
+            )
             self.assertIsNotNone(loss1)
             self.assertIsNotNone(loss2)
             self.assertIsNotNone(loss3)
@@ -3677,21 +3681,12 @@ class TestBook(LayerTest):
             out = layers.temporal_shift(x, seg_num=2, shift_ratio=0.2)
             return out
 
-    def make_fsp_matrix(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            y = self._get_data(name="Y", shape=[8, 4, 4], dtype="float32")
-            out = layers.fsp_matrix(x, y)
-            return out
-
     def make_pixel_shuffle(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
-            out = layers.pixel_shuffle(x, upscale_factor=3)
+            out = paddle.nn.functional.pixel_shuffle(x, upscale_factor=3)
             return out
 
     def make_mse_loss(self):
@@ -3709,7 +3704,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.square_error_cost(input=x, label=y)
+            out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
     def test_dynamic_lstmp(self):
