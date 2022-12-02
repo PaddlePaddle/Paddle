@@ -17,17 +17,18 @@ import sys
 import traceback
 import linecache
 import re
-import numpy as np
+import numpy as np  # noqa: F401
 
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
+from .origin_info import (
     Location,
     OriginInfo,
     global_origin_info_map,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    _is_api_in_module_helper,
-    RE_PYMODULE,
-)
+from .utils import _is_api_in_module_helper  # noqa: F401
+from .utils import RE_PYMODULE
+
+
+__all__ = []
 
 ERROR_DATA = "Error data about original source code information and traceback."
 

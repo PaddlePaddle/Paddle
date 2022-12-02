@@ -60,7 +60,7 @@ class TestProfiler(unittest.TestCase):
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = paddle.mean(cost)
             batch_size = fluid.layers.create_tensor(dtype='int64')
-            batch_acc = fluid.layers.accuracy(
+            batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size
             )
 
@@ -296,6 +296,10 @@ class TestFLOPSAPI(unittest.TestCase):
         )
         self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
+            == 0
         )
 
 

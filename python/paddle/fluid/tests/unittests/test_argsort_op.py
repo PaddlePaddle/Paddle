@@ -95,7 +95,7 @@ class TestArgsortOpCPU(unittest.TestCase):
                 input=x, axis=self.axis, descending=self.descending
             )
             self.sorted_x.stop_gradient = False
-            loss = fluid.layers.elementwise_mul(self.sorted_x, label)
+            loss = paddle.multiply(self.sorted_x, label)
             self.loss = paddle.sum(loss)
 
     def forward(self):

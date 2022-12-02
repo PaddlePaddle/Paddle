@@ -25,6 +25,7 @@ from .control_flow import (
     while_loop,
     switch_case,
 )
+from .common import py_func  # noqa: F401
 
 from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
@@ -36,7 +37,6 @@ from ...fluid.layers import layer_norm  # noqa: F401
 from ...fluid.layers import multi_box_head  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
-from ...fluid.layers import py_func  # noqa: F401
 from ...fluid.layers import row_conv  # noqa: F401
 from ...fluid.layers import spectral_norm  # noqa: F401
 

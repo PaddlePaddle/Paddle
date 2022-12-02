@@ -82,7 +82,7 @@ def static(
 
         def fn_2(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
-                loss = layers.softmax_with_cross_entropy(
+                loss = paddle.nn.functional.softmax_with_cross_entropy(
                     logits=pred, label=label
                 )
                 avg_loss = paddle.mean(loss, name='mean_softmax_loss')
@@ -108,7 +108,7 @@ def static(
         else:
             loss_1 = layers.cross_entropy(input=prediction, label=label)
             avg_loss_1 = paddle.mean(loss_1)
-            loss_2 = layers.softmax_with_cross_entropy(
+            loss_2 = paddle.nn.functional.softmax_with_cross_entropy(
                 logits=prediction, label=label
             )
             avg_loss_2 = paddle.mean(loss_2)
@@ -193,7 +193,7 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
                 loss.backward()
                 adam.minimize(loss)
             else:
-                softmax_loss = layers.softmax_with_cross_entropy(
+                softmax_loss = paddle.nn.functional.softmax_with_cross_entropy(
                     prediction, var_label
                 )
                 loss = paddle.mean(softmax_loss)

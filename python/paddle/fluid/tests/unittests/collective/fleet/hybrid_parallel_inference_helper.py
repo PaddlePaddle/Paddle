@@ -129,12 +129,12 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                     layers.assign(layers.cast(cond_int, dtype='bool'), cond)
 
             with paddle.fluid.device_guard(f'{device}:all'):
-                out = layers.create_array(data.dtype)
+                out = paddle.tensor.create_array(data.dtype)
                 layers.assign(data, out)
 
             with paddle.fluid.device_guard(f'{device}:all'):
                 # use a empty lod_tensor_array to clear lod_tensor_array
-                layers.assign(layers.create_array(data.dtype), data)
+                layers.assign(paddle.tensor.create_array(data.dtype), data)
 
         helper = HybridParallelInferenceHelper(
             startup_program,
