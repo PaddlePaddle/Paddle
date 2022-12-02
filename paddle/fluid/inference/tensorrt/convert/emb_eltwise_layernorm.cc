@@ -87,7 +87,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           input_embs.push_back(weight.get());
           emb_sizes.push_back(weight.get().count);
         }
-        //  hidden = emb_dims[1];
       }
       bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
       scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
