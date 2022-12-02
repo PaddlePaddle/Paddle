@@ -2453,7 +2453,10 @@ def unique(
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
             unique = paddle.unique(x)
-            np_unique = unique.numpy() # [1 2 3 5]
+            print(unique)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 2, 3, 5])
+
             _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
             print(indices)
             # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,

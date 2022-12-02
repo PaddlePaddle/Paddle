@@ -668,9 +668,8 @@ class Conv2D(_ConvNd):
 
           conv = nn.Conv2D(4, 6, (3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6]
     """
 
     def __init__(
@@ -841,9 +840,8 @@ class Conv2DTranspose(_ConvNd):
 
           conv = nn.Conv2DTranspose(4, 6, (3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10]
     """
 
     def __init__(
@@ -999,9 +997,8 @@ class Conv3D(_ConvNd):
 
           conv = nn.Conv3D(4, 6, (3, 3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6, 6]
     """
 
     def __init__(
@@ -1181,9 +1178,8 @@ class Conv3DTranspose(_ConvNd):
 
           conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 10, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10, 10]
     """
 
     def __init__(
