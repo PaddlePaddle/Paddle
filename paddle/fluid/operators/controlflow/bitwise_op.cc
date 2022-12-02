@@ -48,7 +48,9 @@ It operates ``%s`` on Tensor ``X`` and ``Y`` .
         %s
 
 .. note::
-    ``paddle.%s`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+    ``paddle.%s`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 )DOC",
                                comment.type,
                                comment.equation,

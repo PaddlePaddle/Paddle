@@ -14,13 +14,15 @@
 
 import copy
 import math
-import numpy as np
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
 import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 
 
 def exponential_decay(
@@ -149,7 +151,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             for epoch in range(10):
                 out = linear(input)
-                loss = fluid.layers.reduce_mean(out)
+                loss = paddle.mean(out)
                 loss.backward()
                 adam1.minimize(loss)
                 adam2.minimize(loss)
