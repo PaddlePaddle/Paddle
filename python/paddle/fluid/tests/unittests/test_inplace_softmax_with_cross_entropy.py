@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 
 
@@ -48,7 +49,7 @@ class TestSoftmaxWithXe(unittest.TestCase):
                     dtype='int64' if not self.soft_label else self.dtype,
                     append_batch_size=False,
                 )
-                z_d, s_d = fluid.layers.softmax_with_cross_entropy(
+                z_d, s_d = paddle.nn.functional.softmax_with_cross_entropy(
                     x_d,
                     y_d,
                     soft_label=self.soft_label,
