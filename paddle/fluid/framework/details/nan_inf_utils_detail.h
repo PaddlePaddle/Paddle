@@ -51,30 +51,29 @@ HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
 template <typename T, typename MT>
 HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
                                        int64_t numel,
-                                       int has_nan,
-                                       int has_inf,
+                                       int64_t num_nan,
+                                       int64_t num_inf,
                                        MT max_value,
                                        MT min_value,
                                        MT mean_value,
                                        int check_nan_inf_level) {
-  if (has_nan || has_inf) {
+  if (num_nan > 0 || num_inf > 0) {
     printf(
-        "[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
-        "find_inf=%d, "
-        "max=%e, min=%e, mean=%e\n",
+        "[PRECISION] [ERROR] in %s, numel=%ld, num_nan=%ld, "
+        "num_inf=%ld, max=%e, min=%e, mean=%e\n",
         debug_info,
         numel,
-        has_nan,
-        has_inf,
+        num_nan,
+        num_inf,
         static_cast<float>(max_value),
         static_cast<float>(min_value),
         static_cast<float>(mean_value));
     if (check_nan_inf_level == 0) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-      PADDLE_ENFORCE(false, "Find nan or inf in %s.", debug_info);
+      PADDLE_ENFORCE(false, "There are NAN or INF in %s.", debug_info);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Find nan or inf in %s.", debug_info));
+          "There are NAN or INF in %s.", debug_info));
 #endif
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {

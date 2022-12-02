@@ -145,15 +145,15 @@ static void CheckNanInfCpu(const T* value_ptr,
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
 #ifdef _OPENMP
-  int num_threads = std::max(omp_get_num_threads(), 1);
+  int num_threads = std::max(std::min(omp_get_num_threads(), 4), 1);
 #else
   int num_threads = 1;
 #endif
 
   std::vector<int64_t> thread_num_nan(num_threads, 0);
   std::vector<int64_t> thread_num_inf(num_threads, 0);
-  std::vector<MT> thread_min_value(num_threads, std::numeric_limits<MT>::max());
-  std::vector<MT> thread_max_value(num_threads, std::numeric_limits<MT>::min());
+  std::vector<MT> thread_min_value(num_threads, static_cast<MT>(value_ptr[0]));
+  std::vector<MT> thread_max_value(num_threads, static_cast<MT>(value_ptr[0]));
   std::vector<MT> thread_mean_value(num_threads, static_cast<MT>(0));
 
 #ifdef _OPENMP
@@ -185,17 +185,14 @@ static void CheckNanInfCpu(const T* value_ptr,
     }
   }
 
-  bool has_nan = false;
-  bool has_inf = false;
-  MT min_value = std::numeric_limits<MT>::max();
-  MT max_value = std::numeric_limits<MT>::min();
+  int64_t num_nan = 0;
+  int64_t num_inf = 0;
+  MT min_value = thread_min_value[0];
+  MT max_value = thread_max_value[0];
   MT mean_value = static_cast<MT>(0);
   for (int i = 0; i < num_threads; ++i) {
-    if (thread_num_nan[i] > 0) {
-      has_nan = true;
-    } else if (thread_num_inf[i] > 0) {
-      has_inf = true;
-    }
+    num_nan += thread_num_nan[i];
+    num_inf += thread_num_inf[i];
     min_value = std::min(thread_min_value[i], min_value);
     max_value = std::max(thread_max_value[i], max_value);
     mean_value += thread_mean_value[i];
@@ -203,8 +200,8 @@ static void CheckNanInfCpu(const T* value_ptr,
 
   PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
                                 numel,
-                                has_nan,
-                                has_inf,
+                                num_nan,
+                                num_inf,
                                 max_value,
                                 min_value,
                                 mean_value,
@@ -237,8 +234,8 @@ void CheckNanInfCpu(const T* value_ptr,
       std::isinf(imag_sum)) {
     // hot fix for compile failed in gcc4.8
     // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet("Find nan or inf in %s.",
-                                                      cpu_hint_str));
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "There are NAN or INF in %s.", cpu_hint_str));
   }
 }
 

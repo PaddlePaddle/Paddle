@@ -138,6 +138,24 @@ __global__ void CheckNanInfKernel(const T* value,
   PrintNanInfKernel(value, numel, print_num, debug_info);
 }
 
+__device__ void BlockReduceNumNanInfAndWrite(const int64_t num_nan,
+                                             const int64_t num_inf,
+                                             int64_t offset,
+                                             int64_t* num_nan_ptr,
+                                             int64_t* num_inf_ptr) {
+  __syncthreads();
+
+  int64_t block_num_nan =
+      phi::funcs::blockReduceSum<int64_t>(num_nan, FINAL_MASK);
+  int64_t block_num_inf =
+      phi::funcs::blockReduceMin<int64_t>(num_inf, FINAL_MASK);
+
+  if (threadIdx.x == 0) {
+    num_nan_ptr[offset] = block_num_nan;
+    num_inf_ptr[offset] = block_num_inf;
+  }
+}
+
 template <
     typename T,
     std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
@@ -183,14 +201,15 @@ __device__ void BlockReduceMaxMinAndWrite(const T max_value,
 template <typename T, typename MT>
 __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                          const int64_t numel,
-                                         int* found_nan_inf_ptr,
+                                         int64_t* block_num_nan_ptr,
+                                         int64_t* block_num_inf_ptr,
                                          MT* tensor_block_max_ptr,
                                          MT* tensor_block_min_ptr,
                                          MT* tensor_block_mean_ptr) {
-  bool has_nan = false;
-  bool has_inf = false;
-
   int64_t i = threadIdx.x + blockIdx.x * blockDim.x;
+
+  int64_t num_nan = 0;
+  int64_t num_inf = 0;
 
   MT max_value = static_cast<MT>(i < numel ? value_ptr[i] : value_ptr[0]);
   MT min_value = static_cast<MT>(i < numel ? value_ptr[i] : value_ptr[0]);
@@ -203,24 +222,14 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
     mean_value += value / static_cast<MT>(numel);
 
     if (isnan(value)) {
-      has_nan = true;
+      num_nan += 1;
     } else if (isinf(value)) {
-      has_inf = true;
+      num_inf += 1;
     }
+  }
 
-    if (has_nan || has_inf) {
-      if (!tensor_block_max_ptr && !tensor_block_min_ptr &&
-          !tensor_block_mean_ptr) {
-        break;
-      }
-    }
-  }
-  if (has_nan) {
-    found_nan_inf_ptr[0] = 1;
-  }
-  if (has_inf) {
-    found_nan_inf_ptr[1] = 1;
-  }
+  BlockReduceNumNanInfAndWrite(
+      num_nan, num_inf, blockIdx.x, block_num_nan_ptr, block_num_inf_ptr);
 
   BlockReduceMaxMinAndWrite<MT>(max_value,
                                 min_value,
@@ -232,7 +241,8 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
 }
 
 template <typename T, typename MT>
-__global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
+__global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
+                                         const int64_t* block_num_inf_ptr,
                                          const MT* tensor_block_max_ptr,
                                          const MT* tensor_block_min_ptr,
                                          const MT* tensor_block_mean_ptr,
@@ -241,8 +251,14 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
                                          int64_t numel_max_min,
                                          int check_nan_inf_level) {
   if (blockIdx.x == 0 && threadIdx.x == 0) {
-    int has_nan = found_nan_inf_ptr[0];
-    int has_inf = found_nan_inf_ptr[1];
+    int64_t num_nan = 0;
+    int64_t num_inf = 0;
+
+    // numel_max_min <= 128
+    for (int64_t i = 0; i < numel_max_min; ++i) {
+      num_nan += block_num_nan_ptr[i];
+      num_inf += block_num_inf_ptr[i];
+    }
 
     MT max_value = static_cast<MT>(0);
     MT min_value = static_cast<MT>(0);
@@ -266,8 +282,8 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
 
     PrintForDifferentLevel<T, MT>(debug_info,
                                   numel,
-                                  has_nan,
-                                  has_inf,
+                                  num_nan,
+                                  num_inf,
                                   max_value,
                                   min_value,
                                   mean_value,
@@ -377,13 +393,13 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 #else
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  phi::DenseTensor found_nan_inf;
-  found_nan_inf.Resize({2});
-  int* found_nan_inf_ptr = found_nan_inf.mutable_data<int>(tensor_.place());
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-      found_nan_inf_ptr, 0, 2 * sizeof(int), dev_ctx->stream()));
-
   int64_t numel_max_min = blocks;
+
+  phi::DenseTensor block_num_nan_inf;
+  block_num_nan_inf.Resize({static_cast<int64_t>(2 * numel_max_min)});
+  int64_t* block_num_nan_ptr =
+      block_num_nan_inf.mutable_data<int64_t>(tensor_.place());
+  int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
 
   phi::DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
@@ -395,14 +411,16 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   FindNanInfAndBlockMaxMin<T, MT>
       <<<blocks, threads, 0, dev_ctx->stream()>>>(tensor_.data<T>(),
                                                   tensor_.numel(),
-                                                  found_nan_inf_ptr,
+                                                  block_num_nan_ptr,
+                                                  block_num_inf_ptr,
                                                   tensor_block_max_ptr,
                                                   tensor_block_min_ptr,
                                                   tensor_block_mean_ptr);
 
   int check_nan_inf_level = FLAGS_check_nan_inf_level;
   FindGlobalMaxMinAndPrint<T, MT>
-      <<<1, 1, 0, dev_ctx->stream()>>>(found_nan_inf_ptr,
+      <<<1, 1, 0, dev_ctx->stream()>>>(block_num_nan_ptr,
+                                       block_num_inf_ptr,
                                        tensor_block_max_ptr,
                                        tensor_block_min_ptr,
                                        tensor_block_mean_ptr,
