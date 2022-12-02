@@ -3246,6 +3246,16 @@ class TestBook(LayerTest):
         avg_loss = paddle.mean(loss)
         return avg_loss
 
+    def make_multiplex(self):
+        with program_guard(
+            fluid.default_main_program(), fluid.default_startup_program()
+        ):
+            x1 = self._get_data(name='x1', shape=[4], dtype='float32')
+            x2 = self._get_data(name='x2', shape=[4], dtype='float32')
+            index = self._get_data(name='index', shape=[1], dtype='int32')
+            out = paddle.multiplex(inputs=[x1, x2], index=index)
+            return out
+
     def make_softmax_with_cross_entropy(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
