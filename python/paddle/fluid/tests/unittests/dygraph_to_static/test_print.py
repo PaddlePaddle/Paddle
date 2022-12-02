@@ -61,7 +61,7 @@ def dyfunc_print_with_ifelse(x):
         print(x_t)
 
 
-# 6. print mutiple Tensor
+# 6. print multiple Tensor
 @to_static
 def dyfunc_print_multi_tensor(x):
     x_t = paddle.to_tensor(x)
