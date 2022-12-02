@@ -297,7 +297,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         res = exe.run(
             main_program,
             feed={'i': feed_i, 'x': feed_x},
-            fetch_list=[mean.name, x.grad_name],
+            fetch_list=[mean.name, i.grad_name, x.grad_name],
         )
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
