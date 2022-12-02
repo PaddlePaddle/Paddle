@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import (
+    NCE,
     BatchNorm,
-    Conv3D,
     Embedding,
     GroupNorm,
     LayerNorm,
-    Linear,
-    NCE,
     PRelu,
 )
-import numpy as np
-import os
-import tempfile
+from paddle.nn import Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -76,14 +77,14 @@ class TestDygraphLoadStatic(unittest.TestCase):
         nce_label = fluid.data(
             name="nce_label", shape=[None, 10], dtype='int64'
         )
-        nce_out_1 = fluid.layers.nce(nce_in, nce_label, 10000)
-        nce_out_2 = fluid.layers.nce(nce_in, nce_label, 10000)
+        nce_out_1 = paddle.static.nn.nce(nce_in, nce_label, 10000)
+        nce_out_2 = paddle.static.nn.nce(nce_in, nce_label, 10000)
 
         prelu_in = fluid.data(
             name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'
         )
-        prelu_out_1 = fluid.layers.prelu(prelu_in, "channel")
-        prelu_out_2 = fluid.layers.prelu(prelu_in, "channel")
+        prelu_out_1 = paddle.static.nn.prelu(prelu_in, "channel")
+        prelu_out_2 = paddle.static.nn.prelu(prelu_in, "channel")
 
         bilinear_tensor_pro_x = fluid.data(
             "t1", shape=[None, 5], dtype="float32"
@@ -123,8 +124,12 @@ class TestDygraphLoadStatic(unittest.TestCase):
         groupnorm_in = fluid.data(
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
-        groupnorm_out1 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
-        groupnorm_out2 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
+        groupnorm_out1 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4
+        )
+        groupnorm_out2 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4
+        )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
         spe_norm_out_1 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
@@ -194,11 +199,11 @@ class TestDygraphLoadStatic(unittest.TestCase):
                         in_channels=10, out_channels=10, kernel_size=5
                     )
 
-                    self.conv3d_1 = Conv3D(
-                        num_channels=3, num_filters=2, filter_size=3, act="relu"
+                    self.conv3d_1 = paddle.nn.Conv3D(
+                        in_channels=3, out_channels=2, kernel_size=3
                     )
-                    self.conv3d_2 = Conv3D(
-                        num_channels=3, num_filters=2, filter_size=3, act="relu"
+                    self.conv3d_2 = paddle.nn.Conv3D(
+                        in_channels=3, out_channels=2, kernel_size=3
                     )
 
                     self.batch_norm_1 = BatchNorm(10)

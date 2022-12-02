@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import os
+import unittest
 from functools import partial
 from typing import Any, Dict, List
-import unittest
-import os
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
@@ -48,7 +50,13 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
                 [batch, 16, 32, 64],
             ]:
                 self.in_dim = len(shape_input)
-                for epsilon in [0.0005, -1, 1]:
+                for epsilon in [
+                    0.0005,
+                    -1,
+                    1,
+                    0.000009999999747378752,
+                    0.00001,
+                ]:
                     dics = [{"epsilon": epsilon}]
                     ops_config = [
                         {

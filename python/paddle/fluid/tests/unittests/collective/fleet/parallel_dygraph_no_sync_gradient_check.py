@@ -14,11 +14,12 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 
 paddle.seed(1024)
 np.random.seed(2021)

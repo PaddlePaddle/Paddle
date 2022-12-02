@@ -12,27 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
+import os
 
 import paddle
-
-from paddle.optimizer import Optimizer
-from paddle.distributed.utils.log_utils import get_logger
-from paddle.fluid.framework import in_dygraph_mode
 
 # Old version
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import (
     ShardingOptimizerStage2,
-)
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
-    ShardingStage2,
-)
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import (
-    ShardingStage3,
-)
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
-    ShardingScaler,
 )
 
 # New version
@@ -48,6 +35,18 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
+    ShardingStage2,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import (
+    ShardingStage3,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
+    ShardingScaler,
+)
+from paddle.distributed.utils.log_utils import get_logger
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.optimizer import Optimizer
 
 logger_ = get_logger(logging.WARNING)
 
@@ -117,6 +116,12 @@ def group_sharded_parallel(
             optimizer.step()
             optimizer.clear_grad()
     """
+
+    device = paddle.get_device().split(":")[0]
+    assert device in [
+        "gpu",
+        "xpu",
+    ], "group_sharded_parallel only support gpu and xpu now"
     # check optition type
     assert isinstance(
         model, paddle.nn.Layer
@@ -148,6 +153,7 @@ def group_sharded_parallel(
                 group=group,
                 offload=offload,
                 dp_group=dp_group,
+                device=device,
             )
             model = GroupShardedStage2(
                 model,
@@ -156,6 +162,7 @@ def group_sharded_parallel(
                 sync_buffers=sync_buffers,
                 buffer_max_size=buffer_max_size,
                 dp_group=dp_group,
+                device=device,
             )
         else:
             optimizer = ShardingOptimizerStage2(
@@ -163,6 +170,7 @@ def group_sharded_parallel(
                 optim=optimizer,
                 group=group,
                 offload=offload,
+                device=device,
             )
             model = ShardingStage2(
                 model,
@@ -170,6 +178,7 @@ def group_sharded_parallel(
                 group=group,
                 sync_buffers=sync_buffers,
                 buffer_max_size=buffer_max_size,
+                device=device,
             )
     elif level == 'p_g_os':
         if in_dygraph_mode():
@@ -181,6 +190,7 @@ def group_sharded_parallel(
                 segment_size=segment_size,
                 offload=offload,
                 sync_comm=sync_comm,
+                device=device,
             )
         else:
             model = ShardingStage3(
@@ -191,6 +201,7 @@ def group_sharded_parallel(
                 segment_size=segment_size,
                 offload=offload,
                 sync_comm=sync_comm,
+                device=device,
             )
     else:
         raise ValueError("Please enter the correct level.")

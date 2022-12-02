@@ -31,6 +31,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+    const std::string act_method = ctx.Attr<std::string>("act_method");
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -61,7 +62,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-
     // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
     // compute_bias as false.
     auto qkv_compute = AttnMatMul<T>(dev_ctx,
@@ -191,24 +191,23 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
         &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
-    // 6. ffn1 matmul + bias_add + gelu.
+    // 6. ffn1 matmul + act + bias
     auto ffn1_weights = ctx.MultiInput<phi::DenseTensor>("FFN1Weight");
     auto ffn1_biases = ctx.MultiInput<phi::DenseTensor>("FFN1Bias");
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[1];
 
+    auto ffn1_cublas_linear = CublasFusedMLP<T>(dev_ctx);
+    const phi::DDim ffn1_input_shape({bsz_seq, dim_embed});
+    ffn1_cublas_linear.Setup(ffn1_input_shape, ffn1_weight_dim, false, false);
+
     Tensor ffn1_out;
     ffn1_out.Resize({{bsz_seq, dim_ffn}});
     auto *ffn1_out_data =
         dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
-    auto ffn1_linear_bias_gelu = CublasFusedMLP<T>(dev_ctx);
-    const phi::DDim ffn1_input_shape({bsz_seq, dim_ffn});
-    ffn1_linear_bias_gelu.Setup(
-        ffn1_input_shape, ffn1_weight_dim, false, false);
-
-    // 8. ffn2 matmul + bias_add + residual.
+    // 7. ffn2 matmul + bias + residual.
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
 
@@ -216,7 +215,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     ffn2_linear_bias_residual.Setup(
         ffn1_out.dims(), ffn2_weights[0]->dims(), false, false);
 
-    // 9. ffn2 residual bias
+    // 8. ffn2 Layernorm
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
         dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
@@ -333,7 +332,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                                     &attn_dropout_out,
                                                     &qktv_out,
                                                     &fmha_out);
-
         const T *k_ptr = nullptr;
         const T *v_ptr = nullptr;
 
@@ -450,20 +448,23 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             ln_mean_data,
             ln_var_data);
       }
-
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
 #endif
-      // step6. ffn1 matmul + bias_add + gelu.
 
-      ffn1_linear_bias_gelu.ComputeForward(
-          buf1, ffn1_weights[i], ffn1_biases[i], nullptr, &ffn1_out, "gelu");
+      // step6. ffn matmul1
+      ffn1_cublas_linear.ComputeForward(buf1,
+                                        ffn1_weights[i],
+                                        ffn1_biases[i],
+                                        nullptr,
+                                        &ffn1_out,
+                                        act_method);
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
 #endif
 
-      // step7. ffn2 matmul + bias_add + residual.
+      // step7. ffn2 matmul
       if (pre_layer_norm) {
         ffn2_linear_bias_residual.ComputeForward(&ffn1_out,
                                                  ffn2_weights[i],
@@ -477,18 +478,21 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             &ffn1_out, ffn2_weights[i], ffn2_biases[i], buf1, buf0, "none");
       }
 
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+      VLOG(0) << "step7";
+#endif
+
       if (pre_layer_norm) {
         AllReduce<T>(*buf1, ring_id, buf1->numel(), dev_ctx);
       } else {
         AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
-
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step7";
+      VLOG(0) << "step7.1";
 #endif
 
-      // step8. layer norm or do nothing(because bias_add + residual has been
-      // fused into cublasFusedMLP. )
+      // step8. layer norm or do nothing
+      // because bias_add + residual has been fused into cublasFusedMLP
       if (pre_layer_norm) {
         if (i < layers - 1) {
           auto *ln_scale_data = ln_scales[i + 1]->data<U>();
@@ -512,6 +516,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                             ln_mean_data,
                                             ln_var_data);
       }
+
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8";
 #endif
@@ -540,6 +545,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+    const std::string act_method = ctx.Attr<std::string>("act_method");
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -570,8 +576,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-    // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
-    // compute_bias as false.
+    // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we
+    // set compute_bias as false.
     auto qkv_compute = AttnMatMul<T>(dev_ctx,
                                      false,
                                      trans_qkvw,
@@ -979,7 +985,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       fused_act_dropout_helper.DropoutActBias(dev_ctx,
                                               ffn1_out_data,
                                               ffn1_biases[i]->data<T>(),
-                                              "gelu",
+                                              act_method,
                                               ffn1_dropout_out_data,
                                               ffn1_dropout_mask_data);
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER

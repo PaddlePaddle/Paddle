@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.nn import Sequential
+import paddle.fluid as fluid
+import paddle.nn as nn
 from paddle.distributed.fleet.meta_parallel import PipelineLayer
 from paddle.fluid.dygraph.layers import Layer
-import paddle.nn as nn
-import paddle.fluid as fluid
+from paddle.nn import Sequential
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -56,7 +57,7 @@ class SimpleNet(Layer):
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1, soft_label=False
         )
         return loss.mean()
@@ -105,7 +106,7 @@ class LossNet(Layer):
 
     def forward(self, args, y1):
         projection, x2 = args
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1[0], soft_label=False
         )
         return loss.mean()

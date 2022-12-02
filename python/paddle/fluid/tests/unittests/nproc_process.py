@@ -14,6 +14,7 @@
 
 import os
 import sys
+
 import paddle.fluid as fluid
 
 

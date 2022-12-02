@@ -12,8 +12,325 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import abstractmethod
 
-class OperatorGroupUtil:
+from ..graph import Graph
+
+_PATTERNS = {}
+
+
+def register_pattern(cls):
+    """Register pattern for rule-based tuner."""
+    name = cls.name
+
+    def register(name):
+        global _PATTERNS
+        _PATTERNS[name] = cls()
+
+    register(name)
+
+    return cls
+
+
+class BasePattern(Graph):
+    name = "base"
+
+    def __init__(self):
+        super().__init__()
+        self.build()
+
+    @abstractmethod
+    def build(self):
+        pass
+
+
+@register_pattern
+class QKVPattern(BasePattern):
+    name = "qkv"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        query = self.add_node(0, **{"type": "var"})
+
+        q_weight = self.add_node(1, **{"dim": 2, "type": "param"})
+        k_weight = self.add_node(2, **{"dim": 2, "type": "param"})
+        v_weight = self.add_node(3, **{"dim": 2, "type": "param"})
+
+        q_matmul = self.add_node(4, **{"type": "matmul_v2"})
+        k_matmul = self.add_node(5, **{"type": "matmul_v2"})
+        v_matmul = self.add_node(6, **{"type": "matmul_v2"})
+
+        q_x = self.add_edge(0, 4, **{"input_name": "X"})
+        k_x = self.add_edge(0, 5, **{"input_name": "X"})
+        v_x = self.add_edge(0, 6, **{"input_name": "X"})
+        q_y = self.add_edge(1, 4, **{"input_name": "Y"})
+        k_y = self.add_edge(2, 5, **{"input_name": "Y"})
+        v_y = self.add_edge(3, 6, **{"input_name": "Y"})
+
+        q = self.add_node(7, **{"type": "var"})
+        k = self.add_node(8, **{"type": "var"})
+        v = self.add_node(9, **{"type": "var"})
+
+        q_out = self.add_edge(4, 7, **{"output_name": "Out"})
+        k_out = self.add_edge(5, 8, **{"output_name": "Out"})
+        v_out = self.add_edge(6, 9, **{"output_name": "Out"})
+
+        # Pattern
+        self.attrs["shard_spec"] = [
+            [(1, 2, 3), [[-1, 0], [-1, 1]]],
+        ]  # 2-tuple list such as [(tensor_id, shard_sepc)]
+
+
+def convert_to_graph(ops, block):
+    """Convert ops to graph."""
+    graph = Graph()
+    graph.attrs["var_to_id"] = {}  # {var_name: node_id}
+    graph.attrs["id_to_var"] = {}  # {node_id: var_name}
+    graph.attrs["op_to_id"] = {}  # {op_id: node_id}
+    graph.attrs["id_to_op"] = {}  # {node_id: op_id}
+
+    node_id = -1
+    for op in ops:
+        attrs = op.all_attrs()
+        attrs["type"] = op.type
+        node_id += 1
+
+        # create op node
+        op_node = graph.add_node(node_id, **attrs)
+        graph.attrs["op_to_id"][op.desc.id()] = op_node.id
+        graph.attrs["id_to_op"][op_node.id] = op.desc.id()
+        graph._attr_to_nodes[op_node.id] = {}
+        for input_name in op.input_names:
+            graph._attr_to_nodes[op_node.id][input_name] = []
+            for var_name in op.input(input_name):
+                if var_name not in graph.attrs["var_to_id"]:
+                    # create var node
+                    node_id += 1
+                    var_node = graph.add_node(node_id)
+                    var = block._var_recursive(var_name)
+                    if var.is_parameter:
+                        var_node.attrs["type"] = "param"
+                        var_node.attrs["dim"] = len(var.shape)
+                    else:
+                        var_node.attrs["type"] = "var"
+                    graph.attrs["var_to_id"][var_name] = var_node.id
+                    graph.attrs["id_to_var"][var_node.id] = var_name
+                else:
+                    var_node_id = graph.attrs["var_to_id"][var_name]
+                    var_node = graph._nodes[var_node_id]
+
+                # create edge that input -> op
+                input_edge = graph.add_edge(var_node.id, op_node.id)
+                input_edge.attrs["input_name"] = input_name
+                graph._attr_to_nodes[op_node.id][input_name].append(var_node)
+
+            for output_name in op.output_names:
+                graph._attr_to_nodes[op_node.id][output_name] = []
+                for var_name in op.output(output_name):
+                    if var_name not in graph.attrs["var_to_id"]:
+                        # create var node
+                        node_id += 1
+                        var_node = graph.add_node(node_id)
+                        var = block._var_recursive(var_name)
+                        if var.is_parameter:
+                            var_node.attrs["type"] = "param"
+                        else:
+                            var_node.attrs["type"] = "var"
+                        graph.attrs["var_to_id"][var_name] = var_node.id
+                        graph.attrs["id_to_var"][var_node.id] = var_name
+                    else:
+                        var_node_id = graph.attrs["var_to_id"][var_name]
+                        var_node = graph._nodes[var_node_id]
+
+                    # create edge that op -> output
+                    output_edge = graph.add_edge(op_node.id, var_node.id)
+                    output_edge.attrs["output_name"] = output_name
+
+                    graph._attr_to_nodes[op_node.id][output_name].append(
+                        var_node
+                    )
+
+    return graph
+
+
+def match(pattern, graph):
+    def _is_op_node(node):
+        """Judge whether node is op node"""
+        if node.attrs["type"] not in ["var", "param", "data"]:
+            return True
+
+        return False
+
+    def _compare_op_node(src, tgt):
+        """Compare whether two op nodes are equal"""
+        if src.attrs["type"] != tgt.attrs["type"]:
+            return False
+
+        return True
+
+    def _compare_var_node(src, tgt):
+        """Compare whether two var nodes are equal"""
+        for key in src.attrs:
+            if key not in tgt.attrs:
+                return False
+            if src.attrs[key] != tgt.attrs[key]:
+                return False
+
+        return True
+
+    def _match_core(src_node, tgt_node):
+        nonlocal not_matched
+        # do not support one input name or output name corresponding to multiple vars
+        if not_matched:
+            return
+
+        if _is_op_node(src_node):
+            # compare op node whether equal
+            if not _compare_op_node(src_node, tgt_node):
+                return
+
+            result[src_node.id] = tgt_node.id
+
+            # input var nodes
+            src_input_nodes = src_reverse_adjs[src_node.id]
+            for node in src_input_nodes:
+                # has visited
+                if node.id in result:
+                    continue
+                edge = src_edges[node.id][src_node.id]
+                input_name = edge.attrs["input_name"]
+
+                # NOTE: do not support one input name or output name corresponding to multiple vars
+                compare_nodes = tgt_attr_to_nodes[tgt_node.id].get(
+                    input_name, None
+                )
+                if not compare_nodes:
+                    not_matched = True
+                    return
+                _match_core(node, compare_nodes[0])
+
+            # output var nodes
+            src_output_node_ids = src_edges[src_node.id].keys()
+            for node_id in src_output_node_ids:
+                # has visited
+                if node_id in result:
+                    continue
+                node = src_nodes[node_id]
+                edge = src_edges[src_node.id][node_id]
+                output_name = edge.attrs["output_name"]
+
+                # NOTE: do not support one input name or output name corresponding to multiple vars
+                compare_nodes = tgt_attr_to_nodes[tgt_node.id].get(
+                    output_name, None
+                )
+                if not compare_nodes:
+                    not_matched = True
+                    return
+                _match_core(node, compare_nodes[0])
+
+        else:
+            # compare var node whether equal
+            if not _compare_var_node(src_node, tgt_node):
+                not_matched = True
+                return
+
+            result[src_node.id] = tgt_node.id
+
+            # as input for op nodes
+            src_as_input_node_ids = src_edges[src_node.id].keys()
+            for node_id in src_as_input_node_ids:
+                if node_id in result:
+                    continue
+
+                src_edge = src_edges[src_node.id][node_id]
+                input_name = src_edge.attrs["input_name"]
+                compare_node_ids = tgt_edges[tgt_node.id].keys()
+
+                compare_node = None
+                for compare_node_id in compare_node_ids:
+                    edge = tgt_edges[tgt_node.id][compare_node_id]
+                    if (
+                        edge.attrs["input_name"] == input_name
+                        and compare_node_id not in result.values()
+                    ):
+                        compare_node = tgt_nodes[compare_node_id]
+                        break
+
+                if not compare_node:
+                    not_matched = True
+                    return
+                _match_core(src_nodes[node_id], compare_node)
+
+            # as output for nodes
+            src_as_output_nodes = src_reverse_adjs[src_node.id]
+            for node in src_as_output_nodes:
+                if node.id in result:
+                    continue
+
+                src_edge = src_edges[node.id][src_node.id]
+                output_name = src_edge.attrs["output_name"]
+
+                compare_node_ids = tgt_reverse_adjs[tgt_node.id]
+
+                compare_node = None
+                for node_id in compare_node_ids:
+                    edge = tgt_edges[node_id][tgt_node.id]
+                    if edge.attrs["output_name"] == output_name:
+                        compare_node = tgt_nodes[node_id]
+                        break
+                if not compare_node:
+                    not_matched = True
+                    return
+                _match_core(src_nodes[node_id], compare_node)
+
+    results = []
+    result = {}
+    has_matched = set()
+    src_nodes = pattern.nodes
+    src_edges = pattern._adjs
+    src_reverse_adjs = pattern._reverse_adjs
+
+    tgt_nodes = graph.nodes
+    tgt_edges = graph._adjs
+    tgt_reverse_adjs = graph._reverse_adjs
+    tgt_attr_to_nodes = graph._attr_to_nodes
+    not_matched = False
+
+    # starts with a op node
+    src_start_node = None
+    for node_id in src_nodes:
+        node = src_nodes[node_id]
+        if node.attrs["type"] not in ["var", "param", "data"]:
+            src_start_node = node
+            break
+    assert src_start_node is not None
+
+    for node_id in tgt_nodes:
+        node = tgt_nodes[node_id]
+        if node.attrs["type"] == src_start_node.attrs["type"]:
+            _match_core(src_start_node, node)
+            if not not_matched:
+                need_to_append = True
+                for value in result.values():
+                    if value in has_matched:
+                        result = {}
+                        need_to_append = False
+                        break
+                if need_to_append:
+                    results.append(result)
+                    for value in result.values():
+                        has_matched.add(value)
+                    result = {}
+            else:
+                not_matched = False
+                result = {}
+
+    return results
+
+
+class OperatorClusteringUtil:
     common_starts = ["layer_norm", "matmul_v2", "matmul"]
 
     @staticmethod
@@ -121,7 +438,10 @@ class OperatorGroupUtil:
                 min_index = min(index_group)
                 if max_index - min_index >= k:
                     longest_sub_seq = seq[min_index : min_index + k]
-                    if longest_sub_seq[0] in OperatorGroupUtil.common_starts:
+                    if (
+                        longest_sub_seq[0]
+                        in OperatorClusteringUtil.common_starts
+                    ):
                         return longest_sub_seq
             if longest_sub_seq is not None:
                 return longest_sub_seq
@@ -189,9 +509,9 @@ class RuleBasedTuner:
         self._dist_context = dist_context
         self._mode = mode
 
-    def group_operators(self, ops):
+    def cluster_operators(self, ops):
         """
-        Group operators to layers.
+        Cluster operators to layers.
 
         Args:
             ops (list): A operator list.
@@ -201,7 +521,7 @@ class RuleBasedTuner:
         """
         seq = [op.type for op in ops]
 
-        while not OperatorGroupUtil.stop_replace(seq):
+        while not OperatorClusteringUtil.stop_replace(seq):
             to_replace_seq = []
             to_replace_idxes = []
             has_append = False
@@ -215,11 +535,15 @@ class RuleBasedTuner:
                 elif isinstance(seq, list) and has_append:
                     break
 
-            ranks = OperatorGroupUtil.get_ranks(to_replace_seq)
-            suffixes = OperatorGroupUtil.get_suffixes(ranks)
-            heights = OperatorGroupUtil.get_heights(suffixes, to_replace_seq)
-            longest_sub_seq = OperatorGroupUtil.get_longest_repeated_sub_seq(
-                suffixes, heights, to_replace_seq
+            ranks = OperatorClusteringUtil.get_ranks(to_replace_seq)
+            suffixes = OperatorClusteringUtil.get_suffixes(ranks)
+            heights = OperatorClusteringUtil.get_heights(
+                suffixes, to_replace_seq
+            )
+            longest_sub_seq = (
+                OperatorClusteringUtil.get_longest_repeated_sub_seq(
+                    suffixes, heights, to_replace_seq
+                )
             )
             has_merged = False
             if longest_sub_seq is None:
@@ -238,10 +562,10 @@ class RuleBasedTuner:
                     seq = [to_replace_seq]
                     break
 
-            decomposed_sub_seq = OperatorGroupUtil.get_decomposed_sub_seq(
+            decomposed_sub_seq = OperatorClusteringUtil.get_decomposed_sub_seq(
                 longest_sub_seq
             )
-            to_replace_seq = OperatorGroupUtil.replace_by_decomposed_seq(
+            to_replace_seq = OperatorClusteringUtil.replace_by_decomposed_seq(
                 decomposed_sub_seq, to_replace_seq
             )
             result = seq[: to_replace_idxes[0]]

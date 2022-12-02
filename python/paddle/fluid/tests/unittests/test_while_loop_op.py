@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -31,7 +32,7 @@ class TestApiWhileLoop(unittest.TestCase):
             return layers.less_than(i, ten)
 
         def body(i):
-            return layers.elementwise_add(x=i, y=one)
+            return paddle.add(x=i, y=one)
 
         main_program = Program()
         startup_program = Program()
@@ -57,7 +58,7 @@ class TestApiWhileLoop(unittest.TestCase):
             return layers.less_than(i, ten)
 
         def body(i, mem):
-            mem = layers.elementwise_add(x=mem, y=one)
+            mem = paddle.add(x=mem, y=one)
             i = layers.increment(i)
             return [i, mem]
 
@@ -165,8 +166,8 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
                 return layers.less_than(j, loop_len2)
 
             def internal_body(j, init, sums):
-                init = layers.elementwise_add(x=init, y=ones)
-                sums = layers.elementwise_add(x=init, y=sums)
+                init = paddle.add(x=init, y=ones)
+                sums = paddle.add(x=init, y=sums)
                 j = layers.increment(j)
                 return [j, init, sums]
 
@@ -176,7 +177,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             j = result[0]
             init = result[1]
             sums = result[2]
-            sums = layers.elementwise_add(x=init, y=sums)
+            sums = paddle.add(x=init, y=sums)
             i = layers.increment(i)
             return [i, j, init, sums]
 
@@ -221,7 +222,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             return layers.less_than(i, eleven)
 
         def body(i, x):
-            x = layers.elementwise_mul(x=i, y=i)
+            x = paddle.multiply(x=i, y=i)
             i = layers.increment(i)
             return [i, x]
 
@@ -315,16 +316,16 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             def internal_body(j, x, mem_array):
                 inner_data = layers.array_read(array=data_array, i=j)
                 inner_prev = layers.array_read(array=mem_array, i=j)
-                inner_sum_0 = layers.elementwise_add(x=inner_data, y=inner_prev)
-                inner_sum_1 = layers.elementwise_add(x=x, y=inner_sum_0)
+                inner_sum_0 = paddle.add(x=inner_data, y=inner_prev)
+                inner_sum_1 = paddle.add(x=x, y=inner_sum_0)
                 j = layers.increment(x=j, in_place=True)
                 layers.array_write(inner_sum_1, i=j, array=mem_array)
                 return [j, x, mem_array]
 
             outer_data = layers.array_read(array=data_array, i=i)
             outer_prev = layers.array_read(array=mem_array, i=i)
-            outer_sum_0 = layers.elementwise_add(x=outer_data, y=outer_prev)
-            outer_sum_1 = layers.elementwise_add(x=x, y=outer_sum_0)
+            outer_sum_0 = paddle.add(x=outer_data, y=outer_prev)
+            outer_sum_1 = paddle.add(x=x, y=outer_sum_0)
             i = layers.increment(x=i, in_place=True)
             layers.array_write(outer_sum_1, i=i, array=mem_array)
             j, x, mem_array = layers.while_loop(
@@ -393,15 +394,15 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
 
         def body(i):
             def fn_add_three():
-                data_add_three = layers.elementwise_add(x=i, y=three)
+                data_add_three = paddle.add(x=i, y=three)
                 return data_add_three
 
             def fn_square():
-                data_mul_data = layers.elementwise_mul(x=i, y=i)
+                data_mul_data = paddle.multiply(x=i, y=i)
                 return data_mul_data
 
             def fn_add_one():
-                data_add_one = layers.elementwise_add(x=i, y=one)
+                data_add_one = paddle.add(x=i, y=one)
                 return data_add_one
 
             return layers.switch_case(

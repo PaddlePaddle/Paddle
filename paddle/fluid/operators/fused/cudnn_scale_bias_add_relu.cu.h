@@ -89,12 +89,12 @@ struct ScaleBiasAddReluArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  platform::TensorDescriptor in_desc;
-  platform::TensorDescriptor out_desc;
-  platform::TensorDescriptor equiv_scale_bias_desc;
-  platform::TensorDescriptor scale_bias_mean_var_desc;
-  platform::TensorDescriptor bitmask_desc;
-  platform::ActivationDescriptor activation_desc;
+  phi::backends::gpu::TensorDescriptor in_desc;
+  phi::backends::gpu::TensorDescriptor out_desc;
+  phi::backends::gpu::TensorDescriptor equiv_scale_bias_desc;
+  phi::backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
+  phi::backends::gpu::TensorDescriptor bitmask_desc;
+  phi::backends::gpu::ActivationDescriptor activation_desc;
 };
 
 template <typename T>
