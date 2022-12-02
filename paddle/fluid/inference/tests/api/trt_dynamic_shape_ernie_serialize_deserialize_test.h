@@ -135,14 +135,9 @@ static void trt_ernie(bool with_fp16, std::vector<float> result) {
   if (with_fp16) {
     precision = AnalysisConfig::Precision::kHalf;
   }
-
-#if defined _WIN32
-#else
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, true, false);
   paddle_infer::experimental::InternalUtils::SetTransformerMaskid(
       &config, "read_file_0.tmp_4");
-#endif
-
   config.SetTRTDynamicShapeInfo(
       min_input_shape, max_input_shape, opt_input_shape);
   AnalysisConfig* config_deser = new AnalysisConfig(config);
