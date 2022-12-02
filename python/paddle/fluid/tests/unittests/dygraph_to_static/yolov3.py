@@ -326,7 +326,7 @@ class YOLOv3(fluid.dygraph.Layer):
                     downsample_ratio=self.downsample,
                     use_label_smooth=cfg.label_smooth,
                 )
-                self.losses.append(fluid.layers.reduce_mean(loss))
+                self.losses.append(paddle.mean(loss))
 
             else:
                 mask_anchors = []

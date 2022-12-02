@@ -223,7 +223,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     ).astype('float32')
                 )
                 dygraph_out = layer(in_x)
-                loss = fluid.layers.reduce_mean(dygraph_out)
+                loss = paddle.mean(dygraph_out)
                 loss.backward()
                 optimizer.minimize(loss)
         return layer
