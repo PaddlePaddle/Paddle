@@ -16,6 +16,7 @@ import numpy as np
 import time
 import sys
 import logging
+import paddle
 
 import paddle
 import paddle.fluid as fluid
@@ -61,7 +62,7 @@ class AdaRoundLoss:
         self.default_beta_range = default_beta_range
 
     def compute_recon_loss(self, ada_quantized_output, orig_output):
-        square_cost = fluid.layers.square_error_cost(
+        square_cost = paddle.nn.functional.square_error_cost(
             ada_quantized_output, orig_output
         )
         recon_loss = paddle.mean(paddle.sum(square_cost, axis=-1))

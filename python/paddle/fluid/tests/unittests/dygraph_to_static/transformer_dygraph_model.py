@@ -576,7 +576,7 @@ class CrossEntropyCriterion:
                 epsilon=self.label_smooth_eps,
             )
 
-        cost = layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self.label_smooth_eps else False,
