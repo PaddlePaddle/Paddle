@@ -692,10 +692,10 @@ def _rnn_static_graph(
         cond = start_i < end
     while_op = control_flow.While(cond)
 
-    out_array = control_flow.create_array(dtype=flatten(inputs)[0].dtype)
+    out_array = paddle.tensor.create_array(dtype=flatten(inputs)[0].dtype)
 
     init_array = map_structure(
-        lambda x: control_flow.create_array(dtype=x.dtype), initial_states
+        lambda x: paddle.tensor.create_array(dtype=x.dtype), initial_states
     )
 
     map_structure(
@@ -709,7 +709,7 @@ def _rnn_static_graph(
         step_in = inputs[start_i]
         # step_in = paddle.fluid.layers.Print( step_in, message="step in")
         pre_state = map_structure(
-            lambda x: control_flow.array_read(x, start_i), init_array
+            lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
         # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
         outputs, new_states = cell(step_in, pre_state, **kwargs)
@@ -728,7 +728,7 @@ def _rnn_static_graph(
                 pre_state,
             )
 
-        control_flow.array_write(outputs, start_i, out_array)
+        paddle.tensor.array_write(outputs, start_i, out_array)
 
         with paddle.fluid.framework.device_guard("cpu"):
 
@@ -736,13 +736,14 @@ def _rnn_static_graph(
                 x=start_i, value=1, in_place=True
             )
         map_structure(
-            lambda x, y: control_flow.array_write(x, start_i, y),
+            lambda x, y: paddle.tensor.array_write(x, start_i, y),
             new_states,
             init_array,
         )
 
         with paddle.fluid.framework.device_guard("cpu"):
-            paddle.fluid.layers.less_than(x=start_i, y=end, cond=cond)
+            new_cond = paddle.tensor.less_than(start_i, end)
+            paddle.fluid.layers.assign(new_cond, cond)
 
     out, _ = paddle.fluid.layers.tensor_array_to_tensor(
         out_array, axis=0, use_stack=True
