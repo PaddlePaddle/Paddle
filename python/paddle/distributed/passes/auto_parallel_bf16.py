@@ -73,54 +73,7 @@ class BF16State(object):
             if op.type == "create_py_reader" or op.type == "read":
                 continue
             if int(op.attr("op_role")) == int(OpRole.Forward):
-                if self.fp32_varnames is not None and _is_in_fp32_varnames(
-                    op, self
-                ):
-                    self._op_bf16_dict[op.desc.original_id()] = False
-                    continue
-                if op.type in self.bf16_list:
-                    self._op_bf16_dict[op.desc.original_id()] = True
-                elif op.type in self.gray_list:
-                    is_fp32_op = False
-                    is_bf16_op = False
-                    for in_name in op.input_names:
-                        if in_name:
-                            for in_var_name in op.input(in_name):
-                                in_var = self._block.var(in_var_name)
-                                if in_var.op is None:
-                                    continue
-                                elif in_var.op is op:
-                                    prev_op = find_true_prev_op(
-                                        ops, op, in_var_name
-                                    )
-                                    if prev_op is None:
-                                        continue
-                                else:
-                                    prev_op = in_var.op
-                                if (
-                                    self._op_bf16_dict.get(
-                                        prev_op.desc.original_id(), False
-                                    )
-                                    is False
-                                    or prev_op.type in self.fp32_list
-                                ):
-                                    is_fp32_op = True
-                                elif (
-                                    self._op_bf16_dict.get(
-                                        prev_op.desc.original_id(), False
-                                    )
-                                    is True
-                                    or prev_op.type in self.bf16_list
-                                ):
-                                    is_bf16_op = True
-                    if is_fp32_op:
-                        self._op_bf16_dict[op.desc.original_id()] = False
-                    elif is_bf16_op:
-                        self._op_bf16_dict[op.desc.original_id()] = True
-                    else:
-                        pass
-                else:
-                    self._op_bf16_dict[op.desc.original_id()] = False
+                self._mark_forward_program_op(op, ops)
             elif int(op.attr("op_role")) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_original_id = dist_op_context.grad_op_id_to_op_id[
@@ -132,6 +85,52 @@ class BF16State(object):
             elif int(op.attr("op_role")) == int(OpRole.Optimize):
                 return training
         return training
+
+    def _mark_forward_program_op(self, op, ops):
+        if self.fp32_varnames is not None and _is_in_fp32_varnames(op, self):
+            self._op_bf16_dict[op.desc.original_id()] = False
+            return
+        if op.type in self.bf16_list:
+            self._op_bf16_dict[op.desc.original_id()] = True
+        elif op.type in self.gray_list:
+            is_fp32_op = False
+            is_bf16_op = False
+            for in_name in op.input_names:
+                if in_name:
+                    for in_var_name in op.input(in_name):
+                        in_var = self._block.var(in_var_name)
+                        if in_var.op is None:
+                            continue
+                        elif in_var.op is op:
+                            prev_op = find_true_prev_op(ops, op, in_var_name)
+                            if prev_op is None:
+                                continue
+                        else:
+                            prev_op = in_var.op
+                        if (
+                            self._op_bf16_dict.get(
+                                prev_op.desc.original_id(), False
+                            )
+                            is False
+                            or prev_op.type in self.fp32_list
+                        ):
+                            is_fp32_op = True
+                        elif (
+                            self._op_bf16_dict.get(
+                                prev_op.desc.original_id(), False
+                            )
+                            is True
+                            or prev_op.type in self.bf16_list
+                        ):
+                            is_bf16_op = True
+            if is_fp32_op:
+                self._op_bf16_dict[op.desc.original_id()] = False
+            elif is_bf16_op:
+                self._op_bf16_dict[op.desc.original_id()] = True
+            else:
+                pass
+        else:
+            self._op_bf16_dict[op.desc.original_id()] = False
 
     def rewrite_forward_program(self, dist_context):
         ops = self._block.ops
@@ -346,29 +345,26 @@ class BF16State(object):
                             self._block._find_var_recursive(in_var_name).dtype
                             == src_dtype
                         )
-            else:
-                for in_var_name in op.input(in_name):
-                    in_var = self._block._find_var_recursive(in_var_name)
-                    if in_var.dtype == src_dtype:
-                        consume_op_attr = (
-                            dist_context.get_op_dist_attr_for_program(op)
-                        )
-                        if (
+                    continue
+            for in_var_name in op.input(in_name):
+                in_var = self._block._find_var_recursive(in_var_name)
+                if in_var.dtype == src_dtype:
+                    consume_op_attr = dist_context.get_op_dist_attr_for_program(
+                        op
+                    )
+                    if in_var_name in self._var_name_dict[fwd_op_original_id]:
+                        cast_name = self._var_name_dict[fwd_op_original_id][
                             in_var_name
-                            in self._var_name_dict[fwd_op_original_id]
-                        ):
-                            cast_name = self._var_name_dict[fwd_op_original_id][
-                                in_var_name
-                            ]
-                            op.desc._rename_input(in_var_name, cast_name)
-                            in_var_dist_attr = (
-                                consume_op_attr.get_input_dist_attr(in_var_name)
-                            )
-                            consume_op_attr.set_input_dist_attr(
-                                cast_name, in_var_dist_attr
-                            )
-                        else:
-                            assert in_var.dtype == dst_dtype
+                        ]
+                        op.desc._rename_input(in_var_name, cast_name)
+                        in_var_dist_attr = consume_op_attr.get_input_dist_attr(
+                            in_var_name
+                        )
+                        consume_op_attr.set_input_dist_attr(
+                            cast_name, in_var_dist_attr
+                        )
+                    else:
+                        assert in_var.dtype == dst_dtype
 
         for out_name in op.output_names:
             if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
