@@ -6404,7 +6404,7 @@ class RecomputeOptimizer(Optimizer):
                 fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                 prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                 cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y)
-                sum_cost = fluid.layers.reduce_mean(cost)
+                sum_cost = paddle.mean(cost)
                 return sum_cost, fc_1, prediction
             input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
             input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
@@ -6478,7 +6478,7 @@ class RecomputeOptimizer(Optimizer):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -6522,7 +6522,7 @@ class RecomputeOptimizer(Optimizer):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
 
@@ -7013,7 +7013,7 @@ class RecomputeOptimizer(Optimizer):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
 
@@ -7092,7 +7092,7 @@ class RecomputeOptimizer(Optimizer):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
