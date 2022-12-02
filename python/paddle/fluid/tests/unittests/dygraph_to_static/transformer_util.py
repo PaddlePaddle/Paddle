@@ -15,11 +15,12 @@
 import pickle
 import warnings
 from functools import partial
+
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.dataset.wmt16 as wmt16
+import paddle.fluid as fluid
 
 
 def get_input_descs(args, mode="train"):

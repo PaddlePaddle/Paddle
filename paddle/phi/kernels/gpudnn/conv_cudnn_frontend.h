@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -86,7 +86,8 @@ class CudnnFrontendConvHelper {
       cudnnTensorFormat_t layout_format) {
     auto transformed_dims = phi::vectorize<int64_t>(tensor->dims());
     if (layout_format == CUDNN_TENSOR_NHWC) {
-      transformed_dims = paddle::platform::TransformDimOrder(transformed_dims);
+      transformed_dims =
+          phi::backends::gpu::TransformDimOrder(transformed_dims);
     }
     std::vector<int64_t> strides =
         GenerateStrides(transformed_dims, layout_format);
@@ -95,7 +96,7 @@ class CudnnFrontendConvHelper {
         .setStrides(strides.size(), strides.data())
         .setId(id)
         .setAlignment(GetAlignment(tensor))
-        .setDataType(paddle::platform::ToCudnnDataType(tensor->dtype()))
+        .setDataType(phi::backends::gpu::ToCudnnDataType(tensor->dtype()))
         .build();
   }
 

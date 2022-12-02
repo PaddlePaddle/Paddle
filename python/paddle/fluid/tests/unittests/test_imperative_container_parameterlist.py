@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
+
 import paddle
+import paddle.fluid as fluid
 from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 
@@ -48,7 +50,7 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             self.assertEqual(len(model.params), num_stacked_param)
             res = model(x)
             self.assertListEqual(res.shape, [5, 2])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
             model.params[num_stacked_param - 1] = fluid.layers.create_parameter(
@@ -62,7 +64,7 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             self.assertEqual(len(model.params), num_stacked_param + 1)
             res = model(x)
             self.assertListEqual(res.shape, [5, 4])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
     def test_paramter_list(self):

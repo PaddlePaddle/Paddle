@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/transpose_op.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.h"
 
 namespace paddle {
 namespace operators {

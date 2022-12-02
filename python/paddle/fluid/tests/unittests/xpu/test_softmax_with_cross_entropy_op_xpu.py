@@ -16,17 +16,18 @@ import sys
 
 sys.path.append("..")
 
-from test_softmax_op import stable_softmax
-from op_test_xpu import XPUOpTest
-import paddle
-
 import unittest
+
 import numpy as np
+from op_test_xpu import XPUOpTest
+from test_softmax_op import stable_softmax
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):

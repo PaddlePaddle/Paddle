@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle import enable_static
+from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
     skip_check_grad_ci,
 )
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle import enable_static
 
 
 def _lookup(weights, ids, flat_ids, op_version="lookup_table"):

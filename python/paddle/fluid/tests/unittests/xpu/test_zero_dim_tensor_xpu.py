@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-import numpy as np
-import unittest
 
 paddle.set_device('xpu')
 
@@ -413,6 +415,16 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.logical_not(x)
 
         self.assertEqual(out.shape, [])
+
+    def test_searchsorted(self):
+        x = paddle.to_tensor([1, 3, 5, 7, 9])
+        y = paddle.rand([])
+
+        # only has forward kernel
+        out = paddle.searchsorted(x, y)
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 0)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

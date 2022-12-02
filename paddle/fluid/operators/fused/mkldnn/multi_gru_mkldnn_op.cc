@@ -26,11 +26,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::platform::CreateKey;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
+using phi::OneDNNContext;
 
 namespace {
 
@@ -52,18 +52,18 @@ template <typename T, typename T_out = T>
 class MultiGRUHandler {
  public:
   MultiGRUHandler(const paddle::framework::ExecutionContext& ctx,
-                  const platform::MKLDNNDeviceContext& dev_ctx)
+                  const OneDNNContext& dev_ctx)
       : dev_ctx_(dev_ctx),
         engine_(dev_ctx.GetEngine()),
         place_(ctx.GetPlace()),
         origin_mode_(ctx.Attr<bool>("origin_mode")),
         layers_(ctx.Attr<int>("layers")),
         concat_pds_(layers_, std::shared_ptr<dnnl::concat::primitive_desc>()),
-        x_(ctx.Input<LoDTensor>("X")),
+        x_(ctx.Input<phi::DenseTensor>("X")),
         weights_x_(ctx.MultiInput<phi::DenseTensor>("WeightX")),
         weights_h_(ctx.MultiInput<phi::DenseTensor>("WeightH")),
         biases_(ctx.MultiInput<phi::DenseTensor>("Bias")),
-        hidden_(ctx.Output<LoDTensor>("Hidden")),
+        hidden_(ctx.Output<phi::DenseTensor>("Hidden")),
         x_lod_(x_->lod()[0]) {
     PADDLE_ENFORCE_EQ(
         weights_x_.size(),
@@ -112,8 +112,9 @@ class MultiGRUHandler {
     const std::string unique_name = ctx.OutputName("Hidden");
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
-        dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
+    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+        dev_ctx,
+        phi::funcs::CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 
@@ -127,7 +128,8 @@ class MultiGRUHandler {
 
     if (is_int8) {
       // Add int8 attributes
-      const auto scale_weights = ctx.MultiInput<LoDTensor>("Scale_weights");
+      const auto scale_weights =
+          ctx.MultiInput<phi::DenseTensor>("Scale_weights");
       PADDLE_ENFORCE_EQ(
           scale_weights.size(),
           layers_ * 2,
@@ -319,7 +321,7 @@ class MultiGRUHandler {
 
     auto gru_forward_p0 = AcquireGruPrimitive(layer, dir);
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     gru_forward_p0->execute(astream, gru_args);
     astream.wait();
     return out_mem;
@@ -342,7 +344,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->src_iter_desc(), engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_h0_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_h0_memory, *memory_p);
 
@@ -382,7 +384,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->weights_layer_desc(), engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_memory, *memory_p);
 
@@ -439,7 +441,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->weights_iter_desc(), engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_memory, *memory_p);
 
@@ -546,7 +548,7 @@ class MultiGRUHandler {
 
     auto concat_p = AcquireConcatPrimitive(layer);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     concat_p->execute(astream, concat_args);
     astream.wait();
     return out_mem;
@@ -653,7 +655,7 @@ class MultiGRUHandler {
   int64_t N_, Ti_;
   std::vector<int64_t> ICs, OCs;
 
-  const platform::MKLDNNDeviceContext& dev_ctx_;
+  const OneDNNContext& dev_ctx_;
   const dnnl::engine engine_;
   const platform::Place place_;
   const bool origin_mode_;
@@ -669,11 +671,11 @@ class MultiGRUHandler {
   // on Ti size, thus we need another key to cache them
   std::string memory_key_;
 
-  const LoDTensor* x_;
+  const phi::DenseTensor* x_;
   const std::vector<const phi::DenseTensor*> weights_x_;
   const std::vector<const phi::DenseTensor*> weights_h_;
   const std::vector<const phi::DenseTensor*> biases_;
-  LoDTensor* hidden_;
+  phi::DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
   const paddle::framework::Vector<size_t>& x_lod_;
 };
@@ -694,8 +696,7 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     MultiGRUHandler<T, Tout> handler(ctx, dev_ctx);
 
     int layers = handler.getLayers();

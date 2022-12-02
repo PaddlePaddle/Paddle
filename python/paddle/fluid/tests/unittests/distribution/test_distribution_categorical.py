@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
+from test_distribution import DistributionNumpy
+
 import paddle
 from paddle import fluid
 from paddle.distribution import Categorical, Distribution, Normal, Uniform
 from paddle.fluid import layers
-
-from test_distribution import DistributionNumpy
 
 np.random.seed(2022)
 
