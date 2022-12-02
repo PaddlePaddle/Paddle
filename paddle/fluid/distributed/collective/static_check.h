@@ -23,6 +23,31 @@ namespace paddle {
 namespace distributed {
 
 struct CommStaticCheck {
+  static void CheckRank(int rank, int world_size);
+
+  static void CheckPlace(const phi::DenseTensor& tensor);
+
+  static void CheckPlace(const phi::DenseTensor& out_tensor,
+                         const phi::DenseTensor& in_tensor);
+
+  static void CheckDataType(const phi::DenseTensor& out_tensor,
+                            const phi::DenseTensor& in_tensor);
+
+  static void CheckShape(const phi::DenseTensor& tensor);
+
+  static void CheckShape(const phi::DenseTensor& out_tensor,
+                         const phi::DenseTensor& in_tensor,
+                         int out_size_factor,
+                         int in_size_factor);
+
+  static void CheckShape(const phi::DenseTensor& out_tensor,
+                         const phi::DenseTensor& in_tensor,
+                         int dst_rank,
+                         int cur_rank,
+                         int world_size,
+                         int out_size_factor,
+                         int in_size_factor);
+
   // for p2p
   static void SingleTensor(const phi::DenseTensor& tensor,
                            int rank,
@@ -31,25 +56,21 @@ struct CommStaticCheck {
   // for collective
   static void SameShape(const phi::DenseTensor& out_tensor,
                         const phi::DenseTensor& in_tensor,
-                        int rank,
+                        int dst_rank,
+                        int cur_rank,
                         int world_size);
 
   static void ScatterLikeShape(const phi::DenseTensor& out_tensor,
                                const phi::DenseTensor& in_tensor,
-                               int rank,
+                               int dst_rank,
+                               int cur_rank,
                                int world_size);
 
   static void GatherLikeShape(const phi::DenseTensor& out_tensor,
                               const phi::DenseTensor& in_tensor,
-                              int rank,
+                              int dst_rank,
+                              int cur_rank,
                               int world_size);
-
-  static void CustomShape(const phi::DenseTensor& out_tensor,
-                          const phi::DenseTensor& in_tensor,
-                          int rank,
-                          int world_size,
-                          int out_size_factor,
-                          int in_size_factor);
 };
 
 }  // namespace distributed

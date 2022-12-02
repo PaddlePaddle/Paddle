@@ -22,77 +22,7 @@
 namespace paddle {
 namespace distributed {
 
-void CommStaticCheck::SingleTensor(const phi::DenseTensor& tensor,
-                                   int rank,
-                                   int world_size) {
-  // place check
-  PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(tensor.place()),
-      true,
-      platform::errors::InvalidArgument("Tensor should be in GPU place."));
-  // rank check
-  PADDLE_ENFORCE_GE(rank,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Rank should be greater than or equal to 0."));
-  PADDLE_ENFORCE_LT(
-      rank,
-      world_size,
-      platform::errors::InvalidArgument("Rank is out of the process group."));
-}
-
-void CommStaticCheck::SameShape(const phi::DenseTensor& out_tensor,
-                                const phi::DenseTensor& in_tensor,
-                                int rank,
-                                int world_size) {
-  CustomShape(out_tensor,
-              in_tensor,
-              rank,
-              world_size,
-              /*out_size_factor*/ 1,
-              /*in_size_factor*/ 1);
-}
-
-void CommStaticCheck::ScatterLikeShape(const phi::DenseTensor& out_tensor,
-                                       const phi::DenseTensor& in_tensor,
-                                       int rank,
-                                       int world_size) {
-  CustomShape(out_tensor,
-              in_tensor,
-              rank,
-              world_size,
-              /*out_size_factor*/ world_size,
-              /*in_size_factor*/ 1);
-}
-
-void CommStaticCheck::GatherLikeShape(const phi::DenseTensor& out_tensor,
-                                      const phi::DenseTensor& in_tensor,
-                                      int rank,
-                                      int world_size) {
-  CustomShape(out_tensor,
-              in_tensor,
-              rank,
-              world_size,
-              /*out_size_factor*/ 1,
-              /*in_size_factor*/ world_size);
-}
-
-void CommStaticCheck::CustomShape(const phi::DenseTensor& out_tensor,
-                                  const phi::DenseTensor& in_tensor,
-                                  int rank,
-                                  int world_size,
-                                  int out_size_factor,
-                                  int in_size_factor) {
-  // place check
-  PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(out_tensor.place()),
-      true,
-      phi::errors::InvalidArgument("Output tensor should be in GPU place."));
-  PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(in_tensor.place()),
-      true,
-      phi::errors::InvalidArgument("Input tensor should be in GPU place."));
-  // rank check
+void CommStaticCheck::CheckRank(int rank, int world_size) {
   PADDLE_ENFORCE_GE(rank,
                     0,
                     phi::errors::InvalidArgument(
@@ -101,28 +31,124 @@ void CommStaticCheck::CustomShape(const phi::DenseTensor& out_tensor,
       rank,
       world_size,
       phi::errors::InvalidArgument("Rank is out of the process group."));
-  // shape check
-  int64_t out_size = out_tensor.numel();
-  PADDLE_ENFORCE_GT(out_size,
-                    0,
-                    phi::errors::InvalidArgument(
-                        "Size of output tensor should be greater than 0."));
-  int64_t in_size = in_tensor.numel();
-  PADDLE_ENFORCE_GT(in_size,
-                    0,
-                    phi::errors::InvalidArgument(
-                        "Size of input tensor should be greater than 0."));
+}
+
+void CommStaticCheck::CheckPlace(const phi::DenseTensor& tensor) {
   PADDLE_ENFORCE_EQ(
-      out_size * out_size_factor,
-      in_size * in_size_factor,
+      platform::is_gpu_place(tensor.place()),
+      true,
+      platform::errors::InvalidArgument("Tensor should be in GPU place."));
+}
+
+void CommStaticCheck::CheckPlace(const phi::DenseTensor& out_tensor,
+                                 const phi::DenseTensor& in_tensor) {
+  CheckPlace(out_tensor);
+  CheckPlace(in_tensor);
+  PADDLE_ENFORCE_EQ(
+      out_tensor.place(),
+      in_tensor.place(),
       phi::errors::InvalidArgument(
-          "Input and output tensors should have matching sizes."));
-  // dtype check
+          "Input and output tensors should be on the same place."));
+}
+
+void CommStaticCheck::CheckDataType(const phi::DenseTensor& out_tensor,
+                                    const phi::DenseTensor& in_tensor) {
   PADDLE_ENFORCE_EQ(
       out_tensor.dtype(),
       in_tensor.dtype(),
       phi::errors::InvalidArgument(
           "Input and output tensors should have the same data type."));
+}
+
+void CommStaticCheck::CheckShape(const phi::DenseTensor& tensor) {
+  PADDLE_ENFORCE_GT(
+      tensor.numel(),
+      0,
+      phi::errors::InvalidArgument("Size of tensor should be greater than 0."));
+}
+
+void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
+                                 const phi::DenseTensor& in_tensor,
+                                 int out_size_factor,
+                                 int in_size_factor) {
+  CheckShape(out_tensor);
+  CheckShape(in_tensor);
+  int64_t out_size = out_tensor.numel(), in_size = in_tensor.numel();
+  PADDLE_ENFORCE_EQ(
+      out_size * out_size_factor,
+      in_size * in_size_factor,
+      phi::errors::InvalidArgument(
+          "Input and output tensors should have matching sizes."));
+}
+
+void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
+                                 const phi::DenseTensor& in_tensor,
+                                 int dst_rank,
+                                 int cur_rank,
+                                 int world_size,
+                                 int out_size_factor,
+                                 int in_size_factor) {
+  CheckRank(dst_rank, world_size);
+  CheckRank(cur_rank, world_size);
+
+  CheckPlace(out_tensor, in_tensor);
+  CheckDataType(out_tensor, in_tensor);
+
+  if (dst_rank == cur_rank) {
+    CheckShape(out_tensor, in_tensor, out_size_factor, in_size_factor);
+  } else {
+    CheckShape(out_tensor);
+    CheckShape(in_tensor);
+  }
+}
+
+void CommStaticCheck::SingleTensor(const phi::DenseTensor& tensor,
+                                   int rank,
+                                   int world_size) {
+  CheckPlace(tensor);
+  CheckRank(rank, world_size);
+}
+
+void CommStaticCheck::SameShape(const phi::DenseTensor& out_tensor,
+                                const phi::DenseTensor& in_tensor,
+                                int dst_rank,
+                                int cur_rank,
+                                int world_size) {
+  CheckShape(out_tensor,
+             in_tensor,
+             dst_rank,
+             cur_rank,
+             world_size,
+             /*out_size_factor*/ 1,
+             /*in_size_factor*/ 1);
+}
+
+void CommStaticCheck::ScatterLikeShape(const phi::DenseTensor& out_tensor,
+                                       const phi::DenseTensor& in_tensor,
+                                       int dst_rank,
+                                       int cur_rank,
+                                       int world_size) {
+  CheckShape(out_tensor,
+             in_tensor,
+             dst_rank,
+             cur_rank,
+             world_size,
+             /*out_size_factor*/ world_size,
+             /*in_size_factor*/ 1);
+}
+
+void CommStaticCheck::GatherLikeShape(const phi::DenseTensor& out_tensor,
+                                      const phi::DenseTensor& in_tensor,
+                                      int dst_rank,
+                                      int cur_rank,
+                                      int world_size) {
+  CheckShape(out_tensor,
+             in_tensor,
+             dst_rank,
+             cur_rank,
+             world_size,
+             /*out_size_factor*/ 1,
+             /*in_size_factor*/ world_size);
 }
 
 }  //  namespace distributed
