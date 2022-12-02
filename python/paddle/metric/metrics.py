@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import abc
+
 import numpy as np
 
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import _non_static_mode, _varbase_creator
 import paddle
 from paddle import _legacy_C_ops
+
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import _non_static_mode, _varbase_creator
+from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
 

@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::platform::MKLDNNDeviceContext;
+using phi::OneDNNContext;
 
 template <typename T>
 class LRNOneDNNHandler
@@ -124,8 +124,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                       true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL LRN must use CPUPlace"));
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto x = ctx.Input<phi::DenseTensor>("X");
@@ -142,7 +141,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
     mid->set_layout(phi::DataLayout::ONEDNN);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {
       mid->set_mem_desc(workspace_memory->get_desc());
       lrn_p->execute(astream,
@@ -179,7 +178,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto in_x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
-    auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     LRNOneDNNHandler<T> handler(
@@ -192,7 +191,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto lrn_bwd = handler.AcquireBackwardPrimitive();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     lrn_bwd->execute(astream,
                      {{DNNL_ARG_SRC, *src_memory},
                       {DNNL_ARG_DIFF_DST, *diff_dst_memory},

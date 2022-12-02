@@ -18,13 +18,7 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import (
-    Embedding,
-    Layer,
-    LayerNorm,
-    Linear,
-    to_variable,
-)
+from paddle.fluid.dygraph import Embedding, Layer, Linear, to_variable
 from paddle.optimizer.lr import NoamDecay
 
 """
@@ -245,9 +239,9 @@ class PrePostProcessLayer(Layer):
         super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
-                self._layer_norm = LayerNorm(
+                self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    param_attr=fluid.ParamAttr(
+                    weight_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
@@ -941,7 +935,7 @@ class TransFormer(Layer):
                 epsilon=self._label_smooth_eps,
             )
 
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self._label_smooth_eps else False,

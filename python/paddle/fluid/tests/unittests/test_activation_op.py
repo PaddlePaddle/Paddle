@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from scipy.special import expit, erf
-
 from op_test import OpTest, convert_float_to_uint16
+from scipy.special import erf, expit
+
 import paddle
-import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
@@ -2417,8 +2417,8 @@ class TestLog(TestActivation):
             name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
         )
 
-        self.assertRaises(TypeError, fluid.layers.log, in1)
-        self.assertRaises(TypeError, fluid.layers.log, in2)
+        self.assertRaises(TypeError, paddle.log, in1)
+        self.assertRaises(TypeError, paddle.log, in2)
 
 
 class TestLog_ZeroDim(TestLog):

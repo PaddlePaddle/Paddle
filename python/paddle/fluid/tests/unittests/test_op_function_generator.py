@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import unittest
-from paddle.fluid.framework import in_dygraph_mode
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.jit.api import TracedLayer
-import numpy as np
 from paddle import _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.jit.api import TracedLayer
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
@@ -43,7 +46,7 @@ class TestVariable(unittest.TestCase):
             y = fluid.dygraph.to_variable(b)
             x.stop_gradient = False
 
-            res1 = layers.elementwise_add(x, y)
+            res1 = paddle.add(x, y)
             res2 = _legacy_C_ops.elementwise_add(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
@@ -55,7 +58,7 @@ class TestVariable(unittest.TestCase):
             x = fluid.dygraph.to_variable(a)
             y = fluid.dygraph.to_variable(b)
 
-            res1 = layers.elementwise_mul(x, y)
+            res1 = paddle.multiply(x, y)
             res2 = _legacy_C_ops.elementwise_mul(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())

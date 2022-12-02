@@ -72,7 +72,7 @@ class TestBase(IPUOpTest):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32'
                 )
-                bias = paddle.fluid.layers.create_parameter(
+                bias = paddle.create_parameter(
                     shape=[1, 3, 10, 10], is_bias=True, dtype='float32'
                 )
                 add1 = image + bias
