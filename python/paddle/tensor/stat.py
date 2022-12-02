@@ -16,11 +16,10 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode, Variable
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core
-from ..static import Variable
 from .math import _get_reduce_axis_with_tensor
 from .search import where
 

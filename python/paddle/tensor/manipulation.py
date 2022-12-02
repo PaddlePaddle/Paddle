@@ -38,8 +38,8 @@ from ..framework import (
     core,
     dygraph_only,
     in_dygraph_mode,
+    Variable,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []

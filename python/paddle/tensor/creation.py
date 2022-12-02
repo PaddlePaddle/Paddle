@@ -33,6 +33,8 @@ from ..fluid.data_feeder import (
 from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     _in_legacy_dygraph,
+    Variable,
+    device_guard,
 )
 from ..fluid.layers import utils
 from ..framework import (
@@ -43,8 +45,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
-)
-from ..static import Variable, device_guard
+) 
 
 __all__ = []
 
