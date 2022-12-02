@@ -3445,15 +3445,6 @@ class TestBook(LayerTest):
             output = layers.l2_normalize(x, axis=1)
             return output
 
-    def make_argsort(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(name='x', shape=[2, 3, 3], dtype="float32")
-            out, ids = layers.argsort(input=data, axis=1)
-            return out
-            return ids
-
     def make_shape(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3757,7 +3748,7 @@ class TestBook(LayerTest):
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
-            out, ids = layers.argsort(input=data, axis=1)
+            out = paddle.argsort(x=data, axis=1)
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
             out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
@@ -3983,7 +3974,7 @@ class TestBook(LayerTest):
     def test_linspace(self):
         program = Program()
         with program_guard(program):
-            out = layers.linspace(20, 10, 5, 'float64')
+            out = paddle.linspace(20, 10, 5, 'float64')
             self.assertIsNotNone(out)
         print(str(program))
 
