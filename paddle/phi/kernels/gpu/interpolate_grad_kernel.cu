@@ -983,12 +983,6 @@ static void Interpolate2DCUDABwd(
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pixelNum);
 
-  if (FLAGS_cudnn_deterministic) {
-    VLOG(2) << "Run grad kernel of bilinear interpolate 2d with single thread.";
-    config.block_per_grid = 1;
-    config.thread_per_block = 1;
-  }
-
   if ("nearest" == interp_method) {
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
@@ -1042,6 +1036,12 @@ static void Interpolate2DCUDABwd(
 #endif
 
     if (optimize_flag & is_nchw) {
+      if (FLAGS_cudnn_deterministic) {
+        VLOG(2)
+            << "Run grad kernel of bilinear interpolate 2d with single thread.";
+        config.block_per_grid = 1;
+        config.thread_per_block = 1;
+      }
       KeBilinearInterpBwShareMemory<T><<<config.block_per_grid,
                                          config.thread_per_block,
                                          0,
@@ -1060,21 +1060,27 @@ static void Interpolate2DCUDABwd(
     } else if (!optimize_flag & is_nchw) {
       const int num_kernels = n * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
+      int block_per_grid = backends::gpu::DivUp(num_kernels, num_threads);
+      int thread_per_block = num_threads;
+      if (FLAGS_cudnn_deterministic) {
+        VLOG(2)
+            << "Run grad kernel of bilinear interpolate 2d with single thread.";
+        block_per_grid = 1;
+        thread_per_block = 1;
+      }
       KeBilinearInterpNCHWBw<T>
-          <<<backends::gpu::DivUp(num_kernels, num_threads),
-             num_threads,
-             0,
-             dev_ctx.stream()>>>(input_grad_data,
-                                 in_h,
-                                 in_w,
-                                 out_h,
-                                 out_w,
-                                 n,
-                                 c,
-                                 ratio_h,
-                                 ratio_w,
-                                 output_grad_data,
-                                 align_type_value);
+          <<<block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
+              input_grad_data,
+              in_h,
+              in_w,
+              out_h,
+              out_w,
+              n,
+              c,
+              ratio_h,
+              ratio_w,
+              output_grad_data,
+              align_type_value);
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
