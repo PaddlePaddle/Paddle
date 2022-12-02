@@ -79,17 +79,18 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",        "relu6",     "sigmoid",
-        "elu",         "selu",      "softsign",
-        "softplus",    "stanh",     "thresholded_relu",
-        "exp",         "log",       "sqrt",
-        "abs",         "sin",       "cos",
-        "tan",         "tanh",      "sinh",
-        "cosh",        "asin",      "acos",
-        "atan",        "asinh",     "atanh",
-        "ceil",        "floor",     "erf",
-        "reciprocal",  "silu",      "celu",
-        "tanh_shrink", "logsigmoid"};
+        "relu",        "relu6",      "sigmoid",
+        "elu",         "selu",       "softsign",
+        "softplus",    "stanh",      "thresholded_relu",
+        "exp",         "log",        "sqrt",
+        "abs",         "sin",        "cos",
+        "tan",         "tanh",       "sinh",
+        "cosh",        "asin",       "acos",
+        "atan",        "asinh",      "atanh",
+        "ceil",        "floor",      "erf",
+        "reciprocal",  "silu",       "celu",
+        "tanh_shrink", "logsigmoid", "sign",
+        "logical_not"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -334,6 +335,29 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       }
+    }
+
+    if (op_type == "sign") {
+#if IS_TRT_VERSION_GE(8200)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "sign op is only supported by trt8.2 above ";
+      return false;
+#endif
+    }
+
+    if (op_type == "logical_not") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "logical_not op is only supported by trt8.4 above because of "
+                 "cast op";
+      return false;
+#endif
     }
 
     if (op_type == "matmul_v2") {
@@ -593,6 +617,36 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << " ] not equal to x dims size [" << x_shape.size() << "]";
         return false;
       }
+#endif
+    }
+
+    if (op_type == "take_along_axis") {
+#if IS_TRT_VERSION_GE(8200)
+      if (!with_dynamic_shape) return false;
+      auto* block = desc.Block();
+      auto input_var_name = desc.Input("Input")[0];
+      auto index_var_name = desc.Input("Index")[0];
+      auto* input_var_desc = block->FindVar(input_var_name);
+      auto* index_var_desc = block->FindVar(index_var_name);
+
+      // The index input must be int32 datatype.
+      if (index_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+        VLOG(3) << "take_along_axis op Index input data type must be int32";
+        return false;
+      }
+
+      const auto input_shape = input_var_desc->GetShape();
+      const auto index_shape = index_var_desc->GetShape();
+      if (input_shape.size() != index_shape.size()) {
+        VLOG(3) << "take_along_axis op Index input dims size ["
+                << index_shape.size() << " ] not equal to input dims size ["
+                << input_shape.size() << "]";
+        return false;
+      }
+#else
+      VLOG(3) << "take_along_axis op is only supported by trt8.2 above ";
+      return false;
 #endif
     }
 
@@ -1447,10 +1501,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "instance_norm") {
-      if (with_dynamic_shape) {
-        VLOG(3) << "trt instance_norm op does not support dynamic shape ";
-        return false;
-      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "input of instance_norm op converter should be 1, got "
                 << desc.Input("X").size();
@@ -2310,7 +2360,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "rsqrt",
+      "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
@@ -2398,6 +2451,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "take_along_axis",
       "tanh_shrink",
       "logsigmoid",
       "preln_layernorm_shift_partition",
@@ -2438,7 +2492,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "atanh",
       "ceil",
       "floor",
+      "rsqrt",
+      "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
@@ -2528,6 +2585,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_token_prune",
       "layernorm_shift_partition",
       "tanh_shrink",
+      "take_along_axis",
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "merge_layernorm",

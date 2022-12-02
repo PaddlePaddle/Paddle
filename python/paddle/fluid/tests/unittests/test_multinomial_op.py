@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
+import numpy as np
+from op_test import OpTest
+from test_attribute_var import UnittestBase
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
-import numpy as np
-import os
 from paddle.fluid import Program, program_guard
-from test_attribute_var import UnittestBase
 
 
 def sample_output_one_dimension(out, dim):

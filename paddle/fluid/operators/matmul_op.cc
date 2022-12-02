@@ -587,7 +587,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     // to be computed like instead x*y we are to do y*x
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
-        (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
          phi::DataLayout::kNHWC);
     if (channelwise_onednn) {
       std::swap(dim_x, dim_y);
@@ -717,8 +717,8 @@ class MatMulOp : public framework::OperatorWithKernel {
       // then we also need to rotate shape NHWC -> NCWH
       if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
-          paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+              phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
                                        phi::DataLayout::kNHWC);

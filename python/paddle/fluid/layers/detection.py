@@ -21,7 +21,7 @@ from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
-from .loss import softmax_with_cross_entropy
+from paddle.fluid.layers import softmax_with_cross_entropy
 from . import tensor
 from . import nn
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
@@ -1768,7 +1768,7 @@ def ssd_loss(
     target_label.stop_gradient = True
     conf_loss = softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
-    actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape = paddle.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.

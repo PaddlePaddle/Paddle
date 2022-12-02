@@ -680,6 +680,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : lerp
+  backward : lerp_grad
+  inputs :
+    {x : X, y : Y, weight : Weight}
+  outputs :
+    out : Out
+
 - op : lgamma
   inputs :
     x : X

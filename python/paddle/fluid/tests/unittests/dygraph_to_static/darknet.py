@@ -14,10 +14,9 @@
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from paddle.fluid.dygraph.nn import BatchNorm
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -115,7 +114,7 @@ class BasicBlock(fluid.dygraph.Layer):
     def forward(self, inputs):
         conv1 = self.conv1(inputs)
         conv2 = self.conv2(conv1)
-        out = fluid.layers.elementwise_add(x=inputs, y=conv2, act=None)
+        out = paddle.add(x=inputs, y=conv2)
         return out
 
 

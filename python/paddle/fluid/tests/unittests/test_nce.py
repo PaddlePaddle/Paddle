@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.initializer as initializer
 from paddle.fluid import Program, program_guard
-
-from op_test import OpTest
 
 
 def nce(

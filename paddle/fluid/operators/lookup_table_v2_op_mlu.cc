@@ -32,7 +32,7 @@ class LookupTableV2MLUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         table_var->IsType<phi::DenseTensor>(),
         true,
-        platform::errors::InvalidArgument("mlu only accept LoDTensor"));
+        platform::errors::InvalidArgument("mlu only accept phi::DenseTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc ids_desc(*ids_t);
@@ -55,11 +55,12 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *table_var = ctx.InputVar("W");
-    PADDLE_ENFORCE_EQ(table_var->IsType<phi::DenseTensor>(),
-                      true,
-                      platform::errors::PermissionDenied(
-                          "Unsupported Variable Type , idx in "
-                          "LookupTableV2GradMLUKernel should be LoDTensor."));
+    PADDLE_ENFORCE_EQ(
+        table_var->IsType<phi::DenseTensor>(),
+        true,
+        platform::errors::PermissionDenied(
+            "Unsupported Variable Type , idx in "
+            "LookupTableV2GradMLUKernel should be phi::DenseTensor."));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     PADDLE_ENFORCE_EQ(
         is_sparse,
