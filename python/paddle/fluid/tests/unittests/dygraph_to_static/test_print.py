@@ -152,6 +152,13 @@ def dyfunc_print_continue_vars(x):
     print(x_v, y_v)
 
 
+# 8. print with kwargs
+@declarative
+def dyfunc_print_with_kwargs(x):
+    x_v = fluid.dygraph.to_variable(x)
+    print("Tensor", x_v, end='\n\n', sep=':')
+
+
 class TestPrintBase(unittest.TestCase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
@@ -215,6 +222,11 @@ class TestPrintMultipleVar(TestPrintVariable):
 class TestPrintContinueVar(TestPrintVariable):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_continue_vars
+
+
+class TestPrintWithKwargs(TestPrintVariable):
+    def set_test_func(self):
+        self.dygraph_func = dyfunc_print_with_kwargs
 
 
 if __name__ == '__main__':
