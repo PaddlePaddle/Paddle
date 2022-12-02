@@ -43,16 +43,10 @@ class PrintTransformer(BaseTransformer):
     def transform(self):
         self.visit(self.root)
 
-    # NOTE: deal with print in PY3
     def visit_Call(self, node):
         if isinstance(node.func, gast.Name) and node.func.id == 'print':
             node = self._create_print_node(node.args)
         return node
-
-    # NOTE: deal with print in PY2
-    def visit_Print(self, node):
-        convert_print_node = self._create_print_node(node.values)
-        return gast.Expr(value=convert_print_node)
 
     def _create_print_node(self, print_args):
         convert_print_func = gast.parse('_jst.Print').body[0].value
