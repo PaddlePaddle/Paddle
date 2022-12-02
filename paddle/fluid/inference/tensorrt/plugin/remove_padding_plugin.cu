@@ -105,7 +105,6 @@ int RemovePaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                  void* const* outputs,
                                  void* workspace,
                                  cudaStream_t stream) TRT_NOEXCEPT {
-  const auto input_desc = inputDesc[0];
   const half* input0 = static_cast<const half*>(inputs[0]);
   const int32_t* input1 =
       static_cast<const int32_t*>(inputs[1]);  // pos_id_tensor

@@ -321,7 +321,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             path_code=path_code,
         )
 
-        avg_cost = fluid.layers.reduce_mean(cost)
+        avg_cost = paddle.mean(cost)
 
         return avg_cost, data_list
 
