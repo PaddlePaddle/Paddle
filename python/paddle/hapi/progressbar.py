@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import os
+import struct
 import sys
 import time
+
 import numpy as np
-import struct
 
 __all__ = []
 

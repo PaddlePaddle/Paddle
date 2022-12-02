@@ -17,9 +17,6 @@ from functools import reduce
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
-
-from functools import reduce
-
 from paddle.fluid.dygraph import Embedding, Layer
 from paddle.jit.api import declarative
 from paddle.static import Variable
@@ -117,7 +114,7 @@ class ReduceMeanLayer:
         """
         operation
         """
-        mean = fluid.layers.reduce_mean(input)
+        mean = paddle.mean(input)
         return mean
 
 
