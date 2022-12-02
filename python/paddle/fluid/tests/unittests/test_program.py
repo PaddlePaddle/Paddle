@@ -105,41 +105,6 @@ class TestProgram(unittest.TestCase):
         new_program = main_program.clone()
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
 
-    def test_program_inference_optimize(self):
-        def net():
-            reader = fluid.layers.py_reader(
-                capacity=10,
-                shapes=[[-1, 10], [-1, 1]],
-                lod_levels=[0, 0],
-                dtypes=['float32', 'int64'],
-                use_double_buffer=True,
-            )
-            in_data, label = fluid.layers.read_file(reader)
-            predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
-            loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict_label, label=label)
-            )
-
-            optimizer = fluid.optimizer.Adam()
-            optimizer.minimize(loss)
-
-        startup_program = fluid.Program()
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
-            net()
-        no_read_program = main_program._inference_optimize()
-        keep_read_program = main_program._inference_optimize(
-            prune_read_op=False
-        )
-        no_read_ops = no_read_program.global_block().ops
-        keep_read_ops = keep_read_program.global_block().ops
-        self.assertEqual(len(keep_read_ops) - len(no_read_ops), 2)
-        self.assertEqual(keep_read_ops[0].type, 'create_double_buffer_reader')
-        self.assertEqual(keep_read_ops[1].type, 'read')
-
-        for i in range(len(no_read_ops)):
-            self.assertEqual(no_read_ops[i].type, keep_read_ops[i + 2].type)
-
     def test_program_all_parameters(self):
         program = fluid.default_main_program()
         data = fluid.data(name='x', shape=[None, 13], dtype='float32')
@@ -171,36 +136,6 @@ class TestProgram(unittest.TestCase):
         self.assertRaises(
             TypeError, program._copy_dist_param_info_from, "program"
         )
-
-    def test_remove_training_info(self):
-        def net():
-            reader = fluid.layers.py_reader(
-                capacity=10,
-                shapes=[[-1, 10], [-1, 1]],
-                lod_levels=[0, 0],
-                dtypes=['float32', 'int64'],
-                use_double_buffer=True,
-            )
-            in_data, label = fluid.layers.read_file(reader)
-            predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
-            loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict_label, label=label)
-            )
-
-            optimizer = fluid.optimizer.Adam()
-            optimizer.minimize(loss)
-
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            net()
-
-        removed_program = main_program._remove_training_info()
-
-        for i in range(removed_program.num_blocks):
-            block = removed_program.block(i)
-            for var in block.desc.all_vars():
-                self.assertFalse(var.has_is_parameter())
-                self.assertFalse(var.has_stop_gradient())
 
 
 def build_program():
