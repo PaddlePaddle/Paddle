@@ -39,7 +39,7 @@ class TestNormalization(unittest.TestCase):
             append_batch_size=False,
         )
         data.stop_gradient = False
-        l2_norm = self.l2_normalize(data, axis=axis, epsilon=epsilon)
+        l2_norm = np.linalg.norm(data, axis=axis)
         out = paddle.sum(l2_norm, axis=None)
 
         fluid.backward.append_backward(loss=out)
