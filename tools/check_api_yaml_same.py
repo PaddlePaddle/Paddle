@@ -15,10 +15,10 @@
 # limitations under the License.
 
 import difflib
+import os
+import re
 import sys
 import yaml
-import re
-import os
 
 root_path = sys.argv[4]
 
