@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -53,6 +54,130 @@ static void CheckEighResult(const int batch, const int info) {
           batch,
           info));
 }
+
+#ifdef PADDLE_WITH_CUDA
+#define CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(scalar_t, value_t)     \
+  cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, \
+      int n, const scalar_t *A, int lda, const value_t *W, int *lwork,      \
+      syevjInfo_t params, int batchsize
+
+template <class scalar_t, class value_t = scalar_t>
+void syevjBatched_bufferSize(
+    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(scalar_t, value_t)) {
+  PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      "syevjBatched_bufferSize: not implemented for ",
+      typeid(scalar_t).name()));
+}
+
+template <>
+inline void syevjBatched_bufferSize<float>(
+    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(float, float)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevjBatched_bufferSize(
+      handle, jobz, uplo, n, A, lda, W, lwork, params, batchsize));
+}
+
+template <>
+inline void syevjBatched_bufferSize<double>(
+    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(double, double)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDsyevjBatched_bufferSize(
+      handle, jobz, uplo, n, A, lda, W, lwork, params, batchsize));
+}
+
+template <>
+inline void syevjBatched_bufferSize<phi::dtype::complex<float>, float>(
+    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(phi::dtype::complex<float>,
+                                                 float)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCheevjBatched_bufferSize(
+      handle,
+      jobz,
+      uplo,
+      n,
+      reinterpret_cast<const cuComplex *>(A),
+      lda,
+      W,
+      lwork,
+      params,
+      batchsize));
+}
+
+template <>
+inline void syevjBatched_bufferSize<phi::dtype::complex<double>, double>(
+    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(phi::dtype::complex<double>,
+                                                 double)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZheevjBatched_bufferSize(
+      handle,
+      jobz,
+      uplo,
+      n,
+      reinterpret_cast<const cuDoubleComplex *>(A),
+      lda,
+      W,
+      lwork,
+      params,
+      batchsize));
+}
+
+#define CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(scalar_t, value_t)                \
+  cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, \
+      int n, scalar_t *A, int lda, value_t *W, scalar_t *work, int lwork,   \
+      int *info, syevjInfo_t params, int batchsize
+
+template <class scalar_t, class value_t = scalar_t>
+void syevjBatched(CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(scalar_t, value_t)) {
+  PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      "syevjBatched: not implemented for ", typeid(scalar_t).name()));
+}
+
+template <>
+inline void syevjBatched<float>(CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(float,
+                                                                  float)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevjBatched(
+      handle, jobz, uplo, n, A, lda, W, work, lwork, info, params, batchsize));
+}
+
+template <>
+inline void syevjBatched<double>(CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(double,
+                                                                   double)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDsyevjBatched(
+      handle, jobz, uplo, n, A, lda, W, work, lwork, info, params, batchsize));
+}
+
+template <>
+inline void syevjBatched<phi::dtype::complex<float>, float>(
+    CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(phi::dtype::complex<float>, float)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnCheevjBatched(handle,
+                                       jobz,
+                                       uplo,
+                                       n,
+                                       reinterpret_cast<cuComplex *>(A),
+                                       lda,
+                                       W,
+                                       reinterpret_cast<cuComplex *>(work),
+                                       lwork,
+                                       info,
+                                       params,
+                                       batchsize));
+}
+
+template <>
+inline void syevjBatched<phi::dtype::complex<double>, double>(
+    CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(phi::dtype::complex<double>, double)) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZheevjBatched(
+      handle,
+      jobz,
+      uplo,
+      n,
+      reinterpret_cast<cuDoubleComplex *>(A),
+      lda,
+      W,
+      reinterpret_cast<cuDoubleComplex *>(work),
+      lwork,
+      info,
+      params,
+      batchsize));
+}
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 static void CheckEighResult(const GPUContext &dev_ctx,
@@ -234,8 +359,9 @@ struct MatrixEighFunctor<GPUContext, T> {
 
     // Once input data type is float32, and the last dimension of
     // input is located in range [32, 512], Syevj works better.
-    bool use_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
-                      values_stride >= 32 && values_stride <= 512);
+    // bool use_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
+    //                   values_stride >= 32 && values_stride <= 512);
+    bool use_syevj = true;
     auto handle = dev_ctx.cusolver_dn_handle();
 
     syevjInfo_t syevj_params;
@@ -243,17 +369,16 @@ struct MatrixEighFunctor<GPUContext, T> {
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnCreateSyevjInfo(&syevj_params));
 
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevjBatched_bufferSize(
-          handle,
-          jobz,
-          uplo,
-          last_dim,
-          reinterpret_cast<const float *>(input_vector),
-          lda,
-          reinterpret_cast<const float *>(out_value),
-          &workspace_size,
-          syevj_params,
-          batch_size));
+      syevjBatched_bufferSize<T>(handle,
+                                 jobz,
+                                 uplo,
+                                 last_dim,
+                                 input_vector,
+                                 lda,
+                                 out_value,
+                                 &workspace_size,
+                                 syevj_params,
+                                 batch_size);
     } else {
       EvdBuffer(dev_ctx.cusolver_dn_handle(),
                 jobz,
@@ -274,19 +399,18 @@ struct MatrixEighFunctor<GPUContext, T> {
       auto *input_data = input_vector + i * vector_stride;
       auto *value_data = out_value + i * values_stride;
       if (use_syevj) {
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevjBatched(
-            handle,
-            jobz,
-            uplo,
-            last_dim,
-            reinterpret_cast<float *>(input_data),
-            lda,
-            reinterpret_cast<float *>(value_data),
-            reinterpret_cast<float *>(work_ptr),
-            workspace_size,
-            &info_ptr[i],
-            syevj_params,
-            batch_size));
+        syevjBatched<T>(handle,
+                        jobz,
+                        uplo,
+                        last_dim,
+                        input_data,
+                        lda,
+                        value_data,
+                        work_ptr,
+                        workspace_size,
+                        &info_ptr[i],
+                        syevj_params,
+                        batch_size);
         break;
       } else {
         Evd(handle,
