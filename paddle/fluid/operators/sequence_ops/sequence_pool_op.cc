@@ -53,12 +53,15 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(phi::DenseTensor) The variable-length input of SequencePoolOp");
-    AddOutput("Out",
-              "(phi::DenseTensor) The output of SequencePoolOp does not contain LoD "
-              "information.");
+    AddInput("X",
+             "(phi::DenseTensor) The variable-length input of SequencePoolOp");
+    AddOutput(
+        "Out",
+        "(phi::DenseTensor) The output of SequencePoolOp does not contain LoD "
+        "information.");
     AddOutput("MaxIndex",
-              "(phi::DenseTensor<int>) This tensor is used for the sequence max-pooling "
+              "(phi::DenseTensor<int>) This tensor is used for the sequence "
+              "max-pooling "
               "to record the max indexes.")
         .AsIntermediate();
     AddAttr<bool>("is_test",

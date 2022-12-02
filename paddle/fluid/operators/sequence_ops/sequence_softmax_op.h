@@ -96,12 +96,12 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
 
     auto lod = x->lod();
     auto dims = x->dims();
-    PADDLE_ENFORCE_EQ(
-        lod.empty(),
-        false,
-        platform::errors::InvalidArgument(
-            "Input(X) phi::DenseTensor of SequenceSoftmax operator does not contain "
-            "LoD information."));
+    PADDLE_ENFORCE_EQ(lod.empty(),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "Input(X) phi::DenseTensor of SequenceSoftmax "
+                          "operator does not contain "
+                          "LoD information."));
 
     const size_t level = lod.size() - 1;
     PADDLE_ENFORCE_EQ(

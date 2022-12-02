@@ -22,7 +22,6 @@ namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
-
 template <typename T>
 __global__ void CalcOutPut(const T* in_data,
                            const size_t* in_lod,

@@ -24,7 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
@@ -36,10 +35,11 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     auto* len_t = ctx.Output<phi::DenseTensor>("Length");
     out->mutable_data<T>(ctx.GetPlace());
 
-    PADDLE_ENFORCE_EQ(
-        x->lod().empty(),
-        false,
-        platform::errors::NotFound("Input(X) phi::DenseTensor of SequencePadOp does not " "contain LoD information."));
+    PADDLE_ENFORCE_EQ(x->lod().empty(),
+                      false,
+                      platform::errors::NotFound(
+                          "Input(X) phi::DenseTensor of SequencePadOp does not "
+                          "contain LoD information."));
 
     const auto* pad_value = ctx.Input<phi::DenseTensor>("PadValue");
 
@@ -74,7 +74,8 @@ class SequencePadGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (d_x) {
-      const auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      const auto* d_out =
+          ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       d_x->mutable_data<T>(ctx.GetPlace());
 
       int padded_length = ctx.Attr<int>("padded_length");

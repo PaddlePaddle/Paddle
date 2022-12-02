@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
-
 template <typename T>
 static __global__ void sequence_expand_as_kernel(const T *in_data,
                                                  const size_t *expand_offset,

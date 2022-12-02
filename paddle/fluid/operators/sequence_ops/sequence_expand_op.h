@@ -22,7 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -193,7 +192,8 @@ template <typename DeviceContext, typename T>
 class SequenceExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* g_out = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* g_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* y = context.Input<phi::DenseTensor>("Y");
     auto* g_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));

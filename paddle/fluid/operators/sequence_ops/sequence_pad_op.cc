@@ -145,20 +145,22 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(phi::DenseTensor, default phi::DenseTensor<float>) Input variable which "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Input "
+             "variable which "
              "should contain lod information.");
     AddInput("PadValue",
-             "(phi::DenseTensor), this phi::DenseTensor holds values that will be fill into "
+             "(phi::DenseTensor), this phi::DenseTensor holds values that will "
+             "be fill into "
              "padded steps. It can be a scalar or a tensor whose shape equals "
              "to time steps in sequences. If it's a scalar, it will be "
              "automatically broadcasted to the shape of time step.");
-    AddOutput(
-        "Out",
-        "(phi::DenseTensor) The output vairable, which contains padded sequences.");
-    AddOutput(
-        "Length",
-        "(phi::DenseTensor) The output vairable, which contains the actual length of "
-        "sequences before padding.");
+    AddOutput("Out",
+              "(phi::DenseTensor) The output vairable, which contains padded "
+              "sequences.");
+    AddOutput("Length",
+              "(phi::DenseTensor) The output vairable, which contains the "
+              "actual length of "
+              "sequences before padding.");
     AddAttr<int>(
         "padded_length",
         "The length of padded sequences. It can be set to -1 or "

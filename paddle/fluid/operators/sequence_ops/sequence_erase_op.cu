@@ -22,7 +22,6 @@ namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
-
 template <typename T>
 __global__ void LabelErasedIdx(const T* in_dat,
                                const int64_t in_len,

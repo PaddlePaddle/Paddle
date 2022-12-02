@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 template <typename DeviceContext, typename T>
 class SequenceConvXPUKernel : public framework::OpKernel<T> {
  public:
@@ -36,11 +35,11 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
-    PADDLE_ENFORCE_EQ(
-        in->lod().empty(),
-        false,
-        platform::errors::InvalidArgument("Input(X) phi::DenseTensor of SequenceConvOp "
-                                          "does not contain LoD information."));
+    PADDLE_ENFORCE_EQ(in->lod().empty(),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "Input(X) phi::DenseTensor of SequenceConvOp "
+                          "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
         1UL,
@@ -160,7 +159,8 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in_g = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto* out_g = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* out_g =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* filter_g =
         context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     auto* in = context.Input<phi::DenseTensor>("X");
@@ -171,11 +171,11 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
-    PADDLE_ENFORCE_EQ(
-        in->lod().empty(),
-        false,
-        platform::errors::InvalidArgument("Input(X) phi::DenseTensor of SequenceConvOp "
-                                          "does not contain LoD information."));
+    PADDLE_ENFORCE_EQ(in->lod().empty(),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "Input(X) phi::DenseTensor of SequenceConvOp "
+                          "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
         1UL,

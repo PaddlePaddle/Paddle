@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
-
 class SequenceExpandAsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -96,13 +94,16 @@ class SequenceExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(phi::DenseTensor, default phi::DenseTensor<float>) A 2-D phi::DenseTensor whose lod "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) A 2-D "
+             "phi::DenseTensor whose lod "
              "level is at most 1.");
     AddInput("Y",
-             "(phi::DenseTensor, default phi::DenseTensor<float>) Referred phi::DenseTensor whose "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Referred "
+             "phi::DenseTensor whose "
              "lod (specified level) is referred by Input(X).");
     AddOutput("Out",
-              "(phi::DenseTensor, default phi::DenseTensor<float>) Output phi::DenseTensor which is "
+              "(phi::DenseTensor, default phi::DenseTensor<float>) Output "
+              "phi::DenseTensor which is "
               "generated from Input(X) by referring lod of Input(Y).");
     AddComment(R"DOC(
 Sequence Expand As Operator.

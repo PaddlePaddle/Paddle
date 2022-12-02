@@ -149,15 +149,16 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         "variable-time length input sequence. The underlying tensor in "
         "this phi::DenseTensor is a matrix with shape (T, N), where T is the "
         "total time steps in this mini-batch and N is the input_hidden_size.");
-    AddInput("PaddingData",
-             "(phi::DenseTensor, optional) the input(PaddingData) is an optional "
-             "parameter, and it is learnable. "
-             "This is a tensor with shape (P, N), where P is the "
-             "top_pad + bottom_pad, N is the input_hidden_size. In order to "
-             "ensure the equal length of sequence before and after "
-             "convolution, it is necessary to fill the top and bottom of each "
-             "sequence according to context_length, context_stride and "
-             "context_start")
+    AddInput(
+        "PaddingData",
+        "(phi::DenseTensor, optional) the input(PaddingData) is an optional "
+        "parameter, and it is learnable. "
+        "This is a tensor with shape (P, N), where P is the "
+        "top_pad + bottom_pad, N is the input_hidden_size. In order to "
+        "ensure the equal length of sequence before and after "
+        "convolution, it is necessary to fill the top and bottom of each "
+        "sequence according to context_length, context_stride and "
+        "context_start")
         .AsDispensable();
     AddInput(
         "Filter",
