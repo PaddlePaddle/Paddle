@@ -32,7 +32,7 @@ class SimpleLayer(paddle.nn.Layer):
         x = self.conv(x)
         x = paddle.flatten(x, 1, -1)
         if target is not None:
-            x = paddle.fluid.layers.softmax(x)
+            x = paddle.nn.functional.softmax(x)
             loss = paddle.fluid.layers.cross_entropy(x, target)
             return x, loss
         return x

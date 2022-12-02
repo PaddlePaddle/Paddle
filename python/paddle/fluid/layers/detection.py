@@ -626,7 +626,7 @@ def detection_output(
         target_box=loc,
         code_type='decode_center_size',
     )
-    scores = nn.softmax(input=scores)
+    scores = paddle.nn.functional.softmax(scores)
     scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
