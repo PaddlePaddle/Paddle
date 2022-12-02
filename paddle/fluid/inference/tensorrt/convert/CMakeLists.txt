@@ -25,6 +25,8 @@ list(
   multihead_matmul_op.cc
   multihead_matmul_roformer_op.cc
   shuffle_channel_op.cc
+  fill_any_like_op.cc
+  where_op.cc
   swish_op.cc
   silu_op.cc
   instance_norm_op.cc
@@ -80,6 +82,7 @@ list(
   celu_op.cc
   layernorm_shift_partition_op.cc
   tanhshrink_op.cc
+  take_along_axis_op.cc
   logsigmoid_op.cc
   preln_layernorm_shift_partition_op.cc
   merge_layernorm_op.cc

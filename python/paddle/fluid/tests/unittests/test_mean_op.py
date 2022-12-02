@@ -13,29 +13,31 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from test_sum_op import TestReduceOPTensorAxisBase
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, OpTestTool
+from test_sum_op import TestReduceOPTensorAxisBase
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
 
 def mean_wrapper(x, axis=None, keepdim=False, reduce_all=False):
     if reduce_all:
-        return paddle.mean(x, range(len(x.shape)), keepdim)
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
     return paddle.mean(x, axis, keepdim)
 
 
 def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
     if reduce_all:
-        return paddle.mean(x, range(len(x.shape)), keepdim)
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
     return paddle.mean(x, axis, keepdim)
 
 
@@ -140,7 +142,7 @@ def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
     return np.mean(x, axis=axis, keepdims=keepdim)
 
 
-def ref_reduce_mean_grad(x, axis, dtype):
+def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
     if reduce_all:
         axis = list(range(x.ndim))
 
@@ -191,7 +193,6 @@ class TestReduceMeanOp(OpTest):
         if self.dtype != 'float16':
             self.check_grad(['X'], ['Out'], check_eager=True)
         else:
-            return
             if not core.is_compiled_with_cuda():
                 return
             place = paddle.CUDAPlace(0)
@@ -204,7 +205,10 @@ class TestReduceMeanOp(OpTest):
                 )
                 dx = paddle.grad(y, x)[0].numpy()
                 dx_expected = ref_reduce_mean_grad(
-                    self.inputs['X'], self.attrs['dim'], self.dtype
+                    self.inputs['X'],
+                    self.attrs['dim'],
+                    self.dtype,
+                    self.attrs['reduce_all'],
                 )
                 np.testing.assert_array_equal(dx, dx_expected)
 
@@ -379,7 +383,7 @@ class TestMeanAPI(unittest.TestCase):
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = fluid.data("x", shape=[10, 10], dtype="float32")
-            out = fluid.layers.reduce_mean(input=x, dim=1)
+            out = paddle.mean(x=x, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             x_np = np.random.rand(10, 10).astype(np.float32)
@@ -389,7 +393,7 @@ class TestMeanAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
             x = fluid.dygraph.to_variable(x_np)
-            out = fluid.layers.reduce_mean(input=x, dim=1)
+            out = paddle.mean(x=x, axis=1)
         np.testing.assert_allclose(
             out.numpy(), np.mean(x_np, axis=1), rtol=1e-05
         )

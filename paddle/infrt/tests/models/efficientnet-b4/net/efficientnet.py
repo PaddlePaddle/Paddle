@@ -17,13 +17,13 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 
 from .utils import (
+    drop_connect,
+    efficientnet_params,
+    get_model_params,
+    get_same_padding_conv2d,
+    load_pretrained_weights,
     round_filters,
     round_repeats,
-    drop_connect,
-    get_same_padding_conv2d,
-    get_model_params,
-    efficientnet_params,
-    load_pretrained_weights,
 )
 
 

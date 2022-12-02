@@ -12,31 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: define functions to manipulate a tensor
+
 from collections import Counter
 
-from ..static import Variable
-from ..framework import core, in_dygraph_mode
-from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
-from ..framework import LayerHelper
-from ..framework import convert_np_dtype_to_dtype_, dygraph_only
-from ..fluid.data_feeder import (
-    convert_dtype,
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-)
-from ..fluid.layers import utils
 import numpy as np
 
-# TODO: define functions to manipulate a tensor
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from ..common_ops_import import dygraph_utils, fill_constant, _varbase_creator
-import warnings
-from .creation import zeros
-from .creation import _complex_to_real_dtype
-from .creation import _real_to_complex_dtype
+
+from ..common_ops_import import _varbase_creator, fill_constant
+from ..fluid.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+    convert_dtype,
+)
+from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
+from ..fluid.layers import utils
+from ..framework import (
+    LayerHelper,
+    convert_np_dtype_to_dtype_,
+    core,
+    dygraph_only,
+    in_dygraph_mode,
+)
+from ..static import Variable
+from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
 
@@ -3560,16 +3563,9 @@ def reshape(x, shape, name=None):
 
     """
     actual_shape = None
-    act = None
-    inplace = False
 
     if in_dygraph_mode():
         tmp_tensor_type = core.eager.Tensor
-        # TODO(zhiqiu): enable inplace in dygraph mode.
-        if inplace:
-            warnings.warn(
-                "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-            )
         if isinstance(shape, (list, tuple)):
             shape = [
                 item.numpy().item(0)
@@ -3577,8 +3573,11 @@ def reshape(x, shape, name=None):
                 else item
                 for item in shape
             ]
-            out = _C_ops.reshape(x, shape)
-        elif isinstance(shape, tmp_tensor_type):
+            if shape == x.shape:
+                out = x
+            else:
+                out = _C_ops.reshape(x, shape)
+        elif isinstance(shape, core.eager.Tensor):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:
@@ -3587,14 +3586,10 @@ def reshape(x, shape, name=None):
                 " got '{}.'".format(type(shape))
             )
 
-        return dygraph_utils._append_activation_in_dygraph(out, act)
+        return out
     else:
         if _in_legacy_dygraph():
             tmp_tensor_type = Variable
-            if inplace:
-                warnings.warn(
-                    "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-                )
             if isinstance(shape, (list, tuple)):
                 shape = [
                     item.numpy().item(0) if isinstance(item, Variable) else item
@@ -3610,7 +3605,7 @@ def reshape(x, shape, name=None):
                     " got '{}.'".format(type(shape))
                 )
 
-            return dygraph_utils._append_activation_in_dygraph(out, act)
+            return out
 
     check_variable_and_dtype(
         x,
@@ -3686,11 +3681,7 @@ def reshape(x, shape, name=None):
             actual_shape.stop_gradient = True
             inputs["Shape"] = actual_shape
 
-    out = (
-        x
-        if inplace
-        else helper.create_variable_for_type_inference(dtype=x.dtype)
-    )
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
@@ -3699,7 +3690,7 @@ def reshape(x, shape, name=None):
         outputs={"Out": out, "XShape": x_shape},
     )
 
-    return helper.append_activation(out)
+    return out
 
 
 @inplace_apis_in_dygraph_only
@@ -3717,7 +3708,10 @@ def reshape_(x, shape, name=None):
                 else item
                 for item in shape
             ]
-            out = _C_ops.reshape_(x, shape)
+            if shape == x.shape:
+                out = x
+            else:
+                out = _C_ops.reshape_(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
             out = _C_ops.reshape_(x, shape)

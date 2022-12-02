@@ -702,7 +702,7 @@ class EditDistance(MetricBase):
         """
         if self.seq_num == 0:
             raise ValueError(
-                "There is no data in EditDistance Metric. Please check layers.edit_distance output has been added to EditDistance."
+                "There is no data in EditDistance Metric. Please check paddle.nn.functional.loss.edit_distance output has been added to EditDistance."
             )
         avg_distance = self.total_distance / self.seq_num
         avg_instance_error = self.instance_error / float(self.seq_num)
@@ -714,7 +714,7 @@ class Auc(MetricBase):
     The auc metric is for binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
     Please notice that the auc metric is implemented with python, which may be a little bit slow.
-    If you concern the speed, please use the fluid.layers.auc instead.
+    If you concern the speed, please use the paddle.static.auc instead.
 
     The `auc` function creates four local variables, `true_positives`,
     `true_negatives`, `false_positives` and `false_negatives` that are used to

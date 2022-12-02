@@ -13,15 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 
 paddle.enable_static()
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.fluid.core import PaddleTensor
-from paddle.fluid.core import PaddleDType
-from paddle.inference import Config, create_predictor
-from paddle.inference import get_trt_compile_version, get_trt_runtime_version
+from paddle.fluid.core import PaddleDType, PaddleTensor
+from paddle.inference import (
+    Config,
+    create_predictor,
+    get_trt_compile_version,
+    get_trt_runtime_version,
+)
 
 
 class TestInferenceApi(unittest.TestCase):

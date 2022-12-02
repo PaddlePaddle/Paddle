@@ -20,26 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
 namespace phi {
-
-// Here we can't depend on the fluid proto::VarType, so we use the dtype enum
-// value directly. See also `assign_value_sig.cc`.
-// proto::VarType::INT16 -> 1  -> phi::DataType::INT16
-// proto::VarType::INT32 -> 2  -> phi::DataType::INT32
-// proto::VarType::INT64 -> 3  -> phi::DataType::INT64
-// proto::VarType::FP16 ->  4  -> phi::DataType::FLOAT16
-// proto::VarType::FP32 ->  5  -> phi::DataType::FLOAT32
-// proto::VarType::FP64 ->  6  -> phi::DataType::FLOAT64
-// proto::VarType::UINT8 -> 20 -> phi::DataType::UINT8
-static std::map<int, phi::DataType> var_type_map{{1, phi::DataType::INT16},
-                                                 {2, phi::DataType::INT32},
-                                                 {3, phi::DataType::INT64},
-                                                 {4, phi::DataType::FLOAT16},
-                                                 {5, phi::DataType::FLOAT32},
-                                                 {6, phi::DataType::FLOAT64},
-                                                 {20, phi::DataType::UINT8}};
 
 #define _PhiForEachDataTypeHelper_(callback, cpp_type, data_type) \
   callback(cpp_type, data_type);
@@ -129,4 +110,100 @@ inline DataType ToRealType(const DataType& type) {
           type));
   }
 }
+
+// In some cases we need to use the conversion between phi::DataType and
+// fluid proto::VarType::Type, but can't depend on the proto::VarType::Type.
+// So here we defined an enum type ProtoDataType which corresponds to
+// proto::VarType::Type in fluid, but keeps only the data types we need.
+// Note: The ProtoDataType (defined here) and proto::VarType::Type (defined
+// in framework.pb.h) need to be modified simultaneously.
+enum ProtoDataType {
+  BOOL = 0,
+  INT16 = 1,
+  INT32 = 2,
+  INT64 = 3,
+  FP16 = 4,
+  FP32 = 5,
+  FP64 = 6,
+  UINT8 = 20,
+  INT8 = 21,
+  BF16 = 22,
+  COMPLEX64 = 23,
+  COMPLEX128 = 24,
+  PSTRING = 29
+};
+
+inline DataType TransToPhiDataType(const int& dtype) {
+  // Set the order of case branches according to the frequency with
+  // the data type is used
+  switch (dtype) {
+    case ProtoDataType::FP32:
+      return DataType::FLOAT32;
+    case ProtoDataType::FP64:
+      return DataType::FLOAT64;
+    case ProtoDataType::INT64:
+      return DataType::INT64;
+    case ProtoDataType::INT32:
+      return DataType::INT32;
+    case ProtoDataType::INT8:
+      return DataType::INT8;
+    case ProtoDataType::UINT8:
+      return DataType::UINT8;
+    case ProtoDataType::INT16:
+      return DataType::INT16;
+    case ProtoDataType::COMPLEX64:
+      return DataType::COMPLEX64;
+    case ProtoDataType::COMPLEX128:
+      return DataType::COMPLEX128;
+    case ProtoDataType::FP16:
+      return DataType::FLOAT16;
+    case ProtoDataType::BF16:
+      return DataType::BFLOAT16;
+    case ProtoDataType::BOOL:
+      return DataType::BOOL;
+    case ProtoDataType::PSTRING:
+      return DataType::PSTRING;
+    default:
+      return DataType::UNDEFINED;
+  }
+}
+
+inline int TransToProtoVarType(const DataType& dtype) {
+  // Set the order of case branches according to the frequency with
+  // the data type is used
+  switch (dtype) {
+    case DataType::FLOAT32:
+      return ProtoDataType::FP32;
+    case DataType::FLOAT64:
+      return ProtoDataType::FP64;
+    case DataType::INT64:
+      return ProtoDataType::INT64;
+    case DataType::INT32:
+      return ProtoDataType::INT32;
+    case DataType::INT8:
+      return ProtoDataType::INT8;
+    case DataType::UINT8:
+      return ProtoDataType::UINT8;
+    case DataType::INT16:
+      return ProtoDataType::INT16;
+    case DataType::COMPLEX64:
+      return ProtoDataType::COMPLEX64;
+    case DataType::COMPLEX128:
+      return ProtoDataType::COMPLEX128;
+    case DataType::FLOAT16:
+      return ProtoDataType::FP16;
+    case DataType::BFLOAT16:
+      return ProtoDataType::BF16;
+    case DataType::BOOL:
+      return ProtoDataType::BOOL;
+    case DataType::PSTRING:
+      return ProtoDataType::PSTRING;
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported data type `%s` when casting it into "
+          "paddle data type.",
+          dtype));
+  }
+}
+
 }  // namespace phi

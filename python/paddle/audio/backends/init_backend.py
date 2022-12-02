@@ -14,11 +14,11 @@
 
 import sys
 import warnings
-from . import wave_backend
-from . import backend
 from typing import List
 
 import paddle
+
+from . import backend, wave_backend
 
 
 def _check_version(version: str) -> bool:

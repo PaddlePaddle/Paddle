@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid import Program, program_guard
-import numpy as np
-import functools
+from paddle.fluid.layers.control_flow import lod_rank_table
 
 
 def convert_to_offset(lod):
@@ -51,7 +54,7 @@ class TestReorderLoDTensor(unittest.TestCase):
         new_dat = fluid.layers.reorder_lod_tensor_by_rank(
             x=dat, rank_table=table
         )
-        loss = fluid.layers.reduce_sum(new_dat)
+        loss = paddle.sum(new_dat)
         fluid.backward.append_backward(loss=loss)
         cls.fetch_list = [new_dat, cls.data_desc[0][0] + '@GRAD']
 
@@ -86,7 +89,9 @@ class TestReorderLoDTensor(unittest.TestCase):
                 lod_level_i = np.random.randint(
                     low=1,
                     high=5,
-                    size=self.num_seq if i == 0 else sum(lod_level_i),
+                    size=self.num_seq
+                    if i == 0
+                    else sum(lod_level_i),  # noqa: F821
                 ).tolist()
                 data_lod.append(lod_level_i)
             data_value = np.random.random(

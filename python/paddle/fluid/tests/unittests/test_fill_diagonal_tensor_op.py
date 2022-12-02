@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 from op_test import OpTest
+
+import paddle
 
 
 def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):

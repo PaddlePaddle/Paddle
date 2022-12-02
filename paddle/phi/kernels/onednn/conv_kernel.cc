@@ -291,8 +291,7 @@ void ConvKernel(const Context& dev_ctx,
       dev_ctx.GetPlace().GetType(),
       AllocationType::CPU,
       phi::errors::PreconditionNotMet("Operator DNNL Conv must use CPUPlace"));
-  bool is_INT8 =
-      std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+  bool is_INT8 = funcs::is_int8<T>();
 
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))

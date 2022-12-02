@@ -18,17 +18,17 @@ import unittest
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.tensor as tensor
 import paddle.utils as utils
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.process_group import new_process_group
+from paddle.distributed.auto_parallel.utils import _get_comm_group
+from paddle.distributed.fleet import auto
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
-import paddle.static as static
-from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
-from paddle.distributed.auto_parallel.utils import _get_comm_group
-from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -662,9 +662,7 @@ class GPTModel(nn.Layer):
             )
             position_ids = position_ids.unsqueeze(0)
             # .expand_as(input_ids)
-            position_ids = paddle.fluid.layers.expand_as(
-                position_ids, input_ids
-            )
+            position_ids = paddle.expand_as(position_ids, input_ids)
         embedding_output = self.embeddings(
             input_ids=input_ids, position_ids=position_ids
         )

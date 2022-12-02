@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
-import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit.api import declarative
 
 
 def dyfunc_tensor_shape_1(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.reshape(x, shape=x.shape)
+    res = paddle.reshape(x, shape=x.shape)
     return res
 
 
@@ -38,13 +39,13 @@ def dyfunc_tensor_shape_3(x):
     # Transform y.shape but run y.shape actually because y is not Tensor
     x = fluid.dygraph.to_variable(x)
     y = np.ones(5)
-    res = fluid.layers.reshape(x, shape=y.shape)
+    res = paddle.reshape(x, shape=y.shape)
     return res
 
 
 def dyfunc_tensor_shape_4(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.reshape(x, shape=(-1, x.shape[0], len(x.shape)))
+    res = paddle.reshape(x, shape=(-1, x.shape[0], len(x.shape)))
     return res
 
 
@@ -54,7 +55,7 @@ def dyfunc_tensor_shape_5(x):
     #           paddle.jit.dy2static.convert_var_shape(x)[0]))`
     x = fluid.dygraph.to_variable(x)
     s = x.shape[0]
-    res = fluid.layers.reshape(x, shape=(-1, s))
+    res = paddle.reshape(x, shape=(-1, s))
     return res
 
 
@@ -64,7 +65,7 @@ def dyfunc_tensor_shape_6(x):
     #           paddle.jit.dy2static.convert_var_shape(x)[0:]))`
     x = fluid.dygraph.to_variable(x)
     s = x.shape[0:]
-    res = fluid.layers.reshape(x, shape=s)
+    res = paddle.reshape(x, shape=s)
     return res
 
 
@@ -103,7 +104,7 @@ def dyfunc_paddle_shape_api(x):
 
 def dyfunc_with_if_1(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.reshape(x, [-1, 1])
+    res = paddle.reshape(x, [-1, 1])
     x_shape_0 = x.shape[0]
     if x_shape_0 < 1:
         # `res.shape[0]` is transformed into

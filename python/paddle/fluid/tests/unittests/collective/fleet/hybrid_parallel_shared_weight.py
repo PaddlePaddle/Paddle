@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.meta_parallel import PipelineLayer
-from paddle.fluid.dygraph.layers import Layer
-import paddle.nn as nn
 import paddle.fluid as fluid
-from paddle.distributed.fleet.meta_parallel import LayerDesc, SharedLayerDesc
+import paddle.nn as nn
+from paddle.distributed.fleet.meta_parallel import (
+    LayerDesc,
+    PipelineLayer,
+    SharedLayerDesc,
+)
+from paddle.fluid.dygraph.layers import Layer
 
 
 def print_hook_fn(grad):
@@ -59,11 +63,11 @@ class SimpleNet(Layer):
         x_emb = self.word_embeddings(x1)
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
-        projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
+        projection = paddle.reshape(fc, shape=[-1, vocab_size])
 
         projection = paddle.matmul(projection, self.word_embeddings.weight)
 
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1, soft_label=False
         )
         return loss.mean()
@@ -106,7 +110,7 @@ class BiasNet(Layer):
     def forward(self, args):
         fc, x2 = args
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
-        projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
+        projection = paddle.reshape(fc, shape=[-1, vocab_size])
         return projection, x2
 
 
@@ -116,7 +120,7 @@ class LossNet(Layer):
 
     def forward(self, args, y1):
         projection = args
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1[0], soft_label=False
         )
         return loss.mean()

@@ -373,21 +373,19 @@ def _worker_loop(
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
-                    # NOTE: In eager mode, Tensor._share_memory has no
-                    # effect, fall back to _array_to_share_memory_tensor
-                    def tensor_share_memory(tensor):
-                        if _in_eager_without_dygraph_check():
-                            return core._array_to_share_memory_tensor(tensor)
-                        return tensor._share_memory()
+
+                    def numpy2lodtensor(arr):
+                        lodtensor = core.Tensor()
+                        lodtensor.set(arr, core.CPUPlace())
+                        return lodtensor
 
                     tensor_list = [
-                        core._array_to_share_memory_tensor(b)
+                        numpy2lodtensor(b)
                         if isinstance(b, np.ndarray)
-                        else tensor_share_memory(b)
+                        else b.value().get_tensor()
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))
-                    core._remove_tensor_list_mmap_fds(tensor_list)
                 else:
                     out_queue.put((idx, batch, structure))
     except KeyboardInterrupt:

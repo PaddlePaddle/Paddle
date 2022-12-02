@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
 import paddle.nn.functional as F
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.fluid.dygraph.nn import Embedding
 
 paddle.seed(123)
 np.random.seed(2021)

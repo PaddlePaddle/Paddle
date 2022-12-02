@@ -165,7 +165,7 @@ void UniformRandom(const framework::ExecutionContext& context,
 
   if (seed == 0) {
     // Use global Generator seed
-    using MT = typename details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     phi::funcs::uniform_distribution<MT> dist;
     phi::funcs::uniform_real_transform<MT> trans(min, max);
     phi::funcs::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);

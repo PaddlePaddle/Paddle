@@ -21,11 +21,11 @@ sample lines from API_DEV.spec:
     paddle.autograd.PyLayer (paddle.autograd.py_layer.PyLayer, ('document', 'c26adbbf5f1eb43d16d4a399242c979e'))
     paddle.autograd.PyLayer.apply (ArgSpec(args=['cls'], varargs=args, keywords=kwargs, defaults=None), ('document', 'cb78696dc032fb8af2cba8504153154d'))
 """
-import unittest
-import hashlib
 import functools
-from print_signatures import md5
-from print_signatures import is_primitive
+import hashlib
+import unittest
+
+from print_signatures import is_primitive, md5
 
 
 def func_example(param_a, param_b):
