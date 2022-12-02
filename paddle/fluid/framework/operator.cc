@@ -563,6 +563,14 @@ phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   }
 }
 
+OperatorWithKernel::OperatorWithKernel(const std::string& type,
+                                       const VariableNameMap& inputs,
+                                       const VariableNameMap& outputs,
+                                       const AttributeMap& attrs)
+    : OperatorBase(type, inputs, outputs, attrs) {}
+
+OperatorWithKernel::~OperatorWithKernel() = default;
+
 bool ExecutionContext::HasInput(const std::string& name) const {
   auto* var = InputVar(name);
   return var != nullptr;
