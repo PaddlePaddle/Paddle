@@ -268,7 +268,6 @@ class InstallLib(install_lib):
         if outfiles is not None:
             # always compile, in case we have any extension stubs to deal with
             self.byte_compile(outfiles)
-            # raise("___")
 
 
 def git_commit():
@@ -593,7 +592,7 @@ def cmake_run(args, build_path):
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
-        cmake_args.append("WITH_SETUP")
+        cmake_args.append("WITH_SETUP_INSTALL")
         cmake_args += args
         cmake_args.append(TOP_DIR)
         print("cmake_args:", cmake_args)
@@ -609,7 +608,6 @@ def make_run(args, build_path, envrion_var):
         # cmake_args.append(TOP_DIR)
         print(" ".join(cmake_args))
         try:
-            # print("cmake_args: ", cmake_args)
             subprocess.check_call(cmake_args, cwd=build_path, env=envrion_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
             sys.exit(1)
@@ -1462,7 +1460,6 @@ def main():
     )
     if os.path.exists('${SETUP_LOG_FILE}'):
         os.system('grep -v "purelib" ${SETUP_LOG_FILE}')
-    # print_info_of_reminding(build_help_message)
 
 
 if __name__ == '__main__':

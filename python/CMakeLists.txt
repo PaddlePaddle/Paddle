@@ -22,7 +22,7 @@ set(SETUP_LOG_FILE "setup.py.log")
 
 set(FLUID_CORE_NAME "libpaddle")
 
-if(WITH_SETUP)
+if(WITH_SETUP_INSTALL)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
                  ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
 else()
@@ -64,26 +64,48 @@ if(WITH_TESTING)
 endif()
 
 if(WIN32)
-  add_custom_command(
-    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-    COMMAND
-      ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
-      ${PADDLE_BINARY_DIR}/python/paddle/ if (NOT WITH_SETUP)
-    COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
-            bdist_wheel endif ()
-    COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-            pass_desc_py_proto ${PY_FILES})
+  if(WITH_SETUP_INSTALL)
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND
+        ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
+        ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  else()
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND
+        ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
+        ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
+              bdist_wheel
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  endif()
 else()
-  add_custom_command(
-    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-    COMMAND touch stub.cc
-    COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
-            if (NOT WITH_SETUP)
-    COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel endif ()
-    COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-            pass_desc_py_proto ${PY_FILES})
+  if(WITH_SETUP_INSTALL)
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND touch stub.cc
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
+              ${PADDLE_BINARY_DIR}/python
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  else()
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND touch stub.cc
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
+              ${PADDLE_BINARY_DIR}/python
+      COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  endif()
 endif()
 
 add_custom_target(paddle_python ALL
