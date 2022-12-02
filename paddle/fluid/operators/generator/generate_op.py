@@ -66,6 +66,25 @@ def restruct_io(op):
     return op
 
 
+def process_support_tensor(op_item, support_tensor_list):
+    scalar_map = {
+        'Scalar': 'float',
+        'Scalar(float)': 'float',
+        'Scalar(int)': 'int',
+        'Scalar(int64_t)': 'int64_t',
+    }
+    for attr_item in op_item['attrs']:
+        if support_tensor_list and attr_item['name'] in support_tensor_list:
+            attr_type = attr_item['typename']
+            assert (
+                attr_type in scalar_map
+            ), f"{op_item['name']}'s support_tensor in op_compat.yaml is error, the data_type of {attr_item['name']} is expected to be one of Scalar, Scalar(float), Scalar(int) or Scalar(int64_t), but now is {attr_type}."
+            attr_item['typename'] = scalar_map[attr_type]
+            attr_item['is_support_tensor'] = True
+        else:
+            attr_item['is_support_tensor'] = False
+
+
 # replace name of op and params for OpMaker
 def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
     def get_op_and_op_name(op_item):
@@ -91,11 +110,21 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
         if new_op_name != op_name:
             forward_op_item['op_name'] = op_name
 
+        support_tensor_list = None
+
+        if 'support_tensor' in op_args:
+            support_tensor_list = [
+                item.strip() for item in op_args['support_tensor'].split(",")
+            ]
+        process_support_tensor(forward_op_item, support_tensor_list)
+
         if 'backward' in op_args and has_backward:
             backward_op_list = op_args['backward'].split(',')
             _, bw_op_name = get_op_and_op_name(backward_op_list[0])
             forward_op_item['backward'] = bw_op_name
             backward_op_item['op_name'] = bw_op_name
+
+            process_support_tensor(backward_op_item, support_tensor_list)
 
             # for double grad
             if len(backward_op_list) > 1:
@@ -114,6 +143,8 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
                         double_grad_item['forward']['attrs'], op_args['attrs']
                     )
 
+                process_support_tensor(double_grad_item, support_tensor_list)
+
                 # for triple grad
                 if len(backward_op_list) > 2:
                     (
@@ -131,6 +162,10 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
                             triple_grad_item['forward']['attrs'],
                             op_args['attrs'],
                         )
+
+                    process_support_tensor(
+                        triple_grad_item, support_tensor_list
+                    )
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}

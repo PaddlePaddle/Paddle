@@ -74,6 +74,10 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_ty
   {% if "default_value" in attr %}
     .SetDefault({{process_default_value(attr)}})
   {%- endif %}
+  {% if "is_support_tensor" in attr and attr["is_support_tensor"] %}
+
+    .SupportTensor()
+  {%- endif %}
 {%- endmacro %}
 
 {# process default value for attributes, some attribute has different types and different default values in op & opmaker #}

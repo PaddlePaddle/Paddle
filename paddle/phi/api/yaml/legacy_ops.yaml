@@ -287,7 +287,7 @@
   backward : bilinear_tensor_product_grad
 
 - op : bincount
-  args: (Tensor x, Tensor weights, Scalar minlength)
+  args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
   output: Tensor(out)
   infer_meta:
     func: BincountInferMeta
@@ -1376,14 +1376,6 @@
   kernel :
     func : multiclass_nms3
   optional : rois_num
-
-- op : multinomial
-  args : (Tensor x, Scalar num_samples, bool replacement)
-  output : Tensor(out)
-  infer_meta :
-    func : MultinomialInferMeta
-  kernel :
-    func : multinomial
 
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)

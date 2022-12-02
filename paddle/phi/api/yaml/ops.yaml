@@ -665,6 +665,15 @@
     func : maxout
   backward : maxout_grad
 
+- op : multinomial
+  args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
+  output : Tensor(out)
+  infer_meta :
+    func : MultinomialInferMeta
+  kernel :
+    func : multinomial
+    data_type : x
+
 - op : mv
   args : (Tensor x, Tensor vec)
   output : Tensor

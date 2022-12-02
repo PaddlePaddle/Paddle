@@ -809,6 +809,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : multinomial
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+  support_tensor : num_samples
+
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
   extra :
