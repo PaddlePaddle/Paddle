@@ -27,6 +27,7 @@ class TestDygraphGroupSharded(TestMultipleGpus):
     def test_dygraph_group_sharded(self):
         self.run_mnist_2gpu('dygraph_group_sharded_api_eager.py')
 
+    # check stage3 for some functions.
     def test_dygraph_group_sharded(self):
         self.run_mnist_2gpu('dygraph_group_sharded_stage3_eager.py')
 

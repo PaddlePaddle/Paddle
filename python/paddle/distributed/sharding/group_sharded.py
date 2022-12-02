@@ -142,7 +142,7 @@ def group_sharded_parallel(
     params_fp16 = list(filter(check_dtype, model.parameters()))
     if scaler is None and len(params_fp16) > 0:
         warnings.warn(
-            "WARNING: scaler is None, please ensure the logic of your scaler outside is same as GroupShardedScaler."
+            "WARNING: the input of scaler is None, please ensure the logic of your scaler outside is same as GroupShardedScaler."
         )
     # convert model/optimizer/scaler
     if level in ['os', 'os_g']:

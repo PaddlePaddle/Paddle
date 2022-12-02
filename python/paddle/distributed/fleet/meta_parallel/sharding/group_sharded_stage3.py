@@ -605,7 +605,7 @@ class GroupShardedStage3(nn.Layer):
         def allreduce_(*_):
             assert (
                 param.trainable
-            ), "param must be trainable for grad allreduced"
+            ), "the param must be trainable for grad allreduced"
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
