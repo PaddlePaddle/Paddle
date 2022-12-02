@@ -55,7 +55,6 @@ __all__ = [
     'Switch',
     'increment',
     'array_write',
-    'less_than',
     'array_read',
     'cond',
     'StaticRNN',
@@ -1213,11 +1212,11 @@ class While:
 
             loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
 
-            cond = fluid.layers.less_than(x=i, y=loop_len)
+            cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
-                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+                paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
@@ -1229,6 +1228,7 @@ class While:
     Examples 2:
           .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -1238,14 +1238,14 @@ class While:
             data = fluid.data(name='data', shape=[1], dtype='float32')
             sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
 
-            cond = fluid.layers.less_than(x=i, y=loop_len)
+            cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
                 sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
                 data = fluid.layers.elementwise_add(x=data, y=one)
-                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+                paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             feed_data = np.ones(1).astype('float32')
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1654,64 +1654,6 @@ def array_write(x, i, array=None):
     return array
 
 
-@templatedoc()
-def less_than(x, y, force_cpu=None, cond=None, name=None):
-    """
-
-    ${comment}
-
-    Args:
-        x(Tensor): ${x_comment}.
-        y(Tensor): ${y_comment}.
-        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
-        cond(Tensor, optional): Optional output which can be any created Tensor
-            that meets the requirements to store the result of *less_than*.
-            if cond is None, a new Tensor will be created to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        ${out_comment}.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([1, 2, 3, 4], dtype='float32')
-            y = paddle.to_tensor([2, 2, 1, 3], dtype='float32')
-            result = paddle.less_than(x, y)
-            print(result) # [True, False, False, False]
-
-    """
-    check_variable_and_dtype(
-        x, "x", ["float32", "float64", "int32", "int64"], "less_than"
-    )
-    check_variable_and_dtype(
-        y, "y", ["float32", "float64", "int32", "int64"], "less_than"
-    )
-    if cond is not None:
-        check_type(cond, "cond", Variable, "less_than")
-    if force_cpu is not None:
-        check_type(force_cpu, "force_cpu", bool, "less_than")
-
-    helper = LayerHelper("less_than", **locals())
-    if cond is None:
-        cond = helper.create_variable_for_type_inference(dtype='bool')
-        cond.stop_gradient = True
-
-    attrs = dict()
-    if force_cpu is not None:
-        attrs['force_cpu'] = force_cpu
-
-    helper.append_op(
-        type='less_than',
-        inputs={'X': [x], 'Y': [y]},
-        outputs={'Out': [cond]},
-        attrs=attrs,
-    )
-    return cond
-
-
 def array_read(array, i):
     """
     This OP is used to read data at the specified position from the input array
@@ -1838,8 +1780,9 @@ class ConditionalBlock:
     Examples:
         .. code-block:: python
 
+             import paddle
              import paddle.fluid as fluid
-             cond = layers.less_than(x=label, y=limit)
+             cond = paddle.less_than(x=label, y=limit)
              true_image, false_image = layers.split_lod_tensor(
                  input=image, mask=cond)
              true_cond = layers.ConditionalBlock([true_image])

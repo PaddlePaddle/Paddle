@@ -29,7 +29,7 @@ paddle.enable_static()
 class TestApiWhileLoop(unittest.TestCase):
     def test_var_tuple(self):
         def cond(i):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i):
             return paddle.add(x=i, y=one)
@@ -55,7 +55,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
     def test_var_list(self):
         def cond(i, mem):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i, mem):
             mem = paddle.add(x=mem, y=one)
@@ -87,7 +87,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i, ten, test_dict, test_list, test_list_dict):
             test_dict["test_key"] = i
@@ -165,11 +165,11 @@ class TestApiWhileLoop(unittest.TestCase):
 class TestApiWhileLoop_Nested(unittest.TestCase):
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
-            return layers.less_than(i, loop_len1)
+            return paddle.less_than(i, loop_len1)
 
         def external_body(i, j, init, sums):
             def internal_cond(j, init, sums):
-                return layers.less_than(j, loop_len2)
+                return paddle.less_than(j, loop_len2)
 
             def internal_body(j, init, sums):
                 init = paddle.add(x=init, y=ones)
@@ -225,7 +225,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 class TestApiWhileLoop_Backward(unittest.TestCase):
     def test_while_loop_backward(self):
         def cond(i, x):
-            return layers.less_than(i, eleven)
+            return paddle.less_than(i, eleven)
 
         def body(i, x):
             x = paddle.multiply(x=i, y=i)
@@ -313,11 +313,11 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
     def test_nested_net_with_backward_and_lodtensor(self):
         def external_cond(i, j, x, mem_array):
-            return layers.less_than(i, array_len)
+            return paddle.less_than(i, array_len)
 
         def external_body(i, j, x, mem_array):
             def internal_cond(j, x, mem_array):
-                return layers.less_than(j, array_len2)
+                return paddle.less_than(j, array_len2)
 
             def internal_body(j, x, mem_array):
                 inner_data = layers.array_read(array=data_array, i=j)
@@ -396,7 +396,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
     def test_with_switch_case(self):
         def cond(i):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i):
             def fn_add_three():
@@ -447,13 +447,13 @@ class TestApiWhileLoop_Error(unittest.TestCase):
             return layers.increment(i)
 
         def cond_returns_bool_tensor(i):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def cond_returns_2d_tensor(i):
-            return layers.less_than(i, ten_2d)
+            return paddle.less_than(i, ten_2d)
 
         def cond_receives_two_args(i, ten):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i):
             return layers.increment(i)

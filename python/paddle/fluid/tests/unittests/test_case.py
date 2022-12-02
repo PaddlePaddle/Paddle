@@ -44,8 +44,8 @@ class TestAPICase(unittest.TestCase):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
             # call fn_1
             out_0 = paddle.static.nn.control_flow.case(
@@ -208,8 +208,8 @@ class TestAPICase_Nested(unittest.TestCase):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
             out_1 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -247,7 +247,7 @@ class TestAPICase_Error(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_1 = layers.less_than(z, x)  # true
+            pred_1 = paddle.less_than(z, x)  # true
 
             # The type of 'pred_fn_pairs' in case must be list or tuple
             def type_error_pred_fn_pairs():

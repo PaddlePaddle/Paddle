@@ -87,7 +87,6 @@ __all__ = [
     'autoincreased_step_counter',
     'unsqueeze',
     'lod_reset',
-    'pad',
     'image_resize',
     'resize_bilinear',
     'resize_trilinear',
@@ -110,7 +109,6 @@ __all__ = [
     'bilinear_tensor_product',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
-    'temporal_shift',
     'continuous_value_model',
     'unfold',
     'deformable_roi_pooling',
@@ -3878,92 +3876,6 @@ def lod_reset(x, y=None, target_lod=None):
     return out
 
 
-def pad(x, paddings, pad_value=0.0, name=None):
-    r"""
-    :alias_main: paddle.nn.functional.pad
-        :alias: paddle.nn.functional.pad,paddle.nn.functional.common.pad
-        :old_api: paddle.fluid.layers.pad
-
-    This op will pad a tensor with a constant value given by :attr:`pad_value`, and the
-    padded shape is specified by :attr:`paddings`.
-
-    Specifically, the number of values padded before the elements of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[2*i]`, and the number
-    of values padded after the elements of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[2*i+1]`.
-
-    See below for an example.
-
-    .. code-block:: text
-
-        Given:
-            x = [[1, 2], [3, 4]]
-
-            paddings = [0, 1, 1, 2]
-
-            pad_value = 0
-
-        Return:
-            out = [[0, 1, 2, 0, 0]
-                   [0, 3, 4, 0, 0]
-                   [0, 0, 0, 0, 0]]
-
-    Args:
-        x (Variable): Tensor, data type is float32.
-        paddings (list): A list of integers. Its elements specify the padded
-                         width before and after each dimension in turn.
-                         The length of :attr:`paddings` must be equal to
-                         :math:`rank(x) \\times 2`.
-        pad_value (float): The constant value used to pad.
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        The padded tensor, with the same data type and rank as :attr:`x`
-
-    Return Type:
-        Variable
-
-    Examples:
-        .. code-block:: python
-
-            # x is a rank 2 tensor variable
-            import paddle.fluid as fluid
-            x = fluid.data(name='data', shape=[300, 300], dtype='float32')
-            out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
-    """
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        "pad",
-    )
-
-    check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
-    if isinstance(pad_value, int):
-        pad_value = float(pad_value)
-
-    helper = LayerHelper('pad', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='pad',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'paddings': paddings, 'pad_value': pad_value},
-    )
-    return out
-
-
 def image_resize(
     input,
     out_shape=None,
@@ -6460,45 +6372,6 @@ def get_tensor_from_selected_rows(x, name=None):
         attrs={},
     )
     return out
-
-
-@templatedoc()
-def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
-    """
-
-    **Temporal Shift Operator**
-
-    ${comment}
-
-    Args:
-        x(Tensor): ${x_comment}
-        seg_num(int): ${seg_num_comment}
-        shift_ratio(float): ${shift_ratio_comment}
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-        data_format(str, optional): Data format that specifies the layout of input.
-            It can be "NCHW" or "NHWC". Default: "NCHW".
-
-    Returns:
-        out(Tensor): The temporal shifting result is a tensor with the
-        same shape and same data type as the input.
-
-    Raises:
-        TypeError: seg_num must be int type.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            input = paddle.randn([6, 4, 2, 2])
-            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
-    """
-    return paddle.nn.functional.temporal_shift(
-        x, seg_num, shift_ratio, name, data_format
-    )
 
 
 def continuous_value_model(input, cvm, use_cvm=True):
