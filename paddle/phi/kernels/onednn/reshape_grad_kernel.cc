@@ -23,7 +23,8 @@ template <typename T, typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
-  auto x_dims = x_grad->dims();
+  DDim x_dims = x_grad->dims();
+
   auto out_vec_dims = vectorize(out_grad.dims());
 
   funcs::ReorderOneDNNHandler reorder_handler(
@@ -36,7 +37,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
       out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       x_grad,
-      funcs::GetPlainOneDNNFormat(out_vec_dims.size()),
+      funcs::GetPlainOneDNNFormat(out_grad.dims().size()),
       dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
