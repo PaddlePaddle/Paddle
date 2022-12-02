@@ -18,6 +18,7 @@ list(
   group_norm_op.cc
   pad_op.cc
   split_op.cc
+  square_op.cc
   prelu_op.cc
   leaky_relu_op.cc
   gelu_op.cc
