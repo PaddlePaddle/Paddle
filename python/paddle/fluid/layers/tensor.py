@@ -47,7 +47,6 @@ from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
-    'create_tensor',
     'create_global_var',
     'cast',
     'tensor_array_to_tensor',
@@ -63,48 +62,6 @@ __all__ = [
     'linspace',
     'diag',
 ]
-
-
-def create_tensor(dtype, name=None, persistable=False):
-    """
-    Create a variable, which will hold a Tensor with data type dtype.
-
-    Args:
-        dtype(string|numpy.dtype): the data type of Tensor to be created, the
-            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
-        name(string, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-        persistable(bool): Set the persistable flag of the create tensor.
-            default value is False.
-
-    Returns:
-        Variable: The tensor to be created according to dtype.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          tensor = fluid.layers.create_tensor(dtype='float32')
-    """
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int8',
-            'int32',
-            'int32',
-            'int64',
-        ],
-        'create_tensor',
-    )
-    helper = LayerHelper("create_tensor", **locals())
-    return helper.create_variable(
-        name=helper.name, dtype=dtype, persistable=persistable
-    )
 
 
 def create_global_var(

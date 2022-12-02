@@ -46,7 +46,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
             cond = layers.less_than(x=label, y=limit)
             true_image, false_image = split_lod_tensor(input=image, mask=cond)
 
-            true_out = layers.create_tensor(dtype='float32')
+            true_out = paddle.tensor.create_tensor(dtype='float32')
             true_cond = ConditionalBlock([cond])
 
             with true_cond.block():
@@ -54,7 +54,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 prob = layers.fc(input=hidden, size=10, act='softmax')
                 layers.assign(input=prob, output=true_out)
 
-            false_out = layers.create_tensor(dtype='float32')
+            false_out = paddle.tensor.create_tensor(dtype='float32')
             false_cond = ConditionalBlock([cond])
 
             with false_cond.block():
