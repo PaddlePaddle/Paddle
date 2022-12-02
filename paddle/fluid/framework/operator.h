@@ -786,7 +786,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
   struct CacheImpl;
-  mutable CacheImpl* impl_{nullptr};
+  mutable std::unique_ptr<CacheImpl> impl_{nullptr};
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

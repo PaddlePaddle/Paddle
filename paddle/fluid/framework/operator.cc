@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
-#include "paddle/phi/backends/dynload/nvtx.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/ddim.h"
@@ -1540,27 +1539,28 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
-  phi::dynload::nvtxRangePushA("run_impl");
+  // phi::dynload::nvtxRangePushA("run_impl");
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context_ = true;
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
-  phi::dynload::nvtxRangePop();
+  // phi::dynload::nvtxRangePop();
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
-    phi::dynload::nvtxRangePushA("infer_shape");
-    if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape())
+    // phi::dynload::nvtxRangePushA("infer_shape");
+    if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape()) {
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-    phi::dynload::nvtxRangePop();
-    phi::dynload::nvtxRangePushA("kernel run");
+    }
+    // phi::dynload::nvtxRangePop();
+    // phi::dynload::nvtxRangePushA("kernel run");
     (*phi_kernel_)(impl_->getKernelContext());
-    phi::dynload::nvtxRangePop();
+    // phi::dynload::nvtxRangePop();
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
@@ -1877,9 +1877,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           }
         }
 
-        impl_ = new CacheImpl(new phi::KernelContext(),
-                              new RuntimeInferShapeContext(*this, *runtime_ctx),
-                              tensors);
+        impl_.reset(
+            new CacheImpl(new phi::KernelContext(),
+                          new RuntimeInferShapeContext(*this, *runtime_ctx),
+                          tensors));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
