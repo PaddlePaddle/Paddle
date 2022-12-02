@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from paddle.jit.dy2static.static_analysis import (
     AstNodeWrapper,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     FunctionNameLivenessAnalysis,
 )
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+from paddle.jit.dy2static.variable_trans_func import (
     create_undefined_var,
 )
 from .base_transformer import (
