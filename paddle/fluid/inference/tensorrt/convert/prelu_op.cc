@@ -32,6 +32,7 @@ class PReluOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto input_dims = input->getDimensions();
     // Get attrs
     std::string mode = PADDLE_GET_CONST(std::string, op_desc.GetAttr("mode"));
     std::string data_format = "NCHW";
@@ -52,8 +53,10 @@ class PReluOpConverter : public OpConverter {
       trt_w_dims.d[i] = w_dims[i];
     }
 
-    // The `element` mode contains the batch
-    if (mode == "element" && !engine_->with_dynamic_shape()) {
+    // The `element` or `channel` mode contains the batch using static shape.
+    if ((mode == "element" || mode == "channel") &&
+        !engine_->with_dynamic_shape() &&
+        (trt_w_dims.nbDims - 1 == input_dims.nbDims)) {
       trt_w_dims.nbDims--;
       for (int i = 0; i < trt_w_dims.nbDims; i++) {
         trt_w_dims.d[i] = trt_w_dims.d[i + 1];
@@ -65,7 +68,6 @@ class PReluOpConverter : public OpConverter {
             ->getOutput(0);
 
     auto alpha_dims = alpha_tensor->getDimensions();
-    auto input_dims = input->getDimensions();
     nvinfer1::ITensor* real_alpha_tensor = alpha_tensor;
     if (alpha_dims.nbDims != input_dims.nbDims) {
       auto* reshape_layer =
