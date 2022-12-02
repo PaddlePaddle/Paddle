@@ -27,8 +27,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers import (
     assign,
     fill_constant,
-    reduce_all,
-    reduce_any,
 )
 from paddle.fluid.layers import (
     cast,
@@ -38,7 +36,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers.control_flow import (
     cond,
     while_loop,
-    less_than,
     increment,
 )
 from .return_transformer import (
@@ -651,7 +648,7 @@ def convert_shape_compare(left, *args):
         def reduce_compare(x, op_str, y):
             element_wise_result = eval("x " + op_str + " y")
             if op_str == "!=":
-                return reduce_any(element_wise_result)
+                return paddle.any(element_wise_result)
             elif (
                 op_str == "is"
                 or op_str == "is not"
@@ -660,7 +657,7 @@ def convert_shape_compare(left, *args):
             ):
                 return element_wise_result
             else:
-                return reduce_all(element_wise_result)
+                return paddle.all(element_wise_result)
 
         final_result = reduce_compare(left, args[0], args[1])
         for i in range(1, num_cmp):
@@ -784,7 +781,7 @@ def _run_paddle_pop(array, *args):
     assert isinstance(idx, int)
 
     def cond(i, new_array):
-        return less_than(i, arr_len)
+        return paddle.less_than(i, arr_len)
 
     def body(i, new_array):
         item = array_read(array=array, i=i)
