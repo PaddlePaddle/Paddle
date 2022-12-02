@@ -117,8 +117,10 @@ void ConcatKernel(const Context& dev_ctx,
         continue;
       }
     }
-    for (auto it = inputs.begin(); it != inputs.end(); it++) {
-      it->Resize(tmp_1dim);
+    if (dim_is_0) {
+      for (auto it = inputs.begin(); it != inputs.end(); it++) {
+        it->Resize(tmp_1dim);
+      }
     }
     phi::funcs::ConcatFunctor<Context, T> functor;
     functor(dev_ctx, inputs, axis, out);
