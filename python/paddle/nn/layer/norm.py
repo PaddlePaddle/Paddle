@@ -42,7 +42,7 @@ from ...framework import ParamAttr, get_default_dtype, no_grad
 from .. import Layer
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
-from ..initializer import Constant
+from ..initializer import Constant, Normal
 
 __all__ = []
 
@@ -1425,3 +1425,131 @@ class LocalResponseNorm(Layer):
         if self.name is not None:
             main_str += ', name={}'.format(self.name)
         return main_str
+
+
+class SpectralNorm(Layer):
+    r"""
+    This interface is used to construct a callable object of the ``SpectralNorm`` class.
+    For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
+    This layer calculates the spectral normalization value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Calculations are showed as follows.
+
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`dim` th dimension of the input weights,
+    and W is the product result of remaining dimensions.
+
+    Step 2:
+    :attr:`power_iters` should be a positive integer, do following
+    calculations with U and V for :attr:`power_iters` rounds.
+
+    .. math::
+
+        \mathbf{v} := \frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \frac{\mathbf{W}}{\sigma(\mathbf{W})}
+
+
+    Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
+
+    Parameters:
+        weight_shape(list or tuple): The shape of weight parameter.
+        dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
+        power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
+        eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
+
+    Returns:
+        None
+
+    Examples:
+       .. code-block:: python
+
+            import paddle
+            x = paddle.rand((2,8,32,32))
+
+            spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
+            spectral_norm_out = spectral_norm(x)
+
+            print(spectral_norm_out.shape) # [2, 8, 32, 32]
+
+    """
+
+    def __init__(
+        self, weight_shape, dim=0, power_iters=1, eps=1e-12, dtype='float32'
+    ):
+        super().__init__()
+        self._power_iters = power_iters
+        self._eps = eps
+        self._dim = dim
+        self._dtype = dtype
+
+        self._weight_shape = list(weight_shape)
+        assert (
+            np.prod(self._weight_shape) > 0
+        ), "Any dimension of `weight_shape` cannot be equal to 0."
+        assert dim < len(self._weight_shape), (
+            "The input `dim` should be less than the "
+            "length of `weight_shape`, but received dim="
+            "{}".format(dim)
+        )
+        h = self._weight_shape[self._dim]
+        w = np.prod(self._weight_shape) // h
+
+        self.weight_u = self.create_parameter(
+            attr=ParamAttr(),
+            shape=[h],
+            dtype=self._dtype,
+            default_initializer=Normal(0.0, 1.0),
+        )
+        self.weight_u.stop_gradient = True
+
+        self.weight_v = self.create_parameter(
+            attr=ParamAttr(),
+            shape=[w],
+            dtype=self._dtype,
+            default_initializer=Normal(0.0, 1.0),
+        )
+        self.weight_v.stop_gradient = True
+
+    def forward(self, weight):
+        if in_dygraph_mode():
+            return _C_ops.spectral_norm(
+                weight,
+                self.weight_u,
+                self.weight_v,
+                self._dim,
+                self._power_iters,
+                self._eps,
+            )
+
+        check_variable_and_dtype(
+            weight, "weight", ['float32', 'float64'], 'SpectralNorm'
+        )
+        inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="spectral_norm",
+            inputs=inputs,
+            outputs={
+                "Out": out,
+            },
+            attrs={
+                "dim": self._dim,
+                "power_iters": self._power_iters,
+                "eps": self._eps,
+            },
+        )
+
+        return out
