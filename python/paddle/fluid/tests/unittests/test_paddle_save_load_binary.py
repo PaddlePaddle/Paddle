@@ -79,7 +79,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             )
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
-            loss = fluid.layers.reduce_mean(z)
+            loss = paddle.mean(z)
             place = (
                 fluid.CPUPlace()
                 if not paddle.fluid.core.is_compiled_with_cuda()

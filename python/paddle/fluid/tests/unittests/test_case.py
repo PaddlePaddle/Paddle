@@ -299,12 +299,12 @@ class TestMutiTask(unittest.TestCase):
         adagrad = optimizer.Adagrad(learning_rate=0.001)
 
         def fn_1():
-            sum = layers.elementwise_mul(x, y)
+            sum = paddle.multiply(x, y)
             loss = paddle.mean(sum, name="f_1_loss")
             adam.minimize(loss)
 
         def fn_2():
-            sum = layers.elementwise_mul(x, y)
+            sum = paddle.multiply(x, y)
             loss = paddle.mean(sum, name="f_2_loss")
             adagrad.minimize(loss)
 

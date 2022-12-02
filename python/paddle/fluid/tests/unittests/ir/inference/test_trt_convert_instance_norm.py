@@ -50,7 +50,13 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
                 [batch, 16, 32, 64],
             ]:
                 self.in_dim = len(shape_input)
-                for epsilon in [0.0005, -1, 1]:
+                for epsilon in [
+                    0.0005,
+                    -1,
+                    1,
+                    0.000009999999747378752,
+                    0.00001,
+                ]:
                     dics = [{"epsilon": epsilon}]
                     ops_config = [
                         {
