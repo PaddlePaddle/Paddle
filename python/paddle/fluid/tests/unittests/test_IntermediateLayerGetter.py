@@ -15,7 +15,7 @@
 import paddle
 import unittest
 import random
-from paddle.vision.models.utils import IntermediateLayerGetter
+from paddle.vision.models._utils import IntermediateLayerGetter
 
 
 class TestBase:
