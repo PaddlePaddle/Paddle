@@ -297,7 +297,7 @@ class BaseModel(fluid.dygraph.Layer):
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = fluid.layers.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
@@ -831,7 +831,7 @@ class AttentionModel(fluid.dygraph.Layer):
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = fluid.layers.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
