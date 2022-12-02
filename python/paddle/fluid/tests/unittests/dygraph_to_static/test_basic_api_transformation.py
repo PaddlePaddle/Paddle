@@ -225,7 +225,7 @@ def dyfunc_Prelu(input):
             initializer=fluid.initializer.Constant(1.0)
         ),
     )
-    res = prelu0(input=input)
+    res = prelu0(input)
     return res
 
 

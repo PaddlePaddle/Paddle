@@ -33,9 +33,7 @@ from paddle.fluid.framework import (
     default_main_program,
     program_guard,
 )
-from paddle.fluid.initializer import Constant
 from paddle.fluid.layers.device import get_places
-from paddle.fluid.param_attr import ParamAttr
 from paddle.tensor import random
 
 
@@ -686,37 +684,37 @@ class TestLayer(LayerTest):
             )[0]
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
-            conv2d_transpose = nn.Conv2DTranspose(
-                num_channels=3,
-                num_filters=10,
-                filter_size=27,
-                act='sigmoid',
+            conv2d_transpose = paddle.nn.Conv2DTranspose(
+                3,
+                10,
+                27,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
             )
             out = conv2d_transpose(img)
+            out = paddle.nn.functional.sigmoid(out)
             static_rlt2 = self.get_static_graph_result(
                 feed={'pixel': inp_np}, fetch_list=[out]
             )[0]
         with self.dynamic_graph():
             with _test_eager_guard():
-                conv2d_transpose = nn.Conv2DTranspose(
-                    num_channels=3,
-                    num_filters=10,
-                    filter_size=27,
-                    act='sigmoid',
+                conv2d_transpose = paddle.nn.Conv2DTranspose(
+                    3,
+                    10,
+                    27,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 )
                 dy_eager_rlt = conv2d_transpose(base.to_variable(inp_np))
+                dy_eager_rlt = paddle.nn.functional.sigmoid(dy_eager_rlt)
                 dy_eager_rlt_value = dy_eager_rlt.numpy()
 
-            conv2d_transpose = nn.Conv2DTranspose(
-                num_channels=3,
-                num_filters=10,
-                filter_size=27,
-                act='sigmoid',
+            conv2d_transpose = paddle.nn.Conv2DTranspose(
+                3,
+                10,
+                27,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
             )
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
+            dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
             dy_rlt_value = dy_rlt.numpy()
         np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
         np.testing.assert_allclose(dy_rlt_value, static_rlt2, rtol=1e-05)
@@ -731,14 +729,12 @@ class TestLayer(LayerTest):
                         custom_weight
                     )
                 )
-                conv2d1 = nn.Conv2DTranspose(
-                    num_channels=3, num_filters=3, filter_size=[2, 2]
-                )
-                conv2d2 = nn.Conv2DTranspose(
-                    num_channels=3,
-                    num_filters=3,
-                    filter_size=[2, 2],
-                    param_attr=weight_attr,
+                conv2d1 = paddle.nn.Conv2DTranspose(3, 3, [2, 2])
+                conv2d2 = paddle.nn.Conv2DTranspose(
+                    3,
+                    3,
+                    [2, 2],
+                    weight_attr=weight_attr,
                 )
                 dy_ret1 = conv2d1(base.to_variable(images))
                 dy_ret2 = conv2d2(base.to_variable(images))
@@ -776,14 +772,12 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            conv2d1 = nn.Conv2DTranspose(
-                num_channels=3, num_filters=3, filter_size=[2, 2]
-            )
-            conv2d2 = nn.Conv2DTranspose(
-                num_channels=3,
-                num_filters=3,
-                filter_size=[2, 2],
-                param_attr=weight_attr,
+            conv2d1 = paddle.nn.Conv2DTranspose(3, 3, [2, 2])
+            conv2d2 = paddle.nn.Conv2DTranspose(
+                3,
+                3,
+                [2, 2],
+                weight_attr=weight_attr,
             )
             dy_ret1 = conv2d1(base.to_variable(images))
             dy_ret2 = conv2d2(base.to_variable(images))
@@ -817,9 +811,7 @@ class TestLayer(LayerTest):
             # the input of Conv2DTranspose must be Variable.
             def test_Variable():
                 images = np.ones([2, 3, 5, 5], dtype='float32')
-                conv2d = nn.Conv2DTranspose(
-                    num_channels=3, num_filters=3, filter_size=[2, 2]
-                )
+                conv2d = paddle.nn.Conv2DTranspose(3, 3, [2, 2])
                 conv2d_ret1 = conv2d(images)
 
             self.assertRaises(TypeError, test_Variable)
@@ -830,9 +822,7 @@ class TestLayer(LayerTest):
                 images = layers.data(
                     name='pixel', shape=[3, 5, 5], dtype='int32'
                 )
-                conv2d = nn.Conv2DTranspose(
-                    num_channels=3, num_filters=3, filter_size=[2, 2]
-                )
+                conv2d = paddle.nn.Conv2DTranspose(3, 3, [2, 2])
                 conv2d_ret2 = conv2d(images)
 
             self.assertRaises(TypeError, test_type)
@@ -872,7 +862,6 @@ class TestLayer(LayerTest):
                 3,
                 6,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                act='sigmoid',
             )
             out = btp(data_x, data_y)
             out = paddle.nn.functional.sigmoid(out)
@@ -1013,133 +1002,6 @@ class TestLayer(LayerTest):
                 btp1.weight.numpy(), btp2.weight.numpy()
             )
             np.testing.assert_array_equal(btp1.bias.numpy(), btp2.bias.numpy())
-
-    def prelu_test(self, mode):
-        inp_np = np.ones([5, 200, 100, 100]).astype('float32')
-        with self.static_graph():
-            data_t = layers.data(
-                name="input",
-                shape=[5, 200, 100, 100],
-                dtype="float32",
-                append_batch_size=False,
-            )
-            out = paddle.static.nn.prelu(
-                data_t, mode, param_attr=ParamAttr(initializer=Constant(1.0))
-            )
-            static_rlt = self.get_static_graph_result(
-                feed={"input": inp_np}, fetch_list=[out]
-            )[0]
-
-        with self.static_graph():
-            data_t = layers.data(
-                name="input",
-                shape=[5, 200, 100, 100],
-                dtype="float32",
-                append_batch_size=False,
-            )
-            prelu = nn.PRelu(
-                mode=mode,
-                channel=inp_np.shape[1],
-                input_shape=data_t.shape,
-                param_attr=ParamAttr(initializer=Constant(1.0)),
-            )
-            out = prelu(data_t)
-            static_rlt2 = self.get_static_graph_result(
-                feed={"input": inp_np}, fetch_list=[out]
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                prelu = nn.PRelu(
-                    mode=mode,
-                    channel=inp_np.shape[1],
-                    input_shape=inp_np.shape,
-                    param_attr=ParamAttr(initializer=Constant(1.0)),
-                )
-                dy_eager_rlt = prelu(base.to_variable(inp_np))
-                dy_eager_rlt_value = dy_eager_rlt.numpy()
-
-            prelu = nn.PRelu(
-                mode=mode,
-                channel=inp_np.shape[1],
-                input_shape=inp_np.shape,
-                param_attr=ParamAttr(initializer=Constant(1.0)),
-            )
-            dy_rlt = prelu(base.to_variable(inp_np))
-            dy_rlt_value = dy_rlt.numpy()
-
-        np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
-        np.testing.assert_allclose(dy_rlt_value, static_rlt, rtol=1e-05)
-        np.testing.assert_allclose(dy_eager_rlt_value, static_rlt, rtol=1e-05)
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                inp_np = np.random.randn(5, 200, 100, 100).astype("float32")
-                inp = base.to_variable(inp_np)
-                prelu1 = nn.PRelu(
-                    mode=mode,
-                    channel=inp_np.shape[1],
-                    input_shape=inp_np.shape,
-                    param_attr=ParamAttr(initializer=Constant(2.0)),
-                )
-                prelu2 = nn.PRelu(
-                    mode=mode,
-                    channel=inp_np.shape[1],
-                    input_shape=inp_np.shape,
-                    param_attr=ParamAttr(initializer=Constant(1.0)),
-                )
-                dy_rlt1 = prelu1(inp)
-                dy_rlt2 = prelu2(inp)
-                self.assertFalse(
-                    np.array_equal(prelu1.weight.numpy(), prelu2.weight.numpy())
-                )
-                self.assertFalse(
-                    np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
-                )
-                prelu2.weight.set_value(prelu1.weight.numpy())
-                dy_rlt1 = prelu1(inp)
-                dy_rlt2 = prelu2(inp)
-                np.testing.assert_array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
-
-                prelu2.weight = prelu1.weight
-                np.testing.assert_array_equal(
-                    prelu1.weight.numpy(), prelu2.weight.numpy()
-                )
-
-            inp_np = np.random.randn(5, 200, 100, 100).astype("float32")
-            inp = base.to_variable(inp_np)
-            prelu1 = nn.PRelu(
-                mode=mode,
-                channel=inp_np.shape[1],
-                input_shape=inp_np.shape,
-                param_attr=ParamAttr(initializer=Constant(2.0)),
-            )
-            prelu2 = nn.PRelu(
-                mode=mode,
-                channel=inp_np.shape[1],
-                input_shape=inp_np.shape,
-                param_attr=ParamAttr(initializer=Constant(1.0)),
-            )
-            dy_rlt1 = prelu1(inp)
-            dy_rlt2 = prelu2(inp)
-            self.assertFalse(
-                np.array_equal(prelu1.weight.numpy(), prelu2.weight.numpy())
-            )
-            self.assertFalse(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
-            prelu2.weight.set_value(prelu1.weight.numpy())
-            dy_rlt1 = prelu1(inp)
-            dy_rlt2 = prelu2(inp)
-            np.testing.assert_array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
-
-            prelu2.weight = prelu1.weight
-            np.testing.assert_array_equal(
-                prelu1.weight.numpy(), prelu2.weight.numpy()
-            )
-
-    def test_prelu(self):
-        self.prelu_test("channel")
-        self.prelu_test("element")
-        self.prelu_test("all")
 
     def test_embeding(self):
         inp_word = np.array([[[1]]]).astype('int64')
