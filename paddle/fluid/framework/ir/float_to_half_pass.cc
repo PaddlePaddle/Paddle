@@ -119,7 +119,6 @@ void DoInsertCastOp(Graph* graph,
 }
 
 inline bool VarNodeHasDtype(Node* var_node) {
-  CHECK_EQ(var_node->IsVar(), true);
   auto type = var_node->Var()->GetType();
   return (type == VarType::SELECTED_ROWS) || (type == VarType::LOD_TENSOR) ||
          (type == VarType::LOD_TENSOR_ARRAY) || (type == VarType::STRINGS) ||
@@ -204,8 +203,15 @@ void FloatToHalfPass::ApplyImpl(Graph* graph) const {
   auto enable_gpu_half = Get<bool>("enable_gpu_half");
   if (!enable_gpu_half) return;
 
-  CHECK_NOTNULL(graph);
-  CHECK_EQ(graph->IsMainGraph(), true);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph,
+      platform::errors::PreconditionNotMet(
+          "During the float to half pass, the graph should not be nullptr."));
+  PADDLE_ENFORCE_EQ(
+      graph->IsMainGraph(),
+      true,
+      platform::errors::PreconditionNotMet(
+          "During the float to half pass, the graph should be main graph."));
 
   FusePassBase::Init("float_to_half", graph);
 
@@ -245,8 +251,6 @@ void FloatToHalfPass::SetOpUniqueType() const {
   int suffix = 0;
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      CHECK_EQ(op_node->IsOp(), true);
-
       auto op_type = op_node->Op()->Type();
 
       if (op_type == "feed" || op_type == "fetch") continue;
@@ -263,8 +267,6 @@ void FloatToHalfPass::SetOpUniqueType() const {
 void FloatToHalfPass::RestoreOpOriginType() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      CHECK_EQ(op_node->IsOp(), true);
-
       auto op_type = op_node->Op()->Type();
       op_node->Op()->SetType(GetOpOriginalType(op_type));
       op_node->Op()->Flush();
@@ -285,8 +287,6 @@ inline std::string FloatToHalfPass::GetOpOriginalType(
 void FloatToHalfPass::ProcessOpWithDtypeAttr() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      CHECK_EQ(op_node->IsOp(), true);
-
       auto op_type = op_node->Op()->Type();
       if (op_run_half_.count(op_type) == 0) continue;
 
@@ -322,8 +322,6 @@ void FloatToHalfPass::ProcessOpWithDtypeAttr() const {
 void FloatToHalfPass::GetOpPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      CHECK_EQ(op_node->IsOp(), true);
-
       auto op_type = op_node->Op()->Type();
       bool support_half = true;
       if (GetOpOriginalType(op_type) == "feed" ||
@@ -383,8 +381,6 @@ void FloatToHalfPass::UpdateOpPrecision() const {
   auto GetVarInputOps = [&] {
     for (const auto& nodes : all_op_nodes_) {
       for (auto* op_node : nodes) {
-        CHECK_EQ(op_node->IsOp(), true);
-
         auto op_type = op_node->Op()->Type();
 
         if (GetOpOriginalType(op_type) == "fetch") continue;
@@ -436,8 +432,6 @@ void FloatToHalfPass::UpdateOpPrecision() const {
     precision_updated = false;
     for (const auto& nodes : all_op_nodes_) {
       for (auto* op_node : nodes) {
-        CHECK_EQ(op_node->IsOp(), true);
-
         if (op_run_half_.count(op_node->Op()->Type()) == 0) continue;
 
         for (auto* in_var_node : op_node->inputs) {
@@ -494,7 +488,6 @@ void FloatToHalfPass::UpdateOpPrecision() const {
 // special ops, its weights should not be low precision.
 bool FloatToHalfPass::InputVarsNotConvert(Node* op_node,
                                           const std::string& var_name) const {
-  CHECK_EQ(op_node->IsOp(), true);
   auto* op_desc = op_node->Op();
   if (GetOpOriginalType(op_desc->Type()) == "batch_norm") {
     auto vecs = op_desc->Input("Bias");
@@ -536,7 +529,6 @@ bool FloatToHalfPass::InputVarsNotConvert(Node* op_node,
 
 bool FloatToHalfPass::OutputVarsNotConvert(Node* op_node,
                                            const std::string& var_name) const {
-  CHECK_EQ(op_node->IsOp(), true);
   auto* op_desc = op_node->Op();
   // batch_norm's input and output (variance and mean) are the same.
   if (GetOpOriginalType(op_desc->Type()) == "batch_norm") {
@@ -563,8 +555,6 @@ bool FloatToHalfPass::OutputVarsNotConvert(Node* op_node,
 void FloatToHalfPass::SetVarPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      CHECK_EQ(op_node->IsOp(), true);
-
       if (op_run_half_.count(op_node->Op()->Type())) {
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
@@ -621,7 +611,10 @@ void FloatToHalfPass::SetVarPrecision() const {
 
 void FloatToHalfPass::ConvertWeightsData() const {
   auto* scope = param_scope();
-  CHECK_NOTNULL(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::PreconditionNotMet(
+          "During the float to half pass, The scope should not be null."));
 
   auto var_names = scope->LocalVarNames();
   for (const auto& var_name : var_names) {
@@ -666,8 +659,6 @@ void FloatToHalfPass::InsertCastOp() const {
     auto* block_desc = all_op_nodes_[i][0]->Op()->Block();
     CHECK_NOTNULL(block_desc);
     for (auto* op_node : all_op_nodes_[i]) {
-      CHECK_EQ(op_node->IsOp(), true);
-
       auto op_type = op_node->Op()->Type();
 
       if (GetOpOriginalType(op_type) == "feed") continue;
