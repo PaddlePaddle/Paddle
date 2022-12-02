@@ -83,7 +83,8 @@ static const std::unordered_set<std::string> deprecated_op_names(
      "bicubic_interp",
      "bicubic_interp_grad",
      "crop",
-     "crop_grad"});
+     "crop_grad",
+     "generate_proposals"});
 
 class DefaultKernelSignatureMap {
  public:

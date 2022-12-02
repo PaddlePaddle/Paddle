@@ -19,6 +19,7 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -310,7 +311,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // mapping table.
   if (!argument->enable_memory_optim()) return;
   // Because of pass is a singleton, graph can not be member
-  // variables，otherwise，errors will be caused under multithreading
+  // variables，otherwise, errors will be caused under multithreading
   // conditions.
   auto graph = argument->main_graph_ptr();
 
@@ -323,7 +324,11 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   CollectLifeCycle(graph, &lifecycles, sort_kind);
   CollectVarMemorySize(graph, &space_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
-  UpdateOpDescsByReuse(graph, node2cluster, sort_kind);
+
+  auto* pass_res_info = PassResultInfoForRuntime::Instance();
+  pass_res_info->Set(
+      argument->root_predictor_id(), "memory_optimize_pass", node2cluster);
+
   return;
 }
 

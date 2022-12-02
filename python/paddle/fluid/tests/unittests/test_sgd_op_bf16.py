@@ -347,7 +347,7 @@ class TestSGDOpBF16API(unittest.TestCase):
                 is_sparse=False,
                 dtype="uint16",
             )  # bfloat16
-            cost = fluid.layers.elementwise_add(emb, label)
+            cost = paddle.add(emb, label)
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = paddle.optimizer.SGD(

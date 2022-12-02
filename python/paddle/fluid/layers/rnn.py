@@ -1638,7 +1638,7 @@ def _dynamic_decode_declarative(
         default_main_program().current_block_idx = (
             default_main_program().current_block().parent_idx
         )
-        tensor_array = control_flow.create_array(dtype)
+        tensor_array = paddle.tensor.create_array(dtype)
         default_main_program().current_block_idx = current_block_idx
         return tensor_array
 
