@@ -14,7 +14,7 @@
 
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -28,7 +28,7 @@ class TrtConvertSquareTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(dims, attrs: List[Dict[str, Any]]):
+        def generate_input1(dims):
             if dims == 1:
                 return np.ones([3]).astype(np.float32)
             elif dims == 2:
@@ -49,6 +49,7 @@ class TrtConvertSquareTest(TrtLayerAutoScanTest):
                             "X": ["input_data"],
                         },
                         "op_outputs": {"Out": ["output_data"]},
+                        "op_attrs": {},
                     }
                 ]
                 ops = self.generate_op_config(ops_config)
@@ -101,8 +102,8 @@ class TrtConvertSquareTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            # if self.dims == 1:
-            #     return 0, 3
+            if not dynamic_shape and self.dims == 1:
+                return 0, 3
             return 1, 2
 
         attrs = [
