@@ -92,8 +92,14 @@ inline std::string GetCpuHintString(const std::string& op_type,
                                     const phi::Place& place,
                                     int device_id = -1) {
   std::string dtype_str = DataTypeToString(DataTypeTrait<T>::DataType());
-  if (dtype_str == "::paddle::platform::float16") {
-    dtype_str = "float16";
+  if (dtype_str == "float") {
+    dtype_str = "fp32";
+  } else if (dtype_str == "double") {
+    dtype_str = "fp64";
+  } else if (dtype_str == "::paddle::platform::float16") {
+    dtype_str = "fp16";
+  } else if (dtype_str == "::paddle::platform::bfloat16") {
+    dtype_str = "bf16";
   }
 
   std::stringstream ss;
@@ -109,19 +115,16 @@ inline std::string GetCpuHintString(const std::string& op_type,
 
 template <typename DeviceContext>
 struct TensorCheckerVisitor {
-  TensorCheckerVisitor(const std::string& op_type,
-                       const std::string& var_name,
-                       const phi::DenseTensor& tensor,
-                       const platform::Place& place)
-      : op_type_(op_type),
-        var_name_(var_name),
-        tensor_(tensor),
-        place_(place) {}
+  TensorCheckerVisitor(const std::string& o,
+                       const std::string& v,
+                       const phi::DenseTensor& t,
+                       const platform::Place& p)
+      : op_type(o), var_name(v), tensor(t), place(p) {}
 
   template <typename T>
   void apply(
       typename std::enable_if<std::is_integral<T>::value>::type* = 0) const {
-    VLOG(10) << var_name_ << " need not to check, it's type is not float point";
+    VLOG(10) << var_name << " need not to check, it's type is not float point";
   }
 
   template <typename T>
@@ -132,10 +135,10 @@ struct TensorCheckerVisitor {
           std::is_same<T, ::paddle::platform::complex<double>>::value>::type* =
           0) const;
 
-  std::string op_type_;
-  std::string var_name_;
-  const phi::DenseTensor& tensor_;
-  const platform::Place& place_;
+  std::string op_type;
+  std::string var_name;
+  const phi::DenseTensor& tensor;
+  const platform::Place& place;
 };
 
 template <typename DeviceContext>

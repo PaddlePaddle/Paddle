@@ -364,10 +364,10 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(tensor_.place()));
-  int dev_id = tensor_.place().device;
+      platform::DeviceContextPool::Instance().Get(tensor.place()));
+  int dev_id = tensor.place().device;
   char* gpu_str_ptr =
-      GetGpuHintStringPtr<T>(*dev_ctx, op_type_, var_name_, dev_id);
+      GetGpuHintStringPtr<T>(*dev_ctx, op_type, var_name, dev_id);
 
 #ifdef __HIPCC__
   // HIP will throw GPU memory access fault if threads > 256
@@ -377,7 +377,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 #endif
   size_t blocks =
       std::min(static_cast<size_t>(128),
-               static_cast<size_t>((tensor_.numel() + threads - 1) / threads));
+               static_cast<size_t>((tensor.numel() + threads - 1) / threads));
 #ifdef __HIPCC__
   int print_num = 3;
 
@@ -386,8 +386,8 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                      dim3(threads),
                      0,
                      dev_ctx->stream(),
-                     tensor_.data<T>(),
-                     tensor_.numel(),
+                     tensor.data<T>(),
+                     tensor.numel(),
                      print_num,
                      gpu_str_ptr);
 #else
@@ -398,19 +398,19 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   phi::DenseTensor block_num_nan_inf;
   block_num_nan_inf.Resize({static_cast<int64_t>(2 * numel_max_min)});
   int64_t* block_num_nan_ptr =
-      block_num_nan_inf.mutable_data<int64_t>(tensor_.place());
+      block_num_nan_inf.mutable_data<int64_t>(tensor.place());
   int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
 
   phi::DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
   MT* tensor_block_max_ptr =
-      tensor_block_max_min.mutable_data<MT>(tensor_.place());
+      tensor_block_max_min.mutable_data<MT>(tensor.place());
   MT* tensor_block_min_ptr = tensor_block_max_ptr + numel_max_min;
   MT* tensor_block_mean_ptr = tensor_block_max_ptr + 2 * numel_max_min;
 
   FindNanInfAndBlockMaxMin<T, MT>
-      <<<blocks, threads, 0, dev_ctx->stream()>>>(tensor_.data<T>(),
-                                                  tensor_.numel(),
+      <<<blocks, threads, 0, dev_ctx->stream()>>>(tensor.data<T>(),
+                                                  tensor.numel(),
                                                   block_num_nan_ptr,
                                                   block_num_inf_ptr,
                                                   tensor_block_max_ptr,
@@ -425,7 +425,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                        tensor_block_min_ptr,
                                        tensor_block_mean_ptr,
                                        gpu_str_ptr,
-                                       tensor_.numel(),
+                                       tensor.numel(),
                                        numel_max_min,
                                        check_nan_inf_level);
 #endif

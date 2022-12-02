@@ -93,7 +93,7 @@ static void InitWhiteListFormEnv() {
   const char* op_role_skip = std::getenv("PADDLE_INF_NAN_SKIP_ROLE");
   const char* op_var_skip = std::getenv("PADDLE_INF_NAN_SKIP_VAR");
 
-  if (op_type_skip != NULL) {
+  if (op_type_skip) {
     std::stringstream ss(op_type_skip);
     std::string op_type;
     while (std::getline(ss, op_type, ',')) {
@@ -101,7 +101,7 @@ static void InitWhiteListFormEnv() {
     }
   }
 
-  if (op_role_skip != NULL) {
+  if (op_role_skip) {
     std::stringstream ss(op_role_skip);
     std::string op_role;
     while (std::getline(ss, op_role, ',')) {
@@ -116,7 +116,7 @@ static void InitWhiteListFormEnv() {
     }
   }
 
-  if (op_var_skip != NULL) {
+  if (op_var_skip) {
     std::stringstream ss(op_var_skip);
     std::string op_var;
     while (std::getline(ss, op_var, ',')) {
@@ -139,9 +139,9 @@ template <
     std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
                          !std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
-static void CheckNanInfCpu(const T* value_ptr,
-                           const int64_t numel,
-                           const std::string& cpu_hint_str) {
+static void CheckNanInfCpuImpl(const T* value_ptr,
+                               const int64_t numel,
+                               const std::string& cpu_hint_str) {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
 #ifdef _OPENMP
@@ -213,9 +213,9 @@ template <
     std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
                          std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
-void CheckNanInfCpu(const T* value_ptr,
-                    const int64_t numel,
-                    const std::string& cpu_hint_str) {
+void CheckNanInfCpuImpl(const T* value_ptr,
+                        const int64_t numel,
+                        const std::string& cpu_hint_str) {
   using RealType = typename T::value_type;
 
   RealType real_sum = 0.0f;
@@ -248,8 +248,8 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
   std::string cpu_hint_str =
-      GetCpuHintString<T>(op_type_, var_name_, tensor_.place());
-  CheckNanInfCpu(tensor_.data<T>(), tensor_.numel(), cpu_hint_str);
+      GetCpuHintString<T>(op_type, var_name, tensor.place());
+  CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
 }
 
 template <>
@@ -364,8 +364,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "phi::DenseTensor[%s] use npu place. PaddlePaddle must compile "
-        "with "
-        "NPU.",
+        "with NPU.",
         var_name));
 #endif
     return;
