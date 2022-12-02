@@ -692,9 +692,9 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
             for each_x in x:
                 each_x.stop_gradient = False
 
-            arr = layers.create_array(dtype="float32")
+            arr = paddle.tensor.create_array(dtype="float32")
             for i in range(3):
-                idx = layers.array_length(arr)
+                idx = paddle.tensor.array_length(arr)
                 arr = layers.array_write(x=x[i], i=idx, array=arr)
 
             if case_num == 1:
@@ -702,7 +702,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
             elif case_num == 2:
                 end = (
-                    fluid.layers.array_length(arr) - 1
+                    paddle.tensor.array_length(arr) - 1
                 )  # dtype of end is int64
                 self.sliced_arr = slice_arr = arr[self.start : end]
                 output, _ = fluid.layers.tensor_array_to_tensor(

@@ -439,9 +439,6 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
                  "remove_padding pass.";
       return;
     }
-    fc_op->Op()->RemoveAttr("in_num_col_dims");
-    fc_op->Op()->SetAttr("in_num_col_dims", 1);
-
     insert_remove_padding_op(fc_input, fc_op);
     insert_recover_padding_op(fc_op, fc_op->outputs[0]);
     found_subgraph_count++;

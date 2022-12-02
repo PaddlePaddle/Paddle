@@ -19,15 +19,12 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Layer
-from paddle.nn import Linear
-from paddle.fluid.dygraph import to_variable, guard
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
-from paddle.fluid import core
-import numpy as np
 import paddle.nn.functional as F
+from paddle.fluid import Embedding, Layer, LayerNorm, core
+from paddle.fluid.dygraph import guard, to_variable
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.jit import TracedLayer
+from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
 
@@ -1102,7 +1099,7 @@ class TransFormer(Layer):
                 epsilon=self._label_smooth_eps,
             )
 
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self._label_smooth_eps else False,

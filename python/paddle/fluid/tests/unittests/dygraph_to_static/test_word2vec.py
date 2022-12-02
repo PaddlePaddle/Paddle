@@ -14,13 +14,12 @@
 
 import math
 import random
-import paddle
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
@@ -266,7 +265,7 @@ class SkipGram(fluid.dygraph.Layer):
         loss = paddle.nn.functional.binary_cross_entropy_with_logits(
             word_sim, label
         )
-        loss = fluid.layers.reduce_mean(loss)
+        loss = paddle.mean(loss)
 
         return pred, loss
 

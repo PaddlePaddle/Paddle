@@ -191,7 +191,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            self.array = array = fluid.layers.create_array(dtype='float32')
+            self.array = array = paddle.tensor.create_array(dtype='float32')
             idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
             for i, x in enumerate(self.inputs):
                 x = fluid.layers.assign(x)
@@ -236,7 +236,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         x1 = fluid.layers.assign(inp2)
         x1.stop_gradient = False
         i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
-        array = fluid.layers.create_array(dtype='float32')
+        array = paddle.tensor.create_array(dtype='float32')
         fluid.layers.array_write(x0, i, array)
         fluid.layers.array_write(x1, i + 1, array)
         output_stack, output_index_stack = fluid.layers.tensor_array_to_tensor(
@@ -275,7 +275,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
             ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            array = fluid.layers.create_array(dtype='float32')
+            array = paddle.tensor.create_array(dtype='float32')
             inp0 = np.random.rand(2, 3, 4).astype("float32")
             x0 = fluid.layers.assign(inp0)
             fluid.layers.array_write(x0, zero, array)
@@ -290,7 +290,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
 
             _, _, array = fluid.layers.while_loop(cond, body, [i, ten, array])
 
-            self.assertTrue(fluid.layers.array_length(array), 10)
+            self.assertTrue(paddle.tensor.array_length(array), 10)
             last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
             np.testing.assert_array_equal(
                 fluid.layers.array_read(array, last).numpy(), inp0
