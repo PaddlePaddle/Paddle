@@ -21,10 +21,8 @@ from paddle.jit.dy2static.variable_trans_func import (
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
 from paddle.fluid.layers import (
-    array_length,
     array_read,
     array_write,
-    create_array,
 )
 from paddle.fluid.layers import (
     assign,
@@ -136,7 +134,7 @@ def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
 
     def maybe_to_tensor_array(v):
         if isinstance(v, list):
-            return create_array("float32", initialized_list=v)
+            return paddle.tensor.create_array("float32", initialized_list=v)
         else:
             return v
 
@@ -531,7 +529,7 @@ def convert_len(var):
                 return var.shape[0]
             return nn.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            return control_flow.array_length(var)
+            return paddle.tensor.array_length(var)
         else:
             raise TypeError(
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
@@ -790,11 +788,11 @@ def _run_paddle_pop(array, *args):
 
     def body(i, new_array):
         item = array_read(array=array, i=i)
-        array_write(item, array_length(new_array), new_array)
+        array_write(item, paddle.tensor.array_length(new_array), new_array)
         i = increment(i)
         return i, new_array
 
-    arr_len = array_length(array)
+    arr_len = paddle.tensor.array_length(array)
     if idx < 0:
         idx = idx + arr_len
     else:
@@ -814,7 +812,7 @@ def _run_paddle_pop(array, *args):
 #  Maybe support start == end for slice op.
 def _slice_tensor_array(array, start, end):
     def true_fn():
-        null_array = create_array("float32")
+        null_array = paddle.tensor.create_array("float32")
         return null_array
 
     def false_fn(array, start, end):
