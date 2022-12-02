@@ -105,7 +105,9 @@ class AutoScanTest(unittest.TestCase):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def sample_predictor_configs(self):
+    def sample_predictor_configs(
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         raise NotImplementedError
 
     @abc.abstractmethod

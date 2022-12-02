@@ -1742,6 +1742,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "one_hot") {
+#if !IS_TRT_VERSION_GE(8510)
+      VLOG(3) << "one_hot is not supported when TensorRT < 8.5.1";
+      return false;
+#endif
+    }
+
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the skip_layernorm does not support static shape yet";
@@ -2391,6 +2398,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
+      "one_hot",
       "swish",
       "silu",
       "celu",
@@ -2523,6 +2531,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
+      "one_hot",
       "swish",
       "silu",
       "celu",
