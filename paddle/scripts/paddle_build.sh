@@ -3653,10 +3653,7 @@ function run_setup(){
     export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
-
-    if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
-        make clean
-    fi
+ 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
