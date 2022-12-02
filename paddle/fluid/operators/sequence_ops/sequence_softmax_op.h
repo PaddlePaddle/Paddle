@@ -19,7 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxFunctor {
   void operator()(
