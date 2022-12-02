@@ -332,9 +332,9 @@ func (config *Config) IrOptim() bool {
 /// \param useCalibMode Use TRT int8 calibration(post training
 /// quantization).
 ///
-func (config *Config) EnableTensorRtEngine(workspaceSize int32, maxBatchSize int32, minSubgraphSize int32,
+func (config *Config) EnableTensorRtEngine(workspaceSize int64, maxBatchSize int32, minSubgraphSize int32,
 	precision Precision, useStatic bool, useCalibMode bool) {
-	C.PD_ConfigEnableTensorRtEngine(config.c, C.int32_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
+	C.PD_ConfigEnableTensorRtEngine(config.c, C.int64_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
 }
 
 ///
