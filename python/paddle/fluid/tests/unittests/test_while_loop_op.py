@@ -411,7 +411,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
                 data_add_one = layers.elementwise_add(x=i, y=one)
                 return data_add_one
 
-            return layers.switch_case(
+            return paddle.static.nn.switch_case(
                 branch_index=i,
                 branch_fns={2: fn_add_three, 5: fn_square},
                 default=fn_add_one,

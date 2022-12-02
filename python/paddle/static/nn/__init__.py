@@ -21,13 +21,13 @@ from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
 from .control_flow import (
+    case,
     while_loop,
     switch_case,
 )
 
 from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
-from ...fluid.layers import case  # noqa: F401
 from ...fluid.layers import cond  # noqa: F401
 from ...fluid.layers import conv2d  # noqa: F401
 from ...fluid.layers import create_parameter  # noqa: F401
