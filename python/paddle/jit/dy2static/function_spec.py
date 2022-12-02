@@ -22,12 +22,15 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_varargs_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.io import TranslatedLayer
+
+from . import logging_utils
+from .utils import (
+    parse_arg_and_kwargs,
+    parse_varargs_name,
+    type_name,
+    func_to_source_code,
+)
 
 
 class FunctionSpec:

@@ -14,6 +14,7 @@
 
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
@@ -31,7 +32,7 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
             .global_block()
             .create_var(dtype="float32", shape=[1], lod_level=0, name="x2")
         )
-        x = fluid.layers.elementwise_add(x1, x2)
+        x = paddle.add(x1, x2)
         return x
 
     def test_infer_no_need_buffer_slots(self):
