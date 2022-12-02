@@ -941,7 +941,7 @@ class TransFormer(Layer):
                 epsilon=self._label_smooth_eps,
             )
 
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self._label_smooth_eps else False,

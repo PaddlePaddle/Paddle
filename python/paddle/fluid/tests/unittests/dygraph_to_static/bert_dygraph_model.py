@@ -410,7 +410,7 @@ class PretrainModelLayer(Layer):
         else:
             fc_out = self.out_fc(mask_trans_feat)
 
-        mask_lm_loss = fluid.layers.softmax_with_cross_entropy(
+        mask_lm_loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=fc_out, label=mask_label
         )
         mean_mask_lm_loss = paddle.mean(mask_lm_loss)
@@ -420,7 +420,7 @@ class PretrainModelLayer(Layer):
         (
             next_sent_loss,
             next_sent_softmax,
-        ) = fluid.layers.softmax_with_cross_entropy(
+        ) = paddle.nn.functional.softmax_with_cross_entropy(
             logits=next_sent_fc_out, label=labels, return_softmax=True
         )
 
