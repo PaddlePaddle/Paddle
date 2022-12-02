@@ -458,7 +458,7 @@ class TestSundryAPI(unittest.TestCase):
         for i in range(2):
             self.assertEqual(out.numpy()[i], x.numpy()[i][1])
 
-    def test_scatter_0D(self):
+    def test_scatter_1D(self):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4.0)

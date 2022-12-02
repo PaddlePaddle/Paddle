@@ -630,7 +630,7 @@ class TestSundryAPI(unittest.TestCase):
         for i in range(2):
             self.assertEqual(out.numpy()[i], x.numpy()[i][1])
 
-    def test_scatter_0D(self):
+    def test_scatter_1D(self):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4.0)
@@ -735,7 +735,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0], 0)
 
     @prog_scope()
-    def test_gather_0D(self):
+    def test_gather_1D(self):
         x = paddle.full([10], 1.0, 'float32')
         index = paddle.full([], 2, 'int64')
         out = paddle.gather(x, index)
@@ -772,7 +772,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             self.assertEqual(res[0][i], 1)
 
     @prog_scope()
-    def test_scatter_0D(self):
+    def test_scatter_1D(self):
         x = paddle.full([10], 1.0, 'float32')
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4, 'float32')
