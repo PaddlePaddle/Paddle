@@ -113,11 +113,11 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
 
 # 1. test Apis that inherit from layers.Layer
 def dyfunc_BilinearTensorProduct(layer1, layer2):
-    bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
-        input1_dim=5,
-        input2_dim=4,
-        output_dim=1000,
-        param_attr=fluid.ParamAttr(
+    bilinearTensorProduct = paddle.nn.Bilinear(
+        5,
+        4,
+        1000,
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.99)
         ),
         bias_attr=fluid.ParamAttr(
@@ -221,9 +221,10 @@ def dyfunc_Pool2D(input):
 
 
 def dyfunc_Prelu(input):
-    prelu0 = fluid.PRelu(
-        mode='all',
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)),
+    prelu0 = paddle.nn.PReLU(
+        weight_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(1.0)
+        ),
     )
     res = prelu0(input=input)
     return res

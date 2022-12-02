@@ -915,7 +915,7 @@ class TestLayer(LayerTest):
             data_y = layers.data(
                 name='y', shape=[1, 3], dtype="float32", append_batch_size=False
             )
-            btp = nn.BilinearTensorProduct(
+            btp = paddle.nn.Bilinear(
                 3,
                 3,
                 6,
@@ -923,45 +923,48 @@ class TestLayer(LayerTest):
                 act='sigmoid',
             )
             out = btp(data_x, data_y)
+            out = paddle.nn.functional.sigmoid(out)
             static_rlt2 = self.get_static_graph_result(
                 feed={'x': inp_np_x, 'y': inp_np_y}, fetch_list=[out]
             )[0]
         with self.dynamic_graph():
             with _test_eager_guard():
-                btp = nn.BilinearTensorProduct(
+                btp = paddle.nn.Bilinear(
                     3,
                     3,
                     6,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                    act='sigmoid',
                 )
                 dy_eager_rlt = btp(
                     base.to_variable(inp_np_x), base.to_variable(inp_np_y)
                 )
+                dy_eager_rlt = paddle.nn.functional.sigmoid(dy_eager_rlt)
                 dy_eager_rlt_value = dy_eager_rlt.numpy()
 
-            btp = nn.BilinearTensorProduct(
+            btp = paddle.nn.Bilinear(
                 3,
                 3,
                 6,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                act='sigmoid',
             )
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+            dy_rlt = paddle.nn.functional.sigmoid(dy_rlt)
             dy_rlt_value = dy_rlt.numpy()
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                btp2 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
+                btp2 = paddle.nn.Bilinear(3, 3, 6)
                 dy_eager_rlt2 = btp2(
                     base.to_variable(inp_np_x), base.to_variable(inp_np_y)
                 )
+                dy_eager_rlt2 = paddle.nn.functional.sigmoid(dy_eager_rlt2)
                 dy_eager_rlt2_value = dy_eager_rlt2.numpy()
 
-            btp2 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
+            btp2 = paddle.nn.Bilinear(3, 3, 6)
             dy_rlt2 = btp2(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y)
             )
+            dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
             dy_rlt2_value = dy_rlt2.numpy()
 
         with self.static_graph():
@@ -993,16 +996,16 @@ class TestLayer(LayerTest):
                         custom_weight
                     )
                 )
-                btp1 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
-                btp2 = nn.BilinearTensorProduct(
-                    3, 3, 6, act='sigmoid', param_attr=weight_attr
-                )
+                btp1 = paddle.nn.Bilinear(3, 3, 6)
+                btp2 = paddle.nn.Bilinear(3, 3, 6, weight_attr=weight_attr)
                 dy_rlt1 = btp1(
                     base.to_variable(inp_np_x), base.to_variable(inp_np_y)
                 )
+                dy_rlt1 = paddle.nn.functional.sigmoid(dy_rlt1)
                 dy_rlt2 = btp2(
                     base.to_variable(inp_np_x), base.to_variable(inp_np_y)
                 )
+                dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
                 self.assertFalse(
                     np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
                 )
@@ -1031,16 +1034,16 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            btp1 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
-            btp2 = nn.BilinearTensorProduct(
-                3, 3, 6, act='sigmoid', param_attr=weight_attr
-            )
+            btp1 = paddle.nn.Bilinear(3, 3, 6)
+            btp2 = paddle.nn.Bilinear(3, 3, 6, weight_attr=weight_attr)
             dy_rlt1 = btp1(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y)
             )
+            dy_rlt1 = paddle.nn.functional.sigmoid(dy_rlt1)
             dy_rlt2 = btp2(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y)
             )
+            dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
             self.assertFalse(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
             btp2.weight.set_value(btp1.weight.numpy())
             btp2.bias.set_value(btp1.bias)

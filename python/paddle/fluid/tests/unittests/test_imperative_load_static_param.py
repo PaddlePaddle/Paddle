@@ -28,7 +28,6 @@ from paddle.fluid.dygraph.nn import (
     GroupNorm,
     LayerNorm,
     NCE,
-    PRelu,
 )
 from paddle.nn import Linear
 import numpy as np
@@ -222,8 +221,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.nce1 = NCE(10000, 100)
                     self.nce2 = NCE(10000, 100)
 
-                    self.prelu1 = PRelu("channel", channel=5)
-                    self.prelu2 = PRelu("channel", channel=5)
+                    self.prelu1 = paddle.nn.PReLU(5)
+                    self.prelu2 = paddle.nn.PReLU(5)
 
                     self.group_norm1 = GroupNorm(8, 4)
                     self.gourp_norm2 = GroupNorm(8, 4)
