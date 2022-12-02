@@ -1051,7 +1051,9 @@ function generate_api_spec() {
     else
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
     fi
-    pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
 
@@ -2864,7 +2866,9 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -3673,7 +3677,8 @@ function main() {
     init
     case $CMD in
       build_only)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_pr_dev)
         build_pr_and_develop
@@ -3703,6 +3708,7 @@ function main() {
       build_and_check_cpu)
         set +e
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        #run_setup ${PYTHON_ABI:-""} ${parallel_number}
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
