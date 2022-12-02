@@ -216,7 +216,7 @@ def convert_call(func):
     if is_builtin(func, "enumerate"):
         return convert_enumerate
 
-    if is_builtin(print, "print"):
+    if is_builtin(func, "print"):
         return convert_print
 
     if is_builtin(func) or is_unsupported(func):
