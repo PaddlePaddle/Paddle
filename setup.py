@@ -168,7 +168,6 @@ class InstallHeaders(Command):
         )
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
-
         return self.copy_file(header, install_dir)
 
     def run(self):
