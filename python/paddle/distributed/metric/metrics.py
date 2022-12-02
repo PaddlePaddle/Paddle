@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import sys
 
 import yaml
 
@@ -36,10 +35,8 @@ def init_metric(
     bucket_size=1000000,
 ):
     yaml_fobj = open(metric_yaml_path)
-    if sys.version.startswith('2.7.13'):
-        content = yaml.load(yaml_fobj)
-    else:
-        content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
+
+    content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
 
     print("yaml metric config: \n")
     print(content)

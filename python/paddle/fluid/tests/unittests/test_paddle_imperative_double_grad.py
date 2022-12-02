@@ -239,7 +239,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y + 1
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=True)
@@ -256,7 +256,7 @@ class TestDygraphDoubleGrad(TestCase):
         if not _in_legacy_dygraph():
             pass
         else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss = paddle.mean(dx_actual * dx_actual + x * x)
             loss.backward()
 
             x_grad_actual = x.gradient()
@@ -286,7 +286,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y1 + y2
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y1, z, w
 
         (dx_actual,) = self.grad(
@@ -308,7 +308,7 @@ class TestDygraphDoubleGrad(TestCase):
         if not _in_legacy_dygraph():
             pass
         else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss = paddle.mean(dx_actual * dx_actual + x * x)
             loss.backward()
 
             x_grad_actual = x.gradient()
@@ -337,7 +337,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y + 1
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=False)
@@ -354,7 +354,7 @@ class TestDygraphDoubleGrad(TestCase):
         if not _in_legacy_dygraph():
             pass
         else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss = paddle.mean(dx_actual * dx_actual + x * x)
             loss.backward()
 
             x_grad_actual = x.gradient()
