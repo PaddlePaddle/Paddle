@@ -1806,17 +1806,17 @@ def dynamic_decode(
 
     Returns:
 
-        final_outputs (Tensor, nested structure of Tensor): each Tensor in :code:`final_outputs` is
+        - final_outputs (Tensor, nested structure of Tensor), each Tensor in :code:`final_outputs` is
             the stacked of all decoding steps' outputs, which might be revised
             by :code:`decoder.finalize()` if the decoder has implemented finalize.
             And :code:'final_outputs' has the same structure and data types as the :code:`outputs`
             returned by :code:`decoder.step()`
 
-        final_states (Tensor, nested structure of Tensor): :code:`final_states` is the counterpart at last time step of initial states \
+        - final_states (Tensor, nested structure of Tensor), :code:`final_states` is the counterpart at last time step of initial states \
             returned by :code:`decoder.initialize()` , thus has the same structure
             with it and has tensors with same shapes and data types.
 
-        sequence_lengths (Tensor): stores the actual lengths of all decoded sequences.
+        - sequence_lengths (Tensor), stores the actual lengths of all decoded sequences.
             sequence_lengths is provided only if :code:`return_length` is True.
 
     Examples:

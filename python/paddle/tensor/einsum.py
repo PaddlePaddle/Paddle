@@ -867,7 +867,7 @@ def einsum(equation, *operands):
 
     einsum(equation, *operands)
 
-    The current version of this API should be used in dygraph only mode.
+    The current version of this API should be used in dynamic graph only mode.
 
     Einsum offers a tensor operation API which allows using the Einstein summation
     convention or Einstain notation. It takes as input one or multiple tensors and
@@ -900,7 +900,8 @@ def einsum(equation, *operands):
           dimensions into broadcasting dimensions.
         - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
           dimensions will be reduced and removed in the output.
-        - Output labels can be explicitly specified on the right hand side of `->` or omitted. In the latter case, the output labels will be inferred from the input labels.
+        - Output labels can be explicitly specified on the right hand side of `->` or omitted.
+          In the latter case, the output labels will be inferred from the input labels.
             - Inference of output labels
                 - Broadcasting label `...`, if present, is put on the leftmost position.
                 - Free labels are reordered alphabetically and put after `...`.

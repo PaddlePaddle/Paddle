@@ -2297,11 +2297,11 @@ def unique_consecutive(
             :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        out(Tensor): the unique consecutive tensor for x.
-        inverse(Tensor, optional): the element of the input tensor corresponds to
+        - out(Tensor)， the unique consecutive tensor for x.
+        - inverse(Tensor, optional)， the element of the input tensor corresponds to
             the index of the elements in the unique consecutive tensor for x.
             inverse is provided only if return_inverse is True.
-        counts(Tensor, optional): the counts of the every unique consecutive element in the input tensor.
+        - counts(Tensor, optional)， the counts of the every unique consecutive element in the input tensor.
             counts is provided only if return_counts is True.
 
     Example:
