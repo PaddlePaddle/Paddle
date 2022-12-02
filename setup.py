@@ -593,7 +593,7 @@ def cmake_run(args, build_path):
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
-        # cmake_args.append("-GNinja")
+        cmake_args.append("WITH_SETUP")
         cmake_args += args
         cmake_args.append(TOP_DIR)
         print("cmake_args:", cmake_args)
@@ -694,7 +694,7 @@ def build_steps():
             "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
         )
         sys.exit()
-
+    # os.system('ninja -j20')
     build_args = ["--build", ".", "--target", "install", "--config", 'Release']
 
     max_jobs = os.getenv("MAX_JOBS")
@@ -1356,7 +1356,6 @@ def main():
 
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
-
     # os.system('pip install ninja')
     # Execute the build process,cmake and make
     if cmake_and_make:

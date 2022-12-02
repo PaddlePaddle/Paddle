@@ -64,12 +64,12 @@ function init() {
 
 function cmake_base() {
     # Build script will not fail if *.deb does not exist
-    # rm *.deb 2>/dev/null || true
-    # # Delete previous built whl packages
-    # rm -rf python/dist 2>/dev/null || true
+    rm *.deb 2>/dev/null || true
+    # Delete previous built whl packages
+    rm -rf python/dist 2>/dev/null || true
 
-    # # Delete previous built paddle cache
-    # rm -rf python/paddle 2>/dev/null || true
+    # Delete previous built paddle cache
+    rm -rf python/paddle 2>/dev/null || true
 
     # Support build for all python3 versions
     PYTHON_FLAGS=""
@@ -81,9 +81,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
                 pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -93,10 +93,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
-
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib"
                 pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -106,9 +105,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib"
                 pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -118,9 +117,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib"
                 pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -130,9 +129,9 @@ function cmake_base() {
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib"
                 pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -144,44 +143,44 @@ function cmake_base() {
             if [ "$1" == "cp36-cp36m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.6.0/bin/python3
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.6.0/include/python3.6m
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.6.0/lib/libpython3.so
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.6.0/include/python3.6m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.6.0/lib/libpython3.so"
                 pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3.7
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.8.0/bin/python3.8
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.9.0/bin/python3.9
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.9.0/include/python3.9
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.9.0/lib/libpython3.so"
                 pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.10.0/bin/python3.10
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.10.0/include/python3.10
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.10.0/lib/libpython3.so"
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
            elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
-                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
-                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
-                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
+                                     -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
+                                     -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
                 /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
@@ -209,174 +208,124 @@ function cmake_base() {
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
 
-#     cat <<EOF
-#     ========================================
-#     Configuring cmake in /paddle/build ...
-#         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
-#         ${PYTHON_FLAGS}
-#         -DWITH_GPU=${WITH_GPU:-OFF}
-#         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
-#         -DWITH_ROCM=${WITH_ROCM:-OFF}
-#         -DWITH_CINN=${WITH_CINN:-OFF}
-#         -DWITH_DISTRIBUTE=${distibuted_flag}
-#         -DWITH_MKL=${WITH_MKL:-ON}
-#         -DWITH_AVX=${WITH_AVX:-OFF}
-#         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-#         -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
-#         -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
-#         -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
-#         -DWITH_PYTHON=${WITH_PYTHON:-ON}
-#         -DCUDNN_ROOT=/usr/
-#         -DWITH_TESTING=${WITH_TESTING:-ON}
-#         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
-#         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
-#         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
-#         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-#         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
-#         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-#         -DWITH_INFRT=${WITH_INFRT:-OFF}
-#         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-#         -DPY_VERSION=${PY_VERSION:-3.7}
-#         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-#         -DWITH_PSCORE=${distibuted_flag}
-#         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
-#         -DWITH_GLOO=${gloo_flag}
-#         -DWITH_LITE=${WITH_LITE:-OFF}
-#         -DWITH_CNCL=${WITH_CNCL:-OFF}
-#         -DWITH_XPU=${WITH_XPU:-OFF}
-#         -DWITH_MLU=${WITH_MLU:-OFF}
-#         -DWITH_IPU=${WITH_IPU:-OFF}
-#         -DLITE_GIT_TAG=release/v2.10
-#         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
-#         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
-#         -DWITH_ARM=${WITH_ARM:-OFF}
-#         -DWITH_ASCEND=${WITH_ASCEND:-OFF}
-#         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
-#         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
-#         -DWITH_STRIP=${WITH_STRIP:-ON}
-#         -DON_INFER=${ON_INFER:-OFF}
-#         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
-#         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
-#         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
-#         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
-#         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
-#         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
-#     ========================================
-# EOF
+    cat <<EOF
+    ========================================
+    Configuring cmake in /paddle/build ...
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
+        ${PYTHON_FLAGS}
+        -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
+        -DWITH_ROCM=${WITH_ROCM:-OFF}
+        -DWITH_CINN=${WITH_CINN:-OFF}
+        -DWITH_DISTRIBUTE=${distibuted_flag}
+        -DWITH_MKL=${WITH_MKL:-ON}
+        -DWITH_AVX=${WITH_AVX:-OFF}
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
+        -DWITH_PYTHON=${WITH_PYTHON:-ON}
+        -DCUDNN_ROOT=/usr/
+        -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
+        -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
+        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DWITH_INFRT=${WITH_INFRT:-OFF}
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+        -DPY_VERSION=${PY_VERSION:-3.7}
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+        -DWITH_PSCORE=${distibuted_flag}
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF}
+        -DWITH_GLOO=${gloo_flag}
+        -DWITH_LITE=${WITH_LITE:-OFF}
+        -DWITH_CNCL=${WITH_CNCL:-OFF}
+        -DWITH_XPU=${WITH_XPU:-OFF}
+        -DWITH_MLU=${WITH_MLU:-OFF}
+        -DWITH_IPU=${WITH_IPU:-OFF}
+        -DLITE_GIT_TAG=release/v2.10
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_ARM=${WITH_ARM:-OFF}
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF}
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
+        -DWITH_STRIP=${WITH_STRIP:-ON}
+        -DON_INFER=${ON_INFER:-OFF}
+        -DWITH_HETERPS=${WITH_HETERPS:-OFF}
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+        -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+    ========================================
+EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     set +e
-    # cmake .. \
-    #     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
-    #     ${PYTHON_FLAGS} \
-    #     -DWITH_GPU=${WITH_GPU:-OFF} \
-    #     -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
-    #     -DWITH_ROCM=${WITH_ROCM:-OFF} \
-    #     -DWITH_CINN=${WITH_CINN:-OFF} \
-    #     -DWITH_DISTRIBUTE=${distibuted_flag} \
-    #     -DWITH_MKL=${WITH_MKL:-ON} \
-    #     -DWITH_AVX=${WITH_AVX:-OFF} \
-    #     -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
-    #     -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
-    #     -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
-    #     -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} \
-    #     -DWITH_PYTHON=${WITH_PYTHON:-ON} \
-    #     -DCUDNN_ROOT=/usr/ \
-    #     -DWITH_TESTING=${WITH_TESTING:-ON} \
-    #     -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
-    #     -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
-    #     -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
-    #     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    #     -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
-    #     -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-    #     -DWITH_INFRT=${WITH_INFRT:-OFF} \
-    #     -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
-    #     -DPY_VERSION=${PY_VERSION:-3.7} \
-    #     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-    #     -DWITH_PSCORE=${distibuted_flag} \
-    #     -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
-    #     -DWITH_GLOO=${gloo_flag} \
-    #     -DLITE_GIT_TAG=release/v2.10 \
-    #     -DWITH_XPU=${WITH_XPU:-OFF} \
-    #     -DWITH_MLU=${WITH_MLU:-OFF} \
-    #     -DWITH_IPU=${WITH_IPU:-OFF} \
-    #     -DWITH_CNCL=${WITH_CNCL:-OFF} \
-    #     -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
-    #     -DWITH_LITE=${WITH_LITE:-OFF} \
-    #     -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
-    #     -DWITH_ARM=${WITH_ARM:-OFF} \
-    #     -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
-    #     -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
-    #     -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
-    #     -DWITH_STRIP=${WITH_STRIP:-ON} \
-    #     -DON_INFER=${ON_INFER:-OFF} \
-    #     -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
-    #     -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
-    #     -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
-    #     -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
-    #     -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
-    #     -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
-    #     -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
-    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
-    export WITH_GPU=${WITH_GPU:-OFF}
-    export WITH_TENSORRT=${WITH_TENSORRT:-ON}
-    export WITH_ROCM=${WITH_ROCM:-OFF}
-    export WITH_CINN=${WITH_CINN:-OFF}
-    export WITH_DISTRIBUTE=${distibuted_flag}
-    export WITH_MKL=${WITH_MKL:-ON}
-    export WITH_AVX=${WITH_AVX:-OFF}
-    export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-    export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} 
-    export NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
-    export NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
-    export WITH_PYTHON=${WITH_PYTHON:-ON}
-    export CUDNN_ROOT=/usr/
-    export WITH_TESTING=${WITH_TESTING:-ON}
-    export WITH_COVERAGE=${WITH_COVERAGE:-OFF}
-    export WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
-    export CMAKE_MODULE_PATH=/opt/rocm/hip/cmake
-    export CMAKE_EXPORT_COMPILE_COMMANDS=ON
-    export WITH_CONTRIB=${WITH_CONTRIB:-ON}
-    export WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-    export WITH_INFRT=${WITH_INFRT:-OFF}
-    export INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-    export PY_VERSION=${PY_VERSION:-3.7}
-    export CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-    export WITH_PSCORE=${distibuted_flag}
-    export WITH_PSLIB=${WITH_PSLIB:-OFF}
-    export WITH_GLOO=${gloo_flag}
-    export LITE_GIT_TAG=release/v2.10
-    export WITH_XPU=${WITH_XPU:-OFF}
-    export WITH_MLU=${WITH_MLU:-OFF}
-    export WITH_IPU=${WITH_IPU:-OFF}
-    export WITH_CNCL=${WITH_CNCL:-OFF}
-    export XPU_SDK_ROOT=${XPU_SDK_ROOT:-}
-    export WITH_LITE=${WITH_LITE:-OFF}
-    export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
-    export WITH_ARM=${WITH_ARM:-OFF}
-    export WITH_ASCEND=${WITH_ASCEND:-OFF}
-    export WITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
-    export WITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
-    export WITH_STRIP=${WITH_STRIP:-ON}
-    export ON_INFER=${ON_INFER:-OFF}
-    export WITH_HETERPS=${WITH_HETERPS:-OFF}
-    export WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
-    export CUDA_ARCH_BIN=${CUDA_ARCH_BIN}
-    export WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
-    export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
-    export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
-    export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
-    python setup.py install;build_error=$?
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
+        ${PYTHON_FLAGS} \
+        -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
+        -DWITH_ROCM=${WITH_ROCM:-OFF} \
+        -DWITH_CINN=${WITH_CINN:-OFF} \
+        -DWITH_DISTRIBUTE=${distibuted_flag} \
+        -DWITH_MKL=${WITH_MKL:-ON} \
+        -DWITH_AVX=${WITH_AVX:-OFF} \
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} \
+        -DWITH_PYTHON=${WITH_PYTHON:-ON} \
+        -DCUDNN_ROOT=/usr/ \
+        -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
+        -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
+        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DWITH_INFRT=${WITH_INFRT:-OFF} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
+        -DPY_VERSION=${PY_VERSION:-3.7} \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
+        -DWITH_PSCORE=${distibuted_flag} \
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
+        -DWITH_GLOO=${gloo_flag} \
+        -DLITE_GIT_TAG=release/v2.10 \
+        -DWITH_XPU=${WITH_XPU:-OFF} \
+        -DWITH_MLU=${WITH_MLU:-OFF} \
+        -DWITH_IPU=${WITH_IPU:-OFF} \
+        -DWITH_CNCL=${WITH_CNCL:-OFF} \
+        -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
+        -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_ARM=${WITH_ARM:-OFF} \
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
+        -DWITH_STRIP=${WITH_STRIP:-ON} \
+        -DON_INFER=${ON_INFER:-OFF} \
+        -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
+        -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
-    
 }
 
 function cmake_gen() {
-    #mkdir -p ${PADDLE_ROOT}/build
-    #cd ${PADDLE_ROOT}/build
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
     cmake_base $1
 }
 
@@ -518,26 +467,29 @@ EOF
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-
+    cat <<EOF
+    ============================================
+    Building in /paddle/build ...
+    ============================================
+EOF
+    build_base $@
     current_branch=`git branch | grep \* | cut -d ' ' -f2`
     if [ "$current_branch" != "develop_base_pr" ];then
         build_size
     fi
 }
 
-
 function cmake_gen_and_build() {
-    rm -rf ${PADDLE_ROOT}/build
     startTime_s=`date +%s`
     cmake_gen $1
-    #build $2
+    build $2
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
-get_build_time_file() {
+function get_build_time_file() {
     python ${PADDLE_ROOT}/tools/analysis_build_time.py
     cat ${PADDLE_ROOT}/tools/buildTime.txt
     today=$(date "+%Y-%m-%d")
@@ -814,14 +766,163 @@ EOF
 
 function run_linux_cpu_test() {
     mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    pip install hypothesis
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
+    cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
+    ut_total_startTime_s=`date +%s`
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+set -x
+        export TEST_NUM_PERCENT_CASES=0.15
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/added_ut" ];then
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
+        fi
+set +x
+        EXIT_CODE=0;
+
+        tmpfile_rand=`date +%s%N`
+        tmpfile=$tmp_dir/$tmpfile_rand
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list
+        if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
+            nightly_label="NIGHTLY_LABEL"
+        else
+            nightly_label="RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY"
+            echo "========================================="
+            echo "Unittests with nightly labels  are only run at night"
+            echo "========================================="
+        fi
+        get_precision_ut_mac
+        ut_actual_total_startTime_s=`date +%s`
+        if [[ "$on_precision" == "0" ]];then
+            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+        else
+            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            tmpfile_rand=`date +%s%N`
+            tmpfile=$tmp_dir/$tmpfile_rand
+            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+        fi
+        ut_total_endTime_s=`date +%s`
+        echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
+
+        collect_failed_tests
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
+        is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
+        if [ -n "$failed_test_lists" ];then
+            EXIT_CODE=1
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]}
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "2" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                        retry_unittests_regular=''
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_unittests_regular" == "" ]];then
+                                    retry_unittests_regular="^$line$"
+                                else
+                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
+                                fi
+                            done
+                        failed_test_lists=''
+                        ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        exec_times=$[$exec_times+1]
+                    else
+                        break
+                    fi
+                done
+            retry_unittests_record="$retry_unittests_record$failed_test_lists"
+        fi
+        rerun_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s"
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
+    fi
+}
+
+function run_linu_cpu_test_by_setup(){
+    mkdir -p ${PADDLE_ROOT}/build
     echo "PADDLE_ROOT:${PADDLE_ROOT}"
     cd ${PADDLE_ROOT}/build
-    echo "which pip:"
     pip install hypothesis
-
-    #pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    pip install ${PADDLE_ROOT}/dist/*whl
-
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
@@ -1911,6 +2012,7 @@ function precise_card_test_single {
         find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
+
         # python
         ls python-coverage.data.*
         if [[ $? == 0 ]]
@@ -2915,7 +3017,7 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    #pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -3506,7 +3608,199 @@ function check_coverage_build() {
     fi
     set -x
 }
+function run_setup(){
+    rm -rf ${PADDLE_ROOT}/build
+    startTime_s=`date +%s`
 
+    SYSTEM=`uname -s`
+    if [ "$SYSTEM" == "Darwin" ]; then
+        echo "Using python abi: $1"
+        if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
+                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp37-cp37m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
+
+                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp38-cp38" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
+                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp39-cp39" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp310-cp310" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
+                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        fi
+    else
+        if [ "$1" != "" ]; then
+            echo "using python abi: $1"
+            if [ "$1" == "cp36-cp36m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.6.0/bin/python3
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.6.0/include/python3.6m
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.6.0/lib/libpython3.so
+                pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp37-cp37m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
+                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp38-cp38" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
+                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp39-cp39" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
+                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp310-cp310" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
+                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+           elif [ "$1" == "conda-python3.7" ]; then
+                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/conda/bin/:${PATH}
+                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
+                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
+           fi
+        else
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
+        fi
+    fi
+
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE="OFF"
+        WITH_AVX=${WITH_AVX:-ON}
+        WITH_ARM=${WITH_ARM:-OFF}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    gloo_flag=${distibuted_flag}
+
+    if [ "$CMD" != "assert_file_approvals" ];then
+      which python
+      python -V
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
+    export WITH_GPU=${WITH_GPU:-OFF}
+    export WITH_TENSORRT=${WITH_TENSORRT:-ON}
+    export WITH_ROCM=${WITH_ROCM:-OFF}
+    export WITH_CINN=${WITH_CINN:-OFF}
+    export WITH_DISTRIBUTE=${distibuted_flag}
+    export WITH_MKL=${WITH_MKL:-ON}
+    export WITH_AVX=${WITH_AVX:-OFF}
+    export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+    export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} 
+    export NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+    export NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
+    export WITH_PYTHON=${WITH_PYTHON:-ON}
+    export CUDNN_ROOT=/usr/
+    export WITH_TESTING=${WITH_TESTING:-ON}
+    export WITH_COVERAGE=${WITH_COVERAGE:-OFF}
+    export WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
+    export CMAKE_MODULE_PATH=/opt/rocm/hip/cmake
+    export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+    export WITH_CONTRIB=${WITH_CONTRIB:-ON}
+    export WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+    export WITH_INFRT=${WITH_INFRT:-OFF}
+    export INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+    export PY_VERSION=${PY_VERSION:-3.7}
+    export CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+    export WITH_PSCORE=${distibuted_flag}
+    export WITH_PSLIB=${WITH_PSLIB:-OFF}
+    export WITH_GLOO=${gloo_flag}
+    export LITE_GIT_TAG=release/v2.10
+    export WITH_XPU=${WITH_XPU:-OFF}
+    export WITH_MLU=${WITH_MLU:-OFF}
+    export WITH_IPU=${WITH_IPU:-OFF}
+    export WITH_CNCL=${WITH_CNCL:-OFF}
+    export XPU_SDK_ROOT=${XPU_SDK_ROOT:-}
+    export WITH_LITE=${WITH_LITE:-OFF}
+    export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+    export WITH_ARM=${WITH_ARM:-OFF}
+    export WITH_ASCEND=${WITH_ASCEND:-OFF}
+    export WITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+    export WITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
+    export WITH_STRIP=${WITH_STRIP:-ON}
+    export ON_INFER=${ON_INFER:-OFF}
+    export WITH_HETERPS=${WITH_HETERPS:-OFF}
+    export WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+    export CUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+    export WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
+    export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+    export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+    export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+    python setup.py install;build_error=$?
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+}
 function main() {
     local CMD=$1
     local parallel_number=$2
@@ -3717,8 +4011,11 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        #run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+
+        run_setup ${PYTHON_ABI:-""} ${parallel_number}
+        run_linu_cpu_test_by_setup ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
