@@ -122,7 +122,7 @@ if(WITH_TESTING)
   add_subdirectory(paddle/fluid/contrib/slim/tests)
 endif()
 
-if(NOT WITH_SETUP)
+if(NOT WITH_SETUP_INSTALL)
   install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
           DESTINATION opt/paddle/share/wheels)
 endif()
