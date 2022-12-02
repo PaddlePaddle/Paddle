@@ -50,7 +50,7 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             self.assertEqual(len(model.params), num_stacked_param)
             res = model(x)
             self.assertListEqual(res.shape, [5, 2])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
             model.params[num_stacked_param - 1] = fluid.layers.create_parameter(
@@ -64,7 +64,7 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             self.assertEqual(len(model.params), num_stacked_param + 1)
             res = model(x)
             self.assertListEqual(res.shape, [5, 4])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
     def test_paramter_list(self):

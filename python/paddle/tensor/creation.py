@@ -2005,8 +2005,10 @@ def complex(real, imag, name=None):
     Returns:
         Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
 
-    **Note**:
-        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Examples:
         .. code-block:: python
