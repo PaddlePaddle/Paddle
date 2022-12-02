@@ -768,7 +768,6 @@ function run_linux_cpu_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
@@ -918,159 +917,6 @@ set -ex
     fi
 }
 
-function run_linu_cpu_test_by_setup(){
-    mkdir -p ${PADDLE_ROOT}/build
-    echo "PADDLE_ROOT:${PADDLE_ROOT}"
-    cd ${PADDLE_ROOT}/build
-    pip install hypothesis
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
-    cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
-    ut_total_startTime_s=`date +%s`
-    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
-    cat <<EOF
-    ========================================
-    Running unit tests ...
-    ========================================
-EOF
-set -x
-        export TEST_NUM_PERCENT_CASES=0.15
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
-        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
-            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
-            if [[ "$duplicate_uts" != "" ]];then
-                set +x
-                echo "========================================"
-                echo "The new unit test has the same name as the existing unit test"
-                cat "$PADDLE_ROOT/duplicate_ut"
-                echo "========================================"
-                exit 102;
-                set -x
-            fi
-        fi
-        if [ -a "$PADDLE_ROOT/added_ut" ];then
-            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
-            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
-                echo "========================================"
-                echo "Added UT should not exceed 15 seconds"
-                echo "========================================"
-                exit 8;
-            fi
-        fi
-set +x
-        EXIT_CODE=0;
-
-        tmpfile_rand=`date +%s%N`
-        tmpfile=$tmp_dir/$tmpfile_rand
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list
-        if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
-            nightly_label="NIGHTLY_LABEL"
-        else
-            nightly_label="RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY"
-            echo "========================================="
-            echo "Unittests with nightly labels  are only run at night"
-            echo "========================================="
-        fi
-        get_precision_ut_mac
-        ut_actual_total_startTime_s=`date +%s`
-        if [[ "$on_precision" == "0" ]];then
-            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
-        else
-            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
-            tmpfile_rand=`date +%s%N`
-            tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
-        fi
-        ut_total_endTime_s=`date +%s`
-        echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
-
-        collect_failed_tests
-        rm -f $tmp_dir/*
-        exec_times=0
-        retry_unittests_record=''
-        retry_time=4
-        exec_time_array=('first' 'second' 'third' 'fourth')
-        parallel_failed_tests_exec_retry_threshold=120
-        exec_retry_threshold=30
-        is_retry_execuate=0
-        rerun_ut_startTime_s=`date +%s`
-        if [ -n "$failed_test_lists" ];then
-            EXIT_CODE=1
-            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
-                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
-            fi
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-            need_retry_ut_arr=(${need_retry_ut_str})
-            need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-            while ( [ $exec_times -lt $retry_time ] )
-                do
-                    if [[ "${exec_times}" == "0" ]] ;then
-                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
-                            is_retry_execuate=0
-                        else
-                            is_retry_execuate=1
-                        fi
-                    elif [[ "${exec_times}" == "1" ]] ;then
-                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-                        need_retry_ut_arr=(${need_retry_ut_str})
-                        need_retry_ut_count=${#need_retry_ut_arr[@]}
-                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                            is_retry_execuate=0
-                        else
-                            is_retry_execuate=1
-                        fi
-                    fi
-                    if [[ "$is_retry_execuate" == "0" ]];then
-                        set +e
-                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                        set -e
-                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "2" ]];then
-                            if [[ "${failed_test_lists}" == "" ]];then
-                                break
-                            else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-                            fi
-                        fi
-                        echo "========================================="
-                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
-                        echo "========================================="
-                        echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"
-                        retry_unittests_regular=''
-                        for line in ${retry_unittests[@]} ;
-                            do
-                                if [[ "$retry_unittests_regular" == "" ]];then
-                                    retry_unittests_regular="^$line$"
-                                else
-                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
-                                fi
-                            done
-                        failed_test_lists=''
-                        ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
-                        collect_failed_tests
-                        rm -f $tmp_dir/*
-                        exec_times=$[$exec_times+1]
-                    else
-                        break
-                    fi
-                done
-            retry_unittests_record="$retry_unittests_record$failed_test_lists"
-        fi
-        rerun_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        ut_actual_total_endTime_s=`date +%s`
-        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s"
-        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            show_ut_retry_result
-        fi
-set -ex
-    fi
-}
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -3620,6 +3466,7 @@ function run_setup(){
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
@@ -3632,6 +3479,7 @@ function run_setup(){
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
@@ -3645,6 +3493,7 @@ function run_setup(){
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
@@ -3657,6 +3506,7 @@ function run_setup(){
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
@@ -3669,6 +3519,7 @@ function run_setup(){
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
@@ -3683,6 +3534,7 @@ function run_setup(){
             if [ "$1" == "cp36-cp36m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.6.0/bin/python3
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.6.0/include/python3.6m
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.6.0/lib/libpython3.so
@@ -3690,6 +3542,7 @@ function run_setup(){
             elif [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
@@ -3697,6 +3550,7 @@ function run_setup(){
             elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
@@ -3704,6 +3558,7 @@ function run_setup(){
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
@@ -3711,6 +3566,7 @@ function run_setup(){
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
@@ -3718,6 +3574,7 @@ function run_setup(){
            elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export DPYTHON_EXECUTABLE=/opt/conda/bin/python
                 export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
                 export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
@@ -4015,7 +3872,7 @@ function main() {
         #run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
 
         run_setup ${PYTHON_ABI:-""} ${parallel_number}
-        run_linu_cpu_test_by_setup ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        run_linux_cpu_tests ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
