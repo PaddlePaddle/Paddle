@@ -60,7 +60,6 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, quantize_placement_pattern);
-
     if (std::find(excluded_ids_list.begin(),
                   excluded_ids_list.end(),
                   op->id()) != excluded_ids_list.end()) {
@@ -70,7 +69,6 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
     if (op->Op()->GetAttrIfExists<int>("skip_quant") == 1) {
       return;
     }
-
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);
