@@ -36,7 +36,7 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
     # loss function
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
     avg_cost = paddle.mean(cost)
 
     # optimizer
@@ -73,7 +73,7 @@ def run_pserver_with_empty_block(
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
     # loss function
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
     avg_cost = paddle.mean(cost)
 
     # optimizer
