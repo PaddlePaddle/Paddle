@@ -167,7 +167,9 @@ def model():
     scale_infer = paddle.scale(x=inference, scale=5.0)
 
     label = layers.data(name='score', shape=[1], dtype='float32')
-    square_cost = layers.square_error_cost(input=scale_infer, label=label)
+    square_cost = paddle.nn.functional.square_error_cost(
+        input=scale_infer, label=label
+    )
     avg_cost = paddle.mean(square_cost)
 
     return scale_infer, avg_cost

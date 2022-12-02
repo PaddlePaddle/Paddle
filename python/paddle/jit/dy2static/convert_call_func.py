@@ -32,11 +32,11 @@ from .convert_operators import (
     convert_enumerate,
 )
 
-from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
+from paddle.jit.dy2static.logging_utils import (
     TranslatorLogger,
 )
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
+from paddle.jit.dy2static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
