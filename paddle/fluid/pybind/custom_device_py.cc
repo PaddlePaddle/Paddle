@@ -86,6 +86,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           static_cast<phi::CustomContext *>(
               paddle::platform::DeviceContextPool::Instance().Get(place))
               ->SetStream(stream);
+          return stream;
 #else
         PADDLE_THROW(platform::errors::Unavailable(
             "Paddle is not compiled with CustomDevice. "
@@ -93,29 +94,77 @@ void BindCustomDevicePy(py::module *m_ptr) {
 #endif
         });
 
-  py::class_<phi::stream::Stream>(m, "CustomDeviceStream", R"DOC(
+  py::class_<phi::stream::Stream, std::shared_ptr<phi::stream::Stream>>(
+      m, "CustomDeviceStream", R"DOC(
       The handle of the custom device stream.
 
       Parameters:
-        device(paddle.CUDAPlace()|int|None, optional): The device which wanted to allocate the stream.
+        device(paddle.CustomPlace()|str): The device which wanted to allocate the stream.
+
+        device_id(int, optional): The id of the device which wanted to allocate the stream.
         If device is None or negative integer, device will be the current device.
         If device is positive integer, it must less than the device count. Default: None.
 
         priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
         If priority is None, the priority is 2(normal). Default: None.
 
+        blocking(int|None, optional): Whether the stream is executed synchronously. Default: False.
+
       Examples:
         .. code-block:: python
 
             # required: custom_device
             import paddle
-            s1 = paddle.device.custom.Stream(paddle.CUDAPlace(0), 1)
-            s2 = paddle.device.custom.Stream(0, 1)
-            s3 = paddle.device.custom.Stream()
+            s3 = paddle.device.custom.Stream('custom_cpu')
+            s2 = paddle.device.custom.Stream('custom_cpu', 0)
+            s1 = paddle.device.custom.Stream(paddle.CustomPlace('custom_cpu'))
+            s1 = paddle.device.custom.Stream(paddle.CustomPlace('custom_cpu'), 1)
+            s1 = paddle.device.custom.Stream(paddle.CustomPlace('custom_cpu'), 1, True)
 
   )DOC")
+      .def(
+          "__init__",
+          [](phi::stream::Stream &self,
+             const platform::CustomPlace &place,
+             int priority,
+             bool blocking) {
+            new (&self) phi::stream::Stream();
+            self.Init(
+                place,
+                static_cast<phi::stream::Stream::Priority>(priority),
+                static_cast<phi::stream::Stream::Flag>(
+                    blocking ? phi::stream::Stream::Flag::kDefaultFlag
+                             : phi::stream::Stream::Flag::kStreamNonBlocking));
+          },
+          py::arg("place"),
+          py::arg("priority") = 2,
+          py::arg("blocking") = false)
+      .def(
+          "__init__",
+          [](phi::stream::Stream &self,
+             const std::string &device_type,
+             int device_id,
+             int priority,
+             bool blocking) {
+            new (&self) phi::stream::Stream();
+            self.Init(
+                phi::CustomPlace(
+                    device_type,
+                    device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
+                                    : device_id),
+                static_cast<phi::stream::Stream::Priority>(priority),
+                static_cast<phi::stream::Stream::Flag>(
+                    blocking ? phi::stream::Stream::Flag::kDefaultFlag
+                             : phi::stream::Stream::Flag::kStreamNonBlocking));
+          },
+          py::arg("device_type"),
+          py::arg("device_id") = -1,
+          py::arg("priority") = 2,
+          py::arg("blocking") = false)
       .def("get_place",
-           [](const phi::stream::Stream &self) { return self.GetPlace(); })
+           [](const phi::stream::Stream &self) {
+             return reinterpret_cast<const phi::CustomPlace &>(self.GetPlace());
+           })
       .def(
           "wait_event",
           [](const phi::stream::Stream &self, phi::event::Event *event) {
@@ -125,15 +174,16 @@ void BindCustomDevicePy(py::module *m_ptr) {
       Makes all future work submitted to stream wait for all work captured in event.
 
       Parameters:
-        event(CUDAEvent): The event to wait on.
+        event(CustomDeviceEvent): The event to wait on.
 
       Examples:
         .. code-block:: python
 
-          # required: gpu
+          # required: custom_device
           import paddle
-          s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-          event = paddle.device.cuda.Event()
+          place = paddle.CustomPlace('custom_cpu', 0)
+          s = paddle.device.custom.Stream(place)
+          event = paddle.device.custom.Event(place)
           s.wait_event(event)
 
            )DOC")
@@ -154,10 +204,11 @@ void BindCustomDevicePy(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
-            # required: gpu
+            # required: custom_device
             import paddle
-            s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-            s2 = paddle.device.cuda.Stream(0, 1)
+            place = paddle.CustomPlace('custom_cpu', 0)
+            s1 = paddle.device.custom.Stream(place)
+            s2 = paddle.device.custom.Stream(place)
             s1.wait_stream(s2)
 
            )DOC")
@@ -172,9 +223,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
-            # required: gpu
+            # required: custom_device
             import paddle
-            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+            place = paddle.CustomPlace('custom_cpu', 0)
+            s = paddle.device.custom.Stream(place)
             is_done = s.query()
 
            )DOC")
@@ -187,9 +239,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
-            # required: gpu
+            # required: custom_device
             import paddle
-            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+            place = paddle.CustomPlace('custom_cpu', 0)
+            s = paddle.device.custom.Stream(place)
             s.synchronize()
 
            )DOC")
@@ -204,10 +257,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
             return event;
           },
           R"DOC(
-      Record a CUDA event in the stream.
+      Record an event in the stream.
 
       Parameters:
-          event(CUDAEvent, optional): The event to be record. If event is None, a new event is created.
+          event(CustomDeviceEvent, optional): The event to be record. If event is None, a new event is created.
           Default: None.
 
       Returns:
@@ -216,9 +269,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
-            # required: gpu
+            # required: custom_device
             import paddle
-            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+            place = paddle.CustomPlace('custom_cpu', 0)
+            s = paddle.device.custom.Stream(place)
             event = s.record_event()
 
            )DOC",
@@ -230,57 +284,132 @@ void BindCustomDevicePy(py::module *m_ptr) {
             return reinterpret_cast<std::uintptr_t>(self.raw_stream());
           },
           R"DOC(
-      retrun the raw cuda stream of type cudaStream_t as type int.
+      return the raw stream of type CustomDeviceStream as type int.
 
       Examples:
         .. code-block:: python
 
-            # required: gpu
+            # required: custom_device
             import paddle
             import ctypes
-            cuda_stream = paddle.device.cuda.current_stream().cuda_stream
-            print(cuda_stream)
+            stream  = paddle.device.custom.current_stream().raw_stream
+            print(stream)
 
-            ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
+            ptr = ctypes.c_void_p(stream)  # convert back to void*
             print(ptr)
 
            )DOC");
 
-  py::class_<phi::event::Event>(m, "CustomDeviceEvent", R"DOC(
+  py::class_<phi::event::Event, std::shared_ptr<phi::event::Event>>(
+      m, "CustomDeviceEvent", R"DOC(
       The handle of the custom device event.
 
       Parameters:
+        device(paddle.CustomPlace()|str): The device which wanted to allocate the stream.
+
+        device_id(int, optional): The id of the device which wanted to allocate the stream.
+        If device is None or negative integer, device will be the current device.
+        If device is positive integer, it must less than the device count. Default: None.
+
         enable_timing(bool, optional): Whether the event will measure time. Default: False.
+
         blocking(bool, optional): Whether the wait() func will be blocking. Default: False;
+
         interprocess(bool, optional): Whether the event can be shared between processes. Default: False.
 
       Examples:
         .. code-block:: python
 
-            # required: gpu
+            # required: custom_device
             import paddle
-            event = paddle.device.cuda.Event()
+            place = paddle.CustomPlace('custom_cpu', 0)
+            event = paddle.device.custom.Event(place)
 
   )DOC")
+      .def(
+          "__init__",
+          [](phi::event::Event &self,
+             const platform::CustomPlace &place,
+             bool enable_timing,
+             bool blocking,
+             bool interprocess) {
+            auto flag = static_cast<phi::event::Event::Flag>(
+                static_cast<uint32_t>(
+                    enable_timing ? 0
+                                  : phi::event::Event::Flag::DisableTiming) |
+                static_cast<uint32_t>(
+                    !blocking ? 0 : phi::event::Event::Flag::BlockingSync) |
+                static_cast<uint32_t>(
+                    !interprocess ? 0 : phi::event::Event::Flag::Interprocess)
+
+            );
+            new (&self) phi::event::Event();
+            self.Init(place, flag);
+          },
+          py::arg("place"),
+          py::arg("enable_timing") = false,
+          py::arg("blocking") = false,
+          py::arg("interprocess") = false)
+      .def(
+          "__init__",
+          [](phi::event::Event &self,
+             const std::string &device_type,
+             int device_id,
+             bool enable_timing,
+             bool blocking,
+             bool interprocess) {
+            auto flag = static_cast<phi::event::Event::Flag>(
+                static_cast<uint32_t>(
+                    enable_timing ? 0
+                                  : phi::event::Event::Flag::DisableTiming) |
+                static_cast<uint32_t>(
+                    !blocking ? 0 : phi::event::Event::Flag::BlockingSync) |
+                static_cast<uint32_t>(
+                    !interprocess ? 0 : phi::event::Event::Flag::Interprocess)
+
+            );
+            new (&self) phi::event::Event();
+            self.Init(
+                phi::CustomPlace(
+                    device_type,
+                    device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
+                                    : device_id),
+                flag);
+          },
+          py::arg("device_type"),
+          py::arg("device_id") = -1,
+          py::arg("enable_timing") = false,
+          py::arg("blocking") = false,
+          py::arg("interprocess") = false)
       .def("get_place",
-           [](const phi::event::Event &self) { return self.GetPlace(); })
+           [](const phi::event::Event &self) {
+             return reinterpret_cast<const phi::CustomPlace &>(self.GetPlace());
+           })
       .def(
           "record",
           [](phi::event::Event &self, phi::stream::Stream *stream) {
+            if (stream == nullptr) {
+              stream = static_cast<const phi::CustomContext *>(
+                           paddle::platform::DeviceContextPool::Instance().Get(
+                               self.GetPlace()))
+                           ->GetStream()
+                           .get();
+            }
             self.Record(stream);
           },
           R"DOC(
           Records the event in the given stream.
 
           Parameters:
-            stream(CUDAStream, optional): The handle of CUDA stream. If None, the stream is the current stream. Default: None.
+            stream(CustomDeviceStream, optional): The handle of custom device stream. If None, the stream is the current stream. Default: None.
 
           Examples:
             .. code-block:: python
 
-              # required: gpu
+              # required: custom_device
               import paddle
-              event = paddle.device.cuda.Event()
+              place = paddle.CustomPlace('custom_cpu', 0)
+              event = paddle.device.custom.Event(place)
               event.record()
 
         )DOC")
@@ -295,9 +424,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
           Examples:
             .. code-block:: python
 
-                # required: gpu
+                # required: custom_device
                 import paddle
-                event = paddle.device.cuda.Event()
+                place = paddle.CustomPlace('custom_cpu', 0)
+                event = paddle.device.cuda.Event(place)
                 is_done = event.query()
 
            )DOC")
@@ -310,9 +440,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
             Examples:
               .. code-block:: python
 
-                # required: gpu
+                # required: custom_device
                 import paddle
-                event = paddle.device.cuda.Event()
+                place = paddle.CustomPlace('custom_cpu', 0)
+                event = paddle.device.custom.Event(place)
                 event.synchronize()
 
            )DOC")
@@ -323,18 +454,20 @@ void BindCustomDevicePy(py::module *m_ptr) {
             return reinterpret_cast<std::uintptr_t>(self.raw_event());
           },
           R"DOC(
-      retrun the raw cuda stream of type cudaStream_t as type int.
+      return the raw event of type CustomDeviceEvent as type int.
 
       Examples:
         .. code-block:: python
 
-            # required: gpu
+            # required: custom_device
             import paddle
             import ctypes
-            cuda_stream = paddle.device.cuda.current_stream().cuda_stream
-            print(cuda_stream)
+            place = paddle.CustomPlace('custom_cpu', 0)
+            event = paddle.device.custom.Event(place)
+            raw_event = event.raw_event
+            print(raw_event)
 
-            ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
+            ptr = ctypes.c_void_p(raw_event)  # convert back to void*
             print(ptr)
 
            )DOC");
