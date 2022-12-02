@@ -25,6 +25,8 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 
 template <typename T>
@@ -980,6 +982,12 @@ static void Interpolate2DCUDABwd(
 
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pixelNum);
+
+  if (FLAGS_cudnn_deterministic) {
+    VLOG(2) << "Run grad kernel of bilinear interpolate 2d with single thread.";
+    config.block_per_grid = 1;
+    config.thread_per_block = 1;
+  }
 
   if ("nearest" == interp_method) {
     if (data_layout == DataLayout::kNCHW) {
