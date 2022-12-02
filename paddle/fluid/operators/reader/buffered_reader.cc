@@ -191,8 +191,7 @@ void BufferedReader::ReadAsync(size_t i) {
             cuda[i].set_layout(cpu[i].layout());
             cuda_pinned_ptrs[i] =
                 cuda[i].mutable_data(cuda_pinned_place, cpu[i].type());
-            auto size = cpu[i].numel() *
-                        paddle::framework::DataTypeSize(cpu[i].dtype());
+            auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
 
             memory::Copy(cuda_pinned_place,
                          cuda_pinned_ptrs[i],
@@ -245,8 +244,7 @@ void BufferedReader::ReadAsync(size_t i) {
           auto cpu_place = cpu[i].place();
           auto cpu_ptr = cpu[i].data();
           auto gpu_ptr = gpu_ptrs[i];
-          auto size =
-              cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+          auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
           if (platform::is_cuda_pinned_place(cpu_place)) {
             memory::Copy(
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
@@ -255,7 +253,7 @@ void BufferedReader::ReadAsync(size_t i) {
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
             platform::CUDAPinnedPlace cuda_pinned_place;
-            framework::LoDTensor cuda_pinned_tensor;
+            phi::DenseTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
                 cuda_pinned_place, cpu[i].type());
@@ -312,8 +310,7 @@ void BufferedReader::ReadAsync(size_t i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
         auto npu_ptr = npu_ptrs[i];
-        auto size =
-            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+        auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         if ((platform::is_npu_place(cpu_place))) {
           memory::Copy(
               place_, npu_ptr, cpu_place, cpu_ptr, size, stream_.get());
@@ -364,8 +361,7 @@ void BufferedReader::ReadAsync(size_t i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
         auto mlu_ptr = mlu_ptrs[i];
-        auto size =
-            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+        auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         if ((platform::is_mlu_place(cpu_place))) {
           memory::Copy(
               place_, mlu_ptr, cpu_place, cpu_ptr, size, stream_.get());
@@ -417,8 +413,7 @@ void BufferedReader::ReadAsync(size_t i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
         auto xpu_ptr = xpu_ptrs[i];
-        auto size =
-            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+        auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         // TODO(zhanghuan) for now hardware not support xpu_memcpy_async, maybe
         // KL3
         if ((platform::is_xpu_place(cpu_place))) {
@@ -471,8 +466,7 @@ void BufferedReader::ReadAsync(size_t i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
         auto custom_device_ptr = custom_device_ptrs[i];
-        auto size =
-            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+        auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         if ((platform::is_custom_place(cpu_place))) {
           memory::Copy(place_, custom_device_ptr, cpu_place, cpu_ptr, size);
           custom_device_stream_->Synchronize();
@@ -502,7 +496,7 @@ void BufferedReader::StartImpl() {
   ReadTillBufferFullAsync();
 }
 
-void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
+void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
   if (position_.empty()) {
     out->clear();
     return;

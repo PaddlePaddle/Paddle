@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/load_op.h"
-
 #include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +37,7 @@ class LoadOp : public framework::OperatorWithKernel {
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
+    AddOutput("Out", "The phi::DenseTensor / SelectedRows need to be loaded");
     AddAttr<bool>(
         "load_as_fp16",
         "If true, the tensor will be first loaded and then "
@@ -54,7 +54,8 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                                   "(vector<int64_t>) The shape of the output")
         .SetDefault({});
     AddComment(
-        "Load operator will load a LoDTensor / SelectedRows variable from "
+        "Load operator will load a phi::DenseTensor / SelectedRows variable "
+        "from "
         "disk "
         "file.");
   }
@@ -65,12 +66,3 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    load,
-    ops::LoadOpKernel<phi::CPUContext, float>,
-    ops::LoadOpKernel<phi::CPUContext, double>,
-    ops::LoadOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
-    ops::LoadOpKernel<phi::CPUContext, int>,
-    ops::LoadOpKernel<phi::CPUContext, int8_t>,
-    ops::LoadOpKernel<phi::CPUContext, int64_t>);

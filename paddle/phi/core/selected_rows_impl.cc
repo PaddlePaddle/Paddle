@@ -174,10 +174,10 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
                            phi::DenseTensor* value,
                            bool auto_grown,
                            bool is_test) {
-  PADDLE_ENFORCE_EQ(value->IsInitialized(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The value tensor is not initialized."));
+  PADDLE_ENFORCE_EQ(
+      value->IsInitialized(),
+      true,
+      phi::errors::InvalidArgument("The value tensor is not initialized."));
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {

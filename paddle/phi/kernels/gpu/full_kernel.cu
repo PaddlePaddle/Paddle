@@ -20,11 +20,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename InT, typename OutT = InT>
-struct FullFuctor {
+struct FullFunctor {
   OutT value;
 
   template <typename VType>
-  explicit inline FullFuctor(VType val) {
+  explicit inline FullFunctor(VType val) {
     value = static_cast<OutT>(val);
   }
 
@@ -50,7 +50,7 @@ void FullKernel(const Context& dev_ctx,
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
 }
 
@@ -104,7 +104,7 @@ void FullLikeKernel(const Context& dev_ctx,
   int numel = out->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(value));
+        dev_ctx, inputs, &outputs, FullFunctor<T>(value));
   }
 }
 

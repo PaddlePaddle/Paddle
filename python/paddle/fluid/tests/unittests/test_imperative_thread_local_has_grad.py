@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import time
-import paddle.nn as nn
-import numpy as np
 import threading
+import time
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(nn.Layer):
-
     def __init__(self, in_dim, out_dim):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.fc = nn.Linear(in_dim, out_dim)
 
     def forward(self, x):
@@ -32,7 +33,6 @@ class SimpleNet(nn.Layer):
 
 
 class TestCases(unittest.TestCase):
-
     @paddle.no_grad()
     def thread_1_main(self):
         time.sleep(8)

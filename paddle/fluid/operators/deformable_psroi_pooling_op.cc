@@ -33,9 +33,9 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -104,7 +104,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "W is thewidth of output. ");
     AddComment(R"DOC(
 **DeformablePSROIPooling Operator**
-DeformablePSROIPooling is a new method based Region of interest pooling 
+DeformablePSROIPooling is a new method based Region of interest pooling
 (also known as RoI pooling).
 The operator has four steps:
 
@@ -149,7 +149,8 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
         rois_dims.size(),
         2,
         platform::errors::InvalidArgument(
-            "Input(ROIs) should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "Input(ROIs) should be a 2-D phi::DenseTensor of shape (num_rois, "
+            "4) "
             "given as [[ x1, y1, x2, y2], ...]. The rank of Input(ROIs) should "
             "be 2, but received ROIs rank is:%d, ROIs shape is:[%s].",
             rois_dims.size(),

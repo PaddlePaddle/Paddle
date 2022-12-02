@@ -38,7 +38,7 @@ static PyObject *eager_api_run_program(PyObject *self,
         "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
-    run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
+    run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;

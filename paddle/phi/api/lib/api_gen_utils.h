@@ -52,6 +52,8 @@ paddle::optional<phi::SelectedRows> TensorToSelectedRows(
 
 std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor);
 
+std::shared_ptr<phi::SparseCooTensor> TensorToSparseCooTensor(
+    const Tensor& tensor);
 /* ----------------- for infer_meta --------------------- */
 
 phi::MetaTensor MakeMetaTensor(const phi::TensorBase& tensor);
@@ -65,11 +67,23 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<phi::DenseTensor*>& tensors);
 
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<const phi::SelectedRows*>& tensors);
+
 phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::SelectedRows>& tensor);
 
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::SparseCooTensor>& tensor);
+
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::SparseCsrTensor>& tensor);
+
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<std::vector<const phi::DenseTensor*>>& tensors);
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<const phi::TensorBase*>& tensors);
 
 /* ------------------ for output ----------------------- */
 

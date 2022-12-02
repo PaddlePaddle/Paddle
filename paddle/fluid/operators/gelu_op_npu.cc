@@ -23,15 +23,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class GeluNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -50,10 +50,10 @@ template <typename DeviceContext, typename T>
 class GeluGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
 

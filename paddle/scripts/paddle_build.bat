@@ -114,18 +114,16 @@ if "%WITH_PYTHON%" == "ON" (
 )
 
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
-rmdir %BUILD_DIR%\python /s/q
-rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
-rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
-rmdir %BUILD_DIR%\paddle_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
-del %BUILD_DIR%\CMakeCache.txt
-
 if "%WITH_CACHE%"=="OFF" (
     rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
+
+rmdir %BUILD_DIR%\python /s/q
+rmdir %BUILD_DIR%\paddle_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
+del %BUILD_DIR%\CMakeCache.txt
 
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
@@ -172,14 +170,15 @@ echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
-dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+set PATH=%SCCACHE_ROOT%;%PATH%
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
+
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
@@ -203,7 +202,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -211,7 +210,7 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\ /Y
+xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
@@ -231,7 +230,7 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
-set ON_INFER=OFF
+set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
@@ -240,6 +239,7 @@ call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
+call :test_inference || goto test_inference_error
 goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
@@ -248,7 +248,7 @@ set WITH_MKL=OFF
 set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
-set ON_INFER=OFF
+set ON_INFER=ON
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
@@ -281,7 +281,7 @@ goto:success
 rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
-set ON_INFER=OFF
+set ON_INFER=ON
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
@@ -292,7 +292,7 @@ goto:success
 rem ------Build windows no-avx whl package------
 :CASE_build_no_avx_whl
 set WITH_AVX=OFF
-set ON_INFER=OFF
+set ON_INFER=ON
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
@@ -662,6 +662,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+pip install requests
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
@@ -678,8 +679,7 @@ dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
 dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
-
-pip install requests
+dir %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
@@ -689,7 +689,9 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
-xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
+if "%WITH_ONNXRUNTIME%"=="ON" (
+    xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
+)
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu

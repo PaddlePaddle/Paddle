@@ -14,8 +14,8 @@ if(WITH_MULTINODE_TESTING)
       "RUN_TYPE=DIST"
       ENVS
       "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=")
-    set_tests_properties(test_multinode_dygraph_hybrid_dpppmp
-                         PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
+    set_tests_properties(test_multinode_dygraph_hybrid_dpppmp PROPERTIES TIMEOUT
+                                                                         "120")
   endif()
 endif()
 if(WITH_MULTINODE_TESTING)
@@ -28,8 +28,8 @@ if(WITH_MULTINODE_TESTING)
       "RUN_TYPE=DIST"
       ENVS
       "PADDLE_DIST_UT_PORT=21284;http_proxy=;https_proxy=")
-    set_tests_properties(test_multinode_dygraph_hybrid_dp
-                         PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
+    set_tests_properties(test_multinode_dygraph_hybrid_dp PROPERTIES TIMEOUT
+                                                                     "120")
   endif()
 endif()
 if(WITH_MULTINODE_TESTING)
@@ -42,7 +42,7 @@ if(WITH_MULTINODE_TESTING)
       "RUN_TYPE=DIST"
       ENVS
       "PADDLE_DIST_UT_PORT=21286;http_proxy=;https_proxy=")
-    set_tests_properties(test_multinode_dygraph_sharding
-                         PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
+    set_tests_properties(test_multinode_dygraph_sharding PROPERTIES TIMEOUT
+                                                                    "120")
   endif()
 endif()

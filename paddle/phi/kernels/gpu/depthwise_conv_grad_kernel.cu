@@ -33,15 +33,18 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              int groups,
                              const std::vector<int>& dilations_t,
                              const std::string& data_format,
-                             bool use_addto,
-                             int workspace_size_MB,
-                             bool exhaustive_search,
-                             bool fuse_relu,
                              DenseTensor* input_grad,
                              DenseTensor* filter_grad) {
   const DenseTensor* output_grad = &out_grad;
 
   if (!input_grad && !filter_grad) return;
+
+  bool has_fuse_relu = dev_ctx.HasDnnAttr("fuse_relu_before_depthwise_conv");
+  bool fuse_relu =
+      has_fuse_relu
+          ? PADDLE_GET_CONST(
+                bool, dev_ctx.GetDnnAttr("fuse_relu_before_depthwise_conv"))
+          : false;
 
   std::vector<int> strides = strides_t;
   std::vector<int> paddings = paddings_t;
@@ -52,9 +55,8 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const paddle::framework::DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
-  if (data_layout != paddle::framework::DataLayout::kNHWC) {
+  const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+  if (data_layout != phi::DataLayout::kNHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);

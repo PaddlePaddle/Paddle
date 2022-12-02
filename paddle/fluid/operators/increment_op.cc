@@ -43,7 +43,7 @@ class IncrementOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // IncrementOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
     return kt;
   }
 };
@@ -61,7 +61,7 @@ class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Increment Operator.
 
-The equation is: 
+The equation is:
 $$Out = X + step$$
 
 )DOC");

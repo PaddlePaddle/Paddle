@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import paddle as pd
+import paddle.fluid as fluid
 
 fluid.install_check.run_check()
 print(pd.__version__)

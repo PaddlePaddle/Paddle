@@ -26,7 +26,6 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #endif
 #ifdef PADDLE_WITH_HIP
@@ -34,7 +33,6 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
 #endif
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"  // NOLINT
 #include "paddle/fluid/operators/miopen_rnn_cache.h"
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -92,7 +90,7 @@ bool CheckVarId(int proto_id) {
 }
 
 TEST(var_type_traits, check_proto_type_id) {
-  ASSERT_TRUE(CheckVarId<LoDTensor>(proto::VarType::LOD_TENSOR));
+  ASSERT_TRUE(CheckVarId<phi::DenseTensor>(proto::VarType::LOD_TENSOR));
   ASSERT_TRUE(CheckVarId<phi::SelectedRows>(proto::VarType::SELECTED_ROWS));
   ASSERT_TRUE(CheckVarId<std::vector<Scope *>>(proto::VarType::STEP_SCOPES));
   ASSERT_TRUE(CheckVarId<LoDRankTable>(proto::VarType::LOD_RANK_TABLE));

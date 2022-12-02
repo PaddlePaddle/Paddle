@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
 
 
 class TestIsComplex(unittest.TestCase):
-
     def test_for_integer(self):
         x = paddle.arange(10)
         self.assertFalse(paddle.is_complex(x))

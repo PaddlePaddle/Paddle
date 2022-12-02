@@ -21,7 +21,7 @@
 //  Licensed under the Apache License, Version 2.0 (the "License").
 
 #include "paddle/fluid/operators/prune_gate_by_capacity_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -30,7 +30,6 @@ DECLARE_bool(avoid_op_randomness);
 
 namespace paddle {
 namespace operators {
-using LoDTensor = framework::LoDTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -47,7 +46,7 @@ __global__ void prune_gate_by_capacity_kernel(const T1* gate_idx_data,
                                               const int64_t batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size) {
     auto orig_cap =
-        platform::CudaAtomicAdd(expert_count_data + gate_idx_data[i], -1);
+        phi::CudaAtomicAdd(expert_count_data + gate_idx_data[i], -1);
     if (orig_cap <= 0) {
       new_gate_idx_data[i] = -1;
     } else {
@@ -60,8 +59,8 @@ template <typename DeviceContext, typename T1>
 class PruneGateByCapacityFunctor {
  public:
   PruneGateByCapacityFunctor(const framework::ExecutionContext& context,
-                             const framework::LoDTensor* gate_idx,
-                             framework::LoDTensor* expert_count_out,
+                             const phi::DenseTensor* gate_idx,
+                             phi::DenseTensor* expert_count_out,
                              T1* new_gate_idx_data)
       : context_(context),
         gate_idx_(gate_idx),
@@ -88,8 +87,8 @@ class PruneGateByCapacityFunctor {
 
  private:
   const framework::ExecutionContext context_;
-  const framework::LoDTensor* gate_idx_;
-  framework::LoDTensor* expert_count_out_;
+  const phi::DenseTensor* gate_idx_;
+  phi::DenseTensor* expert_count_out_;
   T1* new_gate_idx_data_;
 };
 
@@ -111,17 +110,18 @@ template <typename DeviceContext, typename T>
 class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* gate_idx = context.Input<LoDTensor>("GateIdx");
-    auto* expert_count = context.Input<LoDTensor>("ExpertCount");
-    // auto* expert_count_out = context.Output<LoDTensor>("ExpertCountOut");
-    auto* new_gate_idx = context.Output<LoDTensor>("NewGateIdx");
+    auto* gate_idx = context.Input<phi::DenseTensor>("GateIdx");
+    auto* expert_count = context.Input<phi::DenseTensor>("ExpertCount");
+    // auto* expert_count_out =
+    // context.Output<phi::DenseTensor>("ExpertCountOut");
+    auto* new_gate_idx = context.Output<phi::DenseTensor>("NewGateIdx");
     auto* new_gate_idx_data = new_gate_idx->mutable_data<T>(context.GetPlace());
 
-    framework::LoDTensor expert_count_out;
+    phi::DenseTensor expert_count_out;
     framework::TensorCopy(*expert_count, context.GetPlace(), &expert_count_out);
     PruneGateByCapacityFunctor<DeviceContext, T> functor(
         context, gate_idx, &expert_count_out, new_gate_idx_data);
-    VisitDataType(expert_count->type(), functor);
+    ::paddle::operators::VisitDataType(expert_count->type(), functor);
   }
 };
 

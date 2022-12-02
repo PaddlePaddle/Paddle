@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/custom/enforce_custom.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/common/data_type.h"
 
 #include "paddle/phi/backends/callback_manager.h"
+#include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
+#include "paddle/phi/common/data_type.h"
 
 static bool operator==(const C_Device_st& d1, const C_Device_st& d2) {
   return d1.id == d2.id;
@@ -53,11 +53,14 @@ class CustomDevice : public DeviceInterface {
   ~CustomDevice() override { Finalize(); }
 
   size_t GetDeviceCount() override {
-    size_t count;
-    if (pimpl_->get_device_count(&count) != C_SUCCESS) {
-      count = 0;
+    if (!device_init_flag_) {
+      if (pimpl_->get_device_count(&device_count_) != C_SUCCESS) {
+        device_count_ = 0;
+      } else {
+        device_init_flag_ = true;
+      }
     }
-    return count;
+    return device_count_;
   }
 
   std::vector<size_t> GetDeviceList() override {
@@ -882,6 +885,8 @@ class CustomDevice : public DeviceInterface {
   std::unique_ptr<C_DeviceInterface> pimpl_;
   void* dso_handle_;
   std::unordered_map<size_t, C_Device_st> devices_pool;
+  bool device_init_flag_ = false;
+  size_t device_count_;
 };
 
 bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {

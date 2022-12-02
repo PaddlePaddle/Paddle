@@ -87,10 +87,10 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
 mean-IOU Operator.
 Mean Intersection-Over-Union is a common evaluation metric for
 semantic image segmentation, which first computes the IOU for each
-semantic class and then computes the average over classes. 
-IOU is defined as follows: 
+semantic class and then computes the average over classes.
+IOU is defined as follows:
     IOU = true_positive / (true_positive + false_positive + false_negative).
-It is based on pixel level area while "IOU Similarity Operator" 
+It is based on pixel level area while "IOU Similarity Operator"
 is based on area of rectangle.
 
 )DOC");

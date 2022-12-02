@@ -42,6 +42,8 @@ thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
 thread_local bool Tracer::has_grad_ = true;
 
+thread_local bool Tracer::use_layout_autotune_ = false;
+
 thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
 thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
@@ -221,7 +223,7 @@ void Tracer::TraceOpImpl(const std::string& type,
   platform::RecordEvent op_type_record_event(
       type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
-  VLOG(1) << "Trace Op: " << type;
+  VLOG(4) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
     // FLAGS_use_mkldnn=1)

@@ -22,8 +22,9 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/memcpy_kernel.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 namespace phi {
 
@@ -97,7 +98,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
 
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
-  if (!x.IsInitialized() && src_layout == DataLayout::MKLDNN &&
+  if (!x.IsInitialized() && src_layout == DataLayout::ONEDNN &&
       dst_layout == DataLayout::NHWC) {
     VLOG(4) << src_layout << "->" << dst_layout << " " << x.layout();
     out->Resize(x.dims());
@@ -106,11 +107,11 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     return;
   }
 
-  if (src_layout != DataLayout::MKLDNN && dst_layout == DataLayout::MKLDNN) {
+  if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
-    auto out_format = funcs::MKLDNNFormatForSize(
-        x.dims().size(), funcs::ToMKLDNNFormat(src_layout));
+    auto out_format = funcs::OneDNNFormatForSize(
+        x.dims().size(), funcs::ToOneDNNFormat(src_layout));
 
     out->ShareDataWith(x);
     // For NHWC data we need reshape of tensors as MKL-DNN
@@ -121,21 +122,23 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    out->set_layout(DataLayout::MKLDNN);
-    out->set_format(out_format);
-  } else if (src_layout == DataLayout::MKLDNN &&
-             dst_layout != DataLayout::MKLDNN) {
+    dnnl::memory::desc out_mem_desc(vectorize<int64_t>(out->dims()),
+                                    funcs::ToOneDNNDataType(x.dtype()),
+                                    out_format);
+    out->set_mem_desc(out_mem_desc);
+  } else if (src_layout == DataLayout::ONEDNN &&
+             dst_layout != DataLayout::ONEDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
-    funcs::innerTransDataLayoutFromMKLDNN(
+    funcs::TransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
-  } else if (src_layout == DataLayout::MKLDNN &&
-             dst_layout == DataLayout::MKLDNN) {
+  } else if (src_layout == DataLayout::ONEDNN &&
+             dst_layout == DataLayout::ONEDNN) {
     PADDLE_ENFORCE_NE(
         src_layout,
         dst_layout,
         errors::PreconditionNotMet(
-            "No layout transform needed between two MKLDNN OPKernels."));
+            "No layout transform needed between two oneDNN OPKernels."));
   } else {
     TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
   }
@@ -154,6 +157,13 @@ void TransferLayoutKernel(const Context& dev_ctx,
                         "No layout transform needed between same layout."));
   VLOG(10) << "TransDataLayout from " << static_cast<DataLayout>(src_layout)
            << " -> " << static_cast<DataLayout>(dst_layout);
+
+  VLOG_IF(10, x.initialized()) << "TransDataLayout from " << x.layout();
+  if (x.layout() == static_cast<DataLayout>(dst_layout)) {
+    VLOG(10) << "No need to transform, already is " << x.layout();
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
 
 #ifdef PADDLE_WITH_MKLDNN
   TransferLayoutMKLDNN<Context>(dev_ctx,
@@ -174,3 +184,10 @@ PD_REGISTER_GENERAL_KERNEL(transfer_layout,
                            ALL_LAYOUT,
                            phi::TransferLayoutKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_GENERAL_KERNEL(transfer_layout,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::TransferLayoutKernel<phi::GPUContext>,
+                           ALL_DTYPE) {}
+#endif

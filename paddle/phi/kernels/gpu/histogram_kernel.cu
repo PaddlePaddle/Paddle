@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/histogram_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -25,7 +25,7 @@
 namespace phi {
 
 using IndexType = int64_t;
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -61,13 +61,13 @@ __global__ void KernelHistogram(const T* input,
     if (input_value >= min_value && input_value <= max_value) {
       const IndexType output_index =
           GetBin<T, IndexType>(input_value, min_value, max_value, nbins);
-      paddle::platform::CudaAtomicAdd(&buf_hist[output_index], 1);
+      phi::CudaAtomicAdd(&buf_hist[output_index], 1);
     }
   }
   __syncthreads();
 
   for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
-    paddle::platform::CudaAtomicAdd(&output[i], buf_hist[i]);
+    phi::CudaAtomicAdd(&output[i], buf_hist[i]);
   }
 }
 

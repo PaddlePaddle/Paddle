@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class PadOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -59,7 +57,7 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Pad Operator.
 
-Pad input into output, as specified by paddings and pad_value. 
+Pad input into output, as specified by paddings and pad_value.
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:

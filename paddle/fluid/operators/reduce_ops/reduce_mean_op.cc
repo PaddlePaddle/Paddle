@@ -79,6 +79,7 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
         op.SetType("reduce_mean");
         op.SetInput("X", x_gg);
         op.SetAttrMap(Attrs());
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
         op.SetOutput("Out", out_grads);
       }
       return node;

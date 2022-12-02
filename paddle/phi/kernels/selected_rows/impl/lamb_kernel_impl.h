@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -212,7 +212,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }

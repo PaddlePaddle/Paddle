@@ -12,24 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import time
-
 import os
+import time
+import unittest
+
 import paddle
 
 paddle.enable_static()
 
-import paddle.fluid as fluid
-
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 
 class TestCommunicator(unittest.TestCase):
-
     def net(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -45,8 +41,9 @@ class TestCommunicator(unittest.TestCase):
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-            "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
         avg_cost = self.net()

@@ -34,9 +34,6 @@ class Node;
 
 namespace paddle {
 namespace inference {
-
-int ConvertGraph(std::string graph_name);
-
 namespace analysis {
 
 class DlnneSubgraphPass : public framework::ir::FusePassBase {
@@ -44,6 +41,8 @@ class DlnneSubgraphPass : public framework::ir::FusePassBase {
   void ApplyImpl(framework::ir::Graph *graph) const override;
 
  private:
+  void InferShapeForDlnneMainGraph() const;
+  bool IsDynamicOp(std::string var_name, bool use_static_batch) const;
   void CleanIntermediateOutputs(framework::ir::Node *node);
   void CreateDlnneOp(framework::ir::Node *x,
                      framework::ir::Graph *graph,

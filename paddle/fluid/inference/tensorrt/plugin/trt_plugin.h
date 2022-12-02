@@ -38,6 +38,13 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if defined(_WIN32)
+#define UNUSED
+#define __builtin_expect(EXP, C) (EXP)
+#else
+#define UNUSED __attribute__((unused))
+#endif
+
 class PluginTensorRT;
 
 typedef std::function<PluginTensorRT*(const void*, size_t)>
@@ -372,6 +379,26 @@ class TensorRTPluginCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
+class TrtPluginRegistry {
+ public:
+  static TrtPluginRegistry* Global() {
+    static TrtPluginRegistry registry;
+    return &registry;
+  }
+  bool Regist(const std::string& name, const std::function<void()>& func) {
+    map.emplace(name, func);
+    return true;
+  }
+  void RegistToTrt() {
+    for (auto& it : map) {
+      it.second();
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, std::function<void()>> map;
+};
+
 template <typename T>
 class TrtPluginRegistrarV2 {
  public:
@@ -386,9 +413,14 @@ class TrtPluginRegistrarV2 {
   T creator;
 };
 
-#define REGISTER_TRT_PLUGIN_V2(name)                                     \
-  static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
-      plugin_registrar_##name {}
+#define REGISTER_TRT_PLUGIN_V2(name) REGISTER_TRT_PLUGIN_V2_HELPER(name)
+
+#define REGISTER_TRT_PLUGIN_V2_HELPER(name)                                    \
+  UNUSED static bool REGISTER_TRT_PLUGIN_V2_HELPER##name =                     \
+      TrtPluginRegistry::Global()->Regist(#name, []() -> void {                \
+        static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
+            plugin_registrar_##name{};                                         \
+      });
 
 }  // namespace plugin
 }  // namespace tensorrt

@@ -183,6 +183,7 @@ void Executor::Run(const ProgramDesc& pdesc,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc,
                    bool keep_kid_scopes) {
+  LOG_FIRST_N(INFO, 1) << "Old Executor is Running.";
   platform::RecordEvent record_run(
       "Executor::Run", platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
@@ -204,7 +205,7 @@ void Executor::Run(const ProgramDesc& pdesc,
 // Return true if the block has feed operators and holder of matching info.
 static bool has_feed_operators(
     const BlockDesc& block,
-    const std::map<std::string, const LoDTensor*>& feed_targets,
+    const std::map<std::string, const phi::DenseTensor*>& feed_targets,
     const std::string& feed_holder_name) {
   size_t feed_count = 0;
   for (auto* op : block.AllOps()) {
@@ -323,7 +324,7 @@ static bool has_fetch_operators(
 
 void Executor::Run(const ProgramDesc& program,
                    Scope* scope,
-                   std::map<std::string, const LoDTensor*>* feed_targets,
+                   std::map<std::string, const phi::DenseTensor*>* feed_targets,
                    std::map<std::string, FetchType*>* fetch_targets,
                    bool create_local_scope,
                    bool create_vars,
@@ -622,7 +623,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx,
     Scope* scope,
-    std::map<std::string, const LoDTensor*>* feed_targets,
+    std::map<std::string, const phi::DenseTensor*>* feed_targets,
     std::map<std::string, FetchType*>* fetch_targets,
     bool create_local_scope,
     bool create_vars,

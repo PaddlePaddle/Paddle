@@ -82,10 +82,10 @@ The loss can be described as:
 
 $Out[i] = -X[Label[i]]*Weight[Label[i]]$
 
-It can also be used for higher dimension inputs, such as 2D images, by 
-providing an input of shape (batch_size, C, d1, d2, ..., dK), with 
-K >= 1, where K is the number of dimensions, and a Label of 
-appropriate shape. In the case of images, it computes NLL loss 
+It can also be used for higher dimension inputs, such as 2D images, by
+providing an input of shape (batch_size, C, d1, d2, ..., dK), with
+K >= 1, where K is the number of dimensions, and a Label of
+appropriate shape. In the case of images, it computes NLL loss
 per-pixel.
 
 )DOC");

@@ -29,9 +29,11 @@ template <typename T>
 class ReduceSumGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<Tensor>("X");
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* in_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* in_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     in_grad->mutable_data<T>(context.GetPlace());
 
     bool reduce_all = context.Attr<bool>("reduce_all");

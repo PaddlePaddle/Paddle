@@ -33,7 +33,5 @@ runner:
   batch_size: 2
   train_files_path: "./train_data"
   epoch_num: 4
-  
-  model_path: "../ps_dnn_model.py"
 
-  
+  model_path: "../ps_dnn_model.py"

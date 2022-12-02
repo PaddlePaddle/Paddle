@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -33,7 +31,6 @@ paddle.enable_static()
 
 
 class TestInstanceNorm(unittest.TestCase):
-
     def test_dygraph(self):
         places = [fluid.NPUPlace(0)]
         for p in places:
@@ -41,7 +38,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.InstanceNorm(shape[1])
+                    bn = paddle.nn.InstanceNorm(shape[1])
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -64,7 +61,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    ins = fluid.dygraph.InstanceNorm(shape[1])
+                    ins = paddle.nn.InstanceNorm(shape[1])
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = ins(x)
                     exe.run(fluid.default_startup_program())

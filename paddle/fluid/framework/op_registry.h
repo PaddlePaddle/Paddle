@@ -171,9 +171,20 @@ inline void RegisterKernelClass(const char* op_type,
   if (library == "MKLDNN") {
     data_layout = "MKLDNNLAYOUT";
   }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (std::is_same<PlaceType, platform::CustomPlace>::value) {
+    OpKernelType key(ToDataType(std::type_index(typeid(T))),
+                     platform::CustomPlace(library_type),
+                     phi::StringToDataLayout(data_layout),
+                     LibraryType::kPlain,
+                     customized_type_value);
+    OperatorWithKernel::AllOpKernels()[op_type][key] = func;
+    return;
+  }
+#endif
   OpKernelType key(ToDataType(std::type_index(typeid(T))),
                    PlaceType(),
-                   StringToDataLayout(data_layout),
+                   phi::StringToDataLayout(data_layout),
                    StringToLibraryType(library_type),
                    customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;

@@ -16,11 +16,13 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_XPU)
+  add_subdirectory(xpu)
   list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
 endif()
 
 if(WITH_MKLDNN)
   list(APPEND BACKENDS_SRCS onednn/onednn_context.cc)
+  list(APPEND BACKENDS_SRCS onednn/axpy_handler.cc)
   list(APPEND BACKENDS_DEPS mkldnn)
 endif()
 
@@ -57,3 +59,15 @@ if(WITH_CUSTOM_DEVICE)
     SRCS custom/capi_test.cc
     DEPS phi_capi)
 endif()
+
+set(COMM_UTILS_DEPS processgroup)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_nccl)
+endif()
+if(WITH_CUSTOM_DEVICE)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_custom)
+endif()
+cc_library(
+  processgroup_comm_utils
+  SRCS processgroup_comm_utils.cc
+  DEPS ${COMM_UTILS_DEPS})

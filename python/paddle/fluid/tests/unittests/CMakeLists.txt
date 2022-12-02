@@ -18,17 +18,12 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
-list(APPEND DIST_TEST_OPS
-     test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
@@ -77,6 +72,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
@@ -146,6 +142,8 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
+  list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_no_bias)
+  list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -178,8 +176,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
-  list(REMOVE_ITEM TEST_OPS
-       test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
@@ -531,9 +527,6 @@ if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
   list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -611,6 +604,11 @@ set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
+if(WITH_RPC)
+  add_subdirectory(rpc)
+endif()
+
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
@@ -809,7 +807,7 @@ py_test_modules(
 # it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
 # which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
-if(NOT ON_INFER)
+if(WITH_PYTHON)
   py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
                   test_parallel_executor_seresnext_base_cpu)
   py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES
@@ -895,7 +893,7 @@ add_subdirectory(asp)
 
 add_subdirectory(ir)
 
-add_subdirectory(interpreter)
+add_subdirectory(standalone_executor)
 
 if(WITH_TESTING)
   set_property(TEST test_parallel_executor_mnist
@@ -1092,7 +1090,6 @@ set_tests_properties(test_parallel_executor_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_transpose_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_prroi_pool_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
@@ -1111,7 +1108,6 @@ set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 120)
 set_tests_properties(test_space_to_depth_op PROPERTIES TIMEOUT 200)
-set_tests_properties(test_dyn_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_parallel_executor_seresnext_base_gpu
                      PROPERTIES TIMEOUT 120)
@@ -1178,9 +1174,6 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
-  set_tests_properties(
-    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
-    PROPERTIES TIMEOUT 500)
   set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
@@ -1214,6 +1207,10 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
+endif()
+if(WITH_GPU AND NOT WIN32)
+  set_tests_properties(test_fused_multi_transformer_int8_op PROPERTIES TIMEOUT
+                                                                       60)
 endif()
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)

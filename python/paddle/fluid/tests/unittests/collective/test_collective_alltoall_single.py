@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestCollectiveAllToAllSingle(TestMultipleGpus):
-
     def test_collective_alltoall_single(self):
         self.run_mnist_2gpu('collective_alltoall_single.py', eager_mode=True)
 

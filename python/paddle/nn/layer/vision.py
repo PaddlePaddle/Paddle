@@ -14,16 +14,15 @@
 
 # TODO: define specitial functions used in computer vision task
 
-from .. import Layer
-from .. import functional
+from .. import Layer, functional
 
 __all__ = []
 
 
 class PixelShuffle(Layer):
     """
-    
-    PixelShuffle Layer    
+
+    PixelShuffle Layer
 
     Rearranges elements in a tensor of shape :math:`[N, C, H, W]`
     to a tensor of shape :math:`[N, C/upscale_factor^2, H*upscale_factor, W \times upscale_factor]`,
@@ -47,7 +46,7 @@ class PixelShuffle(Layer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import paddle.nn as nn
 
@@ -61,22 +60,25 @@ class PixelShuffle(Layer):
     """
 
     def __init__(self, upscale_factor, data_format="NCHW", name=None):
-        super(PixelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(upscale_factor, int):
             raise TypeError("upscale factor must be int type")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._upscale_factor = upscale_factor
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.pixel_shuffle(x, self._upscale_factor,
-                                        self._data_format, self._name)
+        return functional.pixel_shuffle(
+            x, self._upscale_factor, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'upscale_factor={}'.format(self._upscale_factor)
@@ -90,8 +92,8 @@ class PixelShuffle(Layer):
 class PixelUnshuffle(Layer):
     """
     Rearranges elements in a tensor of shape :math:`[N, C, H, W]`
-    to a tensor of shape :math:`[N, r^2C, H/r, W/r]`, or from shape 
-    :math:`[N, H, W, C]` to :math:`[N, H/r, W/r, r^2C]`, where :math:`r` is the 
+    to a tensor of shape :math:`[N, r^2C, H/r, W/r]`, or from shape
+    :math:`[N, H, W, C]` to :math:`[N, H/r, W/r, r^2C]`, where :math:`r` is the
     downscale factor. This operation is the reversion of PixelShuffle operation.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
     Using an Efficient Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_ .
@@ -121,7 +123,7 @@ class PixelUnshuffle(Layer):
     """
 
     def __init__(self, downscale_factor, data_format="NCHW", name=None):
-        super(PixelUnshuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(downscale_factor, int):
             raise TypeError("Downscale factor must be int type")
@@ -130,16 +132,19 @@ class PixelUnshuffle(Layer):
             raise ValueError("Downscale factor must be positive")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._downscale_factor = downscale_factor
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.pixel_unshuffle(x, self._downscale_factor,
-                                          self._data_format, self._name)
+        return functional.pixel_unshuffle(
+            x, self._downscale_factor, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'downscale_factor={}'.format(self._downscale_factor)
@@ -155,10 +160,10 @@ class ChannelShuffle(Layer):
     This operator divides channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
     getting a tensor with the shape of [N, g, C/g, H, W] or [N, H, W, g, C/g], and transposes them
     as [N, C/g, g, H, W] or [N, H, W, g, C/g], then rearranges them to original tensor shape. This
-    operation can improve the interaction between channels, using features efficiently. Please 
-    refer to the paper: `ShuffleNet: An Extremely Efficient 
+    operation can improve the interaction between channels, using features efficiently. Please
+    refer to the paper: `ShuffleNet: An Extremely Efficient
     Convolutional Neural Network for Mobile Devices <https://arxiv.org/abs/1707.01083>`_ .
-    by Zhang et. al (2017) for more details. 
+    by Zhang et. al (2017) for more details.
 
     Parameters:
         groups (int): Number of groups to divide channels in.
@@ -193,7 +198,7 @@ class ChannelShuffle(Layer):
     """
 
     def __init__(self, groups, data_format="NCHW", name=None):
-        super(ChannelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(groups, int):
             raise TypeError("groups must be int type")
@@ -202,16 +207,19 @@ class ChannelShuffle(Layer):
             raise ValueError("groups must be positive")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._groups = groups
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.channel_shuffle(x, self._groups, self._data_format,
-                                          self._name)
+        return functional.channel_shuffle(
+            x, self._groups, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'groups={}'.format(self._groups)

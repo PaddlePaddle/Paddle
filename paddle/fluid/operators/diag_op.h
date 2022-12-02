@@ -39,10 +39,10 @@ template <typename DeviceContext, typename T>
 class DiagKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* diagonal = context.Input<framework::Tensor>("Diagonal");
+    auto* diagonal = context.Input<phi::DenseTensor>("Diagonal");
     auto* diag_data = diagonal->data<T>();
     auto numel = diagonal->numel();
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     phi::funcs::SetConstant<DeviceContext, T> set_zero;

@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import unittest
-from test_dist_base import TestDistBase
-import paddle.fluid as fluid
-
 import os
+import unittest
+
+from test_dist_base import TestDistBase
+
+import paddle.fluid as fluid
 
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphMnist(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -31,10 +30,12 @@ class TestParallelDygraphMnist(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_sync_batch_norm.py",
-                                  delta=1e-5,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                "parallel_dygraph_sync_batch_norm.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name,
+            )
 
 
 if __name__ == "__main__":

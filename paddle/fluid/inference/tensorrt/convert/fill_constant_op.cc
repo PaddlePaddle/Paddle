@@ -36,7 +36,7 @@ class FillConstantOpConverter : public OpConverter {
       float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
       str_value = std::to_string(value);
     }
-    std::unique_ptr<framework::Tensor> out_tensor(new framework::Tensor());
+    std::unique_ptr<phi::DenseTensor> out_tensor(new phi::DenseTensor());
     out_tensor->Resize(phi::make_ddim(shape));
     nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
     void* trt_data = nullptr;

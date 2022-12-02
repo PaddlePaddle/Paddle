@@ -22,6 +22,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
@@ -32,8 +33,7 @@
 
 #include "unsupported/Eigen/CXX11/Tensor"
 
-// TODO(phi): remove fluid header.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -97,6 +97,22 @@ void InitGpuProperties(Place place,
       (*driver_version / 1000) * 10 + (*driver_version % 100) / 10;
   auto compile_cuda_version =
       (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
+#if defined(__linux__)
+  PADDLE_ENFORCE_EQ(
+      (local_cuda_version / 10 < compile_cuda_version / 10) &&
+          (cudnn_dso_ver / 1000 < CUDNN_VERSION / 1000),
+      false,
+      phi::errors::InvalidArgument(
+          "The installed Paddle is compiled with CUDA%d/cuDNN%d,"
+          "but CUDA/cuDNN version in your machine is CUDA%d/cuDNN%d. "
+          "which will cause serious incompatible bug. "
+          "Please recompile or reinstall Paddle with compatible CUDA/cuDNN "
+          "version.",
+          compile_cuda_version / 10,
+          CUDNN_VERSION / 1000,
+          local_cuda_version / 10,
+          cudnn_dso_ver / 1000));
+#endif
   if (local_cuda_version < compile_cuda_version) {
     LOG_FIRST_N(WARNING, 1)
         << "WARNING: device: " << static_cast<int>(place.device)

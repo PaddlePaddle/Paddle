@@ -21,9 +21,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/infermeta/unary.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {

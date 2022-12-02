@@ -88,10 +88,14 @@ void BmmGradInferMeta(const MetaTensor& x,
                       const MetaTensor& out_grad,
                       MetaTensor* x_grad,
                       MetaTensor* y_grad) {
-  x_grad->set_dims(x.dims());
-  y_grad->set_dims(y.dims());
-  x_grad->set_dtype(x.dtype());
-  y_grad->set_dtype(y.dtype());
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(x.dtype());
+  }
+  if (y_grad) {
+    y_grad->set_dims(y.dims());
+    y_grad->set_dtype(y.dtype());
+  }
 }
 
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
@@ -143,6 +147,22 @@ void ConvTransposeGradInferMeta(const MetaTensor& x,
   GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
 }
 
+void Conv2dTransposeGradInferMeta(const MetaTensor& x,
+                                  const MetaTensor& filter,
+                                  const MetaTensor& dout,
+                                  const std::vector<int>& strides,
+                                  const std::vector<int>& paddings,
+                                  const std::vector<int>& output_padding,
+                                  const IntArray& output_size,
+                                  const std::string& padding_algorithm,
+                                  int groups,
+                                  const std::vector<int>& dilations,
+                                  const std::string& data_format,
+                                  MetaTensor* dx,
+                                  MetaTensor* dfilter) {
+  GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
+}
+
 void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& filter,
                                         const MetaTensor& dout,
@@ -151,7 +171,7 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         const std::vector<int>& strides,
                                         const std::vector<int>& paddings,
                                         const std::vector<int>& output_padding,
-                                        const std::vector<int>& output_size,
+                                        const IntArray& output_size,
                                         const std::string& padding_algorithm,
                                         int groups,
                                         const std::vector<int>& dilations,
@@ -166,10 +186,10 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
-void CropTensorGradInferMeta(const MetaTensor& out_grad,
-                             const MetaTensor& x,
-                             const IntArray& offsets,
-                             MetaTensor* x_grad) {
+void CropGradInferMeta(const MetaTensor& out_grad,
+                       const MetaTensor& x,
+                       const IntArray& offsets,
+                       MetaTensor* x_grad) {
   auto x_dims = x.dims();
 
   if (x_grad != nullptr) {
@@ -761,23 +781,6 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
-void PoolGradInferMeta(const MetaTensor& x,
-                       const MetaTensor& out,
-                       const MetaTensor& dout,
-                       const std::vector<int>& kernel_size,
-                       const std::vector<int>& strides,
-                       const std::vector<int>& paddings,
-                       bool ceil_mode,
-                       bool exclusive,
-                       const std::string& data_format,
-                       const std::string& pooling_type,
-                       bool global_pooling,
-                       bool adaptive,
-                       const std::string& padding_algorithm,
-                       MetaTensor* dx) {
-  dx->share_meta(x);
-}
-
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
                             const MetaTensor& rois_num,
@@ -801,6 +804,33 @@ void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                 MetaTensor* out_grad_grad) {
   if (out_grad_grad != nullptr) {
     out_grad_grad->share_dims(out_grad);
+  }
+}
+
+void RnnGradInferMeta(const MetaTensor& x,
+                      const std::vector<const MetaTensor*>& pre_state,
+                      const std::vector<const MetaTensor*>& weight_list,
+                      MetaTensor* x_grad,
+                      std::vector<MetaTensor*> pre_state_grad,
+                      std::vector<MetaTensor*> weight_grad_list) {
+  PADDLE_ENFORCE_GT(
+      pre_state.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "The input pre_state in RnnGradInferMeta can't be empty."));
+  PADDLE_ENFORCE_GT(
+      weight_grad_list.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "The input weight_grad_list in RnnGradInferMeta can't be empty."));
+  if (x_grad) {
+    UnchangedInferMeta(x, x_grad);
+  }
+  if (pre_state_grad.size()) {
+    UnchangedMultiInferMeta(pre_state, pre_state_grad);
+  }
+  if (weight_grad_list.size()) {
+    UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }
 
@@ -957,24 +987,24 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
   x_grad->set_dtype(out_grad[0]->dtype());
 }
 
-void Yolov3LossGradInferMeta(const MetaTensor& x,
-                             const MetaTensor& gt_box,
-                             const MetaTensor& gt_label,
-                             const MetaTensor& gt_score,
-                             const MetaTensor& objectness_mask,
-                             const MetaTensor& gt_match_mask,
-                             const MetaTensor& loss_grad,
-                             const std::vector<int>& anchors,
-                             const std::vector<int>& anchor_mask,
-                             int class_num,
-                             float ignore_thresh,
-                             int downsample_ratio,
-                             bool use_label_smooth,
-                             float scale_x_y,
-                             MetaTensor* x_grad,
-                             MetaTensor* gt_box_grad,
-                             MetaTensor* gt_label_grad,
-                             MetaTensor* gt_score_grad) {
+void YoloLossGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& gt_box,
+                           const MetaTensor& gt_label,
+                           const MetaTensor& gt_score,
+                           const MetaTensor& objectness_mask,
+                           const MetaTensor& gt_match_mask,
+                           const MetaTensor& loss_grad,
+                           const std::vector<int>& anchors,
+                           const std::vector<int>& anchor_mask,
+                           int class_num,
+                           float ignore_thresh,
+                           int downsample_ratio,
+                           bool use_label_smooth,
+                           float scale_x_y,
+                           MetaTensor* x_grad,
+                           MetaTensor* gt_box_grad,
+                           MetaTensor* gt_label_grad,
+                           MetaTensor* gt_score_grad) {
   if (x_grad) {
     x_grad->set_dims(x.dims());
     x_grad->set_dtype(x.dtype());

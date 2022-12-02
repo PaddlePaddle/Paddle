@@ -110,9 +110,31 @@ void SubtractKernel(const Context& dev_ctx,
   SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+template <typename T, typename Context>
+void FMaxKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                DenseTensor* out) {
+  FMaxRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+}
+
+template <typename T, typename Context>
+void FMinKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                DenseTensor* out) {
+  FMinRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+}
+
 }  // namespace phi
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
+
+PD_REGISTER_KERNEL(
+    fmax, CPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(
+    fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(maximum,
                    CPU,
@@ -210,6 +232,26 @@ PD_REGISTER_KERNEL(divide,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+PD_REGISTER_KERNEL(fmax,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMaxKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::float16,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(fmin,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMinKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::float16,
+                   int64_t) {}
+
 PD_REGISTER_KERNEL(maximum,
                    KPS,
                    ALL_LAYOUT,
@@ -237,7 +279,8 @@ PD_REGISTER_KERNEL(remainder,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
 PD_REGISTER_KERNEL(elementwise_heaviside,
@@ -247,7 +290,8 @@ PD_REGISTER_KERNEL(elementwise_heaviside,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,
@@ -255,7 +299,8 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16) {}
 
 #endif
 
@@ -334,7 +379,13 @@ PD_REGISTER_KERNEL(multiply,
                    phi::MultiplyKernel,
                    phi::dtype::float16,
                    float) {}
-
+PD_REGISTER_KERNEL(subtract,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SubtractKernel,
+                   float,
+                   phi::dtype::float16,
+                   int64_t) {}
 #endif
 
 #if defined PADDLE_WITH_XPU
@@ -362,4 +413,9 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    phi::ElementwisePowKernel,
                    float,
                    phi::dtype::float16) {}
+#endif
+
+#if defined PADDLE_WITH_MKLDNN
+PD_REGISTER_KERNEL(
+    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {}
 #endif

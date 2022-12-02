@@ -4,6 +4,7 @@
 		*Pass*;
 		*profile*;
 		*phi*;
+		*cinn*;
 	local:
 		*;
 };

@@ -46,7 +46,7 @@ class IscloseOpMaker : public framework::OpProtoAndCheckerMaker {
                   "compared as equal. Default: :math:`False` .")
         .SetDefault(false);
 
-    AddComment(R"DOC( 
+    AddComment(R"DOC(
 This operator checks if all :math:`x` and :math:`y` satisfy the condition:
 
 .. math::

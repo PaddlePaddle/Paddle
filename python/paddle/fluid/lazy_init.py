@@ -17,7 +17,7 @@ from . import framework
 __all__ = ["LazyGuard"]
 
 
-class LazyInitHelper(object):
+class LazyInitHelper:
     """
     A Helper Context to trigger switching mode between dygraph and static mode,
     and holds the startup program resource.
@@ -36,7 +36,8 @@ class LazyInitHelper(object):
         """
         if self._state:
             return
-        assert framework.in_dygraph_mode(
+        assert (
+            framework._non_static_mode()
         ), "LazyInit.enable() is only available in dygraph mode."
         self._state = True
 
@@ -56,7 +57,8 @@ class LazyInitHelper(object):
         dygraph mode into static mode.
         """
         self.enable()
-        if self._in_guard: return
+        if self._in_guard:
+            return
         self._tracer = framework._dygraph_tracer_
         framework._dygraph_tracer_ = None
         self._in_guard = True
@@ -66,7 +68,8 @@ class LazyInitHelper(object):
         Exit from lazy mode and recover _dygraph_tracer_.
         """
         self.disable()
-        if not self._in_guard: return
+        if not self._in_guard:
+            return
         assert self._tracer is not None
         framework._dygraph_tracer_ = self._tracer
         self._tracer = None
@@ -85,7 +88,7 @@ def lazy_init_helper():
     return _lazy_init_helper
 
 
-class LazyGuard(object):
+class LazyGuard:
     """
     LazyGuard is a wrapper interface for nn.Layer, it forwards the construct
     process of user defined Layer. Meanwhile, it provides necessary API to
@@ -97,12 +100,12 @@ class LazyGuard(object):
         Construct instance from class_obj by Lazy Initializing parameters.
 
         Examples:
-    
+
             .. code-block:: python
 
                 from paddle import LazyGuard
                 from paddle.nn import Linear
-                
+
                 with LazyGuard():
                     fc = LazyInit(Linear)(10, 10)
 

@@ -14,18 +14,20 @@
 
 import os
 import unittest
+
 import numpy as np
+from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
-from paddle.utils.cpp_extension import load, get_build_directory
-from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 from paddle.fluid.framework import _test_eager_guard
+from paddle.utils.cpp_extension import get_build_directory, load
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\custom_simple_slice\\custom_simple_slice.pyd'.format(
-    get_build_directory())
+    get_build_directory()
+)
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -36,11 +38,11 @@ custom_ops = load(
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
-    verbose=True)
+    verbose=True,
+)
 
 
 class TestCustomSimpleSliceJit(unittest.TestCase):
-
     def func_slice_output(self):
         np_x = np.random.random((5, 2)).astype("float32")
         x = paddle.to_tensor(np_x)
@@ -49,8 +51,10 @@ class TestCustomSimpleSliceJit(unittest.TestCase):
         np.testing.assert_array_equal(
             custom_op_out,
             np_out,
-            err_msg='custom op: {},\n numpy: {}'.format(np_out,
-                                                        custom_op_out.numpy()))
+            err_msg='custom op: {},\n numpy: {}'.format(
+                np_out, custom_op_out.numpy()
+            ),
+        )
 
     def test_slice_output(self):
         with _test_eager_guard():

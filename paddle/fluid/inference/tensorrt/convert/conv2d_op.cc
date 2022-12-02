@@ -49,7 +49,7 @@ void ConvertConv2d(TensorRTEngine* engine,
       Y_v,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
-  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
 
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -118,7 +118,7 @@ void ConvertConv2d(TensorRTEngine* engine,
   bias.SetValues(nullptr);
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
-    auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
+    auto* bias_tensor_data = bias_tensor->GetMutable<phi::DenseTensor>();
     bias =
         engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }

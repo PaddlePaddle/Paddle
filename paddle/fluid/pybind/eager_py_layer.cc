@@ -78,6 +78,7 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<PyLayerObject*>(obj);
     v->materialize_grads = true;
+    v->container_be_packed = false;
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
@@ -96,6 +97,7 @@ static void PyLayerDealloc(PyLayerObject* self) {
     Py_DECREF(self->not_inplace_tensors);
   }
   self->grad_node.~weak_ptr<egr::GradNodePyLayer>();
+  self->unpack_hook = nullptr;
   self->forward_input_tensor_is_duplicable.~vector();
   self->forward_output_tensor_is_duplicable.~vector();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
@@ -136,6 +138,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
   if (!ctx) {
+    PADDLE_THROW(paddle::platform::errors::External(
+        pybind11::detail::error_string().c_str()));
     return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
@@ -440,11 +444,14 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   if (outputs_size == 1) {
-    Py_XDECREF(outputs);
-    outputs = PyTuple_GetItem(outputs_tuple, 0);
-    Py_INCREF(outputs);
-    Py_XDECREF(outputs_tuple);
+    if (!PyTuple_Check(outputs) && !PyList_Check(outputs)) {
+      Py_XDECREF(outputs);
+      outputs = PyTuple_GetItem(outputs_tuple, 0);
+      Py_INCREF(outputs);
+      Py_XDECREF(outputs_tuple);
+    }
   }
+
   Py_XDECREF(forward_args);
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);
@@ -455,23 +462,148 @@ PyObject* pylayer_method_apply(PyObject* cls,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* call_unpack_hook(PyLayerObject* self) {
+  auto unpack_hook = self->unpack_hook;
+  auto packed_value = self->container;
+
+  auto packed_value_size = PyTuple_GET_SIZE(packed_value);
+  auto unpacked_value = PyTuple_New(packed_value_size);
+
+  for (Py_ssize_t i = 0; i < packed_value_size; i++) {
+    PyObject* obj = PyTuple_GET_ITEM(packed_value, i);
+    if (PyList_Check(obj)) {
+      Py_ssize_t len = PyList_Size(obj);
+      auto tmp_list = PyList_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        PyTuple_SET_ITEM(tmp_list,
+                         j,
+                         reinterpret_cast<PyObject*>(((*unpack_hook)(
+                             reinterpret_cast<void*>(o), nullptr))));
+      }
+      PyTuple_SET_ITEM(unpacked_value, i, tmp_list);
+    } else if (PyTuple_Check(obj)) {
+      Py_ssize_t len = PyTuple_Size(obj);
+      auto tmp_tuple = PyTuple_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        PyTuple_SET_ITEM(tmp_tuple,
+                         j,
+                         reinterpret_cast<PyObject*>((*unpack_hook)(
+                             reinterpret_cast<void*>(o), nullptr)));
+      }
+      PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
+    } else {
+      PyTuple_SET_ITEM(unpacked_value,
+                       i,
+                       reinterpret_cast<PyObject*>((*unpack_hook)(
+                           reinterpret_cast<void*>(obj), nullptr)));
+    }
+  }
+
+  return unpacked_value;
+}
+
 PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_TRY
   if (self->container == nullptr) {
     RETURN_PY_NONE;
   }
-  Py_INCREF(self->container);
-  return self->container;
+  if (self->container_be_packed) {
+    return call_unpack_hook(self);
+  } else {
+    Py_INCREF(self->container);
+    return self->container;
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+void call_pack_hook(PyLayerObject* self, PyObject* value) {
+  PyObject* saved_value = nullptr;
+  if (PyTuple_Check(value)) {
+    saved_value = value;
+  } else if (PyList_Check(value)) {
+    saved_value = PyList_AsTuple(value);
+  } else {
+    saved_value = PyTuple_New(1);
+    Py_INCREF(value);
+    PyTuple_SET_ITEM(saved_value, 0, value);
+  }
+
+  auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
+  self->unpack_hook = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
+
+  auto saved_value_size = PyTuple_GET_SIZE(saved_value);
+  PyObject* packed_value = PyTuple_New(saved_value_size);
+
+  for (Py_ssize_t i = 0; i < saved_value_size; i++) {
+    PyObject* obj = PyTuple_GET_ITEM(saved_value, i);
+    if (IsEagerTensor(obj)) {
+      PyTuple_SET_ITEM(packed_value,
+                       i,
+                       reinterpret_cast<PyObject*>(
+                           (*pack_hook)(reinterpret_cast<void*>(obj))));
+    } else if (PyList_Check(obj)) {
+      Py_ssize_t len = PyList_Size(obj);
+      auto tmp_list = PyList_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          PyTuple_SET_ITEM(tmp_list,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "save_for_backward only support Tensor, list of Tensor, tuple of "
+              "Tensor."));
+        }
+      }
+      PyTuple_SET_ITEM(packed_value, i, tmp_list);
+    } else if (PyTuple_Check(obj)) {
+      Py_ssize_t len = PyTuple_Size(obj);
+      auto tmp_tuple = PyTuple_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          PyTuple_SET_ITEM(tmp_tuple,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "save_for_backward only support Tensor, list of Tensor, tuple of "
+              "Tensor."));
+        }
+      }
+      PyTuple_SET_ITEM(packed_value, i, tmp_tuple);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "save_for_backward only support Tensor, list of Tensor, tuple of "
+          "Tensor."));
+    }
+  }
+
+  if (PyTuple_Check(value)) {
+    Py_XDECREF(saved_value);
+  }
+
+  Py_XDECREF(self->container);
+  self->container = packed_value;
+  self->container_be_packed = true;
 }
 
 int tensor_properties_set_container(PyLayerObject* self,
                                     PyObject* value,
                                     void* closure) {
   EAGER_TRY
-  Py_XINCREF(value);
-  Py_XDECREF(self->container);
-  self->container = value;
+  if (egr::SavedTensorsHooks::GetInstance().IsEnable()) {
+    call_pack_hook(self, value);
+  } else {
+    Py_XINCREF(value);
+    Py_XDECREF(self->container);
+    self->container = value;
+  }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }

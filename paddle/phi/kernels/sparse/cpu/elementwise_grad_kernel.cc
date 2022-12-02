@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/elementwise_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
+
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -24,7 +27,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -45,7 +48,7 @@ void AllocCooPtr(const Context& dev_ctx,
                  SparseCooTensor* dx) {
   DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
-  dx->SetMember(dx_indices, dx_values, x.dims(), true);
+  dx->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 }
 
 template <typename T, typename IntT, typename Context>
@@ -411,4 +414,15 @@ PD_REGISTER_KERNEL(divide_coo_coo_grad,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(add_coo_dense_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseAddDenseGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
