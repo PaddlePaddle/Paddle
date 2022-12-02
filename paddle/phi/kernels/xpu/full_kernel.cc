@@ -135,7 +135,7 @@ PD_REGISTER_KERNEL(full,
 
 PD_REGISTER_KERNEL(full_like,
                    XPU,
-                   ALL_LAYOUT,
+                   ALL_LAYOUT,π
                    phi::FullLikeKernel,
                    float,
                    int,
