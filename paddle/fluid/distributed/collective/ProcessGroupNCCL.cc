@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
+#include "paddle/fluid/distributed/collective/check.h"
 #include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -138,7 +139,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
-  StaticCheckTensorsGatherLikeShape(
+  CommStaticCheck::GatherLikeShape(
       *out_tensor, in_tensor_maybe_partial, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
@@ -162,7 +163,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  StaticCheckTensorsSameShape(*out_tensor, in_tensor, rank_, size_);
+  CommStaticCheck::SameShape(*out_tensor, in_tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclAllReduce(
@@ -214,12 +215,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
   // NOTE: Since `all_to_all` needs other processes's participation, it cannot
   // simply be covered by static checks. Factors are set to 0 here to skip the
   // shape check. Its shape check will be done by dynamic checks in debug mode.
-  StaticCheckTensors(*out_tensor,
-                     in_tensor,
-                     rank_,
-                     size_,
-                     /*out_size_factor*/ 0,
-                     /*in_size_factor*/ 0);
+  CommStaticCheck::CustomShape(*out_tensor,
+                               in_tensor,
+                               rank_,
+                               size_,
+                               /*out_size_factor*/ 0,
+                               /*in_size_factor*/ 0);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         int64_t in_row_size = in_tensor.numel() / in_dim[0],
@@ -287,7 +288,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  StaticCheckTensorsSameShape(*out_tensor, in_tensor, rank_, size_);
+  CommStaticCheck::SameShape(*out_tensor, in_tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
@@ -312,7 +313,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  StaticCheckTensorsSameShape(*out_tensor, in_tensor, rank_, size_);
+  CommStaticCheck::SameShape(*out_tensor, in_tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclReduce(
@@ -337,7 +338,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  StaticCheckTensorsScatterLikeShape(*out_tensor, in_tensor, rank_, size_);
+  CommStaticCheck::ScatterLikeShape(*out_tensor, in_tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclReduceScatter(
@@ -361,7 +362,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
     const ScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  StaticCheckTensorsScatterLikeShape(*out_tensor, in_tensor, rank_, size_);
+  CommStaticCheck::ScatterLikeShape(*out_tensor, in_tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         int64_t numel = in_tensor.numel() / size_;
@@ -418,7 +419,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     tensor = &partial_tensor;
   }
 
-  StaticCheckTensor(*tensor, rank_, size_);
+  CommStaticCheck::SingleTensor(*tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclRecv(
@@ -446,7 +447,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
   const phi::DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
-  StaticCheckTensor(tensor_maybe_partial, rank_, size_);
+  CommStaticCheck::SingleTensor(tensor_maybe_partial, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclSend(
