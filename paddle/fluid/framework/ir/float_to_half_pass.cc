@@ -614,7 +614,7 @@ void FloatToHalfPass::ConvertWeightsData() const {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::PreconditionNotMet(
-          "During the float to half pass, The scope should not be null."));
+          "During the float to half pass, the scope should not be null."));
 
   auto var_names = scope->LocalVarNames();
   for (const auto& var_name : var_names) {
