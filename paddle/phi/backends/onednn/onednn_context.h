@@ -146,7 +146,7 @@ class OneDNNContext : public CPUContext {
   const DenseTensor* GetDnnInput(const std::string& input_name) const;
   void SetDnnInput(const std::string& input_name, const DenseTensor* input);
 
-  void ClearDnnAttr();
+  void ClearDnnAttr() const;
 
   void SetInputsName(const TensorNameMap& inputs_name);
 

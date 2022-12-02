@@ -38,7 +38,8 @@ class SoftplusOneDNNHandler
     funcs::AppendActivation(dev_ctx, post_ops);
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
-
+    dev_ctx.ClearDnnAttr();  // temp solution for improve performance, will be
+                             // removed in the future
     auto x_tz = phi::vectorize(x->dims());
     auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
     auto beta_md = dnnl::memory::desc(beta_tz,

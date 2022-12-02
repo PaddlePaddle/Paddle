@@ -3233,29 +3233,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
   }
   VLOG(4) << "Done attributes";
 
-// Clear All old attrs before add new attrs,
-// because sometimes old attrs may be misused.
-#if defined(PADDLE_WITH_MKLDNN)
-  if (phi::OneDNNContext::classof(dev_ctx)) {
-    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
-    one_dnn_ctx->ClearDnnAttr();
-  }
-#endif
-
-  // Note(YuanRisheng): Now, we can't open code below.
-  // Because some unittest run OLD dygraph and ExtraAttr is not supported in OLD
-  // dygraph. So, here we use trick that dev_ctx is a global object. We can
-  // store ExtraAttr in static graph and when unittest run OLD dygraph, it can
-  // obtain these ExtraAttr. We can open this code when OLD dygraph is no longer
-  // used.
-  /*
-  #if defined(PADDLE_WITH_CUDA)
-    if(phi::GPUContext::classof(dev_ctx)) {
-      phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
-      gpu_dnn_ctx->ClearDnnAttr();
-    }
-  #endif
-  */
   // For compatible with Op with extra attrs for specific backend
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
