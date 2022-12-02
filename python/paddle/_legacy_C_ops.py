@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid import core
+
 from .fluid import framework
 
 __all__ = []

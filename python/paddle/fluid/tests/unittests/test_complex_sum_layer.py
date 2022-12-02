@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 from numpy.random import random as rand
-from paddle import tensor
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle import tensor
 from paddle.fluid.framework import _test_eager_guard
 
 

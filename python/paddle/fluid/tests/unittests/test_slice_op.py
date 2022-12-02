@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle
-from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard
 
 paddle.enable_static()
 
@@ -691,9 +692,9 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
             for each_x in x:
                 each_x.stop_gradient = False
 
-            arr = layers.create_array(dtype="float32")
+            arr = paddle.tensor.create_array(dtype="float32")
             for i in range(3):
-                idx = layers.array_length(arr)
+                idx = paddle.tensor.array_length(arr)
                 arr = layers.array_write(x=x[i], i=idx, array=arr)
 
             if case_num == 1:
@@ -701,7 +702,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
             elif case_num == 2:
                 end = (
-                    fluid.layers.array_length(arr) - 1
+                    paddle.tensor.array_length(arr) - 1
                 )  # dtype of end is int64
                 self.sliced_arr = slice_arr = arr[self.start : end]
                 output, _ = fluid.layers.tensor_array_to_tensor(

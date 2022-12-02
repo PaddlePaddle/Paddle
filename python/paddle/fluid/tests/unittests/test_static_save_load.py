@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 
+import errno
+import os
+import pickle
+import tempfile
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
-from test_imperative_base import new_program_scope
-import numpy as np
-import pickle
-import os
-import errno
-import tempfile
 
 paddle.enable_static()
 
@@ -86,10 +87,10 @@ class SimpleLSTMRNN(fluid.Layer):
         self.hidden_array = []
 
         for i in range(self._num_layers):
-            pre_hidden = fluid.layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = fluid.layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
             pre_hidden = paddle.reshape(
@@ -101,7 +102,7 @@ class SimpleLSTMRNN(fluid.Layer):
 
         res = []
         for index in range(self._num_steps):
-            self._input = fluid.layers.slice(
+            self._input = paddle.slice(
                 input_embedding, axes=[1], starts=[index], ends=[index + 1]
             )
             self._input = paddle.reshape(
@@ -116,7 +117,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 nn = fluid.layers.concat([self._input, pre_hidden], 1)
                 gate_input = fluid.layers.matmul(x=nn, y=weight_1)
 
-                gate_input = fluid.layers.elementwise_add(gate_input, bias)
+                gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = fluid.layers.split(
                     gate_input, num_or_sections=4, dim=-1
                 )
@@ -234,13 +235,13 @@ class PtbModel(fluid.Layer):
             rnn_out, shape=[-1, self.num_steps, self.hidden_size]
         )
         projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
+        projection = paddle.add(projection, self.softmax_bias)
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
@@ -1798,11 +1799,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
             with self.assertRaises(ValueError):
                 paddle.fluid.save(prog, path, 5)
 
-            protocols = [
-                2,
-            ]
-            if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
-                protocols += [3, 4]
+            protocols = [2, 3, 4]
             for protocol in protocols:
                 paddle.fluid.save(prog, path, protocol)
                 # set var to zero

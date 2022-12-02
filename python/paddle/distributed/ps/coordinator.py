@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
+import logging
+import os
+import time
+
+from google.protobuf import text_format
+
 import paddle
+from paddle.distributed import fleet
 from paddle.distributed.communicator import FLCommunicator
 from paddle.distributed.fleet.proto import the_one_ps_pb2
-from google.protobuf import text_format
 from paddle.distributed.ps.utils.public import is_distributed_env
-from paddle.distributed import fleet
-import time
-import abc
-import os
-import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -17,11 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-
-from paddle import Model
-from paddle.static import InputSpec
+from paddle import Model, fluid
 from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
 from paddle.vision.models import LeNet
 
 

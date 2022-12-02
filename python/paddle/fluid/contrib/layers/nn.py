@@ -36,7 +36,6 @@ from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layers import slice
 import paddle
 import warnings
 from paddle import _C_ops, _legacy_C_ops
@@ -1540,13 +1539,13 @@ def tdm_sampler(
 
         for layer_sample_num in neg_samples_num_list:
             end_offset = start_offset + layer_sample_num + positive_flag
-            layer_samples = slice(
+            layer_samples = paddle.slice(
                 out, axes=[1], starts=[start_offset], ends=[end_offset]
             )
-            layer_labels = slice(
+            layer_labels = paddle.slice(
                 labels, axes=[1], starts=[start_offset], ends=[end_offset]
             )
-            layer_mask = slice(
+            layer_mask = paddle.slice(
                 mask, axes=[1], starts=[start_offset], ends=[end_offset]
             )
 
@@ -1963,6 +1962,8 @@ def fused_bn_add_act(
 
     Examples:
             .. code-block:: python
+
+            #required:gpu
 
             import paddle
             import paddle.fluid as fluid
