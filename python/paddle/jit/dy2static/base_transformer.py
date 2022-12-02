@@ -14,7 +14,7 @@
 
 from paddle.utils import gast
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     ORIGI_INFO,
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_VAR_LEN_PREFIX,

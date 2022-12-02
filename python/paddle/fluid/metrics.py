@@ -713,7 +713,7 @@ class Auc(MetricBase):
     The auc metric is for binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
     Please notice that the auc metric is implemented with python, which may be a little bit slow.
-    If you concern the speed, please use the fluid.layers.auc instead.
+    If you concern the speed, please use the paddle.static.auc instead.
 
     The `auc` function creates four local variables, `true_positives`,
     `true_negatives`, `false_positives` and `false_negatives` that are used to

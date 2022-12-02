@@ -25,11 +25,11 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.nn import Linear
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 SEED = 2020
 np.random.seed(SEED)
@@ -347,8 +347,8 @@ class SeResNeXt(fluid.dygraph.Layer):
         loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
         avg_loss = paddle.mean(x=loss)
 
-        acc_top1 = fluid.layers.accuracy(input=softmax_out, label=label, k=1)
-        acc_top5 = fluid.layers.accuracy(input=softmax_out, label=label, k=5)
+        acc_top1 = paddle.static.accuracy(input=softmax_out, label=label, k=1)
+        acc_top5 = paddle.static.accuracy(input=softmax_out, label=label, k=5)
         return out, avg_loss, acc_top1, acc_top5
 
 

@@ -23,12 +23,11 @@ from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.nn import Linear
-from paddle.jit.api import declarative
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
-from tsm_config_utils import merge_configs, parse_config, print_configs
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 random.seed(0)
 np.random.seed(0)
@@ -337,10 +336,10 @@ def train(args, fake_data_reader, to_static):
                     input=outputs, label=labels, ignore_index=-1
                 )
                 avg_loss = paddle.mean(loss)
-                acc_top1 = fluid.layers.accuracy(
+                acc_top1 = paddle.static.accuracy(
                     input=outputs, label=labels, k=1
                 )
-                acc_top5 = fluid.layers.accuracy(
+                acc_top5 = paddle.static.accuracy(
                     input=outputs, label=labels, k=5
                 )
 

@@ -631,7 +631,7 @@ def def_seq2seq_model(
     )
 
     # loss
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=logits, label=label, soft_label=False
     )
     loss = layers.unsqueeze(loss, axes=[2])
@@ -640,7 +640,7 @@ def def_seq2seq_model(
         target_length, maxlen=max_tar_seq_len, dtype="float32"
     )
     loss = loss * tar_mask
-    loss = layers.reduce_mean(loss, dim=[0])
+    loss = paddle.mean(loss, axis=[0])
     loss = paddle.sum(loss)
 
     # optimizer
