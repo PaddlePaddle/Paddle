@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
-#include "paddle/fluid/distributed/collective/check.h"
+#include "paddle/fluid/distributed/collective/static_check.h"
 #include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"

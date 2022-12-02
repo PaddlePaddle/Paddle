@@ -14,7 +14,10 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+// forward declaration to reduce deps
+namespace phi {
+class DenseTensor;
+}
 
 namespace paddle {
 namespace distributed {
