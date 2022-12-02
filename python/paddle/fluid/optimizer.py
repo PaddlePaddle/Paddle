@@ -592,7 +592,7 @@ class Optimizer:
                     linear = paddle.nn.Linear(10, 10)
                     inp = fluid.dygraph.to_variable(inp)
                     out = linear(inp)
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
 
                     bd = [2, 4, 6, 8]
                     value = [0.2, 0.4, 0.6, 0.8, 1.0]

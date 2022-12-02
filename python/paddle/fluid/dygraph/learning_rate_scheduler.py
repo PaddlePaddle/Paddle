@@ -843,7 +843,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                 total_loss = 0
                 for bath_id in range(5):
                     out = linear(input)
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
                     total_loss += loss
                     adam.minimize(loss)
 
@@ -1102,7 +1102,7 @@ class StepDecay(_LearningRateEpochDecay):
                 for epoch in range(9):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 
@@ -1183,7 +1183,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
                 for epoch in range(6):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 
@@ -1269,7 +1269,7 @@ class LambdaDecay(_LearningRateEpochDecay):
                 for epoch in range(6):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 
