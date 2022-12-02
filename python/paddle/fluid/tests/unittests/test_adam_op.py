@@ -941,7 +941,9 @@ class TestAdamOptimizer(unittest.TestCase):
             y_predict = fluid.layers.fc(
                 input=x, size=1, act=None, param_attr=weight_attr
             )
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             adam = fluid.optimizer.AdamOptimizer(

@@ -21,7 +21,7 @@ from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
-from .loss import softmax_with_cross_entropy
+from paddle.fluid.layers import softmax_with_cross_entropy
 from . import tensor
 from . import nn
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
