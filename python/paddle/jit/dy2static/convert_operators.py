@@ -744,11 +744,10 @@ def convert_print(*args):
     python function so we haven't handle sep, end, file and flush parameters of
     python function.
     """
+    print(*args)
     for var in args:
         if isinstance(var, Variable):
             var = Print(var)
-        else:
-            print(var)
 
 
 def convert_pop(target, *args):
