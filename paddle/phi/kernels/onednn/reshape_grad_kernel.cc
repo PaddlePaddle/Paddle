@@ -23,21 +23,17 @@ template <typename T, typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
-  phi::DDim x_dims = x_grad->dims();
-
-  auto out_vec_dims = phi::vectorize(out_grad.dims());
+  auto dout_vec_dims = vectorize(out_grad.dims());
+  auto dout_type = funcs::ToOneDNNDataType(out_grad.dtype());
 
   funcs::ReorderOneDNNHandler reorder_handler(
-      out_vec_dims,
-      out_grad.dtype(),
-      funcs::ToOneDNNDataType(out_grad.dtype()),
-      dev_ctx.GetEngine());
+      dout_vec_dims, out_grad.dtype(), dout_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      out_grad.mem_desc(), funcs::to_void_cast(out_grad.data()));
+      out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       x_grad,
-      funcs::GetPlainOneDNNFormat(out_grad.dims().size()),
+      funcs::GetPlainOneDNNFormat(dout_vec_dims.size()),
       dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
@@ -46,9 +42,9 @@ void ReshapeGradKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
-  x_grad->Resize(x_dims);
-  x_grad->set_mem_desc(
-      reorder_dst_memory_p->get_desc().reshape(vectorize(x_dims)));
+  auto dx_dims = slice_ddim(x_grad->dims(), 1, x_grad->dims().size());
+  x_grad->Resize(dx_dims);
+  reorder_dst_memory_p->get_desc().reshape(vectorize(dx_dims));
 }
 
 }  // namespace phi
