@@ -87,7 +87,6 @@ __all__ = [
     'autoincreased_step_counter',
     'unsqueeze',
     'lod_reset',
-    'pad',
     'image_resize',
     'resize_bilinear',
     'resize_trilinear',
@@ -3875,92 +3874,6 @@ def lod_reset(x, y=None, target_lod=None):
         )
     else:
         raise ValueError("y and target_lod should not be both none.")
-    return out
-
-
-def pad(x, paddings, pad_value=0.0, name=None):
-    r"""
-    :alias_main: paddle.nn.functional.pad
-        :alias: paddle.nn.functional.pad,paddle.nn.functional.common.pad
-        :old_api: paddle.fluid.layers.pad
-
-    This op will pad a tensor with a constant value given by :attr:`pad_value`, and the
-    padded shape is specified by :attr:`paddings`.
-
-    Specifically, the number of values padded before the elements of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[2*i]`, and the number
-    of values padded after the elements of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[2*i+1]`.
-
-    See below for an example.
-
-    .. code-block:: text
-
-        Given:
-            x = [[1, 2], [3, 4]]
-
-            paddings = [0, 1, 1, 2]
-
-            pad_value = 0
-
-        Return:
-            out = [[0, 1, 2, 0, 0]
-                   [0, 3, 4, 0, 0]
-                   [0, 0, 0, 0, 0]]
-
-    Args:
-        x (Variable): Tensor, data type is float32.
-        paddings (list): A list of integers. Its elements specify the padded
-                         width before and after each dimension in turn.
-                         The length of :attr:`paddings` must be equal to
-                         :math:`rank(x) \\times 2`.
-        pad_value (float): The constant value used to pad.
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        The padded tensor, with the same data type and rank as :attr:`x`
-
-    Return Type:
-        Variable
-
-    Examples:
-        .. code-block:: python
-
-            # x is a rank 2 tensor variable
-            import paddle.fluid as fluid
-            x = fluid.data(name='data', shape=[300, 300], dtype='float32')
-            out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
-    """
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        "pad",
-    )
-
-    check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
-    if isinstance(pad_value, int):
-        pad_value = float(pad_value)
-
-    helper = LayerHelper('pad', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='pad',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'paddings': paddings, 'pad_value': pad_value},
-    )
     return out
 
 
