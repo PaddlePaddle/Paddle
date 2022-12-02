@@ -20,7 +20,6 @@ import paddle
 
 import paddle
 import paddle.fluid as fluid
-import paddle
 
 from ....log_helper import get_logger
 from .utils import (
@@ -148,7 +147,7 @@ class AdaRound:
         tensor_floor = np.floor(tensor_scale)
         tensor = tensor_scale - tensor_floor
         alpha = -np.log((ZETA - GAMMA) / (tensor - GAMMA) - 1)
-        self.alpha_v = fluid.layers.create_parameter(
+        self.alpha_v = paddle.create_parameter(
             shape=alpha.shape,
             dtype="float32",
             name=var_name + ".alpha",
