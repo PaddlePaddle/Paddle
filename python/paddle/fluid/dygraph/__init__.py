@@ -30,10 +30,8 @@ from .tracer import *
 from . import parallel
 from .parallel import *
 
-
 from . import learning_rate_scheduler
 from .learning_rate_scheduler import *
-
 
 from . import io
 from .io import *

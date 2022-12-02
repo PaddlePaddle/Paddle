@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from . import amp  # noqa: F401
-from . import sparsity  # noqa: F401
 from . import nn  # noqa: F401
 from .io import save_inference_model  # noqa: F401
 from .io import load_inference_model  # noqa: F401
@@ -72,6 +71,7 @@ from ..fluid.layers.metric_op import auc  # noqa: F401
 from ..fluid.layers.metric_op import accuracy  # noqa: F401
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
+from . import sparsity  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
