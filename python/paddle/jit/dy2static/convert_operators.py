@@ -738,27 +738,16 @@ def convert_assert(cond, message=""):
         assert cond, message
 
 
-def _variable_to_tensor_like_string(var):
-    return (
-        f"Tensor(shape={var.shape}, dtype={var.dtype}, place={var.place()}, stop_gradient={var.stop_gradient},"
-        + "\n       The value of the tensor is unknown in compile time.)"
-    )
-
-
 def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
     A function representing Python ``print`` statement. Note: this is a basic
     python function so we haven't handle sep, end, file and flush parameters of
     python function.
     """
-    processed_objects = []
     for obj in objects:
         if isinstance(obj, Variable):
-            processed_objects.append(_variable_to_tensor_like_string(obj))
             Print(obj)
-        else:
-            processed_objects.append(obj)
-    print(*processed_objects, sep=sep, end=end, file=file, flush=flush)
+    print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 
 def convert_pop(target, *args):
