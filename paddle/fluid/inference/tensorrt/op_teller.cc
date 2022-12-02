@@ -1310,7 +1310,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           op_type == "logical_and") {
         auto* block = desc.Block();
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        auto* y_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
         auto x_dtype = x_var_desc->GetDataType();
         auto y_dtype = y_var_desc->GetDataType();
         if (x_dtype != framework::proto::VarType::BOOL ||
