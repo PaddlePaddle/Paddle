@@ -31,17 +31,14 @@ from paddle.fluid.core import (
     enable_memory_recorder,
     enable_op_info_recorder,
 )
-
-from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import (
-    StatisticData,
-    _build_table,
-    SortedKeys,
-    gen_layer_flops,
-)
 from paddle.profiler import utils
 
-from .profiler_statistic import SortedKeys, StatisticData, _build_table
+from .profiler_statistic import (
+    SortedKeys,
+    StatisticData,
+    _build_table,
+    gen_layer_flops,
+)
 from .timer import benchmark
 from .utils import RecordEvent, wrap_optimizers
 
