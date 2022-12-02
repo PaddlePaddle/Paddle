@@ -180,12 +180,12 @@ class TestAll(TestMean):
         self.fetch_list = [out.name]
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_all
+        self.op = paddle.all
 
 
 class TestAny(TestAll):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_any
+        self.op = paddle.any
 
 
 if __name__ == "__main__":
