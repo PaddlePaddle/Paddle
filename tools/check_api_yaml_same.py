@@ -18,6 +18,7 @@ import difflib
 import os
 import re
 import sys
+
 import yaml
 
 root_path = sys.argv[4]
