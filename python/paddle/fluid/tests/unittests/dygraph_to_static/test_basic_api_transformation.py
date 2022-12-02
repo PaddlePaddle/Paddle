@@ -165,12 +165,11 @@ def dyfunc_Conv3D(input):
 
 
 def dyfunc_Conv2DTranspose(input):
-    conv2dTranspose = fluid.dygraph.nn.Conv2DTranspose(
-        num_channels=3,
-        num_filters=12,
-        filter_size=12,
-        use_cudnn=False,
-        param_attr=fluid.ParamAttr(
+    conv2dTranspose = paddle.nn.Conv2DTranspose(
+        3,
+        12,
+        12,
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.99)
         ),
         bias_attr=fluid.ParamAttr(
