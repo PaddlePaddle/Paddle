@@ -26,6 +26,8 @@ from paddle.nn.initializer import Constant
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
 from paddle.utils import unique_name
 
+from ...tensor import math
+
 __all__ = [
     'FakeQuantAbsMax',
     'FakeQuantMovingAverageAbsMax',
@@ -39,6 +41,7 @@ __all__ = [
     'QuantStub',
     'QuantizedRowParallelLinear',
     'QuantizedColumnParallelLinear',
+    'QuantizedAdd',
 ]
 
 _logger = get_logger(
@@ -999,6 +1002,62 @@ class QuantizedRowParallelLinear(Layer):
             output_ = output_parallel
         output = output_ + self.bias if self.bias is not None else output_
         return output
+
+
+class QuantizedAdd(Layer):
+    """
+    The computational logic of QuantizedAdd is the same with Add.
+    The only difference is that its inputs are all fake quantized.
+    """
+
+    def __init__(
+        self,
+        layer=None,
+        weight_bits=8,
+        activation_bits=8,
+        moving_rate=0.9,
+        weight_quantize_type='abs_max',
+        activation_quantize_type='abs_max',
+        weight_pre_layer=None,
+        act_pre_layer=None,
+        weight_quant_layer=None,
+        act_quant_layer=None,
+    ):
+        super().__init__()
+        # For FakeQuant
+        if act_quant_layer is not None:
+            self._fake_quant_x = act_quant_layer()
+            self._fake_quant_y = act_quant_layer()
+        else:
+            self._fake_quant_x = _get_fake_quant_type(
+                activation_quantize_type,
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                quant_on_weight=False,
+            )
+            self._fake_quant_y = _get_fake_quant_type(
+                activation_quantize_type,
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                quant_on_weight=False,
+            )
+        self._act_preprocess_x = (
+            act_pre_layer() if act_pre_layer is not None else None
+        )
+        self._act_preprocess_y = (
+            act_pre_layer() if act_pre_layer is not None else None
+        )
+
+    def forward(self, x, y, name=None):
+        if self._act_preprocess_x is not None:
+            x = self._act_preprocess_x(x)
+        if self._act_preprocess_y is not None:
+            y = self._act_preprocess_y(y)
+        quant_x = self._fake_quant_x(x)
+        quant_y = self._fake_quant_x(y)
+
+        out = math.add(quant_x, quant_y, name)
+        return out
 
 
 class MAOutputScaleLayer(Layer):

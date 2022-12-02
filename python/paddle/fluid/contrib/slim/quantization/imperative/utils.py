@@ -46,6 +46,8 @@ layer_name_map = {
     'BatchNorm': paddle.nn.BatchNorm,
     'GroupNorm': paddle.nn.GroupNorm,
     'LayerNorm': paddle.nn.LayerNorm,
+    'Matmul': paddle.nn.quant.matmul,
+    'Add': paddle.nn.quant.add,
 }
 
 # Apply fake quant for the inputs of these layers
@@ -53,6 +55,8 @@ fake_quant_input_layers = [
     paddle.nn.Conv2D,
     paddle.nn.Linear,
     paddle.nn.Conv2DTranspose,
+    paddle.nn.quant.add,
+    paddle.nn.quant.matmul,
 ]
 
 # Apply fake quant for the output of these layers
