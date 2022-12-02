@@ -27,7 +27,7 @@ We provide users with four installation methods ,which are pip, conda, docker an
 - **Windows 7/8/10 Pro/Enterprise (64bit)**
   - **GPU version support CUDA 10.2/11.2/11.6/11.7**
   - **Only supports single card**
-- **Python version 2.7.15+/3.5.1+/3.6/3.7/3.8/3.9/3.10 (64 bit)**
+- **Python version 3.7/3.8/3.9/3.10 (64 bit)**
 - **pip version 9.0.1+ (64 bit)**
 
 ##### On Linux:
@@ -35,14 +35,14 @@ We provide users with four installation methods ,which are pip, conda, docker an
 - **Linux Version (64 bit)**
   - **CentOS 7 (GPUVersion Supports CUDA 10.2/11.2/11.6/11.7)**
   - **Ubuntu 16.04/18.04/20.04/22.04 (GPUVersion Supports CUDA 10.2/11.2/11.6/11.7)**
-- **Python Version: 2.7.15+/3.5.1+/3.6/3.7/3.8/3.9/3.10 (64 bit)**
+- **Python Version: 3.7/3.8/3.9/3.10 (64 bit)**
 - **pip or pip3 Version 20.2.2+ (64 bit)**
 
 ##### On macOS:
 
 - **MacOS version 10.11/10.12/10.13/10.14 (64 bit) (not support GPU version yet)**
 
-- **Python version 2.7.15+/3.5.1+/3.6/3.7/3.8/3.9/3.10 (64 bit)**
+- **Python version 3.7/3.8/3.9/3.10 (64 bit)**
 
 - **pip or pip3 version 9.0.1+ (64 bit)**
 
@@ -52,19 +52,23 @@ We provide users with four installation methods ,which are pip, conda, docker an
 
 ###### cpu:
 
-```pip install paddlepaddle```
+```bash
+pip install paddlepaddle
+```
 
 ###### gpu:
 
-```pip install paddlepaddle-gpu```
+```bash
+pip install paddlepaddle-gpu
+```
 
 
 
-###### gpu-cuda9、10.0、10.1、11:
+###### specific version cuda:
 
 We only release paddlepaddle-gpu cuda10.2 on pypi.
 
-If you want to install paddlepaddle-gpu with cuda version of 9.0 ,10.0 ,10.1 ,or 11.0, commands to install are on our website: [Installation Document](https://www.paddlepaddle.org.cn/documentation/docs/en/install/pip/frompip_en.html)
+If you want to install paddlepaddle-gpu with cuda version of 10.2/11.2/11.6/11.7, commands to install are on our website: [Installation Document](https://www.paddlepaddle.org.cn/documentation/docs/en/install/pip/frompip_en.html)
 
 
 
@@ -141,4 +145,4 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 - [Forums](https://aistudio.baidu.com/paddle/forum/): discuss implementations, research, etc.
 
 ## Copyright and License
-PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
+PaddlePaddle is provided under the [Apache-2.0 license](https://github.com/PaddlePaddle/Paddle/blob/develop/LICENSE).
