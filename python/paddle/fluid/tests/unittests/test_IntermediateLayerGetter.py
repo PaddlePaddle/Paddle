@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
 import random
+import unittest
+
+import paddle
 from paddle.vision.models._utils import IntermediateLayerGetter
 
 

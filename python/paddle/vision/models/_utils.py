@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn as nn
 from collections import OrderedDict
 from typing import Dict
+
+import paddle
+import paddle.nn as nn
 
 __all__ = ["IntermediateLayerGetter"]
 
