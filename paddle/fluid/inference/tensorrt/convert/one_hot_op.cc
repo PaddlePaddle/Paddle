@@ -36,6 +36,7 @@ class OneHotOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(8150)
     VLOG(3) << "convert a fluid one_hot op to tensorrt one_hot layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -92,7 +93,7 @@ class OneHotOpConverter : public OpConverter {
       }
       const int* depth_data = new int[length]();
       depth_tensor =
-          AddConstantLayer<float>(depth_data, indices_dims, "values_tensor");
+          AddConstantLayer<int>(depth_data, indices_dims, "values_tensor");
     } else {
       depth_tensor = engine_->GetITensor(depth_name.front());
     }
@@ -105,6 +106,9 @@ class OneHotOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out").front();
     RreplenishLayerAndOutput(layer, "one_hot", {output_name}, test_mode);
+#else
+    VLOG(3) << "one_hot is not supported when TensorRT < 8.5.1";
+#endif
   }
 };
 

@@ -1743,7 +1743,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "one_hot") {
-#if !IS_TRT_VERSION_GE(8510)
+#if IS_TRT_VERSION_LT(8510)
       VLOG(3) << "one_hot is not supported when TensorRT < 8.5.1";
       return false;
 #endif
