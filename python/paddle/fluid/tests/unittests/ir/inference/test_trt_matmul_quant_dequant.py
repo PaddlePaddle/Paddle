@@ -128,7 +128,6 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
             )
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             reshape_out = paddle.reshape(self.data, shape=[1, 4, 14, 14])
-            reshape_out = fluid.layers.reshape(self.data, shape=[1, 4, 14, 14])
             matmul_out = paddle.matmul(
                 x=reshape_out,
                 y=reshape_out,
