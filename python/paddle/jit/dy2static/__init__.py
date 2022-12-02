@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base import saw
-from .base import UndefinedVar
+from .utils import (
+    saw,
+    UndefinedVar,
+)
 from .convert_operators import convert_logical_and as And  # noqa: F401
 from .convert_operators import convert_var_dtype as AsDtype  # noqa: F401
 from .convert_operators import convert_assert as Assert  # noqa: F401
@@ -35,5 +37,6 @@ from .convert_operators import convert_shape_compare  # noqa: F401
 from .assert_transformer import AssertTransformer
 from .ast_transformer import DygraphToStaticAst
 from .program_translator import convert_to_static
+from .static_analysis import *  # noqa: F403
 
 __all__ = []

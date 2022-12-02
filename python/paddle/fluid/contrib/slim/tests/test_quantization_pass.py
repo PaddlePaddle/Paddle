@@ -73,7 +73,7 @@ def residual_block(num, quant_skip_pattern=None):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
-    matmul_weight = fluid.layers.create_parameter(
+    matmul_weight = paddle.create_parameter(
         shape=[1, 16, 32, 32], dtype='float32'
     )
     hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)

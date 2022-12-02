@@ -15,16 +15,16 @@
 from paddle.utils import gast
 
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
+from paddle.jit.dy2static.utils import index_in_list
 from .break_continue_transformer import (
     ForToWhileTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from paddle.jit.dy2static.utils import ast_to_source_code
+from .base_transformer import (
     BaseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
-from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
+from paddle.jit.dy2static.utils import Dygraph2StaticException
+from paddle.jit.dy2static.utils import ORIGI_INFO
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM',

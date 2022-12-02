@@ -165,13 +165,13 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
             )
 
             # subgraph with 2 op nodes
-            tmp_0 = layers.sum(
+            tmp_0 = paddle.add_n(
                 [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]]
             )
             tmp_1 = paddle.sqrt(tmp_0)
             tmp_2 = layers.mul(tmp_0, self.feed_vars[3])
             # subgraph with 2 op nodes
-            tmp_3 = paddle.square(layers.sum([tmp_1, tmp_2]))
+            tmp_3 = paddle.square(paddle.add_n([tmp_1, tmp_2]))
 
         self.append_gradients(tmp_3)
 
