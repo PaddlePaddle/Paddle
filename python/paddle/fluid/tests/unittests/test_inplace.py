@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestInplace(unittest.TestCase):
@@ -39,8 +38,6 @@ class TestInplace(unittest.TestCase):
             self.assertEqual(var.inplace_version, 3)
 
     def test_forward_version(self):
-        with _test_eager_guard():
-            self.func_test_forward_version()
         self.func_test_forward_version()
 
     def func_test_backward_error(self):
@@ -68,8 +65,6 @@ class TestInplace(unittest.TestCase):
                 loss.backward()
 
     def test_backward_error(self):
-        with _test_eager_guard():
-            self.func_test_backward_error()
         self.func_test_backward_error()
 
     def func_test_backward_success_1(self):
@@ -88,8 +83,6 @@ class TestInplace(unittest.TestCase):
             loss.backward()
 
     def test_backward_success_1(self):
-        with _test_eager_guard():
-            self.func_test_backward_success_1()
         self.func_test_backward_success_1()
 
     def func_test_backward_success_2(self):
@@ -113,8 +106,6 @@ class TestInplace(unittest.TestCase):
             loss.backward()
 
     def test_backward_success_2(self):
-        with _test_eager_guard():
-            self.func_test_backward_success_2()
         self.func_test_backward_success_2()
 
 
@@ -145,8 +136,6 @@ class TestDygraphInplace(unittest.TestCase):
         np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
 
     def test_inplace_api(self):
-        with _test_eager_guard():
-            self.func_test_inplace_api()
         self.func_test_inplace_api()
 
     def func_test_forward_version(self):
@@ -164,8 +153,6 @@ class TestDygraphInplace(unittest.TestCase):
             self.assertEqual(var.inplace_version, 3)
 
     def test_forward_version(self):
-        with _test_eager_guard():
-            self.func_test_forward_version()
         self.func_test_forward_version()
 
     def func_test_leaf_inplace_var_error(self):
@@ -179,8 +166,6 @@ class TestDygraphInplace(unittest.TestCase):
             self.assertRaises(ValueError, leaf_inplace_error)
 
     def test_leaf_inplace_var_error(self):
-        with _test_eager_guard():
-            self.func_test_leaf_inplace_var_error()
         self.func_test_leaf_inplace_var_error()
 
     def func_test_backward_error(self):
@@ -206,8 +191,6 @@ class TestDygraphInplace(unittest.TestCase):
                 loss.backward()
 
     def test_backward_error(self):
-        with _test_eager_guard():
-            self.func_test_backward_error()
         self.func_test_backward_error()
 
     def func_test_backward_success_1(self):
@@ -243,8 +226,6 @@ class TestDygraphInplace(unittest.TestCase):
         self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
 
     def test_backward_success_1(self):
-        with _test_eager_guard():
-            self.func_test_backward_success_1()
         self.func_test_backward_success_1()
 
     def func_test_backward_success_2(self):
@@ -287,8 +268,6 @@ class TestDygraphInplace(unittest.TestCase):
         np.testing.assert_array_equal(grad_var_a_inplace, grad_var_a)
 
     def test_backward_success_2(self):
-        with _test_eager_guard():
-            self.func_test_backward_success_2()
         self.func_test_backward_success_2()
 
 
@@ -531,8 +510,6 @@ class TestLossIsInplaceVar(unittest.TestCase):
         np.testing.assert_array_equal(inplace_grad_var_a, grad_var_a)
 
     def test_loss_is_inplace_var(self):
-        with _test_eager_guard():
-            self.func_test_loss_is_inplace_var()
         self.func_test_loss_is_inplace_var()
 
 
@@ -549,23 +526,20 @@ class TestContinuouslyInplace(unittest.TestCase):
         b.backward()
 
     def test_continuously_inplace(self):
-        with _test_eager_guard():
-            self.func_test_continuously_inplace()
         self.func_test_continuously_inplace()
 
 
 class TestGetitemBeforeInplace(unittest.TestCase):
     def test_getitem_before_inplace(self):
-        with _test_eager_guard():
-            a = paddle.ones(shape=[4, 2, 3], dtype="float32")
-            a.stop_gradient = False
-            b = a**2
-            b[0] = 3
-            # getitem has no_need_buffer input
-            c = b[0:2]
-            loss = c.sum()
-            b[1] = 2
-            loss.backward()
+        a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+        a.stop_gradient = False
+        b = a**2
+        b[0] = 3
+        # getitem has no_need_buffer input
+        c = b[0:2]
+        loss = c.sum()
+        b[1] = 2
+        loss.backward()
 
 
 if __name__ == '__main__':
