@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/serialization.h"
 
 namespace paddle {
@@ -65,8 +66,13 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
                              bool overwrite,
                              bool save_as_fp16,
                              bool save_to_memory,
-                             phi::CPlusString* out) {
-  std::string* y = out->Get();
+                             phi::ExtendedTensor* out) {
+  std::string* y = nullptr;
+  if (out != nullptr) {
+    auto raw_out = static_cast<phi::RawTensor*>(out);
+    y = raw_out->GetMutable<std::string>();
+  }
+
   bool is_present = FileExists(file_path);
   if (is_present && !overwrite) {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -120,8 +126,13 @@ void SaveCombineVocabKernel(
     bool overwrite,
     bool save_as_fp16,
     bool save_to_memory,
-    phi::CPlusString* out) {
-  std::string* y = out->Get();
+    phi::ExtendedTensor* out) {
+  std::string* y = nullptr;
+  if (out != nullptr) {
+    auto raw_out = static_cast<phi::RawTensor*>(out);
+    y = raw_out->GetMutable<std::string>();
+  }
+
   std::vector<const framework::Vocab*> x;
   x.reserve(inputs.size());
   for (auto input : inputs) {
@@ -167,7 +178,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
     auto save_to_memory = ctx.Attr<bool>("save_to_memory");
-    auto output = ctx.Output<phi::CPlusString>("Y");
+    auto output = ctx.Output<phi::RawTensor>("Y");
     auto inp_var_names = ctx.InputNames("X");
     auto& inp_vars = ctx.MultiInputVar("X");
 

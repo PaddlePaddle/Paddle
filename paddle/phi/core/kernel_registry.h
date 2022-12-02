@@ -198,7 +198,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_tensor_layout,
                                default_key.dtype(),
                                arg_type);
-      } else if (arg_type == std::type_index(typeid(CPlusString*))) {
+      } else if (arg_type == std::type_index(typeid(ExtendedTensor*))) {
         args_def->AppendOutput(default_key.backend(),
                                default_tensor_layout,
                                default_key.dtype(),

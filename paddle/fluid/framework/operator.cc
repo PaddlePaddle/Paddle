@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
 namespace phi {
@@ -2985,15 +2986,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<phi::CPlusString>()) {
-          tensor_out = var->template GetMutable<phi::CPlusString>();
+        } else if (var->template IsType<phi::RawTensor>()) {
+          tensor_out = var->template GetMutable<phi::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (!var->IsInitialized()) {
           // The following is for RAW type of var
-          if (output_defs[i].type_index ==
-              std::type_index(typeid(phi::CPlusString*))) {
-            tensor_out = var->template GetMutable<phi::CPlusString>();
-          }
+          tensor_out = var->template GetMutable<phi::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(

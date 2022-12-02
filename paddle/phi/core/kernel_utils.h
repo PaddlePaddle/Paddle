@@ -17,11 +17,11 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/cplus_string.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -326,7 +326,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
-  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(CPlusString);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(ExtendedTensor);
 
   /* End case */
   template <typename T>

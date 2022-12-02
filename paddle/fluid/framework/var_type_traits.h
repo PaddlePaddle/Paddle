@@ -56,6 +56,7 @@ class DenseTensor;
 class SelectedRows;
 class SparseCooTensor;
 class SparseCsrTensor;
+class RawTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -219,7 +220,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     float,
     Vocab,
     std::vector<int>,
-    std::vector<float>>;
+    std::vector<float>,
+    phi::RawTensor>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
