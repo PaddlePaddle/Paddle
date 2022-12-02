@@ -79,6 +79,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | wen-bo-yang | Wen-Bo Yang |
 | wojtuss | Wojciech Uss |
 | [wozna](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg)| Joanna Wozna |
+| zuzg | Zuzanna Gawrysiak |
 | wwhu | Wei-Wei Hu |
 | xinghai-sun | Xing-Hai Sun |
 | Xreki | Yi-Qun Liu |
