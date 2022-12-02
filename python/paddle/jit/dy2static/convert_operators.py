@@ -745,20 +745,20 @@ def _variable_to_tensor_like_string(var):
     )
 
 
-def convert_print(*args):
+def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
     A function representing Python ``print`` statement. Note: this is a basic
     python function so we haven't handle sep, end, file and flush parameters of
     python function.
     """
-    processed_args = []
-    for arg in args:
-        if isinstance(arg, Variable):
-            processed_args.append(_variable_to_tensor_like_string(arg))
-            Print(arg)
+    processed_objects = []
+    for obj in objects:
+        if isinstance(obj, Variable):
+            processed_objects.append(_variable_to_tensor_like_string(obj))
+            Print(obj)
         else:
-            processed_args.append(arg)
-    print(*processed_args)
+            processed_objects.append(obj)
+    print(*processed_objects, sep=sep, end=end, file=file, flush=flush)
 
 
 def convert_pop(target, *args):
