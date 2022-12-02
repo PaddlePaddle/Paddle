@@ -36,7 +36,6 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'cross_entropy',
-    'square_error_cost',
     'softmax_with_cross_entropy',
 ]
 
@@ -144,41 +143,6 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     return out
 
 
-def square_error_cost(input, label):
-    r"""
-
-    Accept input predictions and target label and returns the
-    squared error cost.
-
-    For predictions label, and target label, the equation is:
-
-    .. math::
-
-        Out = (input - label)^2
-
-    Parameters:
-        input (Tensor): Input tensor, the data type should be float32.
-        label (Tensor): Label tensor, the data type should be float32.
-
-    Returns:
-        Tensor, The tensor storing the element-wise squared
-        error difference between input and label.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            input = paddle.to_tensor([1.1, 1.9])
-            label = paddle.to_tensor([1.0, 2.0])
-            output = paddle.nn.functional.square_error_cost(input, label)
-            print(output)
-            # [0.01, 0.01]
-
-    """
-    return paddle.nn.functional.square_error_cost(input, label)
-
-
 def softmax_with_cross_entropy(
     logits,
     label,
@@ -189,49 +153,32 @@ def softmax_with_cross_entropy(
     axis=-1,
 ):
     r"""
-
     This operator implements the cross entropy loss function with softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable gradient.
-
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
-
     When the attribute :attr:`soft_label` is set :attr:`False`, this operators
     expects mutually exclusive hard labels, each sample in a batch is in exactly
     one class with a probability of 1.0. Each sample in the batch will have a
     single label.
-
     The equation is as follows:
-
     1) Hard label (one-hot label, so every sample has exactly one class)
-
     .. math::
-
         loss_j =  -\\text{logits}_{label_j} +
         \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
-
     2) Soft label (each sample can have a distribution over all classes)
-
     .. math::
-
         loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
         \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
         \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
-
     3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
-
     .. math::
-
         max_j &= \\max_{i=0}^{K}{\\text{logits}_i}
-
         log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logits_i - max_j)
-
         softmax_j &= \\exp(logits_j - max_j - {log\\_max\\_sum}_j)
-
     and then cross entropy loss is calculated by softmax and label.
-
     Args:
         logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
         label (Tensor): The ground truth  ``Tensor`` , data type is the same
@@ -258,7 +205,6 @@ def softmax_with_cross_entropy(
         axis (int, optional): The index of dimension to perform softmax calculations. It
                               should be in range :math:`[-1, rank - 1]`, while :math:`rank`
                               is the rank of input :attr:`logits`. Default: -1.
-
     Returns:
         ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
                                                     `return_softmax` is False, otherwise the tuple \
@@ -266,13 +212,10 @@ def softmax_with_cross_entropy(
                                                     with input logits and cross entropy loss is in \
                                                     the same shape with input logits except shape \
                                                     in dimension :attr:`axis` as 1.
-
     Examples:
         .. code-block:: python
-
             import paddle
             import numpy as np
-
             data = np.random.rand(128).astype("float32")
             label = np.random.rand(1).astype("int64")
             data = paddle.to_tensor(data)

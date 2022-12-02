@@ -618,11 +618,11 @@ class TestLayer(LayerTest):
             t5 = layers.data(name='t5', shape=[3, 3], dtype='float32')
             t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
 
-            ret = layers.elementwise_add(t, t2)
+            ret = paddle.add(t, t2)
             ret = paddle.pow(ret, t3)
-            ret = layers.elementwise_div(ret, t4)
-            ret = layers.elementwise_sub(ret, t5)
-            ret = layers.elementwise_mul(ret, t6)
+            ret = paddle.divide(ret, t4)
+            ret = paddle.subtract(ret, t5)
+            ret = paddle.multiply(ret, t6)
 
             static_ret = self.get_static_graph_result(
                 feed={'t': n, 't2': n2, 't3': n3, 't4': n4, 't5': n5, 't6': n6},
@@ -631,18 +631,18 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+                ret = paddle.add(to_variable(n), to_variable(n2))
                 ret = paddle.pow(ret, to_variable(n3))
-                ret = layers.elementwise_div(ret, to_variable(n4))
-                ret = layers.elementwise_sub(ret, to_variable(n5))
-                dy_eager_ret = layers.elementwise_mul(ret, to_variable(n6))
+                ret = paddle.divide(ret, to_variable(n4))
+                ret = paddle.subtract(ret, to_variable(n5))
+                dy_eager_ret = paddle.multiply(ret, to_variable(n6))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
-            ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+            ret = paddle.add(to_variable(n), to_variable(n2))
             ret = paddle.pow(ret, to_variable(n3))
-            ret = layers.elementwise_div(ret, to_variable(n4))
-            ret = layers.elementwise_sub(ret, to_variable(n5))
-            dy_ret = layers.elementwise_mul(ret, to_variable(n6))
+            ret = paddle.divide(ret, to_variable(n4))
+            ret = paddle.subtract(ret, to_variable(n5))
+            dy_ret = paddle.multiply(ret, to_variable(n6))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -2606,10 +2606,10 @@ class TestLayer(LayerTest):
 
     def test_cond(self):
         def less_than_branch(a, b):
-            return fluid.layers.elementwise_add(a, b)
+            return paddle.add(a, b)
 
         def greater_equal_branch(a, b):
-            return fluid.layers.elementwise_sub(a, b)
+            return paddle.subtract(a, b)
 
         with self.static_graph():
             a = fluid.layers.fill_constant(
@@ -3037,7 +3037,9 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[13], dtype='float32')
             y_predict = layers.fc(input=x, size=1, act=None)
             y = self._get_data(name='y', shape=[1], dtype='float32')
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -3256,23 +3258,31 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name='x', shape=[16], dtype='float32')
             y = self._get_data(name='label', shape=[1], dtype='int64')
-            loss, softmax = layers.softmax_with_cross_entropy(
+            loss, softmax = paddle.nn.functional.softmax_with_cross_entropy(
                 x, y, return_softmax=True
             )
             self.assertIsNotNone(loss)
             self.assertIsNotNone(softmax)
 
-            loss = layers.softmax_with_cross_entropy(x, y)
+            loss = paddle.nn.functional.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
 
             x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
             y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
             y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
             y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
-            loss1 = layers.softmax_with_cross_entropy(x1, y1, axis=1)
-            loss2 = layers.softmax_with_cross_entropy(x1, y2, axis=2)
-            loss3 = layers.softmax_with_cross_entropy(x1, y3, axis=3)
-            loss4 = layers.softmax_with_cross_entropy(x1, y3, axis=-1)
+            loss1 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y1, axis=1
+            )
+            loss2 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y2, axis=2
+            )
+            loss3 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=3
+            )
+            loss4 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=-1
+            )
             self.assertIsNotNone(loss1)
             self.assertIsNotNone(loss2)
             self.assertIsNotNone(loss3)
@@ -3694,7 +3704,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.square_error_cost(input=x, label=y)
+            out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
     def test_dynamic_lstmp(self):
