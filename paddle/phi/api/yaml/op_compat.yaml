@@ -761,6 +761,19 @@
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
+- op : lstsq
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
+
+- op : lu_unpack
+  backward : lu_unpack_grad
+  inputs :
+    {x : X, pivots : Pivots}
+  outputs :
+    {pmat : Pmat, l : L, u : U}
+
 - op : masked_select
   inputs :
     {x : X, mask : Mask}
@@ -809,6 +822,27 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : mode
+  backward : mode_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+
+- op : multi_dot
+  backward : multi_dot_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : multiplex
+  backward : multiplex_grad
+  inputs :
+    {x : X, ids : Ids}
+  outputs :
+    out : Out
+
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
   extra :
@@ -831,6 +865,13 @@
   backward : nearest_interp_grad (nearest_interp_v2_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : nll_loss
+  backward : nll_loss_grad
+  inputs :
+    {x : X, label : Label, weight : Weight}
+  outputs :
+    {out : Out, total_weight : Total_weight}
 
 - op : pad2d
   backward : pad2d_grad
@@ -868,6 +909,13 @@
   backward : prelu_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : qr
+  backward : qr_grad
+  inputs :
+    x : X
+  outputs :
+    {q : Q, r : R}
 
 - op : quantize_linear
   extra :
@@ -948,6 +996,20 @@
   backward : renorm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : renorm
+  backward : renorm_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : roll
+  backward : roll_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : round
   backward : round_grad
