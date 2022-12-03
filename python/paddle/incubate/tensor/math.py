@@ -37,7 +37,7 @@ def segment_sum(data, segment_ids, name=None):
 
     .. math::
 
-        out_i = \max_{j \in \{segment\_ids_j == i \} } data_{j}
+        out_i = \sum_{j \in \{segment\_ids_j == i \} } data_{j}
 
     where sum is over j such that `segment_ids[j] == i`.
 
@@ -102,7 +102,12 @@ def segment_mean(data, segment_ids, name=None):
 
     Ihis operator calculate the mean value of input `data` which
     with the same index in `segment_ids`.
-    It computes a tensor such that :math:`\mathop{mean}_{j \in \{segment\_ids_j == i \} } data_{j}`
+    It computes a tensor such that
+    
+    .. math::
+
+        out_i = \mathop{mean}_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where sum is over j such that 'segment_ids[j] == i' and $n_i$ is the number
     of all index 'segment_ids[j] == i'.
 
@@ -168,7 +173,12 @@ def segment_min(data, segment_ids, name=None):
 
     This operator calculate the minimum elements of input `data` which with
     the same index in `segment_ids`.
-    It computes a tensor such that :math:`out_i = \mathop{min}_{j\in \{segment\_ids_j==i\}} data_{j}`
+    It computes a tensor such that
+    
+    .. math::
+
+        out_i = \min_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where min is over j such that `segment_ids[j] == i`.
 
     Args:
@@ -234,7 +244,12 @@ def segment_max(data, segment_ids, name=None):
 
     This operator calculate the maximum elements of input `data` which with
     the same index in `segment_ids`.
-    It computes a tensor such that :math:`out_i = \mathop{max}_{j \in \{segment\_ids_j==i\}} data_{j}`
+    It computes a tensor such that
+    
+    .. math::
+
+        out_i = \max_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where max is over j such that `segment_ids[j] == i`.
 
     Args:
