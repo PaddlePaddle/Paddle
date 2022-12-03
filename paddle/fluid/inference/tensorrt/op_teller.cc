@@ -1747,6 +1747,25 @@ struct SimpleOpTypeSetTeller : public Teller {
       VLOG(3) << "one_hot is not supported when TensorRT < 8.5.1";
       return false;
 #endif
+      if (desc.HasAttr("allow_out_of_range")) {
+        VLOG(3) << "allow_out_of_range one_hot op is not supported now.";
+        if (PADDLE_GET_CONST(bool, desc.GetAttr("allow_out_of_range")))
+          return false;
+      }
+      if (desc.HasAttr("dtype")) {
+        const int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+        if (dtype != 2 && dtype != 3 && dtype != 5) {
+          VLOG(3) << "one_hot op only support int32, int64, float.";
+          return false;
+        }
+      }
+      if (desc.HasAttr("depth")) {
+        const int depth = PADDLE_GET_CONST(int, desc.GetAttr("depth"));
+        if (depth <= 0) {
+          VLOG(3) << "depth only support positive in one_hot op.";
+          return false;
+        }
+      }
     }
 
     if (op_type == "skip_layernorm") {
