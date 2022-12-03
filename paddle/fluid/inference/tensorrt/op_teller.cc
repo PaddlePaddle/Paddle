@@ -1205,21 +1205,23 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* block = desc.Block();
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto input_type = x_var_desc->GetDataType();
-      // The fill_any_like op supports input of BOOL by trt8.4 above.
 #if IS_TRT_VERSION_GE(8400)
       if (dtype == 0 ||
           (dtype == -1 && input_type == framework::proto::VarType::BOOL)) {
+        VLOG(3) << "the fill_any_like supports input of BOOL by trt8.4 above";
         return true;
       }
 #endif
       if (dtype != -1 && dtype != 2 && dtype != 5) {
-        VLOG(3) << "the fill_any_like only supports int32 and float32";
+        VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                   "trt8.4 below";
         return false;
       }
       if (dtype == -1) {
         if (input_type != framework::proto::VarType::INT32 &&
             input_type != framework::proto::VarType::FP32) {
-          VLOG(3) << "the fill_any_like only supports int32 and float32";
+          VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                     "trt8.4 below";
           return false;
         }
       }
