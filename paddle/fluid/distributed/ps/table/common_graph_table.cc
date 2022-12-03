@@ -1191,7 +1191,11 @@ Node *GraphShard::find_node(uint64_t id) {
   return iter == node_location.end() ? nullptr : bucket[iter->second];
 }
 
-GraphTable::~GraphTable() { clear_graph(); }
+GraphTable::~GraphTable() {
+#ifdef PADDLE_WITH_GPU_GRAPH
+  clear_graph();
+#endif
+}
 
 int32_t GraphTable::Load(const std::string &path, const std::string &param) {
   bool load_edge = (param[0] == 'e');

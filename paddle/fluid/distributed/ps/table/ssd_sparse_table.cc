@@ -582,8 +582,8 @@ int64_t SSDSparseTable::LocalSize() {
 int32_t SSDSparseTable::Save(const std::string& path,
                              const std::string& param) {
   std::lock_guard<std::mutex> guard(_table_mutex);
-  int save_param = atoi(param.c_str());
 #ifdef PADDLE_WITH_HETERPS
+  int save_param = atoi(param.c_str());
   int32_t ret = 0;
   if (save_param > 3) {
     ret = SaveWithStringMultiOutput(path, param);  // batch_model:4  xbox:5

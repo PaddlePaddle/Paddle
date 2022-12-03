@@ -227,7 +227,7 @@ static void UniqueFlattendCUDATensor(const Context& context,
                                 inv_loc_data_ptr,
                                 not_equal);
     thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
-    inv_loc_data_dev[0] = 0; // without device_ptr, segmentation fault
+    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
     thrust::inclusive_scan(thrust::device,
                            inv_loc_data_ptr,
                            inv_loc_data_ptr + num_input,

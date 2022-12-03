@@ -1816,7 +1816,10 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      const int float_slot_size,
                      const UsedSlotGpuType* used_slots);
 #endif
+
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void DoWalkandSage();
+#endif
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
