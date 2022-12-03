@@ -118,7 +118,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
   int use_nv = 1;
-  GpuPsGraphTable g(resource, 1, 2);
+  GpuPsGraphTable g(resource, 2);
   g.init_cpu_table(table_proto);
   g.cpu_graph_table_->Load(node_file_name, "nuser");
   g.cpu_graph_table_->Load(node_file_name, "nitem");
