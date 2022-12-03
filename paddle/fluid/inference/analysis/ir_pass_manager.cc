@@ -229,6 +229,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->dlnne_input_shape_dict()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+    } else if (pass_name == "memory_optimize_pass") {
+      pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =
