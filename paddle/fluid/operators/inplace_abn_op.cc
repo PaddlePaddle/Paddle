@@ -145,8 +145,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           "can't find gradient variable of Y"));
     }
     const phi::DenseTensor* t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     } else if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
     }
