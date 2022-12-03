@@ -1977,7 +1977,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
     }
 
-    if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+    if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
+        op_type == "reduce_max") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
