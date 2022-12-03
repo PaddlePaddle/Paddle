@@ -902,7 +902,7 @@ def einsum(equation, *operands):
         - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
           dimensions will be reduced and removed in the output.
         - Output labels can be explicitly specified on the right hand side of `->` or omitted.
-          In the latter case, the output labels will be inferred from the input labels.
+            In the latter case, the output labels will be inferred from the input labels.
             - Inference of output labels
                 - Broadcasting label `...`, if present, is put on the leftmost position.
                 - Free labels are reordered alphabetically and put after `...`.

@@ -97,7 +97,7 @@ def segment_mean(data, segment_ids, name=None):
 
     Ihis operator calculate the mean value of input `data` which
     with the same index in `segment_ids`.
-    It computes a tensor such that $\mathop{mean}_{j \in \{segment\_ids_j == i \} } data_{j}$
+    It computes a tensor such that :math:`\mathop{mean}_{j \in \{segment\_ids_j == i \} } data_{j}`
     where sum is over j such that 'segment_ids[j] == i' and $n_i$ is the number
     of all index 'segment_ids[j] == i'.
 
