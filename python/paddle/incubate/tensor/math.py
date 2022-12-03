@@ -37,7 +37,7 @@ def segment_sum(data, segment_ids, name=None):
 
     .. math::
 
-        out_i = \max_{j \in \{segment\_ids_j == i \} } data_{j}
+        out_i = \max_{j \in \{segment\_ids_j == i \} } data_{j} 
 
     where sum is over j such that `segment_ids[j] == i`.
 
