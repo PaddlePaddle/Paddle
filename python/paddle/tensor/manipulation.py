@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .tensor import Tensor
 
 # TODO: define functions to manipulate a tensor
 
@@ -45,7 +51,7 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 __all__ = []
 
 
-def cast(x, dtype):
+def cast(x: Tensor, dtype) -> Tensor:
     """
 
     This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
@@ -1215,7 +1221,9 @@ def concat(x, axis=0, name=None):
     return out
 
 
-def broadcast_tensors(input, name=None):
+def broadcast_tensors(
+    input: list[Tensor], name: str | None = None
+) -> list[Tensor]:
     """
     Broadcast a list of tensors following broadcast semantics
 
@@ -2791,7 +2799,7 @@ def gather(x, index, axis=None, name=None):
     return out
 
 
-def unbind(input, axis=0):
+def unbind(input: Tensor, axis: int = 0) -> list[Tensor]:
     """
 
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
@@ -2967,7 +2975,9 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     return _legacy_C_ops.scatter_(x, index, updates, 'overwrite', overwrite)
 
 
-def scatter_nd_add(x, index, updates, name=None):
+def scatter_nd_add(
+    x: Tensor, index: Tensor, updates: Tensor, name: str | None = None
+) -> Tensor:
     r"""
 
     Output is obtained by applying sparse addition to a single value
@@ -3253,7 +3263,7 @@ def tile(x, repeat_times, name=None):
     return out
 
 
-def expand_as(x, y, name=None):
+def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
 
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
@@ -3752,7 +3762,7 @@ def reshape_(x, shape, name=None):
             return out
 
 
-def gather_nd(x, index, name=None):
+def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
     """
 
     This function is actually a high-dimensional extension of :code:`gather`
@@ -4266,7 +4276,7 @@ def tensordot(x, y, axes=2, name=None):
     return out
 
 
-def as_complex(x, name=None):
+def as_complex(x: Tensor, name: str | None = None) -> Tensor:
     """Transform a real tensor to a complex tensor.
 
     The data type of the input tensor is 'float32' or 'float64', and the data
@@ -4313,7 +4323,7 @@ def as_complex(x, name=None):
     return out
 
 
-def as_real(x, name=None):
+def as_real(x: Tensor, name: str | None = None) -> Tensor:
     """Transform a complex tensor to a real tensor.
 
     The data type of the input tensor is 'complex64' or 'complex128', and the data
@@ -4581,7 +4591,7 @@ def infer_broadcast_shape(arr, indices, axis):
     return broadcast_shape
 
 
-def take_along_axis(arr, indices, axis):
+def take_along_axis(arr: Tensor, indices: Tensor, axis) -> Tensor:
     """
     Take values from the input array by given indices matrix along the designated axis.
 

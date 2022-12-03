@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .tensor import Tensor
 
 # TODO: define statistical functions of a tensor
 
@@ -218,7 +224,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     return paddle.sqrt(out)
 
 
-def numel(x, name=None):
+def numel(x: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
     or a scalar value in imperative mode.
