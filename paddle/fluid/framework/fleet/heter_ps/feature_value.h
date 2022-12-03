@@ -65,24 +65,24 @@ class CommonFeatureValueAccessor {
     __host__ __device__ size_t Size() {
       return TYPEALIGN(8, Dim() * sizeof(float));
     }  // cpu_ptr:uint64=2float
-    __host__ __device__ int EmbedDim() { return embed_sgd_dim; }
-    __host__ __device__ int EmbedXDim() { return embedx_sgd_dim; }
-    __host__ __device__ int EmbedWDim() { return embedx_dim; }
-    __host__ __device__ int CpuPtrIndex() { return 0; }  // cpuprt uint64
-    __host__ __device__ int DeltaScoreIndex() { return CpuPtrIndex() + 2; }
-    __host__ __device__ int ShowIndex() { return DeltaScoreIndex() + 1; }
-    __host__ __device__ int ClickIndex() { return ShowIndex() + 1; }
-    __host__ __device__ int EmbedWIndex() { return ClickIndex() + 1; }
-    __host__ __device__ int EmbedG2SumIndex() { return EmbedWIndex() + 1; }
-    __host__ __device__ int SlotIndex() {
+    __host__ __device__ int EmbedDim() const { return embed_sgd_dim; }
+    __host__ __device__ int EmbedXDim() const { return embedx_sgd_dim; }
+    __host__ __device__ int EmbedWDim() const { return embedx_dim; }
+    __host__ __device__ int CpuPtrIndex() const { return 0; }  // cpuprt uint64
+    __host__ __device__ int DeltaScoreIndex() const { return CpuPtrIndex() + 2; }
+    __host__ __device__ int ShowIndex() const { return DeltaScoreIndex() + 1; }
+    __host__ __device__ int ClickIndex() const { return ShowIndex() + 1; }
+    __host__ __device__ int EmbedWIndex() const { return ClickIndex() + 1; }
+    __host__ __device__ int EmbedG2SumIndex() const { return EmbedWIndex() + 1; }
+    __host__ __device__ int SlotIndex() const {
       return EmbedG2SumIndex() + embed_sgd_dim;
     }
-    __host__ __device__ int MfDimIndex() { return SlotIndex() + 1; }
-    __host__ __device__ int MfSizeIndex() {
+    __host__ __device__ int MfDimIndex() const { return SlotIndex() + 1; }
+    __host__ __device__ int MfSizeIndex() const {
       return MfDimIndex() + 1;
     }  // actual mf size (ex. 0)
-    __host__ __device__ int EmbedxG2SumIndex() { return MfSizeIndex() + 1; }
-    __host__ __device__ int EmbedxWIndex() {
+    __host__ __device__ int EmbedxG2SumIndex() const { return MfSizeIndex() + 1; }
+    __host__ __device__ int EmbedxWIndex() const {
       return EmbedxG2SumIndex() + embedx_sgd_dim;
     }
 
@@ -190,46 +190,46 @@ class CommonFeatureValueAccessor {
        std::vector<float> embedx_g;
        */
 
-    __host__ __device__ int Dim(int embedx_dim) { return 5 + embedx_dim; }
+    __host__ __device__ int Dim(int embedx_dim) const { return 5 + embedx_dim; }
 
-    __host__ __device__ int DimSize(int dim, int embedx_dim) {
+    __host__ __device__ int DimSize(int dim, int embedx_dim) const {
       return sizeof(float);
     }
-    __host__ __device__ int Size(int embedx_dim) {
+    __host__ __device__ int Size(int embedx_dim) const {
       return Dim(embedx_dim) * sizeof(float);
     }
-    __host__ __device__ int SlotIndex() { return 0; }
-    __host__ __device__ int ShowIndex() {
+    __host__ __device__ int SlotIndex() const { return 0; }
+    __host__ __device__ int ShowIndex() const {
       return CommonPushValue::SlotIndex() + 1;
     }
-    __host__ __device__ int ClickIndex() {
+    __host__ __device__ int ClickIndex() const {
       return CommonPushValue::ShowIndex() + 1;
     }
-    __host__ __device__ int MfDimIndex() {
+    __host__ __device__ int MfDimIndex() const {
       return CommonPushValue::ClickIndex() + 1;
     }
-    __host__ __device__ int EmbedGIndex() {
+    __host__ __device__ int EmbedGIndex() const {
       return CommonPushValue::MfDimIndex() + 1;
     }
-    __host__ __device__ int EmbedxGIndex() {
+    __host__ __device__ int EmbedxGIndex() const {
       return CommonPushValue::EmbedGIndex() + 1;
     }
-    __host__ __device__ float& Slot(float* val) {
+    __host__ __device__ float& Slot(float* val) const {
       return val[CommonPushValue::SlotIndex()];
     }
-    __host__ __device__ float& Show(float* val) {
+    __host__ __device__ float& Show(float* val) const {
       return val[CommonPushValue::ShowIndex()];
     }
-    __host__ __device__ float& Click(float* val) {
+    __host__ __device__ float& Click(float* val) const {
       return val[CommonPushValue::ClickIndex()];
     }
-    __host__ __device__ float& MfDim(float* val) {
+    __host__ __device__ float& MfDim(float* val) const {
       return val[CommonPushValue::MfDimIndex()];
     }
-    __host__ __device__ float& EmbedG(float* val) {
+    __host__ __device__ float& EmbedG(float* val) const {
       return val[CommonPushValue::EmbedGIndex()];
     }
-    __host__ __device__ float* EmbedxG(float* val) {
+    __host__ __device__ float* EmbedxG(float* val) const {
       return val + CommonPushValue::EmbedxGIndex();
     }
   };
@@ -461,7 +461,7 @@ class CommonFeatureValueAccessor {
 
   // update_basic 阶段 gpukernel 中从src_val赋值给dest_val
   __host__ __device__ void PushValueFillBasic(float* dest_val,
-                                              const float* src_val) {
+                                              const float* src_val) const {
     dest_val[common_push_value.SlotIndex()] =
         src_val[common_push_value.SlotIndex()];
     dest_val[common_push_value.ShowIndex()] =
@@ -491,7 +491,7 @@ class CommonFeatureValueAccessor {
 
   // merge_basic 阶段 gpukernel 中 PushValue 从src_val赋值给dest_val
   __host__ __device__ void MergePushValueBasic(float* dest_val,
-                                               const float* src_val) {
+                                               const float* src_val) const {
     dest_val[common_push_value.ShowIndex()] +=
         src_val[common_push_value.ShowIndex()];
     dest_val[common_push_value.ClickIndex()] +=

@@ -60,7 +60,7 @@ class GraphShard {
   std::vector<Node *> get_batch(int start, int end, int step);
   void get_ids_by_range(int start, int end, std::vector<uint64_t> *res) {
     res->reserve(res->size() + end - start);
-    for (int i = start; i < end && i < (int)bucket.size(); i++) {
+    for (int i = start; i < end && i < static_cast<int>(bucket.size()); i++) {
       res->emplace_back(bucket[i]->get_id());
     }
   }
@@ -93,7 +93,7 @@ class GraphShard {
   size_t get_all_feature_ids(std::vector<std::vector<uint64_t>> *total_res,
                              int slice_num) {
     std::vector<uint64_t> keys;
-    for (int i = 0; i < (int)bucket.size(); i++) {
+    for (size_t i = 0; i < bucket.size(); i++) {
       bucket[i]->get_feature_ids(&keys);
     }
     return dedup2shard_keys(&keys, total_res, slice_num);
@@ -209,7 +209,7 @@ class ScaledLRU;
 template <typename K, typename V>
 class RandomSampleLRU {
  public:
-  RandomSampleLRU(ScaledLRU<K, V> *_father) {
+  explicit RandomSampleLRU(ScaledLRU<K, V> *_father) {
     father = _father;
     remove_count = 0;
     node_size = 0;
@@ -384,18 +384,18 @@ class ScaledLRU {
     return lru_pool[index].insert(keys, data, length);
   }
   int Shrink() {
-    int node_size = 0;
+    size_t node_size = 0;
     for (size_t i = 0; i < lru_pool.size(); i++) {
       node_size += lru_pool[i].node_size - lru_pool[i].remove_count;
     }
 
-    if ((size_t)node_size <= size_t(1.1 * size_limit) + 1) return 0;
+    if (node_size <= static_cast<size_t>(1.1 * size_limit) + 1) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
       global_count = 0;
       for (size_t i = 0; i < lru_pool.size(); i++) {
         global_count += lru_pool[i].node_size - lru_pool[i].remove_count;
       }
-      if ((size_t)global_count > size_limit) {
+      if (static_cast<size_t>(global_count) > size_limit) {
         size_t remove = global_count - size_limit;
         for (size_t i = 0; i < lru_pool.size(); i++) {
           lru_pool[i].total_diff = 0;
@@ -413,7 +413,7 @@ class ScaledLRU {
   void handle_size_diff(int diff) {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
-      if (global_count > int(1.25 * size_limit)) {
+      if (global_count > static_cast<int>(1.25 * size_limit)) {
         thread_pool->enqueue([this]() -> int { return Shrink(); });
       }
     }
@@ -625,7 +625,7 @@ class GraphTable : public Table {
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }
   virtual int32_t Shrink(const std::string &param) { return 0; }
-  //指定保存路径
+  // 指定保存路径
   virtual int32_t Save(const std::string &path, const std::string &converter) {
     return 0;
   }
@@ -716,8 +716,8 @@ class GraphTable : public Table {
   std::vector<int> slot_feature_num_map() const {
     return slot_feature_num_map_;
   }
-  std::vector<uint64_t> get_partition(int idx, int index) {
-    if (idx >= (int)partitions.size() || index >= (int)partitions[idx].size())
+  std::vector<uint64_t> get_partition(size_t idx, size_t index) {
+    if (idx >= partitions.size() || index >= partitions[idx].size())
       return std::vector<uint64_t>();
     return partitions[idx][index];
   }
