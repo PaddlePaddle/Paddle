@@ -3885,10 +3885,10 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        #run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        run_setup ${PYTHON_ABI:-""} ${parallel_number}
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        # run_setup ${PYTHON_ABI:-""} ${parallel_number}
+        # run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
