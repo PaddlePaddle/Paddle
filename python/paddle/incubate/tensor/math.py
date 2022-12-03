@@ -33,7 +33,12 @@ def segment_sum(data, segment_ids, name=None):
 
     This operator sums the elements of input `data` which with
     the same index in `segment_ids`.
-    It computes a tensor such that :math:`out_i = \sum_{j \in \{ segment\_ids_j == i \} } data_{j}`
+    It computes a tensor such that
+
+    .. math::
+
+        out_i = \max_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where sum is over j such that `segment_ids[j] == i`.
 
     Args:
