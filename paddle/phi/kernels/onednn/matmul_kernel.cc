@@ -150,6 +150,9 @@ void MatmulKernel(const Context &dev_ctx,
     funcs::ExecuteMatmul<T, int8_t>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   }
+
+  dev_ctx.ClearDnnAttr();  // temp solution for improve performance, will be
+                           // removed in the future
 }
 
 }  // namespace phi

@@ -421,6 +421,8 @@ void ConvKernel(const Context& dev_ctx,
                              out);
     }
   }
+  dev_ctx.ClearDnnAttr();  // temp solution for improve performance, will be
+                           // removed in the future
 }
 
 template <typename T, typename Context>

@@ -1985,8 +1985,6 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     }
 
     matmul_attrs.set_post_ops(post_operations);
-    dev_ctx.ClearDnnAttr();  // temp solution for improve performance, will be
-                             // removed in the future
     return matmul_attrs;
   }
 

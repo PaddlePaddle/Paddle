@@ -49,8 +49,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
     post_operations.append_eltwise(
         1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
   }
-  dev_ctx.ClearDnnAttr();  // temp solution for improve performance, will be
-                           // removed in the future
+
   auto* non_const_x = &x;
   auto* non_const_y = &y;
 
@@ -122,6 +121,9 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
     dims[1] /= dims[0];
     out->set_mem_desc(dst_memory->get_desc().reshape(dims));
   }
+
+  dev_ctx.ClearDnnAttr();  // temp solution for improve performance, will be
+                           // removed in the future
 }
 
 #define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)      \

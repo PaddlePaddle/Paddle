@@ -127,6 +127,9 @@ void TransposeKernel(const Context& dev_ctx,
       dev_ctx,
       out,
       reorder_dst_memory_p->get_desc().permute_axes(permute_axis));
+
+  dev_ctx.ClearDnnAttr();  // temp solution for improve performance, will be
+                           // removed in the future
 }
 }  // namespace phi
 

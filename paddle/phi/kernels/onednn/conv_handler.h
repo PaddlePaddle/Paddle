@@ -554,8 +554,8 @@ class ConvOneDNNHandlerT
     funcs::AppendActivation(this->dev_ctx_, post_operations, activation_scale);
 
     conv_attr.set_post_ops(post_operations);
-    this->dev_ctx_.ClearDnnAttr();  // temp solution for improve performance,
-                                    // will be removed in the future
+    // this->dev_ctx_.ClearDnnAttr();  // temp solution for improve performance,
+    //                                 // will be removed in the future
     return conv_attr;
   }
 
