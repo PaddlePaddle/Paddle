@@ -1854,6 +1854,8 @@ function precise_card_test_single {
 
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
 
+        wait
+
         # python
         ls python-coverage.data.*
         if [[ $? == 0 ]]
@@ -1867,8 +1869,6 @@ function precise_card_test_single {
         find paddle/fluid -name *.gcda | xargs rm -f 
         find paddle/phi -name *.gcda | xargs rm -f 
         find paddle/utils -name *.gcda | xargs rm -f
-        
-        wait;
     done
 }
 
