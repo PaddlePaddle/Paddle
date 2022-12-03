@@ -903,19 +903,19 @@ def einsum(equation, *operands):
           dimensions will be reduced and removed in the output.
         - Output labels can be explicitly specified on the right hand side of `->` or omitted.
             In the latter case, the output labels will be inferred from the input labels.
-            - Inference of output labels
-                - Broadcasting label `...`, if present, is put on the leftmost position.
-                - Free labels are reordered alphabetically and put after `...`.
-            - On explicit output labels
-                - If broadcasting is enabled, then `...` must be present.
-                - The output labels can be an empty, an indication to output as a scalar
-                  the sum over the original output.
-                - Non-input labels are invalid.
-                - Duplicate labels are invalid.
-                - For any dummy label which is present for the output, it's promoted to
-                  a free label.
-                - For any free label which is not present for the output, it's lowered to
-                  a dummy label.
+                - Inference of output labels
+                    - Broadcasting label `...`, if present, is put on the leftmost position.
+                    - Free labels are reordered alphabetically and put after `...`.
+                - On explicit output labels
+                    - If broadcasting is enabled, then `...` must be present.
+                    - The output labels can be an empty, an indication to output as a scalar
+                        the sum over the original output.
+                    - Non-input labels are invalid.
+                    - Duplicate labels are invalid.
+                    - For any dummy label which is present for the output, it's promoted to
+                        a free label.
+                    - For any free label which is not present for the output, it's lowered to
+                        a dummy label.
 
         - Examples
             - '...ij, ...jk', where i and k are free labels, j is dummy. The output label
