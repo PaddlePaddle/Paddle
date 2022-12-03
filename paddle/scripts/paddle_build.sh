@@ -3665,7 +3665,10 @@ function run_setup(){
     ccache -z
 
     python setup.py install;build_error=$?
-    cp -r /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddlepaddle-0.0.0-py3.7-linux-x86_64.egg/paddle  /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/
+
+    if [ -d "/opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddlepaddle-0.0.0-py3.7-linux-x86_64.egg/paddle" ]; then
+        cp -r /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddlepaddle-0.0.0-py3.7-linux-x86_64.egg/paddle  /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/
+    fi
     
     # ci will collect ccache hit rate
     collect_ccache_hits
