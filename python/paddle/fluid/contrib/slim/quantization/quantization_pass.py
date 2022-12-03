@@ -1942,10 +1942,7 @@ class AddQuantDequantPass:
                     # If already quanted, skip it.
                     skip_quant = False
                     for arg_name in arg_names:
-                        if (
-                            "quantized.dequantized"
-                            or ".quant_dequant" in arg_name
-                        ):
+                        if "quantized.dequantized" in arg_name:
                             skip_quant = True
                             break
                     if skip_quant:
@@ -2812,10 +2809,7 @@ class AddQuantDequantPassV2:
                     # If already quanted, skip it.
                     skip_quant = False
                     for arg_name in arg_names:
-                        if (
-                            "quantized.dequantized"
-                            or ".quant_dequant" in arg_name
-                        ):
+                        if "quantized.dequantized" in arg_name:
                             skip_quant = True
                             break
                     if skip_quant:
