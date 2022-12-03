@@ -1137,11 +1137,13 @@ class DataFeed {
     gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
 #endif
   }
+  virtual const std::vector<uint64_t>* GetHostVec() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  virtual const std::vector<uint64_t>& GetHostVec() {
-    return gpu_graph_data_generator_.GetHostVec();
-  }
+    return &(gpu_graph_data_generator_.GetHostVec());
+#else
+    return nullptr;
 #endif
+  }
 
   virtual void clear_gpu_mem() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)

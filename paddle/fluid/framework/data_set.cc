@@ -482,14 +482,14 @@ void DatasetImpl<T>::LoadIntoMemory() {
     }
     uint64_t node_num = 0;
     for (int i = 0; i < thread_num_; i++) {
-      auto& host_vec = readers_[i]->GetHostVec();
-      node_num += host_vec.size();
+      auto host_vec = readers_[i]->GetHostVec();
+      node_num += host_vec->size();
     }
     gpu_graph_total_keys_.reserve(node_num);
     for (int i = 0; i < thread_num_; i++) {
-      auto& host_vec = readers_[i]->GetHostVec();
-      for (size_t j = 0; j < host_vec.size(); j++) {
-        gpu_graph_total_keys_.push_back(host_vec[j]);
+      auto host_vec = readers_[i]->GetHostVec();
+      for (size_t j = 0; j < host_vec->size(); j++) {
+        gpu_graph_total_keys_.push_back((*host_vec)[j]);
       }
     }
 
