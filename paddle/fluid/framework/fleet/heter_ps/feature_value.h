@@ -69,11 +69,15 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int EmbedXDim() const { return embedx_sgd_dim; }
     __host__ __device__ int EmbedWDim() const { return embedx_dim; }
     __host__ __device__ int CpuPtrIndex() const { return 0; }  // cpuprt uint64
-    __host__ __device__ int DeltaScoreIndex() const { return CpuPtrIndex() + 2; }
+    __host__ __device__ int DeltaScoreIndex() const {
+      return CpuPtrIndex() + 2;
+    }
     __host__ __device__ int ShowIndex() const { return DeltaScoreIndex() + 1; }
     __host__ __device__ int ClickIndex() const { return ShowIndex() + 1; }
     __host__ __device__ int EmbedWIndex() const { return ClickIndex() + 1; }
-    __host__ __device__ int EmbedG2SumIndex() const { return EmbedWIndex() + 1; }
+    __host__ __device__ int EmbedG2SumIndex() const {
+      return EmbedWIndex() + 1;
+    }
     __host__ __device__ int SlotIndex() const {
       return EmbedG2SumIndex() + embed_sgd_dim;
     }
@@ -81,7 +85,9 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int MfSizeIndex() const {
       return MfDimIndex() + 1;
     }  // actual mf size (ex. 0)
-    __host__ __device__ int EmbedxG2SumIndex() const { return MfSizeIndex() + 1; }
+    __host__ __device__ int EmbedxG2SumIndex() const {
+      return MfSizeIndex() + 1;
+    }
     __host__ __device__ int EmbedxWIndex() const {
       return EmbedxG2SumIndex() + embedx_sgd_dim;
     }
