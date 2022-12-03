@@ -31,7 +31,7 @@ def segment_sum(data, segment_ids, name=None):
     r"""
     Segment Sum Operator.
 
-    This operator sums the elements of input `data` which with
+    Sum the elements of input `data` which with
     the same index in `segment_ids`.
     It computes a tensor such that
 
@@ -171,7 +171,7 @@ def segment_min(data, segment_ids, name=None):
     r"""
     Segment min operator.
 
-    This operator calculate the minimum elements of input `data` which with
+    Calculate the minimum elements of input `data` which with
     the same index in `segment_ids`.
     It computes a tensor such that
     
@@ -242,7 +242,7 @@ def segment_max(data, segment_ids, name=None):
     r"""
     Segment max operator.
 
-    This operator calculate the maximum elements of input `data` which with
+    Calculate the maximum elements of input `data` which with
     the same index in `segment_ids`.
     It computes a tensor such that
     
