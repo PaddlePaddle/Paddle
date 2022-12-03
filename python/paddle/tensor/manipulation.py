@@ -1127,10 +1127,6 @@ def concat(x, axis=0, name=None):
             #  [14 15 16]]
     """
     input = x
-
-    if not isinstance(input, Variable) and input[0].shape == []:
-        raise ValueError("zero-dimensional arrays cannot be concatenated")
-
     if in_dygraph_mode():
         if isinstance(axis, Variable):
             axis = axis.numpy()
