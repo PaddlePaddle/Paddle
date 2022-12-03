@@ -80,7 +80,7 @@ RUN python3.9 -m pip uninstall -y pip setuptools && \
     python3.8 -m pip uninstall -y pip setuptools && \
     python3.7 -m pip uninstall -y pip setuptools
 
-RUN wget https://files.pythonhosted.org/packages/b6/21/cb9a8d0b2c8597c83fce8e9c02884bce3d4951e41e807fc35791c6b23d9a/setuptools-65.6.3.tar.gz && apt-get -y install unzip && unzip setuptools-65.6.3.zip
+RUN wget https://files.pythonhosted.org/packages/b6/21/cb9a8d0b2c8597c83fce8e9c02884bce3d4951e41e807fc35791c6b23d9a/setuptools-65.6.3.tar.gz && tar -zxvf setuptools-65.6.3.tar.gz
 WORKDIR /home/setuptools-65.6.3
 RUN python3.9 setup.py build && python3.9 setup.py install && \
     python3.8 setup.py build && python3.8 setup.py install && \
@@ -99,7 +99,7 @@ RUN python setup.py install && \
     ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
 
 WORKDIR /home
-RUN rm setuptools-65.6.3.zip pip-22.3.1.tar.gz && \
+RUN rm setuptools-65.6.3.tar.gz pip-22.3.1.tar.gz && \
     rm -r setuptools-65.6.3 pip-22.3.1
 
 # Install Go and glide
