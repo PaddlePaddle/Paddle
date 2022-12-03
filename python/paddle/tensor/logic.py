@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .tensor import Tensor
 
 # TODO: define logic functions of a tensor
 
@@ -251,7 +245,7 @@ def logical_not(x, out=None, name=None):
     )
 
 
-def is_empty(x: Tensor, name: str = None) -> Tensor:
+def is_empty(x, name=None):
     """
 
     Test whether a Tensor is empty.
@@ -300,7 +294,7 @@ def is_empty(x: Tensor, name: str = None) -> Tensor:
     return cond
 
 
-def equal_all(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def equal_all(x, y, name=None):
     """
     Returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
@@ -412,7 +406,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
 
 @templatedoc()
-def equal(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def equal(x, y, name=None):
     """
 
     This layer returns the truth value of :math:`x == y` elementwise.
@@ -480,7 +474,7 @@ def equal(x: Tensor, y: Tensor, name: str = None) -> Tensor:
 
 
 @templatedoc()
-def greater_equal(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def greater_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
@@ -536,7 +530,7 @@ def greater_equal(x: Tensor, y: Tensor, name: str = None) -> Tensor:
 
 
 @templatedoc()
-def greater_than(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def greater_than(x, y, name=None):
     """
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
@@ -592,7 +586,7 @@ def greater_than(x: Tensor, y: Tensor, name: str = None) -> Tensor:
 
 
 @templatedoc()
-def less_equal(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def less_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
@@ -649,7 +643,7 @@ def less_equal(x: Tensor, y: Tensor, name: str = None) -> Tensor:
 
 
 @templatedoc()
-def less_than(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def less_than(x, y, name=None):
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
 
@@ -706,7 +700,7 @@ def less_than(x: Tensor, y: Tensor, name: str = None) -> Tensor:
 
 
 @templatedoc()
-def not_equal(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def not_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 

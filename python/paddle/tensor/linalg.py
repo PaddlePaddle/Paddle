@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .tensor import Tensor
 
 import numpy as np
 
@@ -1155,7 +1149,7 @@ def cond(x, p=None, name=None):
         )
 
 
-def dot(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def dot(x, y, name=None):
     """
     This operator calculates inner product for vectors.
 
@@ -1655,7 +1649,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     return out
 
 
-def bmm(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def bmm(x, y, name=None):
     """
     Applies batched matrix multiplication to two tensors.
 
@@ -1832,7 +1826,7 @@ def bincount(x, weights=None, minlength=0, name=None):
     return out
 
 
-def mv(x: Tensor, vec: Tensor, name: str = None) -> Tensor:
+def mv(x, vec, name=None):
     """
     Performs a matrix-vector product of the matrix x and the vector vec.
 
@@ -1901,7 +1895,7 @@ def mv(x: Tensor, vec: Tensor, name: str = None) -> Tensor:
             return out
 
 
-def det(x: Tensor, name: str = None) -> Tensor:
+def det(x, name=None):
     """
 
     Calculates determinant value of a square matrix or batches of square matrices.
@@ -1960,7 +1954,7 @@ def det(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def slogdet(x: Tensor, name: str = None) -> Tensor:
+def slogdet(x, name=None):
     """
 
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
@@ -2439,7 +2433,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
     return p, l, u
 
 
-def eig(x: Tensor, name: str = None) -> tuple[Tensor, Tensor]:
+def eig(x, name=None):
     """
     Performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
 
@@ -2506,7 +2500,7 @@ def eig(x: Tensor, name: str = None) -> tuple[Tensor, Tensor]:
     return w, v
 
 
-def eigvals(x: Tensor, name: str = None) -> Tensor:
+def eigvals(x, name=None):
     """
     Compute the eigenvalues of one or more general matrices.
 
@@ -2572,7 +2566,7 @@ def eigvals(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def multi_dot(x: list[Tensor], name: str = None) -> Tensor:
+def multi_dot(x, name=None):
     """
     Multi_dot is an operator that calculates multiple matrix multiplications.
 
@@ -3056,7 +3050,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             return out_2
 
 
-def solve(x: Tensor, y: Tensor, name: str = None) -> Tensor:
+def solve(x, y, name=None):
     r"""
 
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.

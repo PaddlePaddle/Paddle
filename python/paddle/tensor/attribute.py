@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .tensor import Tensor
 
 # TODO: define functions to get tensor attributes
 
@@ -260,7 +254,7 @@ def is_integer(x):
     return is_int_dtype
 
 
-def real(x: Tensor, name: str = None) -> Tensor:
+def real(x, name=None):
     """
     Returns a new Tensor containing real values of the input Tensor.
 
@@ -307,7 +301,7 @@ def real(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def imag(x: Tensor, name: str = None) -> Tensor:
+def imag(x, name=None):
     """
     Returns a new tensor containing imaginary values of input tensor.
 

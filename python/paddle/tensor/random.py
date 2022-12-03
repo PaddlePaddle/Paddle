@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .tensor import Tensor
 
 # TODO: define random functions
 
@@ -46,7 +40,7 @@ from ..framework import (
 __all__ = []
 
 
-def bernoulli(x: Tensor, name: str = None) -> Tensor:
+def bernoulli(x, name=None):
     r"""
 
     For each element :math:`x_i` in input ``x``, take a sample from the Bernoulli distribution, also called two-point distribution, with success probability :math:`x_i`. The Bernoulli distribution with success probability :math:`x_i` is a discrete probability distribution with probability mass function
@@ -103,7 +97,7 @@ def bernoulli(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def poisson(x: Tensor, name: str = None) -> Tensor:
+def poisson(x, name=None):
     r"""
     Returns a tensor filled with random number from a Poisson Distribution.
 

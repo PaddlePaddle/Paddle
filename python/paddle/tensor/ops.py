@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .tensor import Tensor
 
 from .. import _C_ops, _legacy_C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
@@ -197,7 +191,7 @@ Examples:
 )
 
 
-def acos(x: Tensor, name: str = None) -> Tensor:
+def acos(x, name=None):
     """
     Acos Activation Operator.
 
@@ -234,7 +228,7 @@ def acos(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def acosh(x: Tensor, name: str = None) -> Tensor:
+def acosh(x, name=None):
     """
     Acosh Activation Operator.
 
@@ -271,7 +265,7 @@ def acosh(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def asin(x: Tensor, name: str = None) -> Tensor:
+def asin(x, name=None):
     """
     Arcsine Operator.
 
@@ -308,7 +302,7 @@ def asin(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def asinh(x: Tensor, name: str = None) -> Tensor:
+def asinh(x, name=None):
     """
     Asinh Activation Operator.
 
@@ -345,7 +339,7 @@ def asinh(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def atan(x: Tensor, name: str = None) -> Tensor:
+def atan(x, name=None):
     """
     Arctangent Operator.
 
@@ -382,7 +376,7 @@ def atan(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def atanh(x: Tensor, name: str = None) -> Tensor:
+def atanh(x, name=None):
     """
     Atanh Activation Operator.
 
@@ -419,7 +413,7 @@ def atanh(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def ceil(x: Tensor, name: str = None) -> Tensor:
+def ceil(x, name=None):
     """
 
     Ceil Operator. Computes ceil of x element-wise.
@@ -457,7 +451,7 @@ def ceil(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def cos(x: Tensor, name: str = None) -> Tensor:
+def cos(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
 
@@ -496,7 +490,7 @@ def cos(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def cosh(x: Tensor, name: str = None) -> Tensor:
+def cosh(x, name=None):
     """
     Cosh Activation Operator.
 
@@ -535,7 +529,7 @@ def cosh(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def exp(x: Tensor, name: str = None) -> Tensor:
+def exp(x, name=None):
     """
 
     Computes exp of x element-wise with a natural number `e` as the base.
@@ -586,7 +580,7 @@ def exp(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def expm1(x: Tensor, name: str = None) -> Tensor:
+def expm1(x, name=None):
     """
 
     Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
@@ -624,7 +618,7 @@ def expm1(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def floor(x: Tensor, name: str = None) -> Tensor:
+def floor(x, name=None):
     """
 
     Floor Activation Operator. Computes floor of x element-wise.
@@ -662,7 +656,7 @@ def floor(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def reciprocal(x: Tensor, name: str = None) -> Tensor:
+def reciprocal(x, name=None):
     """
 
     Reciprocal Activation Operator.
@@ -702,7 +696,7 @@ def reciprocal(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def round(x: Tensor, name: str = None) -> Tensor:
+def round(x, name=None):
     """
 
     Round the values in the input to the nearest integer value.
@@ -747,7 +741,7 @@ def round(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def rsqrt(x: Tensor, name: str = None) -> Tensor:
+def rsqrt(x, name=None):
     """
     Rsqrt Activation Operator.
 
@@ -786,7 +780,7 @@ def rsqrt(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def sigmoid(x: Tensor, name: str = None) -> Tensor:
+def sigmoid(x, name=None):
     """
     Sigmoid Activation.
 
@@ -826,7 +820,7 @@ def sigmoid(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def sin(x: Tensor, name: str = None) -> Tensor:
+def sin(x, name=None):
     """
     Sine Activation Operator.
 
@@ -863,7 +857,7 @@ def sin(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def sinh(x: Tensor, name: str = None) -> Tensor:
+def sinh(x, name=None):
     """
     Sinh Activation Operator.
 
@@ -900,7 +894,7 @@ def sinh(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def sqrt(x: Tensor, name: str = None) -> Tensor:
+def sqrt(x, name=None):
     """
     Sqrt Activation Operator.
 
@@ -936,7 +930,7 @@ def sqrt(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def square(x: Tensor, name: str = None) -> Tensor:
+def square(x, name=None):
     """
     Square each elements of the inputs.
 
@@ -985,7 +979,7 @@ def square(x: Tensor, name: str = None) -> Tensor:
     return out
 
 
-def tan(x: Tensor, name: str = None) -> Tensor:
+def tan(x, name=None):
     """
     Tangent Operator. Computes tangent of x element-wise.
 
@@ -1027,7 +1021,7 @@ def tan(x: Tensor, name: str = None) -> Tensor:
 _erf_ = generate_layer_fn('erf')
 
 
-def erf(x: Tensor, name: str = None) -> Tensor:
+def erf(x, name=None):
     if in_dygraph_mode():
         return _C_ops.erf(x)
 

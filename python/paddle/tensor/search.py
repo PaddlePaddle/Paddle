@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .tensor import Tensor
 
 # TODO: define searching & indexing functions of a tensor
 
@@ -605,9 +599,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
     return values, indices
 
 
-def where(
-    condition: Tensor, x: Tensor = None, y: Tensor = None, name: str = None
-) -> Tensor:
+def where(condition, x=None, y=None, name=None):
     r"""
     Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
 
@@ -819,7 +811,7 @@ def index_sample(x, index):
             return out
 
 
-def masked_select(x: Tensor, mask: Tensor, name: str = None) -> Tensor:
+def masked_select(x, mask, name=None):
     """
     Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
