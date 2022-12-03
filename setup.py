@@ -595,13 +595,13 @@ def cmake_run(args, build_path):
 
 def build_run(args, build_path, envrion_var):
     with cd(build_path):
-        cmake_args = []
-        cmake_args.append(CMAKE)
-        cmake_args += args
+        build_args = []
+        build_args.append(CMAKE)
+        build_args += args
         # cmake_args.append(TOP_DIR)
-        print(" ".join(cmake_args))
+        print(" ".join(build_args))
         try:
-            subprocess.check_call(cmake_args, cwd=build_path, env=envrion_var)
+            subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
             sys.exit(1)
 
@@ -1296,8 +1296,6 @@ def get_setup_parameters():
         'paddle.geometric.sampling',
     ]
 
-    # packages=find_packages('python',exclude=['tools'])
-    # get scripts
     paddle_bins = ''
     if not env_dict.get("WIN32"):
         paddle_bins = [
