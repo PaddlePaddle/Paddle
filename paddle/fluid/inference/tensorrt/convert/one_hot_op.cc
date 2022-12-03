@@ -42,6 +42,7 @@ class OneHotOpConverter : public OpConverter {
     const auto indices_tensor = engine_->GetITensor(op_desc.Input("X").front());
     const nvinfer1::ITensor* values_tensor;
     const nvinfer1::ITensor* depth_tensor;
+    const int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
     nvinfer1::Dims trt_values_tensor_shape;
     trt_values_tensor_shape.nbDims = 1;
@@ -67,8 +68,7 @@ class OneHotOpConverter : public OpConverter {
         length *= indices_dims.d[i];
       }
       const std::vector<int> depth_data(length, depth);
-      depth_tensor =
-          Add1DConstantLayer<int>(depth_data, indices_dims, "values_tensor");
+      depth_tensor = Add1DConstantLayer<int>(depth_data, "values_tensor");
     } else {
       depth_tensor = engine_->GetITensor(depth_name.front());
     }
