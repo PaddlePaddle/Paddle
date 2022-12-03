@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy as np
-
 import paddle
 from paddle import _C_ops
 
@@ -24,13 +22,16 @@ from ...framework import in_dygraph_mode
 __all__ = []
 
 
-def l2_norm(x, axis, epsilon=1e-12, name=None):
+def l2_norm(x, axis, epsilon=1e-12, name=None, squeezed=True):
     if len(x.shape) == 1:
         axis = 0
 
     if in_dygraph_mode():
         out, norm = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
-        return paddle.squeeze(norm, axis=[axis])
+        if squeezed:
+            return paddle.squeeze(norm, axis=[axis])
+        else:
+            return out
 
     check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")
 
@@ -46,7 +47,10 @@ def l2_norm(x, axis, epsilon=1e-12, name=None):
             "epsilon": epsilon,
         },
     )
-    return paddle.squeeze(norm, axis=[axis])
+    if squeezed:
+        return paddle.squeeze(norm, axis=[axis])
+    else:
+        return out
 
 
 def norm_except_dim(p, dim):
@@ -76,11 +80,11 @@ def _weight_norm(v, g, dim):
         v_normalized = v / (paddle.sqrt(paddle.sum(paddle.square(v))) + 1e-12)
     elif dim == 0:
         p_matrix = paddle.reshape(v, (shape[0], -1))
-        v_normalized = np.linalg.norm(p_matrix, axis=1)
+        v_normalized = l2_norm(p_matrix, axis=1, squeezed=False)
         v_normalized = paddle.reshape(v_normalized, shape)
     elif dim == ndims - 1:
         p_matrix = paddle.reshape(v, (-1, shape[-1]))
-        v_normalized = np.linalg.norm(p_matrix, axis=0)
+        v_normalized = l2_norm(p_matrix, axis=0, squeezed=False)
         v_normalized = paddle.reshape(v_normalized, shape)
     else:
         perm = list(range(ndims))
@@ -89,7 +93,7 @@ def _weight_norm(v, g, dim):
         p_transposed = paddle.transpose(v, perm)
         transposed_shape = p_transposed.shape
         p_matrix = paddle.reshape(p_transposed, (p_transposed.shape[0], -1))
-        v_normalized = np.linalg.norm(p_matrix, axis=1)
+        v_normalized = l2_norm(p_matrix, axis=1, squeezed=False)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
     weight = F.elementwise_mul(
