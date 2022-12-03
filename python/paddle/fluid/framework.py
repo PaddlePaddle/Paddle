@@ -1641,6 +1641,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1653,7 +1654,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
 
@@ -1688,6 +1689,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1699,7 +1701,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
                     loss2.clear_gradient()

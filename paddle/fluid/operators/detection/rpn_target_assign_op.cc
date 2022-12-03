@@ -22,7 +22,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -105,7 +104,9 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-void AppendRpns(LoDTensor* out, int64_t offset, phi::DenseTensor* to_add) {
+void AppendRpns(phi::DenseTensor* out,
+                int64_t offset,
+                phi::DenseTensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -395,15 +396,16 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* anchor = context.Input<phi::DenseTensor>("Anchor");  // (H*W*A) * 4
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* gt_boxes = context.Input<phi::DenseTensor>("GtBoxes");
+    auto* is_crowd = context.Input<phi::DenseTensor>("IsCrowd");
+    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
-    auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
-    auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
-    auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
+    auto* loc_index = context.Output<phi::DenseTensor>("LocationIndex");
+    auto* score_index = context.Output<phi::DenseTensor>("ScoreIndex");
+    auto* tgt_bbox = context.Output<phi::DenseTensor>("TargetBBox");
+    auto* tgt_lbl = context.Output<phi::DenseTensor>("TargetLabel");
+    auto* bbox_inside_weight =
+        context.Output<phi::DenseTensor>("BBoxInsideWeight");
 
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(),
                       1UL,
@@ -598,11 +600,11 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
     AddInput("GtBoxes",
-             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
+             "(phi::DenseTensor) input ground-truth bbox with shape [K, 4].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates ground-truth is crowd.");
+             "(phi::DenseTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
-             "(LoDTensor) input image information with shape [N, 3]. "
+             "(phi::DenseTensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
              "width and scale.");
     AddAttr<int>("rpn_batch_size_per_im",
@@ -685,13 +687,13 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Anchor",
              "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
     AddInput("GtBoxes",
-             "(LoDTensor) input ground-truth bbox with shape [K, 4].");
+             "(phi::DenseTensor) input ground-truth bbox with shape [K, 4].");
     AddInput("GtLabels",
-             "(LoDTensor) input ground-truth label with shape [K, 1].");
+             "(phi::DenseTensor) input ground-truth label with shape [K, 1].");
     AddInput("IsCrowd",
-             "(LoDTensor) input which indicates ground-truth is crowd.");
+             "(phi::DenseTensor) input which indicates ground-truth is crowd.");
     AddInput("ImInfo",
-             "(LoDTensor) input image information with shape [N, 3]. "
+             "(phi::DenseTensor) input image information with shape [N, 3]. "
              "N is the batch size, each image information includes height, "
              "width and scale.");
     AddAttr<float>(
@@ -994,17 +996,18 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* anchor = context.Input<phi::DenseTensor>("Anchor");  // (H*W*A) * 4
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* gt_labels = context.Input<LoDTensor>("GtLabels");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* gt_boxes = context.Input<phi::DenseTensor>("GtBoxes");
+    auto* gt_labels = context.Input<phi::DenseTensor>("GtLabels");
+    auto* is_crowd = context.Input<phi::DenseTensor>("IsCrowd");
+    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
-    auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
-    auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
-    auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
-    auto* fg_num = context.Output<LoDTensor>("ForegroundNumber");
+    auto* loc_index = context.Output<phi::DenseTensor>("LocationIndex");
+    auto* score_index = context.Output<phi::DenseTensor>("ScoreIndex");
+    auto* tgt_bbox = context.Output<phi::DenseTensor>("TargetBBox");
+    auto* tgt_lbl = context.Output<phi::DenseTensor>("TargetLabel");
+    auto* bbox_inside_weight =
+        context.Output<phi::DenseTensor>("BBoxInsideWeight");
+    auto* fg_num = context.Output<phi::DenseTensor>("ForegroundNumber");
 
     PADDLE_ENFORCE_EQ(
         gt_boxes->lod().size(),

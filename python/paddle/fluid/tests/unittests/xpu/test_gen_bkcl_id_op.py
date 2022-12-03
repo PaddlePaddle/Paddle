@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import sys
+import unittest
 
 sys.path.append("..")
-from launch_function_helper import wait, _find_free_port
 from multiprocessing import Process
+
+from launch_function_helper import _find_free_port, wait
 
 os.environ['GLOG_vmodule'] = str("gen_bkcl_id_op*=10,gen_comm_id*=10")
 

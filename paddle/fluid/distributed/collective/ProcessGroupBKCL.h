@@ -107,6 +107,12 @@ class ProcessGroupBKCL : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const ReduceOptions& opts,
+                                             bool sync_op,
+                                             bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 

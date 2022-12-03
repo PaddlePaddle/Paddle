@@ -110,10 +110,10 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         net = resnet_cifar10(images)
         logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits, label, return_softmax=False
         )
-        sum_cost = fluid.layers.reduce_sum(cost)
+        sum_cost = paddle.sum(cost)
 
         # Test program
         test_program = train_program.clone(for_test=True)

@@ -21,7 +21,7 @@ from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
-from .loss import softmax_with_cross_entropy
+from paddle.fluid.layers import softmax_with_cross_entropy
 from . import tensor
 from . import nn
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
@@ -48,7 +48,6 @@ __all__ = [
     'ssd_loss',
     'rpn_target_assign',
     'retinanet_target_assign',
-    'sigmoid_focal_loss',
     'anchor_generator',
     'roi_perspective_transform',
     'generate_proposal_labels',
@@ -524,152 +523,6 @@ def rpn_target_assign(
     )
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
-    r"""
-	:alias_main: paddle.nn.functional.sigmoid_focal_loss
-	:alias: paddle.nn.functional.sigmoid_focal_loss,paddle.nn.functional.loss.sigmoid_focal_loss
-	:old_api: paddle.fluid.layers.sigmoid_focal_loss
-
-    **Sigmoid Focal Loss Operator.**
-
-    `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is used to address the foreground-background
-    class imbalance existed on the training phase of many computer vision tasks. This OP computes
-    the sigmoid value for each element in the input tensor :attr:`x`, after which focal loss is
-    measured between the sigmoid value and target label.
-
-    The focal loss is given as followed:
-
-    .. math::
-
-        \\mathop{loss_{i,\\,j}}\\limits_{i\\in\\mathbb{[0,\\,N-1]},\\,j\\in\\mathbb{[0,\\,C-1]}}=\\left\\{
-        \\begin{array}{rcl}
-        - \\frac{1}{fg\_num} * \\alpha * {(1 - \\sigma(x_{i,\\,j}))}^{\\gamma} * \\log(\\sigma(x_{i,\\,j})) & & {(j +1) = label_{i,\\,0}} \\\\
-        - \\frac{1}{fg\_num} * (1 - \\alpha) * {\sigma(x_{i,\\,j})}^{ \\gamma} * \\log(1 - \\sigma(x_{i,\\,j})) & & {(j +1)!= label_{i,\\,0}}
-        \\end{array} \\right.
-
-
-    We know that
-
-    .. math::
-        \\sigma(x_j) = \\frac{1}{1 + \\exp(-x_j)}
-
-
-    Args:
-        x(Variable): A 2-D tensor with shape :math:`[N, C]` represents the predicted categories of
-            all samples. :math:`N` is the number of all samples responsible for optimization in
-            a mini-batch, for example, samples are anchor boxes for object detection and :math:`N`
-            is the total number of positive and negative samples in a mini-batch; Samples are images
-            for image classification and :math:`N` is the number of images in a mini-batch. :math:`C`
-            is the number of classes (**Notice: excluding background**). The data type of :attr:`x` is
-            float32 or float64.
-        label(Variable): A 2-D tensor with shape :math:`[N, 1]` represents the target labels for
-            classification. :math:`N` is the number of all samples responsible for optimization in a
-            mini-batch, each sample has one target category. The values for positive samples are in the
-            range of :math:`[1, C]`, and the values for negative samples are 0. The data type of :attr:`label`
-            is int32.
-        fg_num(Variable): A 1-D tensor with shape [1] represents the number of positive samples in a
-            mini-batch, which should be obtained before this OP. The data type of :attr:`fg_num` is int32.
-        gamma(int|float): Hyper-parameter to balance the easy and hard examples. Default value is
-            set to 2.0.
-        alpha(int|float): Hyper-parameter to balance the positive and negative example. Default value
-            is set to 0.25.
-
-    Returns:
-        Variable(the data type is float32 or float64):
-            A 2-D tensor with shape :math:`[N, C]`, which is the focal loss of each element in the input
-            tensor :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            import paddle.fluid as fluid
-
-            num_classes = 10  # exclude background
-            image_width = 16
-            image_height = 16
-            batch_size = 32
-            max_iter = 20
-
-
-            def gen_train_data():
-                x_data = np.random.uniform(0, 255, (batch_size, 3, image_height,
-                                                    image_width)).astype('float64')
-                label_data = np.random.randint(0, num_classes,
-                                               (batch_size, 1)).astype('int32')
-                return {"x": x_data, "label": label_data}
-
-
-            def get_focal_loss(pred, label, fg_num, num_classes):
-                pred = fluid.layers.reshape(pred, [-1, num_classes])
-                label = fluid.layers.reshape(label, [-1, 1])
-                label.stop_gradient = True
-                loss = fluid.layers.sigmoid_focal_loss(
-                    pred, label, fg_num, gamma=2.0, alpha=0.25)
-                loss = fluid.layers.reduce_sum(loss)
-                return loss
-
-
-            def build_model(mode='train'):
-                x = fluid.data(name="x", shape=[-1, 3, -1, -1], dtype='float64')
-                output = fluid.layers.pool2d(input=x, pool_type='avg', global_pooling=True)
-                output = fluid.layers.fc(
-                    input=output,
-                    size=num_classes,
-                    # Notice: size is set to be the number of target classes (excluding backgorund)
-                    # because sigmoid activation will be done in the sigmoid_focal_loss op.
-                    act=None)
-                if mode == 'train':
-                    label = fluid.data(name="label", shape=[-1, 1], dtype='int32')
-                    # Obtain the fg_num needed by the sigmoid_focal_loss op:
-                    # 0 in label represents background, >=1 in label represents foreground,
-                    # find the elements in label which are greater or equal than 1, then
-                    # computed the numbers of these elements.
-                    data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
-                    fg_label = fluid.layers.greater_equal(label, data)
-                    fg_label = fluid.layers.cast(fg_label, dtype='int32')
-                    fg_num = fluid.layers.reduce_sum(fg_label)
-                    fg_num.stop_gradient = True
-                    avg_loss = get_focal_loss(output, label, fg_num, num_classes)
-                    return avg_loss
-                else:
-                    # During evaluating or testing phase,
-                    # output of the final fc layer should be connected to a sigmoid layer.
-                    pred = fluid.layers.sigmoid(output)
-                    return pred
-
-
-            loss = build_model('train')
-            moment_optimizer = fluid.optimizer.MomentumOptimizer(
-                learning_rate=0.001, momentum=0.9)
-            moment_optimizer.minimize(loss)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            for i in range(max_iter):
-                outs = exe.run(feed=gen_train_data(), fetch_list=[loss.name])
-                print(outs)
-    """
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64'], 'sigmoid_focal_loss'
-    )
-    check_variable_and_dtype(label, 'label', ['int32'], 'sigmoid_focal_loss')
-    check_variable_and_dtype(fg_num, 'fg_num', ['int32'], 'sigmoid_focal_loss')
-
-    helper = LayerHelper("sigmoid_focal_loss", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="sigmoid_focal_loss",
-        inputs={"X": x, "Label": label, "FgNum": fg_num},
-        attrs={"gamma": gamma, 'alpha': alpha},
-        outputs={"Out": out},
-    )
-    return out
-
-
 def detection_output(
     loc,
     scores,
@@ -773,8 +626,8 @@ def detection_output(
         target_box=loc,
         code_type='decode_center_size',
     )
-    scores = nn.softmax(input=scores)
-    scores = nn.transpose(scores, perm=[0, 2, 1])
+    scores = paddle.nn.functional.softmax(scores)
+    scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype
@@ -1738,7 +1591,9 @@ def ssd_loss(
     conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
-        return nn.flatten(x=var, axis=2)
+        out = paddle.flatten(var, 2, -1)
+        out = paddle.flatten(out, 0, 1)
+        return out
 
     # 1. Find matched bounding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -1765,7 +1620,7 @@ def ssd_loss(
     target_label.stop_gradient = True
     conf_loss = softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
-    actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape = paddle.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
@@ -1847,9 +1702,9 @@ def ssd_loss(
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
     loss = paddle.reshape(x=loss, shape=actual_shape)
-    loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
+    loss = paddle.sum(loss, axis=1, keepdim=True)
     if normalize:
-        normalizer = nn.reduce_sum(target_loc_weight)
+        normalizer = paddle.sum(target_loc_weight)
         loss = loss / normalizer
 
     return loss
@@ -2334,8 +2189,15 @@ def multi_box_head(
     """
 
     def _reshape_with_axis_(input, axis=1):
-        out = nn.flatten(x=input, axis=axis)
-        return out
+        # Note : axis!=0 in current references to this func
+        # if axis == 0:
+        #     x = paddle.flatten(input, 0, -1)
+        #     x = paddle.unsqueeze(x, 0)
+        #     return x
+        # else:
+        x = paddle.flatten(input, axis, -1)
+        x = paddle.flatten(x, 0, axis - 1)
+        return x
 
     def _is_list_or_tuple_(data):
         return isinstance(data, list) or isinstance(data, tuple)
@@ -2443,8 +2305,8 @@ def multi_box_head(
             stride=stride,
         )
 
-        mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
+        mbox_loc = paddle.transpose(mbox_loc, perm=[0, 2, 3, 1])
+        mbox_loc_flatten = paddle.flatten(mbox_loc, 1, -1)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -2456,8 +2318,9 @@ def multi_box_head(
             padding=pad,
             stride=stride,
         )
-        conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        conf_loc_flatten = nn.flatten(conf_loc, axis=1)
+
+        conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
+        conf_loc_flatten = paddle.flatten(conf_loc, 1, -1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:

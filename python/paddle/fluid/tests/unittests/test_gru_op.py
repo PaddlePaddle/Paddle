@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import functools
+import unittest
+
+import numpy as np
 from op_test import OpTest
-from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
+
 from paddle import fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
 
 
 def gru(

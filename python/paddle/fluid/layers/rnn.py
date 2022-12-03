@@ -16,6 +16,7 @@ import sys
 from functools import partial, reduce
 import warnings
 
+
 import paddle
 from paddle.utils import deprecated
 from . import nn
@@ -563,7 +564,7 @@ def _maybe_copy(state, new_state, step_mask):
 
 def _transpose_batch_time(x):
     perm = [1, 0] + list(range(2, len(x.shape)))
-    return nn.transpose(x, perm)
+    return paddle.transpose(x, perm)
 
 
 def _rnn_dynamic_graph(
@@ -591,12 +592,12 @@ def _rnn_dynamic_graph(
         mask = sequence_lod.sequence_mask(
             sequence_length, maxlen=time_steps, dtype=inputs.dtype
         )
-        mask = nn.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     if is_reverse:
-        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
+        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
         mask = (
-            tensor.reverse(mask, axis=[0])
+            paddle.reverse(mask, axis=[0])
             if sequence_length is not None
             else None
         )
@@ -625,7 +626,7 @@ def _rnn_dynamic_graph(
 
     if is_reverse:
         final_outputs = map_structure(
-            lambda x: tensor.reverse(x, axis=time_step_index), final_outputs
+            lambda x: paddle.reverse(x, axis=time_step_index), final_outputs
         )
 
     final_states = new_states
@@ -678,10 +679,10 @@ def _rnn_static_graph(
             maxlen=max_seq_len,
             dtype=flatten(initial_states)[0].dtype,
         )
-        mask = nn.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
     if is_reverse:
-        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
-        mask = tensor.reverse(mask, axis=[0]) if sequence_length else None
+        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
+        mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
     # StaticRNN
     rnn = control_flow.StaticRNN()
@@ -710,7 +711,7 @@ def _rnn_static_graph(
 
     if is_reverse:
         final_outputs = map_structure(
-            lambda x: tensor.reverse(x, axis=[0]), final_outputs
+            lambda x: paddle.reverse(x, axis=[0]), final_outputs
         )
 
     if not time_major:
@@ -1032,14 +1033,14 @@ class BeamSearchDecoder(Decoder):
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
         x = paddle.tile(x, expand_times)  # [batch_size, beam_size, ...]
-        x = nn.transpose(
+        x = paddle.transpose(
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
         x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
-        x = nn.transpose(
+        x = paddle.transpose(
             x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
         )  # [batch_size * beam_size, ...]
         return x
@@ -1124,10 +1125,9 @@ class BeamSearchDecoder(Decoder):
         )
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
-        probs = nn.elementwise_mul(
+        probs = paddle.multiply(
             paddle.tile(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
             self.noend_mask_tensor,
-            axis=-1,
         ) - nn.elementwise_mul(probs, (finished - 1), axis=0)
         return probs
 
@@ -1166,7 +1166,7 @@ class BeamSearchDecoder(Decoder):
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
-        return nn.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     class OutputWrapper(
         collections.namedtuple(
@@ -1251,7 +1251,7 @@ class BeamSearchDecoder(Decoder):
             value=False,
             force_cpu=True,
         )
-        init_lengths = tensor.zeros_like(init_inputs)
+        init_lengths = paddle.zeros_like(init_inputs)
         init_inputs = (
             self.embedding_fn(init_inputs) if self.embedding_fn else init_inputs
         )
@@ -1304,7 +1304,7 @@ class BeamSearchDecoder(Decoder):
                 self.noend_mask_tensor, "float64"
             )
 
-        step_log_probs = nn.log(nn.softmax(logits))
+        step_log_probs = paddle.log(paddle.nn.functional.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
         log_probs = nn.elementwise_add(
             x=step_log_probs, y=beam_state.log_probs, axis=0
@@ -1334,9 +1334,9 @@ class BeamSearchDecoder(Decoder):
         next_lengths = next_lengths + tensor.cast(
             paddle.logical_not(next_finished), beam_state.lengths.dtype
         )
-        next_finished = control_flow.logical_or(
+        next_finished = paddle.logical_or(
             next_finished,
-            control_flow.equal(token_indices, self.end_token_tensor),
+            paddle.equal(token_indices, self.end_token_tensor),
         )
 
         beam_search_output = self.OutputWrapper(
@@ -1427,7 +1427,7 @@ class BeamSearchDecoder(Decoder):
                 `[time_step, batch_size, beam_size]`. `final_states` is the same \
                 as the input argument `final_states`.
         """
-        predicted_ids = nn.gather_tree(
+        predicted_ids = paddle.nn.functional.gather_tree(
             outputs.predicted_ids, outputs.parent_ids
         )
         # TODO: use FinalBeamSearchDecoderOutput as output
@@ -1481,8 +1481,8 @@ def _dynamic_decode_imperative(
         initial_states,
         initial_finished,
     )
-    cond = paddle.logical_not((nn.reduce_all(initial_finished)))
-    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    cond = paddle.logical_not((paddle.all(initial_finished)))
+    sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     outputs = None
 
     step_idx = 0
@@ -1498,11 +1498,11 @@ def _dynamic_decode_imperative(
             # beams would be reordered and the finished status of each
             # entry might change. Otherwise, perform logical OR which
             # would not change the already finished.
-            next_finished = control_flow.logical_or(next_finished, finished)
+            next_finished = paddle.logical_or(next_finished, finished)
             # To confirm states.finished/finished be consistent with
             # next_finished.
             tensor.assign(next_finished, finished)
-            next_sequence_lengths = nn.elementwise_add(
+            next_sequence_lengths = paddle.add(
                 sequence_lengths,
                 tensor.cast(
                     paddle.logical_not(finished), sequence_lengths.dtype
@@ -1539,7 +1539,7 @@ def _dynamic_decode_imperative(
         control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
         step_idx += 1
 
-        cond = paddle.logical_not(nn.reduce_all(finished))
+        cond = paddle.logical_not(paddle.all(finished))
         if max_step_num is not None and step_idx > max_step_num:
             break
 
@@ -1557,7 +1557,9 @@ def _dynamic_decode_imperative(
 
     if not output_time_major:
         final_outputs = map_structure(
-            lambda x: nn.transpose(x, [1, 0] + list(range(2, len(x.shape)))),
+            lambda x: paddle.transpose(
+                x, [1, 0] + list(range(2, len(x.shape)))
+            ),
             final_outputs,
         )
 
@@ -1587,14 +1589,14 @@ def _dynamic_decode_declarative(
     global_finished.stop_gradient = True
     step_idx = tensor.fill_constant(shape=[1], dtype="int64", value=0)
 
-    cond = paddle.logical_not((nn.reduce_all(initial_finished)))
+    cond = paddle.logical_not((paddle.all(initial_finished)))
     if max_step_num is not None:
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num
         )
     while_op = control_flow.While(cond, is_test=is_test)
 
-    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     sequence_lengths.stop_gradient = True
 
     if is_test:
@@ -1629,14 +1631,14 @@ def _dynamic_decode_declarative(
         return new_state
 
     def _transpose_batch_time(x):
-        return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        return paddle.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _create_array_out_of_while(dtype):
         current_block_idx = default_main_program().current_block_idx
         default_main_program().current_block_idx = (
             default_main_program().current_block().parent_idx
         )
-        tensor_array = control_flow.create_array(dtype)
+        tensor_array = paddle.tensor.create_array(dtype)
         default_main_program().current_block_idx = current_block_idx
         return tensor_array
 
@@ -1659,10 +1661,8 @@ def _dynamic_decode_declarative(
             # be reordered and the finished status of each entry might change.
             # Otherwise, perform logical OR which would not change the already
             # finished.
-            next_finished = control_flow.logical_or(
-                next_finished, global_finished
-            )
-            next_sequence_lengths = nn.elementwise_add(
+            next_finished = paddle.logical_or(next_finished, global_finished)
+            next_sequence_lengths = paddle.add(
                 sequence_lengths,
                 tensor.cast(
                     paddle.logical_not(global_finished),
@@ -1719,13 +1719,13 @@ def _dynamic_decode_declarative(
                 states_arrays,
             )
         if max_step_num is not None:
-            control_flow.logical_and(
-                paddle.logical_not(nn.reduce_all(global_finished)),
-                control_flow.less_equal(step_idx, max_step_num),
+            paddle.logical_and(
+                paddle.logical_not(paddle.all(global_finished)),
+                paddle.less_equal(step_idx, max_step_num),
                 cond,
             )
         else:
-            paddle.logical_not(nn.reduce_all(global_finished), cond)
+            paddle.logical_not(paddle.all(global_finished), cond)
 
     final_outputs = map_structure(
         lambda array: tensor.tensor_array_to_tensor(
@@ -1988,9 +1988,9 @@ class TrainingHelper(DecodeHelper):
         # extend inputs to avoid to slice out of range in `next_inputs`
         # may be easier and have better performance than condition_op
         self.inputs_ = map_structure(
-            lambda x: nn.pad(
+            lambda x: paddle.nn.functional.pad(
                 x,
-                paddings=([0, 1] + [0, 0] * (len(x.shape) - 1))
+                pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
                 if time_major
                 else ([0, 0, 0, 1] + [0, 0] * (len(x.shape) - 2)),
             ),
@@ -2010,7 +2010,7 @@ class TrainingHelper(DecodeHelper):
                 variable[s], and the tensor's shape is `[batch_size, ...]`. \
                 `initial_finished` is a bool tensor with shape `[batch_size]`.
         """
-        init_finished = control_flow.equal(
+        init_finished = paddle.equal(
             self.sequence_length,
             tensor.fill_constant(
                 shape=[1], dtype=self.sequence_length.dtype, value=0
@@ -2081,15 +2081,15 @@ class TrainingHelper(DecodeHelper):
         if self.sequence_length.dtype != time.dtype:
             self.sequence_length = tensor.cast(self.sequence_length, time.dtype)
         next_time = time + 1
-        finished = control_flow.less_equal(self.sequence_length, next_time)
+        finished = paddle.less_equal(self.sequence_length, next_time)
 
         def _slice(x):  # TODO: use Variable.__getitem__
             axes = [0 if self.time_major else 1]
-            return nn.squeeze(
-                nn.slice(
+            return paddle.squeeze(
+                paddle.slice(
                     x, axes=axes, starts=[next_time], ends=[next_time + 1]
                 ),
-                axes=axes,
+                axis=axes,
             )
 
         next_inputs = map_structure(_slice, self.inputs_)
@@ -2224,7 +2224,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
                 argument `states`. `finished` is a `bool` Tensor with \
                 shape `[batch_size]`.
         """
-        finished = control_flow.equal(sample_ids, self.end_token)
+        finished = paddle.equal(sample_ids, self.end_token)
         next_inputs = self.embedding_fn(sample_ids)
         return finished, next_inputs, states
 
@@ -2328,7 +2328,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
             if self.softmax_temperature is not None
             else outputs
         )
-        probs = nn.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
         # not pass to probs, since sampling_id op does not have corresponding
         # grad op and thus can not pass.
@@ -3527,8 +3527,8 @@ def beam_search(
                 name='probs', shape=[None, 10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
-                x=fluid.layers.log(x=topk_scores),
-                y=fluid.layers.reshape(pre_scores, shape=[-1]),
+                x=paddle.log(x=topk_scores),
+                y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0)
             selected_ids, selected_scores = fluid.layers.beam_search(
                 pre_ids=pre_ids,
