@@ -466,7 +466,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdFilterAlgo_t algo) {
-    paddle::platform::CUDAGraphCaptureModeGuard guard;
+    phi::backends::gpu::CUDAGraphCaptureModeGuard guard;
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(

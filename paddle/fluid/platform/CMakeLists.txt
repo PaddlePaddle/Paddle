@@ -85,7 +85,7 @@ if(WITH_GPU)
   nv_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator cuda_graph)
+    DEPS device_context allocator phi_backends)
 else()
   cc_library(
     cuda_graph_with_memory_pool
