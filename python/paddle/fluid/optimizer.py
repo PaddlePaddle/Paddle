@@ -1642,6 +1642,7 @@ class MomentumOptimizer(Optimizer):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            paddle.enable_static()
 
             place = fluid.CPUPlace()
             main = fluid.Program()
