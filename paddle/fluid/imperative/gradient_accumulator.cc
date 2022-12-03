@@ -155,7 +155,7 @@ TType* GetEmptyInnerTensor(paddle::experimental::Tensor* dst) {
       dst->defined(),
       false,
       platform::errors::Fatal(
-          "The underlying Tensor implementation should be nullptr"));
+          "The underlying phi::DenseTensor implementation should be nullptr"));
   dst->set_impl(std::make_shared<TType>());
   auto* dst_tensor = static_cast<TType*>(dst->impl().get());
   return dst_tensor;
@@ -634,25 +634,26 @@ void GradientAccumulator::AccumulateGrad() {
 }
 
 void GradientAccumulator::CallGradientHooks() {
-  PADDLE_ENFORCE_EQ(var_->IsLeafGrad(),
-                    true,
-                    platform::errors::Unavailable(
-                        "Only leaf gradient Tensor can deal with by gradient "
-                        "hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(
+      var_->IsLeafGrad(),
+      true,
+      platform::errors::Unavailable(
+          "Only leaf gradient phi::DenseTensor can deal with by gradient "
+          "hook in gradient accumulator."));
   PADDLE_ENFORCE_EQ(
       SumGradCompleted(),
       true,
       platform::errors::PreconditionNotMet(
           "Only can call gradient hooks after sum gradient completed."));
-  PADDLE_ENFORCE_EQ(
-      HasInnerVar(),
-      true,
-      platform::errors::PreconditionNotMet(
-          "Leaf Tensor's inner var is nullptr when call gradient hook."));
+  PADDLE_ENFORCE_EQ(HasInnerVar(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "Leaf phi::DenseTensor's inner var is nullptr when "
+                        "call gradient hook."));
   PADDLE_ENFORCE_EQ(
       inner_var_->Var().IsInitialized(),
       true,
-      platform::errors::PreconditionNotMet("Leaf Tensor's inner var "
+      platform::errors::PreconditionNotMet("Leaf phi::DenseTensor's inner var "
                                            "is not initialized when "
                                            "call gradient hook."));
   if (var_->HasVariableWrapperHook()) {
@@ -671,11 +672,11 @@ void GradientAccumulator::CallGradientHooks() {
 }
 
 void GradientAccumulator::CallReduceHooks() {
-  PADDLE_ENFORCE_EQ(
-      var_->IsLeafGrad(),
-      true,
-      platform::errors::Unavailable("Only leaf gradient Tensor can deal with "
-                                    "by reduce hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(var_->IsLeafGrad(),
+                    true,
+                    platform::errors::Unavailable(
+                        "Only leaf gradient phi::DenseTensor can deal with "
+                        "by reduce hook in gradient accumulator."));
   PADDLE_ENFORCE_EQ(SumGradCompleted(),
                     true,
                     platform::errors::PreconditionNotMet(

@@ -26,8 +26,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 inline int Im2SeqOutputSize(
     int input_size, int filter_size, int padding_0, int padding_1, int stride) {
   const int output_size =
@@ -52,7 +50,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Y") && batch_size > 1) {
       const phi::DenseTensor* imgrealsize = ctx.Input<phi::DenseTensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
-      Tensor cpu_shape_tensor;
+      phi::DenseTensor cpu_shape_tensor;
       paddle::framework::TensorCopySync(
           *imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> imgreal_h;
@@ -89,15 +87,16 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       const std::vector<int> dilations({1, 1});
       int offset_out = 0;
       for (int i = 0; i < batch_size; i++) {
-        const Tensor src =
+        const phi::DenseTensor src =
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-        Tensor dst = out->Slice(offset_out,
-                                offset_out + output_height[i] * output_width[i])
-                         .Resize({output_height[i],
-                                  output_width[i],
-                                  img_channels,
-                                  kernels[0],
-                                  kernels[1]});
+        phi::DenseTensor dst =
+            out->Slice(offset_out,
+                       offset_out + output_height[i] * output_width[i])
+                .Resize({output_height[i],
+                         output_width[i],
+                         img_channels,
+                         kernels[0],
+                         kernels[1]});
         offset_out += output_height[i] * output_width[i];
 
         phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
@@ -127,13 +126,13 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       auto out_dims = out->dims();
       out->Resize({batch_size, out->numel() / batch_size});
       for (int i = 0; i < batch_size; i++) {
-        const Tensor src =
+        const phi::DenseTensor src =
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-        Tensor dst = out->Slice(i, i + 1).Resize({output_height,
-                                                  output_width,
-                                                  img_channels,
-                                                  kernels[0],
-                                                  kernels[1]});
+        phi::DenseTensor dst = out->Slice(i, i + 1).Resize({output_height,
+                                                            output_width,
+                                                            img_channels,
+                                                            kernels[0],
+                                                            kernels[1]});
 
         phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
             f;
@@ -187,9 +186,9 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     auto d_out_dims = d_out->dims();
     d_out->Resize({batch_size, d_out->numel() / batch_size});
     for (int i = 0; i < batch_size; i++) {
-      Tensor dst =
+      phi::DenseTensor dst =
           d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-      const Tensor src = d_out->Slice(i, i + 1).Resize(
+      const phi::DenseTensor src = d_out->Slice(i, i + 1).Resize(
           {output_height, output_width, img_channels, kernels[0], kernels[1]});
       phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
           f;

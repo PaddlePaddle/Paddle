@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 #if CUDNN_VERSION >= 7100
-using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
