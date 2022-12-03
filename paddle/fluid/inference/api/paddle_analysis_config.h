@@ -576,6 +576,20 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
   ///
+  /// \brief Turn on the TensorRT memory optimization.
+  ///
+  /// \param engine_memory_sharing Whether to enable TensorRT memory
+  /// optimization.
+  /// \param sharing_identifier This parameter can be set if TensorRT memory
+  /// optimization is enabled, and the value must be greater than 0. If you have
+  /// multiple predictors that want to share memory, you can specify a
+  /// same value for these predictors. NOTE: The predictors specified with the
+  /// same value must be guaranteed to be executed serially, otherwise undefined
+  /// behavior will occur.
+  ///
+  void EnableTensorRTMemoryOptim(bool engine_memory_sharing = true,
+                                 int sharing_identifier = 0);
+  ///
   /// \brief A boolean state telling whether the tensorrt engine memory sharing
   /// is activated.
   ///
@@ -1093,6 +1107,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool trt_engine_memory_sharing_{false};
+  int trt_engine_memory_sharing_identifier_{0};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
