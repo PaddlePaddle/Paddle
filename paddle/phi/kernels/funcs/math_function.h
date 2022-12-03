@@ -29,6 +29,12 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+template <typename T>
+void nchw2nhwc(const T* input, T* output, int n, int c, int hw);
+
+template <typename T>
+void nhwc2nchw(const T* input, T* output, int batch, int c, int hw);
+
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation

@@ -70,6 +70,24 @@ void TransferLayoutGeneral(const Context& dev_ctx,
   out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 
+  if (src_layout == DataLayout::NCHW && dst_layout == DataLayout::NHWC) {
+    funcs::nchw2nhwc(
+        reinterpret_cast<const half*>(x.data<phi::dtype::float16>()),
+        reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+        src_dim[0],
+        src_dim[1],
+        src_dim[2] * src_dim[3]);
+    return;
+  } else if (src_layout == DataLayout::NHWC && dst_layout == DataLayout::NCHW) {
+    funcs::nhwc2nchw(
+        reinterpret_cast<const half*>(x.data<phi::dtype::float16>()),
+        reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+        src_dim[0],
+        src_dim[3],
+        src_dim[1] * src_dim[2]);
+    return;
+  }
+
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
