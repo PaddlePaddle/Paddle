@@ -1,3 +1,4 @@
+# test
 #!/usr/bin/env bash
 
 # Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
