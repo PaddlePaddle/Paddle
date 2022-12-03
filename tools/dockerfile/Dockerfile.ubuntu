@@ -67,50 +67,40 @@ ENV PATH=/usr/local/python3.7.0/include:${PATH}
 ENV PATH=/usr/local/python3.7.0/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/python3.7.0/lib:${LD_LIBRARY_PATH}
 ENV CPLUS_INCLUDE_PATH=/usr/local/python3.7.0/include/python3.7:$CPLUS_INCLUDE_PATH
-RUN ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python3 && ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/bin/python3
+RUN ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python3 && \
+    ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/bin/python3 && \
+    ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python && \
+    ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/bin/python
 
 RUN rm -rf /root/python_build
 
-# Install Python2.7.15 to replace original python
-WORKDIR /home
-ENV version=2.7.15
-RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz && tar -xvf Python-$version.tgz
-WORKDIR /home/Python-$version
-RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15 && make && make install
-
-RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc && echo "export PATH=/usr/local/python2.7.15/bin:${PATH}" >> ~/.bashrc && echo "export LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}" >> ~/.bashrc && echo "export CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH" >> ~/.bashrc
-ENV PATH=/usr/local/python2.7.15/include:${PATH}
-ENV PATH=/usr/local/python2.7.15/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}
-ENV CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH
-RUN mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/local/python2.7.15/bin/python2.7 /usr/local/bin/python && ln -s /usr/local/python2.7.15/bin/python2.7 /usr/bin/python
-
-WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e442e80deffbb8d0676b93261d761b1f0ef8fb/setuptools-40.6.2.zip && apt-get -y install unzip && unzip setuptools-40.6.2.zip
-WORKDIR /home/setuptools-40.6.2
-RUN python setup.py build && python setup.py install
+# Replace pip and setuptools with updated version
 WORKDIR /home
 RUN python3.9 -m pip uninstall -y pip setuptools && \
-  python3.8 -m pip uninstall -y pip setuptools && \
-  python3.7 -m pip uninstall -y pip setuptools
+    python3.8 -m pip uninstall -y pip setuptools && \
+    python3.7 -m pip uninstall -y pip setuptools
 
-RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
-WORKDIR /home/setuptools-50.3.2
+RUN wget https://files.pythonhosted.org/packages/b6/21/cb9a8d0b2c8597c83fce8e9c02884bce3d4951e41e807fc35791c6b23d9a/setuptools-65.6.3.tar.gz && apt-get -y install unzip && unzip setuptools-65.6.3.zip
+WORKDIR /home/setuptools-65.6.3
 RUN python3.9 setup.py build && python3.9 setup.py install && \
-  python3.8 setup.py build && python3.8 setup.py install && \
-  python3.7 setup.py build && python3.7 setup.py install
+    python3.8 setup.py build && python3.8 setup.py install && \
+    python3.7 setup.py build && python3.7 setup.py install
 
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
-WORKDIR pip-20.0.1
+RUN wget https://files.pythonhosted.org/packages/a3/50/c4d2727b99052780aad92c7297465af5fe6eec2dbae490aa9763273ffdc1/pip-22.3.1.tar.gz && tar -zxvf pip-22.3.1.tar.gz
+WORKDIR pip-22.3.1
 RUN python setup.py install && \
-  python3.9 setup.py install && \
-  python3.8 setup.py install && \
-  python3.7 setup.py install
+    python3.9 setup.py install && \
+    python3.8 setup.py install && \
+    python3.7 setup.py install && \
+    rm /usr/local/bin/pip && \
+    ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip && \
+    rm /usr/local/bin/pip3 && \
+    ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
 
 WORKDIR /home
-RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
-    rm -r Python-$version setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
+RUN rm setuptools-65.6.3.zip pip-22.3.1.tar.gz && \
+    rm -r setuptools-65.6.3 pip-22.3.1
 
 # Install Go and glide
 WORKDIR /home
