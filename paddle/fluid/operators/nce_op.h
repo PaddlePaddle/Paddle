@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/operators/math/sampler.h"
-#include "unsupported/Eigen/CXX11/phi::DenseTensor"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace operators {
