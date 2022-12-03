@@ -27,6 +27,86 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+// The following part of the code refers to NVIDIA-cutlass
+// https://github.com/NVIDIA/cutlass/blob/master/tools/util/include/cutlass/util/device_nchw_to_nhwc.h
+template <typename T>
+__global__ void rowmajor_to_colmajor_kernel(
+    T* output, const T* input, const int n, const int hw, const int c) {
+  const int chw = c * hw;
+  __shared__ T shbuf[32 * (32 + 1)];
+  const int32_t tid = threadIdx.y * blockDim.x + threadIdx.x;
+  const int32_t wid = tid / 32;
+  const int32_t lid = tid % 32;
+  const int32_t ni = blockIdx.z;
+  const int32_t ci0 = blockIdx.y * 32;
+  const int32_t hwi0 = blockIdx.x * 32;
+
+  const size_t input_idx = ni * chw + (ci0 + wid) * hw + hwi0;
+  const T* A = input + input_idx;
+  if (hwi0 + lid < hw) {
+    const int lid_x_33 = lid * 33;
+    if ((ci0 + 32) <= c) {
+      int ci = wid;  // between 0 and 7
+      for (int cLoopIdx = 0; cLoopIdx < 4; cLoopIdx++) {
+        shbuf[lid_x_33 + ci] = A[lid];
+        A = &A[8 * hw];
+        ci += 8;
+      }
+    } else {
+      for (int ci = wid; ci < 32; ci += 8) {
+        if ((ci + ci0) < c) {
+          shbuf[lid_x_33 + ci] = A[lid];
+        }
+        A = &A[8 * hw];
+      }
+    }
+  }
+  __syncthreads();
+
+  const int32_t ciOut = ci0 + lid;
+  output = &output[ni * chw + ciOut];
+  if (ciOut < c) {
+    if (hwi0 + 32 < hw) {
+      int hwI = wid;
+      for (int hwLoopIdx = 0; hwLoopIdx < 4; ++hwLoopIdx) {
+        output[(hwi0 + hwI) * c] = shbuf[(hwI)*33 + lid];
+        hwI += 8;
+      }
+    } else {
+      for (int hwI = wid; hwI < 32; hwI += 8) {
+        if (hwi0 + hwI < hw) {
+          output[(hwi0 + hwI) * c] = shbuf[(hwI)*33 + lid];
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+void nchw2nhwc(const T* input, T* output, int n, int c, int hw) {
+  dim3 grid((hw + 31) / 32, (c + 31) / 32, n);
+  dim3 block(32, 8);
+  rowmajor_to_colmajor_kernel<<<grid, block>>>(output, input, n, hw, c);
+}
+
+template <typename T>
+void nhwc2nchw(const T* input, T* output, int n, int c, int hw) {
+  dim3 grid((c + 31) / 32, (hw + 31) / 32, n);
+  dim3 block(32, 8);
+  rowmajor_to_colmajor_kernel<<<grid, block>>>(output, input, n, c, hw);
+}
+
+template void nhwc2nchw(const phi::dtype::float16* input,
+                        phi::dtype::float16* output,
+                        int n,
+                        int c,
+                        int hw);
+template void nchw2nhwc(const phi::dtype::float16* input,
+                        phi::dtype::float16* output,
+                        int n,
+                        int c,
+                        int hw);
+
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 

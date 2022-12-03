@@ -70,6 +70,33 @@ void TransferLayoutGeneral(const Context& dev_ctx,
   out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 
+  std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
+  std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+  if (std::is_same<Context, phi::GPUContext>::value &&
+      x.dtype() == phi::DataType::FLOAT16) {
+    if (axis == axis_nchw_nhwc) {
+      funcs::nchw2nhwc(reinterpret_cast<const phi::dtype::float16*>(
+                           x.data<phi::dtype::float16>()),
+                       reinterpret_cast<phi::dtype::float16*>(
+                           out->data<phi::dtype::float16>()),
+                       src_dim[0],
+                       src_dim[1],
+                       src_dim[2],
+                       src_dim[3]);
+      return;
+    } else if (axis == axis_nhwc_nchw) {
+      funcs::nhwc2nchw(reinterpret_cast<const phi::dtype::float16*>(
+                           x.data<phi::dtype::float16>()),
+                       reinterpret_cast<phi::dtype::float16*>(
+                           out->data<phi::dtype::float16>()),
+                       src_dim[0],
+                       src_dim[3],
+                       src_dim[1],
+                       src_dim[2]);
+      return;
+    }
+  }
+
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
