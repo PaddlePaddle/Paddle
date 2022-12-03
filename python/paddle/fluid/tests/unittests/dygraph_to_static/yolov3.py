@@ -15,15 +15,13 @@
 import os
 import sys
 
-import paddle
+from darknet import ConvBNLayer, DarkNet53_conv_body
 
+import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from darknet import DarkNet53_conv_body
-from darknet import ConvBNLayer
+from paddle.jit.api import declarative
 
 
 class AttrDict(dict):
@@ -327,7 +325,7 @@ class YOLOv3(fluid.dygraph.Layer):
                     downsample_ratio=self.downsample,
                     use_label_smooth=cfg.label_smooth,
                 )
-                self.losses.append(fluid.layers.reduce_mean(loss))
+                self.losses.append(paddle.mean(loss))
 
             else:
                 mask_anchors = []

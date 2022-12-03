@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.vision.models import resnet50, resnet101
 
 
 def _dygraph_guard_(func):
@@ -320,7 +322,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y1 + y2
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y1, z, w
 
         (dx_actual,) = self.grad(
@@ -438,7 +440,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y + 1
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=True)
@@ -452,7 +454,7 @@ class TestDygraphDoubleGrad(TestCase):
         ).astype('float32')
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss = paddle.mean(dx_actual * dx_actual + x * x)
         loss.backward(retain_graph=True)
 
         x_grad_actual = x.gradient()
@@ -492,7 +494,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y1 + y2
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y1, z, w
 
         (dx_actual,) = self.grad(
@@ -515,7 +517,7 @@ class TestDygraphDoubleGrad(TestCase):
         ).astype('float32')
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss = paddle.mean(dx_actual * dx_actual + x * x)
         loss.backward()
 
         x_grad_actual = x.gradient()
@@ -542,7 +544,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y + 1
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=False)
@@ -556,7 +558,7 @@ class TestDygraphDoubleGrad(TestCase):
 
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss = paddle.mean(dx_actual * dx_actual + x * x)
         loss.backward()
 
         x_grad_actual = x.gradient()
@@ -584,7 +586,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         )
 
         def model_f(input):
-            linear = fluid.dygraph.Linear(5, 3, bias_attr=False)
+            linear = paddle.nn.Linear(5, 3)
             for i in range(10):
                 if i == 0:
                     out = linear(input)
@@ -634,7 +636,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 class TestRaiseNoDoubleGradOp(TestCase):
     def raise_no_grad_op(self):
         with fluid.dygraph.guard():
-            x = fluid.layers.ones(shape=[2, 3, 2, 2], dtype='float32')
+            x = paddle.ones(shape=[2, 3, 2, 2], dtype='float32')
             x.stop_gradient = False
             y = paddle.static.nn.group_norm(x, groups=1)
 
@@ -642,7 +644,7 @@ class TestRaiseNoDoubleGradOp(TestCase):
                 outputs=[y], inputs=[x], create_graph=True, retain_graph=True
             )[0]
 
-            loss = fluid.layers.reduce_mean(dx)
+            loss = paddle.mean(dx)
             loss.backward()
 
     def test_raise(self):

@@ -1956,7 +1956,7 @@ class AddQuantDequantPass:
                         graph.update_input_link(
                             in_node, quant_var_node, op_node
                         )
-            t.update()
+                t.update()
 
         # Backward stage, update input link
         for op_node in all_op_nodes:

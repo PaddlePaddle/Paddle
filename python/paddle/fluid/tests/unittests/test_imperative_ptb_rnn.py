@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit import TracedLayer
-from test_imperative_base import new_program_scope
-import numpy as np
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -109,7 +111,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 nn = fluid.layers.concat([self._input, pre_hidden], 1)
                 gate_input = fluid.layers.matmul(x=nn, y=weight_1)
 
-                gate_input = fluid.layers.elementwise_add(gate_input, bias)
+                gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = fluid.layers.split(
                     gate_input, num_or_sections=4, dim=-1
                 )
@@ -224,13 +226,13 @@ class PtbModel(fluid.Layer):
             rnn_out, shape=[-1, self.num_steps, self.hidden_size]
         )
         projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
+        projection = paddle.add(projection, self.softmax_bias)
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell

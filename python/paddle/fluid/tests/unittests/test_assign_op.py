@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
-import numpy as np
 import unittest
+
+import gradient_checker
+import numpy as np
+import op_test
+from decorator_helper import prog_scope
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
-import paddle.fluid.framework as framework
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
 
 
 class TestAssignOp(op_test.OpTest):
@@ -88,7 +90,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             y = fluid.layers.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
             )
-            z = fluid.layers.elementwise_add(x=x, y=y)
+            z = paddle.add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = fluid.layers.array_write(x=z, i=i)
             array = fluid.layers.assign(init_array)
@@ -142,7 +144,7 @@ class TestAssignOApi(unittest.TestCase):
             y = fluid.layers.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
             )
-            z = fluid.layers.elementwise_add(x=x, y=y)
+            z = paddle.add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = fluid.layers.array_write(x=z, i=i)
             array = paddle.assign(init_array)

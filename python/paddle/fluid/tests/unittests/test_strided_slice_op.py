@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_test import OpTest
-import numpy as np
 import unittest
-import paddle.fluid as fluid
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

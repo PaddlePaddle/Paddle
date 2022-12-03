@@ -16,21 +16,22 @@ import os
 import tempfile
 import unittest
 
+import numpy
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
-import paddle.fluid.core as core
-import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import (
     Program,
-    program_guard,
+    _test_eager_guard,
     convert_np_dtype_to_dtype_,
+    program_guard,
 )
-from paddle.fluid.framework import _test_eager_guard
-import paddle
 from paddle.io import Dataset
-import numpy
 
 
 class TestOptimizer(unittest.TestCase):
@@ -1168,7 +1169,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 input=[drop_res], size=2, act='softmax'
             )
             cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-            sum_cost = fluid.layers.reduce_mean(cost)
+            sum_cost = paddle.mean(cost)
             return drop_res, prediction, sum_cost
 
         main_program = Program()
@@ -1225,7 +1226,7 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
                 input=[drop_res], size=2, act='softmax'
             )
             cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-            sum_cost = fluid.layers.reduce_mean(cost)
+            sum_cost = paddle.mean(cost)
             return drop_res, prediction, sum_cost
 
         main_program = Program()

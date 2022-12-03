@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import copy
+import unittest
+
+import numpy as np
+
 import paddle
+import paddle.fluid.core as core
+import paddle.fluid.io as io
 from paddle.fluid.dygraph import guard
+from paddle.fluid.executor import Executor
 from paddle.fluid.framework import (
-    default_main_program,
+    ParamBase,
     Variable,
     _test_eager_guard,
-    ParamBase,
+    default_main_program,
 )
-import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
-import paddle.fluid.io as io
 from paddle.fluid.initializer import ConstantInitializer
-import numpy as np
 
 paddle.enable_static()
 main_program = default_main_program()
