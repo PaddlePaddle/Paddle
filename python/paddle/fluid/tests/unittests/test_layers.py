@@ -2752,7 +2752,7 @@ class TestLayer(LayerTest):
             data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
-            predict = fluid.layers.softmax(input=fc_out)
+            predict = paddle.nn.functional.softmax(fc_out)
             result = paddle.static.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -2768,7 +2768,7 @@ class TestLayer(LayerTest):
             data = base.to_variable(x)
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)
-            predict = fluid.layers.softmax(fc_out)
+            predict = paddle.nn.functional.softmax(fc_out)
             dynamic_out = paddle.static.accuracy(
                 input=predict, label=label, k=5
             )
@@ -3060,7 +3060,7 @@ class TestBook(LayerTest):
         ):
             data = self._get_data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            return layers.softmax(hid, axis=1)
+            return paddle.nn.functional.softmax(hid, axis=1)
 
     @prog_scope()
     def make_nce(self):

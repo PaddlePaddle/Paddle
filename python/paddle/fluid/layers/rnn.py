@@ -1304,7 +1304,7 @@ class BeamSearchDecoder(Decoder):
                 self.noend_mask_tensor, "float64"
             )
 
-        step_log_probs = paddle.log(nn.softmax(logits))
+        step_log_probs = paddle.log(paddle.nn.functional.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
         log_probs = nn.elementwise_add(
             x=step_log_probs, y=beam_state.log_probs, axis=0
@@ -2330,7 +2330,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
             if self.softmax_temperature is not None
             else outputs
         )
-        probs = nn.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
         # not pass to probs, since sampling_id op does not have corresponding
         # grad op and thus can not pass.

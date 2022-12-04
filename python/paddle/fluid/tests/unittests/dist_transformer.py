@@ -1177,7 +1177,7 @@ def multi_head_attention(
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
             weights = layers.dropout(
                 weights,
@@ -1715,7 +1715,7 @@ def wrap_decoder(
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
-        predict = layers.softmax(predict)
+        predict = paddle.nn.functional.softmax(predict)
     return predict
 
 
@@ -1834,7 +1834,7 @@ def fast_decode(
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
 
             topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size
+                input=paddle.nn.functional.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
                 x=paddle.log(topk_scores),

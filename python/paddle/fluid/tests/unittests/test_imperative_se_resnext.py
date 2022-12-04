@@ -376,7 +376,7 @@ class TestImperativeResneXt(unittest.TestCase):
                     label.stop_gradient = True
 
                     out = se_resnext(img)
-                    softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+                    softmax_out = paddle.nn.functional.softmax(out)
                     loss = fluid.layers.cross_entropy(
                         input=softmax_out, label=label
                     )
@@ -456,7 +456,7 @@ class TestImperativeResneXt(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = se_resnext(img)
-            softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+            softmax_out = paddle.nn.function.softmax(out)
             loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
