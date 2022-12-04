@@ -281,7 +281,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             fluid.layers.array_write(x0, zero, array)
 
             def cond(i, end, array):
-                return fluid.layers.less_than(i, end)
+                return paddle.less_than(i, end)
 
             def body(i, end, array):
                 prev = fluid.layers.array_read(array, i - 1)

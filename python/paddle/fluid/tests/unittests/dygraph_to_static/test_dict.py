@@ -67,7 +67,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
             cache["k"], cache["v"] = k, v
 
         weight = paddle.matmul(x=q, y=k, transpose_y=True)
-        weight = fluid.layers.softmax(weight)
+        weight = paddle.nn.functional.softmax(weight)
         out = paddle.matmul(weight, v)
 
         return out
@@ -113,7 +113,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
 # Test to call function defined outside of class.
 def update_cache(cache):
     for k, val in cache.items():
-        cache[k] = fluid.layers.softmax(val)
+        cache[k] = paddle.nn.functional.softmax(val)
 
     return cache
 
