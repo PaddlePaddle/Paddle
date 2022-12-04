@@ -34,7 +34,7 @@ from setuptools.dist import Distribution
 
 if sys.version_info < (3, 7):
     raise RuntimeError(
-        "Paddle only support Python version>=3.7 now, you are using Python %s"
+        "Paddle only supports Python version>=3.7 now, you are using Python %s"
         % platform.python_version()
     )
 else:
@@ -49,13 +49,11 @@ assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
-# get Top_dir
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
 IS_WINDOWS = os.name == 'nt'
 
 
-# filter args of setup.py
 def filter_setup_args(input_args):
     cmake_and_build = True
     only_cmake = False
@@ -112,6 +110,39 @@ ext_suffix = (
 )
 
 
+def get_header_install_dir(header):
+    if 'pb.h' in header:
+        install_dir = re.sub(
+            env_dict.get("PADDLE_BINARY_DIR") + '/', '', header
+        )
+    elif 'third_party' not in header:
+        # paddle headers
+        install_dir = re.sub(
+            env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header
+        )
+        print('install_dir: ', install_dir)
+        if 'fluid/jit' in install_dir:
+            install_dir = re.sub('fluid/jit', 'jit', install_dir)
+            print('fluid/jit install_dir: ', install_dir)
+        if 'trace_event.h' in install_dir:
+            install_dir = re.sub(
+                'fluid/platform/profiler',
+                'phi/backends/custom',
+                install_dir,
+            )
+            print('trace_event.h install_dir: ', install_dir)
+    else:
+        # third_party
+        install_dir = re.sub(
+            env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
+        )
+        patterns = ['install/mkldnn/include']
+        for pattern in patterns:
+            install_dir = re.sub(pattern, '', install_dir)
+    # raise RuntimeError(install_dir)
+    return install_dir
+
+
 class InstallHeaders(Command):
     """Override how headers are copied."""
 
@@ -134,6 +165,7 @@ class InstallHeaders(Command):
             'install', ('install_headers', 'install_dir'), ('force', 'force')
         )
 
+    """
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
             install_dir = re.sub(
@@ -169,6 +201,7 @@ class InstallHeaders(Command):
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
         return self.copy_file(header, install_dir)
+    """
 
     def run(self):
         hdrs = self.distribution.headers
@@ -176,8 +209,16 @@ class InstallHeaders(Command):
             return
         self.mkpath(self.install_dir)
         for header in hdrs:
-            (out, _) = self.mkdir_and_copy_file(header)
+            install_dir = get_header_install_dir(header)
+            install_dir = os.path.join(
+                self.install_dir, os.path.dirname(install_dir)
+            )
+            if not os.path.exists(install_dir):
+                self.mkpath(install_dir)
+            (out, _) = self.copy_file(header, install_dir)
             self.outfiles.append(out)
+            # (out, _) = self.mkdir_and_copy_file(header)
+            # self.outfiles.append(out)
 
     def get_inputs(self):
         return self.distribution.headers or []
@@ -216,6 +257,7 @@ class EggInfo(egg_info):
 
 # class Installlib is rewritten to add header files to .egg/paddle
 class InstallLib(install_lib):
+    """
     def copy_file_to_egg_paddle(self, header):
         if 'pb.h' in header:
             install_dir = re.sub(
@@ -244,12 +286,14 @@ class InstallLib(install_lib):
             patterns = ['install/mkldnn/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
+        raise RuntimeError(self.install_dir,os.path.dirname(install_dir))
         install_dir = os.path.join(
             self.install_dir, 'paddle/include', os.path.dirname(install_dir)
         )
         if not os.path.exists(install_dir):
             os.makedirs(install_dir)
         return self.copy_file(header, install_dir)
+    """
 
     def run(self):
         self.build()
@@ -258,7 +302,13 @@ class InstallLib(install_lib):
         if not hrds:
             return
         for header in hrds:
-            self.copy_file_to_egg_paddle(header)
+            install_dir = get_header_install_dir(header)
+            install_dir = os.path.join(
+                self.install_dir, 'paddle/include', os.path.dirname(install_dir)
+            )
+            if not os.path.exists(install_dir):
+                self.mkpath(install_dir)
+            self.copy_file(header, install_dir)
         if outfiles is not None:
             # always compile, in case we have any extension stubs to deal with
             self.byte_compile(outfiles)
@@ -608,20 +658,15 @@ def build_run(args, build_path, envrion_var):
 
 def build_steps():
     print('------- Building start ------')
-
     if not os.path.exists(TOP_DIR + '/build'):
         _mkdir_p(TOP_DIR + '/build')
     build_path = TOP_DIR + '/build'
-
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
-
     # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
     if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
-
     if not os.path.exists(cmake_cache_file_path):
-
         env_var = os.environ.copy()  # get env variables
         paddle_build_options = {}
         other_options = {}
@@ -654,7 +699,6 @@ def build_steps():
                 )
             }
         )
-
         # if environment variables which start with "WITH_" or "CMAKE_",put it into build_options
         for option_key, option_value in env_var.items():
             if option_key.startswith(("CMAKE_", "WITH_")):
@@ -685,9 +729,7 @@ def build_steps():
             "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
         )
         sys.exit()
-
     build_args = ["--build", ".", "--target", "install", "--config", 'Release']
-
     max_jobs = os.getenv("MAX_JOBS")
     if max_jobs is not None:
         max_jobs = max_jobs or str(multiprocessing.cpu_count())
@@ -731,7 +773,6 @@ def get_setup_requires():
 
 
 def get_package_data_and_package_dir():
-
     if os.name != 'nt':
         package_data = {
             'paddle.fluid': [env_dict.get("FLUID_CORE_NAME") + '.so']
@@ -743,7 +784,6 @@ def get_package_data_and_package_dir():
                 env_dict.get("FLUID_CORE_NAME") + '.lib',
             ]
         }
-
     package_data['paddle.fluid'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
@@ -772,13 +812,11 @@ def get_package_data_and_package_dir():
         }
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
-
     package_data['paddle.libs'] = []
     package_data['paddle.libs'] = [
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix
     ]
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
-
     package_data['paddle.libs'] += [
         os.path.basename(env_dict.get("LAPACK_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),
@@ -789,7 +827,6 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
-
     if env_dict.get("WITH_CUDNN_DSO") == 'ON' and os.path.exists(
         env_dict.get("CUDNN_LIBRARY")
     ):
@@ -812,13 +849,11 @@ def get_package_data_and_package_dir():
                 if os.path.exists(cudnn_lib):
                     package_data['paddle.libs'] += [os.path.basename(cudnn_lib)]
                     shutil.copy(cudnn_lib, libs_path)
-
     if not sys.platform.startswith("linux"):
         package_data['paddle.libs'] += [
             os.path.basename(env_dict.get("GNU_RT_LIB_2"))
         ]
         shutil.copy(env_dict.get("GNU_RT_LIB_2"), libs_path)
-
     if env_dict.get("WITH_MKL") == 'ON':
         shutil.copy(env_dict.get("MKLML_SHARED_LIB"), libs_path)
         shutil.copy(env_dict.get("MKLML_SHARED_IOMP_LIB"), libs_path)
@@ -855,7 +890,6 @@ def get_package_data_and_package_dir():
                 package_data['paddle.libs'] += [
                     'libnnadapter_driver_huawei_ascend_npu' + ext_suffix
                 ]
-
     if env_dict.get("WITH_CINN") == 'ON':
         shutil.copy(
             env_dict.get("CINN_LIB_LOCATION")
@@ -884,7 +918,6 @@ def get_package_data_and_package_dir():
                     + ' failed',
                     'command: %s' % command,
                 )
-
     if env_dict.get("WITH_PSLIB") == 'ON':
         shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
         if os.path.exists(env_dict.get("PSLIB_VERSION_PY")):
@@ -894,7 +927,6 @@ def get_package_data_and_package_dir():
                 + '/python/paddle/fluid/incubate/fleet/parameter_server/pslib/',
             )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
-
     if env_dict.get("WITH_MKLDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.
@@ -1022,12 +1054,10 @@ def get_package_data_and_package_dir():
         ext_modules = []
     elif sys.platform == 'darwin':
         ext_modules = []
-
     return package_data, package_dir, ext_modules
 
 
 def get_headers():
-
     headers = (
         # paddle level api headers
         list(find_files('*.h', paddle_source_dir + '/paddle'))
@@ -1139,7 +1169,6 @@ def get_headers():
 def get_setup_parameters():
     # get setup_requires
     setup_requires = get_setup_requires()
-
     packages = [
         'paddle',
         'paddle.libs',
@@ -1301,13 +1330,8 @@ def get_setup_parameters():
         paddle_bins = [
             env_dict.get("PADDLE_BINARY_DIR") + '/paddle/scripts/paddle'
         ]
-
-    # get package_data and package_dir
     package_data, package_dir, ext_modules = get_package_data_and_package_dir()
-
-    # get headers
     headers = get_headers()
-
     return (
         setup_requires,
         packages,
@@ -1327,7 +1351,7 @@ def main():
 
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
-    # os.system('pip install ninja')
+
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
@@ -1337,19 +1361,17 @@ def main():
     from build.python.env_dict import env_dict as env_dict
 
     global env_dict
-    # env_dict = env_dict
 
     global paddle_binary_dir, paddle_source_dir
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
 
     # preparing parameters for setup()
-
     paddle_version = env_dict.get("PADDLE_VERSION")
     package_name = env_dict.get("PACKAGE_NAME")
 
     write_version_py(
-        filename='{}//python/paddle/version/__init__.py'.format(
+        filename='{}/python/paddle/version/__init__.py'.format(
             paddle_binary_dir
         )
     )
@@ -1357,7 +1379,7 @@ def main():
         filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
     )
     write_parameter_server_version_py(
-        filename='{}//python/paddle/fluid/incubate/fleet/parameter_server/version.py'.format(
+        filename='{}/python/paddle/fluid/incubate/fleet/parameter_server/version.py'.format(
             paddle_binary_dir
         )
     )
