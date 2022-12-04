@@ -85,13 +85,11 @@ class TRTNearestInterpTest(InferencePassTest):
             return paddle.nn.functional.interpolate(
                 data,
                 scale_factor=self.scale,
-                align_corners=self.align_corners,
                 data_format=self.data_layout,
             )
         return paddle.nn.functional.interpolate(
             data,
             size=self.resize_shape,
-            align_corners=self.align_corners,
             data_format=self.data_layout,
         )
 
