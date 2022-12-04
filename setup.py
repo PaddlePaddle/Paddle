@@ -82,10 +82,13 @@ def parse_input_command(input_parameters):
     # get script name :setup.py
     sys.argv = input_parameters
     dist.script_name = os.path.basename(sys.argv[0])
-    print("Start executing %s" % dist.script_name)
     # get args of setup.py
     dist.script_args = sys.argv[1:]
-    print("args of setup.py:%s" % dist.script_args)
+    print(
+        "Start executing python {} {}".format(
+            dist.script_name, "".join(dist.script_args)
+        )
+    )
     try:
         dist.parse_command_line()
     except:
@@ -102,7 +105,6 @@ class BinaryDistribution(Distribution):
 
 
 RC = 0
-
 ext_suffix = (
     '.dll'
     if os.name == 'nt'
@@ -938,7 +940,7 @@ def get_package_data_and_package_dir():
             # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
             command = "patchelf --set-rpath '$ORIGIN/' " + env_dict.get(
                 "MKLDNN_SHARED_LIB"
-            )  # -----------
+            )
             if os.system(command) != 0:
                 raise Exception(
                     "patch libdnnl.so failed, command: %s" % command
@@ -1146,6 +1148,7 @@ def get_headers():
         'all.h',
         'function.h',
     ]
+
     for f in jit_layer_headers:
         headers += list(
             find_files(
@@ -1343,12 +1346,7 @@ def get_setup_parameters():
     )
 
 
-def print_info_of_reminding(help_messages):
-    print(help_messages)
-
-
 def main():
-
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
@@ -1356,12 +1354,10 @@ def main():
     if cmake_and_build:
         build_steps()
 
-    # envir_dict is environment variables after cmake
     sys.path.append(TOP_DIR + "/build/python/")
     from build.python.env_dict import env_dict as env_dict
 
     global env_dict
-
     global paddle_binary_dir, paddle_source_dir
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
@@ -1369,7 +1365,6 @@ def main():
     # preparing parameters for setup()
     paddle_version = env_dict.get("PADDLE_VERSION")
     package_name = env_dict.get("PACKAGE_NAME")
-
     write_version_py(
         filename='{}/python/paddle/version/__init__.py'.format(
             paddle_binary_dir

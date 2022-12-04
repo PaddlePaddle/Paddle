@@ -3665,10 +3665,6 @@ function run_setup(){
     ccache -z
 
     python setup.py install;build_error=$?
-
-    if [ -d "/opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddlepaddle-0.0.0-py3.7-linux-x86_64.egg/paddle" ]; then
-        cp -r /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddlepaddle-0.0.0-py3.7-linux-x86_64.egg/paddle  /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/
-    fi
     
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -3684,8 +3680,7 @@ function main() {
     init
     case $CMD in
       build_only)
-        #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        run_setup ${PYTHON_ABI:-""} ${parallel_number}
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_pr_dev)
         build_pr_and_develop
@@ -3715,7 +3710,6 @@ function main() {
       build_and_check_cpu)
         set +e
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        #run_setup ${PYTHON_ABI:-""} ${parallel_number}
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
@@ -3890,9 +3884,7 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        # cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        # run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        run_setup ${PYTHON_ABI:-""} ${parallel_number}
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
@@ -3905,8 +3897,7 @@ function main() {
         parallel_test
         ;;
       build_gpubox)
-        #cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        run_setup ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} 
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
