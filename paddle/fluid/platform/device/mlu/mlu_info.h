@@ -25,7 +25,6 @@ limitations under the License. */
 #include <cncl.h>
 #endif
 #include <vector>
-#include "paddle/phi/backends/mlu/mlu_info.h"
 
 namespace paddle {
 
@@ -90,7 +89,8 @@ size_t MLUInitAllocSize();
 //! Get the re-allocation size of current MLU device.
 size_t MLUReallocSize();
 
-using phi::backends::mlu::MLUMinChunkSize;
+//! Get the minimum chunk size for MLU buddy allocator.
+size_t MLUMinChunkSize();
 
 //! Get the maximum chunk size for MLU buddy allocator.
 size_t MLUMaxChunkSize();

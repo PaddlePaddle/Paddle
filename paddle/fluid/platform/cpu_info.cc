@@ -79,6 +79,11 @@ size_t CpuMaxAllocSize() {
   return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
 }
 
+size_t CpuMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 4 KB.
+  return 1 << 12;
+}
+
 size_t CpuMaxChunkSize() {
   // Allow to allocate the maximum chunk size is roughly 3% of CPU memory,
   // or the initial_cpu_memory_in_mb.

@@ -12,53 +12,38 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <stddef.h>
+#include "paddle/fluid/platform/device_memory_aligment.h"
 
-#include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/phi/backends/npu/npu_info.h"
-#endif
-#include "paddle/phi/backends/gpu/gpu_info.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/phi/backends/mlu/mlu_info.h"
-#endif
-
-namespace phi {
-
-inline size_t Alignment(size_t size,
-                        const phi::Place &place,
-                        int align_size = -1) {
+namespace paddle {
+namespace platform {
+size_t Alignment(size_t size, const platform::Place &place, int align_size) {
   size_t alignment = 0;
   if (align_size > 0) {
     alignment = align_size;
   } else {
     alignment = 1024;
-    if (place.GetType() == phi::AllocationType::CPU) {
-      alignment = phi::backends::cpu::CpuMinChunkSize();
+    if (platform::is_cpu_place(place)) {
+      alignment = CpuMinChunkSize();
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      alignment = phi::backends::gpu::GpuMinChunkSize();
+      alignment = GpuMinChunkSize();
 #elif defined(PADDLE_WITH_XPU)
       alignment = alignment;
 #elif defined(PADDLE_WITH_ASCEND_CL)
-      alignment = phi::backends::npu::NPUMinChunkSize();
+      alignment = NPUMinChunkSize();
 #elif defined(PADDLE_WITH_MLU)
-      alignment = phi::backends::mlu::MLUMinChunkSize();
+      alignment = MLUMinChunkSize();
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Fluid is not compiled with CUDA/XPU/NPU/MLU."));
 #endif
     }
   }
-  if (place.GetType() == phi::AllocationType::NPU) {
+  if (is_npu_place(place)) {
     size += 32;  // required by ascendcl
   }
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
 }
-
-}  // namespace phi
+}  // namespace platform
+}  // namespace paddle

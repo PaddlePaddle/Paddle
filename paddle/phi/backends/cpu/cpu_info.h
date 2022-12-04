@@ -39,13 +39,6 @@
 namespace phi {
 namespace backends {
 namespace cpu {
-
-//! Get the minimum chunk size for buddy allocator.
-inline size_t CpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 4 KB.
-  return 1 << 12;
-}
-
 typedef enum {
   isa_any,
   sse42,
@@ -58,7 +51,6 @@ typedef enum {
   avx512_mic_4ops,
   avx512_bf16,
 } cpu_isa_t;  // Instruction set architecture
-
 }  // namespace cpu
 }  // namespace backends
 }  // namespace phi
