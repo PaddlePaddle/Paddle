@@ -231,6 +231,26 @@ struct TransposeNormal<phi::GPUContext, T> {
     auto* in_ptr = in.data<T>();
     auto* out_ptr = out->data<T>();
 
+    std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
+    std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+    if (axis == axis_nchw_nhwc) {
+      funcs::nchw2nhwc(
+          reinterpret_cast<const half*>(in.data<phi::dtype::float16>()),
+          reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+          in.dims()[0],
+          in.dims()[1],
+          in.dims()[2] * in.dims()[3]);
+      return;
+    } else if (axis == axis_nhwc_nchw) {
+      funcs::nhwc2nchw(
+          reinterpret_cast<const half*>(in.data<phi::dtype::float16>()),
+          reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+          in.dims()[0],
+          in.dims()[3],
+          in.dims()[1] * in.dims()[2]);
+      return;
+    }
+
     // copy in_stride, out_stride, axis to gpu device
     const phi::GPUPlace& cuda_place = context.GetPlace();
     phi::CPUPlace cpu_place = paddle::platform::CPUPlace();
