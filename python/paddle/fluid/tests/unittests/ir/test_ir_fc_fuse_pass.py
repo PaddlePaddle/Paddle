@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from pass_test import PassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -31,7 +32,7 @@ class FCFusePassTest(PassTest):
                 input=data, size=128, num_flatten_dims=1, act="relu"
             )
             tmp_1 = fluid.layers.fc(input=tmp_0, size=32, num_flatten_dims=1)
-            tmp_2 = fluid.layers.softmax(input=tmp_1)
+            tmp_2 = paddle.nn.functional.softmax(tmp_1)
 
         self.feeds = {"data": np.random.random((32, 128)).astype("float32")}
         self.fetch_list = [tmp_0, tmp_1, tmp_2]

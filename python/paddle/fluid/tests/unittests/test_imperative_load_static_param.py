@@ -211,14 +211,14 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.emb1 = Embedding([1000, 100])
                     self.emb2 = Embedding([2000, 200])
 
-                    self.layer_norm_1 = LayerNorm([10])
-                    self.layer_norm_2 = LayerNorm(10)
+                    self.layer_norm_1 = paddle.nn.LayerNorm([10])
+                    self.layer_norm_2 = paddle.nn.LayerNorm(10)
 
                     self.nce1 = NCE(10000, 100)
                     self.nce2 = NCE(10000, 100)
 
-                    self.prelu1 = paddle.nn.PReLU(5)
-                    self.prelu2 = paddle.nn.PReLU(5)
+                    self.prelu1 = paddle.nn.PReLU(5, name="p_re_lu")
+                    self.prelu2 = paddle.nn.PReLU(5, name="p_re_lu")
 
                     self.group_norm1 = GroupNorm(8, 4)
                     self.gourp_norm2 = GroupNorm(8, 4)
