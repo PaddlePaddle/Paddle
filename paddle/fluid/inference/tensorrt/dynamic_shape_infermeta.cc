@@ -235,6 +235,21 @@ nvinfer1::DimsExprs UnchangedInferMeta(
   return inputs[0];
 }
 
+nvinfer1::DimsExprs MoeInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_EQ(nb_inputs,
+                    6,
+                    phi::errors::InvalidArgument(
+                        "inputs of MoeInferMeta should be equal to 6, "
+                        "But received (%s)",
+                        nb_inputs));
+  return inputs[0];
+}
+
 nvinfer1::DimsExprs Pad3dInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -384,6 +399,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnflodInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter_nd_add, ScatterNdAddInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
 }  // namespace tensorrt
