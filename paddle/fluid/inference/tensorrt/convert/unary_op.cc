@@ -92,6 +92,7 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
         {"rsqrt",
          {nvinfer1::UnaryOperation::kSQRT, nvinfer1::UnaryOperation::kRECIP}},
         {"logical_not", {nvinfer1::UnaryOperation::kNOT}},
+        {"reciprocal", {nvinfer1::UnaryOperation::kRECIP}},
 #if IS_TRT_VERSION_GE(7000)
         {"erf", {nvinfer1::UnaryOperation::kERF}},
 #endif
