@@ -72,6 +72,8 @@ void TransferLayoutGeneral(const Context& dev_ctx,
 
   std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
   std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+  // In GPU fp16 model, we will insert many transfer_layout ops in
+  // conv2d_fusion_layout_transfer_pass, so we optimized this kernel in GPU
   if (std::is_same<Context, phi::GPUContext>::value &&
       x.dtype() == phi::DataType::FLOAT16) {
     if (axis == axis_nchw_nhwc) {
