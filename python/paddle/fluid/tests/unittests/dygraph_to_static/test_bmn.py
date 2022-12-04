@@ -329,15 +329,13 @@ def bmn_loss_func(
             coef_0 = 0.5 * ratio / (ratio - 1)
             coef_1 = 0.5 * ratio
             epsilon = 0.000001
-            # temp = fluid.layers.log(pred_score + epsilon)
-            loss_pos = paddle.multiply(
-                fluid.layers.log(pred_score + epsilon), pmask
-            )
-            loss_pos = coef_1 * fluid.layers.reduce_mean(loss_pos)
+            # temp = paddle.log(pred_score + epsilon)
+            loss_pos = paddle.multiply(paddle.log(pred_score + epsilon), pmask)
+            loss_pos = coef_1 * paddle.mean(loss_pos)
             loss_neg = paddle.multiply(
-                fluid.layers.log(1.0 - pred_score + epsilon), (1.0 - pmask)
+                paddle.log(1.0 - pred_score + epsilon), (1.0 - pmask)
             )
-            loss_neg = coef_0 * fluid.layers.reduce_mean(loss_neg)
+            loss_neg = coef_0 * paddle.mean(loss_neg)
             loss = -1 * (loss_pos + loss_neg)
             return loss
 
@@ -381,7 +379,7 @@ def bmn_loss_func(
 
         weights = u_hmask + u_smmask + u_slmask
         weights.stop_gradient = True
-        loss = fluid.layers.square_error_cost(pred_score, gt_iou_map)
+        loss = paddle.nn.functional.square_error_cost(pred_score, gt_iou_map)
         loss = paddle.multiply(loss, weights)
         loss = 0.5 * paddle.sum(loss) / paddle.sum(weights)
 
@@ -400,12 +398,10 @@ def bmn_loss_func(
         coef_0 = 0.5 * ratio / (ratio - 1)
         coef_1 = 0.5 * ratio
         epsilon = 0.000001
-        loss_pos = paddle.multiply(
-            fluid.layers.log(pred_score + epsilon), pmask
-        )
+        loss_pos = paddle.multiply(paddle.log(pred_score + epsilon), pmask)
         loss_pos = coef_1 * paddle.sum(loss_pos)
         loss_neg = paddle.multiply(
-            fluid.layers.log(1.0 - pred_score + epsilon), nmask
+            paddle.log(1.0 - pred_score + epsilon), nmask
         )
         loss_neg = coef_0 * paddle.sum(loss_neg)
         loss = -1 * (loss_pos + loss_neg) / num_entries

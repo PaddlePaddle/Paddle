@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import BatchNorm
-from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -193,7 +192,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=scale)
+        y = paddle.add(x=short, y=scale)
 
         layer_helper = LayerHelper(self.full_name(), act='relu')
         y = layer_helper.append_activation(y)
@@ -377,7 +376,7 @@ class TestImperativeResneXt(unittest.TestCase):
                     label.stop_gradient = True
 
                     out = se_resnext(img)
-                    softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+                    softmax_out = paddle.nn.functional.softmax(out)
                     loss = fluid.layers.cross_entropy(
                         input=softmax_out, label=label
                     )
@@ -457,7 +456,7 @@ class TestImperativeResneXt(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = se_resnext(img)
-            softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+            softmax_out = paddle.nn.function.softmax(out)
             loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)

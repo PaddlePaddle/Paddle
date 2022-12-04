@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.utils import func_to_source_code
 
 
 class Net(paddle.nn.Layer):

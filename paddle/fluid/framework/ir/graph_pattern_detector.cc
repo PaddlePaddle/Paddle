@@ -91,7 +91,6 @@ void GraphPatternDetector::operator()(Graph *graph,
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
-
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   SortSubgraphs(&subgraphs);
@@ -99,7 +98,6 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -1613,6 +1611,33 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
   return ele_add_grad;
 }
 
+PDNode *patterns::ActElewiseAddInplaceGrad::operator()(
+    paddle::framework::ir::PDNode *d_out_var,
+    std::unordered_set<std::string> act_types) {
+  VLOG(4) << "ActElewiseAddInplaceGrad::operator";
+
+  auto *ele_add_grad_op = pattern->NewNode(ele_add_grad_op_repr())
+                              ->assert_is_op("elementwise_add_grad");
+  auto *act_grad_op =
+      pattern->NewNode(act_grad_op_repr())->assert_is_ops(act_types);
+
+  auto *d_intermediate_out_var =
+      pattern->NewNode(d_intermediate_var_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"))
+          ->assert_is_ops_input(act_types, GradVarName("Out"));
+  auto *intermediate_out_var =
+      pattern->NewNode(intermediate_var_repr())
+          ->assert_is_op_input("elementwise_add_grad", "Y")
+          ->assert_is_ops_input(act_types, "Out");
+
+  ele_add_grad_op->LinksFrom({d_out_var});
+  d_intermediate_out_var->LinksFrom({ele_add_grad_op}).LinksTo({act_grad_op});
+  intermediate_out_var->LinksTo({ele_add_grad_op});
+  intermediate_out_var->LinksTo({act_grad_op});
+
+  return act_grad_op;
+}
+
 PDNode *patterns::ElewiseAddAct::operator()(
     paddle::framework::ir::PDNode *ele_x_var,
     std::unordered_set<std::string> act_types) {
@@ -2347,14 +2372,8 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-#if CUDNN_VERSION >= 8000
-std::unordered_set<std::string> conv_act_set(
-    {"identity", "relu", "sigmoid", "tanh"});
-#else
-std::unordered_set<std::string> conv_act_set({"identity", "relu"});
-#endif
-
-PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseaddAct::operator()(
+    PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())
@@ -2551,7 +2570,8 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
   return reshape2_out;
 }
 
-PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseadd2Act::operator()(
+    PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input("conv2d", "Filter")

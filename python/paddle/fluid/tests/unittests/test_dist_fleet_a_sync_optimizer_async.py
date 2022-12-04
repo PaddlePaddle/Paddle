@@ -47,7 +47,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -85,7 +85,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()

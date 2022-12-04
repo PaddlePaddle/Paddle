@@ -29,7 +29,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import unique_name
 from paddle.fluid.backward import append_backward
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import (
     OpProtoHolder,
@@ -43,6 +42,7 @@ from paddle.fluid.framework import (
     _test_eager_guard,
 )
 from paddle.fluid.op import Operator
+from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
