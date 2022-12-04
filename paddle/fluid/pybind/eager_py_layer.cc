@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
-#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"

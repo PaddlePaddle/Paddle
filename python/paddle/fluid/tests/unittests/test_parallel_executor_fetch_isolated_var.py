@@ -31,7 +31,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
         x = fluid.data(name='x', shape=[-1, 10], dtype='float32')
         y = fluid.data(name='y', shape=[-1, 10], dtype='float32')
         fc = fluid.layers.fc(x, size=30, bias_attr=False)
-        loss = fluid.layers.reduce_mean(fc)
+        loss = paddle.mean(fc)
         if is_training:
             adam = fluid.optimizer.Adam(learning_rate=1e-3)
             adam.minimize(loss)

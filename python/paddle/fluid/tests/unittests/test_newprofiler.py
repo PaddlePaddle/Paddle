@@ -87,6 +87,7 @@ class TestProfiler(unittest.TestCase):
             targets=[profiler.ProfilerTarget.CPU],
             scheduler=lambda x: profiler.ProfilerState.RECORD_AND_RETURN,
             on_trace_ready=my_trace_back,
+            with_flops=True,
         ) as prof:
             for i in range(2):
                 y = x / 2.0

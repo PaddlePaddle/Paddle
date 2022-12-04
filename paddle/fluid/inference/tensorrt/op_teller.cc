@@ -79,17 +79,18 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",        "relu6",     "sigmoid",
-        "elu",         "selu",      "softsign",
-        "softplus",    "stanh",     "thresholded_relu",
-        "exp",         "log",       "sqrt",
-        "abs",         "sin",       "cos",
-        "tan",         "tanh",      "sinh",
-        "cosh",        "asin",      "acos",
-        "atan",        "asinh",     "atanh",
-        "ceil",        "floor",     "erf",
-        "reciprocal",  "silu",      "celu",
-        "tanh_shrink", "logsigmoid"};
+        "relu",        "relu6",      "sigmoid",
+        "elu",         "selu",       "softsign",
+        "softplus",    "stanh",      "thresholded_relu",
+        "exp",         "log",        "sqrt",
+        "abs",         "sin",        "cos",
+        "tan",         "tanh",       "sinh",
+        "cosh",        "asin",       "acos",
+        "atan",        "asinh",      "atanh",
+        "ceil",        "floor",      "erf",
+        "reciprocal",  "silu",       "celu",
+        "tanh_shrink", "logsigmoid", "sign",
+        "logical_not"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -334,6 +335,29 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       }
+    }
+
+    if (op_type == "sign") {
+#if IS_TRT_VERSION_GE(8200)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "sign op is only supported by trt8.2 above ";
+      return false;
+#endif
+    }
+
+    if (op_type == "logical_not") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "logical_not op is only supported by trt8.4 above because of "
+                 "cast op";
+      return false;
+#endif
     }
 
     if (op_type == "matmul_v2") {
@@ -1298,6 +1322,32 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "less_than" || op_type == "greater_than" ||
+        op_type == "logical_or" || op_type == "logical_xor" ||
+        op_type == "logical_and" || op_type == "less_equal") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        VLOG(3) << "these ops do not support static shape yet";
+        return false;
+      }
+      if (op_type == "logical_or" || op_type == "logical_xor" ||
+          op_type == "logical_and") {
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+        auto x_dtype = x_var_desc->GetDataType();
+        auto y_dtype = y_var_desc->GetDataType();
+        if (x_dtype != framework::proto::VarType::BOOL ||
+            y_dtype != framework::proto::VarType::BOOL) {
+          VLOG(3) << "the op only support input of BOOL.";
+          return false;
+        }
+      }
+#else
+      VLOG(3) << "these are not supported when TensorRT < 8.4";
+      return false;
+#endif
+    }
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
@@ -1477,10 +1527,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "instance_norm") {
-      if (with_dynamic_shape) {
-        VLOG(3) << "trt instance_norm op does not support dynamic shape ";
-        return false;
-      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "input of instance_norm op converter should be 1, got "
                 << desc.Input("X").size();
@@ -2341,7 +2387,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "ceil",
       "floor",
       "rsqrt",
+      "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
@@ -2360,6 +2408,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
+      "less_equal",
       "dropout",
       "fill_any_like",
       "prelu",
@@ -2471,7 +2525,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "ceil",
       "floor",
       "rsqrt",
+      "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
@@ -2490,6 +2546,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
+      "less_equal",
       "dropout",
       "fill_any_like",
       "prelu",
