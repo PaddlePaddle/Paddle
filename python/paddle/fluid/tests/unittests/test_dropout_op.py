@@ -538,7 +538,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 res10 = paddle.nn.functional.dropout(
                     x=input, p=1.0, training=True
                 )
-                dropout = paddle.fluid.dygraph.Dropout(
+                dropout = paddle.nn.Dropout(
                     p=0,
                 )
                 res11 = dropout(input)

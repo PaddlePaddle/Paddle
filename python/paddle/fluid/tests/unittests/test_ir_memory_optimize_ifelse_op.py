@@ -41,7 +41,7 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
             label = layers.data(name='y', shape=[1], dtype='int64')
 
             limit = layers.fill_constant(shape=[1], dtype='int64', value=5)
-            cond = layers.less_than(x=label, y=limit)
+            cond = paddle.less_than(x=label, y=limit)
             ie = layers.IfElse(cond)
 
             with ie.true_block():
