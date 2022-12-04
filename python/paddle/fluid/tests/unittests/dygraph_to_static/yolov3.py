@@ -212,7 +212,7 @@ class Upsample(fluid.dygraph.Layer):
 
         # reisze by actual_shape
         out = paddle.nn.functional.interpolate(
-            x=inputs, size=out_shape, scale_factor=self.scale, mode='nearest'
+            x=inputs, size=out_shape, mode='nearest'
         )
 
 
