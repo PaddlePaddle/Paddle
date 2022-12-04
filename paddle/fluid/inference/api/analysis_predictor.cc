@@ -1397,8 +1397,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       }
 
       // support set flags from enviorment.
-      const platform::ExportedFlagInfoMap &env_map =
-          platform::GetExportedFlagInfoMap();
+      const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
       std::ostringstream os;
       os << "--tryfromenv=";
       for (auto &pair : env_map) {

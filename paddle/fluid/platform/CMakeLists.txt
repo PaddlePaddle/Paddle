@@ -178,11 +178,6 @@ if(WITH_GLOO)
     DEPS framework_proto gloo_wrapper enforce)
 endif()
 
-cc_library(
-  cudnn_workspace_helper
-  SRCS cudnn_workspace_helper.cc
-  DEPS)
-
 # separate init from device_context to avoid cycle dependencies
 cc_library(
   init

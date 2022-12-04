@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_bool(enable_gpu_memory_usage_log);
