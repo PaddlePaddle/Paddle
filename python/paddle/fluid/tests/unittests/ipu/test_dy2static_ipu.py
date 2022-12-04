@@ -48,7 +48,7 @@ class SimpleLayer(paddle.nn.Layer):
         x = paddle.flatten(x, 1, -1)
         if target is not None:
             if self.use_softmax:
-                x = paddle.fluid.layers.softmax(x)
+                x = paddle.nn.functional.softmax(x)
             if self.loss_op:
                 loss = self.loss_op(x, target)
             else:

@@ -503,7 +503,7 @@ class MultiHeadAttentionLayer(Layer):
         )
         if attn_bias is not None:
             product += attn_bias
-        weights = fluid.layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
             weights_droped = fluid.layers.dropout(
                 weights,
@@ -1013,7 +1013,7 @@ class WrapDecoderLayer(Layer):
 
         if dec_inputs is None:
             # Return probs for independent decoder program.
-            predict_out = fluid.layers.softmax(predict)
+            predict_out = paddle.nn.functional.softmax(predict)
             return predict_out
         return predict
 

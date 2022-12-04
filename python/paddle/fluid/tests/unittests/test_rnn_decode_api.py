@@ -76,7 +76,7 @@ class DecoderCell(layers.RNNCell):
         )
         if encoder_padding_mask is not None:
             attn_scores = paddle.add(attn_scores, encoder_padding_mask)
-        attn_scores = layers.softmax(attn_scores)
+        attn_scores = paddle.nn.functional.softmax(attn_scores)
         attn_out = paddle.squeeze(
             layers.matmul(attn_scores, encoder_output), [1]
         )
@@ -295,7 +295,7 @@ class Seq2SeqModel:
             decoder_output.sample_ids,
             dec_seq_lengths,
         )
-        probs = layers.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         return probs, samples, sample_length
 
 
