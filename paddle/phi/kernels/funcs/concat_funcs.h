@@ -28,7 +28,7 @@ static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
           -rank,
           rank,
           axis));
-  !rank && (axis = 0);
+  axis = rank ? axis : 0;
   if (axis < 0) {
     axis = axis + rank;
   }

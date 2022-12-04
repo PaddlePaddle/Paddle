@@ -918,7 +918,7 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
           -rank,
           rank,
           axis));
-  !rank && (axis = 0);
+  axis = rank ? axis : 0;
   if (axis < 0) {
     axis = axis + rank;
   }
