@@ -45,13 +45,7 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
 
         def generate_depth(dims, batch):
             if dims == 1:
-                return np.ones((batch,), dtype=np.int) * 10
-            elif dims == 2:
-                return np.ones((batch, 4), dtype=np.int) * 10
-            elif dims == 3:
-                return np.ones((batch, 4, 6), dtype=np.int) * 10
-            else:
-                return np.ones((batch, 4, 6, 8), dtype=np.int) * 10
+                return np.ones((1,), dtype=np.int) * 10
 
         for dims in [1, 2, 3, 4]:
             for batch in [1, 2]:
@@ -73,13 +67,14 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
 
                 program_config = ProgramConfig(
                     ops=ops,
-                    weights={},
+                    weights={
+                        "depth_tensor": TensorConfig(
+                            data_gen=partial(generate_depth, dims, batch)
+                        ),
+                    },
                     inputs={
                         "indices_tensor": TensorConfig(
                             data_gen=partial(generate_indices, dims, batch)
-                        ),
-                        "depth_tensor": TensorConfig(
-                            data_gen=partial(generate_depth, dims, batch)
                         ),
                     },
                     outputs=["output_data"],
@@ -94,54 +89,42 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {
                     "input_x_data": [1],
-                    "input_depth_data": [1],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_x_data": [2],
-                    "input_depth_data": [2],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_x_data": [1],
-                    "input_depth_data": [1],
                 }
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
                     "input_x_data": [1, 4],
-                    "input_depth_data": [1, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_x_data": [2, 4],
-                    "input_depth_data": [2, 4],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_x_data": [1, 4],
-                    "input_depth_data": [1, 4],
                 }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
                     "input_x_data": [1, 4, 6],
-                    "input_depth_data": [1, 4, 6],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_x_data": [2, 4, 6],
-                    "input_depth_data": [2, 4, 6],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_x_data": [1, 4, 6],
-                    "input_depth_data": [1, 4, 6],
                 }
             elif self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
                     "input_x_data": [1, 4, 6, 8],
-                    "input_depth_data": [1, 4, 6, 8],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_x_data": [2, 4, 6, 8],
-                    "input_depth_data": [2, 4, 6, 8],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_x_data": [1, 4, 6, 8],
-                    "input_depth_data": [1, 4, 6, 8],
                 }
 
         def clear_dynamic_shape():
@@ -151,8 +134,8 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if not dynamic_shape:
-                return 0, 6
-            return 1, 4
+                return 0, 3
+            return 1, 2
 
         attrs = [op.attrs for op in program_config.ops]
 
