@@ -215,6 +215,8 @@ class Upsample(fluid.dygraph.Layer):
             x=inputs, size=out_shape, mode='nearest'
         )
 
+        return out
+
 
 class YOLOv3(fluid.dygraph.Layer):
     def __init__(self, ch_in, is_train=True, use_random=False):
