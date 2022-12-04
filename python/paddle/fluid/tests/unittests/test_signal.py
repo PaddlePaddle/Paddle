@@ -28,7 +28,7 @@ paddle.set_default_dtype('float64')
 DEVICES = [paddle.CPUPlace()]
 if paddle.is_compiled_with_cuda():
     DEVICES.append(paddle.CUDAPlace(0))
-TEST_CASE_NAME = 'test_case'
+TEST_CASE_NAME = 'name'
 
 # Constrain STFT block sizes to 256 KB
 MAX_MEM_BLOCK = 2**8 * 2**10

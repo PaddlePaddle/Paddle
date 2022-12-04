@@ -18,7 +18,7 @@ import config
 import numpy as np
 from parameterized import parameterized, parameterized_class
 
-TEST_CASE_NAME = 'suffix'
+TEST_CASE_NAME = 'name'
 
 
 def xrand(shape=(10, 10, 10), dtype=config.DEFAULT_DTYPE, min=1.0, max=10.0):

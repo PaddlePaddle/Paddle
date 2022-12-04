@@ -282,7 +282,7 @@ def square(x):
 # Parameterized Test Utils.
 ##########################################################
 
-TEST_CASE_NAME = 'suffix'
+TEST_CASE_NAME = 'name'
 
 
 def place(devices, key='place'):

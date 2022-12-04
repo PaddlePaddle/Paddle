@@ -19,7 +19,7 @@ if paddle.is_compiled_with_cuda():
 
 DEFAULT_DTYPE = 'float64'
 
-TEST_CASE_NAME = 'suffix'
+TEST_CASE_NAME = 'name'
 # All test case will use float64 for compare percision, refs:
 # https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64
 RTOL = {

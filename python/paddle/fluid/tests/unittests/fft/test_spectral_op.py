@@ -33,7 +33,7 @@ from parameterized import parameterized_class
 
 paddle.enable_static()
 
-TEST_CASE_NAME = 'test_case'
+TEST_CASE_NAME = 'name'
 
 
 def fft_c2c_python_api(x, axes, norm, forward):
