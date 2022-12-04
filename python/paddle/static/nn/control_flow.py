@@ -444,7 +444,7 @@ def _deal_with_undefined_var(output_vars, loop_vars):
     3. UndefinedVar = List(int)     # create a list of variable
     4. UndefinedVar = value         # create a variable
     """
-    from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    from paddle.jit.dy2static.utils import (
         UndefinedVar,
         create_undefined_variable,
     )
