@@ -3196,22 +3196,6 @@ class TestBook(LayerTest):
             return values
             return indices
 
-    def make_resize_bilinear(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
-            output = layers.resize_bilinear(x, out_shape=[12, 12])
-            return output
-
-    def make_resize_bilinear_by_scale(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 9, 6], dtype="float32")
-            output = layers.resize_bilinear(x, scale=1.5)
-            return output
-
     def make_resize_nearest(self):
         try:
             with program_guard(
