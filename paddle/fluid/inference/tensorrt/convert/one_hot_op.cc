@@ -43,34 +43,34 @@ class OneHotOpConverter : public OpConverter {
     const nvinfer1::ITensor* values_tensor;
     const nvinfer1::ITensor* depth_tensor;
     const int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
-
-    nvinfer1::Dims trt_values_tensor_shape;
-    trt_values_tensor_shape.nbDims = 1;
-    trt_values_tensor_shape.d[0] = 2;
-
     if (dtype == 2 || dtype == 3) {  // int, int64
       const std::vector<int> values_data = {0, 1};
       values_tensor = Add1DConstantLayer<int>(values_data, "values_tensor");
       if (dtype == 3) {  // int64
         VLOG(3) << "trt not support int64, so it is converted to int32.";
       }
-    } else if (dtype == 5) {  // float
+    } else if (dtype == 5 || dtype == 6) {  // float
       const std::vector<float> values_data = {0.0f, 1.0f};
       values_tensor = Add1DConstantLayer<float>(values_data, "values_tensor");
+      if (dtype == 6) {  // int64
+        VLOG(3) << "trt not support float64, so it is converted to float32.";
+      }
     }
 
-    nvinfer1::Dims indices_dims = indices_tensor->getDimensions();
     auto depth_name = op_desc.Input("depth_tensor");
     if (depth_name.size() == 0) {
       const int depth = PADDLE_GET_CONST(int, op_desc.GetAttr("depth"));
-      int32_t length = 1;
-      for (int32_t i = 0; i < indices_dims.nbDims; i++) {
-        length *= indices_dims.d[i];
-      }
-      const std::vector<int> depth_data(length, depth);
-      depth_tensor = Add1DConstantLayer<int>(depth_data, "values_tensor");
+      depth_tensor = Add1DConstantLayer<int>(depth, "depth_tensor", true);
     } else {
-      depth_tensor = engine_->GetITensor(depth_name.front());
+      nvinfer1::Dims depth_dims;
+      depth_dims.nbDims = 0;
+      const nvinfer1::ITensor* depth_tensor_paddle =
+          engine_->GetITensor(depth_name.front());
+      auto shuffle_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *depth_tensor_paddle);
+      shuffle_layer->setReshapeDimensions(depth_dims);
+      depth_tensor = shuffle_layer->getOutput(0);
+      depth_tensor->setName(depth_tensor_paddle->getName());
     }
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, OneHot, *indices_tensor, *values_tensor, *depth_tensor, -1);
