@@ -2,7 +2,6 @@ file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
-list(REMOVE_ITEM TEST_OPS "test_auto_search_dist_matmul_op.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
             FLAGS_memory_fraction_of_eager_deletion=1.0)
