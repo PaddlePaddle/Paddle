@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import NCE, BatchNorm, GroupNorm, LayerNorm, PRelu
+from paddle.fluid.dygraph.nn import NCE, BatchNorm, GroupNorm, PRelu
 from paddle.nn import Linear
 
 
@@ -142,10 +142,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
             nodes_vector, edge_set, 6, 1, 2
         )
 
-        para1 = fluid.layers.create_parameter(
+        para1 = paddle.create_parameter(
             [100, 100], 'float32', name="weight_test_1"
         )
-        para2 = fluid.layers.create_parameter(
+        para2 = paddle.create_parameter(
             [20, 200], 'float32', name="weight_test_2"
         )
 
@@ -205,8 +205,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.emb1 = paddle.nn.Embedding(1000, 100)
                     self.emb2 = paddle.nn.Embedding(2000, 200)
 
-                    self.layer_norm_1 = LayerNorm([10])
-                    self.layer_norm_2 = LayerNorm(10)
+                    self.layer_norm_1 = paddle.nn.LayerNorm([10])
+                    self.layer_norm_2 = paddle.nn.LayerNorm(10)
 
                     self.nce1 = NCE(10000, 100)
                     self.nce2 = NCE(10000, 100)

@@ -215,11 +215,11 @@ class PtbModel(fluid.Layer):
         projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
         projection = paddle.add(projection, self.softmax_bias)
 
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell

@@ -51,7 +51,7 @@ class TestQuantizationSubGraph(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
-            pred = layers.less_than(y, x)
+            pred = paddle.less_than(y, x)
             out = layers.cond(pred, true_func, false_func)
 
         core_graph = core.Graph(main_program.desc)
