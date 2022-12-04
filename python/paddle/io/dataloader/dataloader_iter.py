@@ -12,51 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import time
-import signal
-import numbers
-import logging
 import itertools
-import threading
-import warnings
-import numpy as np
-from collections import namedtuple
-from paddle.fluid.framework import (
-    _set_expected_place,
-    _current_expected_place,
-    set_flags,
-)
-
+import logging
+import os
 import queue
+import sys
+import threading
+import time
+import warnings
+
+import numpy as np
 
 import paddle
-import paddle.profiler as profiler
+from paddle import profiler
+from paddle.fluid.framework import _current_expected_place, _set_expected_place
+from paddle.profiler.timer import benchmark
 from paddle.profiler.utils import in_profiler_mode
-from .. import core, layers
-from ..framework import in_dygraph_mode
+
+from ...framework import core, in_dygraph_mode
 from ..multiprocess_utils import (
-    _set_SIGCHLD_handler,
     MP_STATUS_CHECK_INTERVAL,
     CleanupFuncRegistrar,
+    _set_SIGCHLD_handler,
 )
-from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
 from .collate import default_collate_fn, default_convert_fn
+from .flat import _flatten_batch, _restore_batch
 from .worker import (
-    ParentWatchDog,
-    get_worker_info,
-    _worker_loop,
     _DatasetKind,
     _IterableDatasetStopIteration,
-    _WorkerException,
     _ResumeIteration,
+    _worker_loop,
+    _WorkerException,
 )
-from .flat import _flatten_batch, _restore_batch
-from paddle.profiler.timer import benchmark
-
-__all__ = ['get_worker_info']
 
 # NOTE: fix `terminate called without an active exception`
 # if for loop break and program exit immediately(with no model
@@ -95,7 +83,7 @@ class _DataLoaderIterBase:
     data by setting in given dataloader.
 
     Args:
-        loader(instance of DataLoader): instance of `fluid.io.DataLoader`
+        loader(instance of DataLoader): instance of `paddle.io.DataLoader`
     """
 
     def __init__(self, loader):
@@ -439,7 +427,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
-        import paddle.incubate.multiprocessing as multiprocessing
+        from paddle.incubate import multiprocessing
 
         # multiprocess worker and indice queue list initial as empty
         self._workers = []

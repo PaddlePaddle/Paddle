@@ -19,8 +19,8 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.dataloader.dataloader_iter import _worker_loop
 from paddle.io import BatchSampler, DataLoader, Dataset, IterableDataset
+from paddle.io.dataloader.worker import _worker_loop
 
 
 class RandomDataset(Dataset):

@@ -297,7 +297,7 @@ def train_builtin_data_vars():
     with static.program_guard(engine.main_program, engine.startup_program):
         feed_list = engine.inputs + engine.labels
         print(feed_list)
-        loader = paddle.io.DataLoader.from_generator(
+        loader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=feed_list, capacity=4 * batch_size, iterable=False
         )
 
@@ -324,7 +324,7 @@ def train_non_builtin_data_vars():
         )
         label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
 
-        loader = paddle.io.DataLoader.from_generator(
+        loader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=False
         )
         places = static.cuda_places()
@@ -383,7 +383,7 @@ def get_cost():
         )
         label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
 
-        loader = paddle.io.DataLoader.from_generator(
+        loader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=False
         )
         places = static.cuda_places()
@@ -434,7 +434,7 @@ def get_cost_by_default_program():
         )
         label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
 
-        loader = paddle.io.DataLoader.from_generator(
+        loader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=False
         )
         places = static.cuda_places()

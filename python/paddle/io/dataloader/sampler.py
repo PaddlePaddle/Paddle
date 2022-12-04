@@ -13,14 +13,8 @@
 # limitations under the License.
 
 import numpy as np
-from .. import core
 
-__all__ = [
-    "Sampler",
-    "SequenceSampler",
-    "RandomSampler",
-    "WeightedRandomSampler",
-]
+from ...framework import core
 
 
 class Sampler:
@@ -317,7 +311,7 @@ class WeightedRandomSampler(Sampler):
         idxs = _weighted_sample(
             self.weights, self.num_samples, self.replacement
         )
-        return iter(idxs.reshape((-1)).tolist())
+        return iter(idxs.reshape(-1).tolist())
 
     def __len__(self):
         mul = np.prod(self.weights.shape) // self.weights.shape[-1]

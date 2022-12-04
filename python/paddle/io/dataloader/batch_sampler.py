@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import math
 
-from .sampler import Sampler, SequenceSampler, RandomSampler
-from .dataset import Dataset, IterableDataset
+import numpy as np
 
-__all__ = ["BatchSampler", "DistributedBatchSampler"]
+from .dataset import IterableDataset
+from .sampler import RandomSampler, Sampler, SequenceSampler
 
 
 class BatchSampler(Sampler):

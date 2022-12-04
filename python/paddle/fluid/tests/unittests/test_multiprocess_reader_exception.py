@@ -56,7 +56,7 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
             image = paddle.static.data(
                 name='image', dtype='float32', shape=[None, 10]
             )
-            reader = fluid.io.DataLoader.from_generator(
+            reader = paddle.io.DataLoader.from_generator(
                 feed_list=[image], capacity=2, iterable=iterable
             )
 
