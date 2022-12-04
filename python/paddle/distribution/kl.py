@@ -24,7 +24,6 @@ from paddle.distribution.normal import Normal
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
-from paddle.distribution.multivariate_normal import MultivariateNormal
 from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]
