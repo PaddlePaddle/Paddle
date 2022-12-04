@@ -141,7 +141,6 @@ def get_header_install_dir(header):
         patterns = ['install/mkldnn/include']
         for pattern in patterns:
             install_dir = re.sub(pattern, '', install_dir)
-    # raise RuntimeError(install_dir)
     return install_dir
 
 
@@ -166,44 +165,6 @@ class InstallHeaders(Command):
         self.set_undefined_options(
             'install', ('install_headers', 'install_dir'), ('force', 'force')
         )
-
-    """
-    def mkdir_and_copy_file(self, header):
-        if 'pb.h' in header:
-            install_dir = re.sub(
-                env_dict.get("PADDLE_BINARY_DIR") + '/', '', header
-            )
-        elif 'third_party' not in header:
-            # paddle headers
-            install_dir = re.sub(
-                env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header
-            )
-            print('install_dir: ', install_dir)
-            if 'fluid/jit' in install_dir:
-                install_dir = re.sub('fluid/jit', 'jit', install_dir)
-                print('fluid/jit install_dir: ', install_dir)
-            if 'trace_event.h' in install_dir:
-                install_dir = re.sub(
-                    'fluid/platform/profiler',
-                    'phi/backends/custom',
-                    install_dir,
-                )
-                print('trace_event.h install_dir: ', install_dir)
-        else:
-            # third_party
-            install_dir = re.sub(
-                env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
-            )
-            patterns = ['install/mkldnn/include']
-            for pattern in patterns:
-                install_dir = re.sub(pattern, '', install_dir)
-        install_dir = os.path.join(
-            self.install_dir, os.path.dirname(install_dir)
-        )
-        if not os.path.exists(install_dir):
-            self.mkpath(install_dir)
-        return self.copy_file(header, install_dir)
-    """
 
     def run(self):
         hdrs = self.distribution.headers
@@ -259,44 +220,6 @@ class EggInfo(egg_info):
 
 # class Installlib is rewritten to add header files to .egg/paddle
 class InstallLib(install_lib):
-    """
-    def copy_file_to_egg_paddle(self, header):
-        if 'pb.h' in header:
-            install_dir = re.sub(
-                env_dict.get("PADDLE_BINARY_DIR") + '/', '', header
-            )
-        elif 'third_party' not in header:
-            # paddle headers
-            install_dir = re.sub(
-                env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header
-            )
-            print('install_dir: ', install_dir)
-            if 'fluid/jit' in install_dir:
-                install_dir = re.sub('fluid/jit', 'jit', install_dir)
-                print('fluid/jit install_dir: ', install_dir)
-            if 'trace_event.h' in install_dir:
-                install_dir = re.sub(
-                    'fluid/platform/profiler',
-                    'phi/backends/custom',
-                    install_dir,
-                )
-        else:
-            # third_party
-            install_dir = re.sub(
-                env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
-            )
-            patterns = ['install/mkldnn/include']
-            for pattern in patterns:
-                install_dir = re.sub(pattern, '', install_dir)
-        raise RuntimeError(self.install_dir,os.path.dirname(install_dir))
-        install_dir = os.path.join(
-            self.install_dir, 'paddle/include', os.path.dirname(install_dir)
-        )
-        if not os.path.exists(install_dir):
-            os.makedirs(install_dir)
-        return self.copy_file(header, install_dir)
-    """
-
     def run(self):
         self.build()
         outfiles = self.install()
@@ -740,7 +663,7 @@ def build_steps():
         if IS_WINDOWS:
             build_args += ["/p:CL_MPCount={}".format(max_jobs)]
         else:
-            build_args += ["-j", str(multiprocessing.cpu_count())]
+            build_args += ["-j", max_jobs]
     else:
         build_args += ["-j", str(multiprocessing.cpu_count())]
     environ_var = os.environ.copy()
