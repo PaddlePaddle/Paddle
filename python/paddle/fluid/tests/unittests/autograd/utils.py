@@ -17,6 +17,7 @@ import sys
 import typing
 
 import numpy as np
+from parameterized import parameterized_class
 
 import paddle
 from paddle.incubate.autograd.utils import as_tensors
@@ -320,33 +321,7 @@ def parameterize(fields, values=None):
         values (Sequence, optional): The test cases sequence. Defaults to None.
 
     """
-    fields = [fields] if isinstance(fields, str) else fields
-    params = [dict(zip(fields, vals)) for vals in values]
-
-    def decorate(cls):
-        test_cls_module = sys.modules[cls.__module__].__dict__
-        for i, values in enumerate(params):
-            test_cls = dict(cls.__dict__)
-            values = {
-                k: staticmethod(v) if callable(v) else v
-                for k, v in values.items()
-            }
-            test_cls.update(values)
-            name = cls.__name__ + str(i)
-            name = (
-                name + '.' + values.get('suffix')
-                if values.get('suffix')
-                else name
-            )
-
-            test_cls_module[name] = type(name, (cls,), test_cls)
-
-        for m in list(cls.__dict__):
-            if m.startswith("test"):
-                delattr(cls, m)
-        return cls
-
-    return decorate
+    return parameterized_class(fields, values)
 
 
 ##########################################################

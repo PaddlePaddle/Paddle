@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import sys
 
 import numpy as np
@@ -30,51 +29,11 @@ from paddle import _C_ops
 
 sys.path.append("../")
 from op_test import OpTest
+from parameterized import parameterized_class
 
 paddle.enable_static()
 
 TEST_CASE_NAME = 'test_case'
-
-
-def parameterize(attrs, input_values=None):
-
-    if isinstance(attrs, str):
-        attrs = [attrs]
-    input_dicts = (
-        attrs
-        if input_values is None
-        else [dict(zip(attrs, vals)) for vals in input_values]
-    )
-
-    def decorator(base_class):
-        test_class_module = sys.modules[base_class.__module__].__dict__
-        for idx, input_dict in enumerate(input_dicts):
-            test_class_dict = dict(base_class.__dict__)
-            test_class_dict.update(input_dict)
-
-            name = class_name(base_class, idx, input_dict)
-
-            test_class_module[name] = type(name, (base_class,), test_class_dict)
-
-        for method_name in list(base_class.__dict__):
-            if method_name.startswith("test"):
-                delattr(base_class, method_name)
-        return base_class
-
-    return decorator
-
-
-def to_safe_name(s):
-    return str(re.sub("[^a-zA-Z0-9_]+", "_", s))
-
-
-def class_name(cls, num, params_dict):
-    suffix = to_safe_name(
-        next((v for v in params_dict.values() if isinstance(v, str)), "")
-    )
-    if TEST_CASE_NAME in params_dict:
-        suffix = to_safe_name(params_dict["test_case"])
-    return "{}_{}{}".format(cls.__name__, num, suffix and "_" + suffix)
 
 
 def fft_c2c_python_api(x, axes, norm, forward):
@@ -89,7 +48,7 @@ def fft_c2r_python_api(x, axes, norm, forward, last_dim_size=0):
     return _C_ops.fft_c2r(x, axes, norm, forward, last_dim_size)
 
 
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward'),
     [
         (
@@ -175,7 +134,7 @@ class TestFFTC2COp(OpTest):
         )
 
 
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'last_dim_size'),
     [
         (
@@ -272,7 +231,7 @@ class TestFFTC2ROp(OpTest):
         )
 
 
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'onesided'),
     [
         (

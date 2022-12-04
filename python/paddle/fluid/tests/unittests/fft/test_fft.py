@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 import scipy.fft
+from parameterized import parameterized_class
 
 import paddle
 
@@ -67,31 +68,8 @@ def place(devices, key='place'):
     return decorate
 
 
-def parameterize(fields, values=None):
-
-    fields = [fields] if isinstance(fields, str) else fields
-    params = [dict(zip(fields, vals)) for vals in values]
-
-    def decorate(cls):
-        test_cls_module = sys.modules[cls.__module__].__dict__
-        for k, v in enumerate(params):
-            test_cls = dict(cls.__dict__)
-            test_cls.update(v)
-            name = cls.__name__ + str(k)
-            name = name + '.' + v.get('suffix') if v.get('suffix') else name
-
-            test_cls_module[name] = type(name, (cls,), test_cls)
-
-        for m in list(cls.__dict__):
-            if m.startswith("test"):
-                delattr(cls, m)
-        return cls
-
-    return decorate
-
-
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
@@ -130,7 +108,7 @@ class TestFft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
@@ -169,7 +147,7 @@ class TestIfft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
@@ -209,7 +187,7 @@ class TestFftException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5), None, (0, 1), 'backward'),
@@ -255,7 +233,7 @@ class TestFft2(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -323,7 +301,7 @@ class TestFft2Exception(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
@@ -362,7 +340,7 @@ class TestFftn(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
@@ -401,7 +379,7 @@ class TestIFftn(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         (
@@ -465,7 +443,7 @@ class TestHfft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         (
@@ -529,7 +507,7 @@ class TestIrfft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         (
@@ -593,7 +571,7 @@ class TestIrfftn(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         (
@@ -657,7 +635,7 @@ class TestHfftn(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 's', 'axis', 'norm'),
     [
         (
@@ -715,7 +693,7 @@ class TestHfft2(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 's', 'axis', 'norm'),
     [
         (
@@ -772,7 +750,7 @@ class TestIrfft2(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -854,7 +832,7 @@ class TestHfftException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -926,7 +904,7 @@ class TestIrfftException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1017,7 +995,7 @@ class TestHfft2Exception(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1106,7 +1084,7 @@ class TestIrfft2Exception(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1196,7 +1174,7 @@ class TestHfftnException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1275,7 +1253,7 @@ class TestIrfftnException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
@@ -1313,7 +1291,7 @@ class TestRfft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
@@ -1354,7 +1332,7 @@ class TestRfftException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5), None, (0, 1), 'backward'),
@@ -1393,7 +1371,7 @@ class TestRfft2(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1453,7 +1431,7 @@ class TestRfft2Exception(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
@@ -1491,7 +1469,7 @@ class TestRfftn(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1540,7 +1518,7 @@ class TestRfftnException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, -1, 'backward'),
@@ -1578,7 +1556,7 @@ class TestIhfft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
@@ -1618,7 +1596,7 @@ class TestIhfftException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5), None, (0, 1), 'backward'),
@@ -1657,7 +1635,7 @@ class TestIhfft2(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1725,7 +1703,7 @@ class TestIhfft2Exception(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
     [
         ('test_x_float64', rand_x(5, np.float64), None, None, 'backward'),
@@ -1763,7 +1741,7 @@ class TestIhfftn(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
@@ -1804,7 +1782,7 @@ class TestIhfftnException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'n', 'd', 'dtype'),
     [
         ('test_without_d', 20, 1, 'float32'),
@@ -1824,7 +1802,7 @@ class TestFftFreq(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'n', 'd', 'dtype'),
     [
         ('test_without_d', 20, 1, 'float32'),
@@ -1844,7 +1822,7 @@ class TestRfftFreq(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'axes', 'dtype'),
     [
         ('test_1d', np.random.randn(10), (0,), 'float64'),
@@ -1873,7 +1851,7 @@ class TestFftShift(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'axes'),
     [
         ('test_1d', np.random.randn(10), (0,), 'float64'),

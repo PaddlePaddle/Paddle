@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import sys
 import unittest
 
@@ -20,6 +19,7 @@ import numpy as np
 import scipy.signal
 from numpy import fft
 from numpy.lib.stride_tricks import as_strided
+from parameterized import parameterized_class
 
 import paddle
 
@@ -631,49 +631,8 @@ def rand_x(
         return np.random.randn(*shape).astype(dtype)
 
 
-def parameterize(attrs, input_values=None):
-
-    if isinstance(attrs, str):
-        attrs = [attrs]
-    input_dicts = (
-        attrs
-        if input_values is None
-        else [dict(zip(attrs, vals)) for vals in input_values]
-    )
-
-    def decorator(base_class):
-        test_class_module = sys.modules[base_class.__module__].__dict__
-        for idx, input_dict in enumerate(input_dicts):
-            test_class_dict = dict(base_class.__dict__)
-            test_class_dict.update(input_dict)
-
-            name = class_name(base_class, idx, input_dict)
-
-            test_class_module[name] = type(name, (base_class,), test_class_dict)
-
-        for method_name in list(base_class.__dict__):
-            if method_name.startswith("test"):
-                delattr(base_class, method_name)
-        return base_class
-
-    return decorator
-
-
-def class_name(cls, num, params_dict):
-    suffix = to_safe_name(
-        next((v for v in params_dict.values() if isinstance(v, str)), "")
-    )
-    if TEST_CASE_NAME in params_dict:
-        suffix = to_safe_name(params_dict["test_case"])
-    return "{}_{}{}".format(cls.__name__, num, suffix and "_" + suffix)
-
-
-def to_safe_name(s):
-    return str(re.sub("[^a-zA-Z0-9_]+", "_", s))
-
-
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis'),
     [
         ('test_1d_input1', rand_x(1, np.float64, shape=[150]), 50, 15, 0),
@@ -701,7 +660,7 @@ class TestFrame(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis'),
     [
         ('test_1d_input1', rand_x(1, np.float64, shape=[150]), 50, 15, 0),
@@ -740,7 +699,7 @@ class TestFrameStatic(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis', 'expect_exception'),
     [
         ('test_axis', rand_x(1, np.float64, shape=[150]), 50, 15, 2, ValueError),
@@ -760,7 +719,7 @@ class TestFrameException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'hop_length', 'axis'),
     [
         ('test_2d_input1', rand_x(2, np.float64, shape=[3, 50]), 4, 0),
@@ -783,7 +742,7 @@ class TestOverlapAdd(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'hop_length', 'axis'),
     [
         ('test_2d_input1', rand_x(2, np.float64, shape=[3, 50]), 4, 0),
@@ -818,7 +777,7 @@ class TestOverlapAddStatic(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'hop_length', 'axis', 'expect_exception'),
     [
         ('test_axis', rand_x(2, np.float64, shape=[3, 50]), 4, 2, ValueError),
@@ -863,7 +822,7 @@ class TestOverlapAddException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'pad_mode', 'normalized', 'onesided'),
     [
         ('test_1d_input', rand_x(1, np.float64, shape=[160000]), 512,
@@ -915,7 +874,7 @@ class TestStft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'pad_mode', 'normalized', 'onesided', 'expect_exception'),
     [
         ('test_dims', rand_x(1, np.float64, shape=[1, 2, 3]), 512,
@@ -957,7 +916,7 @@ class TestStftException(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'normalized', 'onesided', 'length', 'return_complex'),
     [
         ('test_2d_input', rand_x(2, np.float64, shape=[257, 471], complex=True), 512,
@@ -1011,7 +970,7 @@ class TestIstft(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize(
+@parameterized_class(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'normalized', 'onesided', 'length', 'return_complex', 'expect_exception'),
     [
         ('test_dims', rand_x(4, np.float64, shape=[1, 2, 3, 4], complex=True), 512,
