@@ -46,5 +46,6 @@ def place(devices, key='place'):
 
 # alias
 parameterize = parameterized
-param_cls = parameterized_class
 param_func = parameterized
+parameterize_cls = parameterized_class
+param_cls = parameterized_class
