@@ -85,6 +85,7 @@ class GroupShardedStage3(nn.Layer):
         pertrain_sync_models=True,
         offload=False,
         sync_comm=False,
+        exclude_layer=None,
     ):
         super().__init__()
 
@@ -98,7 +99,11 @@ class GroupShardedStage3(nn.Layer):
 
         # stage3 support some layer set by users to be unslice
         # _exclude_layer=[layer_name or id(layer)]
-        self._exclude_layer = []
+        assert isinstance(
+            exclude_layer, (list, tuple)
+        ), "the exclude_layers must be a list with layers' name or layers' id"
+
+        self._exclude_layer = exclude_layer
 
         # segmentation size
         assert segment_size >= 0, "segment_size must be GE than 0."
@@ -282,9 +287,6 @@ class GroupShardedStage3(nn.Layer):
         return fw
 
     def set_exclude_layer(self, exclude_layers):
-        assert isinstance(
-            exclude_layers, (list, tuple)
-        ), "the exclude_layers must be a list with layers' name or layers' id"
         self._exclude_layer = exclude_layers
 
     def set_state_dict(self, state_dict, use_structured_name=True):

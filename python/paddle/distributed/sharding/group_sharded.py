@@ -63,6 +63,7 @@ def group_sharded_parallel(
     segment_size=2**20,
     sync_comm=False,
     dp_group=None,
+    exclude_layer=None,
 ):
     """
     Use group_sharded_parallel can perform group shared configuration on the model, optimizer and GradScaler. Level has three string options, 'os', 'os_g' and 'p_g_os' corresponds to three different usage scenarios: optimizer state segmentation, optimizer state + gradient segmentation, and parameter + gradient + optimizer state segmentation.
@@ -191,6 +192,7 @@ def group_sharded_parallel(
                 offload=offload,
                 sync_comm=sync_comm,
                 device=device,
+                exclude_layer=exclude_layer,
             )
         else:
             model = ShardingStage3(
