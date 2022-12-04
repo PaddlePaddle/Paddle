@@ -13,24 +13,21 @@
 # limitations under the License.
 
 import unittest
+
 import numpy
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from paddle.fluid.framework import program_guard, Program
-
-from paddle.fluid.executor import Executor
-from paddle.fluid import framework
-
-from paddle.fluid.layers.rnn import LSTMCell, GRUCell, RNNCell
-from paddle.fluid.layers import rnn as dynamic_rnn
-from paddle.fluid import contrib
-from paddle.fluid.contrib.layers import basic_lstm
+import paddle.fluid.layers as layers
 import paddle.fluid.layers.utils as utils
-
-import numpy as np
+from paddle.fluid import contrib, framework
+from paddle.fluid.contrib.layers import basic_lstm
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.layers import rnn as dynamic_rnn
+from paddle.fluid.layers.rnn import GRUCell, LSTMCell, RNNCell
 
 
 class TestLSTMCellError(unittest.TestCase):
@@ -634,7 +631,7 @@ def def_seq2seq_model(
     )
 
     # loss
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=logits, label=label, soft_label=False
     )
     loss = layers.unsqueeze(loss, axes=[2])
@@ -643,8 +640,8 @@ def def_seq2seq_model(
         target_length, maxlen=max_tar_seq_len, dtype="float32"
     )
     loss = loss * tar_mask
-    loss = layers.reduce_mean(loss, dim=[0])
-    loss = layers.reduce_sum(loss)
+    loss = paddle.mean(loss, axis=[0])
+    loss = paddle.sum(loss)
 
     # optimizer
     optimizer = fluid.optimizer.Adam(0.001)

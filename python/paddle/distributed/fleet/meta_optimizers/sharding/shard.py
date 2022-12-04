@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import re
+
 from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op
-from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import (
     FP16Utils,
 )
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 
 __all__ = []
 

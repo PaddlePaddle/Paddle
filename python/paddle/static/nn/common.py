@@ -12,18 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+
+import numpy as np
+
 import paddle
-from paddle.fluid.initializer import Normal
-from paddle.fluid.framework import static_only, Variable, _non_static_mode
-
-from paddle.fluid.data_feeder import check_dtype
-
 from paddle.common_ops_import import (
+    LayerHelper,
     check_type,
     check_variable_and_dtype,
     utils,
-    LayerHelper,
 )
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_dtype
+from paddle.fluid.framework import Variable, _non_static_mode, static_only
+from paddle.fluid.initializer import Constant, Normal
+from paddle.fluid.layers.layer_function_generator import templatedoc
+from paddle.fluid.param_attr import ParamAttr
 
 __all__ = []
 
@@ -175,6 +180,459 @@ def fc(
         act=activation,
         name=name,
     )
+
+
+def instance_norm(
+    input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
+):
+    r"""
+    :api_attr: Static Graph
+
+    **Instance Normalization Layer**
+
+    Can be used as a normalizer function for convolution or fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Instance Normalization: The Missing Ingredient for
+    Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
+
+    Args:
+        input(Tensor): The rank of input tensor can be 2, 3, 4, 5.
+            The data type is float32 or float64.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+         If the Initializer of the param_attr is not set, the parameter is initialized
+         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+             Default: None.
+        bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+         If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             If the bias_attr is set to False, instance_norm will not create bias_attr.
+         Default: None.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        A Tensor which is the result after applying instance normalization on the input,
+        has same shape and data type with input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x, size=200)
+            hidden2 = paddle.static.nn.instance_norm(hidden1)
+    """
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'instance_norm'
+    )
+    if param_attr is False:
+        assert (
+            bias_attr is False
+        ), "param_attr and bias_attr must be set to False at the same time in instance_norm"
+
+    helper = LayerHelper('instance_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # use fp32 for in parameter
+    if dtype == paddle.framework.core.VarDesc.VarType.FP16:
+        dtype = paddle.framework.core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
+                len(input.shape), input_shape
+            )
+        )
+    channel_num = input_shape[1]
+
+    param_shape = [channel_num]
+
+    if param_attr and bias_attr:
+        # create parameter
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0),
+        )
+        bias = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=True,
+            default_initializer=Constant(0.0),
+        )
+
+    # create output
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+
+    instance_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    inputs = {"X": input}
+    if param_attr and bias_attr:
+        inputs["Scale"] = scale
+        inputs["Bias"] = bias
+
+    helper.append_op(
+        type="instance_norm",
+        inputs=inputs,
+        outputs={
+            "Y": instance_norm_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance,
+        },
+        attrs={
+            "epsilon": epsilon,
+        },
+    )
+
+    return instance_norm_out
+
+
+@static_only
+def data_norm(
+    input,
+    act=None,
+    epsilon=1e-05,
+    param_attr=None,
+    data_layout='NCHW',
+    in_place=False,
+    name=None,
+    moving_mean_name=None,
+    moving_variance_name=None,
+    do_model_average_for_mean_and_var=True,
+    slot_dim=-1,
+    sync_stats=False,
+    summary_decay_rate=0.9999999,
+    enable_scale_and_shift=False,
+):
+    r"""
+    :api_attr: Static Graph
+
+    **Data Normalization Layer**
+
+    This op can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Args:
+        input(Tensor): The input Tensor.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        epsilon(float, Default 1e-05):
+        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
+            should do model average when model average is enabled.
+        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we
+            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
+            If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
+            is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
+            the show number and judge if the show number is zero. If so, we choose to skip normalization on this
+            embedding.
+        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
+            summary messages.
+        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
+        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
+
+    Returns:
+        Tensor: A tensor which is the result after applying data normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.randn(shape=[32,100])
+            hidden2 = paddle.static.nn.data_norm(input=x)
+    """
+    helper = LayerHelper('data_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    batch_size_default = 1e4
+    batch_sum_default = 0.0
+    batch_square_sum_default = 1e4
+    scale_w_default = 1.0
+    bias_default = 0.0
+
+    if param_attr and isinstance(param_attr, dict):
+        batch_size_default = param_attr.get("batch_size", 1e4)
+        batch_sum_default = param_attr.get("batch_sum", 0.0)
+        batch_square_sum_default = param_attr.get("batch_square", 1e4)
+    if enable_scale_and_shift:
+        scale_w_default = param_attr.get("scale_w", 1.0)
+        bias_default = param_attr.get("bias", 0.0)
+
+    # create scale and shift(bias) when enable_scale_and_shift is True
+    if name is None:
+        name = "dn"
+    if enable_scale_and_shift:
+        scale_w = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.scale_w',
+                initializer=Constant(value=float(scale_w_default)),
+                trainable=True,
+            ),
+            shape=param_shape,
+            dtype=input.dtype,
+        )
+        bias = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.bias',
+                initializer=Constant(value=float(bias_default)),
+                trainable=True,
+            ),
+            shape=param_shape,
+            dtype=input.dtype,
+        )
+    # create parameter
+    batch_size = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_size',
+            initializer=Constant(value=float(batch_size_default)),
+            trainable=True,
+        ),
+        shape=param_shape,
+        dtype=input.dtype,
+    )
+
+    batch_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_sum',
+            initializer=Constant(value=float(batch_sum_default)),
+            trainable=True,
+        ),
+        shape=param_shape,
+        dtype=input.dtype,
+    )
+
+    batch_square_sum = helper.create_parameter(
+        attr=ParamAttr(
+            name=name + '.batch_square_sum',
+            initializer=Constant(value=float(batch_square_sum_default)),
+            trainable=True,
+        ),
+        shape=param_shape,
+        dtype=input.dtype,
+    )
+
+    means = helper.create_variable(dtype=dtype, stop_gradient=True)
+    scales = helper.create_variable(dtype=dtype, stop_gradient=True)
+
+    data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
+
+    inputs = {
+        "X": input,
+        "BatchSize": batch_size,
+        "BatchSum": batch_sum,
+        "BatchSquareSum": batch_square_sum,
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "data_layout": data_layout,
+        "sync_stats": sync_stats,
+        "summary_decay_rate": summary_decay_rate,
+    }
+    if slot_dim > 0:
+        attrs["slot_dim"] = slot_dim
+    if enable_scale_and_shift:
+        attrs["enable_scale_and_shift"] = enable_scale_and_shift
+    if enable_scale_and_shift:
+        inputs["scale_w"] = scale_w
+        inputs["bias"] = bias
+    helper.append_op(
+        type="data_norm",
+        inputs=inputs,
+        outputs={
+            "Y": data_norm_out,
+            "Means": means,
+            "Scales": scales,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum,
+        },
+        attrs=attrs,
+    )
+
+    return helper.append_activation(data_norm_out)
+
+
+@templatedoc()
+def group_norm(
+    input,
+    groups,
+    epsilon=1e-05,
+    param_attr=None,
+    bias_attr=None,
+    act=None,
+    data_layout='NCHW',
+    name=None,
+):
+    """
+    :api_attr: Static Graph
+
+    **Group Normalization Layer**
+
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
+
+    Parameters:
+        input(Tensor): Tensor with dimension greater than 1, the data type is float32 or float64.
+        groups(int): The number of groups that divided from channels, the data type
+            is int32.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero, the data type is float32. Default: 1e-05.
+        param_attr(ParamAttr|bool, optional): ParamAttr object that specifies weight parameter
+            attribute. If a bool type, only False is supported, which means there is no weight parameter.
+            Default: None, the default weight parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        bias_attr(ParamAttr|bool, optional): ParamAttr object that specifies bias parameter
+            attribute. If a bool type, only False is supported, which means there is no bias parameter.
+            Default: None, the default bias parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        act(str, optional): Activation to be applied to the output of group normalization.
+        data_layout(str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, *]`.
+        name (str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: A Tensor has same data type and data format with `input`.
+
+    Examples:
+       .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            data = paddle.static.data(name='data', shape=[2, 8, 32, 32], dtype='float32')
+            x = paddle.static.nn.group_norm(input=data, groups=4)
+            print(x.shape) # [2, 8, 32, 32]
+    """
+    helper = LayerHelper('group_norm', **locals())
+    dtype = helper.input_dtype()
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'group_norm'
+    )
+    # create intput and parameters
+    inputs = {'X': input}
+    input_shape = input.shape
+    if len(input_shape) < 2:
+        raise ValueError(
+            f"The dimensions of Op(static.nn.group_norm)'s input should be more than 1. But received {len(input_shape)}"
+        )
+    if data_layout != 'NCHW' and data_layout != 'NHWC':
+        raise ValueError(
+            "Param(data_layout) of Op(static.nn.group_norm) got wrong value: received "
+            + data_layout
+            + " but only NCHW or NHWC supported."
+        )
+    channel_num = input_shape[1] if data_layout == 'NCHW' else input_shape[-1]
+    param_shape = [channel_num]
+    if param_attr:
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0),
+        )
+        inputs['Scale'] = scale
+    if bias_attr:
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
+        )
+        inputs['Bias'] = bias
+
+    # create output
+    mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_variable(dtype=dtype, stop_gradient=True)
+    group_norm_out = helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="group_norm",
+        inputs=inputs,
+        outputs={
+            "Y": group_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={
+            "epsilon": epsilon,
+            "groups": groups,
+            "data_layout": data_layout,
+        },
+    )
+
+    return helper.append_activation(group_norm_out)
 
 
 def conv3d(
@@ -1628,3 +2086,428 @@ def deform_conv2d(
             modulated=True,
             name=name,
         )
+
+
+class PyFuncRegistry:
+    _register_funcs = []
+
+    def __init__(self, func):
+        if func is None or not callable(func):
+            raise TypeError('func must be a Python function')
+
+        self._func = func
+        # find named args using reflection
+        args = inspect.getfullargspec(self._func)
+        if len(args[0]) == 0 and args[1] is None and args[2] is None:
+            # Function with no inputs
+            self._named_args = None
+        else:
+            self._named_args = args[0]
+        self._id = core._append_python_callable_object_and_return_id(self)
+        '''
+        Why record self here?
+
+        1. For debug usage. Users can call
+           :code:`py_func.registered_func(idx)` method
+           to find the registered function corresponding
+           to :code:`idx`.
+
+        2. For increasing reference count of self.
+           It seems that to release Python object
+           whose reference count is 1 would cause
+           segmentation fault error in C++ side.
+           May be lack of Python GC in C++ side?
+        '''
+        PyFuncRegistry._register_funcs.append(self)
+
+    @classmethod
+    def registered_func(cls, idx):
+        return cls._register_funcs[idx]._func
+
+    @classmethod
+    def registered_func_num(cls):
+        return len(cls._register_funcs)
+
+    @property
+    def id(self):
+        return self._id
+
+    def __call__(self, *args):
+        if self._named_args is None:
+            func_ret = self._func()
+        else:
+            kwargs = dict()
+            idx = 0
+            for arg in self._named_args:
+                kwargs[arg] = args[idx]
+                idx += 1
+            func_ret = self._func(*args[idx:], **kwargs)
+
+        if not isinstance(func_ret, (list, tuple)):
+            func_ret = (func_ret,)
+
+        ret = []
+        for each_ret in func_ret:
+            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+                ret.append(each_ret)
+                continue
+
+            if not isinstance(each_ret, np.ndarray):
+                each_ret = np.array(each_ret)
+
+            tensor = core.LoDTensor()
+            tensor.set(each_ret, core.CPUPlace())
+            ret.append(tensor)
+
+        return tuple(ret)
+
+
+@static_only
+@templatedoc()
+def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
+    """
+    This is used to register customized Python OP to Paddle. The design
+    principe of py_func is that Tensor and numpy array can be converted to each
+    other easily. So you can use Python and numpy API to register a python OP.
+
+    The forward function of the registered OP is ``func`` and the backward function
+    of that is ``backward_func``. Paddle will call ``func`` at forward runtime and
+    call ``backward_func`` at backward runtime(if ``backward_func`` is not  None).
+    ``x`` is the input of ``func``, whose type must be Tensor; ``out`` is
+    the output of ``func``, whose type can be either Tensor or numpy array.
+
+    The input of the backward function ``backward_func`` is ``x``, ``out`` and
+    the gradient of ``out``. If ``out`` have no gradient, the relevant input of
+    ``backward_func`` is None. If ``x`` do not have a gradient, the user should
+    return None in ``backward_func``.
+
+    The data type and shape of ``out`` should also be set correctly before this
+    API is called, and the data type and shape of the gradient of ``out`` and
+    ``x`` will be inferred automatically.
+
+    This API can also be used to debug the neural network by setting the ``func``
+    as a function that only print variables.
+
+    Args:
+        func (callable): The forward function of the registered OP. When the network
+            is running, the forward output ``out`` will be calculated according to this
+            function and the forward input ``x``. In ``func`` , it's suggested that we
+            actively convert Tensor into a numpy array, so that we can use Python and
+            numpy API arbitrarily. If not, some operations of numpy may not be compatible.
+        x (Tensor|tuple(Tensor)|list[Tensor]): The input of the forward function ``func``.
+            It can be Tensor|tuple(Tensor)|list[Tensor]. In addition, Multiple Tensor
+            should be passed in the form of tuple(Tensor) or list[Tensor].
+        out (T|tuple(T)|list[T]): The output of the forward function ``func``, it can be
+            T|tuple(T)|list[T], where T can be either Tensor or numpy array. Since Paddle
+            cannot automatically infer the shape and type of ``out``, you must create
+            ``out`` in advance.
+        backward_func (callable, optional): The backward function of the registered OP.
+            Its default value is None, which means there is no reverse calculation. If
+            it is not None, ``backward_func`` is called to calculate the gradient of
+            ``x`` when the network is at backward runtime.
+        skip_vars_in_backward_input (Tensor, optional): It's used to limit the input
+            list of ``backward_func``, and it can be Tensor|tuple(Tensor)|list[Tensor].
+            It must belong to either ``x`` or ``out``. The default  value is None, which means
+            that no tensors need to be removed from ``x`` and ``out``. If it is not None,
+            these tensors will not be the input of ``backward_func``. This parameter is only
+            useful when ``backward_func`` is not None.
+
+    Returns:
+        Tensor|tuple(Tensor)|list[Tensor]: The output ``out`` of the forward function ``func``.
+
+    Examples:
+        .. code-block:: python
+
+            # example 1:
+            import paddle
+            import numpy as np
+
+            paddle.enable_static()
+
+            # Creates a forward function, Tensor can be input directly without
+            # being converted into numpy array.
+            def tanh(x):
+                return np.tanh(x)
+
+            # Skip x in backward function and return the gradient of x
+            # Tensor must be actively converted to numpy array, otherwise,
+            # operations such as +/- can't be used.
+            def tanh_grad(y, dy):
+                return np.array(dy) * (1 - np.square(np.array(y)))
+
+            # Creates a forward function for debugging running networks(print value)
+            def debug_func(x):
+                print(x)
+
+            def create_tmp_var(name, dtype, shape):
+                return paddle.static.default_main_program().current_block().create_var(
+                    name=name, dtype=dtype, shape=shape)
+
+            def simple_net(img, label):
+                hidden = img
+                for idx in range(4):
+                    hidden = paddle.static.nn.fc(hidden, size=200)
+                    new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+                        dtype=hidden.dtype, shape=hidden.shape)
+
+                    # User-defined forward and backward
+                    hidden = paddle.static.py_func(func=tanh, x=hidden,
+                        out=new_hidden, backward_func=tanh_grad,
+                        skip_vars_in_backward_input=hidden)
+
+                    # User-defined debug functions that print out the input Tensor
+                    paddle.static.py_func(func=debug_func, x=hidden, out=None)
+
+                prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+                ce_loss = paddle.nn.loss.CrossEntropyLoss()
+                return ce_loss(prediction, label)
+
+            x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
+            y = paddle.static.data(name='y', shape=[1], dtype='int64')
+            res = simple_net(x, y)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            input1 = np.random.random(size=[1,4]).astype('float32')
+            input2 = np.random.randint(1, 10, size=[1], dtype='int64')
+            out = exe.run(paddle.static.default_main_program(),
+                          feed={'x':input1, 'y':input2},
+                          fetch_list=[res.name])
+            print(out)
+
+        .. code-block:: python
+
+            # example 2:
+            # This example shows how to turn Tensor into numpy array and
+            # use numpy API to register an Python OP
+            import paddle
+            import numpy as np
+
+            paddle.enable_static()
+
+            def element_wise_add(x, y):
+                # Tensor must be actively converted to numpy array, otherwise,
+                # numpy.shape can't be used.
+                x = np.array(x)
+                y = np.array(y)
+
+                if x.shape != y.shape:
+                    raise AssertionError("the shape of inputs must be the same!")
+
+                result = np.zeros(x.shape, dtype='int32')
+                for i in range(len(x)):
+                    for j in range(len(x[0])):
+                        result[i][j] = x[i][j] + y[i][j]
+
+                return result
+
+            def create_tmp_var(name, dtype, shape):
+                return paddle.static.default_main_program().current_block().create_var(
+                            name=name, dtype=dtype, shape=shape)
+
+            def py_func_demo():
+                start_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
+
+                # Input of the forward function
+                x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
+                y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
+
+                # Output of the forward function, name/dtype/shape must be specified
+                output = create_tmp_var('output','int32', [3,1])
+
+                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
+                paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
+
+                exe=paddle.static.Executor(paddle.CPUPlace())
+                exe.run(start_program)
+
+                # Feed numpy array to main_program
+                input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                out = exe.run(main_program,
+                            feed={'x':input1, 'y':input2},
+                            fetch_list=[output.name])
+                print("{0} + {1} = {2}".format(input1, input2, out))
+
+            py_func_demo()
+
+            # Reference output:
+            # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
+            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
+    """
+    helper = LayerHelper('py_func', **locals())
+    check_type(x, 'X', (list, tuple, Variable, type(None)), 'py_func')
+    if x is None:
+        x = []
+    elif isinstance(x, Variable):
+        x = [x]
+    elif isinstance(x, tuple):
+        x = list(x)
+    elif not isinstance(x, (list, tuple, Variable)):
+        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
+    check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
+    if out is None:
+        out_list = []
+    elif isinstance(out, Variable):
+        out_list = [out]
+    elif isinstance(out, tuple):
+        out_list = list(out)
+    elif isinstance(out, list):
+        out_list = out
+    else:
+        raise TypeError(
+            'Output must be Variable/list(Variable)/tuple(Variable)'
+        )
+
+    fwd_func_id = PyFuncRegistry(func).id
+    bwd_func_id = (
+        PyFuncRegistry(backward_func).id if backward_func is not None else -1
+    )
+
+    for each_out in out_list:
+        if len(each_out.shape) == 0:
+            raise ValueError(
+                'Output shapes of py_func should be provided by users manually'
+            )
+
+    backward_skip_vars = set()
+    if backward_func is not None and skip_vars_in_backward_input is not None:
+        if isinstance(skip_vars_in_backward_input, Variable):
+            skip_vars_in_backward_input = [skip_vars_in_backward_input]
+
+        fwd_in_out = [v.name for v in x]
+        fwd_in_out.extend([v.name for v in out_list])
+        fwd_in_out = set(fwd_in_out)
+        backward_skip_vars = set()
+        for v in skip_vars_in_backward_input:
+            if v.name not in fwd_in_out:
+                raise ValueError(
+                    'Variable {} is not found in forward inputs and outputs'.format(
+                        v.name
+                    )
+                )
+            backward_skip_vars.add(v.name)
+
+    helper.append_op(
+        type='py_func',
+        inputs={'X': x},
+        outputs={'Out': out_list},
+        attrs={
+            'forward_callable_id': fwd_func_id,
+            'backward_callable_id': bwd_func_id,
+            'backward_skip_vars': list(backward_skip_vars),
+        },
+    )
+    return out
+
+
+# For debug usage
+py_func.registered_func = PyFuncRegistry.registered_func
+py_func.registered_func_num = PyFuncRegistry.registered_func_num
+
+
+@static_only
+def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
+    r"""
+
+    prelu activation.
+
+    .. math::
+        prelu(x) = max(0, x) + \alpha * min(0, x)
+
+    There are three modes for the activation:
+
+    .. code-block:: text
+
+        all: All elements share same alpha.
+        channel: Elements in same channel share same alpha.
+        element: All elements do not share alpha. Each element has its own alpha.
+
+    Parameters:
+        x (Tensor): The input Tensor or LoDTensor with data type float32.
+        mode (str): The mode for weight sharing.
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
+            weight (alpha), it can be create by ParamAttr. None by default. \
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        name (str, optional): Name for the operation (optional, default is None). \
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A tensor with the same shape and data type as x.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.static.data(name="x", shape=[None,5,10,10], dtype="float32")
+            mode = 'channel'
+            output = paddle.static.nn.prelu(
+                x,mode,param_attr=paddle.ParamAttr(name='alpha'))
+
+    """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
+
+    helper = LayerHelper('prelu', **locals())
+    if mode not in ['all', 'channel', 'element']:
+        raise ValueError('mode should be one of all, channel, element.')
+
+    alpha_shape = [1]
+    if mode == 'channel':
+
+        true_data_format = [
+            'NC',
+            'NCL',
+            'NCHW',
+            'NCDHW',
+            'NLC',
+            'NHWC',
+            'NDHWC',
+        ]
+        if data_format not in true_data_format:
+            raise ValueError(
+                "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+            )
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
+
+        assert (
+            len(x.shape) >= 2
+        ), "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        # NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
+        # To be consistent with Prelu, it is simplified.
+        # NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
+        # NOTE(GuoxiaWang): support NHWC data format
+        if data_format == 'NHWC':
+            alpha_shape = [1, 1, 1, x.shape[-1]]
+        else:
+            alpha_shape = [1, x.shape[1], 1, 1]
+
+    elif mode == 'element':
+        assert (
+            len(x.shape) >= 1
+        ), "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        alpha_shape = [1] + list(x.shape)[1:]
+    dtype = helper.input_dtype(input_param_name='x')
+    alpha = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=alpha_shape,
+        dtype=dtype,
+        is_bias=False,
+        default_initializer=paddle.nn.initializer.Constant(0.25),
+    )
+
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="prelu",
+        inputs={"X": x, 'Alpha': alpha},
+        attrs={"mode": mode, "data_format": data_format},
+        outputs={"Out": out},
+    )
+    return out

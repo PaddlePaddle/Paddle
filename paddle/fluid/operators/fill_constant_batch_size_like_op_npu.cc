@@ -35,7 +35,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *in = ctx.Input<phi::DenseTensor>("Input");
     if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
-      // set the correct batch size for the LoDTensor.
+      // set the correct batch size for the phi::DenseTensor.
       auto odims = out->dims();
       int output_dim_idx = ctx.Attr<int>("output_dim_idx");
       odims[output_dim_idx] = static_cast<int>(in->lod().back().size()) - 1;

@@ -368,6 +368,26 @@ struct XPURelu6GradFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor* x,
+                  const DenseTensor* out,
+                  const DenseTensor* dout,
+                  DenseTensor* dx) const {
+    dev_ctx.template Alloc<T>(dx);
+    const XPUType* x_data = reinterpret_cast<const XPUType*>(x->data<T>());
+    const XPUType* y_grad = reinterpret_cast<const XPUType*>(dout->data<T>());
+    XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
+
+    int r = xpu::swish_grad(
+        dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+  }
+};
+
+template <typename T>
 struct XPUSigmoidGradFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   template <typename Context>
@@ -552,6 +572,7 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, XPUSqrtGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, XPUTanhGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, XPUReluGradFunctor);
 
+DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, XPUSiluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, XPULogGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, XPUSquareGradFunctor);
 
@@ -603,6 +624,12 @@ PD_REGISTER_KERNEL(relu_grad,
                    phi::ReluGradKernel,
                    float,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(silu_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SiluGradKernel,
+                   float,
+                   phi::dtype::float16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
@@ -617,7 +644,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log_grad, LogGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_sigmoid_grad, HardSigmoidGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardswish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)

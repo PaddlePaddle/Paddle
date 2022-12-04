@@ -163,11 +163,11 @@ struct NormConvolutionArgs {
   std::vector<int> paddings;
   std::vector<int> dilations;
 
-  platform::TensorDescriptor in_desc;
-  platform::FilterDescriptor filter_desc;
-  platform::TensorDescriptor out_desc;
-  platform::TensorDescriptor out_stats_desc;
-  platform::ConvolutionDescriptor conv_desc;
+  phi::backends::gpu::TensorDescriptor in_desc;
+  phi::backends::gpu::FilterDescriptor filter_desc;
+  phi::backends::gpu::TensorDescriptor out_desc;
+  phi::backends::gpu::TensorDescriptor out_stats_desc;
+  phi::backends::gpu::ConvolutionDescriptor conv_desc;
 
   bool is_support;
 };

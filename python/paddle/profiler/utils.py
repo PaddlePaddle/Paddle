@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
-from warnings import warn
 import functools
 from contextlib import ContextDecorator
+from typing import Any
+from warnings import warn
 
 from paddle.fluid import core
-from paddle.fluid.core import _RecordEvent, TracerEventType
+from paddle.fluid.core import TracerEventType, _RecordEvent
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False

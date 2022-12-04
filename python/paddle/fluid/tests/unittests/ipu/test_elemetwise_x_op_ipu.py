@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -125,17 +126,17 @@ class TestMul(IPUOpTest):
 
 class TestAdd(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_add
+        self.op = paddle.add
 
 
 class TestSub(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_sub
+        self.op = paddle.subtract
 
 
 class TestDiv(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_div
+        self.op = paddle.divide
 
 
 class TestMin(TestMul):

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-import numpy as np
-import unittest
 
 paddle.set_device('xpu')
 
@@ -413,6 +415,65 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.logical_not(x)
 
         self.assertEqual(out.shape, [])
+
+    def test_searchsorted(self):
+        x = paddle.to_tensor([1, 3, 5, 7, 9])
+        y = paddle.rand([])
+
+        # only has forward kernel
+        out = paddle.searchsorted(x, y)
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 0)
+
+    def test_gather_1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
+        index = paddle.full([], 2, 'int64')
+        out = paddle.gather(x, index)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 5)
+        self.assertEqual(out.grad.shape, [])
+
+    def test_gather_xD_axis_0(self):
+        x = paddle.to_tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
+        )
+        index = paddle.full([], 1, 'int64')
+        out = paddle.gather(x, index)
+        out.backward()
+
+        self.assertEqual(out.shape, [3])
+        for i in range(3):
+            self.assertEqual(out.numpy()[i], x.numpy()[1][i])
+        self.assertEqual(out.grad.shape, [3])
+
+    def test_gather_xD_axis_1(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        out = paddle.gather(x, index, axis=1)
+
+        self.assertEqual(out.shape, [2])
+        for i in range(2):
+            self.assertEqual(out.numpy()[i], x.numpy()[i][1])
+
+    def test_scatter_1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4.0)
+        out = paddle.scatter(x, index, updates)
+
+        self.assertEqual(out.numpy()[2], 4)
+
+    def test_scatter_XD(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.to_tensor([1.0, 2.0, 3.0])
+        out = paddle.scatter(x, index, updates)
+
+        for i in range(3):
+            self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

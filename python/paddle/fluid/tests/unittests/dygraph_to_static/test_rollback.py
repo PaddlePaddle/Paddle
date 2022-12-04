@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    StaticFunction,
-)
+
+import paddle
+from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.utils import func_to_source_code
 
 
 class Net(paddle.nn.Layer):

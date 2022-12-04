@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
-import paddle
-import paddle.static as static
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
 
+import numpy as np
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.static as static
 from paddle import _C_ops
+from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard
 
 
 class TestDropoutOp(OpTest):
@@ -537,7 +538,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 res10 = paddle.nn.functional.dropout(
                     x=input, p=1.0, training=True
                 )
-                dropout = paddle.fluid.dygraph.Dropout(
+                dropout = paddle.nn.Dropout(
                     p=0,
                 )
                 res11 = dropout(input)

@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
-import paddle
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTGatherTest1(InferencePassTest):
@@ -29,7 +30,7 @@ class TRTGatherTest1(InferencePassTest):
             data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
             scale_out = paddle.gather(data, index=index)
-            out = fluid.layers.softmax(input=scale_out)
+            out = paddle.nn.functional.softmax(scale_out)
 
         self.feeds = {
             "data": np.random.random([self.bs, 128]).astype("float32"),
@@ -68,7 +69,7 @@ class TRTGatherTest2(InferencePassTest):
             data = fluid.data(name='data', shape=[16, 64], dtype='float32')
             index = fluid.data(name='index', shape=[2], dtype='int32')
             scale_out = paddle.gather(data, index=index)
-            out = fluid.layers.softmax(input=scale_out)
+            out = paddle.nn.functional.softmax(scale_out)
 
         self.feeds = {
             "data": np.random.random([self.bs, 64]).astype("float32"),

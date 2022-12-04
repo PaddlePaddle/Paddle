@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from paddle.fluid.framework import program_guard, Program
-from op_test import OpTest
 import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle.fluid as fluid
+from paddle.fluid.framework import Program, program_guard
 
 
 def collect_node_patch(og, max_depth):
