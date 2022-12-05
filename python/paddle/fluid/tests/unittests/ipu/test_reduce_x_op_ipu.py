@@ -28,7 +28,7 @@ class TestMean(IPUOpTest):
         self.set_test_op()
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_mean
+        self.op = paddle.mean
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -180,12 +180,12 @@ class TestAll(TestMean):
         self.fetch_list = [out.name]
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_all
+        self.op = paddle.all
 
 
 class TestAny(TestAll):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_any
+        self.op = paddle.any
 
 
 if __name__ == "__main__":

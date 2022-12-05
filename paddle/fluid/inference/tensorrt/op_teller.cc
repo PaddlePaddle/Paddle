@@ -79,17 +79,18 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",        "relu6",     "sigmoid",
-        "elu",         "selu",      "softsign",
-        "softplus",    "stanh",     "thresholded_relu",
-        "exp",         "log",       "sqrt",
-        "abs",         "sin",       "cos",
-        "tan",         "tanh",      "sinh",
-        "cosh",        "asin",      "acos",
-        "atan",        "asinh",     "atanh",
-        "ceil",        "floor",     "erf",
-        "reciprocal",  "silu",      "celu",
-        "tanh_shrink", "logsigmoid"};
+        "relu",        "relu6",      "sigmoid",
+        "elu",         "selu",       "softsign",
+        "softplus",    "stanh",      "thresholded_relu",
+        "exp",         "log",        "sqrt",
+        "abs",         "sin",        "cos",
+        "tan",         "tanh",       "sinh",
+        "cosh",        "asin",       "acos",
+        "atan",        "asinh",      "atanh",
+        "ceil",        "floor",      "erf",
+        "reciprocal",  "silu",       "celu",
+        "tanh_shrink", "logsigmoid", "sign",
+        "logical_not"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -334,6 +335,35 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       }
+    }
+
+    if (op_type == "range") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
+    if (op_type == "sign") {
+#if IS_TRT_VERSION_GE(8200)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "sign op is only supported by trt8.2 above ";
+      return false;
+#endif
+    }
+
+    if (op_type == "logical_not") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        return false;
+      }
+#else
+      VLOG(3) << "logical_not op is only supported by trt8.4 above because of "
+                 "cast op";
+      return false;
+#endif
     }
 
     if (op_type == "matmul_v2") {
@@ -1202,17 +1232,26 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      auto* block = desc.Block();
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto input_type = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_GE(8400)
+      if (dtype == 0 ||
+          (dtype == -1 && input_type == framework::proto::VarType::BOOL)) {
+        VLOG(3) << "the fill_any_like supports input of BOOL by trt8.4 above";
+        return true;
+      }
+#endif
       if (dtype != -1 && dtype != 2 && dtype != 5) {
-        VLOG(3) << "the fill_any_like only supports int32 and float32";
+        VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                   "trt8.4 below";
         return false;
       }
       if (dtype == -1) {
-        auto* block = desc.Block();
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        auto input_type = x_var_desc->GetDataType();
         if (input_type != framework::proto::VarType::INT32 &&
             input_type != framework::proto::VarType::FP32) {
-          VLOG(3) << "the fill_any_like only supports int32 and float32";
+          VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                     "trt8.4 below";
           return false;
         }
       }
@@ -1503,10 +1542,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "instance_norm") {
-      if (with_dynamic_shape) {
-        VLOG(3) << "trt instance_norm op does not support dynamic shape ";
-        return false;
-      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "input of instance_norm op converter should be 1, got "
                 << desc.Input("X").size();
@@ -2340,6 +2375,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2367,7 +2403,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "ceil",
       "floor",
       "rsqrt",
+      "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",
@@ -2476,6 +2514,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2503,7 +2542,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "ceil",
       "floor",
       "rsqrt",
+      "sign",
       "reciprocal",
+      "logical_not",
       "erf",
       "softmax",
       "sigmoid",

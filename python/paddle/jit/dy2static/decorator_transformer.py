@@ -14,13 +14,13 @@
 # limitations under the License.
 
 from paddle.utils import gast
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from paddle.jit.dy2static.static_analysis import (
     AstNodeWrapper,
 )
 from .base_transformer import (
     BaseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     RE_PYNAME,
     RE_PYMODULE,
     ast_to_source_code,

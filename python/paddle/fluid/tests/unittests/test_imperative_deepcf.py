@@ -24,8 +24,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 
 class DMF(fluid.Layer):
@@ -271,7 +271,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
-            loss = paddle.sum(fluid.layers.log_loss(prediction, labels))
+            loss = paddle.sum(paddle.nn.functional.log_loss(prediction, labels))
             adam = fluid.optimizer.AdamOptimizer(0.01)
             adam.minimize(loss)
 
@@ -325,7 +325,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
                     loss = paddle.sum(
-                        fluid.layers.log_loss(
+                        paddle.nn.functional.log_loss(
                             prediction,
                             to_variable(
                                 labels_np[slice : slice + self.batch_size]
@@ -359,7 +359,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         to_variable(items_np[slice : slice + self.batch_size]),
                     )
                     loss2 = paddle.sum(
-                        fluid.layers.log_loss(
+                        paddle.nn.functional.log_loss(
                             prediction2,
                             to_variable(
                                 labels_np[slice : slice + self.batch_size]
@@ -402,7 +402,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                             ),
                         )
                         loss = paddle.sum(
-                            fluid.layers.log_loss(
+                            paddle.nn.functional.log_loss(
                                 prediction,
                                 to_variable(
                                     labels_np[slice : slice + self.batch_size]
