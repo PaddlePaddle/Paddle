@@ -5,6 +5,11 @@ if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
 endif()
 
+cc_library(
+  flags
+  SRCS flags.cc
+  DEPS gflags)
+
 cc_library(errors SRCS errors.cc)
 set(phi_enforce_deps errors flags)
 if(WITH_GPU)

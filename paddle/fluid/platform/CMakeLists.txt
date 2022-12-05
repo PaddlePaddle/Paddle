@@ -32,10 +32,6 @@ if(WITH_PYTHON)
 endif()
 
 cc_library(
-  flags
-  SRCS flags.cc
-  DEPS gflags)
-cc_library(
   denormal
   SRCS denormal.cc
   DEPS)
