@@ -16,6 +16,7 @@ import numpy as np
 import time
 import sys
 import logging
+import paddle
 
 import paddle
 import paddle.fluid as fluid
@@ -60,12 +61,10 @@ class AdaRoundLoss:
         self.default_beta_range = default_beta_range
 
     def compute_recon_loss(self, ada_quantized_output, orig_output):
-        square_cost = fluid.layers.square_error_cost(
+        square_cost = paddle.nn.functional.square_error_cost(
             ada_quantized_output, orig_output
         )
-        recon_loss = fluid.layers.reduce_mean(
-            fluid.layers.reduce_sum(square_cost, dim=-1)
-        )
+        recon_loss = paddle.mean(paddle.sum(square_cost, axis=-1))
         return recon_loss
 
     def compute_round_loss(self, alpha_v, warm_start, beta):
@@ -75,8 +74,8 @@ class AdaRoundLoss:
 
             # calculate regularization term - which ensures parameter to converge to exactly zeros and ones
             # at the end of optimization
-            reg_term = fluid.layers.reduce_sum(
-                -fluid.layers.pow(paddle.abs(2 * h_v - 1), factor=beta) + 1
+            reg_term = paddle.sum(
+                -paddle.pow(paddle.abs(2 * h_v - 1), beta) + 1
             )
 
             # calculate the rounding loss
@@ -148,7 +147,7 @@ class AdaRound:
         tensor_floor = np.floor(tensor_scale)
         tensor = tensor_scale - tensor_floor
         alpha = -np.log((ZETA - GAMMA) / (tensor - GAMMA) - 1)
-        self.alpha_v = fluid.layers.create_parameter(
+        self.alpha_v = paddle.create_parameter(
             shape=alpha.shape,
             dtype="float32",
             name=var_name + ".alpha",

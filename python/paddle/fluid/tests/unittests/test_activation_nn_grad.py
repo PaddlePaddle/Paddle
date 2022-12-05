@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-import paddle
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 import gradient_checker
-import paddle.nn.functional as F
-
+import numpy as np
 from decorator_helper import prog_scope
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 
 
 class TestSigmoidTripleGradCheck(unittest.TestCase):
@@ -217,7 +217,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
 
-        y = layers.leaky_relu(x, alpha=alpha)
+        y = paddle.nn.functional.leaky_relu(x, alpha)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.02
 

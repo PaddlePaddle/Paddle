@@ -14,23 +14,28 @@
 
 import logging
 
-from .pass_base import PassBase, register_pass
-from paddle.fluid import core, unique_name
-from paddle.fluid import framework as framework
-from paddle.fluid.backward import _append_grad_suffix_, _get_no_grad_set_name
-from paddle.fluid.backward import ProgramStats, _rename_arg_, _find_op_path_
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 from paddle.distributed.auto_parallel.utils import (
     get_loss_op,
-    set_var_dist_attr,
-    set_dist_op_desc_original_id,
-)
-from paddle.distributed.auto_parallel.utils import (
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     insert_dependencies_for_two_ops,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_dist_op_desc_original_id,
+    set_var_dist_attr,
 )
+from paddle.fluid import core
+from paddle.fluid import framework as framework
+from paddle.fluid import unique_name
+from paddle.fluid.backward import (
+    ProgramStats,
+    _append_grad_suffix_,
+    _find_op_path_,
+    _get_no_grad_set_name,
+    _rename_arg_,
+)
+
+from .pass_base import PassBase, register_pass
 
 
 def _to_be_recomputed(op):
@@ -203,6 +208,7 @@ class RecomputeState(ProgramStats):
                 if cur_op.attr("fix_seed") is False
                 else int(cur_op.attr("seed"))
             )
+            # TODO add dependency for seed op to ensure it be issued just before recompute.
             seed_op = self._block._insert_op_without_sync(
                 index=cur_op.idx,
                 type="seed",
@@ -469,14 +475,30 @@ class RecomputePass(PassBase):
 
                     ckpt_ops_dict[fwd_op_id][0] = False
                     if rc_op:
-                        insert_dependencies_for_two_ops(
-                            main_block,
-                            idx,
-                            main_block.ops[rc_op.idx - 1],
-                            rc_op,
-                            self._dist_context,
-                            sync=False,
+                        prior_op = main_block.ops[rc_op.idx - 1]
+                        posterior_op = rc_op
+                        prior_mesh = (
+                            self._dist_context.get_op_dist_attr_for_program(
+                                prior_op
+                            ).process_mesh
                         )
+                        posterior_mesh = (
+                            self._dist_context.get_op_dist_attr_for_program(
+                                posterior_op
+                            ).process_mesh
+                        )
+                        # NOTE if two recompute segements across two pipeline stages
+                        # not need dependecies for it
+                        if prior_mesh == posterior_mesh:
+                            insert_dependencies_for_two_ops(
+                                main_block,
+                                idx,
+                                prior_op,
+                                posterior_op,
+                                self._dist_context,
+                                is_recompute=True,
+                                sync=False,
+                            )
         main_program._sync_with_cpp()
 
     def reset_op_dist_attr(self, op, var_name_dict):

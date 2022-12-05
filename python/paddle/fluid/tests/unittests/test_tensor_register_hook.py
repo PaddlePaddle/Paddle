@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn as nn
+from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(nn.Layer):

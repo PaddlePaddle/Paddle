@@ -881,7 +881,7 @@ class ASPHelper:
             for param in params:
                 if ASPHelper._is_supported_layer(main_program, param.name):
                     if param.name not in asp_info.mask_vars:
-                        mask_param = layers.create_parameter(
+                        mask_param = paddle.create_parameter(
                             name=ASPHelper._get_mask_name(param.name),
                             shape=param.shape,
                             dtype=param.dtype,

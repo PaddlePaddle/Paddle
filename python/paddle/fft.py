@@ -13,14 +13,17 @@
 # limitations under the License.
 
 from typing import Sequence
+
 import numpy as np
+
 import paddle
-from .tensor.attribute import is_floating_point, is_integer
-from .tensor.creation import _real_to_complex_dtype, _complex_to_real_dtype
-from .fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
 from . import _C_ops, _legacy_C_ops
 from .fluid.data_feeder import check_variable_and_dtype
+from .fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .fluid.layer_helper import LayerHelper
+from .tensor.attribute import is_floating_point, is_integer
+from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
 
 __all__ = [
     'fft',

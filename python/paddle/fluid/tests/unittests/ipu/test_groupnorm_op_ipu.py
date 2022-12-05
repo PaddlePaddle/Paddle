@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -62,7 +63,7 @@ class TestBase(IPUOpTest):
             )
             scale = paddle.ParamAttr(trainable=True)
             bias = paddle.ParamAttr(trainable=True)
-            out = paddle.fluid.layers.nn.group_norm(
+            out = paddle.static.nn.group_norm(
                 conv1, param_attr=scale, bias_attr=bias, **self.attrs
             )
             loss = paddle.mean(out)
@@ -70,7 +71,7 @@ class TestBase(IPUOpTest):
             adam.minimize(loss)
             self.fetch_list = [loss.name]
         else:
-            out = paddle.fluid.layers.nn.group_norm(
+            out = paddle.static.nn.group_norm(
                 x, param_attr=True, bias_attr=True, **self.attrs
             )
             self.fetch_list = [out.name]

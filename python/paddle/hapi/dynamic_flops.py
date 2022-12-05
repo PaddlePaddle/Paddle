@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import warnings
-import paddle.nn as nn
+
 import numpy as np
-from .static_flops import static_flops, Table
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    unwrap_decorators,
-)
+
+import paddle
+import paddle.nn as nn
+from paddle.jit.dy2static.program_translator import unwrap_decorators
+
+from .static_flops import Table, static_flops
 
 __all__ = []
 

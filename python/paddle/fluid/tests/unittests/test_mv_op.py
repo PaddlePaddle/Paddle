@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
-from paddle.static import program_guard, Program
 from op_test import OpTest
+
+import paddle
+from paddle.static import Program, program_guard
 
 
 class TestMVOp(OpTest):

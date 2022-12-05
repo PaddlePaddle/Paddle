@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import math
-import sys
 import os
+import sys
+import tempfile
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
-import tempfile
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -159,11 +161,15 @@ def model():
     mov_combined_features = get_mov_combined_features()
 
     # need cos sim
-    inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
-    scale_infer = layers.scale(x=inference, scale=5.0)
+    inference = paddle.nn.functional.cosine_similarity(
+        x1=usr_combined_features, x2=mov_combined_features
+    )
+    scale_infer = paddle.scale(x=inference, scale=5.0)
 
     label = layers.data(name='score', shape=[1], dtype='float32')
-    square_cost = layers.square_error_cost(input=scale_infer, label=label)
+    square_cost = paddle.nn.functional.square_error_cost(
+        input=scale_infer, label=label
+    )
     avg_cost = paddle.mean(square_cost)
 
     return scale_infer, avg_cost

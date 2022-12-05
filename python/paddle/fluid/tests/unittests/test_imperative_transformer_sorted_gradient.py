@@ -13,15 +13,18 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Linear, Layer
-from paddle.fluid.dygraph import to_variable, guard
-from paddle.fluid.dygraph import TracedLayer
-from test_imperative_base import new_program_scope
+import paddle.nn.functional as F
+from paddle.fluid import Embedding, Layer, core
+from paddle.fluid.dygraph import guard, to_variable
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
-from paddle.fluid import core
-import numpy as np
+from paddle.jit import TracedLayer
+from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
 
@@ -396,9 +399,9 @@ class PrePostProcessLayer(Layer):
         super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
-                self._layer_norm = LayerNorm(
+                self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    param_attr=fluid.ParamAttr(
+                    weight_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
@@ -426,12 +429,13 @@ class PrePostProcessLayer(Layer):
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
-        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
+        self._i2h = Linear(d_hid, d_inner_hid)
         self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
         hidden = self._i2h(x)
+        hidden = paddle.nn.functional.relu(hidden)
         if self._dropout_rate:
             hidden = fluid.layers.dropout(
                 hidden,
@@ -499,7 +503,7 @@ class MultiHeadAttentionLayer(Layer):
         )
         if attn_bias is not None:
             product += attn_bias
-        weights = fluid.layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
             weights_droped = fluid.layers.dropout(
                 weights,
@@ -691,7 +695,7 @@ class PrepareEncoderDecoderLayer(Layer):
 
     def forward(self, src_word, src_pos):
         src_word_emb = self._input_emb(src_word)
-        src_word_emb = fluid.layers.scale(
+        src_word_emb = paddle.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5
         )
         # # TODO change this to fit dynamic length input
@@ -1009,7 +1013,7 @@ class WrapDecoderLayer(Layer):
 
         if dec_inputs is None:
             # Return probs for independent decoder program.
-            predict_out = fluid.layers.softmax(predict)
+            predict_out = paddle.nn.functional.softmax(predict)
             return predict_out
         return predict
 
@@ -1088,21 +1092,21 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
-            label_out = fluid.layers.label_smooth(
+            label_out = F.label_smooth(
                 label=fluid.layers.one_hot(
                     input=label, depth=self._trg_vocab_size
                 ),
                 epsilon=self._label_smooth_eps,
             )
 
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self._label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = fluid.layers.reduce_sum(weighted_cost)
-        token_num = fluid.layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, predict, token_num
