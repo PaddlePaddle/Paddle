@@ -29,8 +29,8 @@ class Model(nn.Layer):
         super(Model, self).__init__()
         self.first_stage = nn.Linear(4096, 4096, bias_attr=False)
         self.center_stage = nn.Linear(4096, 4096)
-        self.center_stage.weight.stop_gradient = False
-        self.center_stage.bias.stop_gradient = False
+        self.center_stage.weight.stop_gradient = True
+        self.center_stage.bias.stop_gradient = True
         self.final_stage = nn.Linear(4096, 2, bias_attr=False)
 
     def forward(self, x):
@@ -101,6 +101,16 @@ def train_mlp(
 
 def test_sharding_api():
     paddle.distributed.init_parallel_env()
+
+    # just test warning
+    model = Model()
+    model = paddle.amp.decorate(models=model, level="O2")
+    optimizer = optimizer_setting(model=model, use_multi_precision=True)
+    model, optimizer, scaler = group_sharded_parallel(
+        model=model,
+        optimizer=optimizer,
+        level="p_g_os",
+    )
 
     data = [paddle.randn([8, 4096]) for i in range(20)]
 
