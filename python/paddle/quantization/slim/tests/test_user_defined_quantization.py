@@ -12,20 +12,24 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import os
-import unittest
 import json
+import os
 import random
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
 from paddle.fluid.framework import IrGraph
-from paddle.quantization.slim.quantization import QuantizationTransformPass
-from paddle.quantization.slim.quantization import QuantizationFreezePass
-from paddle.quantization.slim.quantization import OutScaleForTrainingPass
-from paddle.quantization.slim.quantization import OutScaleForInferencePass
-from paddle.quantization.slim.quantization import AddQuantDequantPass
-from paddle.framework import core, LayerHelper
+from paddle.framework import LayerHelper, core
+from paddle.quantization.slim.quantization import (
+    AddQuantDequantPass,
+    OutScaleForInferencePass,
+    OutScaleForTrainingPass,
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
 
 paddle.enable_static()
 

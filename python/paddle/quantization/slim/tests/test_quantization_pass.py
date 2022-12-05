@@ -13,19 +13,23 @@
 # limitations under the license.
 
 import os
-import unittest
 import random
+import unittest
+
 import numpy as np
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.quantization.slim.quantization import QuantizationTransformPass
-from paddle.quantization.slim.quantization import QuantizationTransformPassV2
-from paddle.quantization.slim.quantization import QuantizationFreezePass
-from paddle.quantization.slim.quantization import ConvertToInt8Pass
-from paddle.quantization.slim.quantization import TransformForMobilePass
-from paddle.quantization.slim.quantization import AddQuantDequantPass
 from paddle.framework import core
+from paddle.quantization.slim.quantization import (
+    AddQuantDequantPass,
+    ConvertToInt8Pass,
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+    QuantizationTransformPassV2,
+    TransformForMobilePass,
+)
 
 paddle.enable_static()
 

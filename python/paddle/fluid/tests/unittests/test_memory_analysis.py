@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
+from simple_nets import simple_fc_net
+
 import paddle
 from paddle.fluid.memory_analysis import (
-    pre_allocate_memory,
     get_max_memory_info,
+    pre_allocate_memory,
 )
-from simple_nets import simple_fc_net
 
 
 class TestMemoryAnalysis(unittest.TestCase):

@@ -13,20 +13,13 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import (
-    Embedding,
-    LayerNorm,
-    Linear,
-    to_variable,
-    Layer,
-)
-from paddle.optimizer.lr import NoamDecay
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 import paddle.nn.functional as F
+from paddle.fluid.dygraph import Embedding, Layer, Linear, to_variable
+from paddle.optimizer.lr import NoamDecay
 
 """
 Note(chenweihang): To compare loss of single-card and multi-card
@@ -246,9 +239,9 @@ class PrePostProcessLayer(Layer):
         super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
-                self._layer_norm = LayerNorm(
+                self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    param_attr=fluid.ParamAttr(
+                    weight_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
@@ -349,7 +342,7 @@ class MultiHeadAttentionLayer(Layer):
         )
         if attn_bias is not None:
             product += attn_bias
-        weights = fluid.layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
             weights_droped = fluid.layers.dropout(
                 weights,
@@ -538,7 +531,7 @@ class PrepareEncoderDecoderLayer(Layer):
 
     def forward(self, src_word, src_pos):
         src_word_emb = self._input_emb(src_word)
-        src_word_emb = fluid.layers.scale(
+        src_word_emb = paddle.scale(
             x=src_word_emb, scale=self._src_emb_dim**0.5
         )
         # # TODO change this to fit dynamic length input
@@ -856,7 +849,7 @@ class WrapDecoderLayer(Layer):
 
         if dec_inputs is None:
             # Return probs for independent decoder program.
-            predict_out = fluid.layers.softmax(predict)
+            predict_out = paddle.nn.functional.softmax(predict)
             return predict_out
         return predict
 
@@ -942,14 +935,14 @@ class TransFormer(Layer):
                 epsilon=self._label_smooth_eps,
             )
 
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self._label_smooth_eps else False,
         )
         weighted_cost = cost * weights
-        sum_cost = fluid.layers.reduce_sum(weighted_cost)
-        token_num = fluid.layers.reduce_sum(weights)
+        sum_cost = paddle.sum(weighted_cost)
+        token_num = paddle.sum(weights)
         token_num.stop_gradient = True
         avg_cost = sum_cost / token_num
         return sum_cost, avg_cost, predict, token_num

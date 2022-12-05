@@ -12,25 +12,27 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
+import logging
 import os
-import numpy as np
 import tempfile
 import unittest
-import logging
+
+import numpy as np
+from imperative_test_utils import ImperativeLenet, fix_model_dict
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import core, set_flags
-from paddle.optimizer import Adam
-from paddle.quantization.slim.quantization import ImperativeQuantAware
 from paddle.nn import Conv2D, Conv2DTranspose
-from ..log_helper import get_logger
 from paddle.nn.quant.quant_layers import (
     QuantizedConv2D,
     QuantizedConv2DTranspose,
 )
-from paddle.fluid.framework import _test_eager_guard
-from imperative_test_utils import fix_model_dict, ImperativeLenet
+from paddle.optimizer import Adam
+from paddle.quantization.slim.quantization import ImperativeQuantAware
+
+from ..log_helper import get_logger
 
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"

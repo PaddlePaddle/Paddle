@@ -12,24 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import time
-import sys
 import logging
+import sys
+import time
+
+import numpy as np
 
 import paddle
 import paddle.static as static
 
 from ..log_helper import get_logger
 from .utils import (
+    _channelwise_quant_axis1_ops,
+    bias_correction_w,
+    calculate_quant_cos_error,
+    dequant_tensor,
     load_variable_data,
+    quant_tensor,
     set_variable_data,
     stable_sigmoid,
-    quant_tensor,
-    dequant_tensor,
-    _channelwise_quant_axis1_ops,
-    calculate_quant_cos_error,
-    bias_correction_w,
 )
 
 _logger = get_logger(

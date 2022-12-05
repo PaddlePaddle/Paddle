@@ -11,15 +11,26 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-import numpy as np
 import logging
+
+import numpy as np
 
 import paddle
 from paddle.framework import ParamAttr
-from paddle.nn import Sequential
-from paddle.nn import ReLU, ReLU6, LeakyReLU, Sigmoid, Softmax, PReLU
-from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
-from paddle.nn import BatchNorm1D
+from paddle.nn import (
+    BatchNorm1D,
+    BatchNorm2D,
+    Conv2D,
+    LeakyReLU,
+    Linear,
+    MaxPool2D,
+    PReLU,
+    ReLU,
+    ReLU6,
+    Sequential,
+    Sigmoid,
+    Softmax,
+)
 
 from ..log_helper import get_logger
 
@@ -238,7 +249,6 @@ class ImperativeLenetWithSkipQuant(paddle.nn.Layer):
         x = self.pool2d_1(x)
 
         x = paddle.flatten(x, 1)
-
         x = self.linear_0(x)
         x = self.leaky_relu_0(x)
         x = self.linear_1(x)

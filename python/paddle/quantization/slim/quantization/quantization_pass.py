@@ -13,20 +13,21 @@
 # limitations under the License.
 
 import collections
+
 import numpy as np
 
 try:
     from tqdm import tqdm
 except:
     from .utils import tqdm
+
 import paddle
-from ....framework import core
+
+from ....fluid.framework import IrGraph, IrNode
+from ....framework import _get_paddle_place, core
+from ....static import Program, data, program_guard, scope_guard
 from ....utils import unique_name
-from ....static import Program, program_guard, scope_guard, data
-from ....framework import _get_paddle_place
 from . import utils
-from ....fluid.framework import IrGraph
-from ....fluid.framework import IrNode
 
 __all__ = [
     'QuantizationTransformPass',
@@ -1952,7 +1953,7 @@ class AddQuantDequantPass:
                         graph.update_input_link(
                             in_node, quant_var_node, op_node
                         )
-            t.update()
+                t.update()
 
         # Backward stage, update input link
         for op_node in all_op_nodes:

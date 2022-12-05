@@ -12,17 +12,20 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import os
-import numpy as np
-import unittest
 import logging
+import os
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.nn as nn
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Sequential
 from paddle.optimizer import Adam
 from paddle.quantization.slim.quantization import ImperativeQuantAware
-from paddle.nn import Sequential
+
 from ..log_helper import get_logger
-from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 

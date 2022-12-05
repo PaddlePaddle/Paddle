@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
-import paddle
 
 
 class TestInstanceNorm(unittest.TestCase):
@@ -69,7 +70,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.InstanceNorm(shape[1])
+                    bn = paddle.nn.InstanceNorm2D(shape[1])
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -96,7 +97,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    ins = fluid.dygraph.InstanceNorm(shape[1])
+                    ins = paddle.nn.InstanceNorm2D(shape[1])
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = ins(x)
                     exe.run(fluid.default_startup_program())

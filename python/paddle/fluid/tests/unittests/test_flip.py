@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest
-import gradient_checker
-from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
 
 

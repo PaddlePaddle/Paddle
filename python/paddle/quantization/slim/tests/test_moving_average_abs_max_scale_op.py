@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle
-from paddle.framework import core
 import paddle.nn.quant.quant_layers as quant_layers
+from paddle.framework import core
 
 paddle.enable_static()
 

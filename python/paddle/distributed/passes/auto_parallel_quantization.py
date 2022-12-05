@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import paddle
-
-from paddle.fluid import core, framework
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.quantization.slim.quantization import utils
-from paddle.quantization.slim.quantization import QuantizationTransformPassV2
-from paddle.quantization.slim.quantization import AddQuantDequantPassV2
-from paddle.quantization.slim.quantization import OutScaleForTrainingPass
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
+)
+from paddle.fluid import core, framework
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.quantization.slim.quantization import (
+    AddQuantDequantPassV2,
+    OutScaleForTrainingPass,
+    QuantizationTransformPassV2,
+    utils,
 )
 
 from .pass_base import PassBase, register_pass

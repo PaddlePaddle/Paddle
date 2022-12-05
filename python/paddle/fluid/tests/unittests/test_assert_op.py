@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import unittest
 
 
 class TestAssertOp(unittest.TestCase):
@@ -60,7 +61,7 @@ class TestAssertOp(unittest.TestCase):
         def net_func():
             zero = layers.fill_constant(shape=[1], dtype='int64', value=0)
             one = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            condition = layers.less_than(one, zero)  # False
+            condition = paddle.less_than(one, zero)  # False
             layers.Assert(condition, [zero, one])
 
         print("test_assert_print_data")

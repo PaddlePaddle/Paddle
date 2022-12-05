@@ -12,19 +12,30 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import os
-import numpy as np
-import unittest
 import logging
+import os
+import unittest
+
+import numpy as np
+from imperative_test_utils import fix_model_dict
 
 import paddle
 from paddle.framework import core, set_flags
+from paddle.nn import (
+    BatchNorm2D,
+    Conv2D,
+    LeakyReLU,
+    Linear,
+    MaxPool2D,
+    PReLU,
+    ReLU,
+    Sequential,
+    Sigmoid,
+    Softmax,
+)
 from paddle.quantization.slim.quantization import ImperativeQuantAware
-from paddle.nn import Sequential
-from paddle.nn import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
-from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
+
 from ..log_helper import get_logger
-from imperative_test_utils import fix_model_dict
 
 paddle.enable_static()
 

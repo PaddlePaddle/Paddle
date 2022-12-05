@@ -12,25 +12,26 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
+import logging
 import os
-import numpy as np
+import tempfile
 import time
 import unittest
-import logging
-import tempfile
 
-import paddle.nn as nn
-import paddle
-from paddle.quantization.slim.quantization import *
-from ..log_helper import get_logger
-from paddle.dataset.common import download
-from paddle.fluid.framework import _test_eager_guard
-
+import numpy as np
 from imperative_test_utils import (
     ImperativeLenet,
     ImperativeLinearBn,
+    ImperativeLinearBn_hook,
 )
-from imperative_test_utils import ImperativeLinearBn_hook
+
+import paddle
+import paddle.nn as nn
+from paddle.dataset.common import download
+from paddle.fluid.framework import _test_eager_guard
+from paddle.quantization.slim.quantization import *
+
+from ..log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
