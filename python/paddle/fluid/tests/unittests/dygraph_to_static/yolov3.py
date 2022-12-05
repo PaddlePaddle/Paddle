@@ -332,7 +332,7 @@ class YOLOv3(fluid.dygraph.Layer):
                 for m in anchor_mask:
                     mask_anchors.append(cfg.anchors[2 * m])
                     mask_anchors.append(cfg.anchors[2 * m + 1])
-                boxes, scores = fluid.layers.yolo_box(
+                boxes, scores = paddle.vision.ops.yolo_box(
                     x=out,
                     img_size=self.im_shape,
                     anchors=mask_anchors,
