@@ -43,8 +43,10 @@ void WarprnntGradKernel(const Context& dev_ctx,
 
   // (B, 1)
   auto loss_grad_e = EigenTensor<T, 2>::From(loss_grad);
+  std::cout << "loss_grad_e: " << loss_grad_e.eval() << std::endl;
   // (B, T, U, D)
   auto warprnntgrad_e = EigenTensor<T, 4>::From(warprnntgrad);
+  std::cout << "warprnntgrad_e: " << warprnntgrad_e.eval() << std::endl;
 
   auto logits_grad_e = EigenTensor<T, 4>::From(*logits_grad);
 
@@ -55,6 +57,8 @@ void WarprnntGradKernel(const Context& dev_ctx,
 
   auto* place = dev_ctx.eigen_device();
   logits_grad_e.device(*place) = logits_g;
+
+  std::cout << "logits_g: " << logits_g.eval() << std::endl;
 }
 
 }  // namespace phi

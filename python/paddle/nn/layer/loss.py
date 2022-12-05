@@ -1118,6 +1118,48 @@ class CTCLoss(Layer):
         )
 
 
+class RNNTLoss(Layer):
+    """
+    Parameters:
+        blank (int, optional): blank label. Default: 0.
+        fastemit_lambda (float, optional): Regularization parameter for FastEmit (https://arxiv.org/pdf/2010.11148.pdf)
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            'none' | 'mean' | 'sum'. 'none': no reduction will be applied,
+            'mean': the output losses will be divided by the target lengths and
+            then the mean over the batch is taken. Default: 'mean'
+
+    Shape:
+        logits: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+        labels: 2 dimensional (batch, labelLength) Tensor containing all the targets of the batch with zero padded
+        logit_lens: Tensor of size (batch) containing size of each output sequence from the network
+        label_lens: Tensor of (batch) containing label length of each example
+
+    Returns:
+     Tensor, The RNN-T loss between ``logits`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logits``.
+
+    Examples:
+        .. code-block:: python
+
+    """
+
+    def __init__(self, blank=0, fastemit_lambda=0.001, reduction='mean'):
+        super().__init__()
+        self.blank = blank
+        self.reduction = reduction
+        self.fastemit_lambda = fastemit_lambda
+
+    def forward(self, logits, labels, logit_lens, label_lens):
+        return paddle.nn.functional.rnnt_loss(
+            logits,
+            labels,
+            logit_lens,
+            label_lens,
+            self.blank,
+            self.reduction,
+            self.fastemit_lambda,
+        )
+
+
 class SmoothL1Loss(Layer):
     r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared

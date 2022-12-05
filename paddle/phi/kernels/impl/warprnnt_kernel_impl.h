@@ -54,6 +54,7 @@ class ComputeRnntLossFunctor<Context, float> {
                           float* costs,
                           void* workspace,
                           rnntOptions options) {
+    VLOG(4) << "float32...";
     return compute_rnnt_loss(activations,
                              gradients,
                              flat_labels,
@@ -80,6 +81,7 @@ class ComputeRnntLossFunctor<Context, double> {
                           double* costs,
                           void* workspace,
                           rnntOptions options) {
+    VLOG(4) << "float64...";
     return compute_rnnt_loss_fp64(activations,
                                   gradients,
                                   flat_labels,
@@ -171,6 +173,7 @@ class WarpRNNTFunctor {
     T* workspace_data = workspace.data<T>();
     phi::funcs::SetConstant<Context, T>()(
         dev_ctx, &workspace, static_cast<T>(0));
+    VLOG(4) << "set workspace";
 
     // compute loss and gradient
     status = ComputeRnntLossFunctor<Context, T>()(input,
@@ -183,7 +186,7 @@ class WarpRNNTFunctor {
                                                   cpu_loss,
                                                   workspace_data,
                                                   options_);
-
+    VLOG(4) << "ComputeRnntLossFunctor done";
     PADDLE_ENFORCE_EQ(
         RNNT_STATUS_SUCCESS,
         status,
@@ -276,6 +279,7 @@ void WarprnntKernel(const Context& dev_ctx,
   Tmax = logits.dims()[1];
   Umax = logits.dims()[2];
   D = logits.dims()[3];
+  VLOG(4) << "input shape: " << B << "," << Tmax << "," << Umax << "," << D;
 
   PADDLE_ENFORCE_GT(B,
                     0,
@@ -314,13 +318,14 @@ void WarprnntKernel(const Context& dev_ctx,
   phi::Copy(dev_ctx,
             logits_length,
             phi::CPUPlace(),
-            false /*blocking*/,
+            true /*blocking*/,
             &logits_length_cpu);
   phi::Copy(dev_ctx,
             labels_length,
             phi::CPUPlace(),
             true /*blocking*/,
             &labels_length_cpu);
+  VLOG(4) << "copy logits and label lens to cpu.";
 
   std::vector<int> warprnnt_logits_lengths(
       logits_length_cpu.data<int>(),
@@ -332,16 +337,10 @@ void WarprnntKernel(const Context& dev_ctx,
   T sum_all_U = std::accumulate(
       warprnnt_label_lengths.begin(), warprnnt_label_lengths.end(), 0);
 
-  // Loss (B,1)
-  auto loss_dims = phi::make_ddim({static_cast<int64_t>(B), 1});
-
   // cpu or gpu
   DenseTensor warprnnt_logits;
-  phi::Copy(dev_ctx,
-            logits,
-            dev_ctx.GetPlace(),
-            false /*blocking*/,
-            &warprnnt_logits);
+  phi::Copy(
+      dev_ctx, logits, dev_ctx.GetPlace(), true /*blocking*/, &warprnnt_logits);
   const T* warprnnt_logits_data = warprnnt_logits.data<T>();
 
   // warprnnt computes loss and gradient in one call, gradient data also stored
@@ -357,6 +356,7 @@ void WarprnntKernel(const Context& dev_ctx,
       dev_ctx, label, phi::CPUPlace(), true /*blocking*/, &warprnnt_label);
   const int* warprnnt_label_data = warprnnt_label.data<int>();
 
+  VLOG(4) << "flat labels into one vec.";
   std::vector<int> warprnnt_label_flat;
   warprnnt_label_flat.reserve(sum_all_U);
   for (size_t i = 0; i < B; ++i) {
@@ -374,9 +374,15 @@ void WarprnntKernel(const Context& dev_ctx,
                         sum_all_U));
 
   // warprnnt stores loss in CPU memory
+  VLOG(4) << "compute loss and grad.";
+  // Loss (B,1)
+  auto loss_dims = phi::make_ddim({static_cast<int64_t>(B), 1});
   DenseTensor warprnnt_loss;
   warprnnt_loss.Resize(loss_dims);
   T* warprnnt_loss_data = dev_ctx.template HostAlloc<T>(&warprnnt_loss);
+  phi::funcs::SetConstant<Context, T>()(
+      dev_ctx, &warprnnt_loss, static_cast<T>(0));
+
   WarpRNNTFunctor<Context, T>()(dev_ctx,
                                 warprnnt_logits_data,
                                 warprnntgrad_data,
@@ -391,9 +397,10 @@ void WarprnntKernel(const Context& dev_ctx,
                                 fastemit_lambda,
                                 num_threads,
                                 warprnnt_loss_data);
-  // Copy the loss back
+  VLOG(4) << "copy back loss.";
   phi::Copy(
-      dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), false /*blocking*/, loss);
+      dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), true /*blocking*/, loss);
+  VLOG(4) << "rnnt kernel done.";
 }
 
 }  // namespace phi

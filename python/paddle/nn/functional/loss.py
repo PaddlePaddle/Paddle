@@ -1757,7 +1757,7 @@ def ctc_loss(
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
-        norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
+        norm_by_times (bool, default False): Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
@@ -1835,25 +1835,24 @@ def ctc_loss(
 def rnnt_loss(
     logits,
     labels,
-    logits_lengths,
+    logit_lengths,
     label_lengths,
     blank=0,
     reduction='mean',
     fastemit_lambda=0.001,
 ):
     """
-
     An operator integrating the open source Warp-Transducer library (https://github.com/b-flo/warp-transducer.git)
     to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
 
     Parameters:
         logits (Tensor): The logits sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
         labels (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
-        logits_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        logit_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of RNN-T loss, which is in the half-opened interval [0, B). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the batch_size, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
-        fastemit_lambda (float, default 0.001) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
+        fastemit_lambda (float, default 0.001): Regularization parameter for FastEmit (https://arxiv.org/pdf/2010.11148.pdf)
 
     Returns:
         Tensor, The RNN-T loss between ``logtis`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logtis``.
@@ -1870,7 +1869,7 @@ def rnnt_loss(
     ):
         num_threads = 1
         if in_dygraph_mode():
-            grad, loss_out = _C_ops.warprnnt(
+            loss_out = _C_ops.warprnnt(
                 input,
                 label,
                 input_length,
@@ -1935,7 +1934,7 @@ def rnnt_loss(
 
     # (B, 1)
     loss_out = warprnnt(
-        logits, labels, logits_lengths, label_lengths, blank, fastemit_lambda
+        logits, labels, logit_lengths, label_lengths, blank, fastemit_lambda
     )
 
     # (B,)
