@@ -40,6 +40,7 @@ from paddle.distributed.auto_parallel.utils import (
     is_optimize_op,
     insert_dependencies_for_two_vars,
     is_dep_skip_op,
+    use_standalone_executor,
 )
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -96,7 +97,7 @@ class ShardingPass(PassBase):
         self.dp_groups = set()
         self.sharding_infos = []
         self.varname_to_sharding_info = {}
-        self.partial_sharding = False
+        self.sharding_hybrid_dp = False
         self.outer_dp_group = None
         self.shared_params_grads = []
 
@@ -229,7 +230,7 @@ class ShardingPass(PassBase):
 
             # sharding hybrid data parallel: partial sharding param within
             if dp_group.nranks > self.sharding_world_size:
-                self.partial_sharding = True
+                self.sharding_hybrid_dp = True
                 assert (
                     len(self.dp_groups) == 1
                 ), "hybrid sharding and data parallelism are supported only when there is excatly one data parallel group in the network"
@@ -507,7 +508,7 @@ class ShardingPass(PassBase):
                     self._dist_context,
                 )
                 if (
-                    not self.partial_sharding
+                    not self.sharding_hybrid_dp
                     or not sharding_info.is_in_local_shard(base_name)
                 ):
                     main_block._remove_op(idx + 1, sync=False)
@@ -678,8 +679,9 @@ class ShardingPass(PassBase):
         coalesce_to_group_map, grad_name_to_group_map = self._group_grads(
             main_block, sharding_info
         )
-        # if use_standalone_executor() and self.enable_overlap:
-        # overlap_grad_comm()
+        self._overlap_grad_comm(
+            main_block, coalesce_to_group_map, grad_name_to_group_map
+        )
 
     def _fuse_overlap_parameter_comm_stage_two(self, sharding_info):
 
@@ -843,7 +845,7 @@ class ShardingPass(PassBase):
                 grouped_grad_names.add(grad_name)
                 cur_group.reduce_op_indices.append(i)
 
-                if self.partial_sharding and sharding_info.is_in_local_shard(
+                if self.sharding_hybrid_dp and sharding_info.is_in_local_shard(
                     param_name
                 ):
                     cur_group.is_in_local_shard = True
@@ -903,9 +905,7 @@ class ShardingPass(PassBase):
         modify_op_set = set(modify_reduce_op_map.keys())
         remove_op_set = set(remove_reduce_op_indices)
         confilct = coalesce_op_set.intersection(modify_op_set)
-        print(sorted(list(coalesce_op_set)))
-        print(sorted(list(remove_op_set)))
-        print(sorted(list(coalesce_op_set.intersection(remove_op_set))))
+
         assert len(confilct) == 0
         confilct = coalesce_op_set.intersection(remove_op_set)
         assert len(confilct) == 0
@@ -979,6 +979,32 @@ class ShardingPass(PassBase):
         block._sync_with_cpp()
 
         return coalesce_to_group_map, grad_name_to_group_map
+
+    def _overlap_grad_comm(
+        self, block, coalesce_to_group_map, grad_name_to_group_map
+    ):
+        """
+        overlap gradient communication with backward & optimizer computation.
+
+        1. assign gradient communications to grad comm stream
+        2. for coalesce gradient communication:
+            2.1 insert before communication dependencies
+            2.2 insert after communication dependencies only when need
+        3. there is not need to add explicit dependencies for non-coalesce gradient communication
+
+        P.S. this overlap pass is ONLY adapted for standalone executor (graph based) and stream awared allocator.
+        """
+
+        if not use_standalone_executor() or (not self.enable_overlap):
+            return
+
+        ops = block.ops
+        # analyze dependencies
+        unsync_coalesce_grad_in_shard = []
+        unsync_coalesce_grad_not_in_shard = []
+
+        # for idx range(len(ops)):
+        #     pass
 
 
 def _insert_init_and_broadcast_op(
