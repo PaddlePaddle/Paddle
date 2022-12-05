@@ -107,7 +107,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                   } else {
                     PADDLE_THROW(platform::errors::Unimplemented(
                         "The dtype of quantization scale must be FP32/16, "
-                        "%d is not supported.",
+                        "but received %d, which is not supported.",
                         weight_scale_tensor->dtype()));
                   }
 
