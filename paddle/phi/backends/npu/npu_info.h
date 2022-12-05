@@ -12,20 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#ifdef PADDLE_WITH_ASCEND_CL
 
 namespace phi {
+namespace backends {
+namespace npu {
 
-KernelSignature QrOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("qr", {"X"}, {"mode"}, {"Q", "R"});
+//! Get the minimum chunk size for NPU buddy allocator.
+inline size_t NPUMinChunkSize() {
+  // NOTE(zhiqiu): It seems the min chunk size should be 512 on NPU,
+  // though no document specify that explicitly.
+  // See https://gitee.com/zhiqiuchen/Ascend/tree/master/test_reduce_sum_d for
+  // details.
+  return 1 << 9;
 }
 
-KernelSignature QrGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "qr_grad", {"X", "Q", "R", "Q@GRAD", "R@GRAD"}, {"mode"}, {"X@GRAD"});
-}
-
+}  // namespace npu
+}  // namespace backends
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(qr, phi::QrOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(qr_grad, phi::QrGradOpArgumentMapping);
+#endif

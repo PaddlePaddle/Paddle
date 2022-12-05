@@ -1380,11 +1380,6 @@ class TestVarBase(unittest.TestCase):
             self.func_tensor_str_bf16()
         self.func_tensor_str_bf16()
 
-    def test_tensor_str_bf16(self):
-        with _test_eager_guard():
-            self.func_tensor_str_bf16()
-        self.func_tensor_str_bf16()
-
     def func_test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.rand([1])
