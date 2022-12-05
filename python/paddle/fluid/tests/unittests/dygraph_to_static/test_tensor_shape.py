@@ -38,7 +38,7 @@ def dyfunc_tensor_shape_2(x):
 def dyfunc_tensor_shape_3(x):
     # Transform y.shape but run y.shape actually because y is not Tensor
     x = fluid.dygraph.to_variable(x)
-    y = np.ones(5)
+    y = paddle.ones([1, 5])
     res = paddle.reshape(x, shape=y.shape)
     return res
 
@@ -97,7 +97,7 @@ def dyfunc_paddle_shape_api(x):
     a = paddle.shape(x)[0]
     # alias api will also not be converted.
     alias_old_api = paddle.fluid.layers
-    b = alias_old_api.shape(x)[1]
+    b = paddle.shape(x)[1]
     res = paddle.reshape(x, shape=(b, a))
     return res
 
@@ -199,7 +199,7 @@ def dyfunc_with_while_3(x):
 
 def dyfunc_with_while_4(x):
     x = paddle.to_tensor(x)
-    y = np.ones(5)
+    y = paddle.ones([1, 5])
     y_shape_0 = y.shape[0]
     i = 1
 
@@ -308,6 +308,11 @@ class TestTensorShapeBasic2(TestTensorShapeBasic):
 class TestTensorShapeBasic3(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_tensor_shape_3
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 3
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 class TestTensorShapeBasic4(TestTensorShapeBasic):
@@ -475,7 +480,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_while_4
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 4
+        self.expected_op_num = 1
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
 
