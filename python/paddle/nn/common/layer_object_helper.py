@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import copy
-from ..framework import Parameter, _non_static_mode, _global_flags
-from ..param_attr import ParamAttr
-from .. import core
 
-from ..layer_helper_base import LayerHelperBase
-from ..dygraph_utils import _append_activation_in_dygraph
+from paddle.fluid.dygraph_utils import _append_activation_in_dygraph
+from paddle.fluid.framework import Parameter, _global_flags, _non_static_mode
+from paddle.fluid.layer_helper_base import LayerHelperBase
+from paddle.fluid.param_attr import ParamAttr
 
 
 class LayerObjectHelper(LayerHelperBase):

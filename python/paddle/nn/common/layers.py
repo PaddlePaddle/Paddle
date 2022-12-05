@@ -13,50 +13,43 @@
 # limitations under the License.
 
 import collections
-import contextlib
-import sys
-import numpy as np
-import re
 import copy
-import weakref
-import warnings
-from copy import deepcopy
 import inspect
+import re
+import warnings
+import weakref
+
+import numpy as np
 
 import paddle
 import paddle.profiler as profiler
-from paddle.profiler.utils import in_profiler_mode
-
-from . import parallel_helper
-from .. import unique_name
-from paddle.fluid import core
-from .layer_object_helper import LayerObjectHelper
-from .layer_hooks import (
-    record_program_ops_pre_hook,
-    set_op_customized_attrs_post_hook,
-    LayerOpsRecoder,
-)
-from .base import (
-    program_desc_tracing_guard,
-    param_guard,
-    in_declarative_mode,
+import paddle.utils.deprecated as deprecated
+from paddle.fluid import core, framework, unique_name
+from paddle.fluid.core import VarDesc
+from paddle.fluid.dygraph import no_grad, parallel_helper
+from paddle.fluid.dygraph.base import (
     _convert_into_variable,
+    in_declarative_mode,
+    program_desc_tracing_guard,
 )
-from paddle.fluid import framework
-from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.framework import Program
+from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import (
     _non_static_mode,
     convert_np_dtype_to_dtype_,
     in_dygraph_mode,
 )
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.core import VarDesc
-from paddle.fluid.dygraph import no_grad
-import paddle.utils.deprecated as deprecated
+from paddle.profiler.utils import in_profiler_mode
 
-__all__ = ['Layer']
+from .layer_hooks import (
+    LayerOpsRecoder,
+    record_program_ops_pre_hook,
+    set_op_customized_attrs_post_hook,
+)
+from .layer_object_helper import LayerObjectHelper
+
+__all__ = []
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')

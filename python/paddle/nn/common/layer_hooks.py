@@ -14,7 +14,7 @@
 
 import warnings
 
-from paddle.fluid.framework import default_main_program, _non_static_mode
+from paddle.fluid.framework import _non_static_mode, default_main_program
 
 
 class LayerOpsRecoder:
