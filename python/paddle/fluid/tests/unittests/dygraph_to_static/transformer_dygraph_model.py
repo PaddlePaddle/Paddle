@@ -281,7 +281,6 @@ class Embedder(Layer):
         self.word_embedder = paddle.nn.Embedding(
             vocab_size,
             emb_dim,
-            padding_idx=bos_idx,
             weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Normal(0.0, emb_dim**-0.5)
             ),
