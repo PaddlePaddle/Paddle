@@ -366,6 +366,9 @@ struct Argument {
                       MixedBlackList,
                       std::unordered_set<std::string>);
 
+  // cinn compiler related
+  DECL_ARGUMENT_FIELD(use_cinn_compiler, UseCinnCompiler, bool);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };

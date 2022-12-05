@@ -1217,6 +1217,10 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
+  if (config_.use_cinn_compiler_) {
+    argument_.SetUseCinnCompiler(config_.use_cinn_compiler_);
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.mkldnn_quantizer_enabled()) {
     LOG(INFO) << "Quantization is enabled";
