@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.distributed.fleet.meta_parallel import PipelineLayer
 from paddle.fluid.dygraph.layers import Layer
@@ -55,7 +54,7 @@ class SimpleNet(Layer):
     def forward(self, x1, x2, y1):
         x_emb = self.word_embeddings(x1)
         fc = paddle.matmul(x_emb, self.softmax_weight)
-        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1, soft_label=False
@@ -95,7 +94,7 @@ class BiasNet(Layer):
 
     def forward(self, args):
         fc, x2 = args
-        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
         return projection, x2
 
