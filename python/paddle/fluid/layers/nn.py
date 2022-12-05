@@ -73,6 +73,7 @@ __all__ = [
     'dropout',
     'split',
     'l2_normalize',
+    'row_conv',
     'layer_norm',
     'spectral_norm',
     'lod_reset',
