@@ -490,6 +490,7 @@ class RecomputePass(PassBase):
                                 prior_op,
                                 posterior_op,
                                 self._dist_context,
+                                is_recompute=True,
                                 sync=False,
                             )
         main_program._sync_with_cpp()
