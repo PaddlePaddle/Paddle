@@ -14,8 +14,6 @@
 
 import collections
 
-import numpy as np
-
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -234,12 +232,10 @@ class MultiHeadAttention(nn.Layer):
 
     def core_attn(self, q, k, v, attn_mask):
         product = paddle.matmul(x=q, y=k, transpose_y=True)
-
-        scale_matrix = np.diag(np.ones_like(product.shape, dtype=np.float32))
-        scale_matrix = scale_matrix * (self.head_dim**-0.5)
-        scale_matrix = paddle.to_tensor(scale_matrix)
-
-        product = paddle.matmul(product, scale_matrix)
+        product = paddle.multiply(
+            product,
+            paddle.to_tensor(self.head_dim**-0.5, dtype=product.dtype),
+        )
         if attn_mask is not None:
             product = product + attn_mask
         weights = F.softmax(product)
