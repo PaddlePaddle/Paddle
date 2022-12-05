@@ -103,6 +103,7 @@ def start_local_trainers(
     training_script,
     training_script_args,
     eager_mode=True,
+    allocator_strategy="auto_growth",
     log_dir=None,
 ):
     current_env = copy.copy(os.environ.copy())
@@ -125,6 +126,10 @@ def start_local_trainers(
 
         if not eager_mode:
             proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
+
+        proc_env["FLAGS_allocator_strategy"] = allocator_strategy
+        if allocator_strategy == "auto_growth":
+            proc_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.1"
 
         current_env.update(proc_env)
 
@@ -153,7 +158,12 @@ def start_local_trainers(
 
 
 class TestMultipleGpus(unittest.TestCase):
-    def run_mnist_2gpu(self, target_file_name, eager_mode=True):
+    def run_mnist_2gpu(
+        self,
+        target_file_name,
+        eager_mode=True,
+        allocator_strategy="auto_growth",
+    ):
         if (
             not fluid.core.is_compiled_with_cuda()
             or fluid.core.get_cuda_device_count() == 0
@@ -170,6 +180,7 @@ class TestMultipleGpus(unittest.TestCase):
             cluster,
             pod,
             eager_mode=eager_mode,
+            allocator_strategy=allocator_strategy,
             training_script=target_file_name,
             training_script_args=[],
         )
@@ -217,6 +228,10 @@ class TestDataParallelWithPyLayer(TestMultipleGpus):
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
         self.run_mnist_2gpu(
             'parallel_dygraph_dataparallel_with_pylayer.py', eager_mode=False
+        )
+        self.run_mnist_2gpu(
+            'parallel_dygraph_dataparallel_with_pylayer.py',
+            allocator_strategy="naive_best_fit",
         )
 
 
