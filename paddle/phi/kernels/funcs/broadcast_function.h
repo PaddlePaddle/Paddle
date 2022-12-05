@@ -82,39 +82,6 @@ struct LoaderTypeClassifier {
   int out_vec_size{4};
 };
 
-template <typename InT, typename OutT>
-int GetVecsize(const std::vector<const DenseTensor *> &ins,
-               std::vector<DenseTensor *> *outs,
-               bool *all_elementwise = nullptr) {
-  int in_vec_size = 4;
-  int out_vec_size =
-      std::min(4, phi::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>()));
-  for (auto i = 1; i < outs->size(); ++i) {
-    PADDLE_ENFORCE_EQ(
-        (*outs)[i]->dims(),
-        (*outs)[0]->dims(),
-        phi::errors::InvalidArgument(
-            "The shape of each output tensor shall be identical yet, but "
-            "%d-th output tensor`s shape is not.",
-            i));
-    out_vec_size = std::min(
-        phi::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()), out_vec_size);
-  }
-
-  bool is_elementwise = true;
-  for (auto *in : ins) {
-    auto temp_size = phi::GetVectorizedSize<InT>(in->data<InT>());
-    auto is_same_dim = in->dims() == (*outs)[0]->dims();
-    is_elementwise &= is_same_dim;
-    in_vec_size = is_same_dim ? std::min(temp_size, in_vec_size) : in_vec_size;
-  }
-
-  if (all_elementwise) {
-    *all_elementwise = is_elementwise;
-  }
-  return std::min(out_vec_size, in_vec_size);
-}
-
 #ifndef PADDLE_WITH_XPU_KP
 template <typename T, int VecSize, int Arity, bool IsBoundary, int LoadType>
 struct BroadcastDataLoader {
@@ -983,7 +950,6 @@ void BroadcastKernelForDifferentVecSize(
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  bool all_elementwise = true;
   auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>(ins, outs);
   if (!loader_classifier.all_elementwise) {
     const auto dims_simplifier =
