@@ -184,7 +184,7 @@ class TestOptimizerForVarBase(unittest.TestCase):
         z.backward()
         opt.step()
 
-    def func_test_create_param_lr_with_no_1_value_for_coverage(self):
+    def test_create_param_lr_with_no_1_value_for_coverage(self):
         with _test_eager_guard():
             self.func_test_create_param_lr_with_1_for_coverage()
         self.func_test_create_param_lr_with_1_for_coverage()

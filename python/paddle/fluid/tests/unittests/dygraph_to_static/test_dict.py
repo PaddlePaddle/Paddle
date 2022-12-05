@@ -67,7 +67,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
             cache["k"], cache["v"] = k, v
 
         weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
-        weight = fluid.layers.softmax(weight)
+        weight = paddle.nn.functional.softmax(weight)
         out = fluid.layers.matmul(weight, v)
 
         return out
@@ -97,8 +97,8 @@ class MainNetWithDict(fluid.dygraph.Layer):
             ),
         }
         # TODO(Aurelius84): The following code will be converted into:
-        # max_len = layers.cond(layers.shape(input)[0] != max_len,
-        #                       lambda: layers.shape(input)[0], lambda: max_len)
+        # max_len = layers.cond(paddle.shape(input)[0] != max_len,
+        #                       lambda: paddle.shape(input)[0], lambda: max_len)
         # But max_len should be wrapped into tensor, which is not supported.
 
         # Comment out this line of code for now.
@@ -113,7 +113,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
 # Test to call function defined outside of class.
 def update_cache(cache):
     for k, val in cache.items():
-        cache[k] = fluid.layers.softmax(val)
+        cache[k] = paddle.nn.functional.softmax(val)
 
     return cache
 

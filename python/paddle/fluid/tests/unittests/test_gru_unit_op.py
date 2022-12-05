@@ -19,7 +19,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle.fluid as fluid
-from paddle import fluid
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import gru_unit
 
