@@ -79,7 +79,6 @@ from .models import shufflenet_v2_x1_0  # noqa: F401
 from .models import shufflenet_v2_x1_5  # noqa: F401
 from .models import shufflenet_v2_x2_0  # noqa: F401
 from .models import shufflenet_v2_swish  # noqa: F401
-from .models import IntermediateLayerGetter
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
 from .transforms import Resize  # noqa: F401

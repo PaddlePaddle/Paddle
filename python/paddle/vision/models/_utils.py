@@ -18,8 +18,6 @@ from typing import Dict
 import paddle
 import paddle.nn as nn
 
-__all__ = ["IntermediateLayerGetter"]
-
 
 def _make_divisible(v, divisor=8, min_value=None):
     """
