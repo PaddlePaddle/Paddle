@@ -440,7 +440,9 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
                         size,
                         vector->numel()));
   phi::DenseTensor one;
-  one.mutable_data<double>({in_dims[0]}, context.GetPlace());
+  one.Resize({in_dims[0]});
+  context.template Alloc<double>(&one);
+
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));
   phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
@@ -476,7 +478,9 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
                         in_dims[0],
                         vector->numel()));
   phi::DenseTensor one;
-  one.mutable_data<double>({size}, context.GetPlace());
+  one.Resize({size});
+  context.template Alloc<double>(&one);
+
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));
   phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(

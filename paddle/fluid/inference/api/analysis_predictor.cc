@@ -38,6 +38,7 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -260,6 +261,10 @@ bool AnalysisPredictor::Init(
   } else {
     VLOG(2) << "Profiler is deactivated, and no profiling report will be "
                "generated.";
+  }
+
+  if (!status_is_cloned_) {
+    root_predictor_id_ = predictor_id_;
   }
 
   // no matter with or without MKLDNN
@@ -614,6 +619,15 @@ bool AnalysisPredictor::PrepareExecutor() {
 
   executor_->Prepare(
       sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
+
+  if (config_.enable_memory_optim_) {
+    auto *pass_res_info =
+        inference::analysis::PassResultInfoForRuntime::Instance();
+    auto reuse_table =
+        pass_res_info->Get<std::unordered_map<std::string, std::string>>(
+            root_predictor_id_, "memory_optimize_pass");
+    executor_->MakeReusePlan(reuse_table);
+  }
 
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::PreconditionNotMet(
@@ -1080,6 +1094,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
+  argument_.SetRootPredictorID(root_predictor_id_);
   argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
@@ -2115,6 +2130,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
+  x->root_predictor_id_ = this->root_predictor_id_;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
@@ -2176,12 +2192,6 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
-  if (config_.enable_memory_optim()) {
-    LOG(WARNING) << "If you want to run output hook function, you should "
-                    "use config.EnableMemoryOptim(false) to turn off memory "
-                    "reuse!";
-    return;
-  }
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
     executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
@@ -2229,6 +2239,12 @@ USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(elementwise_floordiv_tensor);
+USE_TRT_CONVERTER(less_than);
+USE_TRT_CONVERTER(greater_than);
+USE_TRT_CONVERTER(logical_or);
+USE_TRT_CONVERTER(logical_xor);
+USE_TRT_CONVERTER(logical_and);
+USE_TRT_CONVERTER(less_equal);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
@@ -2314,6 +2330,7 @@ USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(equal);
 USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
+USE_TRT_CONVERTER(range)
 USE_TRT_CONVERTER(squeeze2)
 USE_TRT_CONVERTER(unsqueeze2)
 USE_TRT_CONVERTER(sum)
@@ -2322,6 +2339,7 @@ USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(celu)
 USE_TRT_CONVERTER(layernorm_shift_partition)
+USE_TRT_CONVERTER(reverse_roll)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)

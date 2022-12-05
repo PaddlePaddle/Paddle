@@ -117,7 +117,7 @@ def _elementwise_mul_flops(input_shapes, attrs):
 
 
 @register_flops("elementwise_div")
-def _elementwise_mul_flops(input_shapes, attrs):
+def _elementwise_div_flops(input_shapes, attrs):
     """FLOPs computation for elementwise_div op.
     For elementwise_div(input,other):
         input_shapes = [shape_of_input, shape_of_ohther]
@@ -164,8 +164,9 @@ def _matmul_flops(input_shapes, attrs):
         shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1)) ... dim_n_1, dim_m]
         equation: flops = 2 * numel(output) * dim_n
     """
-    x_shape = input_shapes.get("X")[0]
-    y_shape = input_shapes.get("Y")[0]
+
+    x_shape = input_shapes.get("X", input_shapes.get("x", [[0]]))[0]
+    y_shape = input_shapes.get("Y", input_shapes.get("y", [[0]]))[0]
     if attrs.get('transpose_X') or attrs.get('transpose_x'):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
 

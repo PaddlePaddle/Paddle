@@ -23,7 +23,7 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm, Linear
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.jit import ProgramTranslator
@@ -535,7 +535,7 @@ def train_mobilenet(args, to_static):
                 out = net(img)
 
                 t_end = time.time()
-                softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+                softmax_out = paddle.nn.functional.softmax(out)
                 loss = fluid.layers.cross_entropy(
                     input=softmax_out, label=label
                 )

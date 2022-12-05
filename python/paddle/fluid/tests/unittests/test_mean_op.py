@@ -89,7 +89,7 @@ class TestMeanOpError(unittest.TestCase):
             input3 = fluid.layers.data(
                 name='input3', shape=[4], dtype="float16"
             )
-            fluid.layers.softmax(input3)
+            paddle.nn.functional.softmax(input3)
 
 
 @unittest.skipIf(

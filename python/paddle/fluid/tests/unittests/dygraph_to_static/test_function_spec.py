@@ -17,7 +17,7 @@ import unittest
 from test_declarative import foo_func
 
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
+from paddle.jit.dy2static.function_spec import FunctionSpec
 from paddle.static import InputSpec
 
 paddle.enable_static()
