@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
 from test_dist_fleet_base import TestFleetBase
 
 

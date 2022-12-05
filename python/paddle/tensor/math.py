@@ -268,7 +268,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
-    """
+    r"""
+
     stanh activation.
 
     .. math::
@@ -279,8 +280,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         scale_a (float, optional): The scale factor a of the input. Default is 0.67.
         scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -420,7 +420,9 @@ def pow(x, y, name=None):
         out = x^{y}
 
     Note:
-        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
 
 
     Args:
@@ -679,7 +681,9 @@ def subtract(x, y, name=None):
         out = x - y
 
     Note:
-        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -773,7 +777,9 @@ def divide(x, y, name=None):
         out = x / y
 
     Note:
-        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -817,7 +823,10 @@ def floor_divide(x, y, name=None):
         out = trunc(x / y)
 
     Note:
-        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
         Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
@@ -859,7 +868,9 @@ def remainder(x, y, name=None):
         out = x \% y
 
     Note:
-        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -924,7 +935,9 @@ def multiply(x, y, name=None):
         out = x * y
 
     Note:
-        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
@@ -980,7 +993,9 @@ def maximum(x, y, name=None):
         out = max(x, y)
 
     Note:
-        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1046,7 +1061,9 @@ def minimum(x, y, name=None):
         out = min(x, y)
 
     Note:
-        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1114,7 +1131,9 @@ def fmax(x, y, name=None):
         out = fmax(x, y)
 
     Note:
-        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -1182,7 +1201,9 @@ def fmin(x, y, name=None):
         out = fmin(x, y)
 
     Note:
-        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -1299,7 +1320,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     dtype_flag = False
     if dtype is not None:
@@ -1308,6 +1328,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
+
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     if _in_legacy_dygraph():
         if dtype_flag:
@@ -2378,9 +2400,9 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_max(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2480,10 +2502,10 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_min(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2593,10 +2615,10 @@ def amax(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amax(x, axis, keepdim)
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amax(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -2707,11 +2729,11 @@ def amin(x, axis=None, keepdim=False, name=None):
             print(result6, y.grad)
             #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
-
-    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amin(x, axis, keepdim)
-    elif _in_legacy_dygraph():
+
+    reduce_all, axis = _get_reduce_axis(axis, x)
+    if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_amin(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
         )
@@ -3856,11 +3878,10 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.all(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_all(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -3933,11 +3954,10 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.any(x, axis, keepdim)
 
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_any(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -3963,7 +3983,12 @@ def any(x, axis=None, keepdim=False, name=None):
 
 def broadcast_shape(x_shape, y_shape):
     """
-    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
+    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape.
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x_shape (list[int]|tuple[int]): A shape of tensor.
@@ -4992,7 +5017,9 @@ def heaviside(x, y, name=None):
             \right.
 
     Note:
-        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.

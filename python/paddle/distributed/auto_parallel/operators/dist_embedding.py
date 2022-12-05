@@ -12,40 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import infer_shape
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import gradient_synchronization
-from .common import (
-    naive_copy_op_dist_attr_for_program,
-    register_distributed_operator_impl,
-    set_comm_op_dist_attr_for_program,
-)
-from ..utils import is_dim_shard
-from ..utils import is_dim_replicate
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..dist_attribute import OperatorDistributedAttribute
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from ..process_group import new_process_group
-from ..utils import (
-    _get_comm_group,
-    _get_idx_in_axis,
-    _get_corresponding_rank,
-    set_var_dist_attr,
-)
-from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op
-from ..cost import (
-    build_comm_costs_from_descs,
-    build_comp_costs_from_descs,
-    build_dp_costs,
-)
-from ..cost import EmbeddingOpCost, EmbeddingGradOpCost
 from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import core, unique_name
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+
+from ..cost import (
+    EmbeddingGradOpCost,
+    EmbeddingOpCost,
+    build_comm_costs_from_descs,
+    build_comm_desc_from_dist_op,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..dist_attribute import OperatorDistributedAttribute
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    _get_idx_in_axis,
+    compute_compatible_and_update_dim_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    set_var_dist_attr,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    gradient_synchronization,
+    infer_shape,
+    naive_copy_op_dist_attr_for_program,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
 )
 
 
@@ -370,9 +373,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['Out']
         )
 
-        Ids_var = main_block.var(kwargs['Ids'][0])
+        Ids_var = main_block._var_recursive(kwargs['Ids'][0])
         Weight_var = main_block._var_recursive(kwargs['W'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
 
         # support lookup_table_v1
         if src_op.type == 'lookup_table':
@@ -507,7 +510,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block.var(input_varname)
+            input_var = main_block._var_recursive(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(
@@ -607,10 +610,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['W@GRAD']
         )
 
-        Ids_var = main_block.var(kwargs['Ids'][0])
-        Weight_var = main_block.var(kwargs['W'][0])
-        Out_grad = main_block.var(kwargs['Out@GRAD'][0])
-        Weight_grad = main_block.var(kwargs['W@GRAD'][0])
+        Ids_var = main_block._var_recursive(kwargs['Ids'][0])
+        Weight_var = main_block._var_recursive(kwargs['W'][0])
+        Out_grad = main_block._var_recursive(kwargs['Out@GRAD'][0])
+        Weight_grad = main_block._var_recursive(kwargs['W@GRAD'][0])
 
         embedding_row_dim_mapping = dist_attr.get_input_dims_mapping(
             Weight_var.name

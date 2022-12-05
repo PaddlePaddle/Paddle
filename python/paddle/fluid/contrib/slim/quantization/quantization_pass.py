@@ -1939,6 +1939,15 @@ class AddQuantDequantPass:
                     op_node.op()._set_attr("activation_bits", self._quant_bits)
                     op_node.op()._set_attr("with_quant_attr", True)
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name
@@ -1956,7 +1965,7 @@ class AddQuantDequantPass:
                         graph.update_input_link(
                             in_node, quant_var_node, op_node
                         )
-            t.update()
+                t.update()
 
         # Backward stage, update input link
         for op_node in all_op_nodes:
@@ -2481,11 +2490,6 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         self.create_var_map = {}
         self.create_op_map = {}
 
-        # marked the variable which has been dequantized.
-        self.dequantized_vars = collections.OrderedDict()
-        self.persistable_vars = []
-        self.processed_vars = []
-
     def _quant_preprocess(self, op_node):
         user_skipped = False
         if isinstance(self._skip_pattern, list):
@@ -2627,6 +2631,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
+        # marked the variable which has been dequantized.
+        self.dequantized_vars = collections.OrderedDict()
+        self.persistable_vars = []
+        self.processed_vars = []
 
         self.persistable_vars = [
             p.name() for p in graph.all_persistable_nodes()
@@ -2798,6 +2806,15 @@ class AddQuantDequantPassV2:
                         continue
 
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name

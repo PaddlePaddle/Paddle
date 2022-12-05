@@ -1,0 +1,73 @@
+type: "strided_slice"
+def {
+  inputs {
+    name: "Input"
+  }
+  inputs {
+    name: "StartsTensor"
+  }
+  inputs {
+    name: "EndsTensor"
+  }
+  inputs {
+    name: "StridesTensor"
+  }
+  inputs {
+    name: "StartsTensorList"
+  }
+  inputs {
+    name: "EndsTensorList"
+  }
+  inputs {
+    name: "StridesTensorList"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "axes"
+    type: INTS
+  }
+  attrs {
+    name: "starts"
+    type: INTS
+  }
+  attrs {
+    name: "ends"
+    type: INTS
+  }
+  attrs {
+    name: "strides"
+    type: INTS
+  }
+  attrs {
+    name: "infer_flags"
+    type: INTS
+  }
+  attrs {
+    name: "decrease_axis"
+    type: INTS
+  }
+}
+extra {
+  attrs {
+    name: "op_role"
+    type: INT
+  }
+  attrs {
+    name: "op_role_var"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_namescope"
+    type: STRING
+  }
+  attrs {
+    name: "op_callstack"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_device"
+    type: STRING
+  }
+}
