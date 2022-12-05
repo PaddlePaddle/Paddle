@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -1213,10 +1214,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
 };
 
 struct OperatorWithKernel::CacheImpl {
-  explicit CacheImpl(phi::KernelContext* kernel_ctx,
+  explicit CacheImpl(const std::string& op_type,
+                     phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
                      const std::vector<phi::DenseTensor*>& tensors)
-      : kernel_ctx_(kernel_ctx),
+      : op_type_(op_type),
+        kernel_ctx_(kernel_ctx),
         infer_shape_ctx_(infer_shape_ctx),
         tensors_(tensors) {}
 
@@ -1226,6 +1229,12 @@ struct OperatorWithKernel::CacheImpl {
   }
 
   bool NeedInferShape() {
+    // TODO(inference): Not support inplace op, we need to find the specific
+    // inplace op to skip infershape cache.
+    static std::unordered_set<std::string> maybe_inplace_ops{"transpose2",
+                                                             "reshape2"};
+    if (maybe_inplace_ops.count(op_type_)) return true;
+
     bool ret{false};
     if (last_ddims_.empty() || tensors_.empty()) ret = true;
     if (!ret) {
@@ -1250,6 +1259,7 @@ struct OperatorWithKernel::CacheImpl {
   std::vector<phi::DDim> last_ddims_;
 
  private:
+  std::string op_type_;
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
   std::vector<phi::DenseTensor*> tensors_;
@@ -1867,6 +1877,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
+        // TODO(inference): Now we only suppor dense_tensor cache, we may be
+        // support ScalarTensor, SparseTensor in future.
         bool all_dense_tensor_input_{true};
         for (auto& iter : Inputs()) {
           for (auto& name : iter.second) {
@@ -1886,7 +1898,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         }
 
         impl_.reset(
-            new CacheImpl(new phi::KernelContext(),
+            new CacheImpl(type_,
+                          new phi::KernelContext(),
                           new RuntimeInferShapeContext(*this, *runtime_ctx),
                           tensors));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
