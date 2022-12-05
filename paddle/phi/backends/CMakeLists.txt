@@ -1,5 +1,5 @@
 add_subdirectory(dynload)
-add_dependencies(gpu)
+add_subdirectory(gpu)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc)
 set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
