@@ -19,10 +19,11 @@ from paddle.fluid.core import CustomDeviceStream as Stream  # noqa: F401
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = [
-    'get_current_device',
-    'set_curren_device',
+    'current_device',
     'synchronize_device',
     'device_count',
+    'set_current_device',
+    'stream_guard',
     'current_stream',
     'Event',
     'Stream',
@@ -43,6 +44,7 @@ def current_device(device_type):
     Examples:
         .. code-block:: python
 
+            # required: custom_device
             import paddle
 
             paddle.device.custom.current_device('custom_cpu')
@@ -65,7 +67,9 @@ def synchronize_device(device, device_id=None):
             import paddle
 
             paddle.device.cuda.synchronize('custom_cpu')
+
             paddle.device.cuda.synchronize('custom_cpu', 0)
+
             paddle.device.cuda.synchronize(paddle.CustomPlace('custom_cpu', 0))
 
     '''
@@ -92,6 +96,7 @@ def device_count(device_type):
     Examples:
         .. code-block:: python
 
+            # required: custom_device
             import paddle
 
             paddle.device.custom.device_count('custom_cpu')
@@ -111,6 +116,7 @@ def set_current_device(device, device_id=0):
     Examples:
         .. code-block:: python
 
+            # required: custom_device
             import paddle
 
             paddle.device.custom.set_current_device('custom_cpu')
@@ -183,8 +189,11 @@ def stream_guard(stream):
             import paddle
 
             s = paddle.device.custom.Stream('custom_cpu')
+
             data1 = paddle.ones(shape=[20])
+
             data2 = paddle.ones(shape=[20])
+
             with paddle.device.custom.stream_guard(s):
                 data3 = data1 + data2
 
@@ -195,15 +204,15 @@ def stream_guard(stream):
     ):
         raise TypeError("stream type should be paddle.device.custom.Stream")
 
-    cur_stream = core._get_current_custom_device_stream(stream.get_place())
+    cur_stream = core._get_current_custom_device_stream(stream.place)
     if stream is None or cur_stream.raw_stream == stream.raw_stream:
         yield
     else:
-        core._set_current_custom_device_stream(stream.get_place(), stream)
+        core._set_current_custom_device_stream(stream.place, stream)
         pre_stream = cur_stream
         try:
             yield
         finally:
             stream = core._set_current_custom_device_stream(
-                stream.get_place(), pre_stream
+                stream.place, pre_stream
             )

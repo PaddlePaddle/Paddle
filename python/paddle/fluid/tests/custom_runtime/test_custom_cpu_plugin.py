@@ -56,6 +56,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         self._test_eager_copy_to()
         self._test_fallback_kernel()
         self._test_scalar()
+        self._test_custom_device_py_api()
 
     def _test_custom_device_dataloader(self):
         import paddle
@@ -256,6 +257,57 @@ class TestCustomCPUPlugin(unittest.TestCase):
         avg_loss = paddle.nn.functional.cross_entropy(pred, label_int32)
         avg_loss.backward()
         sgd.step()
+
+    def _test_custom_device_py_api(self):
+        import paddle
+
+        p = paddle.set_device('custom_cpu')
+
+        paddle.device.custom.set_current_device(p)
+        paddle.device.custom.set_current_device(
+            p.get_device_type(), p.get_device_id()
+        )
+
+        paddle.device.custom.synchronize_device(p)
+        paddle.device.custom.synchronize_device(
+            p.get_device_type(), p.get_device_id()
+        )
+
+        assert paddle.device.custom.device_count(p.get_device_type()) > 0
+
+        assert (
+            paddle.device.custom.current_device(p.get_device_type())
+            == p.get_device_id()
+        )
+
+        s1 = paddle.device.custom.current_stream(p)
+        s2 = paddle.device.custom.current_stream(
+            p.get_device_type(), p.get_device_id()
+        )
+        assert s1 is s2
+
+        s = paddle.device.custom.Stream(p)
+        s = paddle.device.custom.Stream(p.get_device_type(), p.get_device_id())
+        with paddle.device.custom.stream_guard(s):
+            assert paddle.device.custom.current_stream(p) is s
+
+        e = paddle.device.custom.Event(p)
+        e = paddle.device.custom.Event(p.get_device_type(), p.get_device_id())
+
+        s.query()
+        s.synchronize()
+        s.wait_event(e)
+        s.record_event(e)
+        s.wait_stream(s)
+
+        e.query()
+        e.synchronize()
+        e.record(s)
+
+        print(s.place)
+        print(e.place)
+        print(s.raw_stream)
+        print(e.raw_event)
 
 
 if __name__ == '__main__':

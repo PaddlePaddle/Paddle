@@ -629,8 +629,8 @@ PYBIND11_MODULE(libpaddle, m) {
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
   BindXpuStream(&m);
-  BindCustomDevicePy(&m);
   BindJit(&m);
+  BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
