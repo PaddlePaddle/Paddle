@@ -669,7 +669,6 @@ class PrepareEncoderDecoderLayer(Layer):
             src_vocab_size,
             src_emb_dim,
             sparse=is_sparse,
-            padding_idx=0,
             weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
                 initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
