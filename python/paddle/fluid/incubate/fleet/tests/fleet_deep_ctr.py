@@ -150,7 +150,7 @@ def model():
     auc_var, batch_auc_var, auc_states = paddle.static.auc(
         input=predict, label=label
     )
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    cost = paddle.nn.functional.cross_entropy(input=predict, label=label)
     avg_cost = paddle.mean(x=cost)
 
     return datas, avg_cost, predict, train_file_path

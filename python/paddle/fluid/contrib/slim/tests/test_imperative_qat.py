@@ -130,7 +130,7 @@ class TestImperativeQat(unittest.TestCase):
                     label = fluid.dygraph.to_variable(y_data)
                     out = lenet(img)
                     acc = paddle.static.accuracy(out, label)
-                    loss = fluid.layers.cross_entropy(out, label)
+                    loss = paddle.nn.functional.cross_entropy(out, label)
                     avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     adam.minimize(avg_loss)
