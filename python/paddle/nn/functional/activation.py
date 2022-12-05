@@ -12,15 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...tensor.ops import sigmoid  # noqa: F401
-
-
-from paddle.utils import inplace_apis_in_dygraph_only
-import paddle
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import core
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-
 import paddle
 from paddle.utils import inplace_apis_in_dygraph_only
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
