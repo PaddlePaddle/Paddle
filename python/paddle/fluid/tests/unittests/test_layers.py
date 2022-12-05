@@ -3307,7 +3307,7 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
             )
-            out = layers.shape(input)
+            out = paddle.shape(input)
             return out
 
     def make_pad2d(self):
