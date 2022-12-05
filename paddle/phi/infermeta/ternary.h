@@ -87,6 +87,7 @@ void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& bias,
                         float epsilon,
                         int begin_norm_axis,
+                        bool is_test,
                         MetaTensor* out,
                         MetaTensor* mean,
                         MetaTensor* variance,
@@ -201,5 +202,10 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* scores,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
+
+void EmbeddingBagInferMeta(const MetaTensor& input,
+                           const MetaTensor& params,
+                           const MetaTensor& weight,
+                           MetaTensor* out);
 
 }  // namespace phi

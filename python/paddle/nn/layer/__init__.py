@@ -35,6 +35,7 @@ from .common import ZeroPad2D  # noqa: F401
 from .common import Pad3D  # noqa: F401
 from .common import CosineSimilarity  # noqa: F401
 from .common import Embedding  # noqa: F401
+from .common import EmbeddingBag
 from .common import Linear  # noqa: F401
 from .common import Identity  # noqa: F401
 from .common import Flatten  # noqa: F401
@@ -43,6 +44,7 @@ from .common import Dropout  # noqa: F401
 from .common import Dropout2D  # noqa: F401
 from .common import Dropout3D  # noqa: F401
 from .common import AlphaDropout  # noqa: F401
+from .common import Upsample  # noqa: F401
 from .common import UpsamplingBilinear2D  # noqa: F401
 from .common import UpsamplingNearest2D  # noqa: F401
 from .common import Fold

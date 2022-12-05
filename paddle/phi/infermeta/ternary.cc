@@ -259,24 +259,48 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& end,
                      const MetaTensor& step,
                      MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(phi::product(start.dims()),
+  auto start_dims = start.dims();
+  auto end_dims = end.dims();
+  auto step_dims = step.dims();
+  PADDLE_ENFORCE_EQ(
+      start_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(Start) should be 1, but got %d",
+          start_dims.size()));
+
+  PADDLE_ENFORCE_EQ(start_dims[0],
                     1,
                     phi::errors::InvalidArgument(
-                        "The numel of Input(start) should be 1, but got %d",
-                        phi::product(start.dims())));
+                        "The first dim of the shape of Input(Start) should "
+                        "be 1, but got %d",
+                        start_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      end_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(End) should be 1, but got %d",
+          end_dims.size()));
 
-  PADDLE_ENFORCE_EQ(phi::product(end.dims()),
+  PADDLE_ENFORCE_EQ(
+      end_dims[0],
+      1,
+      phi::errors::InvalidArgument("The first dim of the shape of "
+                                   "Input(End) should be 1, but got %d",
+                                   end_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      step_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(Step) should be 1, but got %d",
+          step_dims.size()));
+
+  PADDLE_ENFORCE_EQ(step_dims[0],
                     1,
                     phi::errors::InvalidArgument(
-                        "The numel of Input(end) should be 1, but got %d",
-                        phi::product(end.dims())));
-
-  PADDLE_ENFORCE_EQ(phi::product(step.dims()),
-                    1,
-                    phi::errors::InvalidArgument(
-                        "The numel of Input(step) should be 1, but got %d",
-                        phi::product(step.dims())));
-
+                        "The first dim of the shape of Input(Step) should "
+                        "be 1, but got %d",
+                        step_dims[0]));
   out->set_dims({-1});
   out->set_dtype(start.dtype());
 }
@@ -498,6 +522,7 @@ void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& bias,
                         float epsilon,
                         int begin_norm_axis,
+                        bool is_test,
                         MetaTensor* out,
                         MetaTensor* mean,
                         MetaTensor* variance,
@@ -610,27 +635,27 @@ void LinspaceRawInferMeta(const MetaTensor& start,
                           const MetaTensor& stop,
                           const MetaTensor& number,
                           MetaTensor* out) {
+  auto s_dims = start.dims();
   PADDLE_ENFORCE_EQ(
-      phi::product(start.dims()),
-      1,
-      phi::errors::InvalidArgument("The size of Input(start) should be 1,"
-                                   "but got %d.",
-                                   phi::product(start.dims())));
-
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
   PADDLE_ENFORCE_EQ(
-      phi::product(stop.dims()),
-      1,
-      phi::errors::InvalidArgument("The size of Input(stop) should be 1,"
-                                   "but got %d.",
-                                   phi::product(stop.dims())));
-
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto step_dims = number.dims();
   PADDLE_ENFORCE_EQ(
-      phi::product(number.dims()),
-      1,
-      phi::errors::InvalidArgument("The size of Input(number) should be 1,"
-                                   "but got %d.",
-                                   phi::product(number.dims())));
-
+      (step_dims.size() == 1) && (step_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   step_dims));
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(start.dtype());
 }
@@ -986,43 +1011,31 @@ void ScatterInferMeta(const MetaTensor& x,
   const auto& updates_dims = updates.dims();
   const auto& ref_dims = x.dims();
   const auto& index_dims = index.dims();
-
-  if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(index_dims[1],
-                      1,
-                      phi::errors::InvalidArgument(
-                          "The last dim of the index should be 1 when the "
-                          "index is a 2D tensor, but we get %d.",
-                          index_dims[1]));
-  } else {
-    PADDLE_ENFORCE_EQ(index_dims.size() == 1 || index_dims.size() == 0,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The index should be a 0D or 1D tensor when the "
-                          "index is not a 2D tensor, but we get %d.",
-                          index_dims.size()));
-  }
-  if (index_dims.size() != 0) {
-    PADDLE_ENFORCE_EQ(
-        (ref_dims.size() == updates_dims.size()),
-        true,
-        phi::errors::InvalidArgument(
-            "When the Input(Updates) is not a 0D tensor, the "
-            "Input(X) and Input(Updates) should have the same shape size, "
-            "but received the size of Input(x)'s shape is %d, the size of "
-            "Input(Updates)'s shape is %d.",
-            ref_dims.size(),
-            updates_dims.size()));
-    PADDLE_ENFORCE_EQ(
-        updates_dims[0],
-        index_dims[0],
-        phi::errors::InvalidArgument(
-            "Input(Updates) and Input(Ids) should have same batch-size, but"
-            " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
-            "batch-size is %d.",
-            updates_dims[0],
-            index_dims[0]));
-  }
+  PADDLE_ENFORCE_EQ(
+      index_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of Input(Ids)'s shape should be equal to 1, but "
+          "received the rank of Input(Ids) is %d.",
+          index_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      ref_dims.size(),
+      updates_dims.size(),
+      phi::errors::InvalidArgument(
+          "Input(X) and Input(Updates) should have the same shape size, "
+          "but received the size of Input(x)'s shape is %d, the size of "
+          "Input(Updates)'s shape is %d.",
+          ref_dims.size(),
+          updates_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      updates_dims[0],
+      index_dims[0],
+      phi::errors::InvalidArgument(
+          "Input(Updates) and Input(Ids) should have same batch-size, but"
+          " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
+          "batch-size is %d.",
+          updates_dims[0],
+          index_dims[0]));
   out->set_dims(ref_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -1274,5 +1287,47 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
   scores->set_dims(length_dims);
   scores->set_dtype(length.dtype());
 }
+
+// paddle/phi/infermeta/ternary.cc
+
+
+void EmbeddingBagInferMeta(const MetaTensor& input,
+                           const MetaTensor& params,
+                           const MetaTensor& weight,
+                           MetaTensor* out){
+    const auto& input_dims = input.dims();
+    auto input_dims_size = input_dims.size();
+    const auto& params_dims = params.dims();
+    // auto params_dims_size = params_dims.size();
+    const auto& weight_dims = weight.dims();
+    // auto weight_dims_size = weight_dims.size();
+
+    
+    PADDLE_ENFORCE_EQ(
+        input_dims, weight_dims,
+        phi::errors::InvalidArgument(
+            "ShapeError: The shapes of the 'input' and 'weight' must be the same."
+            "But received input's shape = [%s],"
+            "weight's shape = [%s].", input_dims, weight_dims
+        )
+    );
+    PADDLE_ENFORCE_EQ(
+        input_dims_size, 2,
+        phi::errors::InvalidArgument(
+            "ShapeError: The dimensions of the 'input' tensor must be 2."
+            "But received input's dimensions = %d, input's shape = [%s].",
+            input_dims, input_dims_size
+        )
+    );
+
+    // TODO: verify the dims [input[0],params[1]]
+    auto output_dims = phi::vectorize(phi::slice_ddim(input_dims, 0 ,input_dims_size - 1));
+    output_dims.push_back(params_dims[1]);
+    out -> set_dims(phi::make_ddim(output_dims));
+
+    out -> set_dtype(params.dtype());
+
+}
+
 
 }  // namespace phi
