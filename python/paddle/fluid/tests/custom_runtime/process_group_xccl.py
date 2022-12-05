@@ -69,64 +69,64 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = pg.all_reduce(tensor_y, core.ReduceOp.SUM, sync_op=True)
             task.wait()
             # assert np.array_equal(tensor_y, sum_result)
+
+        print("test allreduce sum api ok")
+
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
+
+        max_result = paddle.maximum(tensor_x, tensor_y)
+
+        if pg.rank() == 0:
+            task = pg.all_reduce(tensor_x, core.ReduceOp.MAX, sync_op=True)
+            task.wait()
+            # assert np.array_equal(tensor_x, max_result)
+        else:
+            task = pg.all_reduce(tensor_y, core.ReduceOp.MAX, sync_op=True)
+            task.wait()
+            # assert np.array_equal(tensor_y, max_result)
+
+        print("test allreduce max api ok")
+
+        # test broadcast
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
+
+        broadcast_result = paddle.assign(tensor_x)
+        if pg.rank() == 0:
+            task = pg.broadcast(tensor_x, 0, sync_op=True)
+            task.wait()
+            # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
+            assert task.is_completed()
+            # assert np.array_equal(broadcast_result, tensor_x)
+        else:
+            task = pg.broadcast(tensor_y, 0, sync_op=True)
+            task.wait()
+            # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
+            assert task.is_completed()
+            # assert np.array_equal(broadcast_result, tensor_y)
+
+        print("test broadcast api ok")
+
+        # test barrier
+        # rank 0
+        if pg.rank() == 0:
+            task = pg.barrier(device_id)
+            task.wait()
+        # rank 1
+        else:
+            task = pg.barrier(device_id)
+            task.wait()
+
+        print("test barrier api ok\n")
+        return
         """
-            print("test allreduce sum api ok")
-
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
-
-            max_result = paddle.maximum(tensor_x, tensor_y)
-
-            if pg.rank() == 0:
-                task = pg.all_reduce(tensor_x, core.ReduceOp.MAX, sync_op=True)
-                task.wait()
-                # assert np.array_equal(tensor_x, max_result)
-            else:
-                task = pg.all_reduce(tensor_y, core.ReduceOp.MAX, sync_op=True)
-                task.wait()
-                # assert np.array_equal(tensor_y, max_result)
-
-            print("test allreduce max api ok")
-
-            # test broadcast
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
-
-            broadcast_result = paddle.assign(tensor_x)
-            if pg.rank() == 0:
-                task = pg.broadcast(tensor_x, 0, sync_op=True)
-                task.wait()
-                # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
-                assert task.is_completed()
-                # assert np.array_equal(broadcast_result, tensor_x)
-            else:
-                task = pg.broadcast(tensor_y, 0, sync_op=True)
-                task.wait()
-                # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
-                assert task.is_completed()
-                # assert np.array_equal(broadcast_result, tensor_y)
-
-            print("test broadcast api ok")
-
-            # test barrier
-            # rank 0
-            if pg.rank() == 0:
-                task = pg.barrier(device_id)
-                task.wait()
-            # rank 1
-            else:
-                task = pg.barrier(device_id)
-                task.wait()
-
-            print("test barrier api ok\n")
-            return
-
             # test allgather
             # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
