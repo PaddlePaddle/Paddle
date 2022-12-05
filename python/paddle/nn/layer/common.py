@@ -1724,12 +1724,11 @@ class Flatten(Layer):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          inp_np = np.ones([5, 2, 3, 4]).astype('float32')
-          inp_np = paddle.to_tensor(inp_np)
+          inp = paddle.ones([5, 2, 3, 4]).astype('float32')
           flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
-          flatten_res = flatten(inp_np)
+          y = flatten(inp)
+          # y.shape = [5, 6, 4]
 
     """
 
@@ -1738,8 +1737,8 @@ class Flatten(Layer):
         self.start_axis = start_axis
         self.stop_axis = stop_axis
 
-    def forward(self, input):
-        out = paddle.tensor.manipulation.flatten(
-            input, start_axis=self.start_axis, stop_axis=self.stop_axis
+    def forward(self, x):
+        out = paddle.flatten(
+            x, start_axis=self.start_axis, stop_axis=self.stop_axis
         )
         return out

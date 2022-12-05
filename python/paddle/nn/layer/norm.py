@@ -1437,7 +1437,7 @@ class SpectralNorm(Layer):
 
     Step 1:
     Generate vector U in shape of [H], and V in shape of [W].
-    While H is the :attr:`dim` th dimension of the input weights,
+    While H is the :attr:`axis` th dimension of the input weights,
     and W is the product result of remaining dimensions.
 
     Step 2:
@@ -1464,9 +1464,9 @@ class SpectralNorm(Layer):
 
     Parameters:
         weight_shape(list or tuple): The shape of weight parameter.
-        dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
+        axis(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
         power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
-        eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
+        epsilon(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
@@ -1479,7 +1479,7 @@ class SpectralNorm(Layer):
             import paddle
             x = paddle.rand((2,8,32,32))
 
-            spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
+            spectral_norm = paddle.nn.SpectralNorm(x.shape, axis=1, power_iters=2)
             spectral_norm_out = spectral_norm(x)
 
             print(spectral_norm_out.shape) # [2, 8, 32, 32]
@@ -1487,22 +1487,27 @@ class SpectralNorm(Layer):
     """
 
     def __init__(
-        self, weight_shape, dim=0, power_iters=1, eps=1e-12, dtype='float32'
+        self,
+        weight_shape,
+        axis=0,
+        power_iters=1,
+        epsilon=1e-12,
+        dtype='float32',
     ):
         super().__init__()
         self._power_iters = power_iters
-        self._eps = eps
-        self._dim = dim
+        self._epsilon = epsilon
+        self._dim = axis
         self._dtype = dtype
 
         self._weight_shape = list(weight_shape)
         assert (
             np.prod(self._weight_shape) > 0
         ), "Any dimension of `weight_shape` cannot be equal to 0."
-        assert dim < len(self._weight_shape), (
-            "The input `dim` should be less than the "
-            "length of `weight_shape`, but received dim="
-            "{}".format(dim)
+        assert axis < len(self._weight_shape), (
+            "The input `axis` should be less than the "
+            "length of `weight_shape`, but received axis="
+            "{}".format(axis)
         )
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h
@@ -1523,7 +1528,8 @@ class SpectralNorm(Layer):
         )
         self.weight_v.stop_gradient = True
 
-    def forward(self, weight):
+    def forward(self, x):
+        weight = x
         if in_dygraph_mode():
             return _C_ops.spectral_norm(
                 weight,
@@ -1531,7 +1537,7 @@ class SpectralNorm(Layer):
                 self.weight_v,
                 self._dim,
                 self._power_iters,
-                self._eps,
+                self._epsilon,
             )
 
         check_variable_and_dtype(
@@ -1548,7 +1554,7 @@ class SpectralNorm(Layer):
             attrs={
                 "dim": self._dim,
                 "power_iters": self._power_iters,
-                "eps": self._eps,
+                "eps": self._epsilon,
             },
         )
 
