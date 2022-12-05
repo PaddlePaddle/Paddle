@@ -43,9 +43,23 @@ from ..fluid.data_feeder import (
     convert_dtype,
 )
 from paddle.utils import inplace_apis_in_dygraph_only
-from ..fluid.layers import utils
 
 # TODO: define math functions
+from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from ..fluid.layers import elementwise_sub, utils
+from ..framework import (
+    LayerHelper,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    _varbase_creator,
+    convert_np_dtype_to_dtype_,
+    core,
+    in_dygraph_mode,
+)
+from ..static import Variable
+from .creation import _complex_to_real_dtype
+from .layer_function_generator import generate_layer_fn, templatedoc
+from .manipulation import cast
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401
 from .ops import asin  # noqa: F401
