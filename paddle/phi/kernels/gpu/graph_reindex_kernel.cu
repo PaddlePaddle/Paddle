@@ -20,7 +20,15 @@
 #include <thrust/scan.h>
 #include <thrust/sequence.h>
 
-#include "cub/cub.cuh"
+#ifdef __NVCC__
+#include <cub/cub.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
+//#include "cub/cub.cuh"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -65,7 +73,11 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
   // Get item index count.
   auto item_count = paddle::memory::Alloc(place, (num_input + 1) * sizeof(int));
   int* item_count_ptr = reinterpret_cast<int*>(item_count->ptr());
+#ifdef PADDLE_WITH_HIP
+  hipMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
+#else
   cudaMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
+#endif
   GetItemIndexCount<T><<<grid, block, 0, dev_ctx.stream()>>>(
       input, item_count_ptr, num_input, len_hashtable, keys, key_index);
 
@@ -79,10 +91,17 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
                                 item_count_ptr,
                                 num_input + 1);
   int total_unique_items = 0;
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(&total_unique_items,
+             item_count_ptr + num_input,
+             sizeof(int),
+             hipMemcpyDeviceToHost);
+#else
   cudaMemcpy(&total_unique_items,
              item_count_ptr + num_input,
              sizeof(int),
              cudaMemcpyDeviceToHost);
+#endif
 
   auto unique_items =
       paddle::memory::AllocShared(place, total_unique_items * sizeof(T));
@@ -338,10 +357,17 @@ void ReindexDst(const Context& dev_ctx,
             count_data + i * node_len,
             thrust::raw_pointer_cast(dst_ptr.data()),
             reindex_dst_data + begin);
+#ifdef PADDLE_WITH_HIP
+    hipMemcpy(&count_i,
+               thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+               sizeof(int),
+               cudaMemcpyDeviceToHost);
+#else
     cudaMemcpy(&count_i,
                thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
                sizeof(int),
                cudaMemcpyDeviceToHost);
+#endif
     begin += count_i;
   }
 }
