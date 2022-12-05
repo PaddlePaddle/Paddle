@@ -173,7 +173,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             if k.startswith("fc"):
                 name = k.replace("fc", "linear", 1)
                 new_dict[name] = v
-            elif k.startwith("prelu"):
+            elif k.startswith("prelu"):
                 name = k.replace("prelu", "p_re_lu")
                 new_dict[name] = v
             else:
