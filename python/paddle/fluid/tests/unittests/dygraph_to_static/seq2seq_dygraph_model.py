@@ -297,8 +297,8 @@ class BaseModel(fluid.dygraph.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axis=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        loss = paddle.squeeze(loss, axes=[2])
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
@@ -435,7 +435,9 @@ class BaseModel(fluid.dygraph.Layer):
             cell_outputs = self._split_batch_beams(step_input)
             cell_outputs = self.fc(cell_outputs)
 
-            step_log_probs = paddle.log(fluid.layers.softmax(cell_outputs))
+            step_log_probs = paddle.log(
+                paddle.nn.functional.softmax(cell_outputs)
+            )
             noend_array = [-self.kinf] * self.tar_vocab_size
             noend_array[self.beam_end_token] = 0
             noend_mask_tensor = to_variable(
@@ -703,7 +705,7 @@ class AttentionModel(fluid.dygraph.Layer):
             attn = paddle.transpose(attn, [1, 0, 2])
             attn = paddle.add(attn, mask * 1000000000)
             attn = paddle.transpose(attn, [1, 0, 2])
-        weight = fluid.layers.softmax(attn)
+        weight = paddle.nn.functional.softmax(attn)
         weight_memory = fluid.layers.matmul(weight, memory)
 
         return weight_memory
@@ -831,8 +833,8 @@ class AttentionModel(fluid.dygraph.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axis=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        loss = paddle.squeeze(loss, axes=[2])
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )

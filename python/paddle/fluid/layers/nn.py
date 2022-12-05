@@ -68,7 +68,6 @@ __all__ = [
     'linear_chain_crf',
     'crf_decoding',
     'conv2d',
-    'softmax',
     'pool2d',
     'batch_norm',
     'dropout',
@@ -87,7 +86,6 @@ __all__ = [
     'autoincreased_step_counter',
     'unsqueeze',
     'lod_reset',
-    'pad',
     'image_resize',
     'resize_bilinear',
     'resize_trilinear',
@@ -98,7 +96,6 @@ __all__ = [
     'elementwise_sub',
     'elementwise_mul',
     'sampling_id',
-    'shape',
     'clip',
     'clip_by_norm',
     'mean',
@@ -109,7 +106,6 @@ __all__ = [
     'bilinear_tensor_product',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
-    'temporal_shift',
     'continuous_value_model',
     'unfold',
     'deformable_roi_pooling',
@@ -146,7 +142,7 @@ def _get_reduce_dim(dim, input):
         else:
             raise TypeError(
                 "The type of dim must be int, list, tuple or range, but received {}".format(
-                    type(axis)
+                    type(dim)
                 )
             )
     if dim is None:
@@ -680,7 +676,7 @@ def _pull_gpups_sparse(
         size(int|list of int): The embedding size parameter of each input, which indicates the size of
             each embedding vector respectively.
         dtype(str): The dtype refers to the data type of output tensor. Only supports
-	    float32 now.
+        float32 now.
 
     Returns:
         Variable|list of Variable: The tensor variable storing the embeddings of the \
@@ -743,7 +739,7 @@ def _pull_box_sparse(
         size(int): The embedding size parameter, which indicates the size of
             each embedding vector respectively.
         dtype(str): The dtype refers to the data type of output tensor. Only supports
-	    float32 now.
+        float32 now.
 
     Returns:
         Variable|list of Variable: The tensor variable storing the embeddings of the \
@@ -1122,147 +1118,6 @@ def dropout(
         attrs=attrs,
     )
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.softmax")
-def softmax(input, use_cudnn=True, name=None, axis=-1):
-    r"""
-    This operator implements the softmax layer. The calculation process is as follows:
-
-    1. The dimension :attr:`axis` of the ``input`` will be permuted to the last.
-
-    2. Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
-    second dimension(row length) is the same as the dimension :attr:`axis` of the input
-    tensor, and the first dimension(column length) is the product of all other
-    dimensions of the input tensor. For each row of the matrix, the softmax operator
-    squashes the K-dimensional(K is the width of the matrix, which is also the size
-    of the input tensor's dimension :attr:`axis`) vector of arbitrary real values to a
-    K-dimensional vector of real values in the range [0, 1] that add up to 1.
-
-    3. After the softmax operation is completed, the inverse operations of steps 1 and 2
-    are performed to restore the two-dimensional matrix to the same dimension as the ``input``.
-
-    It computes the exponential of the given dimension and the sum of exponential
-    values of all the other dimensions in the K-dimensional vector input.
-    Then the ratio of the exponential of the given dimension and the sum of
-    exponential values of all the other dimensions is the output of the softmax
-    operator.
-
-    For each row :math:`i` and each column :math:`j` in the matrix, we have:
-
-    .. math::
-
-        Out[i, j] = \\frac{\\exp(X[i, j])}{\\sum_j(exp(X[i, j])}
-
-    Example:
-
-    .. code-block:: text
-
-        Case 1:
-          Input:
-            X.shape = [2, 3, 4]
-            X.data = [[[2.0, 3.0, 4.0, 5.0],
-                       [3.0, 4.0, 5.0, 6.0],
-                       [7.0, 8.0, 8.0, 9.0]],
-                      [[1.0, 2.0, 3.0, 4.0],
-                       [5.0, 6.0, 7.0, 8.0],
-                       [6.0, 7.0, 8.0, 9.0]]]
-
-          Attrs:
-            axis = -1
-
-          Output:
-            Out.shape = [2, 3, 4]
-            Out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
-
-        Case 2:
-          Input:
-            X.shape = [2, 3, 4]
-            X.data = [[[2.0, 3.0, 4.0, 5.0],
-                       [3.0, 4.0, 5.0, 6.0],
-                       [7.0, 8.0, 8.0, 9.0]],
-                      [[1.0, 2.0, 3.0, 4.0],
-                       [5.0, 6.0, 7.0, 8.0],
-                       [6.0, 7.0, 8.0, 9.0]]]
-          Attrs:
-            axis = 1
-
-          Output:
-            Out.shape = [2, 3, 4]
-            Out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
-                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
-                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
-                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
-                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
-                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
-
-    Args:
-        input (Tensor): The input tensor. A multi-dimension ``Tensor`` with type float32 or float64.
-        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn \
-            library is installed. To improve performance, set use_cudnn to True by default.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` . Default: None.
-            will be named automatically. Default: None.
-        axis (int, optional): The index of dimension to perform softmax calculations, it should
-            be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
-            input tensor. Default: -1. -1 means the last dimension.
-
-    Returns:
-        Tensor: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input`` .
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-                                [3.0, 4.0, 5.0, 6.0],
-                                [7.0, 8.0, 8.0, 9.0]],
-                                [[1.0, 2.0, 3.0, 4.0],
-                                [5.0, 6.0, 7.0, 8.0],
-                                [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
-            y = F.softmax(x, axis=1)
-            print(y)
-            # [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
-            #   [0.01786798, 0.01786798, 0.04661262, 0.04661262],
-            #   [0.97555870, 0.97555870, 0.93623954, 0.93623954]],
-            #  [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
-            #   [0.26762316, 0.26762316, 0.26762316, 0.26762316],
-            #   [0.72747517, 0.72747517, 0.72747517, 0.72747517]]]
-
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.softmax(input, axis)
-
-    if _non_static_mode():
-        return _legacy_C_ops.softmax(
-            input, 'axis', axis, 'use_cudnn', use_cudnn
-        )
-
-    inputs = {"X": [input]}
-    attrs = {"axis": axis, "use_cudnn": use_cudnn}
-
-    helper = LayerHelper('softmax', **locals())
-    check_variable_and_dtype(
-        input, 'input/x', ['float16', 'float32', 'float64'], 'softmax'
-    )
-
-    dtype = helper.input_dtype()
-    softmax_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="softmax",
-        inputs={"X": input},
-        outputs={"Out": softmax_out},
-        attrs=attrs,
-    )
-    return softmax_out
 
 
 def conv2d(
@@ -1789,7 +1644,7 @@ def pool2d(
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
             pool_padding = [0, 0]
-            if ceil_mode != False:
+            if ceil_mode is not False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True."
@@ -3877,92 +3732,6 @@ def lod_reset(x, y=None, target_lod=None):
     return out
 
 
-def pad(x, paddings, pad_value=0.0, name=None):
-    r"""
-    :alias_main: paddle.nn.functional.pad
-        :alias: paddle.nn.functional.pad,paddle.nn.functional.common.pad
-        :old_api: paddle.fluid.layers.pad
-
-    This op will pad a tensor with a constant value given by :attr:`pad_value`, and the
-    padded shape is specified by :attr:`paddings`.
-
-    Specifically, the number of values padded before the elements of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[2*i]`, and the number
-    of values padded after the elements of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[2*i+1]`.
-
-    See below for an example.
-
-    .. code-block:: text
-
-        Given:
-            x = [[1, 2], [3, 4]]
-
-            paddings = [0, 1, 1, 2]
-
-            pad_value = 0
-
-        Return:
-            out = [[0, 1, 2, 0, 0]
-                   [0, 3, 4, 0, 0]
-                   [0, 0, 0, 0, 0]]
-
-    Args:
-        x (Variable): Tensor, data type is float32.
-        paddings (list): A list of integers. Its elements specify the padded
-                         width before and after each dimension in turn.
-                         The length of :attr:`paddings` must be equal to
-                         :math:`rank(x) \\times 2`.
-        pad_value (float): The constant value used to pad.
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        The padded tensor, with the same data type and rank as :attr:`x`
-
-    Return Type:
-        Variable
-
-    Examples:
-        .. code-block:: python
-
-            # x is a rank 2 tensor variable
-            import paddle.fluid as fluid
-            x = fluid.data(name='data', shape=[300, 300], dtype='float32')
-            out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
-    """
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        "pad",
-    )
-
-    check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
-    if isinstance(pad_value, int):
-        pad_value = float(pad_value)
-
-    helper = LayerHelper('pad', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='pad',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'paddings': paddings, 'pad_value': pad_value},
-    )
-    return out
-
-
 def image_resize(
     input,
     out_shape=None,
@@ -5088,95 +4857,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'min': min, 'max': max, 'seed': seed},
-    )
-
-    return out
-
-
-def shape(input):
-    """
-    :alias_main: paddle.shape
-        :alias: paddle.shape,paddle.tensor.shape,paddle.tensor.attribute.shape
-        :old_api: paddle.fluid.layers.shape
-
-    **Shape Layer**
-
-    Get the shape of the input.
-
-    .. code-block:: text
-
-        Case1:
-            Given N-D Tensor:
-                input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
-
-            Then:
-                input.shape = [2, 4]
-
-        Case2:
-            Given SelectedRows:
-                input.rows = [0, 4, 19]
-                input.height = 20
-                input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
-            Then:
-                input.shape = [3, 2]
-
-    Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
-                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
-
-    Returns:
-        Variable (Tensor): The shape of the input variable.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-            paddle.enable_static()
-
-            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
-            output = fluid.layers.shape(inputs)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            img = np.ones((3, 100, 100)).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-            print(res) # [array([  3, 100, 100], dtype=int32)]
-    """
-    if in_dygraph_mode():
-        out = _C_ops.shape(input)
-        out.stop_gradient = True
-        return out
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.shape(input)
-        out.stop_gradient = True
-        return out
-
-    check_variable_and_dtype(
-        input,
-        'input',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'shape',
-    )
-    helper = LayerHelper('shape', **locals())
-    out = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type='shape',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        stop_gradient=True,
     )
 
     return out
@@ -6315,45 +5995,6 @@ def get_tensor_from_selected_rows(x, name=None):
     return out
 
 
-@templatedoc()
-def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
-    """
-
-    **Temporal Shift Operator**
-
-    ${comment}
-
-    Args:
-        x(Tensor): ${x_comment}
-        seg_num(int): ${seg_num_comment}
-        shift_ratio(float): ${shift_ratio_comment}
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-        data_format(str, optional): Data format that specifies the layout of input.
-            It can be "NCHW" or "NHWC". Default: "NCHW".
-
-    Returns:
-        out(Tensor): The temporal shifting result is a tensor with the
-        same shape and same data type as the input.
-
-    Raises:
-        TypeError: seg_num must be int type.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            input = paddle.randn([6, 4, 2, 2])
-            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
-    """
-    return paddle.nn.functional.temporal_shift(
-        x, seg_num, shift_ratio, name, data_format
-    )
-
-
 def continuous_value_model(input, cvm, use_cvm=True):
     r"""
 
@@ -6623,7 +6264,7 @@ def deformable_roi_pooling(
         )
 
     input_channels = input.shape[1]
-    if position_sensitive == False:
+    if position_sensitive is False:
         output_channels = input_channels
     else:
         output_channels = input_channels / pooled_height / pooled_width
@@ -6821,11 +6462,11 @@ def mish(x, threshold=20, name=None):
 
     .. math::
 
-	out = \\begin{cases}
-		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
-		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
-		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
-	      \\end{cases}
+    out = \\begin{cases}
+        x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
+        x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
+        x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
+          \\end{cases}
 
     Args:
         x (Variable): Input feature, multi-dimensional Tensor. The data type
@@ -6847,9 +6488,11 @@ def mish(x, threshold=20, name=None):
 
     .. code-block:: python
 
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
 
+        paddle.enable_static()
         DATATYPE='float32'
 
         x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
