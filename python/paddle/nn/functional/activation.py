@@ -14,7 +14,6 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.framework import core
 
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
