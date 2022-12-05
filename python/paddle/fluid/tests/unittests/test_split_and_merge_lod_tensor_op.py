@@ -22,7 +22,6 @@ import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.control_flow import merge_lod_tensor, split_lod_tensor
 

@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GRUUnit, Linear
+from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GRUUnit
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
@@ -310,7 +310,7 @@ class SimpleAttention(fluid.dygraph.Layer):
             shape=[attention_weight.shape[0], attention_weight.shape[1]],
         )
 
-        weights_reshape = fluid.layers.softmax(weights_reshape)
+        weights_reshape = paddle.nn.functional.softmax(weights_reshape)
         scaled = fluid.layers.elementwise_mul(
             x=encoder_vec, y=weights_reshape, axis=0
         )

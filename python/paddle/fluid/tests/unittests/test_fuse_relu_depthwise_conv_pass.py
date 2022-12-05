@@ -89,7 +89,7 @@ class TestMNIST(TestParallelExecutorBase):
             return optimizer
 
         if only_forward:
-            _optimizer = None
+            _optimizer = None  # noqa: F811
 
         (
             fuse_op_first_loss,
