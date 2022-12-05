@@ -153,7 +153,7 @@ class MultiHeadAttention(Layer):
         )
         if attn_bias is not None:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self.dropout_rate:
             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
             out = layers.matmul(weights, v)
@@ -840,7 +840,7 @@ class Transformer(Layer):
             )
             caches = map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
-                paddle.log(fluid.layers.softmax(logits))
+                paddle.log(paddle.nn.functional.softmax(logits))
             )
 
             step_log_probs = mask_probs(
