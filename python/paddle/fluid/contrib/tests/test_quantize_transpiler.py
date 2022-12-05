@@ -17,8 +17,8 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.quantize.quantize_transpiler import _original_var_name
-from paddle.fluid.contrib.quantize.quantize_transpiler import QuantizeTranspiler
+from paddle.quantization.quantize_transpiler import _original_var_name
+from paddle.quantization.quantize_transpiler import QuantizeTranspiler
 import paddle
 
 paddle.enable_static()
