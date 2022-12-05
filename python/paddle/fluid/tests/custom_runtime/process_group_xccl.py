@@ -206,34 +206,32 @@ class TestProcessGroupFp32(unittest.TestCase):
         # if pg.rank() == 0:
         #     assert np.array_equal(tensor_x, sum_result)
         print("test reduce sum api ok\n")
-        """
-            # test Scatter
-            # rank 0
-            in_shape = list(self.shape)
-            in_shape[0] *= 2
-            x = np.random.random(in_shape).astype(self.dtype)
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            tensor_y = paddle.to_tensor(y)
-            if pg.rank() == 0:
-                task = pg.scatter(tensor_x, tensor_y, 0)
-                task.wait()
-                # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
-            # rank 1
-            else:
-                task = pg.scatter(tensor_x, tensor_y, 0)
-                task.wait()
-                # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
-            out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
-            out2 = paddle.slice(
-                tensor_x, [0], [self.shape[0]], [self.shape[0] * 2]
-            )
-            # if pg.rank() == 0:
-            #     assert np.array_equal(tensor_y, out1)
-            # else:
-            #     assert np.array_equal(tensor_y, out2)
-            print("test scatter api ok\n")
 
+        # test Scatter
+        # rank 0
+        in_shape = list(self.shape)
+        in_shape[0] *= 2
+        x = np.random.random(in_shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        if pg.rank() == 0:
+            task = pg.scatter(tensor_x, tensor_y, 0)
+            task.wait()
+            # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
+        # rank 1
+        else:
+            task = pg.scatter(tensor_x, tensor_y, 0)
+            task.wait()
+            # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
+        out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
+        out2 = paddle.slice(tensor_x, [0], [self.shape[0]], [self.shape[0] * 2])
+        # if pg.rank() == 0:
+        #     assert np.array_equal(tensor_y, out1)
+        # else:
+        #     assert np.array_equal(tensor_y, out2)
+        # print("test scatter api ok\n")
+        """
         """
 
 
