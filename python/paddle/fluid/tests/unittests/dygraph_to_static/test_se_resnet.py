@@ -343,7 +343,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         out = self.out(y)
 
-        softmax_out = fluid.layers.softmax(out)
+        softmax_out = paddle.nn.functional.softmax(out)
         loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
         avg_loss = paddle.mean(x=loss)
 

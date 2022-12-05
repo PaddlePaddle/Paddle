@@ -607,7 +607,7 @@ def detection_output(
         target_box=loc,
         code_type='decode_center_size',
     )
-    scores = nn.softmax(input=scores)
+    scores = paddle.nn.functional.softmax(scores)
     scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
@@ -1569,7 +1569,7 @@ def ssd_loss(
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
-    conf_shape = nn.shape(confidence)
+    conf_shape = paddle.shape(confidence)
 
     def __reshape_to_2d(var):
         out = paddle.flatten(var, 2, -1)
@@ -1669,7 +1669,8 @@ def ssd_loss(
     location = __reshape_to_2d(location)
     target_bbox = __reshape_to_2d(target_bbox)
 
-    loc_loss = nn.smooth_l1(location, target_bbox)
+    smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
+    loc_loss = smooth_l1_loss(location, target_bbox)
     target_loc_weight = __reshape_to_2d(target_loc_weight)
     loc_loss = loc_loss * target_loc_weight
 
