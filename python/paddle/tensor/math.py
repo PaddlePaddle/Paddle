@@ -42,10 +42,10 @@ from ..fluid.data_feeder import (
     check_dtype,
     convert_dtype,
 )
+
 from paddle.utils import inplace_apis_in_dygraph_only
 
 # TODO: define math functions
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ..fluid.layers import elementwise_sub, utils
 from ..framework import (
     LayerHelper,
