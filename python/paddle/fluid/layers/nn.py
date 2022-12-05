@@ -97,7 +97,6 @@ __all__ = [
     'elementwise_mul',
     'gaussian_random',
     'sampling_id',
-    'shape',
     'clip',
     'clip_by_norm',
     'mean',
@@ -5005,95 +5004,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'min': min, 'max': max, 'seed': seed},
-    )
-
-    return out
-
-
-def shape(input):
-    """
-    :alias_main: paddle.shape
-        :alias: paddle.shape,paddle.tensor.shape,paddle.tensor.attribute.shape
-        :old_api: paddle.fluid.layers.shape
-
-    **Shape Layer**
-
-    Get the shape of the input.
-
-    .. code-block:: text
-
-        Case1:
-            Given N-D Tensor:
-                input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
-
-            Then:
-                input.shape = [2, 4]
-
-        Case2:
-            Given SelectedRows:
-                input.rows = [0, 4, 19]
-                input.height = 20
-                input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
-            Then:
-                input.shape = [3, 2]
-
-    Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
-                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
-
-    Returns:
-        Variable (Tensor): The shape of the input variable.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-            paddle.enable_static()
-
-            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
-            output = fluid.layers.shape(inputs)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            img = np.ones((3, 100, 100)).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-            print(res) # [array([  3, 100, 100], dtype=int32)]
-    """
-    if in_dygraph_mode():
-        out = _C_ops.shape(input)
-        out.stop_gradient = True
-        return out
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.shape(input)
-        out.stop_gradient = True
-        return out
-
-    check_variable_and_dtype(
-        input,
-        'input',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'shape',
-    )
-    helper = LayerHelper('shape', **locals())
-    out = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type='shape',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        stop_gradient=True,
     )
 
     return out
