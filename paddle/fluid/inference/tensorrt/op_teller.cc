@@ -1763,13 +1763,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-      if (desc.HasAttr("depth")) {
-        const int depth = PADDLE_GET_CONST(int, desc.GetAttr("depth"));
-        if (depth <= 0) {
-          VLOG(3) << "depth only support positive in one_hot op.";
-          return false;
-        }
-      }
     }
 
     if (op_type == "skip_layernorm") {
