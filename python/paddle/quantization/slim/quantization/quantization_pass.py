@@ -1936,6 +1936,15 @@ class AddQuantDequantPass:
                     op_node.op()._set_attr("activation_bits", self._quant_bits)
                     op_node.op()._set_attr("with_quant_attr", True)
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name
@@ -2794,6 +2803,15 @@ class AddQuantDequantPassV2:
                         continue
 
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name
