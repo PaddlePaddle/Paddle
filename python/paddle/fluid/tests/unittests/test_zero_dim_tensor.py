@@ -596,16 +596,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
         self.assertEqual(out.numpy(), 0)
 
-    def test_diagflat(self):
-        x = paddle.rand([])
-        x.stop_gradient = False
-        out = paddle.diagflat(x, 1)
-        out.backward()
-
-        self.assertEqual(out.shape, [2, 2])
-        self.assertEqual(out.grad.shape, [2, 2])
-        self.assertEqual(x.grad.shape, [])
-
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -686,16 +676,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 0)
-
-    @prog_scope()
-    def test_diagflat(self):
-        x = paddle.rand([])
-        out = paddle.diagflat(x, 1)
-        paddle.static.append_backward(out)
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
-        self.assertEqual(res[0].shape, (2, 2))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
