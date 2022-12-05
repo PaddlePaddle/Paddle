@@ -103,7 +103,12 @@ class AnalysisPredictor : public PaddlePredictor {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
     }
-    predictor_id_ = inference::GetUniqueId();
+    auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+    if (trt_identifier > 0) {
+      predictor_id_ = -trt_identifier;
+    } else {
+      predictor_id_ = inference::GetUniqueId();
+    }
   }
   ///
   /// \brief Destroy the Analysis Predictor object
