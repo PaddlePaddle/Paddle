@@ -38,7 +38,8 @@ class EncoderCell(layers.RNNCell):
         self.hidden_size = hidden_size
         self.dropout_prob = dropout_prob
         self.lstm_cells = [
-            layers.LSTMCell(hidden_size) for i in range(num_layers)
+            paddle.nn.LSTMCell(hidden_size, hidden_size)
+            for i in range(num_layers)
         ]
 
     def call(self, step_input, states):
@@ -64,7 +65,8 @@ class DecoderCell(layers.RNNCell):
         self.hidden_size = hidden_size
         self.dropout_prob = dropout_prob
         self.lstm_cells = [
-            layers.LSTMCell(hidden_size) for i in range(num_layers)
+            paddle.nn.LSTMCell(hidden_size, hidden_size)
+            for i in range(num_layers)
         ]
 
     def attention(self, hidden, encoder_output, encoder_padding_mask):

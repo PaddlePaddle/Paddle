@@ -22,290 +22,12 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.layers.utils as utils
-from paddle.fluid import contrib, framework
+from paddle.fluid import framework
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import rnn as dynamic_rnn
-from paddle.fluid.layers.rnn import GRUCell, LSTMCell, RNNCell
-
-
-class TestLSTMCellError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            batch_size, input_size, hidden_size = 4, 16, 16
-            inputs = fluid.data(
-                name='inputs', shape=[None, input_size], dtype='float32'
-            )
-            pre_hidden = fluid.data(
-                name='pre_hidden', shape=[None, hidden_size], dtype='float32'
-            )
-            pre_cell = fluid.data(
-                name='pre_cell', shape=[None, hidden_size], dtype='float32'
-            )
-            cell = LSTMCell(hidden_size)
-
-            def test_input_Variable():
-                np_input = np.random.random((batch_size, input_size)).astype(
-                    "float32"
-                )
-                cell(np_input, [pre_hidden, pre_cell])
-
-            self.assertRaises(TypeError, test_input_Variable)
-
-            def test_pre_hidden_Variable():
-                np_pre_hidden = np.random.random(
-                    (batch_size, hidden_size)
-                ).astype("float32")
-                cell(inputs, [np_pre_hidden, pre_cell])
-
-            self.assertRaises(TypeError, test_pre_hidden_Variable)
-
-            def test_pre_cell_Variable():
-                np_pre_cell = np.random.random((batch_size, input_size)).astype(
-                    "float32"
-                )
-                cell(inputs, [pre_hidden, np_pre_cell])
-
-            self.assertRaises(TypeError, test_pre_cell_Variable)
-
-            def test_input_type():
-                error_inputs = fluid.data(
-                    name='error_inputs', shape=[None, input_size], dtype='int32'
-                )
-                cell(error_inputs, [pre_hidden, pre_cell])
-
-            self.assertRaises(TypeError, test_input_type)
-
-            def test_pre_hidden_type():
-                error_pre_hidden = fluid.data(
-                    name='error_pre_hidden',
-                    shape=[None, hidden_size],
-                    dtype='int32',
-                )
-                cell(inputs, [error_pre_hidden, pre_cell])
-
-            self.assertRaises(TypeError, test_pre_hidden_type)
-
-            def test_pre_cell_type():
-                error_pre_cell = fluid.data(
-                    name='error_pre_cell',
-                    shape=[None, hidden_size],
-                    dtype='int32',
-                )
-                cell(inputs, [pre_hidden, error_pre_cell])
-
-            self.assertRaises(TypeError, test_pre_cell_type)
-
-            def test_dtype():
-                # the input type must be Variable
-                LSTMCell(hidden_size, dtype="int32")
-
-            self.assertRaises(TypeError, test_dtype)
-
-
-class TestLSTMCell(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 4
-        self.input_size = 16
-        self.hidden_size = 16
-
-    def test_run(self):
-        inputs = fluid.data(
-            name='inputs', shape=[None, self.input_size], dtype='float32'
-        )
-        pre_hidden = fluid.data(
-            name='pre_hidden', shape=[None, self.hidden_size], dtype='float32'
-        )
-        pre_cell = fluid.data(
-            name='pre_cell', shape=[None, self.hidden_size], dtype='float32'
-        )
-
-        cell = LSTMCell(self.hidden_size)
-        lstm_hidden_new, lstm_states_new = cell(inputs, [pre_hidden, pre_cell])
-
-        lstm_unit = contrib.layers.rnn_impl.BasicLSTMUnit(
-            "basicLSTM",
-            self.hidden_size,
-            None,
-            None,
-            None,
-            None,
-            1.0,
-            "float32",
-        )
-        lstm_hidden, lstm_cell = lstm_unit(inputs, pre_hidden, pre_cell)
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = Executor(place)
-        exe.run(framework.default_startup_program())
-
-        inputs_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.input_size)
-        ).astype('float32')
-        pre_hidden_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)
-        ).astype('float32')
-        pre_cell_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)
-        ).astype('float32')
-
-        param_names = [
-            ["LSTMCell/BasicLSTMUnit_0.w_0", "basicLSTM/BasicLSTMUnit_0.w_0"],
-            ["LSTMCell/BasicLSTMUnit_0.b_0", "basicLSTM/BasicLSTMUnit_0.b_0"],
-        ]
-
-        for names in param_names:
-            param = np.array(
-                fluid.global_scope().find_var(names[0]).get_tensor()
-            )
-            param = np.random.uniform(-0.1, 0.1, size=param.shape).astype(
-                'float32'
-            )
-            fluid.global_scope().find_var(names[0]).get_tensor().set(
-                param, place
-            )
-            fluid.global_scope().find_var(names[1]).get_tensor().set(
-                param, place
-            )
-
-        out = exe.run(
-            feed={
-                'inputs': inputs_np,
-                'pre_hidden': pre_hidden_np,
-                'pre_cell': pre_cell_np,
-            },
-            fetch_list=[lstm_hidden_new, lstm_hidden],
-        )
-
-        np.testing.assert_allclose(out[0], out[1], rtol=0.0001, atol=0)
-
-
-class TestGRUCellError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            batch_size, input_size, hidden_size = 4, 16, 16
-            inputs = fluid.data(
-                name='inputs', shape=[None, input_size], dtype='float32'
-            )
-            pre_hidden = layers.data(
-                name='pre_hidden',
-                shape=[None, hidden_size],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            cell = GRUCell(hidden_size)
-
-            def test_input_Variable():
-                np_input = np.random.random((batch_size, input_size)).astype(
-                    "float32"
-                )
-                cell(np_input, pre_hidden)
-
-            self.assertRaises(TypeError, test_input_Variable)
-
-            def test_pre_hidden_Variable():
-                np_pre_hidden = np.random.random(
-                    (batch_size, hidden_size)
-                ).astype("float32")
-                cell(inputs, np_pre_hidden)
-
-            self.assertRaises(TypeError, test_pre_hidden_Variable)
-
-            def test_input_type():
-                error_inputs = fluid.data(
-                    name='error_inputs', shape=[None, input_size], dtype='int32'
-                )
-                cell(error_inputs, pre_hidden)
-
-            self.assertRaises(TypeError, test_input_type)
-
-            def test_pre_hidden_type():
-                error_pre_hidden = fluid.data(
-                    name='error_pre_hidden',
-                    shape=[None, hidden_size],
-                    dtype='int32',
-                )
-                cell(inputs, error_pre_hidden)
-
-            self.assertRaises(TypeError, test_pre_hidden_type)
-
-            def test_dtype():
-                # the input type must be Variable
-                GRUCell(hidden_size, dtype="int32")
-
-            self.assertRaises(TypeError, test_dtype)
-
-
-class TestGRUCell(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 4
-        self.input_size = 16
-        self.hidden_size = 16
-
-    def test_run(self):
-        inputs = fluid.data(
-            name='inputs', shape=[None, self.input_size], dtype='float32'
-        )
-        pre_hidden = layers.data(
-            name='pre_hidden',
-            shape=[None, self.hidden_size],
-            append_batch_size=False,
-            dtype='float32',
-        )
-
-        cell = GRUCell(self.hidden_size)
-        gru_hidden_new, _ = cell(inputs, pre_hidden)
-
-        gru_unit = contrib.layers.rnn_impl.BasicGRUUnit(
-            "basicGRU", self.hidden_size, None, None, None, None, "float32"
-        )
-        gru_hidden = gru_unit(inputs, pre_hidden)
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = Executor(place)
-        exe.run(framework.default_startup_program())
-
-        inputs_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.input_size)
-        ).astype('float32')
-        pre_hidden_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)
-        ).astype('float32')
-
-        param_names = [
-            ["GRUCell/BasicGRUUnit_0.w_0", "basicGRU/BasicGRUUnit_0.w_0"],
-            ["GRUCell/BasicGRUUnit_0.w_1", "basicGRU/BasicGRUUnit_0.w_1"],
-            ["GRUCell/BasicGRUUnit_0.b_0", "basicGRU/BasicGRUUnit_0.b_0"],
-            ["GRUCell/BasicGRUUnit_0.b_1", "basicGRU/BasicGRUUnit_0.b_1"],
-        ]
-
-        for names in param_names:
-            param = np.array(
-                fluid.global_scope().find_var(names[0]).get_tensor()
-            )
-            param = np.random.uniform(-0.1, 0.1, size=param.shape).astype(
-                'float32'
-            )
-            fluid.global_scope().find_var(names[0]).get_tensor().set(
-                param, place
-            )
-            fluid.global_scope().find_var(names[1]).get_tensor().set(
-                param, place
-            )
-
-        out = exe.run(
-            feed={'inputs': inputs_np, 'pre_hidden': pre_hidden_np},
-            fetch_list=[gru_hidden_new, gru_hidden],
-        )
-
-        np.testing.assert_allclose(out[0], out[1], rtol=0.0001, atol=0)
+from paddle.fluid.layers.rnn import RNNCell
 
 
 class TestRnnError(unittest.TestCase):
@@ -336,7 +58,9 @@ class TestRnnError(unittest.TestCase):
             inputs_dynamic_rnn = paddle.transpose(
                 inputs_basic_lstm, perm=[1, 0, 2]
             )
-            cell = LSTMCell(hidden_size, name="LSTMCell_for_rnn")
+            cell = paddle.nn.LSTMCell(
+                input_size, hidden_size, name="LSTMCell_for_rnn"
+            )
             np_inputs_dynamic_rnn = np.random.random(
                 (seq_len, batch_size, input_size)
             ).astype("float32")
@@ -362,7 +86,9 @@ class TestRnnError(unittest.TestCase):
             self.assertRaises(TypeError, test_input_list)
 
             def test_initial_states_type():
-                cell = GRUCell(hidden_size, name="GRUCell_for_rnn")
+                cell = paddle.nn.GRUCell(
+                    input_size, hidden_size, name="GRUCell_for_rnn"
+                )
                 error_initial_states = np.random.random(
                     (batch_size, hidden_size)
                 ).astype("float32")
@@ -427,7 +153,9 @@ class TestRnn(unittest.TestCase):
         )
 
         inputs_dynamic_rnn = paddle.transpose(inputs_basic_lstm, perm=[1, 0, 2])
-        cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")
+        cell = paddle.nn.LSTMCell(
+            self.input_size, self.hidden_size, name="LSTMCell_for_rnn"
+        )
         output, final_state = dynamic_rnn(
             cell=cell,
             inputs=inputs_dynamic_rnn,
@@ -544,7 +272,7 @@ class EncoderCell(RNNCell):
         self.lstm_cells = []
 
         for i in range(num_layers):
-            self.lstm_cells.append(LSTMCell(hidden_size))
+            self.lstm_cells.append(paddle.nn.LSTMCell(hidden_size, hidden_size))
 
     def call(self, step_input, states):
         new_states = []
@@ -575,7 +303,7 @@ class DecoderCell(RNNCell):
         self.dropout_prob = dropout_prob
         self.lstm_cells = []
         for i in range(num_layers):
-            self.lstm_cells.append(LSTMCell(hidden_size))
+            self.lstm_cells.append(paddle.nn.LSTMCell(hidden_size, hidden_size))
 
     def call(self, step_input, states):
         new_lstm_states = []
