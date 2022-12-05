@@ -1347,14 +1347,14 @@ def diagflat(x, offset=0, name=None):
     """
     padding_value = 0
     if in_dygraph_mode():
-        if len(x.shape) == 1:
+        if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, padding_value)
         else:
             y = _C_ops.flatten(x, 0, -1)
             return _C_ops.diag(y, offset, padding_value)
 
     if _in_legacy_dygraph():
-        if len(x.shape) == 1:
+        if len(x.shape) <= 1:
             return _legacy_C_ops.diag_v2(
                 x, "offset", offset, "padding_value", padding_value
             )
@@ -1377,7 +1377,7 @@ def diagflat(x, offset=0, name=None):
     out1_shape = helper.create_variable_for_type_inference(x.dtype)
     out2 = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if len(x.shape) == 1:
+    if len(x.shape) <= 1:
         helper.append_op(
             type='diag_v2',
             inputs={'X': x},
