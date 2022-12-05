@@ -37,9 +37,13 @@ struct random_engine_wrapper_t {
   random_engine_wrapper_t() {
     timespec tp;
     clock_gettime(CLOCK_REALTIME, &tp);
-    static std::atomic<unsigned long> x(static_cast<unsigned long>(1));
+    static std::atomic<unsigned long> x(  // NOLINT
+        static_cast<unsigned long>(1));   // NOLINT
     std::seed_seq sseq = {
-        x++, x++, x++, (unsigned long)(tp.tv_sec * 1e9 + tp.tv_nsec)};
+        x++,
+        x++,
+        x++,
+        (unsigned long)(tp.tv_sec * 1e9 + tp.tv_nsec)};  // NOLINT
     engine.seed(sseq);
   }
 };
@@ -95,7 +99,8 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
   VLOG(0) << "updatex gpu memory on device " << gpu_id << ", "
           << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
-          << "use_rate=" << (total - avail) / double(total) << "%, "
+          << "use_rate=" << (total - avail) / static_cast<double>(total)
+          << "%, "
           << "desc=" << desc;
 }
 
@@ -124,7 +129,8 @@ inline void debug_gpu_memory_info(const char* desc) {
     VLOG(0) << "update gpu memory on device " << i << ", "
             << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
             << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
-            << "use_rate=" << (total - avail) / double(total) << "%, "
+            << "use_rate=" << (total - avail) / static_cast<double>(total)
+            << "%, "
             << "desc=" << desc;
   }
 }

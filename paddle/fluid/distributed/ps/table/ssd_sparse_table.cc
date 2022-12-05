@@ -194,7 +194,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
     cur_ctx->reset();
     FixedFeatureValue* ret = NULL;
     auto& local_shard = _local_shards[shard_id];
-    float data_buffer[value_size];
+    float data_buffer[value_size];  // NOLINT
     float* data_buffer_ptr = data_buffer;
 
     for (size_t i = 0; i < num; ++i) {
@@ -203,7 +203,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
       if (itr == local_shard.end()) {
         cur_ctx->batch_index.push_back(i);
         cur_ctx->batch_keys.push_back(
-            rocksdb::Slice((char*)&(pull_keys[i]), sizeof(uint64_t)));
+                rocksdb::Slice((char*)&(pull_keys[i]), sizeof(uint64_t))); //NOLINT
         if (cur_ctx->batch_keys.size() == 1024) {
           cur_ctx->batch_values.resize(cur_ctx->batch_keys.size());
           cur_ctx->status.resize(cur_ctx->batch_keys.size());
@@ -221,8 +221,8 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
           for (size_t x = 0; x < tasks.size(); ++x) {
             tasks[x].wait();
             for (size_t idx = 0; idx < cur_ctx->status.size(); idx++) {
-              uint64_t cur_key = *((uint64_t*)const_cast<char*>(
-                  cur_ctx->batch_keys[idx].data()));
+              uint64_t cur_key = *(reinterpret_cast<uint64_t*>(
+                  const_cast<char*>(cur_ctx->batch_keys[idx].data())));
               if (cur_ctx->status[idx].IsNotFound()) {
                 auto& feature_value = local_shard[cur_key];
                 int init_size = value_size - mf_value_size;
@@ -242,12 +242,14 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
                        paddle::string::str_to_float(
                            cur_ctx->batch_values[idx].data()),
                        data_size * sizeof(float));
-                _db->del_data(shard_id, (char*)&cur_key, sizeof(uint64_t));
+                _db->del_data(shard_id,
+                              reinterpret_cast<char*>(&cur_key),
+                              sizeof(uint64_t));
                 ret = &feature_value;
               }
               _value_accesor->UpdatePassId(ret->data(), pass_id);
               int pull_data_idx = cur_ctx->batch_index[idx];
-              pull_values[pull_data_idx] = (char*)ret;
+              pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
             }
           }
           cur_ctx->reset();
@@ -258,7 +260,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
         ret = itr.value_ptr();
         // int pull_data_idx = keys[i].second;
         _value_accesor->UpdatePassId(ret->data(), pass_id);
-        pull_values[i] = (char*)ret;
+        pull_values[i] = reinterpret_cast<char*>(ret);
       }
     }
     if (cur_ctx->batch_keys.size() != 0) {
@@ -282,8 +284,8 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
     for (size_t x = 0; x < 2; x++) {
       cur_ctx = context.switch_item();
       for (size_t idx = 0; idx < cur_ctx->status.size(); idx++) {
-        uint64_t cur_key =
-            *((uint64_t*)const_cast<char*>(cur_ctx->batch_keys[idx].data()));
+        uint64_t cur_key = *(reinterpret_cast<uint64_t*>(
+            const_cast<char*>(cur_ctx->batch_keys[idx].data())));
         if (cur_ctx->status[idx].IsNotFound()) {
           auto& feature_value = local_shard[cur_key];
           int init_size = value_size - mf_value_size;
@@ -302,12 +304,13 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
               const_cast<float*>(feature_value.data()),
               paddle::string::str_to_float(cur_ctx->batch_values[idx].data()),
               data_size * sizeof(float));
-          _db->del_data(shard_id, (char*)&cur_key, sizeof(uint64_t));
+          _db->del_data(
+              shard_id, reinterpret_cast<char*>(&cur_key), sizeof(uint64_t));
           ret = &feature_value;
         }
         _value_accesor->UpdatePassId(ret->data(), pass_id);
         int pull_data_idx = cur_ctx->batch_index[idx];
-        pull_values[pull_data_idx] = (char*)ret;
+        pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
       }
       cur_ctx->reset();
     }
@@ -554,9 +557,9 @@ int32_t SSDSparseTable::UpdateTable() {
     for (auto it = shard.begin(); it != shard.end();) {
       if (_value_accesor->SaveSSD(it.value().data())) {
         _db->put(i,
-                 (char*)&it.key(),
+                 reinterpret_cast<const char*>(&it.key()),
                  sizeof(uint64_t),
-                 (char*)it.value().data(),
+                 reinterpret_cast<const char*>(it.value().data()),
                  it.value().size() * sizeof(float));
         count++;
         it = shard.erase(it);
@@ -734,9 +737,9 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
           memcpy(const_cast<float*>(feature_value.data()),
                  paddle::string::str_to_float(it->value().data()),
                  it->value().size());
-          writer << std::make_pair(
-              *((uint64_t*)const_cast<char*>(it->key().data())),
-              std::move(feature_value));
+          writer << std::make_pair(*(reinterpret_cast<uint64_t*>(
+                                       const_cast<char*>(it->key().data()))),
+                                   std::move(feature_value));
           ++feasign_size;
         }
       }
@@ -884,17 +887,17 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
       char* cursor = region->_buf;
       int remain = region->_cur;
       while (remain) {
-        uint32_t len = *(uint32_t*)cursor;
+        uint32_t len = *reinterpret_cast<uint32_t*>(cursor);
         len -= sizeof(uint32_t);
         remain -= sizeof(uint32_t);
         cursor += sizeof(uint32_t);
 
-        uint64_t k = *(uint64_t*)cursor;
+        uint64_t k = *reinterpret_cast<uint64_t*>(cursor);
         cursor += sizeof(uint64_t);
         len -= sizeof(uint64_t);
         remain -= sizeof(uint64_t);
 
-        float* value = (float*)cursor;
+        float* value = reinterpret_cast<float*>(cursor);
         int dim = len / sizeof(float);
 
         std::string format_value = _value_accesor->ParseToString(value, dim);
@@ -916,7 +919,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < (size_t)_real_local_shard_num; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(_real_local_shard_num); ++i) {
     std::shared_ptr<MemRegion> region = nullptr;
     std::vector<std::shared_ptr<MemRegion>> regions;
     free_channel[i]->Put(std::make_shared<MemRegion>());
@@ -953,10 +956,10 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
           int read_count = 0;
           char* buf = region->acquire(len);
           // CHECK(buf);
-          *(uint32_t*)(buf + read_count) = len;
+          *reinterpret_cast<uint32_t*>(buf + read_count) = len;
           read_count += sizeof(uint32_t);
 
-          *(uint64_t*)(buf + read_count) = it.key();
+          *reinterpret_cast<uint64_t*>(buf + read_count) = it.key();
           read_count += sizeof(uint64_t);
 
           memcpy(buf + read_count,
@@ -991,7 +994,8 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
           uint32_t len =
               sizeof(uint64_t) + it->value().size() + sizeof(uint32_t);
           int region_idx = i;
-          uint64_t key = *((uint64_t*)const_cast<char*>(it->key().data()));
+          uint64_t key = *(
+              reinterpret_cast<uint64_t*>(const_cast<char*>(it->key().data())));
           if (!region->buff_remain(len)) {
             busy_channel[region_idx]->Put(region);
             free_channel[region_idx]->Get(region);
@@ -1004,10 +1008,10 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
           }
           int read_count = 0;
           char* buf = region->acquire(len);
-          *(uint32_t*)(buf + read_count) = len;
+          *reinterpret_cast<uint32_t*>(buf + read_count) = len;
           read_count += sizeof(uint32_t);
 
-          *(uint64_t*)(buf + read_count) = key;
+          *reinterpret_cast<uint64_t*>(buf + read_count) = key;
           read_count += sizeof(uint64_t);
 
           memcpy(buf + read_count, it->value().data(), it->value().size());
@@ -1190,17 +1194,17 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
         char* cursor = region->_buf;
         int remain = region->_cur;
         while (remain) {
-          uint32_t len = *(uint32_t*)cursor;
+          uint32_t len = *reinterpret_cast<uint32_t*>(cursor);
           len -= sizeof(uint32_t);
           remain -= sizeof(uint32_t);
           cursor += sizeof(uint32_t);
 
-          uint64_t k = *(uint64_t*)cursor;
+          uint64_t k = *reinterpret_cast<uint64_t*>(cursor);
           cursor += sizeof(uint64_t);
           len -= sizeof(uint64_t);
           remain -= sizeof(uint64_t);
 
-          float* value = (float*)cursor;
+          float* value = reinterpret_cast<float*>(cursor);
           int dim = len / sizeof(float);
 
           std::string format_value = _value_accesor->ParseToString(value, dim);
@@ -1224,7 +1228,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < (size_t)_real_local_shard_num; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(_real_local_shard_num); ++i) {
     std::shared_ptr<MemRegion> region = nullptr;
     std::vector<std::shared_ptr<MemRegion>> regions;
     free_channel[i]->Put(std::make_shared<MemRegion>());
@@ -1252,10 +1256,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           int read_count = 0;
           char* buf = region->acquire(len);
           // CHECK(buf);
-          *(uint32_t*)(buf + read_count) = len;
+          *reinterpret_cast<uint32_t*>(buf + read_count) = len;
           read_count += sizeof(uint32_t);
 
-          *(uint64_t*)(buf + read_count) = it.key();
+          *reinterpret_cast<uint64_t*>(buf + read_count) = it.key();
           read_count += sizeof(uint64_t);
 
           memcpy(buf + read_count,
@@ -1282,7 +1286,8 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           uint32_t len =
               sizeof(uint64_t) + it->value().size() + sizeof(uint32_t);
           int region_idx = i;
-          uint64_t key = *((uint64_t*)const_cast<char*>(it->key().data()));
+          uint64_t key = *(
+              reinterpret_cast<uint64_t*>(const_cast<char*>(it->key().data())));
           if (!region->buff_remain(len)) {
             busy_channel[region_idx]->Put(region);
             free_channel[region_idx]->Get(region);
@@ -1294,10 +1299,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           }
           int read_count = 0;
           char* buf = region->acquire(len);
-          *(uint32_t*)(buf + read_count) = len;
+          *reinterpret_cast<uint32_t*>(buf + read_count) = len;
           read_count += sizeof(uint32_t);
 
-          *(uint64_t*)(buf + read_count) = key;
+          *reinterpret_cast<uint64_t*>(buf + read_count) = key;
           read_count += sizeof(uint64_t);
 
           memcpy(buf + read_count, it->value().data(), it->value().size());
@@ -1624,7 +1629,8 @@ int32_t SSDSparseTable::LoadWithString(
     char* end = NULL;
     int local_shard_id = i % _avg_local_shard_num;
     auto& shard = _local_shards[local_shard_id];
-    float data_buffer[FLAGS_pserver_load_batch_size * feature_value_size];
+    float data_buffer[FLAGS_pserver_load_batch_size *
+                      feature_value_size];  // NOLINT
     float* data_buffer_ptr = data_buffer;
     uint64_t mem_count = 0;
     uint64_t ssd_count = 0;
@@ -1654,10 +1660,11 @@ int32_t SSDSparseTable::LoadWithString(
         // ssd or mem
         if (_value_accesor->SaveSSD(data_buffer_ptr)) {
           tmp_key.emplace_back(key);
-          ssd_keys.emplace_back(
-              std::make_pair((char*)&tmp_key.back(), sizeof(uint64_t)));
-          ssd_values.emplace_back(std::make_pair((char*)data_buffer_ptr,
-                                                 value_size * sizeof(float)));
+          ssd_keys.emplace_back(std::make_pair(
+              reinterpret_cast<char*>(&tmp_key.back()), sizeof(uint64_t)));
+          ssd_values.emplace_back(
+              std::make_pair(reinterpret_cast<char*>(data_buffer_ptr),
+                             value_size * sizeof(float)));
           data_buffer_ptr += feature_value_size;
           if (static_cast<int>(ssd_keys.size()) ==
               FLAGS_pserver_load_batch_size) {
@@ -1722,7 +1729,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
   auto task_pool = std::make_shared<::ThreadPool>(_real_local_shard_num * 7);
   auto filelists = _afs_client.list(
       paddle::string::format_string("%s/part-%03d*", path.c_str(), _shard_idx));
-  //#pragma omp parallel for schedule(dynamic)
+  // #pragma omp parallel for schedule(dynamic)
   std::vector<std::future<int>> tasks;
 
   for (int shard_idx = 0; shard_idx < _real_local_shard_num; shard_idx++) {
@@ -1807,9 +1814,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
         }
         uint64_t last_k = 0;
         int buf_len = 1024 * 1024 * 10;
-        char* buf = (char*)malloc(buf_len + 10);
+        char* buf = reinterpret_cast<char*>(malloc(buf_len + 10));
         // used for cache converted line
-        char* convert_buf = (char*)malloc(buf_len + 10);
+        char* convert_buf = reinterpret_cast<char*>(malloc(buf_len + 10));
         int ret = 0;
         char* cursor = buf;
         char* convert_cursor = convert_buf;
@@ -1826,24 +1833,24 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
           convert_cursor = convert_buf;
           ret += remain;
           do {
-            if (ret >= (int)sizeof(uint32_t)) {
-              uint32_t len = *(uint32_t*)cursor;
-              if (ret >= (int)len) {
+            if (ret >= static_cast<int>(sizeof(uint32_t))) {
+              uint32_t len = *reinterpret_cast<uint32_t*>(cursor);
+              if (ret >= static_cast<int>(len)) {
                 ret -= sizeof(uint32_t);
                 len -= sizeof(uint32_t);
                 cursor += sizeof(uint32_t);
 
-                uint64_t k = *(uint64_t*)cursor;
+                uint64_t k = *reinterpret_cast<uint64_t*>(cursor);
                 cursor += sizeof(uint64_t);
                 ret -= sizeof(uint64_t);
                 len -= sizeof(uint64_t);
 
-                float* value = (float*)cursor;
+                float* value = reinterpret_cast<float*>(cursor);
                 size_t dim = len / sizeof(float);
 
                 // copy value to convert_buf
                 memcpy(convert_cursor, cursor, len);
-                float* convert_value = (float*)convert_cursor;
+                float* convert_value = reinterpret_cast<float*>(convert_cursor);
 
                 if (use_sst) {
                   if (last_k >= k) {
@@ -1856,8 +1863,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                   last_k = k;
                   _value_accesor->UpdatePassId(convert_value, 0);
                   rocksdb::Status status = sst_writer.Put(
-                      rocksdb::Slice((char*)(&k), sizeof(uint64_t)),
-                      rocksdb::Slice((char*)convert_value,
+                      rocksdb::Slice(reinterpret_cast<char*>(&k),
+                                     sizeof(uint64_t)),
+                      rocksdb::Slice(reinterpret_cast<char*>(convert_value),
                                      dim * sizeof(float)));
                   if (!status.ok()) {
                     VLOG(0) << "fatal in Put file: " << filename;
@@ -1897,7 +1905,6 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
           if (!status.ok()) {
             VLOG(0) << "fatal in finish file: " << filename << ", "
                     << status.getState();
-            ;
             abort();
           }
         }
@@ -1951,7 +1958,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
 
   double show_threshold = 10000000;
 
-  //保证cache数据不被淘汰掉
+  // 保证cache数据不被淘汰掉
   if (_config.enable_sparse_table_cache()) {
     if (_local_show_threshold < show_threshold) {
       show_threshold = _local_show_threshold;
@@ -1966,7 +1973,8 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
   VLOG(0) << "Table>> origin mem feasign size:" << LocalSize();
   static int cache_table_count = 0;
   ++cache_table_count;
-  for (size_t shard_id = 0; shard_id < (size_t)_real_local_shard_num;
+  for (size_t shard_id = 0;
+       shard_id < static_cast<size_t>(_real_local_shard_num);
        ++shard_id) {
     // from mem to ssd
     auto fut = _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
@@ -2025,7 +2033,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
                       << " ms, num: " << datas.size();
             }
 
-            //必须做空判断，否则sst_writer.Finish会core掉
+            // 必须做空判断，否则sst_writer.Finish会core掉
             if (datas.size() != 0) {
               rocksdb::SstFileWriter sst_writer(rocksdb::EnvOptions(), options);
               std::string filename =
@@ -2045,10 +2053,11 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
               for (auto& data : datas) {
                 uint64_t tmp_key = data->first;
                 FixedFeatureValue& tmp_value =
-                    *((FixedFeatureValue*)(void*)(data->second));
+                    *((FixedFeatureValue*)(void*)(data->second));  // NOLINT
                 status = sst_writer.Put(
-                    rocksdb::Slice((char*)(&(tmp_key)), sizeof(uint64_t)),
-                    rocksdb::Slice((char*)(tmp_value.data()),
+                    rocksdb::Slice(reinterpret_cast<char*>(&(tmp_key)),
+                                   sizeof(uint64_t)),
+                    rocksdb::Slice(reinterpret_cast<char*>(tmp_value.data()),
                                    tmp_value.size() * sizeof(float)));
                 if (!status.ok()) {
                   VLOG(0) << "fatal in Put file: " << filename << ", "
