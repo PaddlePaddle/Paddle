@@ -21,17 +21,19 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+template <typename T>
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  tensor->mutable_data<T>(platform::CPUPlace());
 }
 
+template <typename T>
 Scope* CreateParamScope() {
   auto param_scope = new Scope();
-  AddVarToScope(param_scope, "scale", {1});
+  AddVarToScope<T>(param_scope, "scale", {1});
 
   return param_scope;
 }
@@ -52,9 +54,58 @@ TEST(DeleteWeightDequantLinearOpPass, basic) {
   auto* dequantized_weight =
       layers.dequantize_linear(weight, scale, zero_point);
   layers.matmul_v2(x, dequantized_weight);
+  layers.while_loop({dequantized_weight});
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
-  graph->Set("__param_scope__", CreateParamScope());
+
+  graph->Set("__param_scope__", CreateParamScope<float>());
+  auto pass =
+      PassRegistry::Instance().Get("delete_weight_dequant_linear_op_pass");
+  int num_nodes_before = graph->Nodes().size();
+  VLOG(3) << DebugString(graph);
+
+  graph.reset(pass->Apply(graph.release()));
+  int num_nodes_after = graph->Nodes().size();
+  int num_dequant_nodes_after = GetNumOpNodes(graph, "dequantize_linear");
+  VLOG(3) << DebugString(graph);
+
+  PADDLE_ENFORCE_EQ(
+      num_nodes_before,
+      num_nodes_after + 3,
+      platform::errors::InvalidArgument(
+          "After pass, the number of nodes should be reduced by 3, but the "
+          "number before pass is %d, after pass is %d.",
+          num_nodes_before,
+          num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_dequant_nodes_after,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "After pass, the number of nodes of type "
+                        "'dequantize_linear' should be 1, not %d.",
+                        num_dequant_nodes_after));
+}
+
+TEST(DeleteWeightDequantLinearOpPass, basic_fp16) {
+  // inputs                    operator                   output
+  // --------------------------------------------------------------------
+  // (weight, scale)           dequantize_linear       -> dequantized_weight
+  // (x, dequantized_weight)   matmul/fc/conv          -> matmul_out
+  // (dequantized_weight)      while                   ->           [optional]
+
+  Layers layers;
+
+  auto* x = layers.data("x", {1, 128, 768});
+  auto* weight = layers.data("weight", {768, 768}, true);
+  auto* scale = layers.data("scale", {1}, true);
+  auto* zero_point = layers.data("zero_point", {1}, true);
+  auto* dequantized_weight =
+      layers.dequantize_linear(weight, scale, zero_point);
+  layers.matmul_v2(x, dequantized_weight);
+  layers.while_loop({dequantized_weight});
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+
+  graph->Set("__param_scope__", CreateParamScope<phi::dtype::float16>());
   auto pass =
       PassRegistry::Instance().Get("delete_weight_dequant_linear_op_pass");
   int num_nodes_before = graph->Nodes().size();
