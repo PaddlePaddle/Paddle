@@ -17,7 +17,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import (
-    BatchNorm,
     Conv3D,
     Embedding,
     GroupNorm,
@@ -26,6 +25,7 @@ from paddle.fluid.dygraph.nn import (
     NCE,
     PRelu,
 )
+from paddle.nn.layer.norm import BatchNorm
 import numpy as np
 import os
 import tempfile

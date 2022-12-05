@@ -21,7 +21,8 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import Linear, Pool2D
+from paddle.nn.layer.norm import BatchNorm
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)

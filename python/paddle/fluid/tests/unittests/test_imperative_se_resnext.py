@@ -19,7 +19,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph.nn import Pool2D, Linear
+from paddle.nn.layer.norm import BatchNorm
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 

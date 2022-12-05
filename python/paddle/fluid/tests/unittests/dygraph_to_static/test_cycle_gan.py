@@ -37,7 +37,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
+from paddle.fluid.dygraph.nn import Conv2DTranspose
+from paddle.nn.layer.norm import BatchNorm
+
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
