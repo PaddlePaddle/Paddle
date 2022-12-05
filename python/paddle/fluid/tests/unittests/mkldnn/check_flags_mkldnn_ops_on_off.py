@@ -18,10 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _enable_legacy_dygraph, _global_flags
+from paddle.fluid.framework import _global_flags
 from paddle.fluid.layer_helper import LayerHelper
-
-_enable_legacy_dygraph()
 
 
 def check():
