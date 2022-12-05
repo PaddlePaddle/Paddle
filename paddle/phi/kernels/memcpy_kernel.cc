@@ -76,20 +76,21 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      int dst_place_type,
                      DenseTensor* out) {
   switch (dst_place_type) {
-    case 0:
-      // NOTE(lvyongkang): phi::Copy will use DeviceContext.zero_allocator to
-      // alloc and assign DeviceContext.place to out, which causes place check
-      // fails. So we specify out's place here.
-      out->mutable_data(CPUPlace());
+    case 0: {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      DenseTensor pinned_out;
+      pinned_out.set_meta(out->meta());
+      // NOTE(Ruibiao): When blocking=true, phi::Copy use NULL stream but not
+      // the stream given in dev_ctx. Therefore, to achieve synchronous copy, we
+      // should set blocking=false and add a dev_ctx.Wait() here.
+      Copy(dev_ctx, x, GPUPinnedPlace(), /*blocking=*/false, &pinned_out);
+      dev_ctx.Wait();
+      Copy(dev_ctx, pinned_out, CPUPlace(), /*unused, blocking=*/true, out);
+#else
       Copy(dev_ctx, x, CPUPlace(), false, out);
-      // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
-      // block of 64 KB or less are asynchronous. See
-      // https://forums.developer.nvidia.com/t/host-device-memory-copies-up-to-64-kb-are-asynchronous/17907
-      if (x.memory_size() <= WAIT_THRESHOLD) {
-        dev_ctx.Wait();
-      }
+#endif
       break;
-
+    }
     case 1:
       // NOTE(lvyongkang): phi::Copy will use DeviceContext.zero_allocator to
       // alloc and assign DeviceContext.place to out, which causes place check
