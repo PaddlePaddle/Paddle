@@ -625,11 +625,10 @@ class GroupShardedStage3(nn.Layer):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
-                if self._dp_group is not None and self._dp_group.nranks > 1:
-                    full_grad.scale_(scale=(1.0 / self._dp_group.nranks))
-                    dist.all_reduce(tensor=full_grad, group=self._group)
+                dist.all_reduce(tensor=full_grad, group=self._group)
 
                 if self._dp_group is not None and self._dp_group.nranks > 1:
+                    full_grad.scale_(scale=(1.0 / self._dp_group.nranks))
                     dist.all_reduce(tensor=full_grad, group=self._dp_group)
 
                 start, end = self._param2buffer[param.name][self._rank]
