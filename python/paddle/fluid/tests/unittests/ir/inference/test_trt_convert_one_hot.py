@@ -34,23 +34,22 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_indices(dims, batch):
-            if dims == 1:
-                return np.random.randint(0, 10, (batch,), dtype=np.int)
-            elif dims == 2:
-                return np.random.randint(0, 10, (batch, 4), dtype=np.int)
+            if dims == 2:
+                return np.random.randint(0, 10, (batch, 4), dtype=np.int32)
             elif dims == 3:
-                return np.random.randint(0, 10, (batch, 4, 6), dtype=np.int)
+                return np.random.randint(0, 10, (batch, 4, 6), dtype=np.int32)
             else:
-                return np.random.randint(0, 10, (batch, 4, 6, 8), dtype=np.int)
+                return np.random.randint(
+                    0, 10, (batch, 4, 6, 8), dtype=np.int32
+                )
 
         def generate_depth(dims, batch):
-            if dims == 1:
-                return np.ones((1,), dtype=np.int) * 10
+            return np.ones((1,), dtype=np.int32) * 10
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [2, 3, 4]:
             for batch in [1, 2]:
                 self.dims = dims
-                dics = [{"dtype": 2, "depth": 10}, {}]
+                dics = [{"dtype": 5, "depth": 10}, {}]
                 ops_config = [
                     {
                         "op_type": "one_hot",
