@@ -15,22 +15,18 @@
 from paddle.utils import gast
 
 from paddle.fluid import unique_name
-from paddle.jit.dy2static.utils import index_in_list
+from .utils import index_in_list
 from .break_continue_transformer import (
     ForToWhileTransformer,
+    ast_to_source_code,
+    Dygraph2StaticException,
+    ORIGI_INFO,
 )
-from paddle.jit.dy2static.utils import ast_to_source_code
 from .base_transformer import (
     BaseTransformer,
 )
-from paddle.jit.dy2static.utils import Dygraph2StaticException
-from paddle.jit.dy2static.utils import ORIGI_INFO
 
-__all__ = [
-    'RETURN_NO_VALUE_MAGIC_NUM',
-    'RETURN_NO_VALUE_VAR_NAME',
-    'ReturnTransformer',
-]
+__all__ = []
 
 # Constant for the name of the variable which stores the boolean state that we
 # should return
