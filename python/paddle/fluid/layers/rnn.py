@@ -21,7 +21,7 @@ import paddle
 from paddle.utils import deprecated
 from . import nn
 from . import tensor
-from . import control_flow
+from paddle.static.nn import control_flow
 from . import utils
 from . import sequence_lod
 from .utils import *

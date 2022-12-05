@@ -20,6 +20,7 @@ from simple_nets import simple_fc_net, simple_fc_net_with_inputs
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.static.nn.control_flow as control_flow
 
 
 class TestFetchLoDTensorArray(unittest.TestCase):
@@ -35,9 +36,9 @@ class TestFetchLoDTensorArray(unittest.TestCase):
                 opt.minimize(loss)
 
                 array = layers.array_write(x=img, i=i)
-                i = layers.increment(i)
+                i = control_flow.increment(i)
                 layers.array_write(x=label, i=i, array=array)
-                i = layers.increment(i)
+                i = control_flow.increment(i)
                 layers.array_write(x=loss, i=i, array=array)
 
                 return loss, array

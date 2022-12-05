@@ -14,12 +14,13 @@
 
 import re
 import paddle
+from paddle.static.nn.control_flow import Assert, increment
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.jit.dy2static.variable_trans_func import (
     to_static_variable,
 )
 from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import Print
 from paddle.fluid.layers import (
     array_read,
     array_write,
@@ -35,7 +36,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers.control_flow import (
     cond,
     while_loop,
-    increment,
 )
 from .return_transformer import (
     RETURN_NO_VALUE_VAR_NAME,

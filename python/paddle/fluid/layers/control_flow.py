@@ -54,7 +54,6 @@ from paddle import _C_ops, _legacy_C_ops
 __all__ = [
     'While',
     'Switch',
-    'increment',
     'array_write',
     'array_read',
     'cond',
@@ -62,7 +61,6 @@ __all__ = [
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
     'Print',
-    'Assert',
     'is_empty',
     'case',
     'switch_case',
@@ -453,78 +451,6 @@ def Print(
         },
     )
     return output
-
-
-def Assert(cond, data=None, summarize=20, name=None):
-    '''
-    This API creates an op that asserts the given condition is true. If the
-    condition is false, prints the tensors in data. ``summarize`` specifies the
-    number of the elements in the tensors to print.
-
-    Args:
-        cond (Variable): The boolean condition tensor whose numel should be 1.
-        data (list|tuple, optional): list or tuple of tensors to print when
-            condition is not true. If it's ``None``, no tensor will be printed.
-            The default value is ``None``.
-        summarize (int, optional): Number of elements in the tensor to be
-            printed. If its value is -1, then all elements in the tensor will
-            be printed. The default value is 20.
-        name (str, optional): The default value is ``None`` . Normally users
-            don't have to set this parameter. For more information, please
-            refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Operator: the created operation.
-
-    Raises:
-        TypeError: If ``cond`` is not boolean Variable.
-        TypeError: If ``data`` is not a list or tuple or ``None``.
-        TypeError: If ``summarize`` is not int.
-        TypeError: If ``name`` is not a string or ``None`` .
-        fluid.core.EnforceNotMet: If the condition is False in running time.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-
-            x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0 # False
-            layers.Assert(condition, [x], 10, "example_assert_layer")
-
-            exe = fluid.Executor()
-            try:
-                exe.run(fluid.default_main_program())
-                # Print x and throws paddle.fluid.core.EnforceNotMet exception
-                # Example printed message for x:
-                #
-                # Variable: fill_constant_0.tmp_0
-                #   - lod: {}
-                #   - place: CPUPlace()
-                #   - shape: [2, 3]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [2 2 2 2 2 2]
-            except fluid.core.EnforceNotMet as e:
-                print("Assert Exception Example")
-
-    '''
-    check_variable_and_dtype(cond, "cond", ["bool"], "fluid.layers.Assert")
-    check_type(data, "data", (list, tuple, type(None)), "fluid.layers.Assert")
-    check_type(summarize, "summarize", int, "fluid.layers.Assert")
-    check_type(name, "name", (str, type(None)), "fluid.layers.Assert")
-
-    layer_name = name if name else ('assert_' + cond.name)
-    helper = LayerHelper(layer_name, **locals())
-
-    op = helper.append_op(
-        type="assert",
-        inputs={"Cond": cond, "Data": [] if data is None else list(data)},
-        attrs={"summarize": summarize},
-    )
-
-    return op
 
 
 class BlockGuard:
@@ -1216,7 +1142,7 @@ class While:
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                i = paddle.static.nn.control_flow.increment(x=i, value=1, in_place=True)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1244,7 +1170,7 @@ class While:
             with while_op.block():
                 sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
-                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                i = paddle.static.nn.control_flow.increment(x=i, value=1, in_place=True)
                 data = fluid.layers.elementwise_add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
@@ -1605,47 +1531,6 @@ def max_sequence_len(rank_table):
         outputs={"Out": res},
     )
     return res
-
-
-def increment(x, value=1.0, in_place=True):
-    """
-    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
-    Notice that the number of elements in :attr:`x` must be equal to 1.
-
-    Parameters:
-        x (Variable): A tensor that must always contain only one element, its data type supports
-            float32, float64, int32 and int64.
-        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
-        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
-
-    Returns:
-        Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
-          fluid.layers.increment(counter) # [1.]
-    """
-    if in_dygraph_mode():
-        return _C_ops.increment_(x, value)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
-    )
-    helper = LayerHelper("increment", **locals())
-    if not in_place:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = x
-    helper.append_op(
-        type='increment',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'step': float(value)},
-    )
-    return out
 
 
 def array_write(x, i, array=None):
