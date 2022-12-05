@@ -14,6 +14,7 @@
 
 import unittest
 
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
@@ -34,11 +35,11 @@ class TestSwitch(unittest.TestCase):
         )
 
         with layers.Switch() as switch:
-            with switch.case(layers.less_than(x, zero_var)):
+            with switch.case(paddle.less_than(x, zero_var)):
                 layers.assign(zero_var, result)
-            with switch.case(layers.less_than(x, one_var)):
+            with switch.case(paddle.less_than(x, one_var)):
                 layers.assign(one_var, result)
-            with switch.case(layers.less_than(x, two_var)):
+            with switch.case(paddle.less_than(x, two_var)):
                 layers.assign(two_var, result)
             with switch.default():
                 layers.assign(three_var, result)

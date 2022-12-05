@@ -211,8 +211,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.nce1 = NCE(10000, 100)
                     self.nce2 = NCE(10000, 100)
 
-                    self.prelu1 = paddle.nn.PReLU(5)
-                    self.prelu2 = paddle.nn.PReLU(5)
+                    self.prelu1 = paddle.nn.PReLU(5, name="p_re_lu")
+                    self.prelu2 = paddle.nn.PReLU(5, name="p_re_lu")
 
                     self.group_norm1 = GroupNorm(8, 4)
                     self.gourp_norm2 = GroupNorm(8, 4)

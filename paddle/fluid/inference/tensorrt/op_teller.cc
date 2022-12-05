@@ -1322,6 +1322,32 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "less_than" || op_type == "greater_than" ||
+        op_type == "logical_or" || op_type == "logical_xor" ||
+        op_type == "logical_and" || op_type == "less_equal") {
+#if IS_TRT_VERSION_GE(8400)
+      if (!with_dynamic_shape) {
+        VLOG(3) << "these ops do not support static shape yet";
+        return false;
+      }
+      if (op_type == "logical_or" || op_type == "logical_xor" ||
+          op_type == "logical_and") {
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+        auto x_dtype = x_var_desc->GetDataType();
+        auto y_dtype = y_var_desc->GetDataType();
+        if (x_dtype != framework::proto::VarType::BOOL ||
+            y_dtype != framework::proto::VarType::BOOL) {
+          VLOG(3) << "the op only support input of BOOL.";
+          return false;
+        }
+      }
+#else
+      VLOG(3) << "these are not supported when TensorRT < 8.4";
+      return false;
+#endif
+    }
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
@@ -2382,6 +2408,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
+      "less_equal",
       "dropout",
       "fill_any_like",
       "prelu",
@@ -2514,6 +2546,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "less_than",
+      "greater_than",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
+      "less_equal",
       "dropout",
       "fill_any_like",
       "prelu",

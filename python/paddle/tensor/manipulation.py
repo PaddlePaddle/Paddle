@@ -2728,13 +2728,13 @@ def gather(x, index, axis=None, name=None):
         x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
-        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
+        index (Tensor): The index input tensor with rank=0 or rank=1. Data type is int32 or int64.
         axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Tensor), The output is a tensor with the same rank as ``x``.
+        output (Tensor), If the index is a 1-D tensor, the output is a tensor with the same shape as ``x``. If the index is a 0-D tensor, the output will reduce the dimension where the axis pointing.
 
     Examples:
 
@@ -2888,8 +2888,8 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
     Args:
         x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
-        index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
-        updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
+        index (Tensor): The index is a 1-D or 0-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be queal with the (i+1)th dim of the input.
         overwrite (bool): The mode that updating the output when there are same indices.
 
             If True, use the overwrite mode to update the output of the same index,
