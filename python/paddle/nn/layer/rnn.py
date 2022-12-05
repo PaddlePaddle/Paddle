@@ -19,7 +19,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, framework
+from paddle.fluid.framework import _non_static_mode as in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import flatten, map_structure

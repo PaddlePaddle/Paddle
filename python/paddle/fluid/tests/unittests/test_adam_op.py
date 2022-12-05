@@ -989,7 +989,7 @@ class TestAdamOptimizer(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         b = linear(a)
         state_dict = linear.state_dict()
-        fluid.save_dygraph(state_dict, "paddle_dy")
+        paddle.save(state_dict, "paddle_dy.pdparams")
 
         scheduler = paddle.optimizer.lr.NoamDecay(
             d_model=0.01, warmup_steps=100, verbose=True
@@ -1001,8 +1001,9 @@ class TestAdamOptimizer(unittest.TestCase):
         )
         adam.minimize(b)
         state_dict = adam.state_dict()
-        fluid.save_dygraph(state_dict, "paddle_dy")
-        para_state_dict, opt_state_dict = fluid.load_dygraph("paddle_dy")
+        paddle.save(state_dict, "paddle_dy.pdopt")
+        para_state_dict = paddle.load("paddle_dy.pdparams")
+        opt_state_dict = paddle.load("paddle_dy.pdopt")
         adam.set_state_dict(opt_state_dict)
 
         paddle.enable_static()
@@ -1017,7 +1018,7 @@ class TestAdamOptimizer(unittest.TestCase):
                 linear = paddle.nn.Linear(10, 10)
                 b = linear(a)
                 state_dict = linear.state_dict()
-                fluid.save_dygraph(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
                 scheduler = paddle.optimizer.lr.NoamDecay(
                     d_model=0.01, warmup_steps=100, verbose=True
@@ -1033,8 +1034,9 @@ class TestAdamOptimizer(unittest.TestCase):
         adam = get_opt('float32', [10, 10])
 
         state_dict = adam.state_dict()
-        fluid.save_dygraph(state_dict, "paddle_dy")
-        para_state_dict, opt_state_dict = fluid.load_dygraph("paddle_dy")
+        paddle.save(state_dict, "paddle_dy.pdopt")
+        para_state_dict = paddle.load("paddle_dy.pdparams")
+        opt_state_dict = paddle.load("paddle_dy.pdopt")
         adam.set_state_dict(opt_state_dict)
 
         adam2 = get_opt('float64', [10, 10])  # dtype not match
