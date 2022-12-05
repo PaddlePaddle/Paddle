@@ -255,9 +255,8 @@ def _test_eager_guard(place=None):
     try:
         yield
     finally:
-        pass
-        # if not already_fallback:
-        #    _enable_legacy_dygraph()
+        if not already_fallback:
+            _enable_legacy_dygraph()
 
 
 global_ipu_index = -1
