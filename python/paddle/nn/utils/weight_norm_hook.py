@@ -22,16 +22,13 @@ from ...framework import in_dygraph_mode
 __all__ = []
 
 
-def l2_norm(x, axis, epsilon=1e-12, name=None, squeezed=True):
+def l2_norm(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
 
     if in_dygraph_mode():
         out, norm = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
-        if squeezed:
-            return paddle.squeeze(norm, axis=[axis])
-        else:
-            return out
+        return paddle.squeeze(norm, axis=[axis])
 
     check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")
 
@@ -47,10 +44,7 @@ def l2_norm(x, axis, epsilon=1e-12, name=None, squeezed=True):
             "epsilon": epsilon,
         },
     )
-    if squeezed:
-        return paddle.squeeze(norm, axis=[axis])
-    else:
-        return out
+    return paddle.squeeze(norm, axis=[axis])
 
 
 def norm_except_dim(p, dim):
@@ -80,11 +74,11 @@ def _weight_norm(v, g, dim):
         v_normalized = v / (paddle.sqrt(paddle.sum(paddle.square(v))) + 1e-12)
     elif dim == 0:
         p_matrix = paddle.reshape(v, (shape[0], -1))
-        v_normalized = l2_norm(p_matrix, axis=1, squeezed=False)
+        v_normalized = paddle.linalg.norm(p_matrix, p=2, axis=1)
         v_normalized = paddle.reshape(v_normalized, shape)
     elif dim == ndims - 1:
         p_matrix = paddle.reshape(v, (-1, shape[-1]))
-        v_normalized = l2_norm(p_matrix, axis=0, squeezed=False)
+        v_normalized = paddle.linalg.norm(p_matrix, p=2, axis=0)
         v_normalized = paddle.reshape(v_normalized, shape)
     else:
         perm = list(range(ndims))
@@ -93,7 +87,7 @@ def _weight_norm(v, g, dim):
         p_transposed = paddle.transpose(v, perm)
         transposed_shape = p_transposed.shape
         p_matrix = paddle.reshape(p_transposed, (p_transposed.shape[0], -1))
-        v_normalized = l2_norm(p_matrix, axis=1, squeezed=False)
+        v_normalized = paddle.linalg.norm(p_matrix, p=2, axis=1)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
     weight = F.elementwise_mul(
