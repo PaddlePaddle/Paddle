@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.optimizer import AdamOptimizer
-from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import AdamOptimizer
 
 
 def gen_data():
@@ -95,7 +96,9 @@ class TestDygraphGNN(unittest.TestCase):
             logits = paddle.reshape(logits, logits.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
-            loss = fluid.layers.softmax_with_cross_entropy(logits, labels)
+            loss = paddle.nn.functional.softmax_with_cross_entropy(
+                logits, labels
+            )
             loss = paddle.sum(loss)
 
             adam = AdamOptimizer(learning_rate=1e-3)
@@ -133,7 +136,7 @@ class TestDygraphGNN(unittest.TestCase):
             logits = paddle.reshape(logits, logits.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
-            loss = fluid.layers.softmax_with_cross_entropy(
+            loss = paddle.nn.functional.softmax_with_cross_entropy(
                 logits, to_variable(labels)
             )
             loss = paddle.sum(loss)
@@ -161,7 +164,7 @@ class TestDygraphGNN(unittest.TestCase):
             logits2 = paddle.reshape(logits2, logits2.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
-            loss2 = fluid.layers.softmax_with_cross_entropy(
+            loss2 = paddle.nn.functional.softmax_with_cross_entropy(
                 logits2, to_variable(labels2)
             )
             loss2 = paddle.sum(loss2)

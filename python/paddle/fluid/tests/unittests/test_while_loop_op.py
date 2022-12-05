@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -28,10 +29,10 @@ paddle.enable_static()
 class TestApiWhileLoop(unittest.TestCase):
     def test_var_tuple(self):
         def cond(i):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i):
-            return layers.elementwise_add(x=i, y=one)
+            return paddle.add(x=i, y=one)
 
         main_program = Program()
         startup_program = Program()
@@ -54,10 +55,10 @@ class TestApiWhileLoop(unittest.TestCase):
 
     def test_var_list(self):
         def cond(i, mem):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i, mem):
-            mem = layers.elementwise_add(x=mem, y=one)
+            mem = paddle.add(x=mem, y=one)
             i = layers.increment(i)
             return [i, mem]
 
@@ -86,7 +87,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i, ten, test_dict, test_list, test_list_dict):
             test_dict["test_key"] = i
@@ -158,15 +159,15 @@ class TestApiWhileLoop(unittest.TestCase):
 class TestApiWhileLoop_Nested(unittest.TestCase):
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
-            return layers.less_than(i, loop_len1)
+            return paddle.less_than(i, loop_len1)
 
         def external_body(i, j, init, sums):
             def internal_cond(j, init, sums):
-                return layers.less_than(j, loop_len2)
+                return paddle.less_than(j, loop_len2)
 
             def internal_body(j, init, sums):
-                init = layers.elementwise_add(x=init, y=ones)
-                sums = layers.elementwise_add(x=init, y=sums)
+                init = paddle.add(x=init, y=ones)
+                sums = paddle.add(x=init, y=sums)
                 j = layers.increment(j)
                 return [j, init, sums]
 
@@ -176,7 +177,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             j = result[0]
             init = result[1]
             sums = result[2]
-            sums = layers.elementwise_add(x=init, y=sums)
+            sums = paddle.add(x=init, y=sums)
             i = layers.increment(i)
             return [i, j, init, sums]
 
@@ -218,10 +219,10 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 class TestApiWhileLoop_Backward(unittest.TestCase):
     def test_while_loop_backward(self):
         def cond(i, x):
-            return layers.less_than(i, eleven)
+            return paddle.less_than(i, eleven)
 
         def body(i, x):
-            x = layers.elementwise_mul(x=i, y=i)
+            x = paddle.multiply(x=i, y=i)
             i = layers.increment(i)
             return [i, x]
 
@@ -306,25 +307,25 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
     def test_nested_net_with_backward_and_lodtensor(self):
         def external_cond(i, j, x, mem_array):
-            return layers.less_than(i, array_len)
+            return paddle.less_than(i, array_len)
 
         def external_body(i, j, x, mem_array):
             def internal_cond(j, x, mem_array):
-                return layers.less_than(j, array_len2)
+                return paddle.less_than(j, array_len2)
 
             def internal_body(j, x, mem_array):
                 inner_data = layers.array_read(array=data_array, i=j)
                 inner_prev = layers.array_read(array=mem_array, i=j)
-                inner_sum_0 = layers.elementwise_add(x=inner_data, y=inner_prev)
-                inner_sum_1 = layers.elementwise_add(x=x, y=inner_sum_0)
+                inner_sum_0 = paddle.add(x=inner_data, y=inner_prev)
+                inner_sum_1 = paddle.add(x=x, y=inner_sum_0)
                 j = layers.increment(x=j, in_place=True)
                 layers.array_write(inner_sum_1, i=j, array=mem_array)
                 return [j, x, mem_array]
 
             outer_data = layers.array_read(array=data_array, i=i)
             outer_prev = layers.array_read(array=mem_array, i=i)
-            outer_sum_0 = layers.elementwise_add(x=outer_data, y=outer_prev)
-            outer_sum_1 = layers.elementwise_add(x=x, y=outer_sum_0)
+            outer_sum_0 = paddle.add(x=outer_data, y=outer_prev)
+            outer_sum_1 = paddle.add(x=x, y=outer_sum_0)
             i = layers.increment(x=i, in_place=True)
             layers.array_write(outer_sum_1, i=i, array=mem_array)
             j, x, mem_array = layers.while_loop(
@@ -389,19 +390,19 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
     def test_with_switch_case(self):
         def cond(i):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i):
             def fn_add_three():
-                data_add_three = layers.elementwise_add(x=i, y=three)
+                data_add_three = paddle.add(x=i, y=three)
                 return data_add_three
 
             def fn_square():
-                data_mul_data = layers.elementwise_mul(x=i, y=i)
+                data_mul_data = paddle.multiply(x=i, y=i)
                 return data_mul_data
 
             def fn_add_one():
-                data_add_one = layers.elementwise_add(x=i, y=one)
+                data_add_one = paddle.add(x=i, y=one)
                 return data_add_one
 
             return layers.switch_case(
@@ -440,13 +441,13 @@ class TestApiWhileLoop_Error(unittest.TestCase):
             return layers.increment(i)
 
         def cond_returns_bool_tensor(i):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def cond_returns_2d_tensor(i):
-            return layers.less_than(i, ten_2d)
+            return paddle.less_than(i, ten_2d)
 
         def cond_receives_two_args(i, ten):
-            return layers.less_than(i, ten)
+            return paddle.less_than(i, ten)
 
         def body(i):
             return layers.increment(i)
@@ -594,7 +595,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[5], dtype='int32')
             z = fluid.layers.fill_constant([1], 'int32', 0)
-            x_shape = fluid.layers.shape(x)
+            x_shape = paddle.shape(x)
             i = fluid.layers.fill_constant([1], 'int32', 0)
             z, _ = fluid.layers.while_loop(cond, body, [z, i])
 

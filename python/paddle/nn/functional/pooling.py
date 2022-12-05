@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define pooling functions
-from ...fluid.layers import utils, LayerHelper
-from ...tensor.manipulation import unsqueeze, squeeze
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.framework import (
+    Variable,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    in_dygraph_mode,
+)
+
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, Variable
-from paddle.fluid.framework import in_dygraph_mode, _non_static_mode
+
+# TODO: define pooling functions
+from ...fluid.layers import LayerHelper, utils
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -1685,7 +1690,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
-        x = x._use_cudnn(False)
+        x = x._use_gpudnn(False)
         pool_out = _C_ops.pool2d(
             x,
             pool_size,
@@ -1822,7 +1827,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size = utils._convert_to_tensor_list(output_size)
 
     if in_dygraph_mode():
-        x = x._use_cudnn(False)
+        x = x._use_gpudnn(False)
         return _C_ops.pool2d(
             x,
             output_size,
@@ -1967,7 +1972,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             output_size[2] = in_w
 
     if in_dygraph_mode():
-        x = x._use_cudnn(False)
+        x = x._use_gpudnn(False)
         return _C_ops.pool3d(
             x,
             output_size,

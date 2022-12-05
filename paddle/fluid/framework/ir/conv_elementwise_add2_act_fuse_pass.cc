@@ -131,8 +131,15 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* x = gpd.mutable_pattern()->NewNode("x")->AsInput()->assert_is_op_input(
       "conv2d", "Input");
 
+#if CUDNN_VERSION >= 8000
+  std::unordered_set<std::string> cudnn_act_set(
+      {"identity", "relu", "sigmoid", "tanh"});
+#else
+  std::unordered_set<std::string> cudnn_act_set({"identity", "relu"});
+#endif
+
   patterns::ConvElementwiseadd2Act pattern(gpd.mutable_pattern(), pattern_name);
-  pattern(x);
+  pattern(x, cudnn_act_set);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {

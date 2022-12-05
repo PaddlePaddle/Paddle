@@ -17,9 +17,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/operators/detection/poly_util.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/kernels/funcs/detection/poly_util.h"
 
 namespace phi {
 namespace funcs {
@@ -96,10 +96,10 @@ T PolyIoU(const T* box1,
           const T* box2,
           const size_t box_size,
           const bool normalized) {
-  T bbox1_area = paddle::operators::PolyArea<T>(box1, box_size, normalized);
-  T bbox2_area = paddle::operators::PolyArea<T>(box2, box_size, normalized);
+  T bbox1_area = phi::funcs::PolyArea<T>(box1, box_size, normalized);
+  T bbox2_area = phi::funcs::PolyArea<T>(box2, box_size, normalized);
   T inter_area =
-      paddle::operators::PolyOverlapArea<T>(box1, box2, box_size, normalized);
+      phi::funcs::PolyOverlapArea<T>(box1, box2, box_size, normalized);
   if (bbox1_area == 0 || bbox2_area == 0 || inter_area == 0) {
     // If coordinate values are invalid
     // if area size <= 0,  return 0.

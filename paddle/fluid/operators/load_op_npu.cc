@@ -54,7 +54,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
       LoadSelectedRows(fin, place, out_var);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Load operator only supports loading LoDTensor and SelectedRows "
+          "Load operator only supports loading phi::DenseTensor and "
+          "SelectedRows "
           "variable, %s has wrong type",
           out_var_name));
     }

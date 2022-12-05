@@ -562,9 +562,20 @@ void InterpreterCore::Convert(
         if (var_desc && ins.count(item.first) &&
             !info.IsInArgBufferNeeded(var_desc->Name())) {
           continue;
-        } else if (!block_.HasVar(var_scope_.GetNameById(id))) {
-          VLOG(10) << "[gc_check_inputs] skip gc: "
-                   << var_scope_.GetNameById(id);
+        }
+        // skip when this var is not in block and not a data_transferred var,
+        // which means this var is managed by other block
+        const auto& var_name = var_scope_.GetNameById(id);
+        bool not_owned = !block_.HasVar(var_name);
+        const auto& transferred_vars = var_scope_.DataTransferAddedVars();
+        bool not_transferred =
+            std::all_of(transferred_vars.begin(),
+                        transferred_vars.end(),
+                        [&](const std::pair<std::string, int>& elem) {
+                          return elem.first != var_name;
+                        });
+        if (not_owned && not_transferred) {
+          VLOG(10) << "[gc_check_inputs] skip gc: " << var_name;
           continue;
         }
         gc_check_vars.insert(id);
@@ -681,7 +692,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   SetDeviceId(place);
 
@@ -794,7 +805,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
         *op,
-        *local_scope_,
+        *local_scope,
         place);  // TODO(xiongkun03) change it to inner scope.
   }
 }

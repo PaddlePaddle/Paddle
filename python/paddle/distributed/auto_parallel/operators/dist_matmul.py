@@ -14,38 +14,50 @@
 
 import copy
 
-from .common import infer_shape
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from .common import gradient_synchronization
-from .common import is_parameter_related, set_comm_op_dist_attr_for_program
-from ..utils import is_dim_shard
-from ..utils import is_dim_replicate
-from ..utils import is_valid_list_index
-from ..utils import compute_compatible_dims_mapping
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..utils import set_dist_op_desc_original_id
-from ..dist_attribute import OperatorDistributedAttribute
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from ..process_group import new_process_group
-from ..utils import _get_comm_group, _get_corresponding_rank
-from .dist_default import DistributedDefaultImpl0
-from ..cost import (
-    build_comp_desc_from_dist_op,
-    build_comm_desc_from_dist_op,
-    build_dp_costs,
-)
-from ..cost import build_comm_costs_from_descs, build_comp_costs_from_descs
-from ..cost import MatmulV2OpCost, MatmulOpCost, MulOpCost
-from ..cost import MatmulV2GradOpCost, MatmulGradOpCost, MulGradOpCost
 from paddle.distributed.auto_parallel.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
 )
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import core, unique_name
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+
+from ..cost import (
+    MatmulGradOpCost,
+    MatmulOpCost,
+    MatmulV2GradOpCost,
+    MatmulV2OpCost,
+    MulGradOpCost,
+    MulOpCost,
+    build_comm_costs_from_descs,
+    build_comm_desc_from_dist_op,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..dist_attribute import OperatorDistributedAttribute
+from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    compute_compatible_and_update_dim_mapping,
+    compute_compatible_dims_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+    is_valid_list_index,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    gradient_synchronization,
+    infer_shape,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 def trans_x_y_dims_mapping(trans_x, trans_y, x_dims_mapping, y_dims_mapping):

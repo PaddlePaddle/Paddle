@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+import warnings
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import warnings
 
 
 def execute(main_program, startup_program):
@@ -53,7 +53,7 @@ class TestDeviceGuard(unittest.TestCase):
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("gpu"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -79,7 +79,7 @@ class TestDeviceGuard(unittest.TestCase):
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("gpu:1"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -156,7 +156,7 @@ class TestDeviceGuard(unittest.TestCase):
                     while_op = fluid.layers.While(cond=cond)
                     with while_op.block():
                         i = paddle.increment(x=i, value=1)
-                        fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+                        paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
         warning = "The Op(while) is not support to set device."
         warning_num = get_vaild_warning_num(warning, w)

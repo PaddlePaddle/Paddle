@@ -18,63 +18,61 @@
 # See details in https://github.com/serge-sans-paille/gast/
 
 import os
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import (
+from .early_return_transformer import (
     EarlyReturnTransformer,
 )
 from .assert_transformer import (
     AssertTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import (
+from .basic_api_transformer import (
     BasicApiTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import (
+from .break_continue_transformer import (
     BreakContinueTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import (
     BreakTransformOptimizer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.call_transformer import (
+from .call_transformer import (
     CallTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import (
+from .cast_transformer import (
     CastTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.typehint_transformer import (
+from .typehint_transformer import (
     TypeHintTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import (
+from .ifelse_transformer import (
     IfElseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
+from .logical_transformer import (
     LogicalTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import (
+from .loop_transformer import (
     LoopTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.print_transformer import (
+from .print_transformer import (
     PrintTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+from .return_transformer import (
     ReturnTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import (
+from .create_variable_transformer import (
     CreateVariableTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from .static_analysis import (
     StaticAnalysisVisitor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import (
+from .tensor_shape_transformer import (
     TensorShapeTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import (
+from .decorator_transformer import (
     DecoratorTransformer,
 )
 
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from . import logging_utils
+from .utils import ast_to_source_code
 
 __all__ = ['DygraphToStaticAst']
 
@@ -129,7 +127,7 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
-            TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
+            TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
