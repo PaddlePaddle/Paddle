@@ -51,7 +51,6 @@ from .amp import *
 
 from .math_op_patch import monkey_patch_math_varbase
 
-
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
