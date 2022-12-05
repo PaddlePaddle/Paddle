@@ -21,8 +21,8 @@ import paddle.fluid as fluid
 from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.nn import Embedding
 from paddle.jit.api import declarative
+from paddle.nn import Embedding
 
 INF = 1.0 * 1e5
 alpha = 0.6

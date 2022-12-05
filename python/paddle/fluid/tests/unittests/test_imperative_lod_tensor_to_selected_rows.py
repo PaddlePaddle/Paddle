@@ -22,9 +22,9 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):

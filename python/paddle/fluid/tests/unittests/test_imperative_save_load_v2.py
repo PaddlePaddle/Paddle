@@ -23,8 +23,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Embedding
 from paddle.optimizer import Adam
 
 
