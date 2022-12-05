@@ -1833,8 +1833,8 @@ def fast_decode(
             )
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
 
-            topk_scores, topk_indices = layers.topk(
-                input=paddle.nn.functional.softmax(logits), k=beam_size
+            topk_scores, topk_indices = paddle.topk(
+                x=paddle.nn.functional.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
                 x=paddle.log(topk_scores),
