@@ -56,7 +56,7 @@ from .amp import *
 
 from .math_op_patch import monkey_patch_math_varbase
 
-from .inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils import inplace_apis_in_dygraph_only
 
 __all__ = []
 __all__ += layers.__all__

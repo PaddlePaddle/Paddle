@@ -16,7 +16,7 @@ from ...tensor.ops import sigmoid  # noqa: F401
 from ...tensor.math import tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401
 
-from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
 
 from ...fluid.layer_helper import LayerHelper

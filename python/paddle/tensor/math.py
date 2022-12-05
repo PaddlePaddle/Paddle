@@ -42,7 +42,7 @@ from ..fluid.data_feeder import (
     check_dtype,
     convert_dtype,
 )
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils import inplace_apis_in_dygraph_only
 from ..fluid.layers import utils
 
 # TODO: define math functions
