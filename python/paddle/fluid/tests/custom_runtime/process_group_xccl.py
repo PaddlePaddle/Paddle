@@ -230,7 +230,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         #     assert np.array_equal(tensor_y, out1)
         # else:
         #     assert np.array_equal(tensor_y, out2)
-        # print("test scatter api ok\n")
+        print("test scatter api ok\n")
 
 
 if __name__ == "__main__":
