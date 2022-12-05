@@ -290,6 +290,9 @@ void BindDataset(py::module *m) {
       .def("get_memory_data_size",
            &framework::Dataset::GetMemoryDataSize,
            py::call_guard<py::gil_scoped_release>())
+      .def("get_epoch_finish",
+           &framework::Dataset::GetEpochFinish,
+           py::call_guard<py::gil_scoped_release>())
       .def("get_pv_data_size",
            &framework::Dataset::GetPvDataSize,
            py::call_guard<py::gil_scoped_release>())

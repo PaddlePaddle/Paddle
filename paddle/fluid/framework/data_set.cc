@@ -470,7 +470,6 @@ void DatasetImpl<T>::LoadIntoMemory() {
         readers_[i]->ResetPathNum();
         readers_[i]->ResetEpochFinish();
       }
-      return;
     }
 
     for (int64_t i = 0; i < thread_num_; ++i) {
