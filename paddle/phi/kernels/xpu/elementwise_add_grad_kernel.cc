@@ -70,7 +70,7 @@ void AddGradKernel(const Context& dev_ctx,
   }
 
   if (dy != nullptr) {
-    T* dy_data = dy->mutable_data<T>(dev_ctx.GetPlace());
+    T* dy_data = dev_ctx.template Alloc<T>(dy);
     if (dy->dims() == dz_dims) {
       if (dy_data != dz_data) {
         Copy(dev_ctx, *dz, dev_ctx.GetPlace(), false, dy);

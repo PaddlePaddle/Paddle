@@ -67,7 +67,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
     funcs::GetDoubleGradSafeTensor<Context, T>(
         dev_ctx, y, ddy.get_ptr(), &ddy_safe);
 
-    ddout->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(ddout);
     auto ddx_dims = ddx_safe.dims();
     auto ddy_dims = ddy_safe.dims();
     if (ddx_dims.size() >= ddy_dims.size()) {
@@ -101,7 +101,7 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
     funcs::GetDoubleGradSafeTensor<Context, T>(
         dev_ctx, y, ddy.get_ptr(), &ddy_safe);
 
-    ddout->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(ddout);
     funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
         dev_ctx, ddx_safe, ddy_safe, axis, funcs::SubtractFunctor<T>(), ddout);
   }

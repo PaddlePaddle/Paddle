@@ -132,7 +132,7 @@ struct DeviceContext::Impl {
     if (tensor->initialized() && tensor->place() != place) {
       ClearHolder(tensor);
     }
-    auto* allocator = tensor->numel() == 0
+    auto* allocator = tensor->numel() == 0 && requested_size == 0
                           ? zero_allocator_
                           : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA

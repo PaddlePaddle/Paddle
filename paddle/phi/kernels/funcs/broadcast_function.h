@@ -1048,7 +1048,7 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
                         DenseTensor *z) {
   std::vector<const DenseTensor *> ins = {&x, &y};
   std::vector<DenseTensor *> outs = {z};
-  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<OutType>(z);
   BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
       dev_ctx, ins, &outs, axis, func);
 }

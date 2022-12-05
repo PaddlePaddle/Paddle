@@ -37,7 +37,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          bool fuse_relu,
                          DenseTensor* out) {
   DenseTensor* output = out;
-  output->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(output);
 
   const std::vector<int> strides = strides_t;
   std::vector<int> dilations = dilations_t;
