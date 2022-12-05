@@ -22,7 +22,7 @@ namespace framework {
 TEST(Variable, GetMutable) {
   std::unique_ptr<Variable> v(new Variable());
 
-  auto* t = v->GetMutable<String>()->Get();
+  auto* t = v->GetMutable<String>()->GetMutable();
   *t = "1234";
 
   const auto& tt = v->Get<String>().Get();

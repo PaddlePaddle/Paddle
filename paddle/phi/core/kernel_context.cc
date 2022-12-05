@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_context.h"
-#include <glog/logging.h>
 
 namespace phi {
 

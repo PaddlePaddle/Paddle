@@ -944,10 +944,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_bytes",
            [](Variable &self) {
              if (self.IsType<String>()) {
-               return py::bytes(*(self.GetMutable<String>()->Get()));
+               return py::bytes(*(self.GetMutable<String>()->GetMutable()));
              } else {
                return py::bytes(
-                   *(self.GetMutable<RawTensor>()->Get<std::string>()));
+                   *(self.GetMutable<RawTensor>()->GetMutable<std::string>()));
              }
            })
       .def("set_string_list",

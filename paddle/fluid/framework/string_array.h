@@ -131,9 +131,9 @@ class String : public phi::ExtendedTensor,
 
   std::string::iterator begin() { return data_.begin(); }
 
-  std::string* Get() { return &data_; }
-
   const std::string& Get() const { return data_; }
+
+  std::string* GetMutable() { return &data_; }
 
   std::string::const_iterator begin() const { return data_.begin(); }
 
