@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.generator as generator
+from paddle.tensor import random
 
 
 class TestGeneratorSeed(unittest.TestCase):
@@ -148,13 +149,13 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
-        x = fluid.layers.gaussian_random([10], dtype="float32")
+        x = random.gaussian([10], dtype="float32")
         st1 = gen.get_state()
-        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        x1 = random.gaussian([10], dtype="float32")
         gen.set_state(st1)
-        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        x2 = random.gaussian([10], dtype="float32")
         gen.manual_seed(12312321111)
-        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+        x3 = random.gaussian([10], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()
         x2_np = x2.numpy()
@@ -175,8 +176,8 @@ class TestGeneratorSeed(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            result_1 = fluid.layers.gaussian_random(shape=[3, 4])
-            result_2 = fluid.layers.gaussian_random(shape=[3, 4])
+            result_1 = random.gaussian(shape=[3, 4])
+            result_2 = random.gaussian(shape=[3, 4])
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
