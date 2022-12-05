@@ -125,7 +125,7 @@ class CommonFeatureValueAccessor {
       int tmp_embedx_sgd_dim = 1;
       if (int(MfSize(val)) > 0) {
         if (optimizer_type_ == 3) {  // adam
-          tmp_embedx_sgd_dim = int(MfDim(val)) * 2 + 2;
+          tmp_embedx_sgd_dim = MfDim(val) * 2 + 2;
         } else if (optimizer_type_ == 4) {  // shared_adam
           tmp_embedx_sgd_dim = 4;
         }
@@ -246,10 +246,10 @@ class CommonFeatureValueAccessor {
   __host__ int Initialize() {
     int optimizer_type = (_config.find("optimizer_type") == _config.end())
                              ? 1
-                             : int(_config["optimizer_type"]);
+                             : _config["optimizer_type"];
     int sparse_embedx_dim = (_config.find("embedx_dim") == _config.end())
                                 ? 8
-                                : int(_config["embedx_dim"]);
+                                : _config["embedx_dim"];
     if (optimizer_type == 3) {  // adam
       common_feature_value.embed_sgd_dim = 4;
       common_feature_value.embedx_sgd_dim = sparse_embedx_dim * 2 + 2;
