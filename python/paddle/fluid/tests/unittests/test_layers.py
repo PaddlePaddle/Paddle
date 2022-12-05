@@ -1519,8 +1519,8 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 input = fluid.dygraph.to_variable(np.random.random((13, 11)))
-                top5_values1, top5_indices1 = layers.topk(input, k=5)
-                top5_values2, top5_indices2 = layers.topk(
+                top5_values1, top5_indices1 = paddle.topk(input, k=5)
+                top5_values2, top5_indices2 = paddle.topk(
                     input, k=fluid.dygraph.to_variable(np.array([5]))
                 )
                 np.testing.assert_array_equal(
@@ -1531,8 +1531,8 @@ class TestLayer(LayerTest):
                 )
 
             input = fluid.dygraph.to_variable(np.random.random((13, 11)))
-            top5_values1, top5_indices1 = layers.topk(input, k=5)
-            top5_values2, top5_indices2 = layers.topk(
+            top5_values1, top5_indices1 = paddle.topk(input, k=5)
+            top5_values2, top5_indices2 = paddle.topk(
                 input, k=fluid.dygraph.to_variable(np.array([5]))
             )
             np.testing.assert_array_equal(
@@ -3104,7 +3104,7 @@ class TestBook(LayerTest):
             x1 = self._get_data(name='x1', shape=[4], dtype='float32')
             x2 = self._get_data(name='x2', shape=[4], dtype='float32')
             index = self._get_data(name='index', shape=[1], dtype='int32')
-            out = layers.multiplex(inputs=[x1, x2], index=index)
+            out = paddle.multiplex(inputs=[x1, x2], index=index)
             return out
 
     def make_softmax_with_cross_entropy(self):
@@ -3143,15 +3143,6 @@ class TestBook(LayerTest):
             self.assertIsNotNone(loss3)
             self.assertIsNotNone(loss4)
             return loss4
-
-    def make_smooth_l1(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[4], dtype='float32')
-            y = self._get_data(name='label', shape=[4], dtype='float32')
-            loss = layers.smooth_l1(x, y)
-            return loss
 
     def make_scatter(self):
         with program_guard(
@@ -3192,7 +3183,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             data = self._get_data(name="label", shape=[200], dtype="float32")
-            values, indices = layers.topk(data, k=5)
+            values, indices = paddle.topk(data, k=5)
             return values
             return indices
 
@@ -3558,20 +3549,6 @@ class TestBook(LayerTest):
                     input=fc_out, size=4 * hidden_dim, proj_size=proj_dim
                 )
             )
-
-    def test_im2sequence(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name='x', shape=[3, 128, 128], dtype='float32')
-            y = layers.data(name='y', shape=[], dtype='float32')
-            output = layers.im2sequence(
-                input=x,
-                input_image_size=y,
-                stride=[1, 1],
-                filter_size=[2, 2],
-                out_stride=[1, 1],
-            )
-            return output
 
     def test_lod_reset(self):
         # TODO(minqiyang): dygraph do not support lod now

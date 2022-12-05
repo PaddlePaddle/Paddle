@@ -1688,7 +1688,8 @@ def ssd_loss(
     location = __reshape_to_2d(location)
     target_bbox = __reshape_to_2d(target_bbox)
 
-    loc_loss = nn.smooth_l1(location, target_bbox)
+    smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
+    loc_loss = smooth_l1_loss(location, target_bbox)
     target_loc_weight = __reshape_to_2d(target_loc_weight)
     loc_loss = loc_loss * target_loc_weight
 

@@ -459,9 +459,7 @@ class BaseModel(fluid.dygraph.Layer):
             scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
-            topk_scores, topk_indices = fluid.layers.topk(
-                input=scores, k=self.beam_size
-            )
+            topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
 
             beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
