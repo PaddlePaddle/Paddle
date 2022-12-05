@@ -728,11 +728,13 @@ class TestMatmulop(unittest.TestCase):
         # normal case: tensor @ nparray
         expect_out = np_a @ np_b
         actual_out = tensor_a @ np_b
-        np.testing.assert_allclose(actual_out, expect_out)
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
 
         paddle.enable_static()
 
-    def func_dygraph_matmul(self):
+    def test_dygraph_matmul(self):
         with _test_eager_guard():
             self.func_dygraph_matmul()
 
