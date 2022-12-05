@@ -361,7 +361,7 @@ void ReindexDst(const Context& dev_ctx,
     hipMemcpy(&count_i,
                thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
                sizeof(int),
-               cudaMemcpyDeviceToHost);
+               hipMemcpyDeviceToHost);
 #else
     cudaMemcpy(&count_i,
                thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
