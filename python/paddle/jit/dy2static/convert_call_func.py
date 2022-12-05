@@ -24,7 +24,7 @@ import types
 import numpy
 import builtins
 
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 from .convert_operators import (
     convert_len,
     convert_zip,
