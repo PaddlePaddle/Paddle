@@ -206,8 +206,6 @@ void invokeMaskedSoftMax(T* buffer,
     SOFTMAX_KERNEL(2)
   } else if (block.x > 0) {
     SOFTMAX_KERNEL(1)
-  } else {
-    // FT_CHECK(seq_len_2 <= 4096);
   }
 }
 
@@ -526,7 +524,10 @@ void gemm(const T* A,
                                                       multi_processor_count_,
                                                       stream);
   } else {
-    throw std::runtime_error("[Error][MoE][GEMM] Arch unsupported for GEMM");
+    PADDLE_ENFORCE_EQ(true,
+                      false,
+                      platform::errors::InvalidArgument(
+                          "MoE GEMM Only support SM80 and SM86. "));
   }
 }
 
@@ -688,7 +689,7 @@ void MoeKernel(const Context& ctx,
                                /*seq_len_1=*/1,
                                /*seq_len_2=*/num_experts,
                                /*head_num=*/1,
-                               *reinterpret_cast<const __half*>(&scalar),
+                               *reinterpret_cast<const float*>(&scalar),
                                ctx.stream());
   }
   invokeTransposeAxis01(
