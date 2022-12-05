@@ -1264,8 +1264,12 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
   set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 300)
   set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT
-                                                                         300)
+  if(WIN32)
+
+  else()
+    set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser
+                         PROPERTIES TIMEOUT 300)
+  endif()
   set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 300)
