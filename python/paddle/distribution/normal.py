@@ -180,7 +180,7 @@ class Normal(distribution.Distribution):
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
             )
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
-            zero_tmp_shape = nn.shape(zero_tmp_reshape)
+            zero_tmp_shape = paddle.shape(zero_tmp_reshape)
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
             )

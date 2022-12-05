@@ -617,7 +617,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
         def dot_attention(query, memory):
             attn = layers.matmul(query, memory, transpose_y=True)
-            weight = layers.softmax(attn)
+            weight = paddle.nn.functional.softmax(attn)
             weight_memory = layers.matmul(weight, memory)
 
             return weight_memory, weight

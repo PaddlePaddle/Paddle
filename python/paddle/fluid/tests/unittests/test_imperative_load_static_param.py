@@ -86,11 +86,15 @@ class TestDygraphLoadStatic(unittest.TestCase):
             "t2", shape=[None, 4], dtype="float32"
         )
 
-        bilinear_tensor_pro_out_1 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_1 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
-        bilinear_tensor_pro_out_2 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_2 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
 
         conv2d_trans_in = fluid.data(
