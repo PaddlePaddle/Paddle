@@ -356,6 +356,10 @@ cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
   DEPS delete_dropout_op_pass)
+cc_test(
+  test_delete_dequant_weight_linear_op_pass
+  SRCS delete_weight_dequant_linear_op_pass_tester.cc
+  DEPS delete_weight_dequant_linear_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
