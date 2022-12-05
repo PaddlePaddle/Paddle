@@ -2351,21 +2351,21 @@ def cross_entropy(
 ):
     r"""
 
-    By default, this operator implements the cross entropy loss function with softmax. This function
+    By default, the cross entropy loss function is implemented using softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
 
-    This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
+    Calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    By default, this operator will calculate the mean of the result, and you can also affect
+    By default, calculate the mean of the result, and you can also affect
     the default behavior by using the reduction parameter. Please refer to the part of
     parameters for details.
 
-    This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
+    Can be used to calculate the softmax cross entropy loss with soft and hard labels.
     Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
-    The calculation of this operator includes the following two steps.
+    The calculation includes the following two steps.
 
     - **1.softmax cross entropy**
 
@@ -3481,7 +3481,7 @@ def cosine_embedding_loss(
     input1, input2, label, margin=0, reduction='mean', name=None
 ):
     r"""
-    This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+    Computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
 
     If label = 1, then the loss value can be calculated as follow:
 
@@ -3498,11 +3498,11 @@ def cosine_embedding_loss(
         cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
 
      Parameters:
-        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+        label (Tensor): tensor with shape: [N] or [1], 'N' means the length of input array. The target labels values should be -1 or 1.
                          Available dtypes are int32, int64, float32, float64.
         margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
                          :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
