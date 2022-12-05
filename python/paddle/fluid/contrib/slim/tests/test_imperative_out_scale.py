@@ -139,7 +139,7 @@ class TestImperativeOutSclae(unittest.TestCase):
     def tearDown(self):
         self.root_path.cleanup()
 
-    def func_out_scale_acc(self):
+    def test_out_scale_acc(self):
         seed = 1000
         lr = 0.001
 
@@ -207,9 +207,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                 loss_list[i] > loss_list[i + 1],
                 msg='Failed to do the imperative qat.',
             )
-
-    def test_out_scale_acc(self):
-        self.func_out_scale_acc()
 
 
 if __name__ == '__main__':
