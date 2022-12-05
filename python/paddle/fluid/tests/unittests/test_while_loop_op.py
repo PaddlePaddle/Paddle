@@ -609,7 +609,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[5], dtype='int32')
             z = fluid.layers.fill_constant([1], 'int32', 0)
-            x_shape = fluid.layers.shape(x)
+            x_shape = paddle.shape(x)
             i = fluid.layers.fill_constant([1], 'int32', 0)
             z, _ = paddle.static.nn.while_loop(cond, body, [z, i])
 
