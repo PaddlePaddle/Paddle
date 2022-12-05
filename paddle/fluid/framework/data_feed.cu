@@ -73,7 +73,7 @@ void cub_sort_pairs(int len,
                     const V *in_vals,
                     V *out_vals,
                     cudaStream_t stream,
-                    std::shared_ptr<phi::Allocation> &d_buf_,
+                    std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
                     const paddle::platform::Place &place_) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceRadixSort::SortPairs(NULL,
@@ -116,7 +116,7 @@ void cub_runlength_encode(int N,
                           V *out_sizes,
                           TNum *d_out_len,
                           cudaStream_t stream,
-                          std::shared_ptr<phi::Allocation> &d_buf_,
+                          std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
                           const paddle::platform::Place &place_) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceRunLengthEncode::Encode(NULL,
@@ -151,7 +151,7 @@ void cub_exclusivesum(int N,
                       const K *in,
                       K *out,
                       cudaStream_t stream,
-                      std::shared_ptr<phi::Allocation> &d_buf_,
+                      std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
                       const paddle::platform::Place &place_) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
@@ -216,7 +216,7 @@ int dedup_keys_and_fillidx(int total_nodes_num,
                            uint32_t *d_offset,
                            uint32_t *d_merged_cnts,
                            cudaStream_t stream,
-                           std::shared_ptr<phi::Allocation> &d_buf_,
+                           std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
                            const paddle::platform::Place &place_) {
   int merged_size = 0;  // Final num
   auto d_index_in =
@@ -244,8 +244,8 @@ int dedup_keys_and_fillidx(int total_nodes_num,
                        stream,
                        d_buf_,
                        place_);
-  CUDA_CHECK(cudaMemcpyAsync((void *)&merged_size,
-                             (void *)d_merged_size,
+  CUDA_CHECK(cudaMemcpyAsync(&merged_size,
+                             d_merged_size,
                              sizeof(int),
                              cudaMemcpyDeviceToHost,
                              stream));
@@ -555,7 +555,7 @@ __global__ void GraphFillSlotKernel(uint64_t *id_tensor,
     int ins_idx = idx % total_ins;
     int actual_slot_id = actual_slot_id_map[fea_idx];
     int fea_offset = fea_offset_map[fea_idx];
-    ((uint64_t *)(id_tensor[actual_slot_id]))
+    reinterpret_cast<uint64_t *>(id_tensor[actual_slot_id])
         [ins_idx * slot_feature_num_map[actual_slot_id] + fea_offset] =
             feature_buf[ins_idx * fea_num_per_node + fea_idx];
   }
@@ -568,7 +568,7 @@ __global__ void GraphFillSlotLodKernelOpt(uint64_t *id_tensor,
   CUDA_KERNEL_LOOP(idx, len) {
     int slot_idx = idx / total_ins;
     int ins_idx = idx % total_ins;
-    ((uint64_t *)(id_tensor[slot_idx]))[ins_idx] =
+    (reinterpret_cast<uint64_t *>(id_tensor[slot_idx]))[ins_idx] =
         ins_idx * slot_feature_num_map[slot_idx];
   }
 }
@@ -739,7 +739,7 @@ int GraphDataGenerator::FillGraphSlotFeature(
   } else {
     id_tensor_ptr_ =
         feed_vec_[0]->mutable_data<int64_t>({total_instance, 1}, this->place_);
-    ins_cursor = (uint64_t *)id_tensor_ptr_;
+    ins_cursor = reinterpret_cast<uint64_t *>(id_tensor_ptr_);
   }
 
   if (!sage_mode_) {
@@ -1213,7 +1213,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
     int64_t default_lod = 1;
     for (int i = 0; i < slot_num_; ++i) {
       slot_lod_tensor_ptr_[i] = feed_vec_[3 + 2 * i + 1]->mutable_data<int64_t>(
-          {(long)key_num + 1}, this->place_);
+          {(long)key_num + 1}, this->place_); // NOLINT
       slot_tensor_ptr_[i] =
           feed_vec_[3 + 2 * i]->mutable_data<int64_t>({1, 1}, this->place_);
       CUDA_CHECK(cudaMemsetAsync(
@@ -1286,7 +1286,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
 
   for (int i = 0; i < slot_num_; ++i) {
     slot_lod_tensor_ptr_[i] = feed_vec_[3 + 2 * i + 1]->mutable_data<int64_t>(
-        {(long)key_num + 1}, this->place_);
+        {(long)key_num + 1}, this->place_); // NOLINT
   }
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,
@@ -1442,14 +1442,14 @@ int GraphDataGenerator::FillFeatureBuf(uint64_t *d_walk,
   platform::CUDADeviceGuard guard(gpuid_);
 
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  int ret =
-      gpu_graph_ptr->get_feature_of_nodes(gpuid_,
-                                          d_walk,
-                                          d_feature,
-                                          key_num,
-                                          slot_num_,
-                                          (int *)d_slot_feature_num_map_->ptr(),
-                                          fea_num_per_node_);
+  int ret = gpu_graph_ptr->get_feature_of_nodes(
+      gpuid_,
+      d_walk,
+      d_feature,
+      key_num,
+      slot_num_,
+      reinterpret_cast<int *>(d_slot_feature_num_map_->ptr()),
+      fea_num_per_node_);
   return ret;
 }
 
@@ -1459,22 +1459,22 @@ int GraphDataGenerator::FillFeatureBuf(
   platform::CUDADeviceGuard guard(gpuid_);
 
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  int ret =
-      gpu_graph_ptr->get_feature_of_nodes(gpuid_,
-                                          (uint64_t *)d_walk->ptr(),
-                                          (uint64_t *)d_feature->ptr(),
-                                          buf_size_,
-                                          slot_num_,
-                                          (int *)d_slot_feature_num_map_->ptr(),
-                                          fea_num_per_node_);
+  int ret = gpu_graph_ptr->get_feature_of_nodes(
+      gpuid_,
+      reinterpret_cast<uint64_t *>(d_walk->ptr()),
+      reinterpret_cast<uint64_t *>(d_feature->ptr()),
+      buf_size_,
+      slot_num_,
+      reinterpret_cast<int *>(d_slot_feature_num_map_->ptr()),
+      fea_num_per_node_);
   return ret;
 }
 
 // 对于deepwalk模式，尝试插入table，0表示插入成功，1表示插入失败；
 // 对于sage模式，尝试插入table，table数量不够则清空table重新插入，返回值无影响。
 int GraphDataGenerator::InsertTable(
-    const unsigned long *d_keys,
-    unsigned long len,
+    const uint64_t *d_keys,
+    uint64_t len,
     std::shared_ptr<phi::Allocation> d_uniq_node_num) {
   // Used under NOT WHOLE_HBM.
   uint64_t h_uniq_node_num = 0;
@@ -1524,13 +1524,13 @@ GraphDataGenerator::SampleNeighbors(int64_t *uniq_nodes,
                                     std::vector<int> &edges_split_num,
                                     int64_t *neighbor_len) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  auto sample_res =
-      gpu_graph_ptr->graph_neighbor_sample_all_edge_type(gpuid_,
-                                                         edge_to_id_len_,
-                                                         (uint64_t *)uniq_nodes,
-                                                         sample_size,
-                                                         len,
-                                                         edge_type_graph_);
+  auto sample_res = gpu_graph_ptr->graph_neighbor_sample_all_edge_type(
+      gpuid_,
+      edge_to_id_len_,
+      reinterpret_cast<uint64_t *>(uniq_nodes),
+      sample_size,
+      len,
+      edge_type_graph_);
 
   int *all_sample_count_ptr =
       reinterpret_cast<int *>(sample_res.actual_sample_size_mem->ptr());
@@ -2800,7 +2800,7 @@ void GraphDataGenerator::SetConfig(
     samples_.emplace_back(sample_size);
   }
   copy_unique_len_ = 0;
-};
+}
 
 }  // namespace framework
 }  // namespace paddle

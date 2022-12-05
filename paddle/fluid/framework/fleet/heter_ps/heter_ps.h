@@ -32,7 +32,7 @@ class HeterPs : public HeterPsBase {
   HeterPs() {}
   HeterPs(size_t capacity,
           std::shared_ptr<HeterPsResource> resource,
-          GPUAccessor& gpu_accessor);
+          const GPUAccessor& gpu_accessor);
   virtual ~HeterPs();
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
@@ -41,8 +41,6 @@ class HeterPs : public HeterPsBase {
                    FeatureKey* d_keys,
                    float* d_vals,
                    size_t len) override;
-  // void build_ps(int num, FeatureKey* h_keys, float* h_vals, size_t len,
-  //               size_t chunk_size, int stream_num) override;
   void build_ps(int num,
                 FeatureKey* h_keys,
                 char* pool,

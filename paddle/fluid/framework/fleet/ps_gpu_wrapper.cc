@@ -341,7 +341,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
               << " seconds.";
     }
   } else {
-    SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
+    SlotRecordDataset* dataset = reinterpret_cast<SlotRecordDataset*>(dataset_);
     const std::vector<uint64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
     timeline.Start();
     add_key_to_local(vec_data);
@@ -427,7 +427,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   threads.clear();
   time_stage.Pause();
   divide_nodeid_cost = time_stage.ElapsedSec();
-  gpu_task->sub_graph_feas = (void*)(new std::vector<GpuPsCommGraphFea>);
+  gpu_task->sub_graph_feas = new std::vector<GpuPsCommGraphFea>;
   std::vector<GpuPsCommGraphFea>& sub_graph_feas =
       *((std::vector<GpuPsCommGraphFea>*)gpu_task->sub_graph_feas);
   std::vector<std::vector<uint64_t>> feature_ids(device_num);
@@ -456,15 +456,13 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
       int* d_slot_feature_num_map;
       uint64_t* d_node_list_ptr;
       uint64_t* d_feature_list_ptr;
-      CUDA_CHECK(
-          cudaMalloc((void**)&d_slot_feature_num_map, slot_num * sizeof(int)));
+      CUDA_CHECK(cudaMalloc(&d_slot_feature_num_map, slot_num * sizeof(int)));
       CUDA_CHECK(cudaMemcpy(d_slot_feature_num_map,
                             h_slot_feature_num_map.data(),
                             sizeof(int) * slot_num,
                             cudaMemcpyHostToDevice));
-      CUDA_CHECK(
-          cudaMalloc((void**)&d_node_list_ptr, batch * sizeof(uint64_t)));
-      CUDA_CHECK(cudaMalloc((void**)&d_feature_list_ptr,
+      CUDA_CHECK(cudaMalloc(&d_node_list_ptr, batch * sizeof(uint64_t)));
+      CUDA_CHECK(cudaMalloc(&d_feature_list_ptr,
                             batch * fea_num_per_node * sizeof(uint64_t)));
       auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
       uint64_t pos = 0;
@@ -1094,8 +1092,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     char* test_build_values = build_values.get();
     for (size_t k = start; k < end; k++) {
 #ifdef PADDLE_WITH_PSLIB
-      float* val =
-          (float*)(test_build_values + (k - start) * feature_value_size);
+      float* val = reinterpret_cast<float*>(test_build_values +
+                                            (k - start) * feature_value_size);
       float* ptr_val = device_dim_ptrs[k]->data();
       size_t dim = device_dim_ptrs[k]->size();
       val->delta_score =
@@ -1133,8 +1131,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
                      feature_value_accessor_.common_feature_value.Dim(mf_dim));
 #endif
 #ifdef PADDLE_WITH_PSCORE
-      void* val =
-          (float*)(test_build_values + (k - start) * feature_value_size);
+      void* val = reinterpret_cast<float*>(test_build_values +
+                                           (k - start) * feature_value_size);
       accessor_wrapper_ptr->BuildFill(
           val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim);
 #endif
@@ -1145,7 +1143,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     task.device_id = i;
     task.multi_mf_dim = j;
     task.start = 0;
-    task.end = int(real_len);
+    task.end = real_len;
     cpu_reday_channels_[i]->Put(task);
   };
 
@@ -1543,7 +1541,8 @@ void PSGPUWrapper::HbmToSparseTable() {
           continue;
         }
         size_t local_offset = i * feature_value_size;
-        float* gpu_val = (float*)(test_build_values + local_offset);
+        float* gpu_val =
+            reinterpret_cast<float*>(test_build_values + local_offset);
 #ifdef PADDLE_WITH_PSLIB
         // TODO: PSLIB DumpFill
 #endif

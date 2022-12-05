@@ -947,7 +947,7 @@ class GraphDataGenerator {
       int64_t* uniq_nodes,
       int len,
       int sample_size,
-      std::vector<int>& edges_split_num,
+      std::vector<int>& edges_split_num,  // NOLINT
       int64_t* neighbor_len);
   std::shared_ptr<phi::Allocation> FillReindexHashTable(int64_t* input,
                                                         int num_input,
@@ -965,9 +965,9 @@ class GraphDataGenerator {
       uint64_t* node_ids,
       int len,
       int* uniq_len,
-      std::shared_ptr<phi::Allocation>& inverse);
-  int InsertTable(const unsigned long* d_keys,
-                  unsigned long len,
+      std::shared_ptr<phi::Allocation>& inverse);  // NOLINT
+  int InsertTable(const uint64_t* d_keys,
+                  uint64_t len,
                   std::shared_ptr<phi::Allocation> d_uniq_node_num);
   std::vector<uint64_t>& GetHostVec() { return host_vec_; }
   bool get_epoch_finish() { return epoch_finish_; }

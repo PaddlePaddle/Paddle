@@ -60,7 +60,7 @@ class HeterComm {
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
   HeterComm(size_t capacity,
             std::shared_ptr<HeterPsResource> resource,
-            GPUAccessor& gpu_accessor);
+            const GPUAccessor& gpu_accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
@@ -83,8 +83,8 @@ class HeterComm {
                           KeyType* d_keys,
                           float* d_grads,
                           size_t len,
-                          int& uniq_len,
-                          size_t& segment_len,
+                          int& uniq_len,        // NOLINT
+                          size_t& segment_len,  // NOLINT
                           bool enable_segment_merge_grad);
   void segment_merge_grad(int gpu_num,
                           KeyType* d_keys,
@@ -93,7 +93,7 @@ class HeterComm {
                           size_t len,
                           const uint32_t* d_fea_num_info,
                           size_t uniq_len,
-                          size_t& segment_len);
+                          size_t& segment_len);  // NOLINT
   void build_ps(int num,
                 KeyType* h_keys,
                 ValType* h_vals,
@@ -112,8 +112,11 @@ class HeterComm {
                   GradType* d_grads,
                   size_t len,
                   int& uniq_len);  // NOLINT
-  void dynamic_merge_grad(
-      int gpu_num, KeyType* d_keys, float* d_grads, size_t len, int& uniq_len);
+  void dynamic_merge_grad(int gpu_num,
+                          KeyType* d_keys,
+                          float* d_grads,
+                          size_t len,
+                          int& uniq_len);  // NOLINT
   void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void build_ps(int num,
                 KeyType* h_keys,
@@ -453,11 +456,11 @@ class HeterComm {
                       int end_index,
                       size_t keylen,
                       size_t vallen);
-  void create_tmp_storage(void*& dest,
+  void create_tmp_storage(void*& dest,  // NOLINT
                           int start_index,
                           int end_index,
                           size_t vallen);
-  void destroy_tmp_storage(void*& p, int start_index, int end_index);
+  void destroy_tmp_storage(void*& p, int start_index, int end_index);  // NOLINT
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index,
                     int gpu_num,
@@ -520,7 +523,7 @@ class HeterComm {
                         const cudaStream_t& stream);
   void gather_inner_keys_p2p(const size_t& total_fea_num,
                              const KeyType* d_keys,
-                             InnerResource& res,
+                             InnerResource& res,  // NOLINT
                              const int& gpu_id,
                              const int& gpu_num,
                              const int& trans_id,
@@ -563,7 +566,7 @@ class HeterComm {
                                       const cudaStream_t& stream);
   void scatter_inner_vals_p2p(const size_t& total_fea_num,
                               void* d_out_vals,
-                              InnerResource& res,
+                              InnerResource& res,  // NOLINT
                               const int& gpu_id,
                               const int& gpu_num,
                               const int& trans_id,
@@ -578,7 +581,7 @@ class HeterComm {
   void gather_inner_data_p2p(const size_t& total_fea_num,
                              const KeyType* d_keys,
                              const void* d_vals,
-                             InnerResource& res,
+                             InnerResource& res,  // NOLINT
                              const int& gpu_id,
                              const int& gpu_num,
                              const int& trans_id,

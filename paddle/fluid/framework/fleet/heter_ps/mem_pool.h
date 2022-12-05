@@ -29,7 +29,7 @@ class MemoryPool {
       : capacity_(capacity), block_size_(block_size) {
     VLOG(3) << "mem_pool init with block_size: " << block_size
             << " capacity: " << capacity;
-    mem_ = (char*)malloc(block_size * capacity_);
+    mem_ = reinterpret_cast<char*>(malloc(block_size * capacity_));
   }
   ~MemoryPool() {
     VLOG(3) << "mem pool delete";
@@ -40,9 +40,7 @@ class MemoryPool {
 
   size_t capacity() { return capacity_; }
   size_t byte_size() { return capacity_ * block_size_; }
-  void* mem_address(const uint32_t& idx) {
-    return (void*)&mem_[(idx)*block_size_];
-  }
+  void* mem_address(const uint32_t& idx) { return &mem_[(idx)*block_size_]; }
 
  private:
   char* mem_ = NULL;
@@ -55,7 +53,7 @@ class HBMMemoryPool : public managed {
  public:
   HBMMemoryPool(size_t capacity, size_t block_size)
       : capacity_(capacity), block_size_(block_size) {}
-  HBMMemoryPool(MemoryPool* mem_pool) {
+  explicit HBMMemoryPool(MemoryPool* mem_pool) {
     capacity_ = mem_pool->capacity();
     block_size_ = mem_pool->block_size();
     VLOG(3) << "hbm memory pool with capacity" << capacity_
@@ -86,7 +84,7 @@ class HBMMemoryPool : public managed {
 
   size_t capacity() { return capacity_; }
   __forceinline__ __device__ void* mem_address(const uint32_t& idx) {
-    return (void*)&mem_[(idx)*block_size_];
+    return &mem_[(idx)*block_size_];
   }
 
  private:
@@ -131,7 +129,7 @@ class HBMMemoryPoolFix : public managed {
   size_t capacity() { return capacity_; }
   size_t size() { return size_; }
   __forceinline__ __device__ void* mem_address(const uint32_t& idx) {
-    return (void*)&mem_[(idx)*block_size_];
+    return &mem_[(idx)*block_size_];
   }
 
  private:

@@ -137,7 +137,7 @@ class GraphShard {
     }
   }
 
-  void merge_shard(GraphShard *&shard) {
+  void merge_shard(GraphShard *&shard) {  // NOLINT
     bucket.reserve(bucket.size() + shard->bucket.size());
     for (size_t i = 0; i < shard->bucket.size(); i++) {
       auto node_id = shard->bucket[i]->get_id();
@@ -183,7 +183,7 @@ class SampleResult {
  public:
   size_t actual_size;
   std::shared_ptr<char> buffer;
-  SampleResult(size_t _actual_size, std::shared_ptr<char> &_buffer)
+  SampleResult(size_t _actual_size, std::shared_ptr<char> &_buffer)  // NOLINT
       : actual_size(_actual_size), buffer(_buffer) {}
   SampleResult(size_t _actual_size, char *_buffer)
       : actual_size(_actual_size),
@@ -226,7 +226,9 @@ class RandomSampleLRU {
       node_head = p;
     }
   }
-  LRUResponse query(K *keys, size_t length, std::vector<std::pair<K, V>> &res) {
+  LRUResponse query(K *keys,
+                    size_t length,
+                    std::vector<std::pair<K, V>> &res) {  // NOLINT
     if (pthread_rwlock_tryrdlock(&father->rwlock) != 0)
       return LRUResponse::blocked;
     // pthread_rwlock_rdlock(&father->rwlock);
@@ -377,7 +379,7 @@ class ScaledLRU {
   LRUResponse query(size_t index,
                     K *keys,
                     size_t length,
-                    std::vector<std::pair<K, V>> &res) {
+                    std::vector<std::pair<K, V>> &res) {  // NOLINT
     return lru_pool[index].query(keys, length, res);
   }
   LRUResponse insert(size_t index, K *keys, V *data, size_t length) {
@@ -528,8 +530,8 @@ class GraphTable : public Table {
                                   int idx,
                                   int start,
                                   int size,
-                                  std::unique_ptr<char[]> &buffer,
-                                  int &actual_size,
+                                  std::unique_ptr<char[]> &buffer,  // NOLINT
+                                  int &actual_size,                 // NOLINT
                                   bool need_feature,
                                   int step);
 
@@ -537,21 +539,21 @@ class GraphTable : public Table {
       int idx,
       uint64_t *node_ids,
       int sample_size,
-      std::vector<std::shared_ptr<char>> &buffers,
-      std::vector<int> &actual_sizes,
+      std::vector<std::shared_ptr<char>> &buffers,  // NOLINT
+      std::vector<int> &actual_sizes,               // NOLINT
       bool need_weight);
 
   int32_t random_sample_nodes(int type_id,
                               int idx,
                               int sample_size,
-                              std::unique_ptr<char[]> &buffers,
-                              int &actual_sizes);
+                              std::unique_ptr<char[]> &buffers,  // NOLINT
+                              int &actual_sizes);                // NOLINT
 
   virtual int32_t get_nodes_ids_by_ranges(
       int type_id,
       int idx,
       std::vector<std::pair<int, int>> ranges,
-      std::vector<uint64_t> &res);
+      std::vector<uint64_t> &res);  // NOLINT
   virtual int32_t Initialize() { return 0; }
   virtual int32_t Initialize(const TableParameter &config,
                              const FsClientParameter &fs_config);
@@ -570,12 +572,12 @@ class GraphTable : public Table {
   int32_t parse_node_and_load(std::string ntype2files,
                               std::string graph_data_local_path,
                               int part_num);
-  std::string get_inverse_etype(std::string &etype);
+  std::string get_inverse_etype(std::string &etype);  // NOLINT
   int32_t parse_type_to_typepath(
-      std::string &type2files,
+      std::string &type2files,  // NOLINT
       std::string graph_data_local_path,
-      std::vector<std::string> &res_type,
-      std::unordered_map<std::string, std::string> &res_type2path);
+      std::vector<std::string> &res_type,                            // NOLINT
+      std::unordered_map<std::string, std::string> &res_type2path);  // NOLINT
   int32_t load_edges(const std::string &path,
                      bool reverse,
                      const std::string &edge_type);
@@ -609,17 +611,17 @@ class GraphTable : public Table {
                                                 int idx);
   std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path);
   int32_t add_graph_node(int idx,
-                         std::vector<uint64_t> &id_list,
-                         std::vector<bool> &is_weight_list);
+                         std::vector<uint64_t> &id_list,      // NOLINT
+                         std::vector<bool> &is_weight_list);  // NOLINT
 
-  int32_t remove_graph_node(int idx, std::vector<uint64_t> &id_list);
+  int32_t remove_graph_node(int idx, std::vector<uint64_t> &id_list);  // NOLINT
 
   int32_t get_server_index_by_id(uint64_t id);
   Node *find_node(int type_id, int idx, uint64_t id);
   Node *find_node(int type_id, uint64_t id);
 
-  virtual int32_t Pull(TableContext &context) { return 0; }
-  virtual int32_t Push(TableContext &context) { return 0; }
+  virtual int32_t Pull(TableContext &context) { return 0; }  // NOLINT
+  virtual int32_t Push(TableContext &context) { return 0; }  // NOLINT
 
   virtual int32_t clear_nodes(int type, int idx);
   virtual void Clear() {}
@@ -648,16 +650,17 @@ class GraphTable : public Table {
                             size_t len,
                             FeatureNode *node);
 
-  virtual int32_t get_node_feat(int idx,
-                                const std::vector<uint64_t> &node_ids,
-                                const std::vector<std::string> &feature_names,
-                                std::vector<std::vector<std::string>> &res);
-
-  virtual int32_t set_node_feat(
+  virtual int32_t get_node_feat(
       int idx,
       const std::vector<uint64_t> &node_ids,
       const std::vector<std::string> &feature_names,
-      const std::vector<std::vector<std::string>> &res);
+      std::vector<std::vector<std::string>> &res);  // NOLINT
+
+  virtual int32_t set_node_feat(
+      int idx,
+      const std::vector<uint64_t> &node_ids,              // NOLINT
+      const std::vector<std::string> &feature_names,      // NOLINT
+      const std::vector<std::vector<std::string>> &res);  // NOLINT
 
   size_t get_server_num() { return server_num; }
   void clear_graph();
@@ -701,15 +704,16 @@ class GraphTable : public Table {
       uint64_t id,
       int sample_size,
       const std::shared_ptr<std::mt19937_64> rng,
-      int &actual_size);
+      int &actual_size);  // NOLINT
   virtual int32_t add_node_to_ssd(
       int type_id, int idx, uint64_t src_id, char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, const std::vector<uint64_t> &ids);
   virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
-      int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);
+      int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);  // NOLINT
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
-  int64_t load_graph_to_memory_from_ssd(int idx, std::vector<uint64_t> &ids);
+  int64_t load_graph_to_memory_from_ssd(int idx,
+                                        std::vector<uint64_t> &ids);  // NOLINT
   int32_t make_complementary_graph(int idx, int64_t byte_size);
   int32_t dump_edges_to_ssd(int idx);
   int32_t get_partition_num(int idx) { return partitions[idx].size(); }

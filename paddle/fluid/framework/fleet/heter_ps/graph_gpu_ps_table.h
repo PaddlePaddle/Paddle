@@ -17,9 +17,9 @@
 
 #include <chrono>
 
-#include "heter_comm.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/enforce.h"
 #ifdef PADDLE_WITH_HETERPS
@@ -116,13 +116,14 @@ class GpuPsGraphTable
                            int slot_num,
                            int *d_slot_feature_num_map,
                            int fea_num_per_node);
-  int get_feature_info_of_nodes(int gpu_id,
-                                uint64_t *d_nodes,
-                                int node_num,
-                                uint32_t *size_list,
-                                uint32_t *size_list_prefix_sum,
-                                std::shared_ptr<phi::Allocation> &feature_list,
-                                std::shared_ptr<phi::Allocation> &slot_list);
+  int get_feature_info_of_nodes(
+      int gpu_id,
+      uint64_t *d_nodes,
+      int node_num,
+      uint32_t *size_list,
+      uint32_t *size_list_prefix_sum,
+      std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT
+      std::shared_ptr<phi::Allocation> &slot_list);    // NOLINT
 
   NodeQueryResult query_node_list(int gpu_id,
                                   int idx,
@@ -174,7 +175,7 @@ class GpuPsGraphTable
   std::condition_variable cv_;
   int cpu_table_status;
 };
-}  // namespace framework
+
+};  // namespace framework
 };  // namespace paddle
-//#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table_inl.h"
 #endif
