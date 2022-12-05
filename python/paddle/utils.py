@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.framework import _non_static_mode
 import warnings
+
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`
