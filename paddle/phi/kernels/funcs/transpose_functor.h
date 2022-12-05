@@ -52,6 +52,7 @@ struct PermTypeClassifier {
     if (rank == 1) {
       type_ = PermuteType::kCopy;
     } else {
+      // Limitation of the setting in one dimension of cuda grid.
       constexpr int64_t dim_limitation = 65536;
       const int dst_vec_size = phi::GetVectorizedSize<T>(dst);
 
@@ -64,7 +65,7 @@ struct PermTypeClassifier {
       }
 
       // Permute at last 2 dims, namely transpose.
-      if ((rank == 2 && perm[1] == 0 && perm[0] == 1) ||
+      if ((rank == 2 && perm[1] == 0) ||
           (rank == 3 && perm[2] == 1 && perm[1] == 2)) {
         int64_t channel = rank == 2 ? 1 : dims[0];
         // Currently, transpose kernel cannot cover the case that channel

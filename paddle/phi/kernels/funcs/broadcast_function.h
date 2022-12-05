@@ -1064,7 +1064,6 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
         dev_ctx, x, y, axis, InverseFunctor(), z);
   }
 }
-
 #endif
 
 }  // namespace funcs

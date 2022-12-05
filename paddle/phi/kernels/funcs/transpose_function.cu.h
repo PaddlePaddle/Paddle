@@ -707,7 +707,7 @@ template <typename T>
 struct TransposeSimple {
   static bool Impl(const phi::GPUContext& ctx,
                    const phi::DenseTensor& in,
-                   const std::vector<int32_t> perm,
+                   const std::vector<int32_t>& perm,
                    phi::DenseTensor* out,
                    const int64_t numel) {
     if (numel >= std::numeric_limits<int32_t>::max()) {
@@ -721,7 +721,7 @@ struct TransposeSimple {
   template <typename IndexType = int32_t>
   static bool Run(const phi::GPUContext& ctx,
                   const phi::DenseTensor& in,
-                  const std::vector<int32_t> perm,
+                  const std::vector<int32_t>& perm,
                   phi::DenseTensor* out) {
     // First reduce the dimensions of the input tensor if possible.
     auto in_data = in.data<T>();
@@ -751,6 +751,20 @@ struct TransposeSimple {
     }
   }
 };
+
+template <typename T>
+inline void PermuteWithSimple(const phi::GPUContext& ctx,
+                              const int& rank,
+                              const std::vector<int32_t>& perm,
+                              const phi::DenseTensor& in,
+                              phi::DenseTensor* out,
+                              const DimsSimplifier& simplifier) {
+  bool ret =
+      TransposeSimple<T>::Impl(ctx, in, perm, out, simplifier.GetCount());
+  if (!ret) {
+    TransCompute<phi::GPUContext, T>(rank, ctx, in, out, perm);
+  }
+}
 
 template <typename IndexT, int N>
 class IdxHelper {
@@ -1302,6 +1316,7 @@ struct PermuteDispatch {
 template <typename T>
 inline void PermuteAndTranspose(const phi::GPUContext& ctx,
                                 const int& rank,
+                                const std::vector<int32_t>& perm,
                                 const phi::DenseTensor& in,
                                 phi::DenseTensor* out,
                                 const DimsSimplifier& simplifier) {
@@ -1345,6 +1360,7 @@ inline void PermuteAndTranspose(const phi::GPUContext& ctx,
 template <typename T>
 inline void PermuteWithEigen(const phi::GPUContext& ctx,
                              const int& rank,
+                             const std::vector<int32_t>& perm,
                              const phi::DenseTensor& in,
                              phi::DenseTensor* out,
                              const DimsSimplifier& simplifier) {
@@ -1372,28 +1388,26 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const std::vector<int32_t>& perm,
                               phi::DenseTensor* out) {
   const int rank = perm.size();
-  int64_t numel = in.numel();
-  bool ret = TransposeSimple<T>::Impl(ctx, in, perm, out, numel);
-  if (!ret) {
-    auto simplifier =
-        DimsSimplifier(rank, numel, perm, phi::vectorize<int64_t>(in.dims()));
-    auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
-    tuner->AddCallBack(PermuteAndTranspose<T>);
+  auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithSimple<T>);
+  tuner->AddCallBack(PermuteWithEigen<T>);
+  tuner->AddCallBack(PermuteAndTranspose<T>);
 
-    size_t key = phi::autotune::TransposeKey(
-        simplifier.GetSrcDims(),
-        simplifier.GetPerm(),
-        paddle::experimental::CppTypeToDataType<T>::Type());
+  auto simplifier = DimsSimplifier(
+      rank, in.numel(), perm, phi::vectorize<int64_t>(in.dims()));
+  size_t key = phi::autotune::TransposeKey(
+      simplifier.GetSrcDims(),
+      simplifier.GetPerm(),
+      paddle::experimental::CppTypeToDataType<T>::Type());
 
-    tuner->Run(ctx,
-               phi::autotune::AlgorithmType::kTranspose,
-               key,
-               ctx,
-               rank,
-               in,
-               out,
-               simplifier);
-  }
+  tuner->Run(ctx,
+             phi::autotune::AlgorithmType::kTranspose,
+             key,
+             ctx,
+             rank,
+             perm,
+             in,
+             out,
+             simplifier);
 }
 
 }  // namespace funcs
