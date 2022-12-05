@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import inspect
 
 import numpy as np
@@ -2106,7 +2105,6 @@ def batch_norm(
     use_global_stats=False,
 ):
     r"""
-    :api_attr: Static Graph
 
     **Batch Normalization Layer**
 
@@ -2121,7 +2119,7 @@ def batch_norm(
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:`input` is the input features over a mini-batch.
+    :math:input is the input features over a mini-batch.
 
     ..  math::
 
@@ -2200,6 +2198,7 @@ def batch_norm(
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
+
     Returns:
         A Tensor which is the result after applying batch normalization on the input,
         has same shape and data type with input.
