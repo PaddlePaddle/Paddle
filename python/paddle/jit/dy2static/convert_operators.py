@@ -15,42 +15,36 @@
 import re
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+from paddle.jit.dy2static.variable_trans_func import (
     to_static_variable,
 )
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
 from paddle.fluid.layers import (
-    array_length,
     array_read,
     array_write,
-    create_array,
 )
 from paddle.fluid.layers import (
     assign,
     fill_constant,
-    reduce_all,
-    reduce_any,
 )
 from paddle.fluid.layers import (
     cast,
     control_flow,
-    nn,
 )
 from paddle.fluid.layers.control_flow import (
     cond,
     while_loop,
-    less_than,
     increment,
 )
 from .return_transformer import (
     RETURN_NO_VALUE_VAR_NAME,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     UndefinedVar,
     Dygraph2StaticException,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper
+from paddle.jit.dy2static.utils import GetterSetterHelper
 from paddle.fluid.layers.utils import copy_mutable_vars
 
 
@@ -136,7 +130,7 @@ def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
 
     def maybe_to_tensor_array(v):
         if isinstance(v, list):
-            return create_array("float32", initialized_list=v)
+            return paddle.tensor.create_array("float32", initialized_list=v)
         else:
             return v
 
@@ -529,9 +523,9 @@ def convert_len(var):
             # so we return a variable dynamically inferred from var.shape.
             if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
                 return var.shape[0]
-            return nn.shape(var)[0]
+            return paddle.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            return control_flow.array_length(var)
+            return paddle.tensor.array_length(var)
         else:
             raise TypeError(
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
@@ -612,7 +606,7 @@ def convert_shape(x):
     if isinstance(x, Variable):
         values = list(x.shape)
         if has_negative(values):
-            shape_tensor = nn.shape(x)
+            shape_tensor = paddle.shape(x)
             for i, v in enumerate(values):
                 if v is None or v < 0:
                     values[i] = shape_tensor[i]
@@ -653,7 +647,7 @@ def convert_shape_compare(left, *args):
         def reduce_compare(x, op_str, y):
             element_wise_result = eval("x " + op_str + " y")
             if op_str == "!=":
-                return reduce_any(element_wise_result)
+                return paddle.any(element_wise_result)
             elif (
                 op_str == "is"
                 or op_str == "is not"
@@ -662,7 +656,7 @@ def convert_shape_compare(left, *args):
             ):
                 return element_wise_result
             else:
-                return reduce_all(element_wise_result)
+                return paddle.all(element_wise_result)
 
         final_result = reduce_compare(left, args[0], args[1])
         for i in range(1, num_cmp):
@@ -786,15 +780,15 @@ def _run_paddle_pop(array, *args):
     assert isinstance(idx, int)
 
     def cond(i, new_array):
-        return less_than(i, arr_len)
+        return paddle.less_than(i, arr_len)
 
     def body(i, new_array):
         item = array_read(array=array, i=i)
-        array_write(item, array_length(new_array), new_array)
+        array_write(item, paddle.tensor.array_length(new_array), new_array)
         i = increment(i)
         return i, new_array
 
-    arr_len = array_length(array)
+    arr_len = paddle.tensor.array_length(array)
     if idx < 0:
         idx = idx + arr_len
     else:
@@ -814,7 +808,7 @@ def _run_paddle_pop(array, *args):
 #  Maybe support start == end for slice op.
 def _slice_tensor_array(array, start, end):
     def true_fn():
-        null_array = create_array("float32")
+        null_array = paddle.tensor.create_array("float32")
         return null_array
 
     def false_fn(array, start, end):

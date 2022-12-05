@@ -19,8 +19,8 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 import paddle.fluid.dygraph_utils as dygraph_utils
+from paddle.fluid import core
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
@@ -33,7 +33,7 @@ class MyLayer(fluid.Layer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
         self._x_for_debug = x
-        x = fluid.layers.elementwise_mul(x, x)
+        x = paddle.multiply(x, x)
         x = paddle.sum(x)
         return [x]
 
@@ -722,9 +722,9 @@ class TestImperative(unittest.TestCase):
             inp1 = paddle.to_tensor(np_inp1)
             inp2 = paddle.to_tensor(np_inp2)
             if np.sum(np_inp1) < np.sum(np_inp2):
-                x = fluid.layers.elementwise_add(inp1, inp2)
+                x = paddle.add(inp1, inp2)
             else:
-                x = fluid.layers.elementwise_sub(inp1, inp2)
+                x = paddle.subtract(inp1, inp2)
             dygraph_result = x.numpy()
 
         # static graph
@@ -744,19 +744,19 @@ class TestImperative(unittest.TestCase):
                 paddle.reshape(paddle.sum(inp_data2), [1, 1]),
                 [4, -1],
             )
-            cond = fluid.layers.less_than(x=a, y=b)
+            cond = paddle.less_than(x=a, y=b)
 
             ie = fluid.layers.IfElse(cond)
             with ie.true_block():
                 d1 = ie.input(inp_data1)
                 d2 = ie.input(inp_data2)
-                d3 = fluid.layers.elementwise_add(d1, d2)
+                d3 = paddle.add(d1, d2)
                 ie.output(d3)
 
             with ie.false_block():
                 d1 = ie.input(inp_data1)
                 d2 = ie.input(inp_data2)
-                d3 = fluid.layers.elementwise_sub(d1, d2)
+                d3 = paddle.subtract(d1, d2)
                 ie.output(d3)
             out = ie()
 
