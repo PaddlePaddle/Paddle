@@ -231,8 +231,6 @@ class TestProcessGroupFp32(unittest.TestCase):
         # else:
         #     assert np.array_equal(tensor_y, out2)
         # print("test scatter api ok\n")
-        """
-        """
 
 
 if __name__ == "__main__":
