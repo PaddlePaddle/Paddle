@@ -113,7 +113,7 @@ template <typename KeyType,
 HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
     size_t capacity,
     std::shared_ptr<HeterPsResource> resource,
-    GPUAccessor &gpu_accessor) {
+    const GPUAccessor &gpu_accessor) {
   VLOG(1) << "Construct new HeterComm";
   resource_ = resource;
   device_num_ = resource_->total_device();
@@ -395,7 +395,7 @@ template <typename KeyType,
           typename GradType,
           typename GPUAccessor>
 void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_tmp_storage(
-    void *&dest, int start_index, int end_index, size_t vallen) {
+    void *&dest, int start_index, int end_index, size_t vallen) {  // NOLINT
 #if defined(PADDLE_WITH_CUDA)
   auto &allocator = allocators_[start_index];
   platform::CUDADeviceGuard guard(resource_->dev_id(end_index));
@@ -438,7 +438,7 @@ template <typename KeyType,
           typename GradType,
           typename GPUAccessor>
 void HeterComm<KeyType, ValType, GradType, GPUAccessor>::destroy_tmp_storage(
-    void *&p, int start_index, int end_index) {
+    void *&p, int start_index, int end_index) {  // NOLINT
 #if defined(PADDLE_WITH_CUDA)
   auto &allocator = allocators_[start_index];
   platform::CUDADeviceGuard guard(resource_->dev_id(end_index));
@@ -1000,8 +1000,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::dynamic_merge_grad(
     KeyType *d_keys,
     float *d_grads,
     size_t len,
-    int &uniq_len,
-    size_t &segment_len,
+    int &uniq_len,        // NOLINT
+    size_t &segment_len,  // NOLINT
     bool enable_segment_merge_grad) {
   int dev_id = resource_->dev_id(gpu_num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
@@ -1160,7 +1160,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::segment_merge_grad(
     const uint32_t
         *d_fea_num_info,     // prefix sum array, its length is uniq_len+1
     size_t uniq_len,         // the number of unique keys
-    size_t &segments_num) {  // the number of segment merged keys
+    size_t &segments_num) {  // the number of segment merged keys // NOLINT
 
   int dev_id = resource_->dev_id(gpu_num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
@@ -1779,7 +1779,11 @@ template <typename KeyType,
           typename GPUAccessor>
 template <typename Sgd>
 void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
-    int dev_num, KeyType *d_keys, float *d_grads, size_t len, Sgd &sgd) {
+    int dev_num,
+    KeyType *d_keys,
+    float *d_grads,
+    size_t len,
+    Sgd &sgd) {  // NOLINT
   if (multi_node_) {
     push_sparse_all2all(dev_num, d_keys, d_grads, len, sgd);
   } else {
@@ -2769,7 +2773,7 @@ template <typename KeyType,
 void HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_inner_keys_p2p(
     const size_t &total_fea_num,
     const KeyType *d_keys,
-    HeterCommType::InnerResource &res,
+    HeterCommType::InnerResource &res,  // NOLINT
     const int &gpu_id,
     const int &gpu_num,
     const int &trans_id,
@@ -3222,7 +3226,7 @@ template <typename KeyType,
 void HeterComm<KeyType, ValType, GradType, GPUAccessor>::scatter_inner_vals_p2p(
     const size_t &total_fea_num,
     void *d_out_vals,
-    HeterCommType::InnerResource &res,
+    HeterCommType::InnerResource &res,  // NOLINT
     const int &gpu_id,
     const int &gpu_num,
     const int &trans_id,
@@ -3356,7 +3360,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_inner_data_p2p(
     const size_t &total_fea_num,
     const KeyType *d_keys,
     const void *d_vals,
-    HeterCommType::InnerResource &res,
+    HeterCommType::InnerResource &res,  // NOLINT
     const int &gpu_id,
     const int &gpu_num,
     const int &trans_id,
@@ -3458,7 +3462,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse_all2all(
     KeyType *d_keys,
     float *d_grads,
     const size_t &len,
-    Sgd &sgd) {
+    Sgd &sgd) {  // NOLINT
   if (len == 0) {
     return;
   }

@@ -65,7 +65,7 @@ class TableContainer
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
-  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
+  explicit XPUCacheArray(int64_t capacity) : capacity_(capacity), size_(0) {
     xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
     xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
@@ -103,8 +103,8 @@ class XPUCacheArray {
   size_t size() { return size_; }
 
  private:
-  long long capacity_;
-  long long size_;
+  int64_t capacity_;
+  int64_t size_;
   KeyType* keys;
   ValType* vals;
 };
@@ -149,7 +149,7 @@ class HashTable {
            char* d_vals,
            size_t len,
            StreamType stream,
-           GPUAccessor& fv_accessor);
+           const GPUAccessor& fv_accessor);
 
   void show();
 

@@ -29,7 +29,7 @@ namespace operators {
 
 struct CacheAllocator {
   typedef char value_type;
-  CacheAllocator(platform::Place place) {
+  explicit CacheAllocator(platform::Place place) {
     VLOG(2) << "construct allocator";
     place_ = place;
   }
