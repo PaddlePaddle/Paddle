@@ -609,7 +609,7 @@ class TestLayer(LayerTest):
             data_y = layers.data(
                 name='y', shape=[1, 3], dtype="float32", append_batch_size=False
             )
-            out = layers.bilinear_tensor_product(
+            out = paddle.static.nn.common.bilinear_tensor_product(
                 data_x,
                 data_y,
                 6,
@@ -684,7 +684,7 @@ class TestLayer(LayerTest):
             data_y2 = layers.data(
                 name='y', shape=[1, 3], dtype="float32", append_batch_size=False
             )
-            out2 = layers.bilinear_tensor_product(
+            out2 = paddle.static.nn.common.bilinear_tensor_product(
                 data_x2, data_y2, 6, act='sigmoid'
             )
 
@@ -1378,8 +1378,8 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 input = fluid.dygraph.to_variable(np.random.random((13, 11)))
-                top5_values1, top5_indices1 = layers.topk(input, k=5)
-                top5_values2, top5_indices2 = layers.topk(
+                top5_values1, top5_indices1 = paddle.topk(input, k=5)
+                top5_values2, top5_indices2 = paddle.topk(
                     input, k=fluid.dygraph.to_variable(np.array([5]))
                 )
                 np.testing.assert_array_equal(
@@ -1390,8 +1390,8 @@ class TestLayer(LayerTest):
                 )
 
             input = fluid.dygraph.to_variable(np.random.random((13, 11)))
-            top5_values1, top5_indices1 = layers.topk(input, k=5)
-            top5_values2, top5_indices2 = layers.topk(
+            top5_values1, top5_indices1 = paddle.topk(input, k=5)
+            top5_values2, top5_indices2 = paddle.topk(
                 input, k=fluid.dygraph.to_variable(np.array([5]))
             )
             np.testing.assert_array_equal(
@@ -2963,7 +2963,7 @@ class TestBook(LayerTest):
             x1 = self._get_data(name='x1', shape=[4], dtype='float32')
             x2 = self._get_data(name='x2', shape=[4], dtype='float32')
             index = self._get_data(name='index', shape=[1], dtype='int32')
-            out = layers.multiplex(inputs=[x1, x2], index=index)
+            out = paddle.multiplex(inputs=[x1, x2], index=index)
             return out
 
     def make_softmax_with_cross_entropy(self):
@@ -3002,15 +3002,6 @@ class TestBook(LayerTest):
             self.assertIsNotNone(loss3)
             self.assertIsNotNone(loss4)
             return loss4
-
-    def make_smooth_l1(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[4], dtype='float32')
-            y = self._get_data(name='label', shape=[4], dtype='float32')
-            loss = layers.smooth_l1(x, y)
-            return loss
 
     def make_scatter(self):
         with program_guard(
@@ -3051,7 +3042,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             data = self._get_data(name="label", shape=[200], dtype="float32")
-            values, indices = layers.topk(data, k=5)
+            values, indices = paddle.topk(data, k=5)
             return values
             return indices
 
@@ -3166,7 +3157,7 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
             )
-            out = layers.shape(input)
+            out = paddle.shape(input)
             return out
 
     def make_pad2d(self):
@@ -3286,15 +3277,6 @@ class TestBook(LayerTest):
             out = layers.iou_similarity(x, y, name='iou_similarity')
             return out
 
-    def make_grid_sampler(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 5, 7], dtype='float32')
-            grid = self._get_data(name='grid', shape=[5, 7, 2], dtype='float32')
-            out = layers.grid_sampler(x, grid)
-            return out
-
     def make_bilinear_tensor_product_layer(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3302,7 +3284,9 @@ class TestBook(LayerTest):
             data = self._get_data(name='data', shape=[4], dtype="float32")
 
             theta = self._get_data(name="theta", shape=[5], dtype="float32")
-            out = layers.bilinear_tensor_product(data, theta, 6)
+            out = paddle.static.nn.common.bilinear_tensor_product(
+                data, theta, 6
+            )
             return out
 
     def make_batch_norm(self):

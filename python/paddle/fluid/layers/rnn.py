@@ -669,7 +669,7 @@ def _rnn_static_graph(
         inputs = map_structure(_transpose_batch_time, inputs)
 
     if sequence_length:
-        max_seq_len = nn.shape(flatten(inputs)[0])[0]
+        max_seq_len = paddle.shape(flatten(inputs)[0])[0]
         mask = sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
@@ -1211,7 +1211,7 @@ class BeamSearchDecoder(Decoder):
         """
         self.kinf = 1e9
         state = flatten(initial_cell_states)[0]
-        self.batch_size = nn.shape(state)[0]
+        self.batch_size = paddle.shape(state)[0]
 
         self.start_token_tensor = tensor.fill_constant(
             shape=[1], dtype="int64", value=self.start_token
