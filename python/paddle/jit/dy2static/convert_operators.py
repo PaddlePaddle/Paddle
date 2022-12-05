@@ -15,11 +15,10 @@
 import re
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.jit.dy2static.variable_trans_func import (
-    to_static_variable,
-)
+from paddle.jit.dy2static.variable_trans_func import to_static_variable
+from paddle.jit.api import Assert
 from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import Print
 from paddle.fluid.layers import (
     array_read,
     array_write,
