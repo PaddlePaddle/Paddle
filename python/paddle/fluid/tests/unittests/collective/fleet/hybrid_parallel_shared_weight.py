@@ -62,7 +62,7 @@ class SimpleNet(Layer):
     def forward(self, x1, x2, y1):
         x_emb = self.word_embeddings(x1)
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
-        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
 
         projection = paddle.matmul(projection, self.word_embeddings.weight)
@@ -109,7 +109,7 @@ class BiasNet(Layer):
 
     def forward(self, args):
         fc, x2 = args
-        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
         return projection, x2
 
