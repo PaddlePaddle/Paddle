@@ -286,9 +286,6 @@ class GroupShardedStage3(nn.Layer):
 
         return fw
 
-    def set_exclude_layer(self, exclude_layers):
-        self._exclude_layer = exclude_layers
-
     def set_state_dict(self, state_dict, use_structured_name=True):
         self._layer.set_state_dict(
             state_dict, use_structured_name=use_structured_name
