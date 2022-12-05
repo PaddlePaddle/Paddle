@@ -507,6 +507,13 @@ class GroupShardedStage3(nn.Layer):
             dist.broadcast(
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                dist.broadcast(
+                    buffer,
+                    self._dp_group.ranks[0],
+                    self._dp_group,
+                    sync_op=True,
+                )
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -529,21 +536,11 @@ class GroupShardedStage3(nn.Layer):
             )
         )
 
-        dp_comm_flag = self._dp_group is not None and self._dp_group.nranks > 1
         # 1.Handle param's slice
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
             ), "Find {} don't have fw_storage attribute".format(param.name)
-            # Gradient average over dp group
-            if dp_comm_flag:
-                if self._offload:
-                    with device_guard():
-                        param.bw_storage.scale_(
-                            scale=(1.0 / self._dp_group.nranks)
-                        )
-                else:
-                    param.bw_storage.scale_(scale=(1.0 / self._dp_group.nranks))
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
@@ -552,7 +549,7 @@ class GroupShardedStage3(nn.Layer):
         # 2.Handle unslice param
         for grad_storage in self._grad_storages.values():
             dist.all_reduce(tensor=grad_storage.buffer, group=self._group)
-            if dp_comm_flag:
+            if self._dp_group is not None and self._dp_group.nranks > 1:
                 grad_storage.buffer.scale_(scale=(1.0 / self._dp_group.nranks))
                 dist.all_reduce(
                     tensor=grad_storage.buffer, group=self._dp_group
@@ -628,7 +625,9 @@ class GroupShardedStage3(nn.Layer):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
-                dist.all_reduce(tensor=full_grad, group=self._group)
+                if self._dp_group is not None and self._dp_group.nranks > 1:
+                    full_grad.scale_(scale=(1.0 / self._dp_group.nranks))
+                    dist.all_reduce(tensor=full_grad, group=self._group)
 
                 if self._dp_group is not None and self._dp_group.nranks > 1:
                     dist.all_reduce(tensor=full_grad, group=self._dp_group)
