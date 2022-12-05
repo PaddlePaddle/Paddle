@@ -83,7 +83,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                     name="cond_int",
                 )
                 print(cond_int.shape)
-                cond = layers.less_than(x=step_idx, y=max_len)
+                cond = paddle.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 
             with while_op.block():
@@ -119,7 +119,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                     layers.array_write(hidden2, i=step_idx, array=data)
 
                     # update cond and assign to cond_int, we will sync cond_int
-                    layers.less_than(x=step_idx, y=max_len, cond=cond)
+                    paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
                     layers.assign(layers.cast(cond, dtype="int32"), cond_int)
 
                 with paddle.fluid.device_guard(f'{device}:all'):
