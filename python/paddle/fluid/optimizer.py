@@ -2289,8 +2289,8 @@ class AdamOptimizer(Optimizer):
                     div_res = global_step / decay_steps
                     decayed_beta1 = beta1_init * (decay_rate**div_res)
                     decayed_beta2 = beta2_init * (decay_rate**div_res)
-                    fluid.layers.assign(decayed_beta1, beta1)
-                    fluid.layers.assign(decayed_beta2, beta2)
+                    paddle.assign(decayed_beta1, beta1)
+                    paddle.assign(decayed_beta2, beta2)
 
                     return beta1, beta2, epsilon
 
@@ -3985,7 +3985,7 @@ class ModelAverage(Optimizer):
             self._get_accumulator('num_updates', param)
         )
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        paddle.tensor.creation.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
@@ -3995,12 +3995,12 @@ class ModelAverage(Optimizer):
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
-        paddle.assign(paddle.divide(sum, tmp), output=param)
+        paddle.tensor.creation.assign(paddle.divide(sum, tmp), output=param)
 
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
         grad = block._clone_variable(param_grad[1])
-        layers.assign(input=grad, output=param)
+        paddle.tensor.creation.assign(input=grad, output=param)
 
     def _append_average_accumulate_op(self, param):
         self.helper = LayerHelper("average_accumulate")
@@ -4291,15 +4291,15 @@ class ExponentialMovingAverage:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
-                layers.assign(input=param, output=tmp)
+                paddle.tensor.creation.assign(input=param, output=tmp)
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(
+                        paddle.tensor.creation.assign(
                             output=param, input=ema / (1.0 - decay_pow)
                         )
                     with switch.default():
-                        layers.assign(output=param, input=ema)
+                        paddle.tensor.creation.assign(output=param, input=ema)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
@@ -4307,7 +4307,7 @@ class ExponentialMovingAverage:
             for param, tmp in self._params_tmps:
                 tmp = block._clone_variable(tmp)
                 param = block._clone_variable(param)
-                layers.assign(input=tmp, output=param)
+                paddle.tensor.creation.assign(input=tmp, output=param)
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
@@ -4323,9 +4323,9 @@ class ExponentialMovingAverage:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
                 with layers.control_flow.Switch() as switch:
                     with switch.case(decay_t < self._decay):
-                        layers.tensor.assign(decay_t, decay_var)
+                        paddle.tensor.creation.assign(decay_t, decay_var)
                     with switch.default():
-                        layers.tensor.assign(
+                        paddle.tensor.creation.assign(
                             np.array([self._decay], dtype=np.float32), decay_var
                         )
         return decay_var
@@ -4375,7 +4375,7 @@ class ExponentialMovingAverage:
                     ema_t = param_ema * self._decay_var + param * (
                         1 - self._decay_var
                     )
-                    layers.assign(input=ema_t, output=param_ema)
+                    paddle.tensor.creation.assign(input=ema_t, output=param_ema)
 
         # for fp16 params
         for param_ema, master_ema in param_master_emas:
@@ -7300,7 +7300,9 @@ class LookaheadOptimizer:
                     for param_name in params:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
-                        layers.assign(input=fast_var, output=slow_var)
+                        paddle.tensor.creation.assign(
+                            input=fast_var, output=slow_var
+                        )
                 with switch.case(mod == zero_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)
@@ -7311,8 +7313,12 @@ class LookaheadOptimizer:
                                 slow_var, paddle.subtract(one_var, alpha)
                             ),
                         )
-                        layers.assign(input=tmp_var, output=slow_var)
-                        layers.assign(input=tmp_var, output=fast_var)
+                        paddle.tensor.creation.assign(
+                            input=tmp_var, output=slow_var
+                        )
+                        paddle.tensor.creation.assign(
+                            input=tmp_var, output=fast_var
+                        )
                 with switch.default():
                     pass
         return mini_out

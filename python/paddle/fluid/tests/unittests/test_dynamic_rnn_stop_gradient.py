@@ -26,7 +26,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     fluid.default_main_program().random_seed = 1
     np.random.seed(2)
 
-    x = layers.assign(
+    x = paddle.assign(
         np.random.rand(batch_size, beam_size, 32).astype("float32")
     )
     indices = fluid.data(shape=[None, beam_size], dtype="int64", name="indices")
@@ -54,7 +54,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         layers.increment(x=step_idx, value=1.0, in_place=True)
         layers.array_write(score, i=step_idx, array=scores)
         length_cond = paddle.less_than(x=step_idx, y=max_len)
-        layers.assign(length_cond, cond)
+        paddle.assign(length_cond, cond)
 
     out = layers.tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
     loss = paddle.mean(out)

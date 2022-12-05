@@ -36,19 +36,11 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                 append_batch_size=False,
             )
             if self.rank == 0:
-                data1 = fluid.layers.assign(
-                    np.array([[0, 1, 2]], dtype='float32')
-                )
-                data2 = fluid.layers.assign(
-                    np.array([[3, 4, 5]], dtype='float32')
-                )
+                data1 = paddle.assign(np.array([[0, 1, 2]], dtype='float32'))
+                data2 = paddle.assign(np.array([[3, 4, 5]], dtype='float32'))
             elif self.rank == 1:
-                data1 = fluid.layers.assign(
-                    np.array([[3, 4, 5]], dtype='float32')
-                )
-                data2 = fluid.layers.assign(
-                    np.array([[0, 1, 2]], dtype='float32')
-                )
+                data1 = paddle.assign(np.array([[3, 4, 5]], dtype='float32'))
+                data2 = paddle.assign(np.array([[0, 1, 2]], dtype='float32'))
             tensor_array = paddle.tensor.create_array(dtype='float32')
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             fluid.layers.array_write(data1, i, tensor_array)

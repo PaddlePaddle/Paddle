@@ -1856,11 +1856,11 @@ def fast_decode(
             # update states
             layers.array_write(selected_ids, i=step_idx, array=ids)
             layers.array_write(selected_scores, i=step_idx, array=scores)
-            layers.assign(pre_src_attn_bias, trg_src_attn_bias)
-            layers.assign(pre_enc_output, enc_output)
+            paddle.tensor.creation.assign(pre_src_attn_bias, trg_src_attn_bias)
+            paddle.tensor.creation.assign(pre_enc_output, enc_output)
             for i in range(n_layer):
-                layers.assign(pre_caches[i]["k"], caches[i]["k"])
-                layers.assign(pre_caches[i]["v"], caches[i]["v"])
+                paddle.assign(pre_caches[i]["k"], caches[i]["k"])
+                paddle.assign(pre_caches[i]["v"], caches[i]["v"])
             length_cond = paddle.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
             paddle.logical_and(x=length_cond, y=finish_cond, out=cond)

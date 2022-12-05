@@ -15,7 +15,7 @@
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import templatedoc
-from .tensor import assign, cast, fill_constant
+from .tensor import cast, fill_constant
 from .. import core
 from ..framework import (
     Program,
@@ -50,6 +50,7 @@ from ..data_feeder import (
 from ..backward import _infer_var_data_type_shape_
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.tensor.creation import assign
 
 __all__ = [
     'While',
@@ -1243,7 +1244,7 @@ class While:
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
                 sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
-                fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
+                paddle.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through paddle.assign
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
                 data = fluid.layers.elementwise_add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
@@ -2629,9 +2630,9 @@ class Switch:
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.assign(input=one_var, output=lr)
+                    paddle.assign(input=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.assign(input=two_var, output=lr)
+                    paddle.assign(input=two_var, output=lr)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())

@@ -50,7 +50,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             z = fluid.layers.elementwise_add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = fluid.layers.array_write(x=z, i=i)
-            array = fluid.layers.assign(init_array)
+            array = paddle.assign(init_array)
             sums = fluid.layers.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
             append_backward(mean)
@@ -74,9 +74,9 @@ class TestAssignOpError(unittest.TestCase):
             # The type of input must be Variable or numpy.ndarray.
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.XPUPlace(0))
-            self.assertRaises(TypeError, fluid.layers.assign, x1)
+            self.assertRaises(TypeError, paddle.assign, x1)
             x2 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x2)
+            self.assertRaises(TypeError, paddle.assign, x2)
 '''
 
 if __name__ == '__main__':

@@ -52,7 +52,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
             with true_cond.block():
                 hidden = layers.fc(input=true_image, size=100, act='tanh')
                 prob = layers.fc(input=hidden, size=10, act='softmax')
-                layers.assign(input=prob, output=true_out)
+                paddle.assign(input=prob, output=true_out)
 
             false_out = paddle.tensor.create_tensor(dtype='float32')
             false_cond = ConditionalBlock([cond])
@@ -60,7 +60,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
             with false_cond.block():
                 hidden = layers.fc(input=false_image, size=200, act='tanh')
                 prob = layers.fc(input=hidden, size=10, act='softmax')
-                layers.assign(input=prob, output=false_out)
+                paddle.assign(input=prob, output=false_out)
 
             prob = merge_lod_tensor(
                 in_true=true_out, in_false=false_out, mask=cond, x=image

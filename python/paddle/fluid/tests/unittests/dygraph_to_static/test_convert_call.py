@@ -144,7 +144,7 @@ class MyConvLayer(fluid.dygraph.Layer):
 
     @paddle.jit.to_static
     def dymethod(self, x_v):
-        x_v = fluid.layers.assign(x_v)
+        x_v = paddle.assign(x_v)
         return x_v
 
 

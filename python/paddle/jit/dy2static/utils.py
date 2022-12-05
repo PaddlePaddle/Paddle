@@ -30,7 +30,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import assign
+from paddle.tensor.creation import assign
 from functools import reduce
 import warnings
 

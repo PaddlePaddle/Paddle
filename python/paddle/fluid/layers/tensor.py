@@ -52,7 +52,6 @@ __all__ = [
     'tensor_array_to_tensor',
     'concat',
     'sums',
-    'assign',
     'fill_constant_batch_size_like',
     'fill_constant',
     'argmin',
@@ -420,8 +419,8 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
 
             import paddle.fluid as fluid
             import numpy as np
-            x0 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
-            x1 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
+            x0 = paddle.assign(np.random.rand(2, 2).astype("float32"))
+            x1 = paddle.assign(np.random.rand(2, 2).astype("float32"))
             i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
             array = fluid.layers.create_array(dtype='float32')
             fluid.layers.array_write(x0, i, array)
@@ -548,173 +547,6 @@ def sums(input, out=None):
         attrs={'use_mkldnn': False},
     )
     return out
-
-
-def assign(input, output=None):
-    """
-
-    The OP copies the :attr:`input` to the :attr:`output`.
-
-    Parameters:
-        input (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
-            or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
-            Note: the float64 data will be converted to float32 because of current platform protobuf
-            data limitation.
-        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
-            be created as :attr:`output`. Default: None.
-
-    Returns:
-        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          import numpy as np
-          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          array = np.array([[1, 1],
-                            [3, 4],
-                            [1, 3]]).astype(np.int64)
-          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
-          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-    """
-    helper = LayerHelper('assign', **locals())
-    check_type(
-        input,
-        'input',
-        (Variable, numpy.ndarray, list, tuple, float, int, bool),
-        'assign',
-    )
-    is_inplace = True if output is not None else False
-
-    if numpy.isscalar(input) and not isinstance(input, str):
-        input = numpy.array([input])
-    elif isinstance(input, (list, tuple)):
-        input = numpy.array(input)
-    # NOTE(Aurelius84): Why we judge core.VarBase?
-    # In case of @to_static, a VarBase can be as input of `assign`,
-    # but _non_static_mode()==False under @to_static, which means
-    # isinstance(VarBase, Variable) == False. It will cause return None
-    # after this api.
-    if isinstance(input, (Variable, core.VarBase)):
-        if _non_static_mode():
-            if in_dygraph_mode() and output is None:
-                output = _C_ops.assign(input)
-            elif in_dygraph_mode() and output is not None:
-                _C_ops.assign_out_(input, output)
-            else:
-                if output is None:
-                    if _in_legacy_dygraph():
-                        output = core.VarBase()
-                    else:
-                        output = core.eager.Tensor()
-                _legacy_C_ops.assign(input, output)
-        else:
-            check_dtype(
-                input.dtype,
-                'input',
-                [
-                    'float16',
-                    'uint16',
-                    'float32',
-                    'float64',
-                    'int32',
-                    'int64',
-                    'uint8',
-                    'bool',
-                ],
-                'assign',
-                '(When the type of input in assign is Variable.)',
-            )
-            if output is None:
-                output = helper.create_variable_for_type_inference(
-                    dtype=input.dtype
-                )
-            helper.append_op(
-                type='assign', inputs={'X': [input]}, outputs={'Out': [output]}
-            )
-    elif isinstance(input, numpy.ndarray):
-        # Not support [var, var, ...] currently.
-        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
-            raise TypeError(
-                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
-            )
-        dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == VarDesc.VarType.FP64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = VarDesc.VarType.FP32
-        if dtype == VarDesc.VarType.BOOL:
-            value_name = "bool_values"
-            values = [int(v) for v in input.flat]
-        elif dtype == VarDesc.VarType.FP32:
-            value_name = "fp32_values"
-            values = [float(v) for v in input.flat]
-        elif dtype == VarDesc.VarType.INT32:
-            value_name = "int32_values"
-            values = [int(v) for v in input.flat]
-        elif dtype == VarDesc.VarType.INT64:
-            value_name = "int64_values"
-            values = [int(v) for v in input.flat]
-        else:
-            raise TypeError(
-                "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
-                "received %s." % convert_dtype(dtype)
-            )
-        if input.size > 1024 * 1024:
-            raise ValueError(
-                "The size of input is too big. Please consider "
-                "saving it to file and 'load_op' to load it"
-            )
-        if in_dygraph_mode():
-            if output is None:
-                output = zeros(list(input.shape), dtype)
-            _C_ops.assign_value_(
-                output,
-                list(input.shape),
-                dtype,
-                values,
-                _current_expected_place(),
-            )
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign_value(
-                output,
-                'shape',
-                list(input.shape),
-                'dtype',
-                dtype,
-                value_name,
-                values,
-            )
-        else:
-            if output is None:
-                output = helper.create_variable_for_type_inference(
-                    dtype=input.dtype
-                )
-            helper.append_op(
-                type='assign_value',
-                outputs={'Out': [output]},
-                attrs={
-                    'dtype': dtype,
-                    'shape': list(input.shape),
-                    value_name: values,
-                },
-            )
-
-    if is_inplace and _non_static_mode():
-        output._bump_inplace_version()
-
-    return output
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):

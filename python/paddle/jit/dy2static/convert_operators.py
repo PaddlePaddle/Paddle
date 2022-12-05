@@ -24,10 +24,8 @@ from paddle.fluid.layers import (
     array_read,
     array_write,
 )
-from paddle.fluid.layers import (
-    assign,
-    fill_constant,
-)
+from paddle.fluid.layers import fill_constant
+
 from paddle.fluid.layers import (
     cast,
     control_flow,
@@ -799,7 +797,7 @@ def _run_paddle_pop(array, *args):
     new_array = _slice_tensor_array(array, 0, idx)
     i = idx + 1
     _, new_array = while_loop(cond, body, [i, new_array])
-    assign(input=new_array, output=array)
+    paddle.tensor.creation.assign(input=new_array, output=array)
 
     return pop_item
 

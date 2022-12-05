@@ -78,15 +78,15 @@ class HybridParallelInferenceHelper:
                 layers.array_write(other_var, i=step_idx, array=arr)
 
                 # update cond and assign to cond_int, we will sync cond_int
-                layers.assign(layers.cast(cond, dtype="int32"), cond_int)
+                paddle.assign(layers.cast(cond, dtype="int32"), cond_int)
 
             with paddle.fluid.device_guard(f'{model._device}:all'):
                 # the code below must at end of while block and exists in device:all
-                layers.assign(layers.cast(cond_int, dtype='bool'), cond)
+                paddle.assign(layers.cast(cond_int, dtype='bool'), cond)
 
         with paddle.fluid.device_guard(f'{model._device}:all'):
             # use a empty lod_tensor_array to clear lod_tensor_array
-            layers.assign(layers.create_array(data.dtype), arr)
+            paddle.assign(layers.create_array(data.dtype), arr)
 
 
     Examples:
@@ -154,19 +154,19 @@ class HybridParallelInferenceHelper:
 
                     # update cond and assign to cond_int, we will sync cond_int
                     paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
-                    layers.assign(layers.cast(cond, dtype="int32"), cond_int)
+                    paddle.assign(layers.cast(cond, dtype="int32"), cond_int)
 
                 with paddle.fluid.device_guard(f'{device}:all'):
                     # the code below must at end of while block and exists in device:all
-                    layers.assign(layers.cast(cond_int, dtype='bool'), cond)
+                    paddle.assign(layers.cast(cond_int, dtype='bool'), cond)
 
             with paddle.fluid.device_guard(f'{device}:all'):
                 out = layers.create_array(data.dtype)
-                layers.assign(data, out)
+                paddle.assign(data, out)
 
             with paddle.fluid.device_guard(f'{device}:all'):
                 # use a empty lod_tensor_array to clear lod_tensor_array
-                layers.assign(layers.create_array(data.dtype), data)
+                paddle.assign(layers.create_array(data.dtype), data)
 
         helper = fleet.HybridParallelInferenceHelper(startup_program, main_program, micro_batch_size=2, num_pp=2, init_comm=nranks>1)
         helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
@@ -705,7 +705,7 @@ class HybridParallelInferenceHelper:
 
         assert len(block.ops) > 2, (
             "It must have more than 2 ops in while sub block, "
-            "layers.assign(layers.cast(cond_int, dtype='bool'), cond) must at end of while block, "
+            "paddle.assign(layers.cast(cond_int, dtype='bool'), cond) must at end of while block, "
             "because nccl cannot send bool dtype var"
         )
         index = len(block.ops) - 2

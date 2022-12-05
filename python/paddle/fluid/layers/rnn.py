@@ -19,6 +19,7 @@ import warnings
 
 import paddle
 from paddle.utils import deprecated
+from paddle.tensor.creation import assign
 from . import nn
 from . import tensor
 from . import control_flow
@@ -1233,7 +1234,7 @@ class BeamSearchDecoder(Decoder):
             dtype=self.start_token_tensor.dtype,
         )
         log_probs = paddle.tile(
-            tensor.assign(
+            assign(
                 np.array(
                     [[0.0] + [-self.kinf] * (self.beam_size - 1)],
                     dtype="float32",
@@ -1298,7 +1299,7 @@ class BeamSearchDecoder(Decoder):
         noend_array = [-self.kinf] * self.vocab_size
         noend_array[self.end_token] = 0
 
-        self.noend_mask_tensor = tensor.assign(np.array(noend_array, "float32"))
+        self.noend_mask_tensor = assign(np.array(noend_array, "float32"))
         if paddle.get_default_dtype() == "float64":
             self.noend_mask_tensor = tensor.cast(
                 self.noend_mask_tensor, "float64"
@@ -1501,7 +1502,7 @@ def _dynamic_decode_imperative(
             next_finished = paddle.logical_or(next_finished, finished)
             # To confirm states.finished/finished be consistent with
             # next_finished.
-            tensor.assign(next_finished, finished)
+            assign(next_finished, finished)
             next_sequence_lengths = paddle.add(
                 sequence_lengths,
                 tensor.cast(
@@ -1698,11 +1699,11 @@ def _dynamic_decode_declarative(
         control_flow.increment(x=step_idx, value=1.0, in_place=True)
         # update the global_finished first, since it might be also in states of
         # decoder, which otherwise would write a stale finished status to array
-        tensor.assign(next_finished, global_finished)
-        tensor.assign(next_sequence_lengths, sequence_lengths)
+        assign(next_finished, global_finished)
+        assign(next_sequence_lengths, sequence_lengths)
         if is_test:
-            map_structure(tensor.assign, next_inputs, global_inputs)
-            map_structure(tensor.assign, next_states, global_states)
+            map_structure(assign, next_inputs, global_inputs)
+            map_structure(assign, next_states, global_states)
         else:
             map_structure(
                 lambda x, x_array: control_flow.array_write(

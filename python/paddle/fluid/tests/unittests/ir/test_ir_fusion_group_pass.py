@@ -113,7 +113,7 @@ class FusionGroupPassInplaceTest(FusionGroupPassTest):
             # subgraph with 3 op node
             tmp_0 = self.feed_vars[0] - self.feed_vars[1]
             tmp_1 = tmp_0 * self.feed_vars[2]
-            tmp_2 = layers.assign(tmp_1, output=tmp_0)
+            tmp_2 = paddle.assign(tmp_1, output=tmp_0)
             tmp_3 = layers.mul(tmp_2, self.feed_vars[3])
 
         self.num_fused_ops = 1

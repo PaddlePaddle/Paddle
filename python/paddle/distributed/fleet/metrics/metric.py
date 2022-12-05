@@ -42,7 +42,7 @@ def sum(input, scope=None, util=None):
           cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = fluid.layers.elementwise_add(cnt, global_cnt)
-          fluid.layers.assign(tmp, global_cnt)
+          paddle.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -82,7 +82,7 @@ def max(input, scope=None, util=None):
           cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = paddle.maximum(cnt, global_cnt)
-          fluid.layers.assign(tmp, global_cnt)
+          paddle.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -122,7 +122,7 @@ def min(input, scope=None, util=None):
           cnt = paddle.sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp = fluid.layers.elementwise_min(cnt, global_cnt)
-          fluid.layers.assign(tmp, global_cnt)
+          paddle.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -397,11 +397,11 @@ def acc(correct, total, scope=None, util=None):
 
           global_correct = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp1 = fluid.layers.elementwise_min(correct, global_correct)
-          fluid.layers.assign(tmp1, global_correct)
+          paddle.assign(tmp1, global_correct)
 
           global_total = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
           tmp2 = fluid.layers.elementwise_min(total, global_total)
-          fluid.layers.assign(tmp2, global_total)
+          paddle.assign(tmp2, global_total)
 
           # in train.py, after train or infer
           correct_num = np.array(scope.find_var(correct.name).get_tensor())

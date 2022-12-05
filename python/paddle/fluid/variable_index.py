@@ -75,7 +75,7 @@ class SliceInfo:
         ):
             # convert index to Tensor
             if not isinstance(index, paddle.fluid.Variable):
-                index = paddle.assign(index)
+                index = paddle.tensor.creation.assign(index)
 
             if self.dtype is None:
                 self.dtype = index.dtype
@@ -146,13 +146,13 @@ class SliceInfo:
 
     def get_item(self, tensor):
         shape_transpose = self.get_offset_stride(tensor.shape)
-        index = paddle.assign(shape_transpose)
+        index = paddle.tensor.creation.assign(shape_transpose)
         return paddle.gather_nd(tensor, index)
 
     def set_item(self, tensor_origin, value):
 
         if not isinstance(value, paddle.fluid.Variable):
-            value = paddle.assign(value)
+            value = paddle.tensor.creation.assign(value)
         tensor_type = None
 
         if tensor_origin.dtype in [
@@ -168,7 +168,7 @@ class SliceInfo:
             value = value.astype(tensor.dtype)
 
         shape_transpose = self.get_offset_stride(tensor_origin.shape)
-        index = paddle.assign(shape_transpose)
+        index = paddle.tensor.creation.assign(shape_transpose)
 
         gather_tensor_shape = get_list_index_shape(
             tensor.shape,
@@ -202,7 +202,7 @@ class SliceInfo:
 
         index_1d = index.reshape([-1, index.shape[-1]])
 
-        tensor_stride = paddle.assign(
+        tensor_stride = paddle.tensor.creation.assign(
             self.shape_stride(tensor.shape[: index.shape[-1]])
         )
         inds = []
@@ -259,7 +259,7 @@ def replace_ndarray(item):
     new_item = []
     for slice_item in item:
         if isinstance(slice_item, np.ndarray):
-            new_item.append(paddle.assign(slice_item))
+            new_item.append(paddle.tensor.creation.assign(slice_item))
         else:
             new_item.append(slice_item)
     return new_item
@@ -473,10 +473,11 @@ def _getitem_impl_(var, item):
                         new_slice_item.append(0)
                 slice_item = new_slice_item
 
-            from .layers import assign
             from ..tensor import index_select
 
-            idx = assign(np.array(slice_item).astype("int32"))
+            idx = paddle.tensor.creation.assign(
+                np.array(slice_item).astype("int32")
+            )
             return index_select(var, index=idx, axis=0)
 
         elif isinstance(slice_item, (Variable, core.eager.Tensor)):
@@ -720,9 +721,7 @@ def _setitem_impl_(var, item, value):
                     )
                 )
 
-            from .layers import assign
-
-            idx_tensor = assign(slice_item)
+            idx_tensor = paddle.tensor.creation.assign(slice_item)
             return set_value_for_bool_tensor(var, idx_tensor, value)
 
         elif isinstance(slice_item, Variable):
@@ -862,11 +861,10 @@ def set_value_for_bool_tensor(var, item, value):
 
     def idx_not_empty(var, item, value):
         from .framework import Variable
-        from .layers import assign
         from ..tensor import gather_nd, scatter_nd_add
 
         if not isinstance(value, Variable):
-            value = assign(value).cast(var.dtype)
+            value = paddle.tensor.creation.assign(value).cast(var.dtype)
 
         idx = paddle.nonzero(item)
         gather_val = gather_nd(var, idx)

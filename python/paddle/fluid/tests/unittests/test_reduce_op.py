@@ -1030,7 +1030,7 @@ class TestAllAPI(unittest.TestCase):
         for place in self.places:
             with fluid.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = fluid.layers.assign(np_x)
+                x = paddle.assign(np_x)
                 x = fluid.layers.cast(x, 'bool')
 
                 out1 = paddle.all(x)
@@ -1087,7 +1087,7 @@ class TestAnyAPI(unittest.TestCase):
         for place in self.places:
             with fluid.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = fluid.layers.assign(np_x)
+                x = paddle.assign(np_x)
                 x = fluid.layers.cast(x, 'bool')
 
                 out1 = paddle.any(x)

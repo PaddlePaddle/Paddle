@@ -311,7 +311,7 @@ def bmn_loss_func(
         self_bm_mask = fluid.layers.create_global_var(
             shape=[dscale, tscale], value=0, dtype=DATATYPE, persistable=True
         )
-        fluid.layers.assign(bm_mask, self_bm_mask)
+        paddle.assign(bm_mask, self_bm_mask)
         self_bm_mask.stop_gradient = True
         return self_bm_mask
 
@@ -358,7 +358,7 @@ def bmn_loss_func(
         num_l = fluid.layers.cast(paddle.sum(u_lmask), dtype=DATATYPE)
 
         r_m = num_h / num_m
-        u_smmask = fluid.layers.assign(
+        u_smmask = paddle.assign(
             local_random.uniform(
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)
@@ -367,7 +367,7 @@ def bmn_loss_func(
         u_smmask = fluid.layers.cast(x=(u_smmask > (1.0 - r_m)), dtype=DATATYPE)
 
         r_l = num_h / num_l
-        u_slmask = fluid.layers.assign(
+        u_slmask = paddle.assign(
             local_random.uniform(
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)

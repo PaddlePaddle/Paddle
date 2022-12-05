@@ -45,7 +45,7 @@ from .layer_function_generator import (
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
+from .tensor import concat, fill_constant, zeros, tensor_array_to_tensor
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -3118,6 +3118,7 @@ def lod_reset(x, y=None, target_lod=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             x = fluid.layers.data(name='x', shape=[10])
             y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
             out = fluid.layers.lod_reset(x=x, y=y)

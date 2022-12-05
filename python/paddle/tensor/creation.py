@@ -163,7 +163,7 @@ def create_tensor(dtype, name=None, persistable=False):
             default value is False.
 
     Returns:
-        Variable: The tensor to be created according to dtype.
+        Tensor: The tensor to be created according to dtype.
 
     Examples:
         .. code-block:: python
@@ -1832,7 +1832,7 @@ def assign(x, output=None):
 
     Copy value of the :attr:`x` to the :attr:`output`.
 
-    Parameters:
+    Args:
         x (Tensor|np.ndarray|list|tuple|scalar): A Tensor, numpy ndarray, tuple/list of scalar,
             or scalar. Its data type can be float16, float32, float64, int32, int64 or bool. Note: the float64 data will be converted to float32 because of current platform protobuf
             data limitation.

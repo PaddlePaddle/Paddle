@@ -456,7 +456,7 @@ class ModelAverage(Optimizer):
                 sum_3 = self._get_accumulator('sum_3', param)
                 param_restore = self._get_accumulator('restore', param)
 
-                paddle.assign(param, param_restore)
+                paddle.tensor.creation.assign(param, param_restore)
                 total_param = sum_1 + sum_2 + sum_3
                 total_accumulates = num_accumulates + old_num_accumulates
                 total_param = paddle.cast(total_param, dtype='float32')
@@ -464,7 +464,7 @@ class ModelAverage(Optimizer):
                     total_accumulates, dtype='float32'
                 )
                 average_param = total_param / total_accumulates
-                paddle.assign(average_param, param)
+                paddle.tensor.creation.assign(average_param, param)
             try:
                 yield
             finally:
@@ -525,7 +525,7 @@ class ModelAverage(Optimizer):
         if framework._non_static_mode():
             for param in self._parameter_list:
                 param_restore = self._get_accumulator('restore', param)
-                paddle.assign(param_restore, param)
+                paddle.tensor.creation.assign(param_restore, param)
             return
         if executor is None:
             raise RuntimeError(
@@ -546,7 +546,7 @@ class ModelAverage(Optimizer):
             self._get_accumulator('old_num_accumulates', param)
         )
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        paddle.tensor.creation.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
@@ -561,4 +561,4 @@ class ModelAverage(Optimizer):
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)
         grad = block._clone_variable(self._get_accumulator('restore', param))
-        layers.assign(input=grad, output=param)
+        paddle.tensor.creation.assign(input=grad, output=param)
