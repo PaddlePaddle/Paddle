@@ -475,7 +475,7 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
         CeilOrFloor<int, false>(input_long_edge, proposed_tile_long_edge) *
             proposed_tile_long_edge;
 
-    int num_full_tiles = 
+    int num_full_tiles =
         CeilOrFloor<int, false>(input_long_edge, proposed_tile_long_edge);
 
     float cost = num_wasted_threads;

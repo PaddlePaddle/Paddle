@@ -78,7 +78,7 @@ class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):
 
 class TensorRTSubgraphPassSoftMaxTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.softmax(x)
+        return paddle.nn.functional.softmax(x)
 
 
 class TensorRTSubgraphPassSigmoidTest(TensorRTSubgraphPassActivationTest):

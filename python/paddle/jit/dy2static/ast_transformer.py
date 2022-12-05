@@ -127,7 +127,7 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
-            TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
+            TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not

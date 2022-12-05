@@ -126,7 +126,9 @@ class BottleneckBlock(fluid.dygraph.Layer):
         self._num_channels_out = int(num_filters * 4)
 
     def forward(self, inputs):
-        shifts = fluid.layers.temporal_shift(inputs, self.seg_num, 1.0 / 8)
+        shifts = paddle.nn.functional.temporal_shift(
+            inputs, self.seg_num, 1.0 / 8
+        )
         y = self.conv0(shifts)
         conv1 = self.conv1(y)
         conv2 = self.conv2(conv1)
