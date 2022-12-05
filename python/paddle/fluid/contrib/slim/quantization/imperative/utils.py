@@ -63,6 +63,7 @@ fake_quant_output_layers = [
     paddle.nn.quant.subtract,
     paddle.nn.quant.multiply,
     paddle.nn.quant.divide,
+    paddle.nn.quant.matmul,
 ]
 
 fake_quant_leaf_layers = [

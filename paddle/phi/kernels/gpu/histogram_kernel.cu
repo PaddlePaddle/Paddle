@@ -85,7 +85,7 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   const int input_numel = input.numel();
 
-  int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
+  int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
   phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 
@@ -98,8 +98,10 @@ void HistogramKernel(const Context& dev_ctx,
     auto input_x = phi::EigenVector<T>::Flatten(input);
 
     DenseTensor input_min_t, input_max_t;
-    auto* input_min_data = input_min_t.mutable_data<T>({1}, dev_ctx.GetPlace());
-    auto* input_max_data = input_max_t.mutable_data<T>({1}, dev_ctx.GetPlace());
+    input_min_t.Resize({1});
+    input_max_t.Resize({1});
+    auto* input_min_data = dev_ctx.template Alloc<T>(&input_min_t);
+    auto* input_max_data = dev_ctx.template Alloc<T>(&input_max_t);
     auto input_min_scala = phi::EigenScalar<T>::From(input_min_t);
     auto input_max_scala = phi::EigenScalar<T>::From(input_max_t);
 
