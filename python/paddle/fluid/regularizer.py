@@ -69,6 +69,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             # Example1: set Regularizer in optimizer
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
 
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
@@ -183,6 +184,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             # Example1: set Regularizer in optimizer
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
