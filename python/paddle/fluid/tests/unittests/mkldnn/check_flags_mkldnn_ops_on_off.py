@@ -16,6 +16,7 @@ import os
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _enable_legacy_dygraph, _global_flags
 from paddle.fluid.layer_helper import LayerHelper
@@ -48,7 +49,7 @@ def check():
     with fluid.dygraph.guard(fluid.core.CPUPlace()):
         a = fluid.dygraph.to_variable(a_np)
         b = fluid.dygraph.to_variable(b_np)
-        y = fluid.layers.elementwise_add(x=a, y=b)
+        y = paddle.add(x=a, y=b)
         y = fluid.layers.matmul(x=y, y=b, transpose_y=True)
         res1 = func(y)
 
