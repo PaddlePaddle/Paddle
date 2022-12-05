@@ -53,7 +53,7 @@ class TrtConvertLogicalTest(TrtLayerAutoScanTest):
                             "op_inputs": {"X": ["input_data2"]},
                             "op_outputs": {"Out": ["cast_output_data3"]},
                             "op_attrs": dics[1],
-                            "outputs_dtype": {"cast_output_data1": np.bool},
+                            "outputs_dtype": {"cast_output_data3": np.bool},
                         },
                         {
                             "op_type": op_type,
