@@ -49,10 +49,8 @@ def convolution_net(
     )
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    accuracy = paddle.static.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
-
-
 
 
 def train(
@@ -241,25 +239,6 @@ class TestUnderstandSentiment(unittest.TestCase):
                 parallel=True,
             )
 
-    @unittest.skip(reason="make CI faster")
-    def test_stacked_lstm_cpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=False,
-                save_dirname="understand_sentiment_stacked_lstm.inference.model",
-            )
-
-    def test_stacked_lstm_cpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=False,
-                parallel=True,
-            )
-
     def test_conv_gpu(self):
         with self.new_program_scope():
             main(
@@ -274,25 +253,6 @@ class TestUnderstandSentiment(unittest.TestCase):
             main(
                 self.word_dict,
                 net_method=convolution_net,
-                use_cuda=True,
-                parallel=True,
-            )
-
-    @unittest.skip(reason="make CI faster")
-    def test_stacked_lstm_gpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=True,
-                save_dirname="understand_sentiment_stacked_lstm.inference.model",
-            )
-
-    def test_stacked_lstm_gpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
                 use_cuda=True,
                 parallel=True,
             )

@@ -71,6 +71,7 @@ list(
   preln_residual_bias.cc
   c_allreduce_op.cc
   top_k_op.cc
+  range_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
   rnn_op.cc
