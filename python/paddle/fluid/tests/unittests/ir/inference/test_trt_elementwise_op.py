@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
@@ -79,7 +80,7 @@ class TensorRTSubgraphPassElementwiseBroadcastTest3(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_div(x=data1, y=data2, axis=0)
+        return paddle.tensor.math._divide_with_axis(x=data1, y=data2, axis=0)
 
 
 if __name__ == "__main__":

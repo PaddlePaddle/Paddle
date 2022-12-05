@@ -984,6 +984,49 @@ def multiply(x, y, name=None):
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_name="Undifined"):
+    assert op_name in ["add", "subtract", "multiply", "divide"], (
+        "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
+        % op_name
+    )
+    op = getattr(paddle, op_name)
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if axis == -1 or x_shape == y_shape:
+        return op(x, y, name)
+    if len(x_shape) > len(y_shape):
+        padding = len(x_shape) - len(y_shape) - axis
+        assert padding >= 0, (
+            "The argument axis is out of range (expected to be in range of [0, %d], but got %d).\n"
+            % (len(x_shape) - len(y_shape), axis)
+        )
+        y = y.reshape(([1] * axis + y_shape + [1] * padding))
+    else:
+        padding = len(y_shape) - len(x_shape) - axis
+        assert padding >= 0, (
+            "The argument axis is out of range (expected to be in range of [0, %d], but got %d).\n"
+            % (len(y_shape) - len(x_shape), axis)
+        )
+        x = x.reshape(([1] * axis + x_shape + [1] * padding))
+    return op(x, y, name)
+
+
+def _add_with_axis(x, y, axis=-1, name=None):
+    return _elementwise_op_with_axis(x, y, axis, name, "add")
+
+
+def _subtract_with_axis(x, y, axis=-1, name=None):
+    return _elementwise_op_with_axis(x, y, axis, name, "subtract")
+
+
+def _multiply_with_axis(x, y, axis=-1, name=None):
+    return _elementwise_op_with_axis(x, y, axis, name, "multiply")
+
+
+def _divide_with_axis(x, y, axis=-1, name=None):
+    return _elementwise_op_with_axis(x, y, axis, name, "divide")
+
+
 def maximum(x, y, name=None):
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
