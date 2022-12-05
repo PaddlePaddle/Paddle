@@ -75,7 +75,7 @@ class DynamicGRU(fluid.dygraph.Layer):
         res = []
         for i in range(inputs.shape[1]):
             if self.is_reverse:
-                j = fluid.layers.shape(inputs)[1] - 1 - i
+                j = paddle.shape(inputs)[1] - 1 - i
             else:
                 j = i
 

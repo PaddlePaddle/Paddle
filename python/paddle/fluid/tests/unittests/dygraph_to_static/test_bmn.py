@@ -321,9 +321,7 @@ def bmn_loss_func(
             gt_label = paddle.reshape(x=gt_label, shape=[-1])
             gt_label.stop_gradient = True
             pmask = fluid.layers.cast(x=(gt_label > 0.5), dtype=DATATYPE)
-            num_entries = fluid.layers.cast(
-                fluid.layers.shape(pmask), dtype=DATATYPE
-            )
+            num_entries = fluid.layers.cast(paddle.shape(pmask), dtype=DATATYPE)
             num_positive = fluid.layers.cast(paddle.sum(pmask), dtype=DATATYPE)
             ratio = num_entries / num_positive
             coef_0 = 0.5 * ratio / (ratio - 1)

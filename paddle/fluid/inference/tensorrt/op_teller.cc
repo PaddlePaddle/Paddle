@@ -337,6 +337,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "range") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
     if (op_type == "sign") {
 #if IS_TRT_VERSION_GE(8200)
       if (!with_dynamic_shape) {
@@ -1226,17 +1232,26 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      auto* block = desc.Block();
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto input_type = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_GE(8400)
+      if (dtype == 0 ||
+          (dtype == -1 && input_type == framework::proto::VarType::BOOL)) {
+        VLOG(3) << "the fill_any_like supports input of BOOL by trt8.4 above";
+        return true;
+      }
+#endif
       if (dtype != -1 && dtype != 2 && dtype != 5) {
-        VLOG(3) << "the fill_any_like only supports int32 and float32";
+        VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                   "trt8.4 below";
         return false;
       }
       if (dtype == -1) {
-        auto* block = desc.Block();
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        auto input_type = x_var_desc->GetDataType();
         if (input_type != framework::proto::VarType::INT32 &&
             input_type != framework::proto::VarType::FP32) {
-          VLOG(3) << "the fill_any_like only supports int32 and float32";
+          VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                     "trt8.4 below";
           return false;
         }
       }
@@ -2360,6 +2375,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2498,6 +2514,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
