@@ -181,8 +181,6 @@ if (WITH_ASCEND_CL)
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
-# op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
-# op_library(array_to_lod_tensor_op DEPS lod_rank_table_op)
 # op_library(unsqueeze_op DEPS reshape_op)
 # op_library(squeeze_op DEPS reshape_op)
 # op_library(flatten_op DEPS reshape_op)

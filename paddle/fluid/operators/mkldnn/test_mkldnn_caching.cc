@@ -52,8 +52,7 @@ class CacheTester {
     // Clear oneDNN cache
     auto &pool = platform::DeviceContextPool::Instance();
     platform::CPUPlace place;
-    onednn_dev_ctx_ =
-        dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
+    onednn_dev_ctx_ = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
@@ -63,7 +62,7 @@ class CacheTester {
   }
 
  private:
-  platform::MKLDNNDeviceContext *onednn_dev_ctx_;
+  phi::OneDNNContext *onednn_dev_ctx_;
 };
 
 template <typename T>

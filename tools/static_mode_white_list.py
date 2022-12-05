@@ -314,7 +314,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_load_op',
     'test_load_vars_shape_check',
     'test_locality_aware_nms_op',
-    'test_lod_append_op',
     'test_lod_array_length_op',
     'test_lod_rank_table',
     'test_lod_tensor_array_ops',

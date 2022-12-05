@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import error
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import unwrap
+from paddle.jit.dy2static import error
+from paddle.jit.dy2static.origin_info import unwrap
 
 
 def inner_func():
@@ -68,7 +68,7 @@ def func_decorated_by_other_2():
 class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def __init__(self, fc_size=20):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(fc_size, fc_size)
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
 
     @paddle.jit.to_static(
         input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')]

@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-from test_generate_proposals_op import clip_tiled_boxes, box_coder, nms
+from test_generate_proposals_op import box_coder, clip_tiled_boxes, nms
+
+import paddle
 
 
 def python_generate_proposals_v2(
