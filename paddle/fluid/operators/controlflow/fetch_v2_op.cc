@@ -41,12 +41,11 @@ static void DeepCopy(const phi::DenseTensor &src_item,
       phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
-      framework::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::TransDataLayoutFromOneDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? phi::DataLayout::kNCHW
-              : paddle::platform::MKLDNNDeviceContext::tls()
-                    .get_cur_paddle_data_layout(),
+              : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           src_item,
           &out,
           platform::CPUPlace());
@@ -201,10 +200,12 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(phi::DenseTensor) The resulted phi::DenseTensor which is "
+             "expected to return "
              "to users.");
     AddOutput("Out",
-              "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
+              "(vector<phi::DenseTensor>) A fetching list of phi::DenseTensor "
+              "which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddAttr<bool>("deepcopy", "(bool) Whether deep copy is required.")

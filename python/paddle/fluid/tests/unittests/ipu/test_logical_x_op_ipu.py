@@ -32,7 +32,7 @@ class TestLogicalAnd(IPUOpTest):
         return False
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.logical_and
+        self.op = paddle.logical_and
 
     def set_op_attrs(self):
         self.attrs = {}

@@ -128,7 +128,16 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
-    ResetHolder(allocator->Allocate(bytes));
+    auto holder = allocator->Allocate(bytes);
+    if (holder_) {
+      PADDLE_ENFORCE_LE(
+          numel() * static_cast<int64_t>(SizeOf(dtype)) +
+              static_cast<int64_t>(meta_.offset),
+          static_cast<int64_t>(holder->size()),
+          phi::errors::InvalidArgument(
+              "The size of Holder is not enough to store the Tensor."));
+    }
+    holder_ = std::move(holder);
   }
 
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -200,7 +209,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
-  meta_.use_cudnn = meta.use_cudnn;
+  meta_.use_gpudnn = meta.use_gpudnn;
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the

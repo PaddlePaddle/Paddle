@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from decorator_helper import prog_scope
+from gradient_checker import grad_check
+from op_test import OpTest, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
-from gradient_checker import grad_check
-from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 
 @skip_check_grad_ci(
@@ -71,7 +73,7 @@ class TestCholeskyOp(OpTest):
         root_data = self.root_data[..., :3, :3]
         prog = fluid.Program()
         with fluid.program_guard(prog):
-            root = layers.create_parameter(
+            root = paddle.create_parameter(
                 dtype=root_data.dtype, shape=root_data.shape
             )
             root_t = paddle.transpose(root, self.trans_dims)

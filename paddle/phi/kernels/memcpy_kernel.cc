@@ -25,32 +25,6 @@ namespace phi {
 
 static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <>
-void MemcpyH2DKernel(const GPUContext& dev_ctx,
-                     const DenseTensor& x,
-                     int dst_place_type,
-                     DenseTensor* out) {
-  PADDLE_ENFORCE_GE(
-      dst_place_type,
-      0,
-      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
-                         dst_place_type));
-  PADDLE_ENFORCE_LE(
-      dst_place_type,
-      3,
-      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
-                         dst_place_type));
-
-  auto stream = dev_ctx.stream();
-  out->mutable_data(dev_ctx.GetPlace(),
-                    x.dtype(),
-                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-
-  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-}
-#endif
-
 template <typename Context>
 void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -92,7 +66,7 @@ void MemcpyD2HKernel(const Context& dev_ctx,
       break;
     }
 
-    case 1:
+    case 1: /* CUDAPinnedPlace */
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       // paddle::memory::Copy use async copy for GPUPinnedPlace
       dev_ctx.Wait();

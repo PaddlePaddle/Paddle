@@ -1177,7 +1177,7 @@ def multi_head_attention(
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
             weights = layers.dropout(
                 weights,
@@ -1585,14 +1585,14 @@ def transformer(
             epsilon=label_smooth_eps,
         )
 
-    cost = layers.softmax_with_cross_entropy(
+    cost = paddle.nn.functional.softmax_with_cross_entropy(
         logits=paddle.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
         soft_label=True if label_smooth_eps else False,
     )
     weighted_cost = cost * weights
-    sum_cost = layers.reduce_sum(weighted_cost)
-    token_num = layers.reduce_sum(weights)
+    sum_cost = paddle.sum(weighted_cost)
+    token_num = paddle.sum(weights)
     avg_cost = sum_cost / token_num
     avg_cost.stop_gradient = True
     return sum_cost, avg_cost, predict, token_num
@@ -1715,7 +1715,7 @@ def wrap_decoder(
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
-        predict = layers.softmax(predict)
+        predict = paddle.nn.functional.softmax(predict)
     return predict
 
 
@@ -1762,7 +1762,7 @@ def fast_decode(
         step_idx = layers.fill_constant(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
-        cond = layers.less_than(x=step_idx, y=max_len)
+        cond = paddle.less_than(x=step_idx, y=max_len)
         while_op = layers.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
@@ -1833,11 +1833,11 @@ def fast_decode(
             )
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
 
-            topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size
+            topk_scores, topk_indices = paddle.topk(
+                x=paddle.nn.functional.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
@@ -1861,9 +1861,9 @@ def fast_decode(
             for i in range(n_layer):
                 layers.assign(pre_caches[i]["k"], caches[i]["k"])
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
-            length_cond = layers.less_than(x=step_idx, y=max_len)
+            length_cond = paddle.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
-            layers.logical_and(x=length_cond, y=finish_cond, out=cond)
+            paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 
         finished_ids, finished_scores = layers.beam_search_decode(
             ids, scores, beam_size=beam_size, end_id=eos_idx

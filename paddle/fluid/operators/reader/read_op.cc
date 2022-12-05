@@ -171,7 +171,7 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Reader", "(ReaderHolder) The executed reader.");
-    AddOutput("Out", "(LoDTensor) The output data.").AsDuplicable();
+    AddOutput("Out", "(phi::DenseTensor) The output data.").AsDuplicable();
     AddAttr<bool>(
         "throw_eof_exp",
         "If set true, an exception will be thrown when the Reader "
