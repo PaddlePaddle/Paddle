@@ -30,7 +30,6 @@ from ..fluid.data_feeder import (
     convert_dtype,
 )
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ..fluid.framework import _in_legacy_dygraph
 from ..fluid.layers import elementwise_sub, utils
 from ..framework import (
     LayerHelper,

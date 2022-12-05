@@ -34,9 +34,7 @@ class MkldnnInplacePassTest(InferencePassTest):
             )
             softmax_out = paddle.nn.functional.softmax(conv_out_1)
             relu_out = fluid.layers.relu(conv_out_1)
-            eltwise_out = fluid.layers.elementwise_add(
-                softmax_out, relu_out, axis=-1
-            )
+            eltwise_out = paddle.add(softmax_out, relu_out)
 
         self.pass_name = 'mkldnn_inplace_pass'
         self.feeds = {
