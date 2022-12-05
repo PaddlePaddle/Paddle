@@ -2177,16 +2177,24 @@ def batch_norm(
     use_global_stats=False,
 ):
     r"""
+
     **Batch Normalization Layer**
+
     Can be used as a normalizer function for convolution or fully_connected operations.
     The required data format for this layer is one of the following:
+
     1. NHWC `[batch, in_height, in_width, in_channels]`
+
     2. NCHW `[batch, in_channels, in_height, in_width]`
+
     Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
+
     :math:input is the input features over a mini-batch.
+
     ..  math::
+
         \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
         \ mini-batch\ mean \\\\
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
@@ -2194,22 +2202,30 @@ def batch_norm(
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
         moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
         moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
+
+
     moving_mean is global mean and moving_var is global variance.
+
     When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global (or running) statistics. (It usually got from the
     pre-trained model.)
     The training and testing (or inference) have the same behavior:
+
     ..  math::
+
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use
         sync_batch_norm automatically.
         `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
+
     Args:
         input(Tensor): The rank of input Tensor can be 2, 3, 4, 5. The data type
             is float16 or float32 or float64.
@@ -2258,9 +2274,13 @@ def batch_norm(
     Returns:
         A Tensor which is the result after applying batch normalization on the input,
         has same shape and data type with input.
+
     Examples:
+
         .. code-block:: python
+
             import paddle
+
             paddle.enable_static()
             x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = paddle.static.nn.fc(x=x, size=200)
