@@ -313,7 +313,7 @@ class YOLOv3(fluid.dygraph.Layer):
         for i, out in enumerate(self.outputs):
             anchor_mask = cfg.anchor_masks[i]
             if self.is_train:
-                loss = fluid.layers.yolov3_loss(
+                loss = paddle.vision.ops.yolo_loss(
                     x=out,
                     gt_box=self.gtbox,
                     gt_label=self.gtlabel,

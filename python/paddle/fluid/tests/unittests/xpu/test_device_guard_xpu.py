@@ -134,7 +134,7 @@ class TestDeviceGuard(unittest.TestCase):
             anchor_mask = [0, 1, 2]
             with paddle.static.device_guard("xpu"):
                 # yolov3_loss only has cpu kernel, so its cpu kernel will be executed
-                loss = fluid.layers.yolov3_loss(
+                loss = paddle.vision.ops.yolo_loss(
                     x=x,
                     gt_box=gt_box,
                     gt_label=gt_label,
