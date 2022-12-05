@@ -31,6 +31,57 @@ namespace funcs {
 
 enum DataLoaderType { kMixed = 1, kAllBroadcast = 2, kAllElementwise = 3 };
 
+template <typename InT, typename OutT, int Arity>
+struct LoaderTypeClassifier {
+ public:
+  int numel{0};
+  int vec_size{1};
+  int broadcast_num{0};
+  bool all_elementwise{true};
+  phi::Array<int, Arity> use_broadcast;
+  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+
+  LoaderTypeClassifier() {}
+  explicit LoaderTypeClassifier(const std::vector<const DenseTensor *> &ins,
+                                std::vector<DenseTensor *> *outs) {
+    out_vec_size =
+        std::min(4, phi::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>()));
+    for (auto i = 1; i < outs->size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          (*outs)[i]->dims(),
+          (*outs)[0]->dims(),
+          phi::errors::InvalidArgument(
+              "The shape of each output tensor shall be identical yet, but "
+              "%d-th output tensor`s shape is not.",
+              i));
+      out_vec_size = std::min(
+          phi::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()), out_vec_size);
+    }
+
+    numel = (*outs)[0]->numel();
+    for (int i = 0; i < Arity; ++i) {
+      auto in_data = ins[i]->data<InT>();
+      ins_data[i] = (const _ptr_ InT *)(in_data);
+
+      bool is_same_dim = ins[i]->numel() == numel;
+      if (is_same_dim) {
+        use_broadcast[i] = false;
+        auto temp_size = phi::GetVectorizedSize<InT>(in_data);
+        in_vec_size = std::min(temp_size, in_vec_size);
+      } else {
+        use_broadcast[i] = true;
+        broadcast_num++;
+      }
+      all_elementwise &= is_same_dim;
+    }
+    vec_size = std::min(out_vec_size, in_vec_size);
+  }
+
+ private:
+  int in_vec_size{4};
+  int out_vec_size{4};
+};
+
 template <typename InT, typename OutT>
 int GetVecsize(const std::vector<const DenseTensor *> &ins,
                std::vector<DenseTensor *> *outs,
@@ -50,7 +101,6 @@ int GetVecsize(const std::vector<const DenseTensor *> &ins,
         phi::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()), out_vec_size);
   }
 
-  bool is_same_dim = true;
   bool is_elementwise = true;
   for (auto *in : ins) {
     auto temp_size = phi::GetVectorizedSize<InT>(in->data<InT>());
@@ -115,7 +165,7 @@ struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, kAllElementwise> {
       using VecType = phi::kps::details::VectorType<T, VecSize>;
       VecType vec_temp[Arity];
 
-      int thread_offset = threadIdx.x * VecSize + block_offset;
+      int thread_offset = threadIdx.x + blockIdx.x * blockDim.x;
 #pragma unroll
       for (int i = 0; i < Arity; ++i) {
         const VecType *__restrict__ vec_input =
@@ -341,34 +391,14 @@ void LaunchBroadcastKernel(
     std::vector<DenseTensor *> *outs,
     Functor func,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
-    bool is_elementwise = false) {
-  int broadcast_num = 0;
-  int numel = (*outs)[0]->numel();
-  phi::Array<int, Arity> use_broadcast;
-  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+    const LoaderTypeClassifier<InT, OutT, Arity> &loader_classifier) {
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
-
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 
-  if (is_elementwise) {
-    for (int i = 0; i < Arity; ++i) {
-      ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
-    }
-  } else {
-    for (int i = 0; i < Arity; ++i) {
-      if (ins[i]->numel() != numel) {
-        broadcast_num++;
-        use_broadcast[i] = true;
-      } else {
-        use_broadcast[i] = false;
-      }
-      ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
-    }
-  }
-
 #ifdef PADDLE_WITH_XPU_KP
+  int numel = (*outs)[0]->numel();
   const int threads = 64;
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
@@ -377,9 +407,9 @@ void LaunchBroadcastKernel(
   int tail_tid = numel % (read_lens * threads);
 
   VectorizedBroadcastKernel<Functor, InT, OutT, Arity, NumOuts, VecSize, false>
-      <<<blocks, threads, 0, stream>>>(ins_data,
+      <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                        outs_data,
-                                       use_broadcast,
+                                       loader_classifier.use_broadcast,
                                        numel,
                                        configs,
                                        main_offset,
@@ -387,6 +417,7 @@ void LaunchBroadcastKernel(
                                        read_lens,
                                        func);
 #else
+  const auto &numel = loader_classifier.numel;
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   auto stream = ctx.stream();
@@ -395,8 +426,10 @@ void LaunchBroadcastKernel(
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   int tail_tid = numel % (VecSize * gpu_config.GetBlockSize());
+  std::cout << "numel : " << numel << std::endl;
+  std::cout << "main_offset : " << main_offset << std::endl;
 
-  if (is_elementwise) {
+  if (loader_classifier.all_elementwise) {
     VectorizedBroadcastKernel<Functor,
                               InT,
                               OutT,
@@ -404,16 +437,16 @@ void LaunchBroadcastKernel(
                               NumOuts,
                               VecSize,
                               kAllElementwise>
-        <<<blocks, threads, 0, stream>>>(ins_data,
+        <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
-                                         use_broadcast,
+                                         loader_classifier.use_broadcast,
                                          numel,
                                          configs,
                                          main_offset,
                                          tail_tid,
                                          VecSize,
                                          func);
-  } else if (broadcast_num > (Arity >> 1)) {
+  } else if (loader_classifier.broadcast_num > (Arity >> 1)) {
     VectorizedBroadcastKernel<Functor,
                               InT,
                               OutT,
@@ -421,9 +454,9 @@ void LaunchBroadcastKernel(
                               NumOuts,
                               VecSize,
                               (Arity > 1) ? kAllBroadcast : kMixed>
-        <<<blocks, threads, 0, stream>>>(ins_data,
+        <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
-                                         use_broadcast,
+                                         loader_classifier.use_broadcast,
                                          numel,
                                          configs,
                                          main_offset,
@@ -438,9 +471,9 @@ void LaunchBroadcastKernel(
                               NumOuts,
                               VecSize,
                               kMixed>
-        <<<blocks, threads, 0, stream>>>(ins_data,
+        <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
-                                         use_broadcast,
+                                         loader_classifier.use_broadcast,
                                          numel,
                                          configs,
                                          main_offset,
@@ -889,8 +922,8 @@ void BroadcastKernelForDifferentVecSize(
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
   if (use_int64_index_kernel) {
-    int vec_size = GetVecsize<InT, OutT>(ins, outs);
-    switch (vec_size) {
+    auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>(ins, outs);
+    switch (loader_classifier.vec_size) {
       case VecSizeL: {
         LaunchBroadcastKernelWithInt64IndexHelper<InT,
                                                   OutT,
@@ -932,7 +965,7 @@ void BroadcastKernelForDifferentVecSize(
       }
       default: {
         PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupported vectorized size: %d!", vec_size));
+            "Unsupported vectorized size: %d!", loader_classifier.vec_size));
         break;
       }
     }
@@ -941,8 +974,8 @@ void BroadcastKernelForDifferentVecSize(
 #endif
 
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
-
 #ifdef PADDLE_WITH_XPU_KP
+  auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>();
   const auto dims_simplifier =
       BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
   PADDLE_ENFORCE_EQ(
@@ -963,8 +996,8 @@ void BroadcastKernelForDifferentVecSize(
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
   bool all_elementwise = true;
-  int vec_size = GetVecsize<InT, OutT>(ins, outs, &all_elementwise);
-  if (!all_elementwise) {
+  auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>(ins, outs);
+  if (!loader_classifier.all_elementwise) {
     const auto dims_simplifier =
         BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
 
@@ -980,25 +1013,25 @@ void BroadcastKernelForDifferentVecSize(
     }
   }
 #endif
-  switch (vec_size) {
+  switch (loader_classifier.vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeL>(
-          ctx, ins, outs, func, configs, all_elementwise);
+          ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     case VecSizeM: {
       LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeM>(
-          ctx, ins, outs, func, configs, all_elementwise);
+          ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     case VecSizeS: {
       LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeS>(
-          ctx, ins, outs, func, configs, all_elementwise);
+          ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d!", vec_size));
+          "Unsupported vectorized size: %d!", loader_classifier.vec_size));
       break;
     }
   }

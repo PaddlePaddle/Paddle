@@ -110,39 +110,36 @@ struct BroadcastDimsSimplifier {
       std::swap(in_dims[swap_idx], in_dims[0]);
     }
 
-    // if (VLOG_IS_ON(6)) {
-    //   LogOutMergedDims(ins, dims);
-    // }
+    if (VLOG_IS_ON(6)) {
+      LogOutMergedDims(ins, dims);
+    }
   }
 
  private:
-  // void LogOutMergedDims(const std::vector<const DenseTensor *> &ins,
-  //                      const phi::DDim &origin_out_dims) {
-  //   for (size_t i = 0; i < N; ++i) {
-  //     VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
-  //             << "}, simplied_dims={"
-  //             << ReversedVectorToString<int64_t>(in_dims[i])
-  //             << "}";
-  //   }
-  //   VLOG(6) << "output: origin_dims={" << origin_out_dims
-  //           << "}, simplied_dims={"
-  //           << ReversedVectorToString<int64_t>(out_dims) << "}";
-  // }
+  void LogOutMergedDims(const std::vector<const DenseTensor *> &ins,
+                        const phi::DDim &origin_out_dims) {
+    for (int i = 0; i < N; ++i) {
+      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+              << "}, simplied_dims={" << ReversedVectorToString(in_dims[i])
+              << "}";
+    }
+    VLOG(6) << "output: origin_dims={" << origin_out_dims
+            << "}, simplied_dims={" << ReversedVectorToString(out_dims) << "}";
+  }
 
-  // std::string ReversedVectorToString(const std::vector<int64_t> &reversed_v)
-  // {
-  //   std::stringstream ss;
-  //   bool is_last = true;
-  //   for (int i = reversed_v.size() - 1; i >= 0; --i) {
-  //     if (is_last) {
-  //       ss << reversed_v[i];
-  //       is_last = false;
-  //     } else {
-  //       ss << ", " << reversed_v[i];
-  //     }
-  //   }
-  //   return ss.str();
-  // }
+  std::string ReversedVectorToString(const std::vector<int64_t> &reversed_v) {
+    std::stringstream ss;
+    bool is_last = true;
+    for (int i = reversed_v.size() - 1; i >= 0; --i) {
+      if (is_last) {
+        ss << reversed_v[i];
+        is_last = false;
+      } else {
+        ss << ", " << reversed_v[i];
+      }
+    }
+    return ss.str();
+  }
 
   bool NeedBroadcast(const std::vector<const DenseTensor *> &ins,
                      const phi::DDim &dims) {
