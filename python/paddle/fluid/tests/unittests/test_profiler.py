@@ -59,7 +59,7 @@ class TestProfiler(unittest.TestCase):
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = paddle.mean(cost)
-            batch_size = fluid.layers.create_tensor(dtype='int64')
+            batch_size = paddle.tensor.create_tensor(dtype='int64')
             batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size
             )
