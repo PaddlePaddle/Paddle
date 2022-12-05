@@ -564,9 +564,7 @@ void DiagInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
 
   if (x_dims.size() <= 1) {
-    VLOG(0) << "x_dims.size is " << x_dims.size();
     int64_t size_ = (x_dims.size() == 1UL ?: x_dims[0], 1) + std::abs(offset);
-    VLOG(0) << "altered size is " << size_;
     out->set_dims({size_, size_});
     out->set_dtype(x.dtype());
   } else if (x_dims.size() == 2UL) {
