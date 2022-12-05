@@ -337,6 +337,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "range") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
     if (op_type == "sign") {
 #if IS_TRT_VERSION_GE(8200)
       if (!with_dynamic_shape) {
@@ -2369,6 +2375,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2507,6 +2514,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
