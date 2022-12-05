@@ -29,7 +29,6 @@ from paddle.fluid.contrib.slim.quantization import *
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 
-
 from imperative_test_utils import (
     fix_model_dict,
     ImperativeLenet,

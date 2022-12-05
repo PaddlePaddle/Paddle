@@ -35,7 +35,6 @@ from imperative_test_utils import (
     ImperativeLenetWithSkipQuant,
 )
 
-
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})

@@ -19,6 +19,7 @@ import unittest
 import logging
 import warnings
 import tempfile
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
