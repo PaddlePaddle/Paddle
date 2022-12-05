@@ -14,7 +14,7 @@
 
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from paddle.jit.dy2static.static_analysis import (
     AstNodeWrapper,
     StaticAnalysisVisitor,
 )

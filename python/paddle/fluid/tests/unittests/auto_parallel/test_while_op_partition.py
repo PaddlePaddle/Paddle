@@ -171,7 +171,7 @@ def get_program():
         #                       "dims_mapping": [-1, -1, -1]
         #                   })
 
-        cond = fluid.layers.less_than(x=i, y=loop_len)
+        cond = paddle.less_than(x=i, y=loop_len)
         auto.shard_tensor(cond, _g_process_mesh, [None])
 
         while_op = fluid.layers.While(cond=cond)
@@ -191,7 +191,7 @@ def get_program():
             # 更新循环条件
             i = fluid.layers.increment(x=i, value=1, in_place=True)
             fluid.layers.array_write(cur_pred, array=input_array, i=i)
-            fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+            paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
         end_pred = fluid.layers.array_read(array=input_array, i=i)
         auto.shard_tensor(end_pred, _g_process_mesh, [None, None, None])

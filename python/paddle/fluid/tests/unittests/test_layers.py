@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
     program_guard,
 )
 from paddle.fluid.initializer import Constant
-from paddle.fluid.layers.device import get_places
 from paddle.fluid.param_attr import ParamAttr
 from paddle.tensor import random
 
@@ -120,50 +119,6 @@ class TestLayer(LayerTest):
             np.testing.assert_array_equal(ret.numpy().shape, [3, 2])
             ret = custom(x, do_linear2=True)
             np.testing.assert_array_equal(ret.numpy().shape, [3, 1])
-
-    def test_dropout(self):
-        inp = np.ones([3, 32, 32], dtype='float32')
-        with self.static_graph():
-            t = layers.data(
-                name='data',
-                shape=[3, 32, 32],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
-            ret = dropout(t)
-            ret2 = fluid.layers.dropout(
-                t, dropout_prob=0.35, seed=1, is_test=False
-            )
-            static_ret, static_ret2 = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[ret, ret2]
-            )
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                t = base.to_variable(inp)
-                dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
-                dy_eager_ret = dropout(t)
-                dy_eager_ret2 = fluid.layers.dropout(
-                    t, dropout_prob=0.35, seed=1, is_test=False
-                )
-                dy_eager_ret_value = dy_eager_ret.numpy()
-                dy_eager_ret2_value = dy_eager_ret2.numpy()
-
-            t = base.to_variable(inp)
-            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
-            dy_ret = dropout(t)
-            dy_ret2 = fluid.layers.dropout(
-                t, dropout_prob=0.35, seed=1, is_test=False
-            )
-            dy_ret_value = dy_ret.numpy()
-            dy_ret2_value = dy_ret2.numpy()
-
-        np.testing.assert_array_equal(dy_eager_ret_value, dy_eager_ret2_value)
-        np.testing.assert_array_equal(static_ret, dy_eager_ret_value)
-
-        np.testing.assert_array_equal(static_ret, static_ret2)
-        np.testing.assert_array_equal(dy_ret_value, dy_ret2_value)
-        np.testing.assert_array_equal(static_ret, dy_ret_value)
 
     def test_linear(self):
         inp = np.ones([3, 32, 32], dtype='float32')
@@ -284,107 +239,6 @@ class TestLayer(LayerTest):
                 linear_ret2 = linear(inp)
 
             self.assertRaises(TypeError, test_type)
-
-    def test_layer_norm(self):
-        inp = np.ones([3, 32, 32], dtype='float32')
-        with self.static_graph():
-            t = layers.data(
-                name='data',
-                shape=[3, 32, 32],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            ret = layers.layer_norm(
-                t,
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                act='sigmoid',
-            )
-            static_ret = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[ret]
-            )[0]
-        with self.static_graph():
-            t = layers.data(
-                name='data',
-                shape=[3, 32, 32],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            lm = nn.LayerNorm(
-                normalized_shape=[32, 32],
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                act='sigmoid',
-            )
-            ret = lm(t)
-            static_ret2 = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[ret]
-            )[0]
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                lm = nn.LayerNorm(
-                    normalized_shape=[32, 32],
-                    bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                    act='sigmoid',
-                )
-                dy_eager_ret = lm(base.to_variable(inp))
-                dy_eager_ret_value = dy_eager_ret.numpy()
-
-            lm = nn.LayerNorm(
-                normalized_shape=[32, 32],
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                act='sigmoid',
-            )
-            dy_ret = lm(base.to_variable(inp))
-            dy_ret_value = dy_ret.numpy()
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                lm = nn.LayerNorm(
-                    normalized_shape=[32, 32],
-                    shift=False,
-                    scale=False,
-                    param_attr=fluid.initializer.ConstantInitializer(value=1),
-                    bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                    act='sigmoid',
-                )
-                lm(base.to_variable(inp))
-
-                self.assertFalse(hasattr(lm, "_scale_w"))
-                self.assertFalse(hasattr(lm, "_bias_w"))
-
-            lm = nn.LayerNorm(
-                normalized_shape=[32, 32],
-                shift=False,
-                scale=False,
-                param_attr=fluid.initializer.ConstantInitializer(value=1),
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                act='sigmoid',
-            )
-            lm(base.to_variable(inp))
-
-            self.assertFalse(hasattr(lm, "_scale_w"))
-            self.assertFalse(hasattr(lm, "_bias_w"))
-
-        np.testing.assert_array_equal(static_ret, static_ret2)
-        np.testing.assert_array_equal(dy_eager_ret_value, static_ret2)
-        np.testing.assert_array_equal(dy_ret_value, static_ret2)
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                lm = nn.LayerNorm(
-                    normalized_shape=[16, 32],
-                    bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                    act='sigmoid',
-                )
-                with self.assertRaises(ValueError):
-                    lm(base.to_variable(inp))
-
-            lm = nn.LayerNorm(
-                normalized_shape=[16, 32],
-                bias_attr=fluid.initializer.ConstantInitializer(value=1),
-                act='sigmoid',
-            )
-            with self.assertRaises(ValueError):
-                lm(base.to_variable(inp))
 
     def test_SyncBatchNorm(self):
         if core.is_compiled_with_cuda():
@@ -619,11 +473,11 @@ class TestLayer(LayerTest):
             t5 = layers.data(name='t5', shape=[3, 3], dtype='float32')
             t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
 
-            ret = layers.elementwise_add(t, t2)
+            ret = paddle.add(t, t2)
             ret = paddle.pow(ret, t3)
-            ret = layers.elementwise_div(ret, t4)
-            ret = layers.elementwise_sub(ret, t5)
-            ret = layers.elementwise_mul(ret, t6)
+            ret = paddle.divide(ret, t4)
+            ret = paddle.subtract(ret, t5)
+            ret = paddle.multiply(ret, t6)
 
             static_ret = self.get_static_graph_result(
                 feed={'t': n, 't2': n2, 't3': n3, 't4': n4, 't5': n5, 't6': n6},
@@ -632,18 +486,18 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+                ret = paddle.add(to_variable(n), to_variable(n2))
                 ret = paddle.pow(ret, to_variable(n3))
-                ret = layers.elementwise_div(ret, to_variable(n4))
-                ret = layers.elementwise_sub(ret, to_variable(n5))
-                dy_eager_ret = layers.elementwise_mul(ret, to_variable(n6))
+                ret = paddle.divide(ret, to_variable(n4))
+                ret = paddle.subtract(ret, to_variable(n5))
+                dy_eager_ret = paddle.multiply(ret, to_variable(n6))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
-            ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+            ret = paddle.add(to_variable(n), to_variable(n2))
             ret = paddle.pow(ret, to_variable(n3))
-            ret = layers.elementwise_div(ret, to_variable(n4))
-            ret = layers.elementwise_sub(ret, to_variable(n5))
-            dy_ret = layers.elementwise_mul(ret, to_variable(n6))
+            ret = paddle.divide(ret, to_variable(n4))
+            ret = paddle.subtract(ret, to_variable(n5))
+            dy_ret = paddle.multiply(ret, to_variable(n6))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -2428,7 +2282,7 @@ class TestLayer(LayerTest):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
             def cond(i):
-                return layers.less_than(i, ten)
+                return paddle.less_than(i, ten)
 
             def body(i):
                 return i + 1
@@ -2441,7 +2295,7 @@ class TestLayer(LayerTest):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
             def cond1(i):
-                return layers.less_than(i, ten)
+                return paddle.less_than(i, ten)
 
             def body1(i):
                 return i + 1
@@ -2469,7 +2323,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             a = layers.data(name='a', shape=[1], dtype='int64')
             b = layers.data(name='b', shape=[1], dtype='int64')
-            cond = layers.less_than(x=a, y=b)
+            cond = paddle.less_than(x=a, y=b)
             static_ret = self.get_static_graph_result(
                 feed={"a": value_a, "b": value_b}, fetch_list=[cond]
             )[0]
@@ -2477,14 +2331,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 da = base.to_variable(value_a)
                 db = base.to_variable(value_b)
-                dcond = layers.less_than(x=da, y=db)
+                dcond = paddle.less_than(x=da, y=db)
 
                 for i in range(len(static_ret)):
                     self.assertTrue(dcond.numpy()[i] == static_ret[i])
 
             da = base.to_variable(value_a)
             db = base.to_variable(value_b)
-            dcond = layers.less_than(x=da, y=db)
+            dcond = paddle.less_than(x=da, y=db)
 
             for i in range(len(static_ret)):
                 self.assertTrue(dcond.numpy()[i] == static_ret[i])
@@ -2611,10 +2465,10 @@ class TestLayer(LayerTest):
 
     def test_cond(self):
         def less_than_branch(a, b):
-            return fluid.layers.elementwise_add(a, b)
+            return paddle.add(a, b)
 
         def greater_equal_branch(a, b):
-            return fluid.layers.elementwise_sub(a, b)
+            return paddle.subtract(a, b)
 
         with self.static_graph():
             a = fluid.layers.fill_constant(
@@ -2701,8 +2555,8 @@ class TestLayer(LayerTest):
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
 
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
@@ -2724,8 +2578,8 @@ class TestLayer(LayerTest):
                 y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
                 z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
 
-                pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
-                pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+                pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+                pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
                 pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
                 out_1 = layers.case(
@@ -2741,8 +2595,8 @@ class TestLayer(LayerTest):
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
 
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
             out_1 = layers.case(
@@ -2898,8 +2752,8 @@ class TestLayer(LayerTest):
             data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
-            predict = fluid.layers.softmax(input=fc_out)
-            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            predict = paddle.nn.functional.softmax(fc_out)
+            result = paddle.static.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
@@ -2914,8 +2768,10 @@ class TestLayer(LayerTest):
             data = base.to_variable(x)
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)
-            predict = fluid.layers.softmax(fc_out)
-            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+            predict = paddle.nn.functional.softmax(fc_out)
+            dynamic_out = paddle.static.accuracy(
+                input=predict, label=label, k=5
+            )
 
         np.testing.assert_array_equal(static_out[0], dynamic_out.numpy())
 
@@ -2958,7 +2814,6 @@ class TestBook(LayerTest):
                     )
 
                 else:
-                    assert method.__name__ in ('make_get_places')
                     continue
             if method.__name__ in self.only_static_set:
                 continue
@@ -3041,7 +2896,9 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[13], dtype='float32')
             y_predict = layers.fc(input=x, size=1, act=None)
             y = self._get_data(name='y', shape=[1], dtype='float32')
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -3203,13 +3060,7 @@ class TestBook(LayerTest):
         ):
             data = self._get_data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            return layers.softmax(hid, axis=1)
-
-    def make_get_places(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            get_places(device_count=1)
+            return paddle.nn.functional.softmax(hid, axis=1)
 
     @prog_scope()
     def make_nce(self):
@@ -3266,23 +3117,31 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name='x', shape=[16], dtype='float32')
             y = self._get_data(name='label', shape=[1], dtype='int64')
-            loss, softmax = layers.softmax_with_cross_entropy(
+            loss, softmax = paddle.nn.functional.softmax_with_cross_entropy(
                 x, y, return_softmax=True
             )
             self.assertIsNotNone(loss)
             self.assertIsNotNone(softmax)
 
-            loss = layers.softmax_with_cross_entropy(x, y)
+            loss = paddle.nn.functional.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
 
             x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
             y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
             y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
             y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
-            loss1 = layers.softmax_with_cross_entropy(x1, y1, axis=1)
-            loss2 = layers.softmax_with_cross_entropy(x1, y2, axis=2)
-            loss3 = layers.softmax_with_cross_entropy(x1, y3, axis=3)
-            loss4 = layers.softmax_with_cross_entropy(x1, y3, axis=-1)
+            loss1 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y1, axis=1
+            )
+            loss2 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y2, axis=2
+            )
+            loss3 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=3
+            )
+            loss4 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=-1
+            )
             self.assertIsNotNone(loss1)
             self.assertIsNotNone(loss2)
             self.assertIsNotNone(loss3)
@@ -3445,15 +3304,6 @@ class TestBook(LayerTest):
             output = layers.l2_normalize(x, axis=1)
             return output
 
-    def make_argsort(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(name='x', shape=[2, 3, 3], dtype="float32")
-            out, ids = layers.argsort(input=data, axis=1)
-            return out
-            return ids
-
     def make_shape(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3538,7 +3388,7 @@ class TestBook(LayerTest):
                 name="input", shape=[13, 11], dtype='float32'
             )
 
-            out = layers.sum(input)
+            out = paddle.add_n(input)
             return out
 
     def make_slice(self):
@@ -3673,29 +3523,12 @@ class TestBook(LayerTest):
             )
             return loss
 
-    def make_temporal_shift(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.temporal_shift(x, seg_num=2, shift_ratio=0.2)
-            return out
-
-    def make_fsp_matrix(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            y = self._get_data(name="Y", shape=[8, 4, 4], dtype="float32")
-            out = layers.fsp_matrix(x, y)
-            return out
-
     def make_pixel_shuffle(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
-            out = layers.pixel_shuffle(x, upscale_factor=3)
+            out = paddle.nn.functional.pixel_shuffle(x, upscale_factor=3)
             return out
 
     def make_mse_loss(self):
@@ -3713,7 +3546,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.square_error_cost(input=x, label=y)
+            out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
     def test_dynamic_lstmp(self):
@@ -3766,7 +3599,7 @@ class TestBook(LayerTest):
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
-            out, ids = layers.argsort(input=data, axis=1)
+            out = paddle.argsort(x=data, axis=1)
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
             out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
@@ -3992,7 +3825,7 @@ class TestBook(LayerTest):
     def test_linspace(self):
         program = Program()
         with program_guard(program):
-            out = layers.linspace(20, 10, 5, 'float64')
+            out = paddle.linspace(20, 10, 5, 'float64')
             self.assertIsNotNone(out)
         print(str(program))
 
@@ -4111,30 +3944,6 @@ class TestBook(LayerTest):
                 im_info,
                 10,
             )
-
-    def test_sigmoid_focal_loss(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = layers.data(
-                name='data',
-                shape=[10, 80],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            label = layers.data(
-                name='label',
-                shape=[10, 1],
-                append_batch_size=False,
-                dtype='int32',
-            )
-            fg_num = layers.data(
-                name='fg_num', shape=[1], append_batch_size=False, dtype='int32'
-            )
-            out = fluid.layers.sigmoid_focal_loss(
-                x=input, label=label, fg_num=fg_num, gamma=2.0, alpha=0.25
-            )
-            return out
 
     def test_addmm(self):
         with program_guard(
