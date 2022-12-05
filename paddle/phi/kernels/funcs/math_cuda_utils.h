@@ -250,7 +250,7 @@ __inline__ __device__ T blockReduceSumV2(T *val) {
 
   __syncthreads();
 
-  bool is_mask = threadIdx.x < (blockDim.x / 32);
+  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
 #pragma unroll
   for (int i = 0; i < NUM; i++) {
     val[i] = is_mask ? shared[i][lane] : (T)(0.0f);

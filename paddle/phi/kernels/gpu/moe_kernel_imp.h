@@ -21,7 +21,6 @@ namespace phi {
 
 static const float HALF_FLT_MAX = 65504.F;
 static const float HALF_FLT_MIN = -65504.F;
-
 static inline size_t pad_to_multiple_of_16(const size_t& input) {
   static constexpr int ALIGNMENT = 16;
   return ALIGNMENT * ((input + ALIGNMENT - 1) / ALIGNMENT);
@@ -113,7 +112,7 @@ void CubKeyValueSorter::run(void* workspace,
 
   if (expected_ws_size > workspace_size) {
     std::stringstream err_ss;
-    err_ss << "[FT Error][CubKeyValueSorter::run]\n";
+    err_ss << "[Error][CubKeyValueSorter::run]\n";
     err_ss
         << "Error. The allocated workspace is too small to run this problem.\n";
     err_ss << "Expected workspace size of at least " << expected_ws_size
@@ -546,14 +545,15 @@ __global__ void paddingKernel(T* output1,
   for (int i = 0; i < batch_size; i++) {
     const T* in1_ptr = input1 + offset1;
     const int* in2_ptr = input2 + offset1;
-    offset1 += input_lengths[i];
+    int input_length = input_lengths[i];
+    offset1 += input_length;
 
     T* out1_ptr = output1 + offset2;
     int* out2_ptr = output2 + offset2;
     offset2 += max_seq_len;
 
     for (int j = threadIdx.x; j < max_seq_len; j += max_seq_len) {
-      if (j < input_lengths[i]) {
+      if (j < input_length) {
         out1_ptr[j] = in1_ptr[j];
         out2_ptr[j] = in2_ptr[j];
       } else {
@@ -659,8 +659,49 @@ __global__ void finalize_moe_routing_kernel(
 }
 
 // ----------------------------------      initialize_moe_routing_kernel
-// --------------------------//
-template <typename T>
+// --------------------------// template<typename T>
+// __global__ void initialize_moe_routing_kernel(const T* unpermuted_input, T*
+// permuted_output,
+//                                               const int*
+//                                               expanded_dest_row_to_expanded_source_row,
+//                                               int*
+//                                               expanded_source_row_to_expanded_dest_row,
+//                                               const int num_rows, const int
+//                                               active_rows, const int cols,
+//                                               const int k, const int
+//                                               max_seq_len, bool ec_route) {
+//   // Reverse permutation map.
+//   // I do this so that later, we can use the source -> dest map to do the
+//   k-way reduction and unpermuting. I need the reverse map for
+//   // that reduction to allow each threadblock to do 1 k-way reduce without
+//   atomics later in MoE. 1 thread block will be responsible for
+//   // all k summations.
+//   const int expanded_dest_row = blockIdx.x;
+//   const int expanded_source_row = ec_route ?
+//   expanded_dest_row_to_expanded_source_row[expanded_dest_row / k *
+//   max_seq_len + expanded_dest_row % k]
+//                                   :expanded_dest_row_to_expanded_source_row[expanded_dest_row];
+//   //const int expanded_source_row =
+//   expanded_dest_row_to_expanded_source_row[expanded_dest_row]; if
+//   (threadIdx.x == 0) {
+//     expanded_source_row_to_expanded_dest_row[expanded_source_row] =
+//     expanded_dest_row;
+//   }
+
+//   if (blockIdx.x < active_rows) {
+//     // Duplicate and permute rows
+//     const int source_row = expanded_source_row % num_rows;
+
+//     const T* source_row_ptr = unpermuted_input + source_row * cols;
+//     T* dest_row_ptr = permuted_output + expanded_dest_row * cols;
+
+//     for(int tid = threadIdx.x; tid < cols; tid += blockDim.x) {
+//       dest_row_ptr[tid] = source_row_ptr[tid];
+//     }
+//   }
+// }
+
+template <typename T, int VecSize>
 __global__ void initialize_moe_routing_kernel(
     const T* unpermuted_input,
     T* permuted_output,
@@ -672,6 +713,9 @@ __global__ void initialize_moe_routing_kernel(
     const int k,
     const int max_seq_len,
     bool ec_route) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec;
+
   // Reverse permutation map.
   // I do this so that later, we can use the source -> dest map to do the k-way
   // reduction and unpermuting. I need the reverse map for that reduction to
@@ -697,8 +741,11 @@ __global__ void initialize_moe_routing_kernel(
     const T* source_row_ptr = unpermuted_input + source_row * cols;
     T* dest_row_ptr = permuted_output + expanded_dest_row * cols;
 
-    for (int tid = threadIdx.x; tid < cols; tid += blockDim.x) {
-      dest_row_ptr[tid] = source_row_ptr[tid];
+    for (int tid = threadIdx.x * VecSize; tid < cols;
+         tid += blockDim.x * VecSize) {
+      // dest_row_ptr[tid] = source_row_ptr[tid];
+      phi::Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
+      phi::Store<T, VecSize>(src_vec, &dest_row_ptr[tid]);
     }
   }
 }

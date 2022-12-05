@@ -31,7 +31,7 @@
 #include "cutlass/gemm/gemm.h"
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
-
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/gpu/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/gpu/linear_combination_ft_gelu.h"
 #include "paddle/phi/kernels/gpu/moe_cutlass_kernel.h"
@@ -39,11 +39,10 @@
 namespace phi {
 
 inline int getSMVersion() {
-  int device{-1};
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device));
-  cudaDeviceProp props;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDeviceProperties(&props, device));
-  return props.major * 10 + props.minor;
+  const int device = phi::backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop =
+      phi::backends::gpu::GetDeviceProperties(device);
+  return prop.major * 10 + prop.minor;
 }
 
 struct EpilogueOpBiasReLU {};
@@ -296,19 +295,35 @@ void initialize_moe_routing_kernelLauncher(
     bool ec_route,
     cudaStream_t stream) {
   const int blocks = ec_route ? num_experts * k * batch_size : num_rows * k;
-  const int threads = std::min(cols, 1024);
   if (ec_route) {
-    initialize_moe_routing_kernel<T><<<blocks, threads, 0, stream>>>(
-        unpermuted_input,
-        permuted_output,
-        expanded_dest_row_to_expanded_source_row,
-        expanded_source_row_to_expanded_dest_row,
-        num_rows,
-        batch_size * k * num_experts,
-        cols,
-        k,
-        max_seq_len,
-        ec_route);
+    constexpr int max_pack_size = 16 / sizeof(T);
+    const int threads = std::min(cols / max_pack_size, 1024);
+    if (cols % max_pack_size == 0) {
+      initialize_moe_routing_kernel<T, max_pack_size>
+          <<<blocks, threads, 0, stream>>>(
+              unpermuted_input,
+              permuted_output,
+              expanded_dest_row_to_expanded_source_row,
+              expanded_source_row_to_expanded_dest_row,
+              num_rows,
+              batch_size * k * num_experts,
+              cols,
+              k,
+              max_seq_len,
+              ec_route);
+    } else {
+      initialize_moe_routing_kernel<T, 1><<<blocks, threads, 0, stream>>>(
+          unpermuted_input,
+          permuted_output,
+          expanded_dest_row_to_expanded_source_row,
+          expanded_source_row_to_expanded_dest_row,
+          num_rows,
+          batch_size * k * num_experts,
+          cols,
+          k,
+          max_seq_len,
+          ec_route);
+    }
   }
 }
 
@@ -442,14 +457,9 @@ void gemm_bias_gelu(const T* A,
                     int64_t gemm_n,
                     int64_t gemm_k,
                     int num_experts,
+                    int sm_,
+                    int multi_processor_count_,
                     cudaStream_t stream) {
-  int device{-1};
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device));
-  int sm_ = getSMVersion();
-  int multi_processor_count_;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
-      &multi_processor_count_, cudaDevAttrMultiProcessorCount, device));
-
   if (sm_ == 75) {
     generic_moe_gemm_kernelLauncher<T,
                                     T,
@@ -497,13 +507,9 @@ void gemm(const T* A,
           const int gemm_n,
           const int gemm_k,
           const int num_experts,
+          int sm_,
+          int multi_processor_count_,
           cudaStream_t stream) {
-  int device{-1};
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device));
-  int sm_ = getSMVersion();
-  int multi_processor_count_;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
-      &multi_processor_count_, cudaDevAttrMultiProcessorCount, device));
   if (sm_ == 80 || sm_ == 86) {
     generic_moe_gemm_kernelLauncher<T,
                                     T,
@@ -520,7 +526,7 @@ void gemm(const T* A,
                                                       multi_processor_count_,
                                                       stream);
   } else {
-    throw std::runtime_error("[MoE][GEMM] Arch unsupported for GEMM");
+    throw std::runtime_error("[Error][MoE][GEMM] Arch unsupported for GEMM");
   }
 }
 
@@ -648,6 +654,10 @@ void MoeKernel(const Context& ctx,
   funcs::SetConstant<Context, int> set_len;
   set_len(ctx, &input_lengths_tensor, static_cast<int>(max_seq_len));
 
+  int sm_ = getSMVersion();
+  int multi_processor_count_ = phi::backends::gpu::GetGPUMultiProcessors(
+      phi::backends::gpu::GetCurrentDeviceId());
+
   initialize_expert_choice_route_kernelLauncher<T>(
       expert_for_source_row,
       source_rows_,
@@ -741,6 +751,8 @@ void MoeKernel(const Context& ctx,
                    inter_size,
                    hidden_size,
                    num_experts,
+                   sm_,
+                   multi_processor_count_,
                    ctx.stream());
     gemm(reinterpret_cast<const __half*>(fc1_result_),
          reinterpret_cast<const __half*>(fc2_expert_weights),
@@ -750,6 +762,8 @@ void MoeKernel(const Context& ctx,
          hidden_size,
          inter_size,
          num_experts,
+         sm_,
+         multi_processor_count_,
          ctx.stream());
   } else {
     gemm_bias_gelu<float>(reinterpret_cast<const float*>(permuted_data_),
@@ -761,6 +775,8 @@ void MoeKernel(const Context& ctx,
                           inter_size,
                           hidden_size,
                           num_experts,
+                          sm_,
+                          multi_processor_count_,
                           ctx.stream());
     gemm<float>(reinterpret_cast<const float*>(fc1_result_),
                 reinterpret_cast<const float*>(fc2_expert_weights),
@@ -770,6 +786,8 @@ void MoeKernel(const Context& ctx,
                 hidden_size,
                 inter_size,
                 num_experts,
+                sm_,
+                multi_processor_count_,
                 ctx.stream());
   }
 

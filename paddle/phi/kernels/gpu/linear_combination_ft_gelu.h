@@ -87,8 +87,8 @@ struct FtGelu {
   static const bool kIsHeavy = true;
   CUTLASS_DEVICE
   T operator()(T const &z) const {
-    T k0 = T(0.7978845608028654);
-    T k1 = T(0.044715);
+    T k0 = static_cast<float>(0.7978845608028654);
+    T k1 = static_cast<float>(0.044715);
 
     return T(cutlass::constants::half<T>() * z *
              (cutlass::constants::one<T>() +
