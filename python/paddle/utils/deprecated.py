@@ -23,14 +23,6 @@ import paddle
 
 __all__ = []
 
-# NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
-# and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
-# See details: https://docs.python.org/3/library/warnings.html#default-warning-filter
-# The following line set DeprecationWarning to show once, which is expected to work in python 3.2 -> 3.6
-# However, doing this could introduce one samll side effect, i.e., the DeprecationWarning which is not issued by @deprecated.
-# The side effect is acceptable, and we will find better way to do this if we could.
-warnings.simplefilter('default', DeprecationWarning)
-
 
 def deprecated(update_to="", since="", reason="", level=0):
     """Decorate a function to signify its deprecation.
