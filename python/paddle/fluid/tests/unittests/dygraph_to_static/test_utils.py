@@ -15,10 +15,7 @@
 import types
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    index_in_list,
-    is_paddle_func,
-)
+from paddle.jit.dy2static.utils import index_in_list, is_paddle_func
 
 
 class TestIndexInList(unittest.TestCase):

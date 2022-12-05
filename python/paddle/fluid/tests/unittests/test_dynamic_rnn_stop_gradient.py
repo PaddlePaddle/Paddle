@@ -36,7 +36,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     max_len = layers.fill_constant(
         shape=[1], dtype="int64", value=10, force_cpu=True
     )
-    cond = layers.less_than(x=step_idx, y=max_len)
+    cond = paddle.less_than(x=step_idx, y=max_len)
     while_op = layers.While(cond)
     scores = layers.array_write(x, step_idx)
     with while_op.block():
@@ -53,7 +53,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         score = paddle.gather_nd(x, topk_coordinates)
         layers.increment(x=step_idx, value=1.0, in_place=True)
         layers.array_write(score, i=step_idx, array=scores)
-        length_cond = layers.less_than(x=step_idx, y=max_len)
+        length_cond = paddle.less_than(x=step_idx, y=max_len)
         layers.assign(length_cond, cond)
 
     out = layers.tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]

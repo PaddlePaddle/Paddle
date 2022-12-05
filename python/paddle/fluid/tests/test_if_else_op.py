@@ -43,7 +43,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
             label = layers.data(name='y', shape=[1], dtype='int64')
 
             limit = layers.fill_constant(shape=[1], dtype='int64', value=5)
-            cond = layers.less_than(x=label, y=limit)
+            cond = paddle.less_than(x=label, y=limit)
             true_image, false_image = split_lod_tensor(input=image, mask=cond)
 
             true_out = layers.create_tensor(dtype='float32')
@@ -105,7 +105,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
             label = layers.data(name='y', shape=[1], dtype='int64')
 
             limit = layers.fill_constant(shape=[1], dtype='int64', value=5)
-            cond = layers.less_than(x=label, y=limit)
+            cond = paddle.less_than(x=label, y=limit)
             ie = layers.IfElse(cond)
 
             with ie.true_block():
@@ -174,7 +174,7 @@ class TestIfElse(unittest.TestCase):
             cond = layers.fill_constant(
                 [1], dtype='float32', value=self.cond_value
             )
-            ifcond = layers.less_than(x=src, y=cond)
+            ifcond = paddle.less_than(x=src, y=cond)
             ie = layers.IfElse(ifcond)
             with ie.true_block():
                 true_target = ie.input(src)
@@ -237,7 +237,7 @@ class TestIfElseError(unittest.TestCase):
             const_value = layers.fill_constant(
                 [1], dtype='float32', value=123.0
             )
-            ifcond = layers.less_than(x=src, y=const_value)
+            ifcond = paddle.less_than(x=src, y=const_value)
             with self.assertRaises(TypeError):
                 ie = layers.IfElse(set())
             with self.assertRaises(TypeError):

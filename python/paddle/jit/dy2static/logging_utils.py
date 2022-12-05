@@ -16,7 +16,7 @@ import os
 import threading
 
 from paddle.fluid import log_helper
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from .utils import ast_to_source_code
 
 __all__ = ["TranslatorLogger", "set_verbosity", "set_code_level"]
 
