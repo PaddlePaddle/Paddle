@@ -580,8 +580,8 @@ void InterpreterCore::Convert(
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
     Priority priority =
         interpreter::IsCommunicationOp(op_func_node.operator_base_->Type())
-            ? Priority::kLowest
-            : Priority::kNormal;
+            ? Priority::kNormal
+            : Priority::kLowest;
     vec_instruction_.emplace_back(
         op_idx, std::move(op_func_node), *dev_ctx_, priority);
   }

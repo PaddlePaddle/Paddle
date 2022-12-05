@@ -58,10 +58,11 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   if (is_sequential_run) {
     AddDependencyForSequentialRun();
+    VLOG(0) << "NEWEXE: Add Dependency AddDependencyForSequentialRun";
   }
 
   AddDependencyForCoalesceTensorOp();
-  AddDependencyForCommunicationOp();
+  // AddDependencyForCommunicationOp();
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
