@@ -23,7 +23,7 @@ from imperative_test_utils import fix_model_dict, train_lenet
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
-from paddle.framework import core
+from paddle.framework import core, set_flags
 from paddle.nn import (
     BatchNorm2D,
     Conv2D,
@@ -35,17 +35,11 @@ from paddle.nn import (
 from paddle.nn.layer import LeakyReLU, PReLU, ReLU, Sigmoid, Softmax
 from paddle.quantization.slim.quantization import ImperativeQuantAware
 
-from ..log_helper import get_logger
-
 paddle.enable_static()
 
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
-    fluid.set_flags({"FLAGS_cudnn_deterministic": True})
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-)
+    set_flags({"FLAGS_cudnn_deterministic": True})
 
 
 def get_vaild_warning_num(warning, w):
