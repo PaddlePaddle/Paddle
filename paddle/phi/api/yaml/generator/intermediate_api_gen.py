@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
+import yaml
 from api_gen import ForwardAPI
 from sparse_api_gen import SparseAPI
 
@@ -147,7 +147,7 @@ def main():
         '--api_yaml_path',
         nargs='+',
         help='path to api yaml file',
-        default='paddle/phi/api/yaml/ops.yaml',
+        default=['paddle/phi/api/yaml/ops.yaml'],
     )
 
     parser.add_argument(

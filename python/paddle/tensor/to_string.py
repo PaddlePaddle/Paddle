@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import numpy as np
-from ..framework import core
+
 from paddle.fluid.data_feeder import check_type, convert_dtype
+
+from ..framework import core
 
 __all__ = []
 

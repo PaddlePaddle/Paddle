@@ -14,19 +14,23 @@
 
 import sys
 
+import paddle
+
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
-import paddle.nn.functional as F
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn as nn
+import paddle.nn.functional as F
 
 paddle.enable_static()
 

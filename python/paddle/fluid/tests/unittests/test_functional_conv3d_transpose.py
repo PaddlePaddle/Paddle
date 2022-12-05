@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import unittest
+from unittest import TestCase
+
 import numpy as np
+
+import paddle
 import paddle.fluid.dygraph as dg
 import paddle.fluid.initializer as I
 import paddle.nn.functional as F
-import unittest
 from paddle import fluid
 from paddle.fluid.framework import _test_eager_guard
-from unittest import TestCase
 
 
 class TestFunctionalConv3DTranspose(TestCase):
@@ -89,7 +91,7 @@ class TestFunctionalConv3DTranspose(TestCase):
                         (-1, self.in_channels, -1, -1, -1),
                         dtype=self.dtype,
                     )
-                y = fluid.layers.conv3d_transpose(
+                y = paddle.static.nn.conv3d_transpose(
                     x,
                     self.out_channels,
                     output_size=self.output_size,
@@ -550,7 +552,7 @@ class TestFunctionalConv3DTransposeErrorCase10(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 x = fluid.data("input", self.input.shape, dtype=paddle.float32)
-                y = fluid.layers.conv3d_transpose(
+                y = paddle.static.nn.conv3d_transpose(
                     x,
                     self.num_filters,
                     self.filter_size,

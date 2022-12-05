@@ -14,10 +14,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
+
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def create_tdm_travel():

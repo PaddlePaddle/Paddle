@@ -17,13 +17,14 @@ import unittest
 
 import config
 import numpy as np
+import scipy.stats
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+from test_distribution import DistributionNumpy
+
 import paddle
 from paddle import fluid
 from paddle.distribution import Normal
 from paddle.fluid import layers
-from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
-import scipy.stats
-from test_distribution import DistributionNumpy
 
 np.random.seed(2022)
 

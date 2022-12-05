@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
-import paddle
 import unittest
-from paddle.fluid.framework import program_guard, Program
+
+import numpy
+
+import paddle
 from paddle.fluid import core
+from paddle.fluid.framework import Program, program_guard
 
 
 def case0(x):

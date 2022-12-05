@@ -441,14 +441,14 @@ void TrtEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
     if ((use_varseqlen && pos_id != "" && mask_id != "") ||
-        (!use_varseqlen && pos_id == "" && mask_id == "")) {
+        (!use_varseqlen && pos_id == "")) {
       VLOG(3) << "start trt_embedding_eltwise_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id, set mask_id. Please "
+                                  "pos_id. Please "
                                   "reconfig"));
     }
     graph->Set(kEmbEltwiseLayernormPass, new bool(true));

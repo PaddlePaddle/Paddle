@@ -562,7 +562,7 @@ void BindImperative(py::module *m_ptr) {
               &t, array, platform::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
-          size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+          size_t data_size = t.numel() * phi::SizeOf(t.dtype());
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
           // 4. maintain mmap fd set & backup ipc_name
@@ -602,7 +602,7 @@ void BindImperative(py::module *m_ptr) {
             &t, array, platform::CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
-        size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+        size_t data_size = t.numel() * phi::SizeOf(t.dtype());
         auto shared_writer_holder =
             memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
         // 4. maintain mmap fd set & backup ipc_name
