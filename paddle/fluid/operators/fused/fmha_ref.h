@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/fused/fused_softmax_mask.cu.h"
-#include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.cu.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
@@ -98,7 +98,7 @@ class FMHARef {
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
     std::vector<int> perm_1 = {2, 0, 3, 1, 4};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_input_tensor, perm_1, transpose_2_out_tensor);
     T* qkv_data = transpose_2_out_tensor->data<T>();
     T* qk_out_data = qk_out_tensor->data<T>();
@@ -254,7 +254,7 @@ class FMHARef {
     // transpose: [0, 2, 1, 3]
     // output shape: [batch_size, seq_len, num_heads, head_dim]
     std::vector<int> perm_3 = {0, 2, 1, 3};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
@@ -428,7 +428,7 @@ class FMHARef {
     // transpose: [0, 2, 1, 3]
     // output shape: [batch_size, seq_len, num_heads, head_dim]
     std::vector<int> perm_3 = {0, 2, 1, 3};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
@@ -470,7 +470,7 @@ class FMHARef {
 
     // transpose bw
     std::vector<int> perm_3 = {0, 2, 1, 3};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, fmha_out_grad_tensor, perm_3, qktv_out_grad_tensor);
 
     // recall batchedgemm(nn) fw: softmax_out_data(x) * v_ptr(y) =
@@ -648,7 +648,7 @@ class FMHARef {
 
     // transpose bw
     std::vector<int> perm_1 = {1, 3, 0, 2, 4};
-    TransposeGPUKernelDriver<T>(
+    phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, *transpose_2_out_grad_tensor, perm_1, qkv_input_grad_tensor);
   }
 

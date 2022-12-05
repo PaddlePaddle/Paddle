@@ -18,7 +18,7 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
-from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
+from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
 
 
 def _reduce_scatter_tensor_in_dygraph(

@@ -144,7 +144,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
       test_trt_pool3d_op
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT 45)
   endif()
-  set_tests_properties(test_trt_reduce_mean_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
                                                                       100)

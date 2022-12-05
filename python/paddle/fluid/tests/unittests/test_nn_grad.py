@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-import gradient_checker
-from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -30,7 +31,7 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         self.config()
 
-        out = fluid.layers.slice(
+        out = paddle.slice(
             self.inputs, axes=self.axes, starts=self.starts, ends=self.ends
         )
         gradient_checker.double_grad_check(
@@ -42,7 +43,7 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
         self.ends = [3, 3, 6]
         self.axes = [0, 1, 2]
         self.x_arr = np.random.random([3, 4, 5, 2]).astype("float64")
-        self.inputs = layers.create_parameter(
+        self.inputs = paddle.create_parameter(
             dtype="float64", shape=[3, 4, 5, 2], name='x'
         )
 
@@ -60,7 +61,7 @@ class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
         self.ends = [3, 3, 3]
         self.axes = [0, 1, 2]
         self.x_arr = np.random.random([3, 3, 3]).astype("float64")
-        self.inputs = layers.create_parameter(
+        self.inputs = paddle.create_parameter(
             dtype="float64", shape=[3, 3, 3], name='x3'
         )
 
@@ -74,7 +75,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.reduce_mean(x, dim=0)
+        y = paddle.mean(x, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(

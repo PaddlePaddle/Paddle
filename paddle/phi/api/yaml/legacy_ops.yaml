@@ -171,7 +171,7 @@
   infer_meta :
     func : ArgMinMaxInferMeta
   kernel :
-    func : arg_max
+    func : argmax
 
 - op : argmin
   args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
@@ -179,7 +179,7 @@
   infer_meta :
     func : ArgMinMaxInferMeta
   kernel :
-    func : arg_min
+    func : argmin
 
 - op : assign
   args : (Tensor x)
@@ -878,7 +878,7 @@
   infer_meta :
     func : GenerateProposalsV2InferMeta
   kernel :
-    func : generate_proposals_v2
+    func : generate_proposals
 
 - op : greater_equal
   args : (Tensor x, Tensor y)
@@ -914,7 +914,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_swish
+    func : hardswish
   backward : hardswish_grad
 
 - op : hardtanh
@@ -924,7 +924,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_tanh
+    func : hardtanh
   backward : hardtanh_grad
 
 - op : hsigmoid_loss
@@ -988,14 +988,6 @@
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
 
-- op : is_empty
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsEmptyInferMeta
-  kernel :
-    func : is_empty
-
 - op : isclose
   args : (Tensor x, Tensor y, Scalar rtol, Scalar atol,  bool equal_nan)
   output : Tensor(out)
@@ -1004,33 +996,6 @@
     param: [x, y]
   kernel :
     func : isclose
-
-- op : isfinite
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsfiniteInferMeta
-  kernel :
-    func : isfinite {dense -> dense},
-           infinite_sr {selected_rows -> selected_rows}
-
-- op : isinf
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsfiniteInferMeta
-  kernel :
-    func : isinf {dense -> dense},
-           isinf_sr {selected_rows -> selected_rows}
-
-- op : isnan
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsfiniteInferMeta
-  kernel :
-    func : isnan {dense -> dense},
-           isnan_sr {selected_rows -> selected_rows}
 
 - op : kldiv_loss
   args : (Tensor x, Tensor label, str reduction)
@@ -1050,27 +1015,6 @@
   kernel :
     func : kron
   backward : kron_grad
-
-- op : kthvalue
-  args : (Tensor x, int k, int axis, bool keepdim)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : KthvalueInferMeta
-  kernel :
-    func : kthvalue
-  backward : kthvalue_grad
-
-- op : label_smooth
-  args : (Tensor label, Tensor prior_dist, float epsilon)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [label]
-  kernel :
-    func : label_smooth
-    data_type : label
-  optional : prior_dist
-  backward : label_smooth_grad
 
 - op : lamb_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1, float beta2, float epsilon, bool multi_precision)
@@ -1094,16 +1038,6 @@
     data_type : x
   backward : layer_norm_grad
   optional : scale, bias
-
-- op : lerp
-  args : (Tensor x, Tensor y, Tensor weight)
-  output : Tensor(out)
-  infer_meta :
-    func : LerpInferMeta
-  kernel :
-    func : lerp
-  inplace : (x -> out)
-  backward : lerp_grad
 
 - op : less_equal
   args : (Tensor x, Tensor y)
@@ -1230,16 +1164,6 @@
     func : lu
   backward : lu_grad
 
-- op : lu_unpack
-  args : (Tensor x, Tensor y, bool unpack_ludata, bool unpack_pivots)
-  output : Tensor(pmat), Tensor(l), Tensor(u)
-  infer_meta :
-    func : LUUnpackInferMeta
-  kernel :
-    func : lu_unpack
-    data_type : x
-  backward : lu_unpack_grad
-
 - op : margin_cross_entropy
   args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
   output : Tensor(softmax), Tensor(loss)
@@ -1249,16 +1173,6 @@
     func : margin_cross_entropy
     data_type : logits
   backward : margin_cross_entropy_grad
-
-- op : masked_select
-  args : (Tensor x, Tensor mask)
-  output : Tensor
-  infer_meta :
-    func : MaskedSelectInferMeta
-  kernel :
-    func : masked_select
-    data_type : x
-  backward : masked_select_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -1276,16 +1190,6 @@
     func : MatrixNMSInferMeta
   kernel :
     func : matrix_nms
-
-- op : matrix_power
-  args : (Tensor x, int n)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : matrix_power
-  backward : matrix_power_grad
 
 - op : matrix_rank
   args : (Tensor x, float tol, bool hermitian=false, bool use_default_tol=true)
@@ -1339,15 +1243,6 @@
   kernel :
     func : maximum
   backward : maximum_grad
-
-- op : maxout
-  args : (Tensor x, int groups, int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : MaxOutInferMeta
-  kernel :
-    func : maxout
-  backward : maxout_grad
 
 - op : mean
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
@@ -1434,15 +1329,6 @@
     func : mish
   backward : mish_grad
 
-- op : mode
-  args : (Tensor x,  int axis,  bool keepdim)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : ModeInferMeta
-  kernel :
-    func : mode
-  backward : mode_grad
-
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
@@ -1511,17 +1397,6 @@
     data_type : x
   backward : nearest_interp_grad
 
-- op : nll_loss
-  args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction)
-  output : Tensor(out), Tensor(total_weight)
-  infer_meta :
-    func : NllLossRawInferMeta
-  kernel :
-    func : nll_loss
-    data_type : input
-  optional : weight
-  backward : nll_loss_grad
-
 - op : nms
   args : (Tensor x, float threshold)
   output : Tensor(out)
@@ -1560,9 +1435,9 @@
   args : (Tensor x)
   output : Tensor(size)
   infer_meta :
-    func : SizeInferMeta
+    func : NumelInferMeta
   kernel :
-    func : size
+    func : numel
   data_transform:
     skip_transform : x
 
@@ -1710,15 +1585,6 @@
   inplace : (arr -> out)
   backward : put_along_axis_grad
 
-- op : qr
-  args : (Tensor x, str mode)
-  output : Tensor(q), Tensor(r)
-  infer_meta :
-    func : QrInferMeta
-  kernel :
-    func : qr
-  backward : qr_grad
-
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
   output : Tensor(out)
@@ -1770,16 +1636,6 @@
   kernel :
     func : remainder
   inplace : (x -> out)
-
-- op : renorm
-  args : (Tensor x, float p, int axis, float max_norm)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : renorm
-  backward : renorm_grad
 
 - op : repeat_interleave
   args : (Tensor x, int repeats, int axis)
@@ -2030,7 +1886,7 @@
   infer_meta :
     func : UnchangedInferMeta
   kernel :
-    func : slogdeterminant
+    func : slogdet
   backward : slogdet_grad
 
 - op : softmax
@@ -2195,7 +2051,7 @@
   infer_meta :
     func : TopKInferMeta
   kernel :
-    func : top_k
+    func : topk
   backward : topk_grad
 
 - op : transpose

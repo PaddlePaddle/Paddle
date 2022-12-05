@@ -26,6 +26,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import 
 )
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 epoch = 10
 paddle.seed(2022)

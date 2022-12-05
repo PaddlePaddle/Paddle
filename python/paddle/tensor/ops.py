@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .. import _C_ops, _legacy_C_ops
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..framework import LayerHelper
 from .layer_function_generator import (
-    generate_layer_fn,
+    add_sample_code,
     generate_activation_fn,
     generate_inplace_fn,
-    add_sample_code,
+    generate_layer_fn,
 )
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-from ..framework import LayerHelper
-from .. import _C_ops, _legacy_C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
