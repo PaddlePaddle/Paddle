@@ -78,25 +78,28 @@ void TransferLayoutGeneral(const Context& dev_ctx,
   out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 
-  if (src_layout == DataLayout::NCHW && dst_layout == DataLayout::NHWC) {
-    funcs::cutlass_nchw_nhwc(
-        reinterpret_cast<const half*>(x.data<phi::dtype::float16>()),
-        reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
-        src_dim[0],
-        src_dim[1],
-        src_dim[2],
-        src_dim[3]);
-    return;
-  } else if (src_layout == DataLayout::NHWC && dst_layout == DataLayout::NCHW) {
-    funcs::cutlass_nhwc_nchw(
-        reinterpret_cast<const half*>(x.data<phi::dtype::float16>()),
-        reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
-        src_dim[0],
-        src_dim[3],
-        src_dim[1],
-        src_dim[2]);
+  std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
+  std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+  // In GPU fp16 model, we will insert many transfer_layout ops in
+  // conv2d_fusion_layout_transfer_pass, so we optimize this kernel on GPU
+  if (std::is_same<Context, phi::GPUContext>::value &&
+      x.dtype() == phi::DataType::FLOAT16) {
+    if (axis == axis_nchw_nhwc) {
+      funcs::nchw2nhwc(out->data<phi::dtype::float16>(),
+                       x.data<phi::dtype::float16>(),
+                       src_dim[0],
+                       src_dim[1],
+                       src_dim[2] * src_dim[3]);
+    } else if (axis == axis_nhwc_nchw) {
+      funcs::nhwc2nchw(out->data<phi::dtype::float16>(),
+                       x.data<phi::dtype::float16>(),
+                       src_dim[0],
+                       src_dim[3],
+                       src_dim[1] * src_dim[2]);
+    }
     return;
   }
+
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
@@ -193,7 +196,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
     return;
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN1
   TransferLayoutMKLDNN<Context>(dev_ctx,
                                 x,
                                 static_cast<DataLayout>(src_layout),

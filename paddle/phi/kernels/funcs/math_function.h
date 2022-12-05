@@ -29,11 +29,16 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-void cutlass_nchw_nhwc(
-    const half* input, half* output, int batch, int ic, int ih, int iw);
+template <typename T>
+void nchw2nhwc(T* output, const T* input, int n, int c, int hw);
 
-void cutlass_nhwc_nchw(
-    const half* input, half* output, int batch, int ic, int ih, int iw);
+template <typename T>
+void nhwc2nchw(T* output, const T* input, int batch, int c, int hw);
+
+template <typename T>
+void nhwc2nchw(T* output, const T* input, int batch, int ic, int ih, int iw);
+template <typename T>
+void nchw2nhwc(T* output, const T* input, int batch, int ic, int ih, int iw);
 
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
