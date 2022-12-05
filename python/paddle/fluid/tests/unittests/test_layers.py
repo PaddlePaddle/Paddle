@@ -1928,7 +1928,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 spectralNorm = paddle.nn.SpectralNorm(
-                    shape, dim=1, power_iters=2
+                    shape, axis=1, power_iters=2
                 )
                 dy_eager_ret = spectralNorm(base.to_variable(input))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
