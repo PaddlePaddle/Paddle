@@ -51,7 +51,7 @@ TEST(DeleteWeightDequantLinearOpPass, basic) {
   auto* zero_point = layers.data("zero_point", {1}, true);
   auto* dequantized_weight =
       layers.dequantize_linear(weight, scale, zero_point);
-  auto* matmul_out = layers.matmul_v2(x, dequantized_weight);
+  layers.matmul_v2(x, dequantized_weight);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
