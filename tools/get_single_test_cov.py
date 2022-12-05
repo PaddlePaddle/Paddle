@@ -115,9 +115,10 @@ def analysisFNDAFile(rootPath, test):
 def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
     os.system(
-        'lcov --capture -d ./paddle/fluid -d ./paddle/phi -d ./paddle/utils -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
+        'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
+        % ut_map_path
     )
-    coverage_info_path = './coverage.info'
+    coverage_info_path = ut_map_path + '/coverage.info'
     file_size = os.path.getsize(coverage_info_path)
     if file_size == 0:
         print("coverage.info is empty,collect coverage rate failed")
@@ -125,9 +126,10 @@ def getCovinfo(rootPath, test):
     else:
         print("get coverage.info succesfully")
     os.system(
-        "lcov --extract coverage.info '/paddle/paddle/fluid/*' '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        "cd %s && lcov --extract coverage.info '/paddle/paddle/fluid/*' '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        % ut_map_path
     )
-    coverage_info_tmp = './coverage.info.tmp'
+    coverage_info_tmp = ut_map_path + '/coverage.info.tmp'
     coverage_tmp_size = os.path.getsize(coverage_info_tmp)
     if coverage_tmp_size == 0:
         print("coverage.info.tmp is empty,collect coverage rate failed")
@@ -135,8 +137,8 @@ def getCovinfo(rootPath, test):
     else:
         print("get coverage.info.tmp succesfully")
 
-    os.system('rm -rf ./coverage.info')
-    os.system('mv ./coverage.info.tmp %s' % ut_map_path)
+    os.system('rm -rf %s/paddle' % ut_map_path)
+    os.system('rm -rf %s/coverage.info' % ut_map_path)
     getFNDAFile(rootPath, test)
     analysisFNDAFile(rootPath, test)
     os.system('rm -rf %s/coverage.info.tmp' % ut_map_path)

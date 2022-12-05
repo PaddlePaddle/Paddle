@@ -1850,11 +1850,14 @@ function precise_card_test_single {
         if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
-        set -x 
-
+        set -x
+        find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
-
-        wait
 
         # python
         ls python-coverage.data.*
@@ -1868,7 +1871,7 @@ function precise_card_test_single {
 
         find paddle/fluid -name *.gcda | xargs rm -f 
         find paddle/phi -name *.gcda | xargs rm -f 
-        find paddle/utils -name *.gcda | xargs rm -f
+        find paddle/utils -name *.gcda | xargs rm -f 
     done
 }
 
