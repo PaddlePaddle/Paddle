@@ -23,8 +23,8 @@ _image_backend = 'pil'
 
 def set_image_backend(backend):
     """
-    Specifies the backend used to load images in class ``paddle.vision.datasets.ImageFolder``
-    and ``paddle.vision.datasets.DatasetFolder`` . Now support backends are pillow and opencv.
+    Specifies the backend used to load images in class :ref:`api_paddle_datasets_ImageFolder`
+    and :ref:`api_paddle_datasets_DatasetFolder` . Now support backends are pillow and opencv.
     If backend not set, will use 'pil' as default.
 
     Args:
@@ -117,7 +117,7 @@ def image_load(path, backend=None):
         path (str): Path of the image.
         backend (str, optional): The image decoding backend type. Options are
             `cv2`, `pil`, `None`. If backend is None, the global _imread_backend
-            specified by ``paddle.vision.set_image_backend`` will be used. Default: None.
+            specified by :ref:`api_paddle_vision_set_image_backend` will be used. Default: None.
 
     Returns:
         PIL.Image or np.array: Loaded image.

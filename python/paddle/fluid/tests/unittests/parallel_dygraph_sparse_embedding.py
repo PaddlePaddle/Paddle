@@ -68,11 +68,11 @@ class SimpleNet(fluid.Layer):
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss

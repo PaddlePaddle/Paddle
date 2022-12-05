@@ -39,10 +39,10 @@ batch_size = 4
 class TestPSPassWithBow(unittest.TestCase):
     def net(self):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
-            cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
+            cond = paddle.less_than(cos_q_nt, cos_q_pt)
             cond = fluid.layers.cast(cond, dtype='float64')
             cond_3 = paddle.sum(cond)
-            acc = fluid.layers.elementwise_div(
+            acc = paddle.divide(
                 cond_3,
                 fluid.layers.fill_constant(
                     shape=[1], value=batch_size * 1.0, dtype='float64'
@@ -52,13 +52,13 @@ class TestPSPassWithBow(unittest.TestCase):
             return acc
 
         def get_loss(cos_q_pt, cos_q_nt):
-            loss_op1 = fluid.layers.elementwise_sub(
+            loss_op1 = paddle.subtract(
                 fluid.layers.fill_constant_batch_size_like(
                     input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
                 ),
                 cos_q_pt,
             )
-            loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
+            loss_op2 = paddle.add(loss_op1, cos_q_nt)
             loss_op3 = paddle.maximum(
                 fluid.layers.fill_constant_batch_size_like(
                     input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import inspect
 
 from paddle.utils import gast
 from paddle.fluid import core
-from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
-from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
+from .utils import (
+    unwrap,
+    ORIGI_INFO,
+)
 from paddle.fluid.framework import Program
 
 from collections.abc import Sequence

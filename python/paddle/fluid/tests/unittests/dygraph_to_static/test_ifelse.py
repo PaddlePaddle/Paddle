@@ -43,9 +43,9 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 from paddle.jit.api import declarative
 from paddle.jit.dy2static.program_translator import ProgramTranslator
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
 
@@ -308,7 +308,7 @@ class NetWithExternalFunc(fluid.dygraph.Layer):
 
 # Test to call function behind caller.
 def softmax(x):
-    return fluid.layers.softmax(x)
+    return paddle.nn.functional.softmax(x)
 
 
 class TestNetWithExternalFunc(TestDygraphIfElseNet):
