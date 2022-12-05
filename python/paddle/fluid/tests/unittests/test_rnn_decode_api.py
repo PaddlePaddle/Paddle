@@ -74,7 +74,7 @@ class DecoderCell(layers.RNNCell):
         )
         if encoder_padding_mask is not None:
             attn_scores = paddle.add(attn_scores, encoder_padding_mask)
-        attn_scores = layers.softmax(attn_scores)
+        attn_scores = paddle.nn.functional.softmax(attn_scores)
         attn_out = paddle.squeeze(
             layers.matmul(attn_scores, encoder_output), [1]
         )
@@ -215,7 +215,7 @@ class MLE:
 
     def learn(self, probs, label, weight=None, length=None):
         loss = layers.cross_entropy(input=probs, label=label, soft_label=False)
-        max_seq_len = layers.shape(probs)[1]
+        max_seq_len = paddle.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
         loss = paddle.mean(loss, axis=[0])

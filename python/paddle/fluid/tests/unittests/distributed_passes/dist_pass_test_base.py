@@ -105,13 +105,15 @@ class DistPassTestBase(unittest.TestCase):
                 if out_var_no_pass is None:
                     self.assertIsNone(out_var_pass)
                 else:
-                    np.testing.assert_allclose(
-                        out_var_no_pass,
-                        out_var_pass,
-                        rtol=self.rtol,
-                        atol=self.atol,
-                        equal_nan=self.equal_nan,
-                    )
+                    self.assertEqual(len(out_var_pass), len(out_var_no_pass))
+                    for i in range(0, len(out_var_pass)):
+                        np.testing.assert_allclose(
+                            out_var_no_pass[i],
+                            out_var_pass[i],
+                            rtol=self.rtol,
+                            atol=self.atol,
+                            equal_nan=self.equal_nan,
+                        )
 
     @classmethod
     def _to_var_names(cls, names_or_vars):

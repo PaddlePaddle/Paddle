@@ -31,12 +31,10 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers import (
     cast,
     control_flow,
-    nn,
 )
 from paddle.fluid.layers.control_flow import (
     cond,
     while_loop,
-    less_than,
     increment,
 )
 from .return_transformer import (
@@ -525,7 +523,7 @@ def convert_len(var):
             # so we return a variable dynamically inferred from var.shape.
             if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
                 return var.shape[0]
-            return nn.shape(var)[0]
+            return paddle.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             return paddle.tensor.array_length(var)
         else:
@@ -608,7 +606,7 @@ def convert_shape(x):
     if isinstance(x, Variable):
         values = list(x.shape)
         if has_negative(values):
-            shape_tensor = nn.shape(x)
+            shape_tensor = paddle.shape(x)
             for i, v in enumerate(values):
                 if v is None or v < 0:
                     values[i] = shape_tensor[i]
@@ -782,7 +780,7 @@ def _run_paddle_pop(array, *args):
     assert isinstance(idx, int)
 
     def cond(i, new_array):
-        return less_than(i, arr_len)
+        return paddle.less_than(i, arr_len)
 
     def body(i, new_array):
         item = array_read(array=array, i=i)
