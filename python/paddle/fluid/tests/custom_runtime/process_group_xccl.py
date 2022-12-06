@@ -166,7 +166,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         raw_tensor_x_2 = paddle.slice(
             tensor_x, [0], [self.shape[0] // 2], [self.shape[0]]
         )
-        # raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0], [self.shape[0] // 2])
+        raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0], [self.shape[0] // 2])
         if pg.rank() == 0:
             task = pg.alltoall(tensor_x, tensor_out1)
             task.wait()
@@ -224,7 +224,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             task.wait()
             # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
         out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
-        # out2 = paddle.slice(tensor_x, [0], [self.shape[0]], [self.shape[0] * 2])
+        out2 = paddle.slice(tensor_x, [0], [self.shape[0]], [self.shape[0] * 2])
         # if pg.rank() == 0:
         #     assert np.array_equal(tensor_y, out1)
         # else:
