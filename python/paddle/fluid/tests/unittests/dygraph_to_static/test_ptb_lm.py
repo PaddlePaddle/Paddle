@@ -94,7 +94,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 bias = self.bias_arr[k]
 
                 nn = fluid.layers.concat([step_input, pre_hidden], 1)
-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = paddle.split(
@@ -213,7 +213,7 @@ class PtbModel(fluid.Layer):
             x_emb, init_h, init_c
         )
 
-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
+        projection = paddle.matmul(rnn_out, self.softmax_weight)
         projection = paddle.add(projection, self.softmax_bias)
 
         loss = paddle.nn.functional.softmax_with_cross_entropy(

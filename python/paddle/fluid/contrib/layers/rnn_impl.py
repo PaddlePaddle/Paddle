@@ -151,7 +151,7 @@ class BasicGRUUnit(Layer):
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._gate_weight)
 
         gate_input = paddle.add(gate_input, self._gate_bias)
 
@@ -160,7 +160,7 @@ class BasicGRUUnit(Layer):
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
+        candidate = paddle.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
         candidate = paddle.add(candidate, self._candidate_bias)
@@ -874,7 +874,7 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
