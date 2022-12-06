@@ -29,7 +29,7 @@ from paddle.fluid.tests.unittests.op_test import (
 class TestReshape2OneDNNOp(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type()
+        self.set_op_type()
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.set_additional_inputs()
         self.attrs = {"shape": self.new_shape}
