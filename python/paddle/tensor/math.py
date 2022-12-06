@@ -23,7 +23,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 
 # TODO: define math functions
-from paddle.utils import inplace_apis_in_dygraph_only
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..fluid.data_feeder import (
     check_dtype,
