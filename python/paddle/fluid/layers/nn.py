@@ -92,7 +92,6 @@ __all__ = [
     'elementwise_mul',
     'gaussian_random',
     'sampling_id',
-    'shape',
     'clip',
     'clip_by_norm',
     'mean',

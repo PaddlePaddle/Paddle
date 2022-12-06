@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,13 +35,7 @@ from paddle.tensor.layer_function_generator import (
 
 from paddle import _C_ops, _legacy_C_ops
 
-__all__ = [
-    'set_gradient_clip',
-    'ErrorClipByValue',
-    'ClipGradByValue',
-    'ClipGradByNorm',
-    'ClipGradByGlobalNorm',
-]
+__all__ = []
 
 _clip_by_global_norm_using_mp_type_flag = False
 
