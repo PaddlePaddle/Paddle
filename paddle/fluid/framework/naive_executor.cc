@@ -68,7 +68,7 @@ void NaiveExecutor::Run() {
     // According to reuse table, we share the out tensor's holder.
     if (reuse_cache_.count(op.get())) {
       for (auto &it : reuse_cache_[op.get()]) {
-        it.first->ShareBufferWith(*cluster_buffer_[it.second]);
+        it.first->ShareBufferWith(*cluster_buffer_[it.second], true);
       }
     }
 
