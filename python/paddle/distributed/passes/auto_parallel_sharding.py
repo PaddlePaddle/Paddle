@@ -464,6 +464,9 @@ class ShardingPass(PassBase):
                         OP_ROLE_KEY: OpRole.Optimize,
                     },
                 )
+                new_op._set_attr(
+                    'op_namescope', str('/') + ParallelMode.DataParallel
+                )
                 param_dist_attr = (
                     self._dist_context.get_tensor_dist_attr_for_program(param)
                 )
@@ -699,6 +702,7 @@ class ShardingPass(PassBase):
                 len(group_to_param_map.keys()),
             )
         )
+        broadcast_var_to_group_map = {}
         for i, group in enumerate(group_to_param_map.keys()):
 
             assert len(group) >= 1
@@ -741,6 +745,7 @@ class ShardingPass(PassBase):
                     [p.name for p in group.vars],
                 )
             )
+            broadcast_var_to_group_map[group.coalesce_var.name] = group
 
             # TODO Overlap broadcast with opt and next forward
             new_op = main_block.append_op(
@@ -754,10 +759,54 @@ class ShardingPass(PassBase):
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
+            new_op._set_attr(
+                'op_namescope', str('/') + ParallelMode.DataParallel
+            )
 
             # NOTE the current dist context lack the presentation for bucket tensor which
-            # composes many tensor with different dims_mapping. we assign a fake dist attr
+            # composes many tensor with different dims_mapping. we DO NOT assign dist attr
             # for it currently.
+
+        # add prior depend:
+        # 1. all coalesce var &
+        # 2. single var that not in shard
+        dep_map = {}
+        for i, op in enumerate(main_block.ops):
+            if is_sharding_param_broadcast_op(op):
+                broadcast_varname = op.output("Out")
+                group = broadcast_var_to_group_map[broadcast_varname]
+                # in shard coalesce depend to adam
+                if group.is_in_local_shard:
+
+                    if len(group.vars) > 1:
+                        last_grad_name = group.vars[-1].name
+                        dep_map[i] = (last_grad_name, broadcast_varname)
+                # not shard var depend to prior collective
+                else:
+                    prior_op = main_block.ops[i - 1]
+                    prior_var = prior_op.output("Out")
+                    dep_map[i] = (prior_var, broadcast_varname)
+
+        # insert deps
+        indice = sorted(list(dep_map.keys()), reverse=True)
+        for idx in indice:
+            prior_var = main_block.var(dep_map[idx][0])
+            post_var = main_block.var(dep_map[idx][1])
+            depend_op = insert_dependencies_for_two_vars(
+                main_block,
+                idx,
+                prior_var,
+                post_var,
+                self._dist_context,
+                OpRole.Optimize,
+                process_mesh=[
+                    -1
+                ],  # hack to avoid initialize the dist attr for coalesc var
+                is_recompute=False,
+                sync=False,
+            )
+
+        main_block._sync_with_cpp()
 
     def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
         pass
@@ -1037,6 +1086,7 @@ def _insert_init_and_broadcast_op(
             OP_ROLE_KEY: op_role,
         },
     )
+    new_op._set_attr('op_namescope', str('/') + ParallelMode.DataParallel)
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op,
         broadcast_var_dist_attr.process_mesh,
@@ -1211,6 +1261,14 @@ def _is_forward_op(op):
     return op.attr("op_role") == 0
 
 
+def is_sharding_param_broadcast_op(op):
+    return (
+        op.type == "c_broadcast"
+        and op.desc.has_attr("op_namescope")
+        and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    )
+
+
 def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
     dp_group = None
@@ -1376,6 +1434,10 @@ def group_param(sharding_info, fuse_size):
         else:
             cur_group = VarGroup(fuse_size)
             cur_group.collect(param, rank)
+
+        cur_group.is_in_local_shard = sharding_info.is_in_local_shard(
+            param.name
+        )
 
         if cur_group in group_to_param_map:
             group_to_param_map[cur_group].append(param.name)
