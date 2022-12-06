@@ -1042,6 +1042,7 @@ class GraphDataGenerator {
   int sage_batch_count_;
   int sage_batch_num_;
   int ins_buf_pair_len_;
+
   // size of a d_walk buf
   size_t buf_size_;
   int repeat_time_;
