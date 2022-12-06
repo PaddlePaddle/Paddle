@@ -1155,16 +1155,6 @@
     func : lu
   backward : lu_grad
 
-- op : lu_unpack
-  args : (Tensor x, Tensor y, bool unpack_ludata, bool unpack_pivots)
-  output : Tensor(pmat), Tensor(l), Tensor(u)
-  infer_meta :
-    func : LUUnpackInferMeta
-  kernel :
-    func : lu_unpack
-    data_type : x
-  backward : lu_unpack_grad
-
 - op : margin_cross_entropy
   args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
   output : Tensor(softmax), Tensor(loss)
@@ -1330,15 +1320,6 @@
     func : mish
   backward : mish_grad
 
-- op : mode
-  args : (Tensor x,  int axis,  bool keepdim)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : ModeInferMeta
-  kernel :
-    func : mode
-  backward : mode_grad
-
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
@@ -1406,17 +1387,6 @@
     func : nearest_interp
     data_type : x
   backward : nearest_interp_grad
-
-- op : nll_loss
-  args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction)
-  output : Tensor(out), Tensor(total_weight)
-  infer_meta :
-    func : NllLossRawInferMeta
-  kernel :
-    func : nll_loss
-    data_type : input
-  optional : weight
-  backward : nll_loss_grad
 
 - op : nms
   args : (Tensor x, float threshold)
@@ -1594,15 +1564,6 @@
   optional : boxes_num
   backward : psroi_pool_grad
 
-- op : qr
-  args : (Tensor x, str mode)
-  output : Tensor(q), Tensor(r)
-  infer_meta :
-    func : QrInferMeta
-  kernel :
-    func : qr
-  backward : qr_grad
-
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
   output : Tensor(out)
@@ -1654,16 +1615,6 @@
   kernel :
     func : remainder
   inplace : (x -> out)
-
-- op : renorm
-  args : (Tensor x, float p, int axis, float max_norm)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : renorm
-  backward : renorm_grad
 
 - op : repeat_interleave
   args : (Tensor x, int repeats, int axis)

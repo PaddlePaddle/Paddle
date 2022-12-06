@@ -14,6 +14,7 @@
 
 import os
 import pickle
+import socket
 import subprocess
 import sys
 import tempfile
@@ -159,10 +160,6 @@ def runtime_main(test_class, col_type):
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
     model.run_trainer(args)
-
-
-import socket
-from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
