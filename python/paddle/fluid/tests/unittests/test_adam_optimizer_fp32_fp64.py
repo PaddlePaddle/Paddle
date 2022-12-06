@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 
 
 def get_places():
@@ -32,7 +33,9 @@ def main_test_func(place, dtype):
             x = fluid.data(name='x', shape=[None, 13], dtype=dtype)
             y = fluid.data(name='y', shape=[None, 1], dtype=dtype)
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)

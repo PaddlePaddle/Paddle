@@ -498,7 +498,6 @@ void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& bias,
                         float epsilon,
                         int begin_norm_axis,
-                        bool is_test,
                         MetaTensor* out,
                         MetaTensor* mean,
                         MetaTensor* variance,
@@ -996,31 +995,34 @@ void ScatterInferMeta(const MetaTensor& x,
                           "index is a 2D tensor, but we get %d.",
                           index_dims[1]));
   } else {
-    PADDLE_ENFORCE_EQ(
-        index_dims.size(),
-        1,
-        phi::errors::InvalidArgument("The index should be a 1D tensor when the "
-                                     "index is not a 2D tensor, but we get %d.",
-                                     index_dims.size()));
+    PADDLE_ENFORCE_EQ(index_dims.size() == 1 || index_dims.size() == 0,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The index should be a 0D or 1D tensor when the "
+                          "index is not a 2D tensor, but we get %d.",
+                          index_dims.size()));
   }
-  PADDLE_ENFORCE_EQ(
-      ref_dims.size(),
-      updates_dims.size(),
-      phi::errors::InvalidArgument(
-          "Input(X) and Input(Updates) should have the same shape size, "
-          "but received the size of Input(x)'s shape is %d, the size of "
-          "Input(Updates)'s shape is %d.",
-          ref_dims.size(),
-          updates_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      updates_dims[0],
-      index_dims[0],
-      phi::errors::InvalidArgument(
-          "Input(Updates) and Input(Ids) should have same batch-size, but"
-          " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
-          "batch-size is %d.",
-          updates_dims[0],
-          index_dims[0]));
+  if (index_dims.size() != 0) {
+    PADDLE_ENFORCE_EQ(
+        (ref_dims.size() == updates_dims.size()),
+        true,
+        phi::errors::InvalidArgument(
+            "When the Input(Updates) is not a 0D tensor, the "
+            "Input(X) and Input(Updates) should have the same shape size, "
+            "but received the size of Input(x)'s shape is %d, the size of "
+            "Input(Updates)'s shape is %d.",
+            ref_dims.size(),
+            updates_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        updates_dims[0],
+        index_dims[0],
+        phi::errors::InvalidArgument(
+            "Input(Updates) and Input(Ids) should have same batch-size, but"
+            " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
+            "batch-size is %d.",
+            updates_dims[0],
+            index_dims[0]));
+  }
   out->set_dims(ref_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());

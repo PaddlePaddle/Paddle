@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -43,7 +44,6 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "transpose_x": False,
             "transpose_y": False,
-            "alpha": 1.0,
         }
 
     @IPUOpTest.static_graph
@@ -55,7 +55,7 @@ class TestBase(IPUOpTest):
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
 
-        out = paddle.fluid.layers.matmul(x, y, **self.attrs)
+        out = paddle.matmul(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -74,7 +74,6 @@ class TestCase1(TestBase):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 1.0,
         }
 
 
@@ -83,7 +82,6 @@ class TestCase2(TestBase):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 3.14,
         }
 
     def set_atol(self):
@@ -140,7 +138,6 @@ class TestCase6_2(TestCase6):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 1.0,
         }
 
 
@@ -153,7 +150,10 @@ class TestCase7(TestBase):
         self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
     def set_op_attrs(self):
-        self.attrs = {"transpose_x": False, "transpose_y": True, "alpha": 0.125}
+        self.attrs = {
+            "transpose_x": False,
+            "transpose_y": True,
+        }
 
 
 class TestCase8(TestBase):
@@ -178,7 +178,6 @@ class TestCase8_2(TestBase):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 1.0,
         }
 
 

@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import os
 
 import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
+
+import paddle
+import paddle.fluid as fluid
 
 IS_SPARSE = True
 os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
@@ -98,8 +99,8 @@ class TestDistCTR2x2(TestDistRunnerBase):
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-        acc = fluid.layers.accuracy(input=predict, label=label)
-        auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+        acc = paddle.static.accuracy(input=predict, label=label)
+        auc_var, batch_auc_var, auc_states = paddle.static.auc(
             input=predict, label=label
         )
         cost = fluid.layers.cross_entropy(input=predict, label=label)

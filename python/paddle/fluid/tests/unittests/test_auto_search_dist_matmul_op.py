@@ -14,19 +14,19 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
-import paddle.static as static
-import paddle.nn.functional as F
-import paddle.utils as utils
 import paddle.fluid.core as core
-from paddle.fluid import layers
-from paddle.distributed.auto_parallel.operators.common import (
-    get_distributed_operator_impl_container,
-)
+import paddle.nn as nn
+import paddle.nn.functional as F
+import paddle.static as static
+import paddle.utils as utils
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.operators.common import (
+    get_distributed_operator_impl_container,
+)
+from paddle.fluid import layers
 
 paddle.enable_static()
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
@@ -103,6 +103,7 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
+@unittest.skipIf(True, "to delete later")
 class TestCompatible(unittest.TestCase):
     def test_matmulv2_matmul_2_compatible(self):
         valid_op_dist_attr_list = []

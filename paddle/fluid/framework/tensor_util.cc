@@ -78,9 +78,9 @@ void TensorCopyImpl(const TENSOR& src,
 #ifdef PADDLE_WITH_MKLDNN
   auto size = src.layout() == DataLayout::ONEDNN
                   ? src.memory_size()
-                  : src.numel() * framework::DataTypeSize(src.dtype());
+                  : src.numel() * phi::SizeOf(src.dtype());
 #else
-  auto size = src.numel() * framework::DataTypeSize(src.dtype());
+  auto size = src.numel() * phi::SizeOf(src.dtype());
 #endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
@@ -490,7 +490,7 @@ void TensorCopySync(const phi::DenseTensor& src,
     return;
   }
 
-  auto size = src.numel() * framework::DataTypeSize(src.dtype());
+  auto size = src.numel() * phi::SizeOf(src.dtype());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
@@ -683,7 +683,7 @@ void TensorToStream(std::ostream& os,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.numel() * framework::DataTypeSize(tensor.dtype());
+    uint64_t size = tensor.numel() * phi::SizeOf(tensor.dtype());
 
     auto* data_ptr = tensor.data();
     PADDLE_ENFORCE_LT(size,

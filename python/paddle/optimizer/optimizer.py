@@ -12,40 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import logging
 from collections import defaultdict
 
+import numpy as np
+
 import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
+    _current_expected_place,
+    _in_eager_without_dygraph_check,
+    _in_legacy_dygraph,
     default_main_program,
     device_guard,
+    in_dygraph_mode,
     name_scope,
 )
 
-from ..fluid import framework
-from ..fluid import layers
-from ..fluid import unique_name
+from ..fluid import framework, layers, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.clip import (
     GradientClipBase,
     append_gradient_clip_ops,
     error_clip_callback,
 )
-from ..fluid.framework import program_guard, Parameter
+from ..fluid.dygraph import base as imperative_base
+from ..fluid.framework import Parameter, program_guard
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.dygraph import base as imperative_base
-from paddle.fluid import core
 from .lr import LRScheduler
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import (
-    _in_legacy_dygraph,
-    _in_eager_without_dygraph_check,
-    _current_expected_place,
-    in_dygraph_mode,
-)
 
 __all__ = []
 
@@ -59,7 +56,7 @@ def append_backward_new(
     checkpoints=None,
     distop_context=None,
 ):
-    from paddle.incubate.autograd.primx import orig2prim, Transform
+    from paddle.incubate.autograd.primx import Transform, orig2prim
 
     program = default_main_program()
     assert (
@@ -730,10 +727,24 @@ class Optimizer:
         )
         if device is None:
             device = self._get_device_for_param(param.name)
-        with device_guard(device):
-            self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value))
+
+        if (
+            in_dygraph_mode()
+            and (device == 'cpu' or isinstance(device, core.CPUPlace))
+            and (not core.is_compiled_with_xpu())
+        ):
+            _C_ops.full_(
+                var,
+                var.shape,
+                str(float(fill_value)),
+                var.dtype,
+                core.CPUPlace(),
             )
+        else:
+            with device_guard(device):
+                self.helper.set_variable_initializer(
+                    var, initializer=Constant(value=float(fill_value))
+                )
 
         if framework._non_static_mode():
             if len(self._accumulators_holder) > 0:

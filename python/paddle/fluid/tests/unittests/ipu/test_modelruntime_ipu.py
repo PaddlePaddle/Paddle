@@ -16,8 +16,9 @@ import os
 import unittest
 
 import numpy as np
-import paddle
 from op_test_ipu import IPUOpTest
+
+import paddle
 
 
 class SimpleLayer(paddle.nn.Layer):
@@ -29,9 +30,9 @@ class SimpleLayer(paddle.nn.Layer):
 
     def forward(self, x, target=None):
         x = self.conv(x)
-        x = paddle.fluid.layers.flatten(x, axis=1)
+        x = paddle.flatten(x, 1, -1)
         if target is not None:
-            x = paddle.fluid.layers.softmax(x)
+            x = paddle.nn.functional.softmax(x)
             loss = paddle.fluid.layers.cross_entropy(x, target)
             return x, loss
         return x

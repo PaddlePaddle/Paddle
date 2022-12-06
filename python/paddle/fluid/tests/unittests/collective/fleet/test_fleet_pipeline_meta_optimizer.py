@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-import os
+import paddle.fluid as fluid
+import paddle.static as static
 
 paddle.enable_static()
 

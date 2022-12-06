@@ -13,22 +13,23 @@
 # limitations under the License.
 
 import re
-import warnings
 import string
-
+import warnings
 from io import StringIO
-from ..static import Variable
+
+from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.proto import framework_pb2
 from ..framework import (
+    LayerHelper,
     OpProtoHolder,
     _non_static_mode,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
 )
-from ..framework import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
+from ..static import Variable
 
 __all__ = []
 

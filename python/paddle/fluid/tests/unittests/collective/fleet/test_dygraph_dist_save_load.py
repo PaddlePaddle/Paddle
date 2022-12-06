@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
-import unittest
 import subprocess
 import sys
+import unittest
 
 
 def strategy_test(saving, loading, gather_to):

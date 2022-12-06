@@ -21,7 +21,6 @@ import logging
 import itertools
 import threading
 import numpy as np
-import multiprocessing
 from collections import namedtuple
 from paddle.fluid.framework import (
     _set_expected_place,
@@ -422,6 +421,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
+        import paddle.incubate.multiprocessing as multiprocessing
+
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
         self._worker_status = []

@@ -289,6 +289,9 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_IsInstance(obj,
+                                 reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return {reinterpret_cast<TensorObject*>(obj)->tensor};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -335,6 +338,56 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {static_cast<int>(PyLong_AsLong(obj))};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list or tuple, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
+std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
+  std::vector<int64_t> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {static_cast<int64_t>(PyLong_AsLong(obj))};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -363,10 +416,30 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
             i));
       }
     }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(PyLong_AsSize_t(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of size_t, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {PyLong_AsSize_t(obj)};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "list, but got %s",
+        "list of size_t, but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
@@ -487,6 +560,9 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+    return {::pybind11::handle(obj).cast<phi::DenseTensor>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -527,7 +603,8 @@ std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
   }
 }
 
-std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos) {
+std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
+                                                  ssize_t arg_pos) {
   if (PyList_Check(obj)) {
     return ::pybind11::handle(obj).cast<std::vector<std::string>>();
   } else {
@@ -1385,16 +1462,8 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
-  // In case of IntArray, only two possible PyObjects:
-  // 1. list of int
-  // 2. Tensor
   if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument (position %d) must be "
-        "list or Tensor, but got %s",
-        op_type,
-        arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    return paddle::experimental::IntArray({});
   }
 
   // obj could be: int, float, bool, paddle.Tensor
@@ -1408,10 +1477,13 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return paddle::experimental::IntArray(
+        {static_cast<int64_t>(PyLong_AsLong(obj))});
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "list or Tensor, but got %s",
+        "list or int, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
@@ -1553,6 +1625,127 @@ void PyVoidHook::operator()() {
     PADDLE_THROW(platform::errors::Fatal(
         "Hook function of Tensor raises an unknown exception."));
   }
+}
+
+PyObjectHolder::PyObjectHolder(PyObject* ptr) { ptr_ = ptr; }
+
+PyObjectHolder::~PyObjectHolder() {
+  ::pybind11::gil_scoped_acquire gil;
+  Py_XDECREF(ptr_);
+}
+
+void* PyObjectHolder::get() { return reinterpret_cast<void*>(ptr_); }
+
+void PyObjectHolder::reset(void* ptr) {
+  if (ptr_) {
+    ::pybind11::gil_scoped_acquire gil;
+    Py_XDECREF(ptr_);
+  }
+  ptr_ = reinterpret_cast<PyObject*>(ptr);
+}
+
+void PyObjectHolder::inc_ref() {
+  ::pybind11::gil_scoped_acquire gil;
+  Py_XINCREF(ptr_);
+}
+void PyObjectHolder::dec_ref() {
+  ::pybind11::gil_scoped_acquire gil;
+  Py_XDECREF(ptr_);
+}
+
+PackHook::PackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
+
+PackHook::~PackHook() {
+  ::pybind11::gil_scoped_acquire gil;
+  Py_DECREF(hook_);
+}
+
+std::shared_ptr<egr::PyObjectHolderBase> PackHook::operator()(
+    const paddle::experimental::Tensor& tensor) {
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
+  auto args = PyTuple_New(1);
+  PyTuple_SET_ITEM(args, 0, paddle::pybind::ToPyObject(tensor));
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  PADDLE_ENFORCE_NOT_NULL(ret,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
+  Py_XDECREF(args);
+  egr::Controller::Instance().SetHasGrad(grad_tmp);
+  return std::make_shared<PyObjectHolder>(ret);
+}
+
+void* PackHook::operator()(void* py_tensor) {
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
+  auto args = PyTuple_New(1);
+  Py_INCREF(reinterpret_cast<PyObject*>(py_tensor));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(py_tensor));
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  PADDLE_ENFORCE_NOT_NULL(ret,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
+  Py_XDECREF(args);
+  egr::Controller::Instance().SetHasGrad(grad_tmp);
+  return reinterpret_cast<void*>(ret);
+}
+
+UnPackHook::UnPackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
+
+UnPackHook::~UnPackHook() {
+  ::pybind11::gil_scoped_acquire gil;
+  Py_DECREF(hook_);
+}
+
+paddle::experimental::Tensor UnPackHook::operator()(
+    std::shared_ptr<egr::PyObjectHolderBase> packed_value) {
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
+  auto args = PyTuple_New(1);
+  Py_INCREF(reinterpret_cast<PyObject*>(packed_value->get()));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value->get()));
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  PADDLE_ENFORCE_NOT_NULL(ret,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
+  Py_XDECREF(args);
+  egr::Controller::Instance().SetHasGrad(grad_tmp);
+
+  PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "paddle.autograd.saved_tensors_hooks only one pair "
+                        "of hooks is allowed at a time."));
+
+  auto tensor = reinterpret_cast<paddle::pybind::TensorObject*>(ret)->tensor;
+  Py_XDECREF(ret);
+  return tensor;
+}
+
+void* UnPackHook::operator()(void* packed_value, void* other) {
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
+  auto args = PyTuple_New(1);
+  Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  PADDLE_ENFORCE_NOT_NULL(ret,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
+  Py_XDECREF(args);
+  egr::Controller::Instance().SetHasGrad(grad_tmp);
+
+  PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "paddle.autograd.saved_tensors_hooks only one pair "
+                        "of hooks is allowed at a time."));
+
+  return reinterpret_cast<void*>(ret);
 }
 
 }  // namespace pybind

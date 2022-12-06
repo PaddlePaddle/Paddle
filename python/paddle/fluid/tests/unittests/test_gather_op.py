@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
-from paddle.framework import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.framework import core
 
 
 def gather_numpy(x, index, axis):
@@ -225,7 +227,7 @@ class API_TestGather(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float64')
             index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
-            out = paddle.fluid.layers.gather(data1, index)
+            out = paddle.gather(data1, index)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
@@ -264,7 +266,7 @@ class API_TestDygraphGather(unittest.TestCase):
         index_1 = np.array([1, 2])
         input = paddle.to_tensor(input_1)
         index = paddle.to_tensor(index_1)
-        output = paddle.fluid.layers.gather(input, index)
+        output = paddle.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([[3, 4], [5, 6]])
         np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
@@ -372,12 +374,12 @@ class TestGathertError(unittest.TestCase):
             )
 
             def test_x_type():
-                paddle.fluid.layers.gather(x, index)
+                paddle.gather(x, index)
 
             self.assertRaises(TypeError, test_x_type)
 
             def test_index_type():
-                paddle.fluid.layers.gather(x, index_float)
+                paddle.gather(x, index_float)
 
             self.assertRaises(TypeError, test_index_type)
 

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
@@ -38,7 +38,7 @@ struct AddGradFunctor {
 
 template <typename T>
 struct ScaleFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   explicit ScaleFunctor(const MT coeff) : coeff_(coeff) {}
 
   inline HOSTDEVICE T operator()(T ele) {
@@ -125,7 +125,7 @@ struct SigmoidGradFunctor {
 
 template <typename T>
 struct GeluFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T x) {
     // this function is tanh approximation of gelu
     // actual gelu is:
@@ -141,7 +141,7 @@ struct GeluFunctor {
 
 template <typename T>
 struct GeluGradFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T UseX(T x) {
     MT mx = static_cast<MT>(x);
     MT tanh_out =

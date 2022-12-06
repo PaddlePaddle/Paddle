@@ -474,7 +474,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
   } else {
     auto meta = phi::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
     *ddx_safe = phi::Empty(dev_ctx, std::move(meta));
-    ddx_safe->mutable_data(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(ddx_safe);
     SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
   }
