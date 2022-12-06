@@ -131,11 +131,11 @@ void ExecuteReshape(const Context& dev_ctx,
       dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), funcs::to_void_cast<void>(x.data()));
+      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
   out->Resize(x_dims);  // to match x numel, format is changed later
   // reorder is done into a plain tag to allow usage with blocked formats
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      out, funcs::GetPlainOneDNNFormat(x.dims().size()), dev_ctx.GetPlace());
+      out, funcs::GetPlainOneDNNFormat(x_dims.size()), dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
 
@@ -164,8 +164,7 @@ void ReshapeWithXShape(const Context& dev_ctx,
                        const IntArray& shape,
                        DenseTensor* out,
                        DenseTensor* xshape) {
-  auto xshape_dims = xshape->dims();
-  auto x_dims = slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
   ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
 
