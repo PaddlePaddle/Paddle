@@ -492,12 +492,6 @@ void gemm_bias_gelu(const T* A,
           num_experts,
           multi_processor_count_,
           stream);
-    } else {
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
-          platform::errors::InvalidArgument(
-              "MoE GEMMBIASACT Only support SM75、SM80 and SM86. "));
     }
   } else {
     if (sm_ == 75) {
@@ -532,12 +526,6 @@ void gemm_bias_gelu(const T* A,
           num_experts,
           multi_processor_count_,
           stream);
-    } else {
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
-          platform::errors::InvalidArgument(
-              "MoE GEMMBIASACT Only support SM75、SM80 and SM86. "));
     }
   }
 }
@@ -569,11 +557,6 @@ void gemm(const T* A,
                                                       num_experts,
                                                       multi_processor_count_,
                                                       stream);
-  } else {
-    PADDLE_ENFORCE_EQ(true,
-                      false,
-                      platform::errors::InvalidArgument(
-                          "MoE GEMM Only support SM80 and SM86. "));
   }
 }
 
