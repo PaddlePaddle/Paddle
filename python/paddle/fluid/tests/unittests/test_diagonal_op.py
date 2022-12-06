@@ -99,6 +99,35 @@ class TestDiagonalOpCase3(TestDiagonalOp):
         pass
 
 
+class TestDiagonalOpCase4(TestDiagonalOp):
+    def init_config(self):
+        self.case = np.random.randn(100, 100).astype('int64')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': 1, 'axis1': 1, 'axis2': 0}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+    def test_check_grad(self):
+        pass
+
+
+class TestDiagonalOpCase5(TestDiagonalOp):
+    def init_config(self):
+        self.case = np.random.randn(4, 2, 4, 4).astype('float32')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -2, 'axis1': 0, 'axis2': 3}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
 class TestDiagonalAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [10, 3, 4]
