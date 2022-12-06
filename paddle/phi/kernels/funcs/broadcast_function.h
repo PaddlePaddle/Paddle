@@ -83,6 +83,7 @@ struct LoaderTypeClassifier {
 };
 
 #ifndef PADDLE_WITH_XPU_KP
+// Common broadcast/elementwise Loader.
 template <typename T, int VecSize, int Arity, bool IsBoundary, int LoadType>
 struct BroadcastDataLoader {
   __device__ __forceinline__ void operator()(
@@ -107,6 +108,7 @@ struct BroadcastDataLoader {
   }
 };
 
+// Scalar elementwise Loader with consideration of IsBoundary.
 template <typename T, int VecSize, int Arity>
 struct BroadcastDataLoader<T, VecSize, Arity, true, kElementwise> {
   __device__ __forceinline__ void operator()(
@@ -117,17 +119,12 @@ struct BroadcastDataLoader<T, VecSize, Arity, true, kElementwise> {
       const int block_offset,
       const int num,
       const uint32_t numel) {
-#pragma unroll
-    for (int i = 0; i < Arity; ++i) {
-#pragma unroll
-      kps::Init<T, VecSize>(args[i], static_cast<T>(1));
-    }
-
     int thread_offset = threadIdx.x * VecSize + block_offset;
 #pragma unroll
     for (int i = 0; i < Arity; ++i) {
 #pragma unroll
       for (int idx = 0; idx < VecSize; ++idx) {
+        args[i][idx] = static_cast<T>(1);
         int index = thread_offset + idx;
         if (index < numel) {
           args[i][idx] = ins[i][index];
@@ -137,6 +134,7 @@ struct BroadcastDataLoader<T, VecSize, Arity, true, kElementwise> {
   }
 };
 
+// Vectorized elementwise Loader without consideration of IsBoundary.
 template <typename T, int VecSize, int Arity>
 struct BroadcastDataLoader<T, VecSize, Arity, false, kElementwise> {
   __device__ __forceinline__ void operator()(
@@ -164,6 +162,7 @@ struct BroadcastDataLoader<T, VecSize, Arity, false, kElementwise> {
   }
 };
 
+// Common broadcast data loader.
 template <typename T, int VecSize, int Arity, bool IsBoundary>
 struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, kBroadcast> {
   __device__ __forceinline__ void operator()(
@@ -405,11 +404,10 @@ void LaunchBroadcastKernel(
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   auto stream = ctx.stream();
-  auto threads = gpu_config.thread_per_block;
+  auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;
-  int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
-                    gpu_config.GetBlockSize();
-  int tail_tid = numel % (VecSize * gpu_config.GetBlockSize());
+  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  int tail_tid = numel % (VecSize * threads);
 
   if (loader_classifier.all_elementwise) {
     VectorizedBroadcastKernel<Func,

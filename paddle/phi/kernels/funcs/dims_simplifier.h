@@ -34,18 +34,6 @@ struct BroadcastDimsSimplifier {
   BroadcastDimsSimplifier(const std::vector<const DenseTensor *> &ins,
                           const phi::DDim &dims,
                           int axis) {
-    if (!NeedBroadcast(ins, dims)) {
-      int64_t numel = phi::product(dims);
-      rank = 1;
-      N = ins.size();
-      out_dims = DimVector{numel};
-      in_dims.resize(N);
-      for (int64_t i = 0; i < N; ++i) {
-        in_dims[i] = DimVector{numel};
-      }
-      return;
-    }
-
     N = std::max(static_cast<int>(ins.size()), 2);
     in_dims.resize(N);
     rank = dims.size();
@@ -273,18 +261,18 @@ struct BroadcastDimsSimplifier {
 };
 
 // Simplify the input dims and permute dims if possible.
-struct DimsSimplifier {
+struct PermuteDimsSimplifier {
  public:
-  explicit DimsSimplifier(const int rank,
-                          const int64_t numel,
-                          const std::vector<int32_t> &perm,
-                          const std::vector<int64_t> &dims)
+  PermuteDimsSimplifier(const int rank,
+                        const int64_t numel,
+                        const std::vector<int32_t> &perm,
+                        const std::vector<int64_t> &dims)
       : perm_(rank), src_dims_(rank), count_(numel) {
     SimplifyPermAndDims(rank, dims, perm);
     perm_.resize(rank_);
     src_dims_.resize(rank_);
     dst_dims_.resize(rank_);
-    if (!is_seq_perm_) {
+    if (!is_sequence_perm_) {
       for (auto i = 0; i < rank_; ++i) {
         dst_dims_[i] = src_dims_[perm_[i]];
       }
@@ -294,7 +282,7 @@ struct DimsSimplifier {
     }
   }
 
-  ~DimsSimplifier() = default;
+  ~PermuteDimsSimplifier() = default;
 
   const int &GetRank() const { return rank_; }
   const int64_t &GetCount() const { return count_; }
@@ -305,8 +293,8 @@ struct DimsSimplifier {
  private:
   int rank_{1};
   int64_t count_{0};
-  bool is_seq_perm_{true};
   std::vector<int> perm_;
+  bool is_sequence_perm_{true};
   std::vector<int64_t> src_dims_;
   std::vector<int64_t> dst_dims_;
 
@@ -365,11 +353,11 @@ struct DimsSimplifier {
       const int mapped = valid_map[perm[i]];
       if (mapped >= 0) {
         perm_[perm_idx] = mapped;
-        is_seq_perm_ &= (mapped == perm_idx);
+        is_sequence_perm_ &= (mapped == perm_idx);
         perm_idx += 1;
       }
     }
-    rank_ = is_seq_perm_ ? 1 : valid_dim_idx;
+    rank_ = is_sequence_perm_ ? 1 : valid_dim_idx;
   }
 };
 
