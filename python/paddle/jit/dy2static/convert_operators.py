@@ -31,12 +31,10 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers import (
     cast,
     control_flow,
-    nn,
 )
 from paddle.fluid.layers.control_flow import (
     cond,
     while_loop,
-    less_than,
     increment,
 )
 from .return_transformer import (
@@ -525,7 +523,7 @@ def convert_len(var):
             # so we return a variable dynamically inferred from var.shape.
             if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
                 return var.shape[0]
-            return nn.shape(var)[0]
+            return paddle.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             return paddle.tensor.array_length(var)
         else:
@@ -608,7 +606,7 @@ def convert_shape(x):
     if isinstance(x, Variable):
         values = list(x.shape)
         if has_negative(values):
-            shape_tensor = nn.shape(x)
+            shape_tensor = paddle.shape(x)
             for i, v in enumerate(values):
                 if v is None or v < 0:
                     values[i] = shape_tensor[i]
@@ -738,17 +736,15 @@ def convert_assert(cond, message=""):
         assert cond, message
 
 
-def convert_print(*args):
+def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
-    A function representing Python ``print`` statement. Note: this is a basic
-    python function so we haven't handle sep, end, file and flush parameters of
-    python function.
+    A function representing Python ``print`` function. It will print all arguments
+    at compile time and only print the Tensor values at runtime.
     """
-    for var in args:
-        if isinstance(var, Variable):
-            var = Print(var)
-        else:
-            print(var)
+    for obj in objects:
+        if isinstance(obj, Variable):
+            Print(obj)
+    print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 
 def convert_pop(target, *args):
@@ -782,7 +778,7 @@ def _run_paddle_pop(array, *args):
     assert isinstance(idx, int)
 
     def cond(i, new_array):
-        return less_than(i, arr_len)
+        return paddle.less_than(i, arr_len)
 
     def body(i, new_array):
         item = array_read(array=array, i=i)
