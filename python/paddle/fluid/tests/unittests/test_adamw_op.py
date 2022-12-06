@@ -21,7 +21,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import core
 
 
@@ -249,11 +248,6 @@ class TestAdamWOp(unittest.TestCase):
             adam = paddle.optimizer.AdamW(
                 0.1, epsilon=-1, parameters=linear.parameters()
             )
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_adamw_op_dygraph()
-            self.test_adamw_op_invalid_input()
 
 
 class TestAdamWOpGroup(TestAdamWOp):
