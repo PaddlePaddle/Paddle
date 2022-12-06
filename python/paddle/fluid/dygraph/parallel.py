@@ -723,9 +723,7 @@ class DataParallel(layers.Layer):
         def check_layer_sparse(sublayer):
             if isinstance(sublayer, paddle.nn.layer.common.Embedding):
                 return sublayer._sparse
-            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding
-            # is removed in the future, the check will also be removed here.
-            if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
+            if isinstance(sublayer, paddle.nn.Embedding):
                 return sublayer._is_sparse
             return False
 
@@ -875,7 +873,7 @@ class DataParallel(layers.Layer):
 
                 dist.init_parallel_env()
 
-                emb = fluid.dygraph.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
                 emb = fluid.dygraph.DataParallel(emb)
 
                 state_dict = emb.state_dict()

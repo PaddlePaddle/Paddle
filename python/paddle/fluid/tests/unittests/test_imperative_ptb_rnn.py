@@ -23,10 +23,10 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit import TracedLayer
+from paddle.nn import Embedding
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -173,10 +173,10 @@ class PtbModel(fluid.Layer):
             dropout=dropout,
         )
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale

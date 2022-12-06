@@ -915,8 +915,8 @@ class TestLayer(LayerTest):
             )[0]
         with self.static_graph():
             data_t = layers.data(name='word', shape=[1], dtype='int64')
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr='emb.w', sparse=False
             )
             emb_rlt = emb2(data_t)
             static_rlt2 = self.get_static_graph_result(
@@ -924,16 +924,17 @@ class TestLayer(LayerTest):
             )[0]
         with self.dynamic_graph():
             with _test_eager_guard():
-                emb2 = nn.Embedding(
-                    size=[dict_size, 32],
-                    param_attr='eager_emb.w',
-                    is_sparse=False,
+                emb2 = paddle.nn.Embedding(
+                    dict_size,
+                    32,
+                    weight_attr='eager_emb.w',
+                    sparse=False,
                 )
                 dy_eager_rlt = emb2(base.to_variable(inp_word))
                 dy_eager_rlt_value = dy_eager_rlt.numpy()
 
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr='emb.w', sparse=False
             )
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
@@ -950,11 +951,12 @@ class TestLayer(LayerTest):
                         custom_weight
                     )
                 )
-                emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
-                emb2 = nn.Embedding(
-                    size=[dict_size, 32],
-                    param_attr=weight_attr,
-                    is_sparse=False,
+                emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
+                emb2 = paddle.nn.Embedding(
+                    dict_size,
+                    32,
+                    weight_attr=weight_attr,
+                    sparse=False,
                 )
                 rep1 = emb1(base.to_variable(inp_word))
                 rep2 = emb2(base.to_variable(inp_word))
@@ -980,9 +982,9 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr=weight_attr, is_sparse=False
+            emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr=weight_attr, sparse=False
             )
             rep1 = emb1(base.to_variable(inp_word))
             rep2 = emb2(base.to_variable(inp_word))

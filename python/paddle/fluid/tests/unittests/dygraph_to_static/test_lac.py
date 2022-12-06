@@ -25,7 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import paddle
 import paddle.fluid as fluid
 from paddle import _legacy_C_ops
-from paddle.fluid.dygraph import Embedding, to_variable
+from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
 from paddle.jit import ProgramTranslator
@@ -371,10 +371,10 @@ class LexNet(fluid.dygraph.Layer):
         self.bigru_num = args.bigru_num
         self.init_bound = 0.1
 
-        self.word_embedding = Embedding(
-            size=[self.vocab_size, self.word_emb_dim],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+        self.word_embedding = paddle.nn.Embedding(
+            self.vocab_size,
+            self.word_emb_dim,
+            weight_attr=fluid.ParamAttr(
                 learning_rate=self.emb_lr,
                 name="word_emb",
                 initializer=fluid.initializer.Uniform(
