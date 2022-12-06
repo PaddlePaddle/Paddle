@@ -139,9 +139,10 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   const T* input_data = input->data<T>();
   const int* imgsize_data = img_size.data<int>();
-  T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, dev_ctx.GetPlace());
-  T* scores_data =
-      scores->mutable_data<T>({n, box_num, class_num}, dev_ctx.GetPlace());
+  boxes->Resize({n, box_num, 4});
+  T* boxes_data = dev_ctx.template Alloc<T>(boxes);
+  scores->Resize({n, box_num, class_num});
+  T* scores_data = dev_ctx.template Alloc<T>(scores);
   phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
   set_zero(dev_ctx, boxes, static_cast<T>(0));
   set_zero(dev_ctx, scores, static_cast<T>(0));

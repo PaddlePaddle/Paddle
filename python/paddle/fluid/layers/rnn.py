@@ -670,7 +670,7 @@ def _rnn_static_graph(
         inputs = map_structure(_transpose_batch_time, inputs)
 
     if sequence_length:
-        max_seq_len = nn.shape(flatten(inputs)[0])[0]
+        max_seq_len = paddle.shape(flatten(inputs)[0])[0]
         mask = sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
@@ -852,7 +852,7 @@ def _dynamic_decode_imperative(
         initial_states,
         initial_finished,
     )
-    cond = paddle.logical_not((nn.reduce_all(initial_finished)))
+    cond = paddle.logical_not((paddle.all(initial_finished)))
     sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     outputs = None
 
@@ -910,7 +910,7 @@ def _dynamic_decode_imperative(
         control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
         step_idx += 1
 
-        cond = paddle.logical_not(nn.reduce_all(finished))
+        cond = paddle.logical_not(paddle.all(finished))
         if max_step_num is not None and step_idx > max_step_num:
             break
 
@@ -960,7 +960,7 @@ def _dynamic_decode_declarative(
     global_finished.stop_gradient = True
     step_idx = tensor.fill_constant(shape=[1], dtype="int64", value=0)
 
-    cond = paddle.logical_not((nn.reduce_all(initial_finished)))
+    cond = paddle.logical_not((paddle.all(initial_finished)))
     if max_step_num is not None:
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num
@@ -1009,7 +1009,7 @@ def _dynamic_decode_declarative(
         default_main_program().current_block_idx = (
             default_main_program().current_block().parent_idx
         )
-        tensor_array = control_flow.create_array(dtype)
+        tensor_array = paddle.tensor.create_array(dtype)
         default_main_program().current_block_idx = current_block_idx
         return tensor_array
 
@@ -1091,12 +1091,12 @@ def _dynamic_decode_declarative(
             )
         if max_step_num is not None:
             paddle.logical_and(
-                paddle.logical_not(nn.reduce_all(global_finished)),
+                paddle.logical_not(paddle.all(global_finished)),
                 paddle.less_equal(step_idx, max_step_num),
                 cond,
             )
         else:
-            paddle.logical_not(nn.reduce_all(global_finished), cond)
+            paddle.logical_not(paddle.all(global_finished), cond)
 
     final_outputs = map_structure(
         lambda array: tensor.tensor_array_to_tensor(
@@ -1361,9 +1361,9 @@ class TrainingHelper(DecodeHelper):
         # extend inputs to avoid to slice out of range in `next_inputs`
         # may be easier and have better performance than condition_op
         self.inputs_ = map_structure(
-            lambda x: nn.pad(
+            lambda x: paddle.nn.functional.pad(
                 x,
-                paddings=([0, 1] + [0, 0] * (len(x.shape) - 1))
+                pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
                 if time_major
                 else ([0, 0, 0, 1] + [0, 0] * (len(x.shape) - 2)),
             ),
@@ -1701,7 +1701,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
             if self.softmax_temperature is not None
             else outputs
         )
-        probs = nn.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
         # not pass to probs, since sampling_id op does not have corresponding
         # grad op and thus can not pass.

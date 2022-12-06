@@ -14,11 +14,11 @@
 
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from paddle.jit.dy2static.static_analysis import (
     AstNodeWrapper,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
+from paddle.jit.dy2static.utils import ast_to_source_code
+from paddle.jit.dy2static.utils import is_paddle_api
 from .base_transformer import (
     BaseTransformer,
 )
@@ -60,8 +60,9 @@ class CallTransformer(BaseTransformer):
                 'zip',
                 'range',
                 'enumerate',
+                'print',
             }
-            is_builtin = eval("is_builtin({})".format(func_str))
+            is_builtin = eval("is_builtin({})".format(func_str))  # noqa: F811
             need_convert = func_str in need_convert_builtin_func_list
             return is_builtin and not need_convert
         except Exception:
