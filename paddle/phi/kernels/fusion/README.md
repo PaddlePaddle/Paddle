@@ -10,4 +10,6 @@
   - Fusion Kernel is generally used to accelerate the combined operation on a certain device. If all devices need to be implemented, the cost is relatively high.
   - We don't recommend implementing a pseudo kernel that just throws exception, if not required, it can be not implemented.
 
-3. Fusion Kernel needs to be in the `phi/fusion` namespace
+3. Fusion Kernel needs to be in the `phi/fusion` namespace.
+
+4. The file naming of the Fusion Kernel needs to follow the format of `fused_[fusion operation name]_kernel.h/cc/cu`, the kernel function naming of the Fusion Kernel needs to follow the format of `Fused[fusion operation name]Kernel`, and the kernel registration naming of the Fusion Kernel needs to follow the format of `fused_[fusion operation name]`.

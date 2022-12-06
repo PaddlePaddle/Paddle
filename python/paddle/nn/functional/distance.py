@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import paddle
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid.layer_helper import LayerHelper
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ...fluid.data_feeder import check_type, check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
 
 __all__ = []
 

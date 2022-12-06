@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Linear, Layer
-from paddle.fluid.dygraph import to_variable, guard
-from paddle.jit import TracedLayer
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
-from paddle.fluid import core
-import numpy as np
 import paddle.nn.functional as F
+from paddle.fluid import Embedding, Layer, core
+from paddle.fluid.dygraph import guard, to_variable
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.jit import TracedLayer
+from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
 
@@ -397,9 +399,9 @@ class PrePostProcessLayer(Layer):
         super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
-                self._layer_norm = LayerNorm(
+                self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    param_attr=fluid.ParamAttr(
+                    weight_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
@@ -427,12 +429,13 @@ class PrePostProcessLayer(Layer):
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
-        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
+        self._i2h = Linear(d_hid, d_inner_hid)
         self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
         hidden = self._i2h(x)
+        hidden = paddle.nn.functional.relu(hidden)
         if self._dropout_rate:
             hidden = fluid.layers.dropout(
                 hidden,
@@ -492,15 +495,15 @@ class MultiHeadAttentionLayer(Layer):
         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = fluid.layers.matmul(
+        product = paddle.matmul(
             x=transpose_q,
             y=transpose_k,
             transpose_y=True,
-            alpha=self._d_model**-0.5,
         )
+        product = paddle.scale(product, scale=self._d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
-        weights = fluid.layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
             weights_droped = fluid.layers.dropout(
                 weights,
@@ -508,9 +511,9 @@ class MultiHeadAttentionLayer(Layer):
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-            out = fluid.layers.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_droped, transpose_v)
         else:
-            out = fluid.layers.matmul(weights, transpose_v)
+            out = paddle.matmul(weights, transpose_v)
 
         # combine heads
         if len(out.shape) != 4:
@@ -1000,7 +1003,7 @@ class WrapDecoderLayer(Layer):
         )
 
         if self._weight_sharing:
-            predict = fluid.layers.matmul(
+            predict = paddle.matmul(
                 x=dec_output_reshape,
                 y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True,
@@ -1010,7 +1013,7 @@ class WrapDecoderLayer(Layer):
 
         if dec_inputs is None:
             # Return probs for independent decoder program.
-            predict_out = fluid.layers.softmax(predict)
+            predict_out = paddle.nn.functional.softmax(predict)
             return predict_out
         return predict
 
@@ -1096,7 +1099,7 @@ class TransFormer(Layer):
                 epsilon=self._label_smooth_eps,
             )
 
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self._label_smooth_eps else False,

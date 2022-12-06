@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import subprocess
-import os
 import json
+import os
 import shutil
+import subprocess
 
 
 class Info:

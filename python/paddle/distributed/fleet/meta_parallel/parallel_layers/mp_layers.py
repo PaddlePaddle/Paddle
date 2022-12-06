@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...layers.mpu.mp_layers import VocabParallelEmbedding  # noqa: F401
 from ...layers.mpu.mp_layers import ColumnParallelLinear  # noqa: F401
-from ...layers.mpu.mp_layers import RowParallelLinear  # noqa: F401
 from ...layers.mpu.mp_layers import ParallelCrossEntropy  # noqa: F401
+from ...layers.mpu.mp_layers import RowParallelLinear  # noqa: F401
+from ...layers.mpu.mp_layers import VocabParallelEmbedding  # noqa: F401
 
 __all__ = []

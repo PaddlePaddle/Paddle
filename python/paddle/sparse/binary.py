@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
-from paddle.fluid.framework import dygraph_only, core
-from paddle import in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
+from paddle.fluid.framework import core, dygraph_only
 from paddle.fluid.layer_helper import LayerHelper
+
 from .unary import cast
 
 __all__ = []

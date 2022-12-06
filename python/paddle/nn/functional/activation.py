@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...tensor.ops import sigmoid  # noqa: F401
-from ...tensor.math import tanh  # noqa: F401
-from ...tensor.math import tanh_  # noqa: F401
-
-from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ...tensor.manipulation import chunk
-
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import convert_np_dtype_to_dtype_
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from ...fluid.framework import (
+    _in_legacy_dygraph,
+    convert_np_dtype_to_dtype_,
+    in_dygraph_mode,
+)
+from ...fluid.layer_helper import LayerHelper
+from ...tensor.manipulation import chunk
+from ...tensor.math import tanh  # noqa: F401
+from ...tensor.math import tanh_  # noqa: F401
+from ...tensor.ops import sigmoid  # noqa: F401
 
 __all__ = []
 

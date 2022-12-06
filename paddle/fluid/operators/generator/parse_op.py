@@ -15,7 +15,6 @@
 import argparse
 
 import yaml
-
 from parse_utils import parse_op_entry
 
 

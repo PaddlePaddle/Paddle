@@ -167,6 +167,29 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test broadcast api ok")
 
+            # test broadcast with shape=[]
+            # rank 0
+            x = np.random.random([]).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random([]).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            broadcast_result = paddle.assign(tensor_x)
+            if pg.rank() == 0:
+                task = dist.broadcast(tensor_x, 0, sync_op=False)
+                task.synchronize()
+                paddle.device.cuda.synchronize()
+                assert task.is_completed()
+                assert np.array_equal(broadcast_result, tensor_x)
+            else:
+                task = dist.broadcast(tensor_y, 0)
+                paddle.device.cuda.synchronize()
+                assert np.array_equal(broadcast_result, tensor_y)
+            assert tensor_y.shape == []
+
+            print("test broadcast api with shape=[] ok")
+
             # test barrier
             # rank 0
             if pg.rank() == 0:
@@ -416,6 +439,30 @@ class TestProcessGroupFp32(unittest.TestCase):
             else:
                 assert np.array_equal(tensor_y, out2)
             print("test scatter api ok\n")
+
+            # test Scatter with shape=[]
+            # rank 0
+            x = np.random.random([]).astype(self.dtype)
+            y = np.random.random([]).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            if pg.rank() == 0:
+                in_1, in_2 = tensor_x, tensor_x + 1
+                task = dist.scatter(tensor_y, [in_1, in_2], 0, sync_op=True)
+                paddle.device.cuda.synchronize()
+            # rank 1
+            else:
+                task = dist.scatter(tensor_y, [], 0, sync_op=True)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            out1 = paddle.assign(tensor_x)
+            out2 = paddle.assign(tensor_x + 1)
+            if pg.rank() == 0:
+                assert np.array_equal(tensor_y, out1)
+            else:
+                assert np.array_equal(tensor_y, out2), f"{tensor_y}, {out2}"
+            assert tensor_y.shape == []
+            print("test scatter api with shape=[] ok\n")
 
             # test send min
             # rank 0

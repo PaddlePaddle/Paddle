@@ -16,16 +16,17 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid.core as core
 
 
 def conv2d_forward_naive(
