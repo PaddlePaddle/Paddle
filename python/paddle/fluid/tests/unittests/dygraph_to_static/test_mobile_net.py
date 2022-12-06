@@ -28,7 +28,6 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 from paddle.nn import Linear
-from paddle.nn.layer.norm import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -69,7 +68,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             bias_attr=False,
         )
 
-        self._batch_norm = BatchNorm(
+        self._batch_norm = paddle.nn.layer.nomr.BatchNorm(
             num_filters,
             act=act,
             param_attr=ParamAttr(name=self.full_name() + "_bn" + "_scale"),
