@@ -495,7 +495,7 @@ class PolynomialDecay(LearningRateDecay):
           total_step = 5000
           end_lr = 0
           with fluid.dygraph.guard():
-              emb = paddle.nn.Embedding( [10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.PolynomialDecay(
                   start_lr, total_step, end_lr, power=1.0),
@@ -647,7 +647,7 @@ class NoamDecay(LearningRateDecay):
           warmup_steps = 100
           learning_rate = 0.01
           with fluid.dygraph.guard():
-              emb = paddle.nn.Embedding([10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.NoamDecay(
                          1/(warmup_steps *(learning_rate ** 2)),
