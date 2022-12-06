@@ -21,15 +21,23 @@ from paddle import _C_ops
 paddle.enable_static()
 
 
-def python_api(logits, label, logits_length, labels_length):
+def python_api(
+    logits,
+    label,
+    logits_length,
+    labels_length,
+    blank=0,
+    fastemit_lambda=0.0,
+    num_threads=1,
+):
     loss_out = _C_ops.warprnnt(
         logits,
         label,
         logits_length,
         labels_length,
-        blank=0,
-        fastemit_lambda=0.0,
-        num_threads=1,
+        blank=blank,
+        fastemit_lambda=fastemit_lambda,
+        num_threads=num_threads,
     )
     return loss_out
 
@@ -217,6 +225,7 @@ class TestWarpRNNTCPUOp(OpTest):
         self.attrs = {
             "blank": self.blank,
             "fastemit_lambda": self.fastemit_lambda,
+            "num_threads": 1,
         }
 
     def test_check_output(self):

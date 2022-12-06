@@ -1879,20 +1879,6 @@ def rnnt_loss(
                 num_threads,
             )
             return loss_out
-        if _non_static_mode():
-            grad, loss_out = _legacy_C_ops.warprnnt(
-                input,
-                label,
-                input_length,
-                label_length,
-                'blank',
-                blank,
-                'fastemit_lambda',
-                fastemit_lambda,
-                'num_threads',
-                num_threads,
-            )
-            return loss_out
         helper = LayerHelper('warprnnt', **locals())
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], "warprnnt"
