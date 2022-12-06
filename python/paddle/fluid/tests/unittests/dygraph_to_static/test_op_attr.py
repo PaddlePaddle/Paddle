@@ -31,7 +31,7 @@ class NetWithOpAttr(paddle.nn.Layer):
         super().__init__()
 
         self.linear = paddle.nn.Linear(in_num, out_num)
-        self.bn = paddle.nn.BatchNorm(out_num)
+        self.bn = paddle.nn.layer.norm.BatchNorm(out_num)
         self.sub = MySub()
 
     def forward(self, x):

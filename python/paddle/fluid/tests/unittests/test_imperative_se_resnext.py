@@ -24,9 +24,6 @@ from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.layer.norm import BatchNorm
 
-# NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
-
-
 batch_size = 8
 train_parameters = {
     "input_size": [3, 224, 224],

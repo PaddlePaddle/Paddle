@@ -43,7 +43,7 @@ class TestFuseResNetUnit(unittest.TestCase):
                 conv2d = paddle.nn.Conv2D(
                     8, 32, 1, bias_attr=False, data_format='NHWC'
                 )
-                batch_norm = paddle.nn.BatchNorm(
+                batch_norm = paddle.nn.layer.norm.BatchNorm(
                     32, act='relu', data_layout='NHWC'
                 )
                 out = batch_norm(conv2d(x))

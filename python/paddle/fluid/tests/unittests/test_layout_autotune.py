@@ -26,7 +26,7 @@ class SimpleNet(paddle.nn.Layer):
     def __init__(self, data_format="NCHW", class_num=2):
         super().__init__()
         self.conv = paddle.nn.Conv2D(3, 8, (3, 3))
-        self.bn = paddle.nn.BatchNorm(num_channels=8)
+        self.bn = paddle.nn.layer.norm.BatchNorm(num_channels=8)
         self.relu = paddle.nn.ReLU()
         self.pool = paddle.nn.AvgPool2D(kernel_size=2, stride=2)
         self.flatten = paddle.nn.Flatten()
