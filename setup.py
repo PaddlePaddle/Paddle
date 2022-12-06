@@ -1283,6 +1283,7 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
+        
     build_dir=os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path=TOP_DIR +'/'+build_dir+'/python'
