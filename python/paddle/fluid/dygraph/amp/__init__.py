@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import auto_cast
-from .auto_cast import *
-
 from . import loss_scaler
 from .loss_scaler import *
 
 __all__ = []
-__all__ += auto_cast.__all__
 __all__ += loss_scaler.__all__

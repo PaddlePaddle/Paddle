@@ -77,7 +77,7 @@ class AmpScaler:
 
         import numpy as np
         import paddle.fluid as fluid
-
+        import paddle
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
             model = fluid.dygraph.Conv2D(3, 2, 3)
@@ -85,7 +85,7 @@ class AmpScaler:
                     learning_rate=0.01, parameter_list=model.parameters())
             scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
             data = fluid.dygraph.to_variable(data)
-            with fluid.dygraph.amp_guard():
+            with paddle.amp.amp_guard():
                 conv = model(data)
                 loss = fluid.layers.reduce_mean(conv)
                 scaled = scaler.scale(loss)
@@ -171,6 +171,7 @@ class AmpScaler:
 
                 import numpy as np
                 import paddle.fluid as fluid
+                import paddle
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 with fluid.dygraph.guard():
@@ -179,7 +180,7 @@ class AmpScaler:
                             learning_rate=0.01, parameter_list=model.parameters())
                     scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
                     data = fluid.dygraph.to_variable(data)
-                    with fluid.dygraph.amp_guard():
+                    with paddle.amp.amp_guard():
                         conv = model(data)
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)
@@ -213,6 +214,7 @@ class AmpScaler:
 
                 import numpy as np
                 import paddle.fluid as fluid
+                import paddle
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 with fluid.dygraph.guard():
@@ -221,7 +223,7 @@ class AmpScaler:
                             learning_rate=0.01, parameter_list=model.parameters())
                     scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
                     data = fluid.dygraph.to_variable(data)
-                    with fluid.dygraph.amp_guard():
+                    with paddle.amp.amp_guard():
                         conv = model(data)
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)

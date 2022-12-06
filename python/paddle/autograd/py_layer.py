@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.amp.auto_cast import auto_cast
+from paddle.amp.auto_cast import amp_state, auto_cast
 from paddle.fluid import core
-from paddle.fluid.dygraph.amp.auto_cast import amp_state
 from paddle.fluid.framework import dygraph_only
 
 __all__ = []

@@ -63,10 +63,10 @@ class TestAutoCast(unittest.TestCase):
         with fluid.dygraph.guard():
             conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             data = fluid.dygraph.to_variable(data)
-            with fluid.dygraph.amp_guard(True):
+            with paddle.amp.amp_guard(True):
                 out_fp16 = conv2d(data)
 
-            with fluid.dygraph.amp_guard(False):
+            with paddle.amp.amp_guard(False):
                 out_fp32 = conv2d(data)
 
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
@@ -80,7 +80,7 @@ class TestAutoCast(unittest.TestCase):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            with fluid.dygraph.amp_guard(True):
+            with paddle.amp.amp_guard(True):
                 out_fp32 = paddle.mean(data)
 
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
@@ -94,7 +94,7 @@ class TestAutoCast(unittest.TestCase):
             tracer = fluid.framework._dygraph_tracer()
             base_white_list = fluid.dygraph.amp.auto_cast.WHITE_LIST
             base_black_list = fluid.dygraph.amp.auto_cast.BLACK_LIST
-            with fluid.dygraph.amp_guard(
+            with paddle.amp.amp_guard(
                 custom_white_list=["log"], custom_black_list=["conv2d"]
             ):
                 white_list, black_list = tracer._get_amp_op_list()
@@ -110,7 +110,7 @@ class TestAutoCast(unittest.TestCase):
 
             base_white_list = fluid.dygraph.amp.auto_cast.PURE_FP16_WHITE_LIST
             base_black_list = fluid.dygraph.amp.auto_cast.PURE_FP16_BLACK_LIST
-            with fluid.dygraph.amp_guard(
+            with paddle.amp.amp_guard(
                 custom_white_list=["log"],
                 custom_black_list=["conv2d"],
                 level='O2',
@@ -141,7 +141,7 @@ class TestAutoCast(unittest.TestCase):
                     stride=2,
                     act='relu',
                 )
-                with fluid.dygraph.amp_guard(
+                with paddle.amp.amp_guard(
                     custom_white_list=["conv2d"], custom_black_list=["conv2d"]
                 ):
                     inp = fluid.dygraph.to_variable(inp_np)
@@ -157,13 +157,13 @@ class TestAutoCast(unittest.TestCase):
         with fluid.dygraph.guard():
             conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             data = fluid.dygraph.to_variable(data)
-            with fluid.dygraph.amp_guard(True):
+            with paddle.amp.amp_guard(True):
                 out_amp_fp16 = conv2d(data)
                 out_amp_fp32 = paddle.expand_as(
                     out_amp_fp16, out_amp_fp16
                 )  # expand_as_v2 has no fp16 kernel
 
-            with fluid.dygraph.amp_guard(True, level='O2'):
+            with paddle.amp.amp_guard(True, level='O2'):
                 out_purefp16_fp16 = conv2d(data)
                 out_purefp16_fp32 = paddle.expand_as(
                     out_purefp16_fp16, out_purefp16_fp16
@@ -187,7 +187,7 @@ class TestAutoCast(unittest.TestCase):
             with fluid.dygraph.guard():
                 conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 data = fluid.dygraph.to_variable(data)
-                with fluid.dygraph.amp_guard(level='O'):
+                with paddle.amp.amp_guard(level='O'):
                     out = conv2d(data)
 
         self.assertRaises(ValueError, func)
@@ -1270,7 +1270,7 @@ class TestResnet(unittest.TestCase):
             )
 
             if enable_amp and (level == 'O2'):
-                resnet, optimizer = paddle.fluid.dygraph.amp_decorate(
+                resnet, optimizer = paddle.amp.amp_decorate(
                     models=resnet, optimizers=optimizer, level='O2'
                 )
 
@@ -1293,9 +1293,7 @@ class TestResnet(unittest.TestCase):
                 img = fluid.dygraph.to_variable(dy_x_data)
                 label = fluid.dygraph.to_variable(y_data)
                 label.stop_gradient = True
-                with paddle.fluid.dygraph.amp_guard(
-                    enable=enable_amp, level=level
-                ):
+                with paddle.amp.amp_guard(enable=enable_amp, level=level):
                     out = resnet(img)
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)
