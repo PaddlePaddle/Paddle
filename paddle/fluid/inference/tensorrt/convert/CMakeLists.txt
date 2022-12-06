@@ -71,6 +71,7 @@ list(
   preln_residual_bias.cc
   c_allreduce_op.cc
   top_k_op.cc
+  range_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
   rnn_op.cc
@@ -81,6 +82,7 @@ list(
   fused_token_prune_op.cc
   celu_op.cc
   layernorm_shift_partition_op.cc
+  reverse_roll_op.cc
   tanhshrink_op.cc
   take_along_axis_op.cc
   logsigmoid_op.cc

@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import NCE, BatchNorm, Embedding, GroupNorm
+from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GroupNorm
 from paddle.nn import Linear
 
 
@@ -86,11 +86,15 @@ class TestDygraphLoadStatic(unittest.TestCase):
             "t2", shape=[None, 4], dtype="float32"
         )
 
-        bilinear_tensor_pro_out_1 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_1 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
-        bilinear_tensor_pro_out_2 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_2 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
 
         conv2d_trans_in = fluid.data(
@@ -211,8 +215,6 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.layer_norm_1 = paddle.nn.LayerNorm([10])
                     self.layer_norm_2 = paddle.nn.LayerNorm(10)
 
-                    self.nce1 = NCE(10000, 100)
-                    self.nce2 = NCE(10000, 100)
 
                     self.prelu1 = paddle.nn.PReLU(5, name="p_re_lu")
                     self.prelu2 = paddle.nn.PReLU(5, name="p_re_lu")
