@@ -1535,9 +1535,8 @@ def _dynamic_decode_imperative(
             next_finished,
             next_sequence_lengths,
         )
-        from paddle.static.nn.control_flow import increment
 
-        increment(x=step_idx_tensor, value=1.0, in_place=True)
+        paddle.static.nn.increment(x=step_idx_tensor, value=1.0, in_place=True)
         step_idx += 1
 
         cond = paddle.logical_not(paddle.all(finished))
@@ -1696,9 +1695,8 @@ def _dynamic_decode_declarative(
             outputs,
             outputs_arrays,
         )
-        from paddle.static.nn.control_flow import increment
 
-        increment(x=step_idx, value=1.0, in_place=True)
+        paddle.static.nn.increment(x=step_idx, value=1.0, in_place=True)
         # update the global_finished first, since it might be also in states of
         # decoder, which otherwise would write a stale finished status to array
         tensor.assign(next_finished, global_finished)

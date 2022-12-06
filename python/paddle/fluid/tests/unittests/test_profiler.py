@@ -50,9 +50,7 @@ class TestProfiler(unittest.TestCase):
             with while_op.block():
                 hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
                 paddle.tensor.array_write(hidden_n, i, data_arr)
-                paddle.static.nn.control_flow.increment(
-                    x=counter, value=1, in_place=True
-                )
+                paddle.static.nn.increment(x=counter, value=1, in_place=True)
                 paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
             hidden_n = paddle.tensor.array_read(data_arr, i)

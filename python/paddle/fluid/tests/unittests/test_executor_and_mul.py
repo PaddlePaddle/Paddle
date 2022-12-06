@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 
-import paddle.static.nn.control_flow as control_flow
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers import data, mul, zeros
+from paddle.static.nn import increment
 from paddle.tensor import array_write
 
 
@@ -28,13 +28,13 @@ class TestExecutor(unittest.TestCase):
         a = data(name='a', shape=[784], dtype='float32')
         array = array_write(x=a, i=i)
 
-        i = control_flow.increment(i)
+        i = increment(i)
         b = data(
             name='b', shape=[784, 100], dtype='float32', append_batch_size=False
         )
         array_write(x=b, i=i, array=array)
 
-        i = control_flow.increment(i)
+        i = increment(i)
         out = mul(x=a, y=b)
         array_write(x=out, i=i, array=array)
 
