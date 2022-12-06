@@ -41,6 +41,7 @@ class SimpleNet(fluid.Layer):
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_steps = num_steps
+        paddle.set_default_dtype(dtype)
         self.embedding = paddle.nn.Embedding(
             vocab_size,
             hidden_size,

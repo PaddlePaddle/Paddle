@@ -299,8 +299,8 @@ class BaseModel(fluid.dygraph.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axis=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        loss = paddle.squeeze(loss, axes=[2])
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
@@ -461,9 +461,7 @@ class BaseModel(fluid.dygraph.Layer):
             scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
-            topk_scores, topk_indices = fluid.layers.topk(
-                input=scores, k=self.beam_size
-            )
+            topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
 
             beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
@@ -837,8 +835,8 @@ class AttentionModel(fluid.dygraph.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axis=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        loss = paddle.squeeze(loss, axes=[2])
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )

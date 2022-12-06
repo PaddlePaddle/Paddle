@@ -1202,17 +1202,26 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      auto* block = desc.Block();
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto input_type = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_GE(8400)
+      if (dtype == 0 ||
+          (dtype == -1 && input_type == framework::proto::VarType::BOOL)) {
+        VLOG(3) << "the fill_any_like supports input of BOOL by trt8.4 above";
+        return true;
+      }
+#endif
       if (dtype != -1 && dtype != 2 && dtype != 5) {
-        VLOG(3) << "the fill_any_like only supports int32 and float32";
+        VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                   "trt8.4 below";
         return false;
       }
       if (dtype == -1) {
-        auto* block = desc.Block();
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        auto input_type = x_var_desc->GetDataType();
         if (input_type != framework::proto::VarType::INT32 &&
             input_type != framework::proto::VarType::FP32) {
-          VLOG(3) << "the fill_any_like only supports int32 and float32";
+          VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+                     "trt8.4 below";
           return false;
         }
       }
@@ -2263,6 +2272,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "reverse_roll") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The reverse roll fused op does not support static shape "
+                   "mode yet.";
+        return false;
+      }
+    }
     if (op_type == "skip_merge_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The merge_layernorm op does not support "
@@ -2314,6 +2330,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2429,6 +2446,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "reverse_roll",
       "take_along_axis",
       "tanh_shrink",
       "logsigmoid",
@@ -2444,6 +2462,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "matmul",
       "matmul_v2",
       "bmm",
+      "range",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2560,6 +2579,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "reverse_roll",
       "tanh_shrink",
       "take_along_axis",
       "logsigmoid",
