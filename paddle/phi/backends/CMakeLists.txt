@@ -16,8 +16,14 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_XPU)
-  list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc
-       xpu/xpu_op_list.cc)
+  list(
+    APPEND
+    BACKENDS_SRCS
+    xpu/xpu_context.cc
+    xpu/xpu_info.cc
+    xpu/xpu_op_list.cc
+    xpu/xpu1_op_list.cc
+    xpu/xpu2_op_list.cc)
 endif()
 
 if(WITH_MKLDNN)

@@ -14,7 +14,6 @@
 
 import paddle
 from paddle.distributed import fleet
-from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 
 from .base.topology import ParallelMode
 from .meta_parallel import (
