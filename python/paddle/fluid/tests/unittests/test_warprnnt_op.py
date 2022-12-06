@@ -35,21 +35,11 @@ def python_api(
         label,
         logits_length,
         labels_length,
-        blank=blank,
-        fastemit_lambda=fastemit_lambda,
-        num_threads=num_threads,
+        blank,
+        fastemit_lambda,
+        num_threads,
     )
     return loss_out
-
-    # return F.rnnt_loss(
-    #     logits,
-    #     label,
-    #     logits_length,
-    #     labels_length,
-    #     blank=blank,
-    #     reduction="none",
-    #     fastemit_lambda=0.0,
-    # )
 
 
 class TestWarpRNNTCPUOp(OpTest):
@@ -132,12 +122,6 @@ class TestWarpRNNTCPUOp(OpTest):
         self.logit_lens = np.array([4, 4, 4], dtype=np.int32)
         self.label_lens = np.array([2, 2, 2], dtype=np.int32)
 
-    def setUp(self):
-        self.op_type = "warprnnt"
-        self.config()
-        self.python_api = python_api
-        self.python_out_sig = ["loss"]
-
         self.loss = np.array(
             [[4.2806528590890736], [3.9384369822503591], [3.9384369822503591]],
             dtype=np.float64,
@@ -213,7 +197,12 @@ class TestWarpRNNTCPUOp(OpTest):
             ],
             dtype=np.float64,
         )
-        print(self.gradient.shape)
+
+    def setUp(self):
+        self.op_type = "warprnnt"
+        self.config()
+        self.python_api = python_api
+        self.python_out_sig = ["loss"]
 
         self.inputs = {
             "logits": self.acts,
@@ -230,55 +219,40 @@ class TestWarpRNNTCPUOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            paddle.CPUPlace(), check_eager=False, check_dygraph=False
+            paddle.CPUPlace(), check_eager=True, check_dygraph=False
         )
 
     def test_check_grad(self):
-        # self.outputs['warprnntgrad'] = self.gradient
         self.check_grad_with_place(
             paddle.CPUPlace(),
             ["logits"],
             "loss",
-            max_relative_error=7e-1,
+            max_relative_error=1e-7,
             check_dygraph=False,
-            check_eager=False,
+            check_eager=True,
         )
 
 
-# class TestWarpRNNTGPUOp(OpTest):
-#     def config(self):
-#         self.blank = 0
-#         self.fastemit_lambda = 0.0
-#         self.reduction = 'mean'
-#         # logits
-#         self.acts = np.array([[[[0.1, 0.6, 0.1, 0.1, 0.1],
-#                 [0.1, 0.1, 0.6, 0.1, 0.1],
-#                 [0.1, 0.1, 0.2, 0.8, 0.1]],
-#                 [[0.1, 0.6, 0.1, 0.1, 0.1],
-#                 [0.1, 0.1, 0.2, 0.1, 0.1],
-#                 [0.7, 0.1, 0.2, 0.1, 0.1]]]], dtype=np.float32)
-#         self.labels = np.array([[1, 2]], dtype=np.int32)
-#         self.logit_lens = np.array([2], dtype=np.int32)
-#         self.label_lens = np.array([2], dtype=np.int32)
-
+# class TestWarpRNNTGPUOp(TestWarpRNNTCPUOp):
 #     def test_check_output(self):
-#         self.check_output_with_place(paddle.GPUPlace())
+#         self.check_output_with_place(paddle.CUDAPlace(0), check_eager=True, check_dygraph=False)
 
 #     def test_check_grad(self):
-#         self.outputs['WarpRNNTGrad'] = self.gradient
 #         if core.is_compiled_with_rocm():
-#             self.check_grad_with_place(paddle.GPUPlace(),
+#             self.check_grad_with_place(paddle.CUDAPlace(0),
 #                 ["Logits"],
 #                 "Loss",
 #                 max_relative_error=0.009,
 #                 check_dygraph=False,
+#                 check_eager=True
 #             )
 #         else:
-#             self.check_grad_with_place(paddle.GPUPlace(),
+#             self.check_grad_with_place(paddle.CUDAPlace(0),
 #                 ["Logits"],
 #                 "Loss",
 #                 max_relative_error=0.007,
 #                 check_dygraph=False,
+#                 check_eager=True
 #             )
 
 
