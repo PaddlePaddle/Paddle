@@ -269,7 +269,7 @@ class OptimizationTuner:
         )
         self._baseline_dist_context._params_grads = params_grads
 
-        if self._config.verbose:
+        if self._config.debug:
             baseline_dir = os.path.join(self.project_dir, "baseline")
             if not os.path.exists(baseline_dir):
                 pathlib.Path(baseline_dir).mkdir(parents=True, exist_ok=True)
@@ -511,7 +511,7 @@ class OptimizationTuner:
         with open(ctx_path, 'wb') as f:
             pickle.dump(profile_ctx, f, protocol=4)
 
-        if self._config.verbose:
+        if self._config.debug:
             debug_program(trial.main_program, trial_dir, "main_program")
             debug_program(trial.startup_program, trial_dir, "startup_program")
 
@@ -604,7 +604,7 @@ The best trial is: [{}], whose configuration is following:
         Clear the temporary file generated in tuning procedure.
         """
         # TODO clear up zombie process created by tuning
-        if not self._config.verbose:
+        if not self._config.debug:
             for trial in self._finished_trials:
                 trial_dir = self._get_trial_dir(trial)
                 shutil.rmtree(trial_dir, ignore_errors=True)

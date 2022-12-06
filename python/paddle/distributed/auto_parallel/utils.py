@@ -1950,10 +1950,15 @@ def set_recompute_ckpts(model, strategy, program):
     # TODO support more PaddleNLP/CV models here
     # extract ckpts by specific model
     if isinstance(model, paddle.nn.Layer):
-        if hasattr(model, "gpt") and model.__class__.__name__ in [
-            'GPTForPretraining',
-            'GPTForPretrainingAuto',
-        ]:
+        if (
+            hasattr(model, "gpt")
+            and model.__class__.__name__
+            in [
+                'GPTForPretraining',
+                'GPTForPretrainingAuto',
+            ]
+            and hasattr(model.gpt, "checkpoints")
+        ):
             exact_ckpts = model.gpt.checkpoints
         else:
             exact_ckpts = recompute.checkpoints

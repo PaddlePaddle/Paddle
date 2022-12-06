@@ -113,12 +113,10 @@ set_field_default_config(QAT, "algo", None)
 # #########################################
 TUNING = "tuning"
 set_field_default_config(TUNING, "enable", False)
-set_field_default_config(TUNING, "batch_size", 1)
-set_field_default_config(TUNING, "dataset", None)
 set_field_default_config(TUNING, "profile_start_step", 1)
 set_field_default_config(TUNING, "profile_end_step", 1)
 set_field_default_config(TUNING, "run_after_tuning", True)
-set_field_default_config(TUNING, "verbose", True)
+set_field_default_config(TUNING, "debug", False)
 
 #########################################
 # dataset configuration

@@ -45,7 +45,7 @@ class TuningConfig:
         self._project_dir = None
         self._max_num_trial = None
         self._early_stop = None
-        self._verbose = None
+        self._debug = None
 
         self._initialize()
 
@@ -78,8 +78,8 @@ class TuningConfig:
         return self._early_stop
 
     @property
-    def verbose(self):
-        return self._verbose
+    def debug(self):
+        return self._debug
 
     @property
     def dist_strategy(self):
@@ -94,7 +94,7 @@ class TuningConfig:
         self._profile_end_step = tuning_strategy.get("profile_end_step", 30)
         self._max_num_trial = tuning_strategy.get("max_num_trial", 50)
         self._early_stop = tuning_strategy.get("early_stop", None)
-        self._verbose = tuning_strategy.get("verbose", False)
+        self._debug = tuning_strategy.get("debug", False)
 
         project_dir = tuning_strategy.get("project_dir", None)
         if not project_dir:
