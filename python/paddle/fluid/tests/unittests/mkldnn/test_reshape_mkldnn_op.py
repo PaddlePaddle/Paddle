@@ -17,26 +17,19 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.tests.unittests.op_test import OpTest
+
+# from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+)
 
 
-# situation 1: have shape( list, no tensor), no actual shape(Tensor)
-class TestReshape2OneDNNOp(OpTest):
+class TestReshapeOneDNNOp(OpTest):
     def setUp(self):
         self.init_data()
-        self.set_op_type()
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
-        self.set_additional_inputs()
-        self.attrs = {"shape": self.new_shape}
-        self.set_outputs()
-
-    def set_additional_inputs(self):
-        pass
-
-    def set_op_type(self):
         self.op_type = "reshape2"
-
-    def set_outputs(self):
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"shape": self.new_shape}
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
             'XShape': np.random.random(self.ori_shape).astype("float32"),
@@ -52,6 +45,40 @@ class TestReshape2OneDNNOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
+
+
+# situation 1: have shape( list, no tensor), no actual shape(Tensor)
+# class TestReshape2OneDNNOp(OpTest):
+#    def setUp(self):
+#        self.init_data()
+#        self.set_op_type()
+#        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+#        self.set_additional_inputs()
+#        self.attrs = {"shape": self.new_shape}
+#        self.set_outputs()
+#
+#    def set_additional_inputs(self):
+#        pass
+#
+#    def set_op_type(self):
+#        self.op_type = "reshape2"
+#
+#    def set_outputs(self):
+#        self.outputs = {
+#            "Out": self.inputs["X"].reshape(self.infered_shape),
+#            'XShape': np.random.random(self.ori_shape).astype("float32"),
+#        }
+#
+#    def init_data(self):
+#        self.ori_shape = (2, 60)
+#        self.new_shape = (12, 10)
+#        self.infered_shape = (12, 10)
+#
+#    def test_check_output(self):
+#        self.check_output(no_check_set=['XShape'])
+#
+#    def test_check_grad(self):
+#        self.check_grad(["X"], "Out")
 
 
 # class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
