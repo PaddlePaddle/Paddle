@@ -21,7 +21,6 @@ enum class ReshapeKernelOpName {
   reshape,
   reshape2,
   squeeze,
-  squeeze2,
   flatten,
   flatten2,
 };
@@ -106,9 +105,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       case ReshapeKernelOpName::squeeze:
         InferShapeSqueezeOp(ctx, x_dims, out_dims);
         break;
-      case ReshapeKernelOpName::squeeze2:
-        InferShapeSqueeze2Op(ctx, x_dims, out_dims);
-        break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
         break;
@@ -170,16 +166,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     x_dims = x->dims();
     const auto& axes = ctx.Attr<std::vector<int>>("axes");
     out_dims = GetOutputShape(axes, x_dims, true);
-  }
-
-  void InferShapeSqueeze2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,            // NOLINT
-                            framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
-    auto xshape_dims = xshape->dims();
-    x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    out_dims = out->dims();
   }
 
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
@@ -342,7 +328,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::reshape2:
-        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
+        InferShapeReshape2Flatten2GradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::squeeze:
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
@@ -351,7 +337,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
         InferShapeFlattenGradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::flatten2:
-        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
+        InferShapeReshape2Flatten2GradOp(ctx, x_dims);
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::OutOfRange(
@@ -366,7 +352,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     dx_dims = dx->dims();
   }
 
-  void InferShapeReshape2Squeeze2Flatten2GradOp(
+  void InferShapeReshape2Flatten2GradOp(
       const framework::ExecutionContext& ctx,
       framework::DDim& dx_dims) const {  // NOLINT
     auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
@@ -397,14 +383,6 @@ REGISTER_OP_KERNEL(
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::squeeze>);
-
-REGISTER_OP_KERNEL(
-    squeeze2,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::squeeze2>);
 
 REGISTER_OP_KERNEL(
     reshape,
