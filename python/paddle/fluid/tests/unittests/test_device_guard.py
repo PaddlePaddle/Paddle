@@ -156,7 +156,7 @@ class TestDeviceGuard(unittest.TestCase):
                     while_op = fluid.layers.While(cond=cond)
                     with while_op.block():
                         i = paddle.increment(x=i, value=1)
-                        fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+                        paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
         warning = "The Op(while) is not support to set device."
         warning_num = get_vaild_warning_num(warning, w)

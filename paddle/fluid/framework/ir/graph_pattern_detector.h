@@ -928,6 +928,27 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(ele_y);
 };
 
+// the backward of ele_add(act(x), y)
+// the act is inplace.
+// op: elementwise_add_grad + act_grad
+// named nodes: elementwise_add_grad, act_grad
+//              ele_y, d_ele_y, d_intermeiate_out, intermediate_out, d_x
+struct ActElewiseAddInplaceGrad : public PatternBase {
+  ActElewiseAddInplaceGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "act_elewise_add_grad1") {}
+
+  // ele_add_grad: in["Y", "Out@GRAD"], out["IntermediateOut@GRAD", "Y@GRAD"]
+  // act_grad: in["IntermediateOut", "IntermediateOut@GRAD"], out["X@GRAD"]
+  PDNode* operator()(PDNode* d_out_var, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad_op);
+  PATTERN_DECL_NODE(act_grad_op);
+  // // declare variable node's name
+  PATTERN_DECL_NODE(intermediate_var);
+  PATTERN_DECL_NODE(d_intermediate_var);
+};
+
 // The following patterns are used to fuse linear and act (ReLu or GeLU)
 // formula: act(F.linear(x))
 // op: matmul_v2 + elementwise_add + act
@@ -1455,7 +1476,8 @@ struct ConvElementwiseaddAct : public PatternBase {
   ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in);
+  PDNode* operator()(PDNode* conv_in,
+                     const std::unordered_set<std::string>& conv_act_set);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_out);
@@ -1475,7 +1497,8 @@ struct ConvElementwiseadd2Act : public PatternBase {
       : PatternBase(
             pattern, name_scope, "conv_elementwiseadd2_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in);
+  PDNode* operator()(PDNode* conv_in,
+                     const std::unordered_set<std::string>& conv_act_set);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_filter);
@@ -1765,6 +1788,39 @@ struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpEncoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(while0);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpDecoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
 struct DeleteQuantDequantLinearOpPattern : public PatternBase {
   DeleteQuantDequantLinearOpPattern(PDPattern* pattern,
                                     const std::string& name_scope)
@@ -1995,6 +2051,34 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape3_out);
   PATTERN_DECL_NODE(reshape4_op);
   PATTERN_DECL_NODE(reshape4_out);
+};
+
+//
+// \bref pattern looking for reverse circlic shift in window attention.
+//       The reverse circlic shift based on roll op,
+//       therefore, reverse_roll were adopted as pattern and fused op name.
+//
+struct ReverseRollPattern : public PatternBase {
+  ReverseRollPattern(PDPattern* pattern,
+                     const std::string& name_scope,
+                     bool with_roll)
+      : PatternBase(pattern, name_scope, "reverse_roll"),
+        with_roll_(with_roll) {}
+
+  PDNode* operator()(PDNode* in);
+  bool with_roll_;
+  PATTERN_DECL_NODE(reshape2_00_op);
+  PATTERN_DECL_NODE(reshape2_00_out);
+  PATTERN_DECL_NODE(reshape2_10_op);
+  PATTERN_DECL_NODE(reshape2_10_out);
+  PATTERN_DECL_NODE(transpose2_20_op);
+  PATTERN_DECL_NODE(transpose2_20_out);
+  PATTERN_DECL_NODE(reshape2_30_op);
+  PATTERN_DECL_NODE(reshape2_30_out);
+  PATTERN_DECL_NODE(roll_40_op);
+  PATTERN_DECL_NODE(roll_40_out);
+  PATTERN_DECL_NODE(reshape2_50_op);
+  PATTERN_DECL_NODE(reshaep2_50_out);
 };
 
 // pattern for merge_layernorm

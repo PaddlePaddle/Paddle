@@ -30,27 +30,27 @@ class SubNetWithDict(fluid.dygraph.Layer):
     def __init__(self, hidden_size=16, output_size=16):
         super().__init__()
 
-        init_weight = lambda x: fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(x)
+        init_weight = lambda x: paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(x)
         )
 
-        self.q_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+        self.q_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.6),
+            weight_attr=init_weight(0.6),
         )
-        self.k_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+        self.k_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.5),
+            weight_attr=init_weight(0.5),
         )
-        self.v_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+        self.v_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.2),
+            weight_attr=init_weight(0.2),
         )
 
     def forward(self, input, cache=None):
@@ -66,9 +66,9 @@ class SubNetWithDict(fluid.dygraph.Layer):
             v = 0.2 * cache_v + v
             cache["k"], cache["v"] = k, v
 
-        weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
-        weight = fluid.layers.softmax(weight)
-        out = fluid.layers.matmul(weight, v)
+        weight = paddle.matmul(x=q, y=k, transpose_y=True)
+        weight = paddle.nn.functional.softmax(weight)
+        out = paddle.matmul(weight, v)
 
         return out
 
@@ -97,8 +97,8 @@ class MainNetWithDict(fluid.dygraph.Layer):
             ),
         }
         # TODO(Aurelius84): The following code will be converted into:
-        # max_len = layers.cond(layers.shape(input)[0] != max_len,
-        #                       lambda: layers.shape(input)[0], lambda: max_len)
+        # max_len = layers.cond(paddle.shape(input)[0] != max_len,
+        #                       lambda: paddle.shape(input)[0], lambda: max_len)
         # But max_len should be wrapped into tensor, which is not supported.
 
         # Comment out this line of code for now.
@@ -113,7 +113,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
 # Test to call function defined outside of class.
 def update_cache(cache):
     for k, val in cache.items():
-        cache[k] = fluid.layers.softmax(val)
+        cache[k] = paddle.nn.functional.softmax(val)
 
     return cache
 

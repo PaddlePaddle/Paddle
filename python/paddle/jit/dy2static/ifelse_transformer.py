@@ -22,27 +22,27 @@ from collections import defaultdict
 from paddle.utils import gast
 from paddle.fluid import unique_name
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     create_funcDef_node,
     ast_to_source_code,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     FunctionNameLivenessAnalysis,
 )
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from paddle.jit.dy2static.static_analysis import (
     AstNodeWrapper,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     create_nonlocal_stmt_nodes,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     create_get_args_node,
     create_set_args_node,
 )
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+from .base_transformer import (
     BaseTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_TUPLE_PREFIX,
     FOR_ITER_TUPLE_INDEX_PREFIX,
@@ -52,7 +52,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import (
     FOR_ITER_TARGET_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     GetterSetterHelper,
     create_name_str,
 )

@@ -20,7 +20,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph_utils as dygraph_utils
-from paddle.fluid import Linear, core
+from paddle.fluid import core
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
@@ -33,7 +33,7 @@ class MyLayer(fluid.Layer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
         self._x_for_debug = x
-        x = fluid.layers.elementwise_mul(x, x)
+        x = paddle.multiply(x, x)
         x = paddle.sum(x)
         return [x]
 
@@ -41,24 +41,24 @@ class MyLayer(fluid.Layer):
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()
-        self._linear1 = Linear(
+        self._linear1 = paddle.nn.Linear(
             input_size,
             3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
         )
-        self._linear2 = Linear(
+        self._linear2 = paddle.nn.Linear(
             3,
             4,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
         )
 
@@ -269,9 +269,9 @@ class TestImperative(unittest.TestCase):
     def test_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
-            l0 = fluid.Linear(2, 2)
+            l0 = paddle.nn.Linear(2, 2)
             self.assertIsNone(l0.weight._grad_ivar())
-            l1 = fluid.Linear(2, 2)
+            l1 = paddle.nn.Linear(2, 2)
             with fluid.dygraph.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
@@ -287,9 +287,9 @@ class TestImperative(unittest.TestCase):
     def test_paddle_imperative_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
-            l0 = fluid.Linear(2, 2)
+            l0 = paddle.nn.Linear(2, 2)
             self.assertIsNone(l0.weight._grad_ivar())
-            l1 = fluid.Linear(2, 2)
+            l1 = paddle.nn.Linear(2, 2)
             with paddle.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
@@ -305,9 +305,9 @@ class TestImperative(unittest.TestCase):
     def test_paddle_imperative_set_grad_enabled(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
-            l0 = fluid.Linear(2, 2)
+            l0 = paddle.nn.Linear(2, 2)
             self.assertIsNone(l0.weight._grad_ivar())
-            l1 = fluid.Linear(2, 2)
+            l1 = paddle.nn.Linear(2, 2)
             with paddle.set_grad_enabled(False):
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
@@ -722,9 +722,9 @@ class TestImperative(unittest.TestCase):
             inp1 = paddle.to_tensor(np_inp1)
             inp2 = paddle.to_tensor(np_inp2)
             if np.sum(np_inp1) < np.sum(np_inp2):
-                x = fluid.layers.elementwise_add(inp1, inp2)
+                x = paddle.add(inp1, inp2)
             else:
-                x = fluid.layers.elementwise_sub(inp1, inp2)
+                x = paddle.subtract(inp1, inp2)
             dygraph_result = x.numpy()
 
         # static graph
@@ -744,19 +744,19 @@ class TestImperative(unittest.TestCase):
                 paddle.reshape(paddle.sum(inp_data2), [1, 1]),
                 [4, -1],
             )
-            cond = fluid.layers.less_than(x=a, y=b)
+            cond = paddle.less_than(x=a, y=b)
 
             ie = fluid.layers.IfElse(cond)
             with ie.true_block():
                 d1 = ie.input(inp_data1)
                 d2 = ie.input(inp_data2)
-                d3 = fluid.layers.elementwise_add(d1, d2)
+                d3 = paddle.add(d1, d2)
                 ie.output(d3)
 
             with ie.false_block():
                 d1 = ie.input(inp_data1)
                 d2 = ie.input(inp_data2)
-                d3 = fluid.layers.elementwise_sub(d1, d2)
+                d3 = paddle.subtract(d1, d2)
                 ie.output(d3)
             out = ie()
 
@@ -863,7 +863,7 @@ class TestImperative(unittest.TestCase):
         self.assertRaises(TypeError, my_layer.__setattr__, 'w1', 'str')
         my_layer.w1 = None
         self.assertEqual(len(my_layer.parameters()), 0)
-        my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        my_layer.l1 = paddle.nn.Linear(3, 3)
         self.assertEqual(len(my_layer.sublayers()), 1)
         self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
         my_layer.l1 = None
@@ -1001,7 +1001,7 @@ class TestDygraphGuardWithError(unittest.TestCase):
         with self.assertRaisesRegexp(
             TypeError, "Please use `with fluid.dygraph.guard()"
         ):
-            y = fluid.layers.matmul(x, x)
+            y = paddle.matmul(x, x)
 
     def test_without_guard(self):
         with _test_eager_guard():

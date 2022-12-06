@@ -696,7 +696,7 @@ class IpuDynamicPatcher:
             ProgramCache,
             MAX_TRACED_PROGRAM_COUNT,
         )
-        from ..fluid.dygraph.dygraph_to_static import logging_utils
+        from paddle.jit.dy2static import logging_utils
         from paddle.jit.dy2static.partial_program import (
             partial_program_from,
         )

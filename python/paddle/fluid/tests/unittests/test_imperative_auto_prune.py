@@ -24,16 +24,20 @@ from paddle.fluid.framework import _test_eager_guard
 class AutoPruneLayer0(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()
-        self.linear1 = fluid.dygraph.Linear(
+        self.linear1 = paddle.nn.Linear(
             input_size,
             5,
-            param_attr=fluid.initializer.ConstantInitializer(value=2),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
-        self.linear2 = fluid.dygraph.Linear(
+        self.linear2 = paddle.nn.Linear(
             5,
             5,
-            param_attr=fluid.initializer.ConstantInitializer(value=2),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
 
@@ -41,23 +45,27 @@ class AutoPruneLayer0(fluid.Layer):
         a = self.linear1(x)
         b = self.linear2(y)
         c = fluid.layers.mul(a, b)
-        d = fluid.layers.reduce_mean(c)
+        d = paddle.mean(c)
         return d
 
 
 class AutoPruneLayer1(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()
-        self.linear1 = fluid.dygraph.Linear(
+        self.linear1 = paddle.nn.Linear(
             input_size,
             5,
-            param_attr=fluid.initializer.ConstantInitializer(value=2),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
-        self.linear2 = fluid.dygraph.Linear(
+        self.linear2 = paddle.nn.Linear(
             5,
             5,
-            param_attr=fluid.initializer.ConstantInitializer(value=2),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
 
@@ -66,15 +74,15 @@ class AutoPruneLayer1(fluid.Layer):
         b = self.linear2(y)
         b.stop_gradient = True
         c = fluid.layers.mul(a, b)
-        d = fluid.layers.reduce_mean(c)
+        d = paddle.mean(c)
         return d
 
 
 class AutoPruneLayer2(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()
-        self.linear = fluid.dygraph.Linear(input_size, 10, act=None)
-        self.linear2 = fluid.dygraph.Linear(1, 1, act=None)
+        self.linear = paddle.nn.Linear(input_size, 10)
+        self.linear2 = paddle.nn.Linear(1, 1)
 
     def forward(self, x, label):
         feature = self.linear(x)
@@ -90,7 +98,7 @@ class AutoPruneLayer2(fluid.Layer):
 class AutoPruneLayer3(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()
-        self.linear = fluid.dygraph.Linear(input_size, 20, act=None)
+        self.linear = paddle.nn.Linear(input_size, 20)
 
     def forward(self, x, label, test_num):
         feature = self.linear(x)
@@ -111,20 +119,20 @@ class MyLayer(fluid.Layer):
         super().__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
-        self.linear_0 = fluid.Linear(input_size, size, dtype=dtype)
-        self.linear_1 = fluid.Linear(input_size, size, dtype=dtype)
+        self.linear_0 = paddle.nn.Linear(input_size, size)
+        self.linear_1 = paddle.nn.Linear(input_size, size)
 
     def forward(self, x):
         # this method involves only the linear layers
-        loss = fluid.layers.reduce_mean(self.linear_0(x) + self.linear_1(x))
+        loss = paddle.mean(self.linear_0(x) + self.linear_1(x))
         return loss
 
     def linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(x))
+        loss = paddle.mean(self.linear_0(x))
         return loss
 
     def embed_linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(self.embed0(x)))
+        loss = paddle.mean(self.linear_0(self.embed0(x)))
         return loss
 
 
@@ -133,24 +141,24 @@ class MyLayer2(fluid.Layer):
         super().__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
-        self.linear_0 = fluid.Linear(input_size, size, dtype=dtype)
-        self.linear_1 = fluid.Linear(input_size, size, dtype=dtype)
+        self.linear_0 = paddle.nn.Linear(input_size, size)
+        self.linear_1 = paddle.nn.Linear(input_size, size)
 
     def forward(self, indices):
         # mind the difference with MyLayer
         # In this example, the forward method involes all params
-        loss = fluid.layers.reduce_mean(
+        loss = paddle.mean(
             self.linear_0(self.embed0(indices))
             + self.linear_1(self.embed1(indices))
         )
         return loss
 
     def linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(x))
+        loss = paddle.mean(self.linear_0(x))
         return loss
 
     def embed_linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(self.embed0(x)))
+        loss = paddle.mean(self.linear_0(self.embed0(x)))
         return loss
 
 
@@ -253,8 +261,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            linear = fluid.Linear(13, 5, dtype="float32")
-            linear2 = fluid.Linear(3, 3, dtype="float32")
+            linear = paddle.nn.Linear(13, 5)
+            linear2 = paddle.nn.Linear(3, 3)
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -276,8 +284,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            linear = fluid.Linear(13, 5, dtype="float32")
-            linear2 = fluid.Linear(3, 3, dtype="float32")
+            linear = paddle.nn.Linear(13, 5)
+            linear2 = paddle.nn.Linear(3, 3)
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -299,8 +307,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            linear = fluid.Linear(13, 5, dtype="float32")
-            linear2 = fluid.Linear(5, 3, dtype="float32")
+            linear = paddle.nn.Linear(13, 5)
+            linear2 = paddle.nn.Linear(5, 3)
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -332,8 +340,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            linear = fluid.Linear(13, 5, dtype="float32")
-            linear2 = fluid.Linear(5, 3, dtype="float32")
+            linear = paddle.nn.Linear(13, 5)
+            linear2 = paddle.nn.Linear(5, 3)
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -367,8 +375,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            linear = fluid.Linear(13, 5, dtype="float32")
-            linear2 = fluid.Linear(3, 3, dtype="float32")
+            linear = paddle.nn.Linear(13, 5)
+            linear2 = paddle.nn.Linear(3, 3)
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -462,7 +470,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def func_case3_prune_no_grad_branch2(self):
         with fluid.dygraph.guard():
             value1 = np.arange(1).reshape(1, 1)
-            linear = fluid.dygraph.Linear(1, 1, act=None)
+            linear = paddle.nn.Linear(1, 1)
             label = fluid.dygraph.to_variable(value1).astype("float32")
             label = linear(label)
             label = fluid.layers.cast(label, dtype="float32")
