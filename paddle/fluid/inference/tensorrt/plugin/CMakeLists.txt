@@ -40,7 +40,7 @@ list(
   many_emb_layernorm_plugin.cu
   many_emb_Layernorm_kernel.cu)
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
        many_emb_Layernorm_varseqlen_kernelMTron.cu
        many_emb_Layernorm_varseqlen_kernelHFace.cu)
