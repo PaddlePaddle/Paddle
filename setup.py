@@ -583,13 +583,13 @@ def build_run(args, build_path, envrion_var):
 
 def build_steps():
     print('------- Building start ------')
-    build_dir=os.getenv("BUILD_DIR")
+    build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
-        build_dir=TOP_DIR + '/'+build_dir
+        build_dir = TOP_DIR + '/' + build_dir
         if not os.path.exists(build_dir):
             _mkdir_p(build_dir)
     else:
-        build_dir=TOP_DIR + '/build'
+        build_dir = TOP_DIR + '/build'
         if not os.path.exists(build_dir):
             _mkdir_p(build_dir)
     build_path = build_dir
@@ -1283,14 +1283,13 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
-        
-    build_dir=os.getenv("BUILD_DIR")
+    build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
-        env_dict_path=TOP_DIR +'/'+build_dir+'/python'
+        env_dict_path = TOP_DIR + '/' + build_dir + '/python'
         sys.path.append(env_dict_path)
         from env_dict import env_dict as env_dict
     else:
-        env_dict_path=TOP_DIR + "/build/python/"
+        env_dict_path = TOP_DIR + "/build/python/"
         sys.path.append(env_dict_path)
         from env_dict import env_dict as env_dict
 
