@@ -23,7 +23,6 @@ from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp
 class TestReshapeOneDNNOp(TestReshapeOp):
     def setUp(self):
         TestReshapeOp.setUp(self)
-        self.attrs = {"shape": self.new_shape, "use_mkldnn": False}
 
 
 if __name__ == "__main__":
