@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 
 # from paddle.fluid.tests.unittests.op_test import OpTest
@@ -22,7 +24,10 @@ from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp
 
 class TestReshapeOneDNNOp(TestReshapeOp):
     def setUp(self):
-        TestReshapeOp.setUp(self)
+        super().setUp()
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 if __name__ == "__main__":
