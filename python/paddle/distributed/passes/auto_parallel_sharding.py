@@ -784,7 +784,16 @@ class ShardingPass(PassBase):
                 # not shard var depend to prior collective
                 else:
                     prior_op = main_block.ops[i - 1]
-                    prior_var = prior_op.output("Out")[0]
+                    if is_sharding_param_broadcast_op(prior_op):
+                        prior_var = prior_op.output("Out")[0]
+                    elif prior_op.type in _supported_optimizer_type:
+                        prior_var = prior_op.output("ParamOut")[0]
+                    else:
+                        raise NotImplementedError(
+                            "sharding broadcast after op is not supported: {}.".format(
+                                str(prior_op)
+                            )
+                        )
                     dep_map[i] = (prior_var, broadcast_varname)
 
         # insert deps
