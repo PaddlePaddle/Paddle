@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.distributed.auto_parallel.operators.common import (
+    is_amp_flag_sync_op,
+    is_data_parallel_reduce_op,
+    is_global_norm_sync_op,
+)
 from paddle.distributed.auto_parallel.utils import (
+    OpRole,
     insert_dependencies_for_two_vars,
     use_standalone_executor,
 )
 
 from .pass_base import PassBase, register_pass
 
-OpRole = core.op_proto_and_checker_maker.OpRole
-OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 # NOTE we add the "auto_parallel" prefix to the pass in order to
 # indicate that this pass should obey some constrains by auto_parallel
@@ -85,8 +89,8 @@ class AutoParalSupplementDepPass(PassBase):
         # insert deps
         indice = sorted(list(deps_map.keys()), reverse=True)
         for idx in indice:
-            prior_var = block.var(deps_map[idx][0])
-            post_var = block.var(deps_map[idx][1])
+            prior_var = main_block.var(deps_map[idx][0])
+            post_var = main_block.var(deps_map[idx][1])
             depend_op = insert_dependencies_for_two_vars(
                 main_block,
                 idx,
