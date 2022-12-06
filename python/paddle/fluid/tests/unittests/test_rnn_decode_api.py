@@ -160,10 +160,6 @@ class Decoder:
             decoder = BeamSearchDecoder(
                 cell=self.decoder_cell, output_fn=output_layer, **kwargs
             )
-        else:
-            decoder = layers.BasicDecoder(
-                self.decoder_cell, helper, output_fn=output_layer
-            )
 
         (
             decoder_output,
@@ -196,7 +192,7 @@ class Seq2SeqModel:
         trg_vocab_size,
         start_token,
         end_token,
-        decoding_strategy="infer_sample",
+        decoding_strategy="beam_search",
         max_decoding_length=20,
         beam_size=4,
     ):
@@ -492,7 +488,7 @@ class TestDynamicDecode(unittest.TestCase):
             "trg_vocab_size": 100,
             "start_token": 0,
             "end_token": 1,
-            "decoding_strategy": "infer_greedy",
+            "decoding_strategy": "beam_search",
             "max_decoding_length": 10,
         }
 
@@ -530,130 +526,6 @@ class TestDynamicDecode(unittest.TestCase):
             else core.CPUPlace()
         )
         self.exe = Executor(place)
-
-    def test_mle_train(self):
-        paddle.enable_static()
-        self.model_hparams["decoding_strategy"] = "train_greedy"
-        agent = SeqPGAgent(
-            model_cls=Seq2SeqModel,
-            alg_cls=MLE,
-            model_hparams=self.model_hparams,
-            alg_hparams={"lr": 0.001},
-            executor=self.exe,
-            main_program=fluid.Program(),
-            startup_program=fluid.Program(),
-            seed=123,
-        )
-        self.exe.run(agent.startup_program)
-        for iter_idx in range(self.iter_num):
-            reward, cost = agent.learn(
-                {
-                    "src": self.data["src"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "src_sequence_length": self.data["src_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                    "trg": self.data["trg"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "trg_sequence_length": self.data["trg_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                    "label": self.data["label"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                },
-                fetch_list=[agent.cost, agent.cost],
-            )
-            print(
-                "iter_idx: %d, reward: %f, cost: %f"
-                % (iter_idx, reward.mean(), cost)
-            )
-
-    def test_greedy_train(self):
-        paddle.enable_static()
-        self.model_hparams["decoding_strategy"] = "infer_greedy"
-        agent = SeqPGAgent(
-            model_cls=Seq2SeqModel,
-            alg_cls=PolicyGradient,
-            model_hparams=self.model_hparams,
-            alg_hparams={"lr": 0.001},
-            executor=self.exe,
-            main_program=fluid.Program(),
-            startup_program=fluid.Program(),
-            seed=123,
-        )
-        self.exe.run(agent.startup_program)
-        for iter_idx in range(self.iter_num):
-            reward, cost = agent.learn(
-                {
-                    "src": self.data["src"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "src_sequence_length": self.data["src_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                },
-                fetch_list=[agent.reward, agent.cost],
-            )
-            print(
-                "iter_idx: %d, reward: %f, cost: %f"
-                % (iter_idx, reward.mean(), cost)
-            )
-
-    def test_sample_train(self):
-        paddle.enable_static()
-        self.model_hparams["decoding_strategy"] = "infer_sample"
-        agent = SeqPGAgent(
-            model_cls=Seq2SeqModel,
-            alg_cls=PolicyGradient,
-            model_hparams=self.model_hparams,
-            alg_hparams={"lr": 0.001},
-            executor=self.exe,
-            main_program=fluid.Program(),
-            startup_program=fluid.Program(),
-            seed=123,
-        )
-        self.exe.run(agent.startup_program)
-        for iter_idx in range(self.iter_num):
-            reward, cost = agent.learn(
-                {
-                    "src": self.data["src"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "src_sequence_length": self.data["src_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                },
-                fetch_list=[agent.reward, agent.cost],
-            )
-            print(
-                "iter_idx: %d, reward: %f, cost: %f"
-                % (iter_idx, reward.mean(), cost)
-            )
 
     def test_beam_search_infer(self):
         paddle.set_default_dtype("float32")
