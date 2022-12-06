@@ -82,7 +82,7 @@ bool IsSupportedHeterPlace(const phi::Place& place);
 void AddFetch(const std::vector<std::string>& fetch_names,
               framework::BlockDesc* block);
 
-void BuildOpFuncList(const platform::Place& place,
+bool BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,

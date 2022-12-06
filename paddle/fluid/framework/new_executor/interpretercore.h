@@ -93,6 +93,7 @@ class InterpreterCore {
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
   // execution
+  void RunImpl();
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
   void RunInstructionAsync(size_t instr_id);
   void RunInstruction(const Instruction& instr_node);

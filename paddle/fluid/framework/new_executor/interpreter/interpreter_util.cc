@@ -166,6 +166,28 @@ bool IsMemcpyOp(const Instruction& instr) {
   return IsMemcpyD2H(instr) || IsMemcpyH2D(instr);
 }
 
+bool IsBlockContainsOnlyPhiKernel(const framework::BlockDesc& block) {
+  bool res = true;
+  for (auto& op : block.AllOps()) {
+    auto op_type = op->Type();
+    auto has_phi_kernel = !phi::KernelFactory::Instance().SelectKernelMap(
+        phi::TransToPhiKernelName(op_type)).empty();
+    
+    if (!has_phi_kernel) {
+      auto kernel_iter = OperatorWithKernel::AllOpKernels().find(op_type);
+      if (kernel_iter != OperatorWithKernel::AllOpKernels().end()) {
+        VLOG(4) << op_type << " has no phi kernel, but has fluid kernel.";
+        res = false;
+      } else {
+        VLOG(4) << op_type << " has no phi kernel, and no fluid kernel.";
+      }
+    } else {
+      VLOG(4) << op_type << " has phi kernel";
+    }
+  }
+  return res;
+}
+
 void AddFetch(const std::vector<std::string>& fetch_names,
               framework::BlockDesc* block) {
   auto* fetch_holder = block->Var(kFetchVarName);
@@ -480,7 +502,7 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void BuildOpFuncList(const platform::Place& place,
+bool BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
@@ -493,6 +515,9 @@ void BuildOpFuncList(const platform::Place& place,
       ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
+
+  auto skip_run = IsBlockContainsOnlyPhiKernel(block);
+  VLOG(4) << "IsBlockContainsOnlyPhiKernel: " << skip_run;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -714,11 +739,15 @@ void BuildOpFuncList(const platform::Place& place,
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
-          (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          if (!skip_run) {
+            (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          }
         } else {
           // the place of exec_ctx maybe has changed.
-          op_func_node.kernel_func_(ExecutionContext(
-              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          if (!skip_run) {
+            op_func_node.kernel_func_(ExecutionContext(
+                *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          }
         }
 
         // post-process grad_op.outputs if need cast complex grad into real
@@ -804,6 +833,7 @@ void BuildOpFuncList(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
+  return skip_run;
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {
