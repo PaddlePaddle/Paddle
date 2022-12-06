@@ -267,25 +267,5 @@ class TestGRUOpInference(TestGRUOp):
         pass
 
 
-class TestGruOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-
-            def test_Variable():
-                input_data = np.random.random((1, 1536)).astype("float32")
-                fluid.layers.dynamic_gru(input=input_data, size=512)
-
-            self.assertRaises(TypeError, test_Variable)
-
-            def test_h_0():
-                in_data = fluid.data(
-                    name="input", shape=[None, 1536], dtype="float32"
-                )
-                h = fluid.data(name="h", shape=[None, 512], dtype="int32")
-                fluid.layers.dynamic_gru(input=in_data, size=512, h_0=h)
-
-            self.assertRaises(TypeError, test_h_0)
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -2970,19 +2970,19 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
-    def test_dynamic_lstmp(self):
+    def test_im2sequence(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            hidden_dim, proj_dim = 16, 8
-            seq_data = layers.data(
-                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1
+            x = layers.data(name='x', shape=[3, 128, 128], dtype='float32')
+            y = layers.data(name='y', shape=[], dtype='float32')
+            output = layers.im2sequence(
+                input=x,
+                input_image_size=y,
+                stride=[1, 1],
+                filter_size=[2, 2],
+                out_stride=[1, 1],
             )
-            fc_out = layers.fc(input=seq_data, size=4 * hidden_dim)
-            self.assertIsNotNone(
-                layers.dynamic_lstmp(
-                    input=fc_out, size=4 * hidden_dim, proj_size=proj_dim
-                )
-            )
+            return output
 
     def test_lod_reset(self):
         # TODO(minqiyang): dygraph do not support lod now

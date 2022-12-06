@@ -34,92 +34,6 @@ class LSTMLayer(nn.Layer):
         return x
 
 
-class Net(nn.Layer):
-    def __init__(self, in_channels, hidden_size):
-        super().__init__()
-        self.lstm = LSTMLayer(in_channels, hidden_size)
-
-    def forward(self, x):
-        x = self.lstm(x)
-        return x
-
-
-class TestLstm(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
-    def run_lstm(self, to_static):
-        paddle.jit.ProgramTranslator().enable(to_static)
-
-        paddle.disable_static()
-        paddle.static.default_main_program().random_seed = 1001
-        paddle.static.default_startup_program().random_seed = 1001
-
-        net = Net(12, 2)
-        net = paddle.jit.to_static(net)
-        x = paddle.zeros((2, 10, 12))
-        y = net(paddle.to_tensor(x))
-        return y.numpy()
-
-    def test_lstm_to_static(self):
-        dygraph_out = self.run_lstm(to_static=False)
-        static_out = self.run_lstm(to_static=True)
-        np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
-
-    def test_save_in_eval(self, with_training=True):
-        paddle.jit.ProgramTranslator().enable(True)
-        net = Net(12, 2)
-        x = paddle.randn((2, 10, 12))
-        if with_training:
-            x.stop_gradient = False
-            dygraph_out = net(x)
-            loss = paddle.mean(dygraph_out)
-            sgd = paddle.optimizer.SGD(
-                learning_rate=0.001, parameters=net.parameters()
-            )
-            loss.backward()
-            sgd.step()
-        # switch eval mode firstly
-        net.eval()
-        x = paddle.randn((2, 10, 12))
-        net = paddle.jit.to_static(
-            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])]
-        )
-        model_path = os.path.join(self.temp_dir.name, 'simple_lstm')
-        paddle.jit.save(net, model_path)
-
-        dygraph_out = net(x)
-        # load saved model
-        load_net = paddle.jit.load(model_path)
-
-        static_out = load_net(x)
-        np.testing.assert_allclose(
-            dygraph_out.numpy(),
-            static_out.numpy(),
-            rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, static_out
-            ),
-        )
-        # switch back into train mode.
-        net.train()
-        train_out = net(x)
-        np.testing.assert_allclose(
-            dygraph_out.numpy(),
-            train_out.numpy(),
-            rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, train_out
-            ),
-        )
-
-    def test_save_without_training(self):
-        self.test_save_in_eval(with_training=False)
-
-
 class LinearNet(nn.Layer):
     def __init__(self):
         super().__init__()
@@ -176,38 +90,6 @@ class TestSaveInEvalMode(unittest.TestCase):
                 eval_out, infer_out
             ),
         )
-
-
-class TestEvalAfterSave(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
-    def test_eval_after_save(self):
-        x = paddle.randn((2, 10, 12)).astype('float32')
-        net = Net(12, 2)
-        x.stop_gradient = False
-        dy_out = net(x)
-        loss = paddle.mean(dy_out)
-        sgd = paddle.optimizer.SGD(
-            learning_rate=0.001, parameters=net.parameters()
-        )
-        loss.backward()
-        sgd.step()
-        x = paddle.randn((2, 10, 12)).astype('float32')
-        dy_out = net(x)
-        # save model
-        model_path = os.path.join(self.temp_dir.name, 'jit.save/lstm')
-        paddle.jit.save(net, model_path, input_spec=[x])
-        load_net = paddle.jit.load(model_path)
-        load_out = load_net(x)
-        np.testing.assert_allclose(dy_out.numpy(), load_out.numpy(), rtol=1e-05)
-        # eval
-        net.eval()
-        out = net(x)
-        np.testing.assert_allclose(dy_out.numpy(), out.numpy(), rtol=1e-05)
 
 
 if __name__ == "__main__":
