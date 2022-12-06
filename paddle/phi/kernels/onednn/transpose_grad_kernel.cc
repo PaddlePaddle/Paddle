@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
-
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
