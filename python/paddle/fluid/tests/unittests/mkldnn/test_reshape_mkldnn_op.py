@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,31 +25,21 @@ from paddle.fluid.tests.unittests.op_test import (
 )
 
 
-@OpTestTool.skip_if(
-    core.is_compiled_with_cuda(),
-    "CUDA has to be skipped because it forces dygraph",
-)
+# situation 1: have shape( list, no tensor), no actual shape(Tensor)
 class TestReshape2OneDNNOp(OpTest):
     def setUp(self):
         self.init_data()
-        self.set_op_type()
-        self.x = np.random.random(self.ori_shape).astype("float32")
-        self.set_inputs()
+        self.op_type()
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.set_additional_inputs()
-        self.set_attrs()
+        self.attrs = {"shape": self.new_shape}
         self.set_outputs()
-
-    def set_op_type(self):
-        self.op_type = "reshape2"
-
-    def set_inputs(self):
-        self.inputs = {"X": self.x}
 
     def set_additional_inputs(self):
         pass
 
-    def set_attrs(self):
-        self.attrs = {"shape": self.new_shape, 'use_mkldnn': True}
+    def set_op_type(self):
+        self.op_type = "reshape2"
 
     def set_outputs(self):
         self.outputs = {
@@ -95,9 +85,6 @@ class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
 class TestReshape2OneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp):
     def set_additional_inputs(self):
         self.inputs["Shape"] = np.array(self.new_shape, dtype="int32")
-
-    def set_attrs(self):
-        self.attrs = {'use_mkldnn': True}
 
     def set_outputs(self):
         self.outputs = {
@@ -250,6 +237,7 @@ def create_reshape_bf16_test_classes(parent):
 
 create_reshape_bf16_test_classes(TestReshape2OneDNNOp)
 create_reshape_bf16_test_classes(TestReshape2OneDNNOpDimInfer1)
+
 
 if __name__ == "__main__":
     paddle.enable_static()
