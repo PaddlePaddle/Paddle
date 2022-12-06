@@ -28,6 +28,7 @@ import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.quantization import *
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
+from paddle.fluid.framework import _test_eager_guard
 
 from imperative_test_utils import (
     fix_model_dict,
@@ -207,7 +208,7 @@ class TestImperativePTQ(unittest.TestCase):
                 break
         return top1_correct_num / total_num
 
-    def test_ptq(self):
+    def func_ptq(self):
         start_time = time.time()
 
         self.set_vars()
@@ -265,9 +266,14 @@ class TestImperativePTQ(unittest.TestCase):
             end_time = time.time()
             print("total time: %ss \n" % (end_time - start_time))
 
+    def test_ptq(self):
+        with _test_eager_guard():
+            self.func_ptq()
+        self.func_ptq()
+
 
 class TestImperativePTQfuse(TestImperativePTQ):
-    def test_ptq(self):
+    def func_ptq(self):
         start_time = time.time()
 
         self.set_vars()
@@ -335,6 +341,11 @@ class TestImperativePTQfuse(TestImperativePTQ):
 
             end_time = time.time()
             print("total time: %ss \n" % (end_time - start_time))
+
+    def test_ptq(self):
+        with _test_eager_guard():
+            self.func_ptq()
+        self.func_ptq()
 
 
 class TestImperativePTQHist(TestImperativePTQ):
