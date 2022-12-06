@@ -111,18 +111,17 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "preln_residual_bias_fuse_pass",                //
       "preln_layernorm_x_fuse_pass",                  //
       "reverse_roll_fuse_pass",                       //
-      // "set_transformer_input_convert_pass",       //
-      "conv_bn_fuse_pass",                           //
-      "unsqueeze2_eltwise_fuse_pass",                //
-      "trt_squeeze2_matmul_fuse_pass",               //
-      "trt_flatten2_matmul_fuse_pass",               //
-      "trt_map_matmul_v2_to_mul_pass",               //
-      "trt_map_matmul_v2_to_matmul_pass",            //
-      "trt_map_matmul_to_mul_pass",                  //
-      "fc_fuse_pass",                                //
-      "conv_elementwise_add_fuse_pass",              //
-      "remove_padding_recover_padding_pass",         //
-      "delete_remove_padding_recover_padding_pass",  //
+      "conv_bn_fuse_pass",                            //
+      "unsqueeze2_eltwise_fuse_pass",                 //
+      "trt_squeeze2_matmul_fuse_pass",                //
+      "trt_flatten2_matmul_fuse_pass",                //
+      "trt_map_matmul_v2_to_mul_pass",                //
+      "trt_map_matmul_v2_to_matmul_pass",             //
+      "trt_map_matmul_to_mul_pass",                   //
+      "fc_fuse_pass",                                 //
+      "conv_elementwise_add_fuse_pass",               //
+      "remove_padding_recover_padding_pass",          //
+      "delete_remove_padding_recover_padding_pass",   //
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
