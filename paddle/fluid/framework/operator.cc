@@ -1214,14 +1214,16 @@ class RuntimeInferShapeContext : public InferShapeContext {
 };
 
 struct OperatorWithKernel::CacheImpl {
-  explicit CacheImpl(const std::string& op_type,
-                     phi::KernelContext* kernel_ctx,
+  static const char
+      kNotAllowInferShapeCahce[];  // = "@NOT_ALLOW_INFERSHAPE_CACHE@";
+  explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
-                     const std::vector<phi::DenseTensor*>& tensors)
-      : op_type_(op_type),
-        kernel_ctx_(kernel_ctx),
+                     const std::vector<phi::DenseTensor*>& tensors,
+                     bool not_allow_infer_shape_cache)
+      : kernel_ctx_(kernel_ctx),
         infer_shape_ctx_(infer_shape_ctx),
-        tensors_(tensors) {}
+        tensors_(tensors),
+        not_allow_infer_shape_cache_(not_allow_infer_shape_cache) {}
 
   phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
   RuntimeInferShapeContext* getRuntimeInferShapeContext() {
@@ -1229,11 +1231,7 @@ struct OperatorWithKernel::CacheImpl {
   }
 
   bool NeedInferShape() {
-    // TODO(inference): Not support inplace op, we need to find the specific
-    // inplace op to skip infershape cache.
-    static std::unordered_set<std::string> maybe_inplace_ops{"transpose2",
-                                                             "reshape2"};
-    if (maybe_inplace_ops.count(op_type_)) return true;
+    if (not_allow_infer_shape_cache_) return true;
 
     bool ret{false};
     if (last_ddims_.empty() || tensors_.empty()) ret = true;
@@ -1259,11 +1257,13 @@ struct OperatorWithKernel::CacheImpl {
   std::vector<phi::DDim> last_ddims_;
 
  private:
-  std::string op_type_;
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
   std::vector<phi::DenseTensor*> tensors_;
+  bool not_allow_infer_shape_cache_;
 };
+const char OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
+    "@NOT_ALLOW_INFERSHAPE_CACHE@";
 
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
@@ -1557,28 +1557,22 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
-  // phi::dynload::nvtxRangePushA("run_impl");
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context_ = true;
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
-  // phi::dynload::nvtxRangePop();
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
-    // phi::dynload::nvtxRangePushA("infer_shape");
     if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape()) {
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
     }
-    // phi::dynload::nvtxRangePop();
-    // phi::dynload::nvtxRangePushA("kernel run");
     (*phi_kernel_)(impl_->getKernelContext());
-    // phi::dynload::nvtxRangePop();
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
@@ -1898,10 +1892,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         }
 
         impl_.reset(
-            new CacheImpl(type_,
-                          new phi::KernelContext(),
+            new CacheImpl(new phi::KernelContext(),
                           new RuntimeInferShapeContext(*this, *runtime_ctx),
-                          tensors));
+                          tensors,
+                          HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
