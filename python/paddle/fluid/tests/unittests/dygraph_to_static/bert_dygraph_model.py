@@ -272,7 +272,7 @@ class BertModelLayer(Layer):
 
         emb_out = self.pre_process_layer(emb_out)
 
-        self_attn_mask = fluid.layers.matmul(
+        self_attn_mask = paddle.matmul(
             x=input_mask, y=input_mask, transpose_y=True
         )
         self_attn_mask = paddle.scale(
@@ -401,7 +401,7 @@ class PretrainModelLayer(Layer):
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 
         if self._weight_sharing:
-            fc_out = fluid.layers.matmul(
+            fc_out = paddle.matmul(
                 x=mask_trans_feat,
                 y=self.bert_layer._src_emb._w,
                 transpose_y=True,
