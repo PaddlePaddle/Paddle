@@ -14,8 +14,8 @@
 
 
 from paddle import _C_ops
+from paddle.common_ops_import import LayerHelper
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.framework import in_dygraph_mode
 
 __all__ = [

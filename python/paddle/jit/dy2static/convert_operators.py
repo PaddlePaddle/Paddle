@@ -14,7 +14,6 @@
 
 import re
 import paddle
-from paddle.static.nn.control_flow import Assert, increment
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.jit.dy2static.variable_trans_func import (
     to_static_variable,
@@ -731,6 +730,8 @@ def convert_assert(cond, message=""):
     if isinstance(cond, Variable):
         cond = cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
+        from paddle.static.nn.control_flow import Assert
+
         return Assert(cond)
     else:
         assert cond, message
@@ -783,6 +784,8 @@ def _run_paddle_pop(array, *args):
     def body(i, new_array):
         item = array_read(array=array, i=i)
         array_write(item, paddle.tensor.array_length(new_array), new_array)
+        from paddle.static.nn.control_flow import increment
+
         i = increment(i)
         return i, new_array
 
