@@ -1132,7 +1132,7 @@ class Optimizer:
             belong_to_optimizer=True,
         )
 
-        flatten_param.stop_gradient
+        flatten_param.stop_gradient = False
         # flatten_param.trainable = True
         # flatten_param.optimize_attr = need_flatten_params[0].optimize_attr
         # flatten_param.regularizer = need_flatten_params[0].regularizer
