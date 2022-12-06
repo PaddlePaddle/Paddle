@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import _legacy_C_ops, tensor
-from paddle.fluid import layers
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm
@@ -388,9 +387,8 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = layers.matmul(
-                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
-            )
+            qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
+            qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
 
             if self.debug:
                 print('qk out is')
