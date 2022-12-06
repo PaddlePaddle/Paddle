@@ -1486,7 +1486,7 @@ def diagflat(x, offset=0, name=None):
             return _C_ops.diag(y, offset, padding_value)
 
     if _in_legacy_dygraph():
-        if len(x.shape) <= 1:
+        if len(x.shape) == 1:
             return _legacy_C_ops.diag_v2(
                 x, "offset", offset, "padding_value", padding_value
             )
