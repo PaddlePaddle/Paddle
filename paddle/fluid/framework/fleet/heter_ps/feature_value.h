@@ -93,7 +93,7 @@ class CommonFeatureValueAccessor {
     }
 
     // 根据mf_dim计算的总长度
-    __host__ __device__ int Dim(int& mf_dim) {
+    __host__ __device__ int Dim(int mf_dim) {
       int tmp_embedx_sgd_dim = 1;
       if (optimizer_type_ == 3) {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
@@ -104,12 +104,12 @@ class CommonFeatureValueAccessor {
     }
 
     // 根据mf_dim 计算的总byte数
-    __host__ __device__ size_t Size(int& mf_dim) {
+    __host__ __device__ size_t Size(int mf_dim) {
       return TYPEALIGN(8, Dim(mf_dim) * sizeof(float));  // cpu_ptr:2float
     }
 
     // 根据mf_dim 计算的 mf_size byte数
-    __host__ __device__ size_t MFSize(int& mf_dim) {
+    __host__ __device__ size_t MFSize(int mf_dim) {
       int tmp_embedx_sgd_dim = 1;
       if (optimizer_type_ == 3) {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
@@ -123,7 +123,7 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int EmbedxWOffsetIndex(float* val) {
       // has mf
       int tmp_embedx_sgd_dim = 1;
-      if (int(MfSize(val)) > 0) {
+      if (static_cast<int>(MfSize(val)) > 0) {
         if (optimizer_type_ == 3) {  // adam
           tmp_embedx_sgd_dim = MfDim(val) * 2 + 2;
         } else if (optimizer_type_ == 4) {  // shared_adam
@@ -266,7 +266,7 @@ class CommonFeatureValueAccessor {
     return 0;
   }
 
-  __host__ int Configure(std::unordered_map<std::string, float>& config) {
+  __host__ int Configure(const std::unordered_map<std::string, float>& config) {
     _config = config;
     Initialize();
     return 0;
@@ -302,23 +302,24 @@ class CommonFeatureValueAccessor {
     }
     *(reinterpret_cast<uint64_t*>(
         gpu_val + common_feature_value.CpuPtrIndex())) = (uint64_t)(cpu);
-    cpu_val[cpu_accessor->common_feature_value.MfDimIndex()] = float(mf_dim);
+    cpu_val[cpu_accessor->common_feature_value.MfDimIndex()] =
+        static_cast<float>(mf_dim);
     gpu_val[common_feature_value.MfDimIndex()] = mf_dim;
     if (cpu_dim > cpu_accessor->GetAccessorInfo().dim -
                       cpu_accessor->GetAccessorInfo().mf_size / sizeof(float)) {
       gpu_val[common_feature_value.MfSizeIndex()] =
           common_feature_value.MFSize(mf_dim) / sizeof(float);
 
-      for (int x = 0;
-           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+      for (size_t x = 0;
+           x < (common_feature_value.MFSize(mf_dim) / sizeof(float));
            x++) {
         gpu_val[common_feature_value.EmbedxG2SumIndex() + x] =
             cpu_val[cpu_accessor->common_feature_value.EmbedxG2SumIndex() + x];
       }
     } else {
       gpu_val[common_feature_value.MfSizeIndex()] = 0;
-      for (int x = common_feature_value.EmbedxG2SumIndex();
-           x < int(common_feature_value.Size(mf_dim) / sizeof(float));
+      for (size_t x = common_feature_value.EmbedxG2SumIndex();
+           x < (common_feature_value.Size(mf_dim) / sizeof(float));
            x++) {
         gpu_val[x] = 0;
       }
@@ -339,9 +340,10 @@ class CommonFeatureValueAccessor {
             gpu_val + common_feature_value.CpuPtrIndex())));
     size_t downpour_value_size = downpour_value->size();
     if (gpu_val[common_feature_value.MfSizeIndex()] > 0 &&
-        downpour_value_size == (cpu_accessor->GetAccessorInfo().dim -
-                                int(cpu_accessor->GetAccessorInfo().mf_size /
-                                    sizeof(float)))) {  // cpu_accessor
+        downpour_value_size ==
+            (cpu_accessor->GetAccessorInfo().dim -
+             static_cast<int>(cpu_accessor->GetAccessorInfo().mf_size /
+                              sizeof(float)))) {  // cpu_accessor
       downpour_value->resize(cpu_accessor->common_feature_value.Dim(mf_dim));
     }
     float* cpu_val = downpour_value->data();
@@ -362,8 +364,8 @@ class CommonFeatureValueAccessor {
     }
 
     if (gpu_val[common_feature_value.MfSizeIndex()] > 0) {
-      for (int x = 0;
-           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+      for (size_t x = 0;
+           x < (common_feature_value.MFSize(mf_dim) / sizeof(float));
            x++) {
         cpu_val[cpu_accessor->common_feature_value.EmbedxG2SumIndex() + x] =
             gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
@@ -399,8 +401,8 @@ class CommonFeatureValueAccessor {
     dest_val[common_feature_value.MfSizeIndex()] =
         src_val[common_feature_value.MfSizeIndex()];
 
-    for (int x = common_feature_value.EmbedxG2SumIndex();
-         x < int(common_feature_value.Size(mf_dim) / sizeof(float));
+    for (size_t x = common_feature_value.EmbedxG2SumIndex();
+         x < (common_feature_value.Size(mf_dim) / sizeof(float));
          x++) {
       dest_val[x] = src_val[x];
     }
@@ -416,13 +418,13 @@ class CommonFeatureValueAccessor {
     dest_val[common_pull_value.EmbedWIndex()] =
         src_val[common_feature_value.EmbedWIndex()];
 
-    int mf_size = int(src_val[common_feature_value.MfSizeIndex()]);
+    int mf_size = static_cast<int>(src_val[common_feature_value.MfSizeIndex()]);
     if (mf_size == 0) {
       dest_val[common_pull_value.MfSizeIndex()] = 0;
       return;
     }
     // set pull value real dim size
-    int mf_dim = int(src_val[common_feature_value.MfDimIndex()]);
+    int mf_dim = static_cast<int>(src_val[common_feature_value.MfDimIndex()]);
     dest_val[common_pull_value.MfSizeIndex()] = mf_dim;
     // check
     if (mf_dim > mf_size) {
@@ -459,7 +461,7 @@ class CommonFeatureValueAccessor {
     dest_val[common_push_value.EmbedGIndex()] =
         src_val[common_push_value.EmbedGIndex()];
 
-    for (int x = 0; x < int(src_val[common_push_value.MfDimIndex()]); x++) {
+    for (size_t x = 0; x < (src_val[common_push_value.MfDimIndex()]); x++) {
       dest_val[common_push_value.EmbedxGIndex() + x] =
           src_val[common_push_value.EmbedxGIndex() + x];
     }
@@ -489,7 +491,7 @@ class CommonFeatureValueAccessor {
         src_val[common_push_value.ClickIndex()];
     dest_val[common_push_value.EmbedGIndex()] +=
         src_val[common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(dest_val[common_push_value.MfDimIndex()]); j++) {
+    for (size_t j = 0; j < (dest_val[common_push_value.MfDimIndex()]); j++) {
       dest_val[common_push_value.EmbedxGIndex() + j] +=
           src_val[common_push_value.EmbedxGIndex() + j];
     }
@@ -523,7 +525,7 @@ class CommonFeatureValueAccessor {
       *(dest_val + common_pull_value.EmbedWIndex()) =
           src_val[common_feature_value.EmbedWIndex()];
     }
-    int mf_size = int(src_val[common_feature_value.MfSizeIndex()]);
+    int mf_size = static_cast<int>(src_val[common_feature_value.MfSizeIndex()]);
     if (mf_size == 0 || *key == 0) {
       for (int j = 0; j < mf_dim; j++) {
         *(dest_val + 3 + j) = 0;
@@ -561,7 +563,8 @@ class CommonFeatureValueAccessor {
          i++) {
       os << " " << v[i];
     }
-    int mf_dim = int(common_feature_value.MfDim(const_cast<float*>(v)));
+    int mf_dim =
+        static_cast<int>(common_feature_value.MfDim(const_cast<float*>(v)));
     os << " slot: " << common_feature_value.Slot(const_cast<float*>(v))
        << " mf_dim: " << mf_dim
        << " mf_size: " << common_feature_value.MfSize(const_cast<float*>(v))
@@ -658,11 +661,11 @@ class VirtualAccessor {
  public:
   virtual int Configure(std::unordered_map<std::string, float> config) = 0;
 
-  virtual size_t GetFeatureValueSize(int& mf_dim) = 0;
+  virtual size_t GetFeatureValueSize(int& mf_dim) = 0;  // NOLINT
 
-  virtual size_t GetPushValueSize(int& mf_dim) = 0;
+  virtual size_t GetPushValueSize(int& mf_dim) = 0;  // NOLINT
 
-  virtual size_t GetPullValueSize(int& mf_dim) = 0;
+  virtual size_t GetPullValueSize(int& mf_dim) = 0;  // NOLINT
 
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
@@ -703,8 +706,8 @@ class VirtualAccessor {
                            const uint64_t total_length,
                            const int batch_size,
                            size_t grad_value_size,
-                           std::vector<int>& slot_vector,
-                           std::vector<int>& slot_mf_dim_vector) = 0;
+                           std::vector<int>& slot_vector,              // NOLINT
+                           std::vector<int>& slot_mf_dim_vector) = 0;  // NOLINT
 
   // dedup
   virtual void CopyForPush(const paddle::platform::Place& place,
@@ -745,7 +748,7 @@ class VirtualAccessor {
 template <typename GPUAccessor>
 class AccessorWrapper : public VirtualAccessor {
  public:
-  explicit AccessorWrapper() {}
+  AccessorWrapper() {}
   virtual ~AccessorWrapper() {}
   AccessorWrapper(const AccessorWrapper&) = delete;
   AccessorWrapper& operator=(const AccessorWrapper&) = delete;
@@ -754,15 +757,15 @@ class AccessorWrapper : public VirtualAccessor {
     return gpu_accessor_.Configure(config);
   }
 
-  virtual size_t GetFeatureValueSize(int& mf_dim) {
+  virtual size_t GetFeatureValueSize(int& mf_dim) {  // NOLINT
     return gpu_accessor_.common_feature_value.Size(mf_dim);
   }
 
-  virtual size_t GetPushValueSize(int& mf_dim) {
+  virtual size_t GetPushValueSize(int& mf_dim) {  // NOLINT
     return gpu_accessor_.common_push_value.Size(mf_dim);
   }
 
-  virtual size_t GetPullValueSize(int& mf_dim) {
+  virtual size_t GetPullValueSize(int& mf_dim) {  // NOLINT
     return gpu_accessor_.common_pull_value.Size(mf_dim);
   }
 
@@ -773,7 +776,7 @@ class AccessorWrapper : public VirtualAccessor {
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
                          int mf_dim) {
     gpu_accessor_.BuildFill(
-        (float*)(gpu_val), cpu_val, cpu_table_accessor, mf_dim);
+        reinterpret_cast<float*>(gpu_val), cpu_val, cpu_table_accessor, mf_dim);
   }
 
   virtual void DumpFill(float* gpu_val,
@@ -835,8 +838,8 @@ class AccessorWrapper : public VirtualAccessor {
                            const uint64_t total_length,
                            const int batch_size,
                            size_t grad_value_size,
-                           std::vector<int>& slot_vector,
-                           std::vector<int>& slot_mf_dim_vector) {
+                           std::vector<int>& slot_vector,           // NOLINT
+                           std::vector<int>& slot_mf_dim_vector) {  // NOLINT
     CopyForPushImpl(place,
                     grad_values,
                     total_grad_values_gpu,
@@ -930,8 +933,8 @@ class AccessorWrapper : public VirtualAccessor {
                        const uint64_t total_length,
                        const int batch_size,
                        size_t grad_value_size,
-                       std::vector<int>& slot_vector,
-                       std::vector<int>& slot_mf_dim_vector);
+                       std::vector<int>& slot_vector,          // NOLINT
+                       std::vector<int>& slot_mf_dim_vector);  // NOLINT
 
   void CopyForPullDedupImpl(const paddle::platform::Place& place,
                             const uint64_t* total_keys,

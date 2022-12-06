@@ -25,7 +25,7 @@
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
-using namespace paddle::framework;
+using namespace paddle::framework;  // NOLINT
 namespace platform = paddle::platform;
 
 std::string edges[] = {
@@ -160,9 +160,9 @@ TEST(TEST_FLEET, test_cpu_cache) {
   for (int i = 0; i < 2; i++) {
     // platform::CUDADeviceGuard guard(i);
     LOG(0) << "query on card " << i;
-    //{1,9} or {9,1} is expected for key 0
-    //{0,2} or {2,0} is expected for key 1
-    //{1,3} or {3,1} is expected for key 2
+    // {1,9} or {9,1} is expected for key 0
+    // {0,2} or {2,0} is expected for key 1
+    // {1,3} or {3,1} is expected for key 2
     int step = 2;
     int cur = 0;
     while (true) {

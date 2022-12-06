@@ -46,16 +46,16 @@ class GraphGpuWrapper {
   void finalize();
   void set_device(std::vector<int> ids);
   void init_service();
-  void set_up_types(std::vector<std::string>& edge_type,
-                    std::vector<std::string>& node_type);
+  void set_up_types(const std::vector<std::string>& edge_type,
+                    const std::vector<std::string>& node_type);
   void upload_batch(int type,
                     int idx,
                     int slice_num,
                     const std::string& edge_type);
   void upload_batch(int type, int slice_num, int slot_num);
   std::vector<GpuPsCommGraphFea> get_sub_graph_fea(
-      std::vector<std::vector<uint64_t>>& node_ids, int slot_num);
-  void build_gpu_graph_fea(GpuPsCommGraphFea& sub_graph_fea, int i);
+      std::vector<std::vector<uint64_t>>& node_ids, int slot_num);    // NOLINT
+  void build_gpu_graph_fea(GpuPsCommGraphFea& sub_graph_fea, int i);  // NOLINT
   void add_table_feat_conf(std::string table_name,
                            std::string feat_name,
                            std::string feat_dtype,
@@ -121,10 +121,11 @@ class GraphGpuWrapper {
       int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
   gpuStream_t get_local_stream(int gpuid);
-  std::vector<uint64_t> graph_neighbor_sample(int gpu_id,
-                                              int idx,
-                                              std::vector<uint64_t>& key,
-                                              int sample_size);
+  std::vector<uint64_t> graph_neighbor_sample(
+      int gpu_id,
+      int idx,
+      std::vector<uint64_t>& key,  // NOLINT
+      int sample_size);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
       int gpu_id, int edge_type_len);
   std::vector<int> slot_feature_num_map() const;
@@ -137,13 +138,14 @@ class GraphGpuWrapper {
                            int slot_num,
                            int* d_slot_feature_num_map,
                            int fea_num_per_node);
-  int get_feature_info_of_nodes(int gpu_id,
-                                uint64_t* d_nodes,
-                                int node_num,
-                                uint32_t* size_list,
-                                uint32_t* size_list_prefix_sum,
-                                std::shared_ptr<phi::Allocation>& feature_list,
-                                std::shared_ptr<phi::Allocation>& slot_list);
+  int get_feature_info_of_nodes(
+      int gpu_id,
+      uint64_t* d_nodes,
+      int node_num,
+      uint32_t* size_list,
+      uint32_t* size_list_prefix_sum,
+      std::shared_ptr<phi::Allocation>& feature_list,  // NOLINT
+      std::shared_ptr<phi::Allocation>& slot_list);    // NOLINT
   void init_metapath(std::string cur_metapath,
                      int cur_metapath_index,
                      int cur_metapath_len);

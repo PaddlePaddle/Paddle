@@ -33,8 +33,8 @@ namespace distributed {
 
 class Uint64Comparator : public rocksdb::Comparator {
   int Compare(const rocksdb::Slice& a, const rocksdb::Slice& b) const {
-    uint64_t A = *((uint64_t*)const_cast<char*>(a.data()));
-    uint64_t B = *((uint64_t*)const_cast<char*>(b.data()));
+    uint64_t A = *(reinterpret_cast<const uint64_t*>(a.data()));
+    uint64_t B = *(reinterpret_cast<const uint64_t*>(b.data()));
     if (A < B) {
       return -1;
     }
@@ -169,8 +169,8 @@ class RocksDBHandler {
   }
 
   int put_batch(int id,
-                std::vector<std::pair<char*, int>>& ssd_keys,
-                std::vector<std::pair<char*, int>>& ssd_values,
+                std::vector<std::pair<char*, int>>& ssd_keys,    // NOLINT
+                std::vector<std::pair<char*, int>>& ssd_values,  // NOLINT
                 int n) {
     rocksdb::WriteOptions options;
     options.disableWAL = true;
@@ -184,7 +184,7 @@ class RocksDBHandler {
     return 0;
   }
 
-  int get(int id, const char* key, int key_len, std::string& value) {
+  int get(int id, const char* key, int key_len, std::string& value) {  // NOLINT
     rocksdb::Status s = _dbs[id]->Get(
         rocksdb::ReadOptions(), rocksdb::Slice(key, key_len), &value);
     if (s.IsNotFound()) {
@@ -225,7 +225,7 @@ class RocksDBHandler {
     return _dbs[id]->NewIterator(rocksdb::ReadOptions());
   }
 
-  int get_estimate_key_num(uint64_t& num_keys) {
+  int get_estimate_key_num(uint64_t& num_keys) {  // NOLINT
     num_keys = 0;
     for (size_t i = 0; i < _dbs.size(); i++) {
       uint64_t cur_keys = 0;
