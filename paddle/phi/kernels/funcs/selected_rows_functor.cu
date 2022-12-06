@@ -392,9 +392,10 @@ struct MergeAddImpl {
 
     out.set_rows(merge_rows);
     out.set_height(input.height());
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
@@ -462,9 +463,11 @@ struct MergeAddImpl {
 
     out.set_rows(merge_rows);
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
+
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
