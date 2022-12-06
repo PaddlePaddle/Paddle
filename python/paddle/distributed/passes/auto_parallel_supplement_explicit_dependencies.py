@@ -64,6 +64,7 @@ class AutoParalSupplementDepPass(PassBase):
         if not use_standalone_executor:
             return
 
+        self._dist_context = self.get_attr("dist_context", None)
         main_block = main_program.global_block()
         startup_block = main_program.global_block()
 
