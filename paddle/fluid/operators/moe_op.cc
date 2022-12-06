@@ -39,12 +39,12 @@ class MoeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The source input tensor of Moe op.");
     AddInput("Gate", "(Tensor), The gating input tensor of Moe op.");
-    AddInput("BMM0", "(Tensor), The bmm0 input tensor of Moe op.");
-    AddInput("BIAS0", "(Tensor), The eltwise0 input tensor of Moe op.");
-    AddInput("BMM1", "(Tensor), The bmm1 input tensor of Moe op.");
-    AddInput("BIAS1", "(Tensor), The eltwise1 input tensor of Moe op.");
+    AddInput("Bmm0", "(Tensor), The bmm0 input tensor of Moe op.");
+    AddInput("Bias0", "(Tensor), The eltwise0 input tensor of Moe op.");
+    AddInput("Bmm1", "(Tensor), The bmm1 input tensor of Moe op.");
+    AddInput("Bias1", "(Tensor), The eltwise1 input tensor of Moe op.");
     AddOutput("OUT", "(Tensor), The output tensor of Moe op.");
-    AddAttr<int>("ACT",
+    AddAttr<int>("act",
                  R"DOC(act == 0 : gelu, act == 1 : relu.
         )DOC")
         .SetDefault(0);
