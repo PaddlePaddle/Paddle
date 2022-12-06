@@ -75,7 +75,7 @@ class CtrDymfAccessor : public ValueAccessor {
     int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
 
     // 根据mf_dim计算的总长度
-    int Dim(int& mf_dim) {
+    int Dim(int mf_dim) {
       int tmp_embedx_sgd_dim = 1;
       if (optimizer_name == "SparseAdamSGDRule") {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
@@ -86,7 +86,7 @@ class CtrDymfAccessor : public ValueAccessor {
     }
 
     // 根据mf_dim计算的总byte数
-    int Size(int& mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
+    int Size(int mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
 
     uint16_t& PassId(float* val) {
       uint16_t* int16_val =
@@ -243,12 +243,12 @@ class CtrDymfAccessor : public ValueAccessor {
     return 0.0;
   }
 
-  //根据pass_id和show_threashold阈值来判断cache到ssd
+  // 根据pass_id和show_threashold阈值来判断cache到ssd
   bool SaveMemCache(float* value,
                     int param,
                     double global_cache_threshold,
                     uint16_t pass_id);
-  //更新pass_id
+  // 更新pass_id
   void UpdatePassId(float* value, uint16_t pass_id);
 
  private:
