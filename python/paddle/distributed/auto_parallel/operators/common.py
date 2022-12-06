@@ -45,6 +45,15 @@ class ParallelMode:
     MoEParallel = "auto_parallel/moe_parallel"
 
 
+class SyncMode:
+    """
+    the synchorization mode for communication or auxiliary operator
+    """
+
+    AmpFlagSync = "auto_parallel/amp_flag_synchorization"
+    GlobalNormSync = "auto_parallel/global_norm_synchorization"
+
+
 def is_elementwise_op(op_type):
     if op_type in _g_elementwise_ops:
         return True
@@ -495,6 +504,22 @@ def is_data_parallel_reduce_op(op):
         op.type in ["c_reduce_sum", "c_allreduce_sum"]
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    )
+
+
+def is_amp_flag_sync_op(op):
+    return (
+        op.type == "c_allreduce_max"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
+    )
+
+
+def is_global_norm_sync_op(op):
+    return (
+        op.type == "c_allreduce_sum"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )
 
 
