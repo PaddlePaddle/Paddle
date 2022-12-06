@@ -18,7 +18,6 @@ import time
 import unittest
 
 import numpy as np
-from nn.layer.norm import BatchNorm
 from predictor_utils import PredictorTools
 
 import paddle
@@ -29,6 +28,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 from paddle.nn import Linear
+from paddle.nn.layer.norm import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
