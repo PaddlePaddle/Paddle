@@ -15,17 +15,23 @@
 import copy
 import logging
 
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid import core
 
-from .utils import is_naive_data_parallel, get_logger
-from .utils import is_gradient_clip_op, __no_shape_var_type__
-from .operators import find_compatible_distributed_operator_impls
+from .dist_attribute import (
+    OperatorDistributedAttribute,
+    TensorDistributedAttribute,
+)
 from .dist_context import _node_id
-from .dist_attribute import TensorDistributedAttribute
-from .dist_attribute import OperatorDistributedAttribute
-from .process_mesh import ProcessMesh
+from .operators import find_compatible_distributed_operator_impls
 from .process_group import get_world_process_group
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from .process_mesh import ProcessMesh
+from .utils import (
+    __no_shape_var_type__,
+    get_logger,
+    is_gradient_clip_op,
+    is_naive_data_parallel,
+)
 
 
 def compute_compatible_process_mesh(process_mesh_list):
@@ -1239,7 +1245,7 @@ class Completer:
                                 input_var
                             ).dims_mapping
                     else:
-                        if fwd_op_dist_attr.get_input_dims_mapping(input_name):
+                        if input_name in forward_op.input_arg_names:
                             ref_dims_mapping = (
                                 fwd_op_dist_attr.get_input_dims_mapping(
                                     input_name
@@ -1510,8 +1516,12 @@ class Completer:
                     self._dist_context.set_op_dist_attr_for_program(
                         grad_op, grad_op_dist_attr
                     )
-                    grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
-                    grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
+                    grad_op_dist_attr.impl_type = (
+                        fwd_op_dist_attr.impl_type  # noqa: F821
+                    )
+                    grad_op_dist_attr.impl_idx = (
+                        fwd_op_dist_attr.impl_idx  # noqa: F821
+                    )
 
                     continue
 
@@ -1540,7 +1550,7 @@ class Completer:
                                 input_var
                             ).dims_mapping
                     else:
-                        if fwd_op_dist_attr.get_input_dims_mapping(input_name):
+                        if input_name in forward_op.input_arg_names:
                             ref_dims_mapping = (
                                 fwd_op_dist_attr.get_input_dims_mapping(
                                     input_name

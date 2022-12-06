@@ -28,9 +28,9 @@ namespace ir {
  */
 class Graph;
 
-class InterpolateMKLDNNPass : public FusePassBase {
+class InterpolateOneDNNPass : public FusePassBase {
  public:
-  virtual ~InterpolateMKLDNNPass() {}
+  virtual ~InterpolateOneDNNPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

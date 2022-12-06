@@ -15,17 +15,19 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import paddle
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -102,6 +104,30 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
 
         def init_axis(self):
             pass
+
+    class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+    class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+    class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
 
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."

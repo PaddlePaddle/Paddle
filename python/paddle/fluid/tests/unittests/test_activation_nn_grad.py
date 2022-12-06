@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-import paddle
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 import gradient_checker
-import paddle.nn.functional as F
-
+import numpy as np
 from decorator_helper import prog_scope
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 
 
 class TestSigmoidTripleGradCheck(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
         dtype = np.float64
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
-        y = layers.sigmoid(x)
+        y = F.sigmoid(x)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
@@ -51,7 +51,7 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
 
 class TestSigmoidDoubleGradCheck(unittest.TestCase):
     def sigmoid_wrapper(self, x):
-        return fluid.layers.sigmoid(x[0])
+        return F.sigmoid(x[0])
 
     @prog_scope()
     def func(self, place):
@@ -60,7 +60,7 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
         dtype = np.float64
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
-        y = layers.sigmoid(x)
+        y = F.sigmoid(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
@@ -92,7 +92,7 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         dtype = np.float64
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
-        y = layers.tanh(x)
+        y = paddle.tanh(x)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
@@ -217,7 +217,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
 
-        y = layers.leaky_relu(x, alpha=alpha)
+        y = paddle.nn.functional.leaky_relu(x, alpha)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.02
 
@@ -252,7 +252,7 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
 
-        y = layers.elu(x, alpha=alpha)
+        y = paddle.nn.functional.elu(x, alpha=alpha)
         np.random.RandomState(SEED)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         gradient_checker.double_grad_check(
@@ -322,7 +322,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
 
-        y = layers.sqrt(x)
+        y = paddle.sqrt(x)
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
@@ -354,7 +354,7 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
 
-        y = layers.rsqrt(x)
+        y = paddle.rsqrt(x)
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
@@ -386,7 +386,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.square(x)
+        y = paddle.square(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
@@ -417,7 +417,7 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.abs(x)
+        y = paddle.abs(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         # Because we set delta = 0.005 in calculating numeric gradient,
         # if x is too small, the numeric gradient is inaccurate.
@@ -449,7 +449,7 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.log(x)
+        y = paddle.log(x)
 
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
@@ -608,7 +608,7 @@ class TestSinTripleGradCheck(unittest.TestCase):
         dtype = np.float64
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
-        y = layers.sin(x)
+        y = paddle.sin(x)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
@@ -733,7 +733,7 @@ class TestCosTripleGradCheck(unittest.TestCase):
         dtype = np.float64
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
-        y = layers.cos(x)
+        y = paddle.cos(x)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
@@ -182,7 +184,7 @@ class TestDygraphTripleGrad(TestCase):
         numel = z_np.size
         z.stop_gradient = False
 
-        out = fluid.layers.sigmoid(paddle.matmul(x, y) + z)
+        out = paddle.nn.functional.sigmoid(paddle.matmul(x, y) + z)
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)
@@ -278,7 +280,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         numel = z_np.size
         z.stop_gradient = False
 
-        out = fluid.layers.sigmoid(paddle.matmul(x, y) + z)
+        out = paddle.nn.functional.sigmoid(paddle.matmul(x, y) + z)
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)

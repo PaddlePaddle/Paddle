@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..common import is_optimizer_op, OP_ROLE_KEY, OpRole, is_update_op
-from paddle.fluid import core, unique_name
+from paddle.framework import core
+from paddle.utils import unique_name
+
+from ..common import OP_ROLE_KEY, OpRole, is_optimizer_op, is_update_op
 
 __all__ = []
 

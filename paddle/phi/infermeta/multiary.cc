@@ -911,13 +911,14 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   // 1. calculate axis
   int rank = x.at(0)->dims().size();
   PADDLE_ENFORCE_EQ(
-      axis >= -rank && axis < rank,
+      !rank || (axis >= -rank && axis < rank),
       true,
       phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
           axis));
+  axis = rank ? axis : 0;
   if (axis < 0) {
     axis = axis + rank;
   }
@@ -1330,17 +1331,13 @@ void GraphSampleNeighborsInferMeta(const MetaTensor& row,
 }
 
 void HSigmoidLossInferMeta(const MetaTensor& x,
-                           const MetaTensor& w,
                            const MetaTensor& label,
+                           const MetaTensor& w,
+                           const MetaTensor& bias,
                            const MetaTensor& path,
                            const MetaTensor& code,
-                           const MetaTensor& bias,
                            int num_classes,
                            bool remote_prefetch,
-                           int trainer_id,
-                           const std::vector<int64_t>& height_sections,
-                           const std::vector<std::string>& epmap,
-                           const std::vector<std::string>& table_names,
                            bool is_sparse,
                            MetaTensor* out,
                            MetaTensor* pre_out,

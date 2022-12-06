@@ -22,8 +22,8 @@
 
 #include "paddle/fluid/operators/number_count_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +37,6 @@ static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
-using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <typename T>
@@ -77,7 +76,7 @@ __global__ void NumberCount(const T* numbers,
 #endif
     }
     if (threadIdx.x % WARP_SIZE == 0) {
-      platform::CudaAtomicAdd(number_count + i, x);
+      phi::CudaAtomicAdd(number_count + i, x);
     }
   }
 }
@@ -86,9 +85,9 @@ template <typename T>
 class NumberCountOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto numbers = context.Input<LoDTensor>("numbers");
+    auto numbers = context.Input<phi::DenseTensor>("numbers");
     auto upper_range = context.Attr<int>("upper_range");
-    auto number_count = context.Output<LoDTensor>("Out");
+    auto number_count = context.Output<phi::DenseTensor>("Out");
 
     int64_t batch_size = numbers->numel();
     auto place = context.GetPlace();

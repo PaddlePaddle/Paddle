@@ -301,6 +301,8 @@ struct OneDNNContext::Impl {
     dnn_attrs_[attr_name] = attr;
   }
 
+  void ClearDnnAttr() { dnn_attrs_.clear(); }
+
   bool HasDnnInput(const std::string& input_name) const {
     return dnn_inputs_.count(input_name) != 0UL;
   }
@@ -424,6 +426,8 @@ const Attribute& OneDNNContext::GetDnnAttr(const std::string& attr_name) const {
 void OneDNNContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
   return impl_->SetDnnAttr(attr_name, std::move(attr));
 }
+
+void OneDNNContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
 bool OneDNNContext::HasDnnInput(const std::string& input_name) const {
   return impl_->HasDnnInput(input_name);

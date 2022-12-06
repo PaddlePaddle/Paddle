@@ -14,19 +14,18 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
-import paddle.static as static
-import paddle.nn.functional as F
-import paddle.utils as utils
 import paddle.fluid.core as core
-from paddle.fluid import layers
-from paddle.distributed.auto_parallel.operators.common import (
-    get_distributed_operator_impl_container,
-)
+import paddle.nn as nn
+import paddle.nn.functional as F
+import paddle.static as static
+import paddle.utils as utils
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.operators.common import (
+    get_distributed_operator_impl_container,
+)
 
 paddle.enable_static()
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
@@ -85,7 +84,7 @@ def mlp_forward(train_program, start_program):
             shape=[hidden_size, hidden_size],
             dtype='float32',
         )
-        input = layers.matmul(x=input, y=matmulinput)
+        input = paddle.matmul(x=input, y=matmulinput)
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32'
         )

@@ -35,6 +35,7 @@ void ReduceSumEigen(const KPDevice& dev_ctx,
                     DataType out_dtype,
                     DenseTensor* out,
                     std::vector<int>* reduce_dims) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   // Resize Input Tensor
   auto new_x = x;
   int added_dims = EigenDimSize - x.dims().size();
@@ -79,6 +80,7 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }

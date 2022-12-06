@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed.fleet as fleet
-import unittest
-import paddle
-import paddle.fluid as fluid
 import os
-from paddle.static import sparsity
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+import unittest
+
 import numpy as np
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.static import sparsity
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":

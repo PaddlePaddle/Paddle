@@ -17,17 +17,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::MKLDNNGetDataType;
 template <typename T>
 class ShuffleChannelMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
  public:
   ShuffleChannelMKLDNNHandler(const phi::DenseTensor* x,
                               const int group,
                               const dnnl::engine engine,
                               platform::Place cpu_place)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(engine,
-                                                                    cpu_place) {
+      : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(
+            engine, cpu_place) {
     static constexpr int channel_axis = 1;
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_training, x->mem_desc(), channel_axis, group);
@@ -38,8 +37,7 @@ template <typename T>
 class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -56,7 +54,7 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
 
     auto shuffle_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     shuffle_p->execute(
         astream,
         {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});

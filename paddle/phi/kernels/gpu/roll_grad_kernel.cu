@@ -20,7 +20,7 @@
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
 void RollGradKernel(const Context& dev_ctx,
