@@ -1001,7 +1001,7 @@ class TestDygraphGuardWithError(unittest.TestCase):
         with self.assertRaisesRegexp(
             TypeError, "Please use `with fluid.dygraph.guard()"
         ):
-            y = fluid.layers.matmul(x, x)
+            y = paddle.matmul(x, x)
 
     def test_without_guard(self):
         with _test_eager_guard():
