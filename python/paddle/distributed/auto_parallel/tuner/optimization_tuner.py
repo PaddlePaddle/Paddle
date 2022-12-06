@@ -41,7 +41,7 @@ from paddle.distributed.auto_parallel.utils import (
     set_grad_var_shape,
 )
 from paddle.distributed.passes import PassContext, new_pass
-from paddle.fluid import program_guard
+from paddle.fluid import program_guard, unique_name
 from paddle.fluid.backward import append_backward
 
 from ..utils import get_logger
@@ -304,7 +304,6 @@ class OptimizationTuner:
             config = copy.deepcopy(new_strategy.amp.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_context._params_grads
-
             # TODO AMP Pass should not use loss var
             config["loss"] = dist_context.serial_loss
             config["input_data"] = (
@@ -317,13 +316,13 @@ class OptimizationTuner:
                 auto_parallel_fp16_pass.apply(
                     [main_program], [startup_program], pass_context
                 )
-                dist_context.serial_loss = auto_parallel_fp16_pass.get_loss()
+                dist_context._serial_loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply(
                     [main_program], [startup_program], pass_context
                 )
-                dist_context.serial_loss = auto_parallel_amp_pass.get_loss()
+                dist_context._serial_loss = auto_parallel_amp_pass.get_loss()
 
         if new_strategy.recompute.enable:
             config = copy.deepcopy(new_strategy.recompute.to_dict())
@@ -349,10 +348,11 @@ class OptimizationTuner:
 
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
+        optimizer = copy.deepcopy(dist_context.serial_optimizer)
+        dist_context._serial_optimizer = optimizer
         with program_guard(dist_main_prog, dist_startup_prog):
-            optimizer_ops = dist_context.serial_optimizer.apply_gradients(
-                dist_params_grads
-            )
+            with unique_name.guard("opt_"):
+                optimizer_ops = optimizer.apply_gradients(dist_params_grads)
         completer.complete_update_annotation(dist_main_prog)
 
         # Do reshard process
@@ -366,6 +366,13 @@ class OptimizationTuner:
         )
         resharder.reshard()
 
+        config = {}
+        config["dist_context"] = dist_context
+        config["global_rank"] = self.rank
+        config["use_sharding"] = new_strategy.sharding.enable
+        dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
+        dp_pass.apply([dist_main_prog], [dist_startup_prog], pass_context)
+
         if new_strategy.sharding.enable:
             config = copy.deepcopy(new_strategy.sharding.to_dict())
             config["dist_context"] = dist_context
@@ -377,6 +384,17 @@ class OptimizationTuner:
             auto_parallel_sharding_pass.apply(
                 [dist_main_prog], [dist_startup_prog], pass_context
             )
+            dist_params_grads = pass_context.get_attr("params_grads")
+
+        # gradient clip
+        config = copy.deepcopy(new_strategy.sharding.to_dict())
+        config["dist_context"] = dist_context
+        config["params_grads"] = dist_params_grads
+        config["rank_id"] = self.rank
+        auto_parallel_clip_pass = new_pass("auto_parallel_grad_clip", config)
+        auto_parallel_clip_pass.apply(
+            [dist_main_prog], [dist_startup_prog], pass_context
+        )
 
         if new_strategy.gradient_merge.enable:
             config = copy.deepcopy(new_strategy.gradient_merge.to_dict())

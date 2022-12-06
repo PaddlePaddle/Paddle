@@ -86,7 +86,7 @@ class RecomputeState(ProgramStats):
                     )
                     segments.append([min_idx, max_idx + 1])
                 else:
-                    logging.info(
+                    logging.debug(
                         "Could not recompute op range [{}] - [{}] ".format(
                             min_idx, max_idx + 1
                         )
