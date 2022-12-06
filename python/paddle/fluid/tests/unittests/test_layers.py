@@ -290,7 +290,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
             t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
-            ret = layers.matmul(t, t2)
+            ret = paddle.matmul(t, t2)
             static_ret = self.get_static_graph_result(
                 feed={
                     't': np.ones([3, 3], dtype='float32'),
@@ -303,14 +303,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 t = np.ones([3, 3], dtype='float32')
                 t2 = np.ones([3, 3], dtype='float32')
-                dy_eager_ret = layers.matmul(
+                dy_eager_ret = paddle.matmul(
                     base.to_variable(t), base.to_variable(t2)
                 )
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = np.ones([3, 3], dtype='float32')
             t2 = np.ones([3, 3], dtype='float32')
-            dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
+            dy_ret = paddle.matmul(base.to_variable(t), base.to_variable(t2))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -3287,70 +3287,6 @@ class TestBook(LayerTest):
                 trans_std=0.1,
             )
         return out
-
-    def test_retinanet_target_assign(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            bbox_pred = layers.data(
-                name='bbox_pred',
-                shape=[1, 100, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            cls_logits = layers.data(
-                name='cls_logits',
-                shape=[1, 100, 10],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            anchor_box = layers.data(
-                name='anchor_box',
-                shape=[100, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            anchor_var = layers.data(
-                name='anchor_var',
-                shape=[100, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            gt_boxes = layers.data(
-                name='gt_boxes',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            gt_labels = layers.data(
-                name='gt_labels',
-                shape=[10, 1],
-                append_batch_size=False,
-                dtype='int32',
-            )
-            is_crowd = layers.data(
-                name='is_crowd',
-                shape=[1],
-                append_batch_size=False,
-                dtype='int32',
-            )
-            im_info = layers.data(
-                name='im_info',
-                shape=[1, 3],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            return layers.retinanet_target_assign(
-                bbox_pred,
-                cls_logits,
-                anchor_box,
-                anchor_var,
-                gt_boxes,
-                gt_labels,
-                is_crowd,
-                im_info,
-                10,
-            )
 
     def test_addmm(self):
         with program_guard(
