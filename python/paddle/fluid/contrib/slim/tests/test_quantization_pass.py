@@ -72,11 +72,11 @@ def residual_block(num, quant_skip_pattern=None):
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
-        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
+        hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
     matmul_weight = paddle.create_parameter(
         shape=[1, 16, 32, 32], dtype='float32'
     )
-    hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)
+    hidden = paddle.matmul(hidden, matmul_weight, True, True)
     if quant_skip_pattern:
         with fluid.name_scope(quant_skip_pattern):
             pool = fluid.layers.pool2d(
@@ -723,8 +723,8 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
-        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    hidden = fluid.layers.matmul(hidden, data2, True, True)
+        hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
+    hidden = paddle.matmul(hidden, data2, True, True)
     if isinstance(quant_skip_pattern, str):
         with fluid.name_scope(quant_skip_pattern):
             pool1 = fluid.layers.pool2d(
@@ -733,9 +733,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             pool2 = fluid.layers.pool2d(
                 input=hidden, pool_size=2, pool_type='max', pool_stride=2
             )
-            pool_add = fluid.layers.elementwise_add(
-                x=pool1, y=pool2, act='relu'
-            )
+            pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     elif isinstance(quant_skip_pattern, list):
         assert (
             len(quant_skip_pattern) > 1
@@ -748,9 +746,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
                 input=hidden, pool_size=2, pool_type='max', pool_stride=2
             )
         with fluid.name_scope(quant_skip_pattern[1]):
-            pool_add = fluid.layers.elementwise_add(
-                x=pool1, y=pool2, act='relu'
-            )
+            pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     else:
         pool1 = fluid.layers.pool2d(
             input=hidden, pool_size=2, pool_type='avg', pool_stride=2
@@ -758,7 +754,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
         pool2 = fluid.layers.pool2d(
             input=hidden, pool_size=2, pool_type='max', pool_stride=2
         )
-        pool_add = fluid.layers.elementwise_add(x=pool1, y=pool2, act='relu')
+        pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     fc = fluid.layers.fc(input=pool_add, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
     loss = paddle.mean(loss)

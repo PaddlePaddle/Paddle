@@ -1174,10 +1174,10 @@ def multi_head_attention(
         Scaled Dot-Product Attention
         """
         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
-        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
             weights = layers.dropout(
                 weights,
@@ -1185,7 +1185,7 @@ def multi_head_attention(
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-        out = layers.matmul(weights, v)
+        out = paddle.matmul(weights, v)
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -1701,7 +1701,7 @@ def wrap_decoder(
     )
     # Return logits for training and probs for inference.
     if weight_sharing:
-        predict = layers.matmul(
+        predict = paddle.matmul(
             x=dec_output,
             y=fluid.framework._get_var(word_emb_param_names[0]),
             transpose_y=True,
@@ -1715,7 +1715,7 @@ def wrap_decoder(
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
-        predict = layers.softmax(predict)
+        predict = paddle.nn.functional.softmax(predict)
     return predict
 
 
@@ -1833,8 +1833,8 @@ def fast_decode(
             )
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
 
-            topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size
+            topk_scores, topk_indices = paddle.topk(
+                x=paddle.nn.functional.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
                 x=paddle.log(topk_scores),

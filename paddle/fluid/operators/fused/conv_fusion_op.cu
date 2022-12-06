@@ -56,6 +56,15 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     const std::string activation = ctx.Attr<std::string>("activation");
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format,
+        "NHWC",
+        platform::errors::PermissionDenied(
+            "Operator(Conv2DFusion) in cuDNN only supports data format of "
+            "channel first (NCHW) now. But received: data_format = '%s'.",
+            data_format));
+
     int groups = ctx.Attr<int>("groups");
     int64_t user_workspace_size =
         static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
