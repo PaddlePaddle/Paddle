@@ -21,8 +21,8 @@ import paddle.fluid as fluid
 from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.jit.api import declarative
+from paddle.nn import Embedding
 
 INF = 1.0 * 1e5
 alpha = 0.6
@@ -70,7 +70,7 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
@@ -122,16 +122,18 @@ class BaseModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -545,17 +547,19 @@ class AttentionModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 name='source_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='target_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
@@ -697,14 +701,14 @@ class AttentionModel(fluid.dygraph.Layer):
     def attention(self, query, enc_output, mask=None):
         query = fluid.layers.unsqueeze(query, [1])
         memory = self.attn_fc(enc_output)
-        attn = paddle.matmul(query, memory, transpose_y=True)
+        attn = fluid.layers.matmul(query, memory, transpose_y=True)
 
         if mask is not None:
             attn = paddle.transpose(attn, [1, 0, 2])
             attn = paddle.add(attn, mask * 1000000000)
             attn = paddle.transpose(attn, [1, 0, 2])
         weight = paddle.nn.functional.softmax(attn)
-        weight_memory = paddle.matmul(weight, memory)
+        weight_memory = fluid.layers.matmul(weight, memory)
 
         return weight_memory
 

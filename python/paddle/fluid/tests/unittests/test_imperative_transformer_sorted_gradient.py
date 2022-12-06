@@ -20,7 +20,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid import Embedding, Layer, core
+from paddle.fluid import Layer, core
 from paddle.fluid.dygraph import guard, to_variable
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.jit import TracedLayer
@@ -495,12 +495,12 @@ class MultiHeadAttentionLayer(Layer):
         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = paddle.matmul(
+        product = fluid.layers.matmul(
             x=transpose_q,
             y=transpose_k,
             transpose_y=True,
+            alpha=self._d_model**-0.5,
         )
-        product = paddle.scale(product, scale=self._d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
@@ -511,9 +511,9 @@ class MultiHeadAttentionLayer(Layer):
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-            out = paddle.matmul(weights_droped, transpose_v)
+            out = fluid.layers.matmul(weights_droped, transpose_v)
         else:
-            out = paddle.matmul(weights, transpose_v)
+            out = fluid.layers.matmul(weights, transpose_v)
 
         # combine heads
         if len(out.shape) != 4:
@@ -665,11 +665,11 @@ class PrepareEncoderDecoderLayer(Layer):
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
-        self._input_emb = Embedding(
-            size=[src_vocab_size, src_emb_dim],
-            is_sparse=is_sparse,
-            padding_idx=0,
-            param_attr=fluid.ParamAttr(
+        self._input_emb = paddle.nn.Embedding(
+            src_vocab_size,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
                 initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
             ),
@@ -679,10 +679,11 @@ class PrepareEncoderDecoderLayer(Layer):
             pos_inp = pos_inp1
         else:
             pos_inp = pos_inp2
-        self._pos_emb = Embedding(
-            size=[self._src_max_len, src_emb_dim],
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+        self._pos_emb = paddle.nn.Embedding(
+            self._src_max_len,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
                 trainable=False,
@@ -1003,7 +1004,7 @@ class WrapDecoderLayer(Layer):
         )
 
         if self._weight_sharing:
-            predict = paddle.matmul(
+            predict = fluid.layers.matmul(
                 x=dec_output_reshape,
                 y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True,

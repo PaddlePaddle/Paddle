@@ -621,7 +621,7 @@ def scaled_dot_product_attention(
 
     key_dim_per_head = keys.shape[-1] // num_heads
     scaled_q = paddle.scale(x=q, scale=key_dim_per_head**-0.5)
-    product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
     x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])
     x = paddle.nn.functional.softmax(x)
@@ -631,5 +631,5 @@ def scaled_dot_product_attention(
         weights = layers.dropout(
             weights, dropout_prob=dropout_rate, is_test=False
         )
-    ctx_multiheads = paddle.matmul(weights, v)
+    ctx_multiheads = layers.matmul(weights, v)
     return __combine_heads(ctx_multiheads)

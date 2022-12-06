@@ -103,7 +103,6 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
-@unittest.skipIf(True, "to delete later")
 class TestCompatible(unittest.TestCase):
     def test_matmulv2_matmul_2_compatible(self):
         valid_op_dist_attr_list = []

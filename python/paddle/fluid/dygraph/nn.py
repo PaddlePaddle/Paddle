@@ -50,9 +50,9 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'Conv3D',
+    'Pool2D',
     'Linear',
     'BatchNorm',
-    'Embedding',
     'PRelu',
     'BilinearTensorProduct',
     'Conv2DTranspose',
@@ -505,6 +505,238 @@ class Conv3DTranspose(layers.Layer):
         return self._helper.append_activation(pre_act, act=self._act)
 
 
+class Pool2D(layers.Layer):
+    r"""
+
+    This interface is used to construct a callable object of the ``Pool2D`` class.
+    For more details, refer to code examples.
+    The pooling2d operation calculates the output based on the input, pool_type and pool_size, pool_stride,
+    pool_padding parameters.Input and output are in NCHW format, where N is batch size, C is the number of feature map,
+    H is the height of the feature map, and W is the width of the feature map.
+    Parameters(ksize, strides, paddings) are two elements. These two elements represent height and width, respectively.
+    The input(X) size and output(Out) size may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C, H_{in}, W_{in})`
+
+        - Output:
+
+          Output shape: :math:`(N, C, H_{out}, W_{out})`
+
+        If ``ceil_mode`` = False:
+
+        .. math::
+
+            H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\\\
+            W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
+
+        If ``ceil_mode`` = True:
+
+        .. math::
+
+            H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0] + strides[0] - 1)}{strides[0]} + 1 \\\\
+            W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
+
+        If ``exclusive`` = False:
+
+        .. math::
+
+            hstart &= i * strides[0] - paddings[0] \\\\
+            hend   &= hstart + ksize[0] \\\\
+            wstart &= j * strides[1] - paddings[1] \\\\
+            wend   &= wstart + ksize[1] \\\\
+            Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
+
+        If ``exclusive`` = True:
+
+        .. math::
+
+            hstart &= max(0, i * strides[0] - paddings[0])\\\\
+            hend &= min(H, hstart + ksize[0]) \\\\
+            wstart &= max(0, j * strides[1] - paddings[1]) \\\\
+            wend & = min(W, wstart + ksize[1]) \\\\
+            Output(i ,j) & = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+
+    Parameters:
+        pool_size (int or list or tuple, optional): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be a square of an int. Default: -1.
+        pool_type(str, optional) : The pooling type, can be "max" for max-pooling and "avg" for average-pooling.
+            Default: max.
+        pool_stride (int or list or tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+            it must contain two integers, (pool_stride_Height, pool_stride_Width). Otherwise,
+            the pool stride size will be a square of an int. Default: 1.
+        pool_padding (int or list or tuple, optional): The padding size for pooling operation.
+            If ``pool_padding`` is a tuple,
+            it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
+            Otherwise, the padding size for pooling operation will be a square of an int. Default: 0.
+        global_pooling (bool, optional): Whether to use the global pooling. If global_pooling = true,
+            kernel size and paddings will be ignored. Default: False.
+        use_cudnn (bool, optional): Only used in cudnn kernel, need install cudnn. Default: True.
+        ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width.
+            False is the default. If it is set to False, the floor function will be used. Default: False.
+        exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            ``[batch_size, input_channels, input_height, input_width]``. When it is `"NHWC"`, the data is
+            stored in the order of: ``[batch_size, input_height, input_width, input_channels]``
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If ``pool_type`` is not "max" nor "avg".
+        ValueError: If ``global_pooling`` is False and ``pool_size`` is -1.
+        ValueError: If ``use_cudnn`` is not a bool value.
+        ValueError: If ``data_format`` is not "NCHW" nor "NHWC".
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph.base import to_variable
+          import numpy as np
+
+          with fluid.dygraph.guard():
+             data = numpy.random.random((3, 32, 32, 5)).astype('float32')
+             pool2d = fluid.dygraph.Pool2D(pool_size=2,
+                            pool_type='max',
+                            pool_stride=1,
+                            global_pooling=False)
+             pool2d_res = pool2d(to_variable(data))
+
+    """
+
+    def __init__(
+        self,
+        pool_size=-1,
+        pool_type="max",
+        pool_stride=1,
+        pool_padding=0,
+        global_pooling=False,
+        use_cudnn=True,
+        ceil_mode=False,
+        exclusive=True,
+        data_format="NCHW",
+    ):
+        data_format = data_format.upper()  # supprt NHWC, nhwc, etc.
+        pool_type = pool_type.lower()  # supprt max, Max, etc.
+        if pool_type not in ["max", "avg"]:
+            raise ValueError(
+                "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+                str(pool_type),
+            )
+
+        if global_pooling is False and pool_size == -1:
+            raise ValueError(
+                "When the global_pooling is False, pool_size must be passed "
+                "and be a valid value. Received pool_size: " + str(pool_size)
+            )
+
+        if not isinstance(use_cudnn, bool):
+            raise ValueError("use_cudnn should be True or False")
+
+        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
+
+        if data_format not in ["NCHW", "NHWC"]:
+            raise ValueError(
+                "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+                "Attr(data_format): %s." % str(data_format)
+            )
+
+        super().__init__()
+
+        self._pool_type = pool_type
+        self._pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
+        self._pool_padding = utils.convert_to_list(
+            pool_padding, 2, 'pool_padding'
+        )
+        self._pool_stride = utils.convert_to_list(pool_stride, 2, 'pool_stride')
+        self._global_pooling = global_pooling
+        self._use_cudnn = use_cudnn
+        self._ceil_mode = ceil_mode
+        self._exclusive = exclusive
+        self._data_format = data_format
+        self._l_type = 'pool2d'
+
+    def forward(self, input):
+        if _non_static_mode():
+            if not self._use_mkldnn and in_dygraph_mode():
+                input = input._use_gpudnn(self._use_cudnn)
+                return _C_ops.pool2d(
+                    input,
+                    self._pool_size,
+                    self._pool_stride,
+                    self._pool_padding,
+                    self._ceil_mode,
+                    self._exclusive,
+                    self._data_format,
+                    self._pool_type,
+                    self._global_pooling,
+                    False,
+                    "EXPLICIT",
+                )
+
+            attrs = (
+                'pooling_type',
+                self._pool_type,
+                'ksize',
+                self._pool_size,
+                'global_pooling',
+                self._global_pooling,
+                'strides',
+                self._pool_stride,
+                'paddings',
+                self._pool_padding,
+                'use_cudnn',
+                self._use_cudnn,
+                'ceil_mode',
+                self._ceil_mode,
+                'use_mkldnn',
+                self._use_mkldnn,
+                'exclusive',
+                self._exclusive,
+                'data_format',
+                self._data_format,
+            )
+            return _legacy_C_ops.pool2d(input, *attrs)
+
+        check_variable_and_dtype(
+            input,
+            'input',
+            ['int8', 'uint8', 'float16', 'float32', 'float64'],
+            'Pool2D',
+        )
+
+        attrs = {
+            "pooling_type": self._pool_type,
+            "ksize": self._pool_size,
+            "global_pooling": self._global_pooling,
+            "strides": self._pool_stride,
+            "paddings": self._pool_padding,
+            "use_cudnn": self._use_cudnn,
+            "ceil_mode": self._ceil_mode,
+            "use_mkldnn": self._use_mkldnn,
+            "exclusive": self._exclusive,
+            "data_format": self._data_format,
+        }
+        inputs = {"X": [input]}
+
+        pool_out = self._helper.create_variable_for_type_inference(self._dtype)
+
+        self._helper.append_op(
+            type=self._l_type,
+            inputs={"X": input},
+            outputs={"Out": pool_out},
+            attrs=attrs,
+        )
+        return pool_out
+
+
 class Linear(layers.Layer):
     """
 
@@ -945,187 +1177,6 @@ class BatchNorm(layers.Layer):
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(batch_norm_out, self._act)
-
-
-class Embedding(layers.Layer):
-    r"""
-    :alias_main: paddle.nn.Embedding
-        :alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
-        :old_api: paddle.fluid.dygraph.Embedding
-
-    **Embedding Layer**
-
-    This interface is used to construct a callable object of the ``Embedding`` class.
-    For specific usage, refer to code examples. It implements the function of the Embedding Layer.
-    This layer is used to lookup embeddings vector of ids provided by :attr:`input` .
-    It automatically constructs a 2D embedding matrix based on the
-    input :attr:`size` (vocab_size, emb_size) and :attr:`dtype` .
-
-    The shape of output Tensor is generated by appending an emb_size dimension to the
-    last dimension of the input Tensor shape.
-
-    **Note:** The id in :attr:`input` must satisfy :math:`0 =< id < size[0]` ,
-    otherwise the program will throw an exception and exit.
-
-    .. code-block:: text
-
-        Case 1:
-
-        input is a Tensor. padding_idx = -1
-            input.data = [[1, 3], [2, 4], [4, 127]
-            input.shape = [3, 2]
-        Given size = [128, 16]
-        output is a Tensor:
-            out.shape = [3, 2, 16]
-            out.data = [[[0.129435295, 0.244512452, ..., 0.436322452],
-                        [0.345421456, 0.524563927, ..., 0.144534654]],
-
-                        [[0.345249859, 0.124939536, ..., 0.194353745],
-                        [0.945345345, 0.435394634, ..., 0.435345365]],
-
-                        [[0.945345345, 0.435394634, ..., 0.435345365],
-                        [0.0,         0.0,         ..., 0.0        ]]]  # padding data
-        The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
-        It will pad all-zero data when ids is 127.
-
-    Parameters:
-        size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
-            of the dictionary of embeddings and the size of each embedding vector respectively.
-        is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
-            affects the performance of the backwards gradient update. It is recommended to set
-            True because sparse update is faster. But some optimizer does not support sparse update,
-            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` ,
-            :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
-            :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
-            In these case, is_sparse must be False. Default: False.
-        is_distributed(bool): Whether to store the embedding matrix in a distributed manner. Only used
-            in multi-machine distributed CPU training. Default: False.
-        padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size).
-            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
-            to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
-            encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
-            If set None, it makes no effect to output. Default: None.
-        param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
-            user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
-            The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
-            is used to load custom or pre-trained word vectors. See code example 2 for details.
-        dtype(np.dtype|core.VarDesc.VarType|str): It refers to the data type of output Tensor.
-            It must be "float32" or "float64". Default: "float32".
-
-    Attribute:
-        **weight** (Parameter): the learnable weights of this layer.
-
-    Returns:
-        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
-
-    Examples:
-
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle.fluid.dygraph.base as base
-          import numpy as np
-
-          # example 1
-          inp_word = np.array([[2, 3, 5], [4, 2, 1]]).astype('int64')
-          inp_word.shape  # [2, 3]
-          dict_size = 20
-          with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding(
-                  size=[dict_size, 32],
-                  param_attr='emb.w',
-                  is_sparse=False)
-              static_rlt3 = emb(base.to_variable(inp_word))
-              static_rlt3.shape  # [2, 3, 32]
-
-          # example 2: load custom or pre-trained word vectors
-          weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
-          w_param_attrs = fluid.ParamAttr(
-              name="emb_weight",
-              learning_rate=0.5,
-              initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
-              trainable=True)
-          with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding(
-                  size=[128, 100],
-                  param_attr= w_param_attrs,
-                  is_sparse=False)
-              static_rlt3 = emb(base.to_variable(inp_word))
-    """
-
-    def __init__(
-        self,
-        size,
-        is_sparse=False,
-        is_distributed=False,
-        padding_idx=None,
-        param_attr=None,
-        dtype='float32',
-    ):
-        super().__init__()
-        self._size = size
-        self._is_sparse = is_sparse
-        self._is_distributed = is_distributed
-        self._padding_idx = (
-            -1
-            if padding_idx is None
-            else padding_idx
-            if padding_idx >= 0
-            else (size[0] + padding_idx)
-        )
-
-        self._param_attr = param_attr
-        self._dtype = dtype
-        self._remote_prefetch = self._is_sparse and (not self._is_distributed)
-        if self._remote_prefetch:
-            assert self._is_sparse is True and self._is_distributed is False
-
-        self.weight = self.create_parameter(
-            attr=self._param_attr,
-            shape=self._size,
-            dtype=self._dtype,
-            is_bias=False,
-        )
-
-    def forward(self, input):
-        if _non_static_mode():
-            return _legacy_C_ops.lookup_table_v2(
-                self.weight,
-                input,
-                'is_sparse',
-                self._is_sparse,
-                'is_distributed',
-                self._is_distributed,
-                'remote_prefetch',
-                self._remote_prefetch,
-                'padding_idx',
-                self._padding_idx,
-            )
-
-        check_variable_and_dtype(
-            input,
-            'input',
-            ['uint8', 'int8', 'int16', 'int32', 'int64'],
-            'Embedding',
-        )
-        attrs = {
-            'is_sparse': self._is_sparse,
-            'is_distributed': self._is_distributed,
-            'remote_prefetch': self._remote_prefetch,
-            'padding_idx': self._padding_idx,
-        }
-
-        out = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type='lookup_table_v2',
-            inputs={'Ids': input, 'W': self.weight},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
-
-        return out
 
 
 class PRelu(layers.Layer):

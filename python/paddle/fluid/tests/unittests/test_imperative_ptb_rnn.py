@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit import TracedLayer
@@ -109,7 +108,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 bias = self.bias_arr[k]
 
                 nn = fluid.layers.concat([self._input, pre_hidden], 1)
-                gate_input = paddle.matmul(x=nn, y=weight_1)
+                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = fluid.layers.split(
@@ -172,11 +171,11 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout,
         )
-        self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -225,7 +224,7 @@ class PtbModel(fluid.Layer):
         rnn_out = paddle.reshape(
             rnn_out, shape=[-1, self.num_steps, self.hidden_size]
         )
-        projection = paddle.matmul(rnn_out, self.softmax_weight)
+        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
         projection = paddle.add(projection, self.softmax_bias)
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(

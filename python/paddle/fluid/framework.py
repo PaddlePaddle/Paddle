@@ -1659,10 +1659,11 @@ class Variable(metaclass=VariableMetaClass):
 
                 # example2: return tuple of ndarray
                 with fluid.dygraph.guard():
-                    embedding = fluid.dygraph.Embedding(
-                        size=[20, 32],
-                        param_attr='emb.w',
-                        is_sparse=True)
+                    embedding = paddle.nn.Embedding(
+                        20,
+                        32,
+                        weight_attr='emb.w',
+                        sparse=True)
                     x_data = np.arange(12).reshape(4, 3).astype('int64')
                     x_data = x_data.reshape((-1, 3, 1))
                     x = fluid.dygraph.base.to_variable(x_data)

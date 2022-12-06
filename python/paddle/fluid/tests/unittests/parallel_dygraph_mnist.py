@@ -54,10 +54,13 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=None,
         )
 
-        self._pool2d = paddle.nn.MaxPool2D(
-            kernel_size=pool_size,
-            stride=pool_stride,
-            padding=pool_padding,
+        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
+            pool_size=pool_size,
+            pool_type=pool_type,
+            pool_stride=pool_stride,
+            pool_padding=pool_padding,
+            global_pooling=global_pooling,
+            use_cudnn=use_cudnn,
         )
 
     def forward(self, inputs):

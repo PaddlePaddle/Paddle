@@ -26,6 +26,7 @@ from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
 )
+from paddle.fluid import layers
 
 paddle.enable_static()
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
@@ -84,7 +85,7 @@ def mlp_forward(train_program, start_program):
             shape=[hidden_size, hidden_size],
             dtype='float32',
         )
-        input = paddle.matmul(x=input, y=matmulinput)
+        input = layers.matmul(x=input, y=matmulinput)
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32'
         )

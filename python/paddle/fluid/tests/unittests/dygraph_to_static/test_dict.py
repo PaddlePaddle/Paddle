@@ -66,9 +66,9 @@ class SubNetWithDict(fluid.dygraph.Layer):
             v = 0.2 * cache_v + v
             cache["k"], cache["v"] = k, v
 
-        weight = paddle.matmul(x=q, y=k, transpose_y=True)
+        weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
         weight = paddle.nn.functional.softmax(weight)
-        out = paddle.matmul(weight, v)
+        out = fluid.layers.matmul(weight, v)
 
         return out
 

@@ -214,9 +214,10 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
 
                     adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
@@ -576,10 +577,11 @@ class Optimizer:
 
                 import paddle.fluid as fluid
                 import numpy as np
+                import paddle
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
                     adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
                     lr = adam.current_step_lr()
                     print(lr) # 0.001

@@ -46,9 +46,9 @@ class GraphConv(fluid.Layer):
         )
 
     def forward(self, features, adj):
-        support = paddle.matmul(features, self.weight)
+        support = fluid.layers.matmul(features, self.weight)
         # TODO(panyx0718): sparse matmul?
-        return paddle.matmul(adj, support) + self.bias
+        return fluid.layers.matmul(adj, support) + self.bias
 
 
 class GCN(fluid.Layer):

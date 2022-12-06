@@ -71,14 +71,14 @@ class DecoderCell(layers.RNNCell):
         query = layers.fc(
             hidden, size=encoder_output.shape[-1], bias_attr=False
         )
-        attn_scores = paddle.matmul(
+        attn_scores = layers.matmul(
             layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
         )
         if encoder_padding_mask is not None:
             attn_scores = paddle.add(attn_scores, encoder_padding_mask)
         attn_scores = paddle.nn.functional.softmax(attn_scores)
         attn_out = paddle.squeeze(
-            paddle.matmul(attn_scores, encoder_output), [1]
+            layers.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
         attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)
@@ -834,9 +834,7 @@ class TestBeamSearch(ModuleApiTest):
         beam_size=4,
         max_step_num=20,
     ):
-        embedder = paddle.fluid.dygraph.Embedding(
-            size=[vocab_size, embed_dim], dtype="float64"
-        )
+        embedder = paddle.nn.Embedding(vocab_size, embed_dim)
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
         self.max_step_num = max_step_num

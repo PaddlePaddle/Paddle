@@ -1174,7 +1174,7 @@ def multi_head_attention(
         Scaled Dot-Product Attention
         """
         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
-        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
@@ -1185,7 +1185,7 @@ def multi_head_attention(
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-        out = paddle.matmul(weights, v)
+        out = layers.matmul(weights, v)
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -1701,7 +1701,7 @@ def wrap_decoder(
     )
     # Return logits for training and probs for inference.
     if weight_sharing:
-        predict = paddle.matmul(
+        predict = layers.matmul(
             x=dec_output,
             y=fluid.framework._get_var(word_emb_param_names[0]),
             transpose_y=True,

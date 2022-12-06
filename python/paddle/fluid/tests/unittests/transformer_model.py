@@ -163,13 +163,13 @@ def multi_head_attention(
             return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
 
         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
-        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         weights = __softmax(paddle.add(x=product, y=attn_bias))
         if dropout_rate:
             weights = layers.dropout(
                 weights, dropout_prob=dropout_rate, is_test=False
             )
-        out = paddle.matmul(weights, v)
+        out = layers.matmul(weights, v)
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)

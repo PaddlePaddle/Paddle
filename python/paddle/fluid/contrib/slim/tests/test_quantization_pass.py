@@ -76,7 +76,7 @@ def residual_block(num, quant_skip_pattern=None):
     matmul_weight = paddle.create_parameter(
         shape=[1, 16, 32, 32], dtype='float32'
     )
-    hidden = paddle.matmul(hidden, matmul_weight, True, True)
+    hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)
     if quant_skip_pattern:
         with fluid.name_scope(quant_skip_pattern):
             pool = fluid.layers.pool2d(
@@ -724,7 +724,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
-    hidden = paddle.matmul(hidden, data2, True, True)
+    hidden = fluid.layers.matmul(hidden, data2, True, True)
     if isinstance(quant_skip_pattern, str):
         with fluid.name_scope(quant_skip_pattern):
             pool1 = fluid.layers.pool2d(
