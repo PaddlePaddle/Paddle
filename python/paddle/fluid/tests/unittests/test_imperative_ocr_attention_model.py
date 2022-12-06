@@ -169,13 +169,9 @@ class DynamicGRU(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.gru_unit = GRUUnit(
+        self.gru_unit = paddle.nn.GRUCell(
             size * 3,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            activation=candidate_activation,
-            gate_activation=gate_activation,
-            origin_mode=origin_mode,
+            size,
         )
 
         self.h_0 = h_0
@@ -190,7 +186,7 @@ class DynamicGRU(fluid.dygraph.Layer):
                 i = inputs.shape[1] - 1 - i
             input_ = paddle.slice(inputs, axes=[1], starts=[i], ends=[i + 1])
             input_ = paddle.reshape(input_, [-1, input_.shape[2]])
-            hidden, reset, gate = self.gru_unit(input_, hidden)
+            hidden, reset = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             if self.is_reverse:
                 res = [hidden_] + res
@@ -331,9 +327,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         self.fc_2_layer = Linear(
             decoder_size, decoder_size * 3, bias_attr=False
         )
-        self.gru_unit = GRUUnit(
-            size=decoder_size * 3, param_attr=None, bias_attr=None
-        )
+        self.gru_unit = paddle.nn.GRUCell(decoder_size * 3, decoder_size)
         self.out_layer = Linear(decoder_size, num_classes + 2, bias_attr=None)
 
         self.decoder_size = decoder_size
@@ -358,7 +352,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             fc_2 = self.fc_2_layer(current_word)
             decoder_inputs = paddle.add(x=fc_1, y=fc_2)
 
-            h, _, _ = self.gru_unit(decoder_inputs, hidden_mem)
+            h, _ = self.gru_unit(decoder_inputs, hidden_mem)
             hidden_mem = h
             out = self.out_layer(h)
             out = paddle.nn.functional.softmax(out)
