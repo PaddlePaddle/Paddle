@@ -212,9 +212,10 @@ class Upsample(fluid.dygraph.Layer):
         out_shape.stop_gradient = True
 
         # reisze by actual_shape
-        out = fluid.layers.resize_nearest(
-            input=inputs, scale=self.scale, actual_shape=out_shape
+        out = paddle.nn.functional.interpolate(
+            x=inputs, size=out_shape, mode='nearest'
         )
+
         return out
 
 
