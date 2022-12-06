@@ -17,13 +17,13 @@ exclude =
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     E203,
-    E401,E402,
+    E402,
     E501,
     E721,E722,E731,E741,
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
     F405,
-    F811,F841,
+    F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     W503
@@ -37,3 +37,9 @@ per-file-ignores =
     .cmake-format.py: F821
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_loop.py: F821
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_closure_analysis.py: F821
+    # These files will be fixed in the future
+    python/paddle/fluid/tests/unittests/fft/test_fft_with_static_graph.py: F811
+    python/paddle/fluid/tests/unittests/test_activation_nn_grad.py: F811
+    python/paddle/fluid/tests/unittests/test_lstm_cudnn_op.py: F811
+    python/paddle/fluid/tests/unittests/test_matmul_v2_op.py: F811
+    python/paddle/fluid/tests/unittests/test_rrelu_op.py: F811
