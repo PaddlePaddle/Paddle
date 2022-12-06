@@ -23,12 +23,11 @@ from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.nn import Linear
-from paddle.jit.api import declarative
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
-from tsm_config_utils import merge_configs, parse_config, print_configs
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 random.seed(0)
 np.random.seed(0)
@@ -127,7 +126,9 @@ class BottleneckBlock(fluid.dygraph.Layer):
         self._num_channels_out = int(num_filters * 4)
 
     def forward(self, inputs):
-        shifts = fluid.layers.temporal_shift(inputs, self.seg_num, 1.0 / 8)
+        shifts = paddle.nn.functional.temporal_shift(
+            inputs, self.seg_num, 1.0 / 8
+        )
         y = self.conv0(shifts)
         conv1 = self.conv1(y)
         conv2 = self.conv2(conv1)
@@ -184,9 +185,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
                 num_channels = int(bottleneck_block._num_channels_out)
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         import math
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
@@ -335,10 +334,10 @@ def train(args, fake_data_reader, to_static):
                     input=outputs, label=labels, ignore_index=-1
                 )
                 avg_loss = paddle.mean(loss)
-                acc_top1 = fluid.layers.accuracy(
+                acc_top1 = paddle.static.accuracy(
                     input=outputs, label=labels, k=1
                 )
-                acc_top5 = fluid.layers.accuracy(
+                acc_top5 = paddle.static.accuracy(
                     input=outputs, label=labels, k=5
                 )
 

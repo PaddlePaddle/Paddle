@@ -203,7 +203,7 @@ class Upsample(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         # get dynamic upsample output shape
-        shape_nchw = fluid.layers.shape(inputs)
+        shape_nchw = paddle.shape(inputs)
         shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
         shape_hw.stop_gradient = True
         in_shape = fluid.layers.cast(shape_hw, dtype='int32')
@@ -211,9 +211,10 @@ class Upsample(fluid.dygraph.Layer):
         out_shape.stop_gradient = True
 
         # reisze by actual_shape
-        out = fluid.layers.resize_nearest(
-            input=inputs, scale=self.scale, actual_shape=out_shape
+        out = paddle.nn.functional.interpolate(
+            x=inputs, size=out_shape, mode='nearest'
         )
+
         return out
 
 
@@ -325,7 +326,7 @@ class YOLOv3(fluid.dygraph.Layer):
                     downsample_ratio=self.downsample,
                     use_label_smooth=cfg.label_smooth,
                 )
-                self.losses.append(fluid.layers.reduce_mean(loss))
+                self.losses.append(paddle.mean(loss))
 
             else:
                 mask_anchors = []

@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
+from paddle.nn import Linear
 
 
 class Test_Detach(unittest.TestCase):

@@ -76,7 +76,7 @@ def simple_fc_net_with_accuracy(use_feed):
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
-    accuracy_out = fluid.layers.accuracy(input=prediction, label=label, k=5)
+    accuracy_out = paddle.static.accuracy(input=prediction, label=label, k=5)
     return loss
 
 
@@ -92,7 +92,9 @@ def cond_net(use_feed=None):
         return avg_loss
 
     def loss2(pred, label):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         return avg_loss
 
@@ -119,7 +121,9 @@ def optimization_in_cond_net(with_optimize=False):
         return avg_loss
 
     def loss2(opt, pred, label, with_optimize):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         if with_optimize:
             opt.minimize(avg_loss)

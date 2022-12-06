@@ -412,7 +412,7 @@ class TestDygraphGradientClip(unittest.TestCase):
                 [16, 5], min=-10, max=10
             ).astype('float32')
             out = linear(fluid.dygraph.to_variable(inputs))
-            loss = fluid.layers.reduce_mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             sgd_optimizer = fluid.optimizer.SGD(
                 learning_rate=0.0,
@@ -557,7 +557,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                 ).astype('float32')
                 with paddle.amp.auto_cast(level='O2'):
                     out = model(fluid.dygraph.to_variable(inputs))
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaled.backward()
                 scaler.unscale_(sgd_optimizer)
@@ -605,7 +605,7 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
             ).astype('float32')
             linear = paddle.nn.Linear(5, 5)
             out = linear(fluid.dygraph.to_variable(inputs))
-            loss = fluid.layers.reduce_mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             # before clip
             params_grads = []

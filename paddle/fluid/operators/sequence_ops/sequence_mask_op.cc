@@ -82,7 +82,7 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
 SequenceMask Operator
 
 This operator outputs a Mask according to Input(X) and Attr(maxlen).
-Supposing Input(X) is a Tensor with shape [d_1, d_2, ..., d_n], the
+Supposing Input(X) is a phi::DenseTensor with shape [d_1, d_2, ..., d_n], the
 Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
 
 Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n))

@@ -151,7 +151,7 @@ class BasicGRUUnit(Layer):
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._gate_weight)
 
         gate_input = paddle.add(gate_input, self._gate_bias)
 
@@ -160,7 +160,7 @@ class BasicGRUUnit(Layer):
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
+        candidate = paddle.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
         candidate = paddle.add(candidate, self._candidate_bias)
@@ -330,7 +330,7 @@ def basic_gru(
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
@@ -407,15 +407,15 @@ def basic_gru(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
@@ -614,7 +614,7 @@ def basic_lstm(
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
@@ -718,15 +718,15 @@ def basic_lstm(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden, bw_last_cell = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
@@ -874,7 +874,7 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)

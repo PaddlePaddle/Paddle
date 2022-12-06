@@ -52,7 +52,7 @@ class TestSparseLoadProgram(unittest.TestCase):
                     )
                     fc1 = fluid.layers.fc(input=emb, size=128, act="relu")
                     fc2 = fluid.layers.fc(input=fc1, size=64, act="relu")
-                    loss = fluid.layers.reduce_mean(fc2)
+                    loss = paddle.mean(fc2)
             return scope, train_program, startup_program, loss
 
 
