@@ -189,9 +189,7 @@ def get_program():
             cur_pred = mlp_while(pre_input)
 
             # 更新循环条件
-            i = paddle.static.nn.control_flow.increment(
-                x=i, value=1, in_place=True
-            )
+            i = paddle.static.nn.increment(x=i, value=1, in_place=True)
             fluid.layers.array_write(cur_pred, array=input_array, i=i)
             paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 

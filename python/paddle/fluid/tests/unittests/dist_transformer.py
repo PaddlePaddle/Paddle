@@ -28,7 +28,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-import paddle.static.nn.control_flow as control_flow
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -1814,7 +1813,9 @@ def fast_decode(
                     shape=[-1, 1, 1],
                     dtype=pre_ids.dtype,
                 ),
-                y=control_flow.increment(x=step_idx, value=1.0, in_place=False),
+                y=paddle.static.nn.increment(
+                    x=step_idx, value=1.0, in_place=False
+                ),
                 axis=0,
             )
             logits = wrap_decoder(
@@ -1853,7 +1854,7 @@ def fast_decode(
                 end_id=eos_idx,
             )
 
-            control_flow.increment(x=step_idx, value=1.0, in_place=True)
+            paddle.static.nn.increment(x=step_idx, value=1.0, in_place=True)
             # update states
             layers.array_write(selected_ids, i=step_idx, array=ids)
             layers.array_write(selected_scores, i=step_idx, array=scores)
