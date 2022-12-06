@@ -19,7 +19,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
@@ -196,7 +195,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dist_mat = context.Input<LoDTensor>("DistMat");
+    auto* dist_mat = context.Input<phi::DenseTensor>("DistMat");
     auto* match_indices =
         context.Output<phi::DenseTensor>("ColToRowMatchIndices");
     auto* match_dist = context.Output<phi::DenseTensor>("ColToRowMatchDist");
@@ -251,7 +250,8 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "DistMat",
-        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
+        "(phi::DenseTensor or Tensor) this input is a 2-D phi::DenseTensor "
+        "with shape "
         "[K, M]. It is pair-wise distance matrix between the entities "
         "represented by each row and each column. For example, assumed one "
         "entity is A with shape [K], another entity is B with shape [M]. The "
@@ -302,8 +302,8 @@ row entity to the column entity and the matched indices are not duplicated
 in each row of ColToRowMatchIndices. If the column entity is not matched
 any row entity, set -1 in ColToRowMatchIndices.
 
-Please note that the input DistMat can be LoDTensor (with LoD) or Tensor.
-If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
+Please note that the input DistMat can be phi::DenseTensor (with LoD) or Tensor.
+If phi::DenseTensor with LoD, the height of ColToRowMatchIndices is batch size.
 If Tensor, the height of ColToRowMatchIndices is 1.
 
 )DOC");

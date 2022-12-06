@@ -319,7 +319,7 @@ void ComputePropagateScalesMkldnnPass::ComputeWeightScales(
     ir::Graph* graph, Scope* scope, StringPairMap* var_quant_scales) const {
   ComputeVarScales(graph,
                    scope,
-                   {"conv2d", "depthwise_conv2d"},
+                   {"conv2d", "depthwise_conv2d", "fused_conv2d"},
                    "Filter",
                    1,
                    var_quant_scales);
@@ -446,7 +446,7 @@ void ComputePropagateScalesMkldnnPass::UpdateReluOutputScales(
     if (op->Type() == "relu") {
       is_unsigned = true;
     } else {
-      if (op->Type() == "conv2d") {
+      if (op->Type() == "conv2d" || op->Type() == "fused_conv2d") {
         act_name = "fuse_activation";
         output_name = "Output";
       } else if (op->Type() == "fc") {

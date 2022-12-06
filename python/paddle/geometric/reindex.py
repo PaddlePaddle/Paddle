@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode, Variable
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import Variable, _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -25,6 +25,7 @@ def reindex_graph(
     x, neighbors, count, value_buffer=None, index_buffer=None, name=None
 ):
     """
+
     Reindex Graph API.
 
     This API is mainly used in Graph Learning domain, which should be used
@@ -48,12 +49,12 @@ def reindex_graph(
                             should be the same with `x`.
         count (Tensor): The neighbor count of the input nodes `x`. And the
                         data type should be int32.
-        value_buffer (Tensor|None): Value buffer for hashtable. The data type should be int32,
-                                    and should be filled with -1. Only useful for gpu version.
-        index_buffer (Tensor|None): Index buffer for hashtable. The data type should be int32,
+        value_buffer (Tensor, optional): Value buffer for hashtable. The data type should be int32,
+                                    and should be filled with -1. Only useful for gpu version. Default is None.
+        index_buffer (Tensor, optional): Index buffer for hashtable. The data type should be int32,
                                     and should be filled with -1. Only useful for gpu version.
                                     `value_buffer` and `index_buffer` should be both not None
-                                    if you want to speed up by using hashtable buffer.
+                                    if you want to speed up by using hashtable buffer. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -68,6 +69,7 @@ def reindex_graph(
         .. code-block:: python
 
             import paddle
+
             x = [0, 1, 2]
             neighbors = [8, 9, 0, 4, 7, 6, 7]
             count = [2, 3, 2]
@@ -137,6 +139,7 @@ def reindex_heter_graph(
     x, neighbors, count, value_buffer=None, index_buffer=None, name=None
 ):
     """
+
     Reindex HeterGraph API.
 
     This API is mainly used in Graph Learning domain, which should be used
@@ -160,12 +163,12 @@ def reindex_heter_graph(
                                 The data type should be the same with `x`.
         count (list|tuple): The neighbor counts of the input nodes `x` from different graphs.
                             And the data type should be int32.
-        value_buffer (Tensor|None): Value buffer for hashtable. The data type should be int32,
-                                    and should be filled with -1. Only useful for gpu version.
-        index_buffer (Tensor|None): Index buffer for hashtable. The data type should be int32,
+        value_buffer (Tensor, optional): Value buffer for hashtable. The data type should be int32,
+                                    and should be filled with -1. Only useful for gpu version. Default is None.
+        index_buffer (Tensor, optional): Index buffer for hashtable. The data type should be int32,
                                     and should be filled with -1. Only useful for gpu version.
                                     `value_buffer` and `index_buffer` should be both not None
-                                    if you want to speed up by using hashtable buffer.
+                                    if you want to speed up by using hashtable buffer. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -182,6 +185,7 @@ def reindex_heter_graph(
         .. code-block:: python
 
             import paddle
+
             x = [0, 1, 2]
             neighbors_a = [8, 9, 0, 4, 7, 6, 7]
             count_a = [2, 3, 2]

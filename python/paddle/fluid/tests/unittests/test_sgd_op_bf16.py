@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import struct
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.amp as amp
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
-    convert_float_to_uint16,
-    convert_uint16_to_float,
     OpTest,
     OpTestTool,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
 )
-import paddle
-import paddle.static.amp as amp
-import struct
 
 
 @unittest.skipIf(
@@ -345,7 +347,7 @@ class TestSGDOpBF16API(unittest.TestCase):
                 is_sparse=False,
                 dtype="uint16",
             )  # bfloat16
-            cost = fluid.layers.elementwise_add(emb, label)
+            cost = paddle.add(emb, label)
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = paddle.optimizer.SGD(

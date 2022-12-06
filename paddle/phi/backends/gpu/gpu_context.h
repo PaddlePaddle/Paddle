@@ -172,6 +172,7 @@ class PADDLE_API GPUContext : public DeviceContext,
   bool HasDnnAttr(const std::string& attr_name) const;
   const Attribute& GetDnnAttr(const std::string& attr_name) const;
   void SetDnnAttr(const std::string& attr_name, Attribute attr);
+  void ClearDnnAttr();
 
   static const char* name() { return "GPUContext"; }
 

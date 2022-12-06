@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
@@ -183,7 +185,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             dtype='float32',
             append_batch_size=False,
         )
-        output1 = fluid.layers.scatter_nd_add(ref1, index1, updates1)
+        output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
     def testcase2(self):
         ref2 = fluid.layers.data(
@@ -204,7 +206,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             dtype='double',
             append_batch_size=False,
         )
-        output2 = fluid.layers.scatter_nd_add(
+        output2 = paddle.scatter_nd_add(
             ref2, index2, updates2, name="scatter_nd_add"
         )
 
@@ -222,7 +224,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             dtype='float32',
             append_batch_size=False,
         )
-        output3 = fluid.layers.scatter_nd(index3, updates3, shape3)
+        output3 = paddle.scatter_nd(index3, updates3, shape3)
 
     def testcase4(self):
         shape4 = [10, 9, 8, 1, 3]
@@ -238,9 +240,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             dtype='double',
             append_batch_size=False,
         )
-        output4 = fluid.layers.scatter_nd(
-            index4, updates4, shape4, name='scatter_nd'
-        )
+        output4 = paddle.scatter_nd(index4, updates4, shape4, name='scatter_nd')
 
     def testcase5(self):
         if not fluid.core.is_compiled_with_cuda():
@@ -307,7 +307,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 updates5 = fluid.layers.data(
                     name='updates5', shape=[2, 10], dtype='float32'
                 )
-                output5 = fluid.layers.scatter_nd_add(ref5, index5, updates5)
+                output5 = paddle.scatter_nd_add(ref5, index5, updates5)
             except Exception as e:
                 t = "The last dimension of Input(Index)'s shape should be no greater "
                 if t in str(e):
@@ -335,7 +335,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 dtype='float32',
                 append_batch_size=False,
             )
-            output6 = fluid.layers.scatter_nd_add(ref6, index6, updates6)
+            output6 = paddle.scatter_nd_add(ref6, index6, updates6)
 
     def test_check_raise3(self):
         def check_raise_is_test():
@@ -347,7 +347,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 updates7 = fluid.layers.data(
                     name='updates7', shape=[2, 4, 5, 20], dtype='float32'
                 )
-                output7 = fluid.layers.scatter_nd(index7, updates7, shape)
+                output7 = paddle.scatter_nd(index7, updates7, shape)
             except Exception as e:
                 t = "Updates has wrong shape"
                 if t in str(e):

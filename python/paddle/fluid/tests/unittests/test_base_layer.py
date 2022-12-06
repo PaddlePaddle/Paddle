@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import ParamBase, EagerParamBase
+from paddle.fluid.framework import (
+    EagerParamBase,
+    ParamBase,
+    _test_eager_guard,
+    in_dygraph_mode,
+)
 from paddle.jit import ProgramTranslator
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class L1(fluid.Layer):

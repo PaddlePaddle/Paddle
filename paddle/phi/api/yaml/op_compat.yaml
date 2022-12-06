@@ -628,6 +628,42 @@
   outputs :
     out : Output
 
+- op : is_empty
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isfinite (isfinite_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isinf (isinf_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isnan (isnan_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : kthvalue
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+
+- op : label_smooth
+  inputs :
+    {label : X, prior_dist : PriorDist}
+  outputs :
+    out : Out
+
 - op : layer_norm
   backward : layer_norm_grad
   extra :
@@ -643,6 +679,13 @@
     negative_slope : alpha
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : lerp
+  backward : lerp_grad
+  inputs :
+    {x : X, y : Y, weight : Weight}
+  outputs :
+    out : Out
 
 - op : lgamma
   inputs :
@@ -718,6 +761,19 @@
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
+- op : lu_unpack
+  backward : lu_unpack_grad
+  inputs :
+    {x : X, y : Pivots}
+  outputs :
+    {pmat : Pmat, l : L, u : U}
+
+- op : masked_select
+  inputs :
+    {x : X, mask : Mask}
+  outputs :
+    out : Y
+
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad)
   extra :
@@ -731,6 +787,12 @@
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
 
+- op : matrix_power
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
   extra :
@@ -743,10 +805,23 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : maxout
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : mish
   backward : mish_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : mode
+  backward : mode_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
@@ -770,6 +845,13 @@
   backward : nearest_interp_grad (nearest_interp_v2_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : nll_loss
+  backward : nll_loss_grad
+  inputs :
+    {input : X, label : Label, weight : Weight}
+  outputs :
+    {out : Out, total_weight : Total_weight}
 
 - op : pad2d
   backward : pad2d_grad
@@ -807,6 +889,13 @@
   backward : prelu_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : qr
+  backward : qr_grad
+  inputs :
+    x : X
+  outputs :
+    {q : Q, r : R}
 
 - op : quantize_linear
   extra :
@@ -885,6 +974,10 @@
 
 - op : renorm
   backward : renorm_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 

@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
+import collections
+import glob
+import hashlib
+import json
+import logging
 import os
 import re
-import sys
-import json
-import glob
-import atexit
-import hashlib
-import logging
-import collections
-import textwrap
-import warnings
 import subprocess
+import sys
+import textwrap
 import threading
-
-from importlib import machinery
+import warnings
 from contextlib import contextmanager
+from importlib import machinery
+
 from setuptools.command import bdist_egg
 
 try:
@@ -197,7 +197,7 @@ def custom_write_stub(resource, pyfile):
         """
     ).lstrip()
 
-    # Parse registerring op information
+    # Parse registering op information
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.so_path
 
@@ -250,7 +250,7 @@ class CustomOpInfo:
 
     def last(self):
         """
-        Return the lastest insert custom op info.
+        Return the last inserted custom op info.
         """
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))

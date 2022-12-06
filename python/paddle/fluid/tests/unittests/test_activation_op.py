@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from scipy.special import expit, erf
-
 from op_test import OpTest, convert_float_to_uint16
+from scipy.special import erf, expit
+
 import paddle
-import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
@@ -33,17 +33,17 @@ class TestSqrtOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of sqrt op must be Variable or numpy.ndarray.
             in1 = 1
-            self.assertRaises(TypeError, fluid.layers.sqrt, in1)
+            self.assertRaises(TypeError, paddle.sqrt, in1)
             # The input dtype of sqrt op must be float16, float32, float64.
             in2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.sqrt, in2)
+            self.assertRaises(TypeError, paddle.sqrt, in2)
 
             in3 = fluid.layers.data(
                 name='input3', shape=[12, 10], dtype="float16"
             )
-            fluid.layers.sqrt(x=in3)
+            paddle.sqrt(x=in3)
 
 
 class TestActivation(OpTest):
@@ -390,16 +390,6 @@ class TestLogSigmoidAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [11, 17])
-            out = paddle.fluid.layers.logsigmoid(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -487,16 +477,6 @@ class TestTanhAPI(unittest.TestCase):
         for r in [out1, out2, out3]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12], self.dtype)
-            out = fluid.layers.tanh(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = np.tanh(self.x_np)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -593,7 +573,7 @@ class TestSinhAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
             x = fluid.dygraph.to_variable(np_x)
-            z = fluid.layers.sinh(x).numpy()
+            z = paddle.sinh(x).numpy()
             z_expected = np.sinh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
@@ -610,7 +590,7 @@ class TestSinhAPI(unittest.TestCase):
                 dtype="float32",
             )
 
-            pd_sinh_out = fluid.layers.sinh(data_x)
+            pd_sinh_out = paddle.sinh(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
             (np_sinh_res,) = exe.run(
@@ -630,7 +610,7 @@ class TestSinhAPI(unittest.TestCase):
             )
             var = fluid.dygraph.to_variable(input_x)
             var.stop_gradient = False
-            loss = fluid.layers.sinh(var)
+            loss = paddle.sinh(var)
             loss.backward()
             grad_var = var.gradient()
             self.assertEqual(grad_var.shape, input_x.shape)
@@ -640,13 +620,13 @@ class TestSinhOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.sinh, 1)
+            self.assertRaises(TypeError, paddle.sinh, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.sinh, x_int32)
+            self.assertRaises(TypeError, paddle.sinh, x_int32)
             # support the input dtype is float16
             x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.sinh(x_fp16)
+            paddle.sinh(x_fp16)
 
 
 class TestCosh(TestActivation):
@@ -678,7 +658,7 @@ class TestCoshAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
             x = fluid.dygraph.to_variable(np_x)
-            z = fluid.layers.cosh(x).numpy()
+            z = paddle.cosh(x).numpy()
             z_expected = np.cosh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
@@ -715,7 +695,7 @@ class TestCoshAPI(unittest.TestCase):
             )
             var = fluid.dygraph.to_variable(input_x)
             var.stop_gradient = False
-            loss = fluid.layers.cosh(var)
+            loss = paddle.cosh(var)
             loss.backward()
             grad_var = var.gradient()
             self.assertEqual(grad_var.shape, input_x.shape)
@@ -725,13 +705,13 @@ class TestCoshOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.cosh, 1)
+            self.assertRaises(TypeError, paddle.cosh, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.cosh, x_int32)
+            self.assertRaises(TypeError, paddle.cosh, x_int32)
             # support the input dtype is float16
             x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.cosh(x_fp16)
+            paddle.cosh(x_fp16)
 
 
 def ref_tanhshrink(x):
@@ -797,16 +777,6 @@ class TestTanhshrinkAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.tanh_shrink(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_tanhshrink(self.x_np)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -913,16 +883,6 @@ class TestHardShrinkAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12])
-            out = fluid.layers.hard_shrink(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_hardshrink(self.x_np, 0.5)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -1079,16 +1039,6 @@ class TestSoftshrinkAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.softshrink(x, self.threshold)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_softshrink(self.x_np, self.threshold)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -1739,7 +1689,6 @@ class TestLeakyRelu_ZeroDim(TestLeakyRelu):
 
 class TestLeakyReluAPI(unittest.TestCase):
     # test paddle.nn.LeakyReLU, paddle.nn.functional.leaky_relu,
-    # fluid.layers.leaky_relu
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
@@ -1779,16 +1728,6 @@ class TestLeakyReluAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', [10, 12])
-            out = fluid.layers.leaky_relu(x, 0.01)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_leaky_relu(self.x_np)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -1952,51 +1891,6 @@ class TestBRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestBreluAPI(unittest.TestCase):
-    # test paddle.fluid.layers.brelu
-    def setUp(self):
-        np.random.seed(1024)
-        self.t_min = 0.0
-        self.t_max = 24.0
-        self.x_np = np.random.uniform(-1, 30, [10, 12]).astype('float32')
-        self.out_ref = np.copy(self.x_np)
-        self.out_ref[self.out_ref < self.t_min] = self.t_min
-        self.out_ref[self.out_ref > self.t_max] = self.t_max
-        self.out_ref = self.out_ref.astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
-    def test_fluid_api(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', [10, 12])
-            out = paddle.fluid.layers.brelu(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-            np.testing.assert_allclose(self.out_ref, res[0], rtol=1e-05)
-
-            paddle.disable_static(self.place)
-            x = paddle.to_tensor(self.x_np)
-            out = paddle.fluid.layers.brelu(x)
-            np.testing.assert_allclose(self.out_ref, out.numpy(), rtol=1e-05)
-            paddle.enable_static()
-
-    def test_errors(self):
-        with program_guard(Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.brelu, 1)
-            # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.brelu, x_int32)
-            # support the input dtype is float16
-            x_fp16 = fluid.layers.data(
-                name='x_fp16', shape=[12, 10], dtype='float16'
-            )
-            fluid.layers.brelu(x_fp16)
-
-
 def ref_relu6(x, threshold=6.0):
     out = np.copy(x)
     out[np.abs(x - threshold) < 0.005] = threshold + 0.02
@@ -2074,7 +1968,7 @@ class TestRelu6API(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.relu6(x)
+            out = paddle.nn.functional.relu6(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_relu6(self.x_np)
@@ -2523,8 +2417,8 @@ class TestLog(TestActivation):
             name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
         )
 
-        self.assertRaises(TypeError, fluid.layers.log, in1)
-        self.assertRaises(TypeError, fluid.layers.log, in2)
+        self.assertRaises(TypeError, paddle.log, in1)
+        self.assertRaises(TypeError, paddle.log, in2)
 
 
 class TestLog_ZeroDim(TestLog):
@@ -2844,8 +2738,8 @@ class TestPow_factor_tensor(TestActivation):
 
         factor_1 = 2.0
         factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
-        out_1 = fluid.layers.pow(x, factor=factor_1)
-        out_2 = fluid.layers.pow(x, factor=factor_2)
+        out_1 = paddle.pow(x, factor_1)
+        out_2 = paddle.pow(x, factor_2)
         out_4 = paddle.pow(x, factor_1, name='pow_res')
         out_6 = paddle.pow(x, factor_2)
         self.assertEqual(('pow_res' in out_4.name), True)
@@ -2860,27 +2754,6 @@ class TestPow_factor_tensor(TestActivation):
         assert np.allclose(res_1, np.power(input, 2))
         assert np.allclose(res_2, np.power(input, 3))
         assert np.allclose(res_6, np.power(input, 3))
-
-    def test_error(self):
-        in1 = fluid.layers.data(
-            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32"
-        )
-        in2 = fluid.layers.data(
-            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
-        )
-        in3 = fluid.layers.data(
-            name="in3", shape=[11, 17], append_batch_size=False, dtype="float32"
-        )
-        in4 = fluid.layers.data(
-            name="in4", shape=[11, 17], append_batch_size=False, dtype="float64"
-        )
-
-        factor_1 = fluid.layers.fill_constant([1], "float64", 3.0)
-
-        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in4, factor=factor_1)
 
 
 def ref_stanh(x, scale_a=0.67, scale_b=1.7159):
@@ -3120,16 +2993,6 @@ class TestSoftplusAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.softplus(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_softplus(self.x_np)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -3214,16 +3077,6 @@ class TestSoftsignAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.softsign(x)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_softsign(self.x_np)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -3313,16 +3166,6 @@ class TestThresholdedReluAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_fluid_api(self):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.thresholded_relu(x, self.threshold)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = ref_thresholded_relu(self.x_np, self.threshold)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -3428,7 +3271,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.hard_sigmoid(x)
+            out = paddle.nn.functional.hardsigmoid(x, slope=0.2)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_hardsigmoid(self.x_np, 0.2, 0.5)
@@ -3436,7 +3279,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
-        out = paddle.fluid.layers.hard_sigmoid(x)
+        out = paddle.nn.functional.hardsigmoid(x, slope=0.2)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
@@ -3660,45 +3503,6 @@ class TestMishAPI(unittest.TestCase):
             F.mish(x_fp16)
 
 
-# ------------------ Test Error Activation----------------------
-def create_test_error_class(op_type):
-    class TestOpErrors(unittest.TestCase):
-        def test_errors(self):
-            with program_guard(Program(), Program()):
-                op = getattr(fluid.layers, op_type)
-                # The input dtype of op_type must be float32, float64.
-                in1 = fluid.layers.data(
-                    name='input2', shape=[12, 10], dtype="int32"
-                )
-                in2 = fluid.layers.data(
-                    name='input3', shape=[12, 10], dtype="int64"
-                )
-                self.assertRaises(TypeError, op, in1)
-                self.assertRaises(TypeError, op, in2)
-
-    cls_name = "{0}_{1}".format(op_type, "test_errors")
-    TestOpErrors.__name__ = cls_name
-    globals()[cls_name] = TestOpErrors
-
-
-create_test_error_class('acos')
-create_test_error_class('asin')
-create_test_error_class('atan')
-create_test_error_class('ceil')
-create_test_error_class('cos')
-create_test_error_class('floor')
-create_test_error_class('reciprocal')
-create_test_error_class('round')
-create_test_error_class('rsqrt')
-create_test_error_class('sin')
-create_test_error_class('sqrt')
-create_test_error_class('tanh')
-create_test_error_class('tan')
-create_test_error_class('acosh')
-create_test_error_class('asinh')
-create_test_error_class('atanh')
-
-
 # ------------------ Test Cudnn Activation----------------------
 def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
     @unittest.skipIf(
@@ -3828,6 +3632,7 @@ def create_test_act_bf16_class(
 
 
 create_test_act_bf16_class(TestRelu)
+create_test_act_bf16_class(TestAbs)
 
 if __name__ == "__main__":
     unittest.main()

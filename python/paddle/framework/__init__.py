@@ -22,7 +22,6 @@ from .framework import set_grad_enabled  # noqa: F401
 from .framework import is_grad_enabled  # noqa: F401
 
 from ..fluid.param_attr import ParamAttr  # noqa: F401
-from ..fluid.layers.tensor import create_parameter  # noqa: F401
 from ..fluid.core import CPUPlace  # noqa: F401
 from ..fluid.core import IPUPlace  # noqa: F401
 from ..fluid.core import CUDAPlace  # noqa: F401
@@ -66,5 +65,8 @@ from ..fluid.framework import _dygraph_tracer  # noqa: F401
 from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from ..fluid.framework import in_dygraph_mode  # noqa: F401
 from ..fluid.framework import _in_legacy_dygraph  # noqa: F401
+from ..fluid.framework import _global_flags  # noqa: F401
+from ..fluid.framework import _apply_pass  # noqa: F401
+from ..fluid.framework import switch_main_program
 
 __all__ = []

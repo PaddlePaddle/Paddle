@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import argparse
-from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import GetForwardFunctionName, IsVectorTensorType
-from codegen_utils import GetInplacedFunctionName
+import os
+
+from codegen_utils import (
+    FunctionGeneratorBase,
+    GeneratorBase,
+    GetForwardFunctionName,
+    GetInplacedFunctionName,
+    IsVectorTensorType,
+)
 
 #########################
 # Global Configurations #
@@ -128,6 +133,15 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
+#endif
+    }}
+    if (paddle::platform::is_xpu_place(place)) {{
+#if defined(PADDLE_WITH_XPU)
+      phi::backends::xpu::SetXPUDeviceId(place.device);
+      VLOG(4) <<"CurrentDeviceId: " << phi::backends::xpu::GetXPUCurrentDeviceId() << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     }}
 """

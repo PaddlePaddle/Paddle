@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import paddle
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid.layer_helper import LayerHelper
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ...fluid.data_feeder import check_type, check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
 
 __all__ = []
 
 
 def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     r"""
+
     It computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
@@ -48,10 +50,11 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
 
     Returns:
         Tensor, the dtype is same as input tensor.
+
         - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
-            depending on whether the input has data shaped as :math:`[N, D]`.
+          depending on whether the input has data shaped as :math:`[N, D]`.
         - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
-            depending on whether the input has data shaped as :math:`[N, D]`.
+          depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
         .. code-block:: python

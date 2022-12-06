@@ -17,7 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
 #include "paddle/phi/core/compat/op_utils.h"
@@ -106,17 +106,16 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
 }
 
 KernelResult KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name,
-    const KernelKey& kernel_key,
-    bool use_gpudnn) const {
+    const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
+  KernelKey kernel_key = const_kernel_key;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (use_gpudnn && kernel_key.backend() == Backend::GPU) {
+  if (kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
     if (kernel_iter == iter->second.end() &&
@@ -127,8 +126,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false};
     }
-    LOG(WARNING) << "The cudnn kernel for [" << kernel_name
-                 << "] is not registered.";
+    kernel_key =
+        KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
@@ -152,7 +151,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+      !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                             kernel_key.dtype())
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
@@ -334,11 +334,17 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "{";
   bool need_comma_kernels = false;
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
-    if (need_comma_kernels) os << ",";
-    os << "\"" << op_kernel_pair.first << "\":[";
+    if (need_comma_kernels) {
+      os << ",";
+      os << std::endl;
+    }
+    os << "\"" << op_kernel_pair.first << " \":[" << std::endl;
     bool need_comma_per_kernel = false;
     for (const auto& kernel_pair : op_kernel_pair.second) {
-      if (need_comma_per_kernel) os << ",";
+      if (need_comma_per_kernel) {
+        os << ",";
+        os << std::endl;
+      }
       os << "{\"" << kernel_pair.first << "\":" << kernel_pair.second << "}";
       need_comma_per_kernel = true;
     }

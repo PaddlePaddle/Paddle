@@ -25,6 +25,8 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 
 template <typename T>
@@ -487,13 +489,13 @@ __global__ void KeBicubicInterpBw(T* in,
     T in_img_idy = align_corners
                        ? static_cast<T>(ratio_h * out_img_idy)
                        : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    int input_y = floorf(in_img_idy);
+    int input_y = floorf(static_cast<float>(in_img_idy));
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const T y_t = static_cast<T>(static_cast<MT>(in_img_idy) - input_y);
     T in_img_idx = align_corners
                        ? static_cast<T>(ratio_w * out_img_idx)
                        : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    int input_x = floorf(in_img_idx);
+    int input_x = floorf(static_cast<float>(in_img_idx));
     const T x_t = static_cast<T>(static_cast<MT>(in_img_idx) - input_x);
 
     T x_coeffs[4];
@@ -1034,6 +1036,12 @@ static void Interpolate2DCUDABwd(
 #endif
 
     if (optimize_flag & is_nchw) {
+      if (FLAGS_cudnn_deterministic) {
+        VLOG(2)
+            << "Run grad kernel of bilinear interpolate 2d with single thread.";
+        config.block_per_grid = 1;
+        config.thread_per_block = 1;
+      }
       KeBilinearInterpBwShareMemory<T><<<config.block_per_grid,
                                          config.thread_per_block,
                                          0,
@@ -1052,21 +1060,27 @@ static void Interpolate2DCUDABwd(
     } else if (!optimize_flag & is_nchw) {
       const int num_kernels = n * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
+      int block_per_grid = backends::gpu::DivUp(num_kernels, num_threads);
+      int thread_per_block = num_threads;
+      if (FLAGS_cudnn_deterministic) {
+        VLOG(2)
+            << "Run grad kernel of bilinear interpolate 2d with single thread.";
+        block_per_grid = 1;
+        thread_per_block = 1;
+      }
       KeBilinearInterpNCHWBw<T>
-          <<<backends::gpu::DivUp(num_kernels, num_threads),
-             num_threads,
-             0,
-             dev_ctx.stream()>>>(input_grad_data,
-                                 in_h,
-                                 in_w,
-                                 out_h,
-                                 out_w,
-                                 n,
-                                 c,
-                                 ratio_h,
-                                 ratio_w,
-                                 output_grad_data,
-                                 align_type_value);
+          <<<block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
+              input_grad_data,
+              in_h,
+              in_w,
+              out_h,
+              out_w,
+              n,
+              c,
+              ratio_h,
+              ratio_w,
+              output_grad_data,
+              align_type_value);
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
@@ -1577,7 +1591,8 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
                    phi::NearestInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

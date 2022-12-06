@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.fluid.layers as layers
 
 

@@ -282,7 +282,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
         param.numel());
     if (!use_global_beta_pow) {
       // Update with gpu
-      UpdateAdamWBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+      UpdateAdamWBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
           beta1_pow.data<MPDType>(),

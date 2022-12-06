@@ -82,7 +82,7 @@ def bow_net(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
+    bow_tanh = paddle.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
@@ -171,9 +171,7 @@ class TestWeightDecay(unittest.TestCase):
             ]
 
             for params in param_list:
-                updated_p = fluid.layers.elementwise_sub(
-                    x=params[0], y=params[1]
-                )
+                updated_p = paddle.subtract(x=params[0], y=params[1])
                 fluid.layers.assign(input=updated_p, output=params[0])
 
             optimizer.apply_optimize(avg_cost, startup_prog, params_grads)
