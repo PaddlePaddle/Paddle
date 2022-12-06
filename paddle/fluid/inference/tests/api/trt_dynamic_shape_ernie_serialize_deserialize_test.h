@@ -135,6 +135,7 @@ static void trt_ernie(bool with_fp16, std::vector<float> result) {
   if (with_fp16) {
     precision = AnalysisConfig::Precision::kHalf;
   }
+
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, true, false);
   config.SetTRTDynamicShapeInfo(
       min_input_shape, max_input_shape, opt_input_shape);
