@@ -192,7 +192,7 @@ class Seq2SeqModel:
         trg_vocab_size,
         start_token,
         end_token,
-        decoding_strategy="beam_search",
+        decoding_strategy="infer_sample",
         max_decoding_length=20,
         beam_size=4,
     ):
@@ -488,7 +488,7 @@ class TestDynamicDecode(unittest.TestCase):
             "trg_vocab_size": 100,
             "start_token": 0,
             "end_token": 1,
-            "decoding_strategy": "beam_search",
+            "decoding_strategy": "infer_greedy",
             "max_decoding_length": 10,
         }
 
@@ -560,19 +560,6 @@ class TestDynamicDecode(unittest.TestCase):
                 },
                 fetch_list=[output],
             )[0]
-
-    def func_dynamic_basic_decoder(self):
-        paddle.disable_static()
-        src = paddle.to_tensor(np.random.randint(8, size=(8, 4)))
-        src_length = paddle.to_tensor(np.random.randint(8, size=(8)))
-        model = Seq2SeqModel(**self.model_hparams)
-        probs, samples, sample_length = model(src, src_length)
-        paddle.enable_static()
-
-    def test_dynamic_basic_decoder(self):
-        with _test_eager_guard():
-            self.func_dynamic_basic_decoder()
-        self.func_dynamic_basic_decoder()
 
 
 class ModuleApiTest(unittest.TestCase):
