@@ -41,10 +41,10 @@ class LeNetDygraph(paddle.nn.Layer):
         self.features = Sequential(
             Conv2D(1, 6, 3, stride=1, padding=1),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             Conv2D(6, 16, 5, stride=1, padding=0),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
         if num_classes > 0:
@@ -93,10 +93,10 @@ class LeNetListInput(paddle.nn.Layer):
         self.features = Sequential(
             self.cov,
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             Conv2D(6, 16, 5, stride=1, padding=0),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
         if num_classes > 0:

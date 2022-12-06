@@ -204,7 +204,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
-        cost = fluid.layers.square_error_cost(input=out, label=label)
+        cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)

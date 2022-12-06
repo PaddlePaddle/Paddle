@@ -153,7 +153,7 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
 
   // dx
   if (dx != nullptr) {
-    auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    auto *dx_data = ctx.template Alloc<T>(dx);
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
@@ -163,7 +163,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       // the result of dy wrong.
       if (dx->IsSharedBufferWith(dout)) {
         dx->clear();
-        dx->mutable_data<T>(x.dims(), ctx.GetPlace());
+        dx->Resize(x.dims());
+        ctx.template Alloc<T>(dx);
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
@@ -173,7 +174,7 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
   }
   // dy
   if (dy != nullptr) {
-    auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    auto *dy_data = ctx.template Alloc<T>(dy);
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dy);
@@ -217,12 +218,11 @@ void ElementwiseAddGrad(const GPUContext &ctx,
                  PREDEFINED_BLOCK_SIZE,
              1);
     SimpleElemwiseAddGradCUDAKernel<T>
-        <<<grid_size, block_size, 0, ctx.stream()>>>(
-            dout.data<T>(),
-            size,
-            vec_size,
-            dx->mutable_data<T>(ctx.GetPlace()),
-            dy->mutable_data<T>(ctx.GetPlace()));
+        <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
+                                                     size,
+                                                     vec_size,
+                                                     ctx.template Alloc<T>(dx),
+                                                     ctx.template Alloc<T>(dy));
   } else {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "and dx_data is the same as dout_data, do not need "
@@ -264,7 +264,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
   auto *dout_data = dout.data<T>();
   // dx
   if (dx != nullptr) {
-    auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    auto *dx_data = ctx.template Alloc<T>(dx);
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
@@ -274,7 +274,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       // the result of dy wrong.
       if (dx->IsSharedBufferWith(dout)) {
         dx->clear();
-        dx->mutable_data<T>(x.dims(), ctx.GetPlace());
+        dx->Resize(x.dims());
+        ctx.template Alloc<T>(dx);
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
@@ -284,7 +285,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
   }
   // dy
   if (dy != nullptr) {
-    auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    auto *dy_data = ctx.template Alloc<T>(dy);
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
         dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
@@ -293,10 +294,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
             dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
         SimpleElemwiseSubGradCUDAKernel<T>
             <<<grid_size, block_size, 0, ctx.stream()>>>(
-                dout.data<T>(),
-                size,
-                nullptr,
-                dy->mutable_data<T>(ctx.GetPlace()));
+                dout.data<T>(), size, nullptr, ctx.template Alloc<T>(dy));
       }
     } else {
       std::vector<int> reduce_dims =
@@ -320,11 +318,10 @@ void elementwise_sub_grad(const GPUContext &ctx,
   dim3 grid_size =
       dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
   SimpleElemwiseSubGradCUDAKernel<T>
-      <<<grid_size, block_size, 0, ctx.stream()>>>(
-          dout.data<T>(),
-          size,
-          dx->mutable_data<T>(ctx.GetPlace()),
-          dy->mutable_data<T>(ctx.GetPlace()));
+      <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
+                                                   size,
+                                                   ctx.template Alloc<T>(dx),
+                                                   ctx.template Alloc<T>(dy));
 }
 /*
 ******************************
