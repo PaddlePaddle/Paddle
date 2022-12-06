@@ -1742,24 +1742,36 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "one_hot") {
+    if (op_type == "one_hot" || op_type == "one_hot_v2") {
 #if IS_TRT_VERSION_LT(8510)
-      VLOG(3) << "one_hot is not supported when TensorRT < 8.5.1";
+      VLOG(3) << "one_hot/one_hot_v2 is not supported when TensorRT < 8.5.1";
       return false;
 #endif
       if (!with_dynamic_shape) {
-        VLOG(3) << "the one_hot op does not support static shape yet";
+        VLOG(3)
+            << "the one_hot/one_hot_v2 op does not support static shape yet";
         return false;
       }
       if (desc.HasAttr("allow_out_of_range")) {
-        VLOG(3) << "allow_out_of_range one_hot op is not supported now.";
+        VLOG(3)
+            << "allow_out_of_range one_hot/one_hot_v2 op is not supported now.";
         if (PADDLE_GET_CONST(bool, desc.GetAttr("allow_out_of_range")))
           return false;
       }
       if (desc.HasAttr("dtype")) {
         const int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
         if (dtype != 2 && dtype != 3 && dtype != 5) {
-          VLOG(3) << "one_hot op only support int32, int64, float.";
+          VLOG(3) << "one_hot/one_hot_v2 op only support int32, int64, float.";
+          return false;
+        }
+      }
+      if (op_desc.Input("depth_tensor").size() != 0) {
+        return true;
+      }
+      if (desc.HasAttr("depth")) {
+        const int depth = PADDLE_GET_CONST(int, desc.GetAttr("depth"));
+        if (depth <= 0) {
+          VLOG(3) << "depth only support positive in one_hot/one_hot_v2 op.";
           return false;
         }
       }
