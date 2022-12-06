@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_utils.h"
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 #include "paddle/phi/kernels/funcs/transpose_functor.h"
@@ -752,20 +751,6 @@ struct TransposeSimple {
   }
 };
 
-template <typename T>
-inline void PermuteWithSimple(const phi::GPUContext& ctx,
-                              const int& rank,
-                              const std::vector<int32_t>& perm,
-                              const phi::DenseTensor& in,
-                              phi::DenseTensor* out,
-                              const DimsSimplifier& simplifier) {
-  bool ret =
-      TransposeSimple<T>::Impl(ctx, in, perm, out, simplifier.GetCount());
-  if (!ret) {
-    TransCompute<phi::GPUContext, T>(rank, ctx, in, out, perm);
-  }
-}
-
 template <typename IndexT, int N>
 class IdxHelper {
  public:
@@ -1364,7 +1349,7 @@ inline void PermuteWithEigen(const phi::GPUContext& ctx,
                              const phi::DenseTensor& in,
                              phi::DenseTensor* out,
                              const DimsSimplifier& simplifier) {
-  const bool not_same_dims = simplifier.GetRank() != rank;
+  bool not_same_dims = simplifier.GetRank() != rank;
   if (not_same_dims) {
     phi::DDim dst_dims = out->dims();
     phi::DenseTensor temp_in;
@@ -1383,11 +1368,26 @@ inline void PermuteWithEigen(const phi::GPUContext& ctx,
 }
 
 template <typename T>
+inline void PermuteWithSimple(const phi::GPUContext& ctx,
+                              const int& rank,
+                              const std::vector<int32_t>& perm,
+                              const phi::DenseTensor& in,
+                              phi::DenseTensor* out,
+                              const DimsSimplifier& simplifier) {
+  bool ret =
+      TransposeSimple<T>::Impl(ctx, in, perm, out, simplifier.GetCount());
+  if (!ret) {
+    TransCompute<phi::GPUContext, T>(rank, ctx, in, out, perm);
+  }
+}
+
+template <typename T>
 void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const phi::DenseTensor& in,
                               const std::vector<int32_t>& perm,
                               phi::DenseTensor* out) {
   const int rank = perm.size();
+  // default kernel.
   auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithSimple<T>);
   tuner->AddCallBack(PermuteWithEigen<T>);
   tuner->AddCallBack(PermuteAndTranspose<T>);

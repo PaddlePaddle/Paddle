@@ -107,8 +107,8 @@ struct BroadcastDataLoader {
   }
 };
 
-template <typename T, int VecSize, int Arity, bool IsBoundary>
-struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, kElementwise> {
+template <typename T, int VecSize, int Arity>
+struct BroadcastDataLoader<T, VecSize, Arity, true, kElementwise> {
   __device__ __forceinline__ void operator()(
       T args[Arity][VecSize],
       const phi::Array<const _ptr_ T *__restrict__, Arity> &ins,
@@ -117,32 +117,48 @@ struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, kElementwise> {
       const int block_offset,
       const int num,
       const uint32_t numel) {
-    if (IsBoundary) {
-      int thread_offset = threadIdx.x * VecSize + block_offset;
 #pragma unroll
-      for (int i = 0; i < Arity; ++i) {
+    for (int i = 0; i < Arity; ++i) {
 #pragma unroll
-        for (int idx = 0; idx < VecSize; ++idx) {
-          int index = thread_offset + idx;
-          if (index < numel) {
-            args[i][idx] = ins[i][index];
-          }
+      kps::Init<T, VecSize>(args[i], static_cast<T>(1));
+    }
+
+    int thread_offset = threadIdx.x * VecSize + block_offset;
+#pragma unroll
+    for (int i = 0; i < Arity; ++i) {
+#pragma unroll
+      for (int idx = 0; idx < VecSize; ++idx) {
+        int index = thread_offset + idx;
+        if (index < numel) {
+          args[i][idx] = ins[i][index];
         }
       }
-    } else {
-      using VecType = phi::kps::details::VectorType<T, VecSize>;
-      VecType vec_temp[Arity];
+    }
+  }
+};
 
-      int thread_offset = threadIdx.x + blockIdx.x * blockDim.x;
+template <typename T, int VecSize, int Arity>
+struct BroadcastDataLoader<T, VecSize, Arity, false, kElementwise> {
+  __device__ __forceinline__ void operator()(
+      T args[Arity][VecSize],
+      const phi::Array<const _ptr_ T *__restrict__, Arity> &ins,
+      const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
+      const phi::Array<int, Arity> &use_broadcast,
+      const int block_offset,
+      const int num,
+      const uint32_t numel) {
+    using VecType = phi::kps::details::VectorType<T, VecSize>;
+    VecType vec_temp[Arity];
+
+    int thread_offset = threadIdx.x + blockIdx.x * blockDim.x;
 #pragma unroll
-      for (int i = 0; i < Arity; ++i) {
-        const VecType *__restrict__ vec_input =
-            reinterpret_cast<const VecType *__restrict__>(ins[i]);
-        vec_temp[i] = vec_input[thread_offset];
+    for (int i = 0; i < Arity; ++i) {
+      const VecType *__restrict__ vec_input =
+          reinterpret_cast<const VecType *__restrict__>(ins[i]);
+      vec_temp[i] = vec_input[thread_offset];
 #pragma unroll
-        for (int idx = 0; idx < VecSize; ++idx) {
-          args[i][idx] = vec_temp[i].val[idx];
-        }
+      for (int idx = 0; idx < VecSize; ++idx) {
+        args[i][idx] = vec_temp[i].val[idx];
       }
     }
   }
