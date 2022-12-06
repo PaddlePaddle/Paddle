@@ -74,7 +74,7 @@ void DiagGradKernel(const Context& dev_ctx,
   };
 
   if (dx_dims.size() <= 1) {
-    auto dx_length = (dx_dims.size() == 1 ?: dx_dims[0], int64_t(1));
+    auto dx_length = (dx_dims.size() == 1 ? dx_dims[0] : int64_t(1));
     auto size = (offset > 0) ? dx_length + offset : dx_length - offset;
     int dx_stride = 1;
     if (size > 0) {

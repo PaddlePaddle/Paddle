@@ -81,7 +81,7 @@ void DiagKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, out, static_cast<T>(padding_value));
 
-    auto x_length = (x_dims.size() == 1UL ?: x_dims[0], int64_t(1));
+    auto x_length = (x_dims.size() == 1UL ? x_dims[0] : int64_t(1));
     auto size = (offset > 0) ? x_length + offset : x_length - offset;
     const int& x_stride = 1;
     if (size > 0) {
