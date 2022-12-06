@@ -21,7 +21,6 @@ from test_softmax_with_cross_entropy_op import cross_entropy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 def log_softmax(x, axis=-1):
@@ -1707,41 +1706,6 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
-
-    def test_soft_1d_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_cross_entropy_loss_soft_1d()
-            self.test_cross_entropy_loss_soft_1d_weight()
-            self.test_cross_entropy_loss_soft_1d_mean()
-            self.test_cross_entropy_loss_soft_1d_weight_mean()
-
-    # put all testcases in one test will be failed
-    def test_soft_2d_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_cross_entropy_loss_soft_2d()
-            self.test_cross_entropy_loss_soft_2d_weight_mean()
-
-    def test_other_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_cross_entropy_loss_1d_with_mean_ignore()
-            self.test_cross_entropy_loss_1d_with_mean_ignore_negative()
-            self.test_cross_entropy_loss_1d_with_weight_mean_ignore()
-            self.test_cross_entropy_loss_1d_with_weight_mean_ignore_exceedlabel()
-            self.test_cross_entropy_loss_1d_with_weight_mean()
-            self.test_cross_entropy_loss_1d_with_weight_sum()
-            self.test_cross_entropy_loss_1d_with_weight_none()
-            self.test_cross_entropy_loss_1d_with_weight_none_func()
-            self.test_cross_entropy_loss_1d_mean()
-            self.test_cross_entropy_loss_1d_sum()
-            self.test_cross_entropy_loss_1d_none()
-            self.test_cross_entropy_loss_2d_with_weight_none()
-            self.test_cross_entropy_loss_2d_with_weight_axis_change_mean()
-            self.test_cross_entropy_loss_2d_with_weight_mean_ignore_exceedlabel()
-            self.test_cross_entropy_loss_2d_with_weight_mean()
-            self.test_cross_entropy_loss_2d_with_weight_sum()
-            self.test_cross_entropy_loss_2d_none()
-            self.test_cross_entropy_loss_2d_mean()
-            self.test_cross_entropy_loss_2d_sum()
 
 
 class TestCrossEntropyFAPIError(unittest.TestCase):
