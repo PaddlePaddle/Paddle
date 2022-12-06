@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.static.nn as nn
@@ -28,13 +29,13 @@ class TensorRTMatMulDims2Test(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[24, 24], dtype="float32")
-            matmul_out = fluid.layers.matmul(
+            matmul_out = paddle.matmul(
                 x=data,
                 y=data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
+            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = nn.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {
@@ -67,13 +68,13 @@ class TensorRTMatMulTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 6, 24, 24], dtype="float32"
             )
-            matmul_out = fluid.layers.matmul(
+            matmul_out = paddle.matmul(
                 x=data,
                 y=data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
+            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = nn.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {
@@ -129,13 +130,13 @@ class TensorRTMatMulBroadcastTest(InferencePassTest):
                 name="data_x", shape=[-1, 6, 24], dtype="float32"
             )
             data_y = fluid.data(name="data_y", shape=[24, 16], dtype="float32")
-            matmul_out = fluid.layers.matmul(
+            matmul_out = paddle.matmul(
                 x=data_x,
                 y=data_y,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
+            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = nn.batch_norm(matmul_out, is_test=True)
 
         self.feeds = {
