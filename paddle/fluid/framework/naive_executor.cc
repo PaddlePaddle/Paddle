@@ -61,6 +61,14 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePush(op->Type(), platform::NvtxRangeColor::Green);
 #endif
+
+    // According to reuse table, we share the out tensor's holder.
+    if (reuse_cache_.count(op.get())) {
+      for (auto &it : reuse_cache_[op.get()]) {
+        it.first->ShareBufferWith(*cluster_buffer_[it.second], true);
+      }
+    }
+
     op->Run(*scope_, place_);
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
