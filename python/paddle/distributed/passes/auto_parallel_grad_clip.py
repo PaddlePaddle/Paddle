@@ -18,11 +18,11 @@ import numpy as np
 
 import paddle
 
-from ..auto_parallel.common import SyncMode
 from ..auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
 )
+from ..auto_parallel.operators.common import SyncMode
 from ..auto_parallel.process_group import get_world_process_group
 from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.utils import (
