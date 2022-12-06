@@ -784,7 +784,7 @@ class ShardingPass(PassBase):
                 # not shard var depend to prior collective
                 else:
                     prior_op = main_block.ops[i - 1]
-                    prior_var = prior_op.output("Out")
+                    prior_var = prior_op.output("Out")[0]
                     dep_map[i] = (prior_var, broadcast_varname)
 
         # insert deps
