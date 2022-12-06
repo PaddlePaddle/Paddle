@@ -357,11 +357,10 @@ struct MatrixEighFunctor<GPUContext, T> {
     DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
-    // Once input data type is float32, and the last dimension of
-    // input is located in range [32, 512], Syevj works better.
-    // bool use_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
-    //                   values_stride >= 32 && values_stride <= 512);
-    bool use_syevj = true;
+    // Precision loss will occur in some cases while using
+    // cusolverDnZheevjBatched to calculate in Paddle(cuda11.7) but it works
+    // well in Paddle(cuda10.2)
+    bool use_syevj = (input.dtype() != phi::DataType::COMPLEX128);
     auto handle = dev_ctx.cusolver_dn_handle();
 
     syevjInfo_t syevj_params;
