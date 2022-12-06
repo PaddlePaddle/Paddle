@@ -58,7 +58,7 @@ class RNNDescriptors {
 
   template <typename T>
   void Create(const gpuDnnHandle_t &handle,
-              const Place &place,
+              const DeviceContext &dev_ctx,
               const std::vector<int> &sequence_length,
               size_t *workspace_size,
               size_t *reserve_size,
@@ -103,17 +103,15 @@ class RNNDescriptors {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
-      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
-                                           place);
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
-                                           place);
 #endif
+      dropout_state->Resize({static_cast<int64_t>(state_size)});
+      dev_ctx.template Alloc<uint8_t>(dropout_state);
     }
     dropout_desc_.descriptor(handle,
-                             place,
+                             dev_ctx.GetPlace(),
                              is_initialized,
                              dropout_prob_,
                              is_test_ ? nullptr : dropout_state,
