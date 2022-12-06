@@ -16,12 +16,13 @@ import os
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
-import paddle.fluid.core as core
 
 BATCH_SIZE = 1
 INPUT_SIZE = 784
@@ -81,7 +82,7 @@ def static(
 
         def fn_2(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
-                loss = layers.softmax_with_cross_entropy(
+                loss = paddle.nn.functional.softmax_with_cross_entropy(
                     logits=pred, label=label
                 )
                 avg_loss = paddle.mean(loss, name='mean_softmax_loss')
@@ -107,7 +108,7 @@ def static(
         else:
             loss_1 = layers.cross_entropy(input=prediction, label=label)
             avg_loss_1 = paddle.mean(loss_1)
-            loss_2 = layers.softmax_with_cross_entropy(
+            loss_2 = paddle.nn.functional.softmax_with_cross_entropy(
                 logits=prediction, label=label
             )
             avg_loss_2 = paddle.mean(loss_2)
@@ -137,34 +138,34 @@ def static(
 class DygraphLayer(fluid.dygraph.Layer):
     def __init__(self):
         super().__init__()
-        self.fc_1 = fluid.dygraph.nn.Linear(
+        self.fc_1 = paddle.nn.Linear(
             INPUT_SIZE,
             FC_SIZE,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
+            ),
+        )
+        self.act_1 = paddle.nn.ReLU()
+        self.fc_2 = paddle.nn.Linear(
+            FC_SIZE,
+            CLASS_NUM,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=1.2)
+            ),
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.8)
             ),
         )
 
-        self.fc_2 = fluid.dygraph.nn.Linear(
-            FC_SIZE,
-            CLASS_NUM,
-            act='softmax',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.2)
-            ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.8)
-            ),
-        )
+        self.act_2 = paddle.nn.Softmax()
 
     def forward(self, inputs):
         hidden = self.fc_1(inputs)
         prediction = self.fc_2(hidden)
-        return hidden, prediction
+        return self.act_1(hidden), self.act_2(prediction)
 
 
 def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
@@ -192,7 +193,7 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
                 loss.backward()
                 adam.minimize(loss)
             else:
-                softmax_loss = layers.softmax_with_cross_entropy(
+                softmax_loss = paddle.nn.functional.softmax_with_cross_entropy(
                     prediction, var_label
                 )
                 loss = paddle.mean(softmax_loss)

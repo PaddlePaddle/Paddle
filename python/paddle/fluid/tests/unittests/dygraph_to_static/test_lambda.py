@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 
 
 def call_lambda_as_func(x):

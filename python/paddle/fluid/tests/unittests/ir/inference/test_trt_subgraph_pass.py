@@ -186,7 +186,7 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 name='instance_norm_b',
                 initializer=fluid.initializer.Constant(value=0.0),
             )
-            out = fluid.layers.instance_norm(
+            out = paddle.static.nn.instance_norm(
                 input=data, param_attr=param_attr, bias_attr=bias_attr
             )
         self.feeds = {
@@ -378,7 +378,7 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2)
+        return paddle.add(x=data1, y=data2)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -439,7 +439,7 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2)
+        return paddle.add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):

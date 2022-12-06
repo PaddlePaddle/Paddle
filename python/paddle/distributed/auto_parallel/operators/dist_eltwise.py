@@ -12,18 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl, is_parameter_related
-from .common import is_elementwise_op
-from ..utils import compute_compatible_dim_mapping
-from ..utils import compute_compatible_dims_mapping
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    _g_op_cost_factory,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..utils import (
+    compute_compatible_dim_mapping,
+    compute_compatible_dims_mapping,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    is_elementwise_op,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 from .dist_default import DistributedDefaultImpl0
-from ..cost import _g_op_cost_factory
-from ..cost import build_comp_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
 
 
 class DistributedElementwise(DistributedOperatorImplContainer):

@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 #define MATRIX_SOFTMAX_ALIGN_BYTES 16
 #define MATRIX_SOFTMAX_THREAHOLD 100000
@@ -55,8 +55,8 @@ limitations under the License. */
 
 namespace phi {
 
-using ScopedTensorDescriptor = paddle::platform::ScopedTensorDescriptor;
-using GPUDNNDataLayout = paddle::platform::DataLayout;
+using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 // Vectorization trait 4 * sizeof(T)
 template <typename T>
@@ -1065,10 +1065,10 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
       handle,
-      paddle::platform::CudnnDataType<T>::kOne(),
+      phi::backends::gpu::CudnnDataType<T>::kOne(),
       desc,
       x_data,
-      paddle::platform::CudnnDataType<T>::kZero(),
+      phi::backends::gpu::CudnnDataType<T>::kZero(),
       desc,
       out_data,
       algo,
@@ -1082,10 +1082,10 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
       handle,
       algo,
       mode,
-      paddle::platform::CudnnDataType<T>::kOne(),
+      phi::backends::gpu::CudnnDataType<T>::kOne(),
       desc,
       x_data,
-      paddle::platform::CudnnDataType<T>::kZero(),
+      phi::backends::gpu::CudnnDataType<T>::kZero(),
       desc,
       out_data));
 #endif
@@ -1137,12 +1137,12 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
   auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxBackward_V2(
       handle,
-      paddle::platform::CudnnDataType<T>::kOne(),
+      phi::backends::gpu::CudnnDataType<T>::kOne(),
       desc,
       out_data,
       desc,
       dout_data,
-      paddle::platform::CudnnDataType<T>::kZero(),
+      phi::backends::gpu::CudnnDataType<T>::kZero(),
       desc,
       dx_data,
       algo,
@@ -1156,12 +1156,12 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
       handle,
       algo,
       mode,
-      paddle::platform::CudnnDataType<T>::kOne(),
+      phi::backends::gpu::CudnnDataType<T>::kOne(),
       desc,
       out_data,
       desc,
       dout_data,
-      paddle::platform::CudnnDataType<T>::kZero(),
+      phi::backends::gpu::CudnnDataType<T>::kZero(),
       desc,
       dx_data));
 #endif

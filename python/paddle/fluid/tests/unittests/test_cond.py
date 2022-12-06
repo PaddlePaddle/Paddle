@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import os
 import unittest
+
+import numpy as np
+from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
-from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
-import paddle
 
 np.random.seed(123)
 
@@ -52,7 +53,7 @@ class TestCondInputOutput(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
-            pred = layers.less_than(y, x)
+            pred = paddle.less_than(y, x)
             out = layers.cond(pred, true_func, false_func)
             # out is one tensor
 
@@ -309,15 +310,15 @@ class TestCondNestedControlFlow(unittest.TestCase):
         def less_than_branch(i, a):
             return layers.cond(
                 i >= 3.0,
-                lambda: layers.elementwise_add(a, a),
-                lambda: layers.elementwise_sub(a, a),
+                lambda: paddle.add(a, a),
+                lambda: paddle.subtract(a, a),
             )
 
         def greater_equal_branch(i, a):
             return layers.cond(
                 i < 8.0,
-                lambda: layers.elementwise_mul(a, a),
-                lambda: layers.elementwise_div(a, a),
+                lambda: paddle.multiply(a, a),
+                lambda: paddle.divide(a, a),
             )
 
         main_program = Program()
@@ -373,12 +374,12 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 a < b,
                 lambda: fluid.layers.cond(
                     a - b < -1.0,
-                    lambda: fluid.layers.elementwise_add(a, b),
-                    lambda: fluid.layers.elementwise_mul(a, b),
+                    lambda: paddle.add(a, b),
+                    lambda: paddle.multiply(a, b),
                 ),
                 lambda: fluid.layers.cond(
                     a == b,
-                    lambda: fluid.layers.elementwise_sub(a, b),
+                    lambda: paddle.subtract(a, b),
                     lambda: paddle.pow(a, b),
                 ),
             )

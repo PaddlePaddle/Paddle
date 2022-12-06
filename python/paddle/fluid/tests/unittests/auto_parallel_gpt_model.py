@@ -231,8 +231,10 @@ class MultiHeadAttention(nn.Layer):
             return self.Cache(key, value)
 
     def core_attn(self, q, k, v, attn_mask):
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+        product = paddle.matmul(x=q, y=k, transpose_y=True)
+        product = paddle.multiply(
+            product,
+            paddle.to_tensor(self.head_dim**-0.5, dtype=product.dtype),
         )
         if attn_mask is not None:
             product = product + attn_mask

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <sstream>
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
@@ -776,6 +777,21 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
 };
 #endif
 
+template <typename T>
+static std::string ReversedVectorToString(const std::vector<T> &reversed_v) {
+  std::stringstream ss;
+  bool is_last = true;
+  for (int i = reversed_v.size() - 1; i >= 0; --i) {
+    if (is_last) {
+      ss << reversed_v[i];
+      is_last = false;
+    } else {
+      ss << ", " << reversed_v[i];
+    }
+  }
+  return ss.str();
+}
+
 template <ElementwiseType ET,
           typename InT,
           typename OutT,
@@ -877,15 +893,16 @@ void BroadcastKernelForDifferentVecSize(
   // mergedim and get vec_size
   const auto dims_simplifier =
       BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
-  if (VLOG_IS_ON(4)) {
+  if (VLOG_IS_ON(6)) {
     for (size_t i = 0; i < ins.size(); ++i) {
-      VLOG(4) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
               << "}, simplied_dims={"
-              << phi::make_ddim(dims_simplifier.in_dims[i]) << "}";
+              << ReversedVectorToString<int64_t>(dims_simplifier.in_dims[i])
+              << "}";
     }
-    VLOG(4) << "output: origin_dims={" << (*outs)[0]->dims()
-            << "}, simplied_dims={" << phi::make_ddim(dims_simplifier.out_dims)
-            << "}";
+    VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
+            << "}, simplied_dims={"
+            << ReversedVectorToString<int64_t>(dims_simplifier.out_dims) << "}";
   }
 
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
@@ -979,7 +996,7 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
                         DenseTensor *z) {
   std::vector<const DenseTensor *> ins = {&x, &y};
   std::vector<DenseTensor *> outs = {z};
-  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<OutType>(z);
   BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
       dev_ctx, ins, &outs, axis, func);
 }

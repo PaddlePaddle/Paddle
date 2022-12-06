@@ -152,7 +152,7 @@ class TestDistOpCost(unittest.TestCase):
                 out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # matmul
-                param1 = paddle.fluid.layers.create_parameter(
+                param1 = paddle.create_parameter(
                     [4, 8], paddle.float32
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
@@ -160,7 +160,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     ["x", None],
                 )
-                param2 = paddle.fluid.layers.create_parameter(
+                param2 = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
@@ -168,10 +168,8 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, "x"],
                 )
-                out1 = paddle.fluid.layers.matmul(
-                    out, param1
-                )  # [8, 8] [-1, -1]
-                tmp_param = paddle.fluid.layers.create_parameter(
+                out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
+                tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
@@ -179,10 +177,8 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, None],
                 )
-                tmp_out = paddle.fluid.layers.matmul(out1, tmp_param)
-                out2 = paddle.fluid.layers.matmul(
-                    tmp_out, param2
-                )  # [8, 4] [-1, 0]
+                tmp_out = paddle.matmul(out1, tmp_param)
+                out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
                 out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
@@ -263,7 +259,7 @@ class TestDistOpCost(unittest.TestCase):
                 out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # matmul_v2
-                param1 = paddle.fluid.layers.create_parameter(
+                param1 = paddle.create_parameter(
                     [4, 8], paddle.float32
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
@@ -271,7 +267,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     ["x", None],
                 )
-                param2 = paddle.fluid.layers.create_parameter(
+                param2 = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
@@ -280,7 +276,7 @@ class TestDistOpCost(unittest.TestCase):
                     [None, "x"],
                 )
                 out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
-                tmp_param = paddle.fluid.layers.create_parameter(
+                tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
@@ -370,7 +366,7 @@ class TestDistOpCost(unittest.TestCase):
                 out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # mul
-                param1 = paddle.fluid.layers.create_parameter(
+                param1 = paddle.create_parameter(
                     [4, 8], paddle.float32
                 )  # [2, 8] [0, -1]
                 auto.shard_tensor(
@@ -378,7 +374,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     ["x", None],
                 )
-                param2 = paddle.fluid.layers.create_parameter(
+                param2 = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 4] [-1, 0]
                 auto.shard_tensor(
@@ -388,7 +384,7 @@ class TestDistOpCost(unittest.TestCase):
                 )
 
                 out1 = paddle.fluid.layers.mul(out, param1)  # [8, 8] [-1, -1]
-                tmp_param = paddle.fluid.layers.create_parameter(
+                tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
                 auto.shard_tensor(
