@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import collections
+import re
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
@@ -1017,10 +1017,74 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}     input_shapes.emplace_back("{input_name}", ddims_vec);"""
             )
 
+        input_tensor_code += f"""
+{code_indent}     framework::AttributeMap attrs;"""
+
+        for attr_name in self.attrs['names']:
+            if 'IntArray' in self.attrs['attr_info'][attr_name][0]:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = {attr_name}.GetData();"""
+            elif 'vector<phi::Scalar>' in self.attrs['attr_info'][attr_name][0]:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = "";"""  # TODO(kuizhiqing)
+            elif 'Scalar' in self.attrs['attr_info'][attr_name][0]:
+                input_tensor_code += f"""
+{code_indent}    switch ({attr_name}.dtype()) {{
+{code_indent}      case DataType::FLOAT32:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<float>());
+{code_indent}          break;
+{code_indent}      case DataType::FLOAT64:
+{code_indent}          attrs["{attr_name}"] = static_cast<double>({attr_name}.to<double>());
+{code_indent}          break;
+{code_indent}      case DataType::FLOAT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<float16>());
+{code_indent}          break;
+{code_indent}      case DataType::BFLOAT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<bfloat16>());
+{code_indent}          break;
+{code_indent}      case DataType::INT32:
+{code_indent}          attrs["{attr_name}"] = static_cast<int32_t>({attr_name}.to<int32_t>());
+{code_indent}          break;
+{code_indent}      case DataType::INT64:
+{code_indent}          attrs["{attr_name}"] = static_cast<int64_t>({attr_name}.to<int64_t>());
+{code_indent}          break;
+{code_indent}      case DataType::INT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<int16_t>({attr_name}.to<int16_t>());
+{code_indent}          break;
+{code_indent}      case DataType::INT8:
+{code_indent}          attrs["{attr_name}"] = static_cast<int8_t>({attr_name}.to<int8_t>());
+{code_indent}          break;
+{code_indent}      case DataType::UINT16:
+{code_indent}          attrs["{attr_name}"] = static_cast<uint16_t>({attr_name}.to<uint16_t>());
+{code_indent}          break;
+{code_indent}      case DataType::UINT8:
+{code_indent}          attrs["{attr_name}"] = static_cast<uint8_t>({attr_name}.to<uint8_t>());
+{code_indent}          break;
+{code_indent}      case DataType::BOOL:
+{code_indent}          attrs["{attr_name}"] = static_cast<bool>({attr_name}.to<bool>());
+{code_indent}          break;
+{code_indent}      case DataType::COMPLEX64:
+{code_indent}          attrs["{attr_name}"] = static_cast<float>({attr_name}.to<complex64>());
+{code_indent}          break;
+{code_indent}      case DataType::COMPLEX128:
+{code_indent}          attrs["{attr_name}"] = static_cast<double>({attr_name}.to<complex128>());
+{code_indent}          break;
+{code_indent}      default:
+{code_indent}          attrs["{attr_name}"] = "";
+{code_indent}          break;
+{code_indent}    }}"""
+            elif 'DataType' in self.attrs['attr_info'][attr_name][0]:
+                pass  # no need
+            elif 'Place' in self.attrs['attr_info'][attr_name][0]:
+                pass  # no need
+            else:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = {attr_name};"""
+
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes);
+{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes, attrs);
 {code_indent}  }}"""
         )
         kernel_args = ["*dev_ctx"]

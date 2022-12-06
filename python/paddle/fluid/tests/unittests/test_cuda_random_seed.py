@@ -14,14 +14,15 @@
 """Test cloud role maker."""
 
 import os
-import unittest
-
-import paddle.fluid as fluid
-import numpy as np
-import paddle
-import paddle.fluid.core as core
 import shutil
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 @unittest.skipIf(

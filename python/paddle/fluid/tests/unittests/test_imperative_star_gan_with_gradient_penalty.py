@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-import unittest
 from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
@@ -119,7 +122,7 @@ class InstanceNorm(fluid.dygraph.Layer):
             )
             return out
         else:
-            return fluid.layers.instance_norm(
+            return paddle.static.nn.instance_norm(
                 input,
                 epsilon=self.epsilon,
                 param_attr=fluid.ParamAttr(self.scale.name),
@@ -378,8 +381,8 @@ def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
     cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
-        fluid.layers.reduce_sum(
-            fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
+        paddle.sum(
+            paddle.nn.functional.binary_cross_entropy_with_logits(cls, label)
         )
         / cfg.batch_size
     )
@@ -402,7 +405,7 @@ def calc_gradients(outputs, inputs, no_grad_set):
 def gradient_penalty(f, real, fake, no_grad_set, cfg):
     def _interpolate(a, b):
         shape = [a.shape[0]]
-        alpha = fluid.layers.uniform_random_batch_size_like(
+        alpha = random.uniform_random_batch_size_like(
             input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed
         )
 
@@ -442,9 +445,7 @@ def get_generator_loss(
 ):
     fake_img = generator(image_real, label_trg)
     rec_img = generator(fake_img, label_org)
-    g_loss_rec = fluid.layers.reduce_mean(
-        paddle.abs(paddle.subtract(image_real, rec_img))
-    )
+    g_loss_rec = paddle.mean(paddle.abs(paddle.subtract(image_real, rec_img)))
 
     pred_fake, cls_fake = discriminator(fake_img)
 

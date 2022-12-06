@@ -100,7 +100,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                 # if self.dtype == np.float16:
                 #     bn = fluid.layers.cast(bn, 'float32')
                 sigmoid = paddle.nn.functional.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                out = paddle.sum(sigmoid)
                 # if not sync_bn:
                 #     out = out / core.get_npu_device_count()
                 if not only_forward:

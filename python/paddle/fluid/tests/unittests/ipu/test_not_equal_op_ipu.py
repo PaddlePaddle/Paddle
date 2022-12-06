@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -55,7 +56,7 @@ class TestBase(IPUOpTest):
         y = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
-        out = paddle.fluid.layers.not_equal(x, y, **self.attrs)
+        out = paddle.not_equal(x, y)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

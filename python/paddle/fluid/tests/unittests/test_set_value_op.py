@@ -15,13 +15,14 @@
 # Test set_value op in static mode
 
 import unittest
+from functools import reduce
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
-from functools import reduce
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.layer_helper import LayerHelper
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -1436,7 +1437,7 @@ class TestGradientTruncated(unittest.TestCase):
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
             y2 = y + 1
-            loss = paddle.fluid.layers.reduce_sum(y2)
+            loss = paddle.paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (

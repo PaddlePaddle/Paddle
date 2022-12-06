@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -50,7 +50,7 @@ class OpKernelType {
         customized_type_value_(customized_type_value) {}
 
   OpKernelType(proto::VarType::Type data_type,
-               const platform::DeviceContext& dev_ctx,
+               const phi::DeviceContext& dev_ctx,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)

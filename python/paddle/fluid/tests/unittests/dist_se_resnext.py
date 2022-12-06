@@ -14,9 +14,10 @@
 
 import math
 
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 paddle.enable_static()
 
@@ -162,7 +163,7 @@ class SE_ResNeXt:
 
         short = self.shortcut(input, num_filters * 2, stride)
 
-        return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=short, y=scale))
 
     def conv_bn_layer(
         self, input, num_filters, filter_size, stride=1, groups=1, act=None
@@ -223,8 +224,8 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         cost = fluid.layers.cross_entropy(input=out, label=label)
 
         avg_cost = paddle.mean(x=cost)
-        acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-        acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+        acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
+        acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
 
         # Evaluator
         test_program = fluid.default_main_program().clone(for_test=True)

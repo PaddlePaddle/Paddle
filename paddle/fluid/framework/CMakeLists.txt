@@ -1242,25 +1242,4 @@ cc_test(
   SRCS phi_utils_test.cc
   DEPS phi_utils)
 
-if(WITH_GPU OR WITH_ROCM)
-  cc_library(
-    fluid_convert_utils
-    SRCS convert_utils.cc
-    DEPS data_type place gpu_info)
-else()
-  cc_library(
-    fluid_convert_utils
-    SRCS convert_utils.cc
-    DEPS data_type place)
-endif()
-
-# every source file that includes "dnnl.h" must depends on mkldnn
-# or, the first one should depends on mkldnn
-if(WITH_MKLDNN)
-  add_dependencies(fluid_convert_utils mkldnn)
-endif()
-
-cc_test(
-  convert_utils_test
-  SRCS convert_utils_test.cc
-  DEPS fluid_convert_utils)
+cc_test(convert_utils_test SRCS convert_utils_test.cc)

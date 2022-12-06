@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
-
-from operator import mul
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.nn.functional as F
 from functools import reduce
+from operator import mul
+
+import numpy as np
 from op_test import _set_use_system_allocator
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     _keep_layer_norm_scale_bias_to_fp32,
@@ -374,7 +375,7 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.enable_static()
 
-            layer_norm = fluid.LayerNorm([32, 32])
+            layer_norm = paddle.nn.LayerNorm([32, 32])
             # the input of LayerNorm must be Variable.
             x1 = np.random.random((3, 32, 32)).astype('float32')
             self.assertRaises(TypeError, layer_norm, x1)
