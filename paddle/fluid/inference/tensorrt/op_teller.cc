@@ -2272,6 +2272,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "reverse_roll") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The reverse roll fused op does not support static shape "
+                   "mode yet.";
+        return false;
+      }
+    }
     if (op_type == "skip_merge_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The merge_layernorm op does not support "
@@ -2439,6 +2446,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "reverse_roll",
       "take_along_axis",
       "tanh_shrink",
       "logsigmoid",
@@ -2571,6 +2579,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "reverse_roll",
       "tanh_shrink",
       "take_along_axis",
       "logsigmoid",

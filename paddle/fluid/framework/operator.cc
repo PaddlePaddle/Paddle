@@ -3260,6 +3260,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
+    need_prepare_phi_data_ = true;
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
     auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
