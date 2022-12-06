@@ -16,17 +16,10 @@ from utils import extra_compile_args, paddle_includes
 
 from paddle.utils.cpp_extension import CppExtension, setup
 
-# suppose XPU don't support GPU
-Extension = CppExtension
-sources = ['custom_relu_op_xpu.cc', 'custom_relu_op_dup.cc']
-
-# custom_relu_op_dup.cc is only used for multi ops test,
-# not a new op, if you want to test only one op, remove this
-# source file
 setup(
     name='custom_relu_xpu_module_setup',
-    ext_modules=Extension(  # test for not specific name here.
-        sources=sources,  # test for multi ops
+    ext_modules=CppExtension(  # XPU don't support GPU
+        sources=['custom_relu_op_xpu.cc'],
         include_dirs=paddle_includes,
         extra_compile_args=extra_compile_args,
         verbose=True,
