@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import paddle
+
 from .. import core
 from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
+
 from ..framework import (
     Variable,
     _non_static_mode,
@@ -602,7 +604,7 @@ class Pool2D(layers.Layer):
 
           import paddle.fluid as fluid
           from paddle.fluid.dygraph.base import to_variable
-          import numpy as np
+          import numpy
 
           with fluid.dygraph.guard():
              data = numpy.random.random((3, 32, 32, 5)).astype('float32')
