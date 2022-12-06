@@ -16,8 +16,6 @@ import unittest
 
 import paddle
 
-from ...layers import utils
-
 
 class StaticShapeInferrenceTest(unittest.TestCase):
     def test_static_graph(self):
@@ -27,7 +25,16 @@ class StaticShapeInferrenceTest(unittest.TestCase):
         )
         shape = paddle.shape(data)  # shape should be [-1, 2]
         x = paddle.uniform(shape)
-        utils.try_set_static_shape_tensor(x, shape)
+
+        if -1 in x.shape:
+            if shape.op is not None:
+                generate_op = shape.op
+                if generate_op.type == 'shape':
+                    var = shape.block.vars[generate_op.input_arg_names[0]]
+                    shape = var.shape
+        if shape:
+            x.desc.set_shape(shape)
+
         self.assertEqual(x.shape, data.shape)
         paddle.disable_static()
 
