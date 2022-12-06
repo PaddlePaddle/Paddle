@@ -180,6 +180,7 @@ function make_ubuntu18_cu112_dockerfile(){
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub distro \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
