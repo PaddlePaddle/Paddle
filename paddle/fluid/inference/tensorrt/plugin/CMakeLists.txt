@@ -24,7 +24,7 @@ list(
   mish_op_plugin.cu
   pool3d_op_plugin.cu
   deformable_conv_op_plugin.cu
-  matmul_op_int8_plugin.cu
+  matrix_multiply_op_int8_plugin.cu
   multihead_matmul_roformer_plugin.cu
   transformer_input_convert_plugin.cu
   remove_padding_plugin.cu

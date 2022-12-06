@@ -85,6 +85,7 @@ void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
   "adaptive_pool2d_convert_global_pass",       //
+      "trt_map_ops_to_matrix_multiply_pass",   //
       "shuffle_channel_detect_pass",           //
       "quant_conv2d_dequant_fuse_pass",        //
       "delete_fill_constant_op_pass",          //
@@ -94,8 +95,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_quant_dequant_linear_op_pass",   //
       "identity_scale_op_clean_pass",          //
       "add_support_int8_pass",                 //
-      // "fc_fuse_pass",                        //
-      "simplify_with_basic_ops_pass",  //
+      "simplify_with_basic_ops_pass",          //
 
 #if defined _WIN32
 #else
@@ -118,12 +118,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       // "set_transformer_input_convert_pass",       //
       "conv_bn_fuse_pass",                           //
       "unsqueeze2_eltwise_fuse_pass",                //
-      "trt_squeeze2_matmul_fuse_pass",               //
-      "trt_flatten2_matmul_fuse_pass",               //
-      "trt_map_matmul_v2_to_mul_pass",               //
-      "trt_map_matmul_v2_to_matmul_pass",            //
-      "trt_map_matmul_to_mul_pass",                  //
-      "fc_fuse_pass",                                //
       "conv_elementwise_add_fuse_pass",              //
       "remove_padding_recover_padding_pass",         //
       "delete_remove_padding_recover_padding_pass",  //
@@ -196,10 +190,6 @@ const std::vector<std::string> kTrtLowerPrecisionPasses{
     // "conv_eltwiseadd_bn_fuse_pass",
     "trt_embedding_eltwise_layernorm_fuse_pass",
     "trt_skip_layernorm_fuse_pass",
-    "trt_map_matmul_v2_to_mul_pass",
-    "trt_map_matmul_v2_to_matmul_pass",
-    "trt_map_matmul_to_mul_pass",
-    "fc_fuse_pass",
     "tensorrt_subgraph_pass",
 };
 

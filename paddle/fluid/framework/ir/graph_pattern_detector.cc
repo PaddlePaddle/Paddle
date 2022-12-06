@@ -3890,6 +3890,16 @@ PDNode *patterns::MergeLayernormPattern::operator()(PDNode *in) {
   return layernorm_40_out;
 }
 
+void patterns::MulMatmulMatmulV2::operator()(
+    const std::unordered_set<std::string> &ops_type) {
+  auto ops = pattern->NewNode(ops_repr())->assert_is_ops(ops_type);
+  auto ops_out = pattern->NewNode(ops_out_repr())
+                     ->AsOutput()
+                     ->assert_is_ops_output(ops_type, "Out");
+
+  ops->LinksTo({ops_out});
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

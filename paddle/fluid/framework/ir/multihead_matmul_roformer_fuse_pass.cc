@@ -37,21 +37,20 @@ static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
 }
 
 PDNode* MultiHeadMatmulRoformerPattern::operator()() {
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
-  input0->assert_is_ops_input(matmul_ops);
+  input0->assert_is_op_input("matrix_multiply");
 
   auto* input_cos = pattern->NewNode(input_cos_repr());
   input_cos->assert_is_op_input("elementwise_mul", "Y");
   auto* input_sin = pattern->NewNode(input_sin_repr());
   input_sin->assert_is_op_input("elementwise_mul", "Y");
   // First path with scale
-  auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_ops(matmul_ops);
+  auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_op("matrix_multiply");
   auto* mul0_w_var = pattern->NewNode(mul0_w_repr())
                          ->AsInput()
-                         ->assert_is_ops_input(matmul_ops, "Y");
+                         ->assert_is_op_input("matrix_multiply", "Y");
   auto* mul0_out_var =
-      pattern->NewNode(mul0_out_repr())->assert_is_ops_output(matmul_ops);
+      pattern->NewNode(mul0_out_repr())->assert_is_op_output("matrix_multiply");
 
   decltype(mul0) eltadd0;
   decltype(mul0) eltadd0_b_var;
@@ -114,9 +113,9 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   eltadd_q_out_var->AsIntermediate()->assert_is_op_input("scale");
 
   auto* matmul_qk =
-      pattern->NewNode(matmul_qk_repr())->assert_is_ops(matmul_ops);
-  auto* matmul_qk_out_var =
-      pattern->NewNode(matmul_qk_out_repr())->assert_is_ops_output(matmul_ops);
+      pattern->NewNode(matmul_qk_repr())->assert_is_op("matrix_multiply");
+  auto* matmul_qk_out_var = pattern->NewNode(matmul_qk_out_repr())
+                                ->assert_is_op_output("matrix_multiply");
   matmul_qk_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
 
   auto* eltadd_qk =
@@ -132,12 +131,12 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(softmax_qk_repr())->assert_is_op("softmax");
   auto* softmax_qk_out_var =
       pattern->NewNode(softmax_qk_out_repr())->assert_is_op_output("softmax");
-  softmax_qk_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops);
+  softmax_qk_out_var->AsIntermediate()->assert_is_op_input("matrix_multiply");
 
   auto* matmul_qkv =
-      pattern->NewNode(matmul_qkv_repr())->assert_is_ops(matmul_ops);
-  auto* matmul_qkv_out_var =
-      pattern->NewNode(matmul_qkv_out_repr())->assert_is_ops_output(matmul_ops);
+      pattern->NewNode(matmul_qkv_repr())->assert_is_op("matrix_multiply");
+  auto* matmul_qkv_out_var = pattern->NewNode(matmul_qkv_out_repr())
+                                 ->assert_is_op_output("matrix_multiply");
   matmul_qkv_out_var->AsIntermediate()->assert_is_op_input("transpose2");
 
   auto* transpose2_qkv =
@@ -150,20 +149,20 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(reshape2_qkv_repr())->assert_is_op("reshape2");
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
-  reshape2_qkv_out_var->assert_is_ops_input(matmul_ops);
+  reshape2_qkv_out_var->assert_is_op_input("matrix_multiply");
 
   auto* scale = pattern->NewNode(scale_repr())->assert_is_op("scale");
   auto* scale_out_var =
       pattern->NewNode(scale_out_repr())->assert_is_op_output("scale");
-  scale_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops);
+  scale_out_var->AsIntermediate()->assert_is_op_input("matrix_multiply");
 
   // Second path to matmul
-  auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_ops(matmul_ops);
+  auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_op("matrix_multiply");
   auto* mul1_w_var = pattern->NewNode(mul1_w_repr())
                          ->AsInput()
-                         ->assert_is_ops_input(matmul_ops, "Y");
+                         ->assert_is_op_input("matrix_multiply", "Y");
   auto* mul1_out_var =
-      pattern->NewNode(mul1_out_repr())->assert_is_ops_output(matmul_ops);
+      pattern->NewNode(mul1_out_repr())->assert_is_op_output("matrix_multiply");
 
   decltype(mul1) eltadd1;
   decltype(mul1) eltadd1_b_var;
@@ -222,15 +221,15 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(eltadd_k_repr())->assert_is_op("elementwise_add");
   auto* eltadd_k_out_var = pattern->NewNode(eltadd_k_out_repr())
                                ->assert_is_op_output("elementwise_add");
-  eltadd_k_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops);
+  eltadd_k_out_var->AsIntermediate()->assert_is_op_input("matrix_multiply");
 
   // Third path to matmul
-  auto* mul2 = pattern->NewNode(mul2_repr())->assert_is_ops(matmul_ops);
+  auto* mul2 = pattern->NewNode(mul2_repr())->assert_is_op("matrix_multiply");
   auto* mul2_w_var = pattern->NewNode(mul2_w_repr())
                          ->AsInput()
-                         ->assert_is_ops_input(matmul_ops, "Y");
+                         ->assert_is_op_input("matrix_multiply", "Y");
   auto* mul2_out_var =
-      pattern->NewNode(mul2_out_repr())->assert_is_ops_output(matmul_ops);
+      pattern->NewNode(mul2_out_repr())->assert_is_op_output("matrix_multiply");
 
   decltype(mul2) eltadd2;
   decltype(mul2) eltadd2_b_var;
@@ -257,8 +256,8 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(transpose2_2_repr())->assert_is_op("transpose2");
   auto* transpose2_2_out_var = pattern->NewNode(transpose2_2_out_repr())
                                    ->assert_is_op_output("transpose2");
-  transpose2_2_out_var->AsIntermediate()->assert_is_ops_input(
-      matmul_ops);  // link to matmul qkv
+  transpose2_2_out_var->AsIntermediate()->assert_is_op_input(
+      "matrix_multiply");  // link to matmul qkv
 
   // Q path
   mul0->LinksFrom({input0, mul0_w_var}).LinksTo({mul0_out_var});
@@ -313,23 +312,6 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
 }  // namespace patterns
 
 MultiHeadMatmulRoformerFusePass::MultiHeadMatmulRoformerFusePass() {
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
-      .IsTensor()
-      .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumEQ(2)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
-      .End();
-
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       // in bias, shape is (B, S, N*H),
@@ -390,45 +372,6 @@ MultiHeadMatmulRoformerFusePass::MultiHeadMatmulRoformerFusePass() {
       .End()
       .AddAttr("axis")  // {0, 2, 1, 3}
       .IsType<std::vector<int>>()
-      .End();
-
-  // QK (B, H, S, N)*(B, H, S, N) -> (B, H, S, S)
-  // QKV (B, H, S, S)*(B, H, S, N) -> (B, H, S, N)
-  AddOpCompat(OpCompat("matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()  // QK(anyvalue, will copy to new op) QKV(1.0)
-      .End()
-      .AddAttr("transpose_X")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("transpose_Y")  // QK(true) QKV(false)
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("trans_y")  // QK(true) QKV(false)
-      .IsType<bool>()
       .End();
 
   AddOpCompat(OpCompat("softmax"))
@@ -825,6 +768,4 @@ REGISTER_PASS_CAPABILITY(multihead_matmul_roformer_fuse_pass)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
-            .EQ("matmul_v2", 0)
             .EQ("softmax", 0));

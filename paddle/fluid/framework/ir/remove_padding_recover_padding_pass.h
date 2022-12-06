@@ -87,14 +87,14 @@ struct MultiheadMatmul : public PatternBase {
   PATTERN_DECL_NODE(multihead_matmul_out);
 };
 
-struct Fc : public PatternBase {
-  Fc(PDPattern *pattern, const std::string &name_scope)
-      : PatternBase(pattern, name_scope, "fc") {}
+struct MatrixMultiply : public PatternBase {
+  MatrixMultiply(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "matrix_multiply") {}
 
   void operator()();
 
-  PATTERN_DECL_NODE(fc_input);
-  PATTERN_DECL_NODE(fc_op);
+  PATTERN_DECL_NODE(matrix_multiply_input);
+  PATTERN_DECL_NODE(matrix_multiply_op);
 };
 
 struct Activation : public PatternBase {
