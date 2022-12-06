@@ -844,7 +844,6 @@
     {x : X}
   outputs :
     out : Out
-  support_tensor : num_samples
   scalar :
     num_samples :
       data_type : int
@@ -1223,11 +1222,6 @@
     k :
       data_type : int
       tensor_name : K
-  # int_array :
-  #   shape :
-  #     data_type : int64_t
-  #     tensor_name : Shape
-  #     tensors_name  : ShapeList
 
 - op : trace
   inputs :
