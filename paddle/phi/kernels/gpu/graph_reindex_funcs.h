@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T>
 inline __device__ size_t Hash(T id, int64_t size) {
-  return static_cast<unsigned long long int>(id) % size;
+  return static_cast<unsigned long long int>(id) % size;  // NOLINT
 }
 
 template <typename T>

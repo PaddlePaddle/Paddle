@@ -25,7 +25,7 @@ class MemRegion {
  public:
   MemRegion() {
     _cap = 2 * 1024 * 1024;
-    _buf = (char*)malloc(_cap);
+    _buf = reinterpret_cast<char*>(malloc(_cap));
     _cur = 0;
     _file_idx = -1;
   }
@@ -82,26 +82,25 @@ class SSDSparseTable : public MemorySparseTable {
   int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
   int32_t Flush() override { return 0; }
-  virtual int32_t Shrink(const std::string& param) override;
-  virtual void Clear() override {
+  int32_t Shrink(const std::string& param) override;
+  void Clear() override {
     for (int i = 0; i < _real_local_shard_num; ++i) {
       _local_shards[i].clear();
     }
   }
 
-  virtual int32_t Save(const std::string& path,
-                       const std::string& param) override;
+  int32_t Save(const std::string& path, const std::string& param) override;
   int32_t SaveWithString(const std::string& path, const std::string& param);
   int32_t SaveWithStringMultiOutput(const std::string& path,
                                     const std::string& param);
   int32_t SaveWithBinary(const std::string& path, const std::string& param);
-  virtual int32_t SaveCache(
+  int32_t SaveCache(
       const std::string& path,
       const std::string& param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel) override;
-  virtual double GetCacheThreshold() override { return _local_show_threshold; }
-  virtual int64_t CacheShuffle(
+  double GetCacheThreshold() override { return _local_show_threshold; }
+  int64_t CacheShuffle(
       const std::string& path,
       const std::string& param,
       double cache_threshold,
@@ -110,9 +109,8 @@ class SSDSparseTable : public MemorySparseTable {
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
       const std::vector<Table*>& table_ptrs) override;
-  //加载path目录下数据
-  virtual int32_t Load(const std::string& path,
-                       const std::string& param) override;
+  // 加载path目录下数据
+  int32_t Load(const std::string& path, const std::string& param) override;
   int32_t LoadWithString(size_t file_start_idx,
                          size_t end_idx,
                          const std::vector<std::string>& file_list,

@@ -145,7 +145,7 @@ struct NeighborSampleQuery {
       int gpu_id, int table_idx, uint64_t src_nodes, int sample_size, int len) {
     this->table_idx = table_idx;
     this->gpu_id = gpu_id;
-    this->src_nodes = (uint64_t *)src_nodes;
+    this->src_nodes = reinterpret_cast<uint64_t *>(src_nodes);
     this->sample_size = sample_size;
     this->len = len;
   }
@@ -202,8 +202,8 @@ struct NeighborSampleResult {
       actual_sample_size_mem =
           memory::AllocShared(place, _key_size * sizeof(int));
     }
-    val = (uint64_t *)val_mem->ptr();
-    actual_sample_size = (int *)actual_sample_size_mem->ptr();
+    val = reinterpret_cast<uint64_t *>(val_mem->ptr());
+    actual_sample_size = reinterpret_cast<int *>(actual_sample_size_mem->ptr());
   }
 
   void display() {
@@ -306,7 +306,7 @@ struct NeighborSampleResult {
     delete[] sample_keys;
     return graph;
   }
-  NeighborSampleResult(){};
+  NeighborSampleResult() {}
   ~NeighborSampleResult() {}
 };
 
@@ -339,8 +339,8 @@ struct NeighborSampleResultV2 {
       actual_sample_size_mem =
           memory::AllocShared(place, _key_size * _edge_to_id_len * sizeof(int));
     }
-    val = (uint64_t *)val_mem->ptr();
-    actual_sample_size = (int *)actual_sample_size_mem->ptr();
+    val = reinterpret_cast<uint64_t *>(val_mem->ptr());
+    actual_sample_size = reinterpret_cast<int *>(actual_sample_size_mem->ptr());
   }
   NeighborSampleResultV2() {}
   ~NeighborSampleResultV2() {}
@@ -356,7 +356,7 @@ struct NodeQueryResult {
     platform::CUDADeviceGuard guard(dev_id);
     platform::CUDAPlace place = platform::CUDAPlace(dev_id);
     val_mem = memory::AllocShared(place, query_size * sizeof(uint64_t));
-    val = (uint64_t *)val_mem->ptr();
+    val = reinterpret_cast<uint64_t *>(val_mem->ptr());
     actual_sample_size = 0;
   }
   void display() {
@@ -380,7 +380,7 @@ struct NodeQueryResult {
   NodeQueryResult() {
     val = NULL;
     actual_sample_size = 0;
-  };
+  }
   ~NodeQueryResult() {}
 };  // end of struct NodeQueryResult
 

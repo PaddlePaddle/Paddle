@@ -103,7 +103,7 @@ class GpuRDMAChecker {
   static GpuRDMAChecker* get(int device_num);
 
  public:
-  GpuRDMAChecker(int device_num);
+  explicit GpuRDMAChecker(int device_num);
   // rdma
   bool need_rdma_trans(void);
   bool is_device_support_rdma(int devid);

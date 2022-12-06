@@ -300,8 +300,8 @@ int GraphGpuWrapper::get_all_feature_ids(
       ->cpu_graph_table_->get_all_feature_ids(type, idx, slice_num, output);
 }
 
-void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
-                                   std::vector<std::string> &node_types) {
+void GraphGpuWrapper::set_up_types(const std::vector<std::string> &edge_types,
+                                   const std::vector<std::string> &node_types) {
   id_to_edge = edge_types;
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
     int res = edge_to_id.size();
