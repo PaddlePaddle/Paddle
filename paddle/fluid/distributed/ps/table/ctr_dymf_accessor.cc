@@ -319,7 +319,8 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
-  auto mf_dim = int(common_feature_value.MfDim(const_cast<float*>(v)));
+  auto mf_dim =
+      static_cast<int>(common_feature_value.MfDim(const_cast<float*>(v)));
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
     for (auto i = common_feature_value.EmbedxG2SumIndex();

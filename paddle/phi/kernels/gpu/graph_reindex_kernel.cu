@@ -28,7 +28,6 @@
 namespace cub = hipcub;
 #endif
 
-//#include "cub/cub.cuh"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -93,9 +92,9 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
   int total_unique_items = 0;
 #ifdef PADDLE_WITH_HIP
   hipMemcpy(&total_unique_items,
-             item_count_ptr + num_input,
-             sizeof(int),
-             hipMemcpyDeviceToHost);
+            item_count_ptr + num_input,
+            sizeof(int),
+            hipMemcpyDeviceToHost);
 #else
   cudaMemcpy(&total_unique_items,
              item_count_ptr + num_input,
@@ -359,9 +358,9 @@ void ReindexDst(const Context& dev_ctx,
             reindex_dst_data + begin);
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(&count_i,
-               thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
-               sizeof(int),
-               hipMemcpyDeviceToHost);
+              thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+              sizeof(int),
+              hipMemcpyDeviceToHost);
 #else
     cudaMemcpy(&count_i,
                thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
