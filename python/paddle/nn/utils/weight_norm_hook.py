@@ -70,7 +70,6 @@ def _weight_norm(v, g, dim):
     shape = v.shape
     ndims = len(shape)
     paddle.enable_static()
-
     if dim == -1:
         v_normalized = v / (paddle.sqrt(paddle.sum(paddle.square(v))) + 1e-12)
     elif dim == 0:
@@ -91,6 +90,7 @@ def _weight_norm(v, g, dim):
         v_normalized = paddle.linalg.norm(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
+    paddle.disable_static()
     weight = F.elementwise_mul(
         v_normalized, g, axis=dim if dim is not None else -1
     )
