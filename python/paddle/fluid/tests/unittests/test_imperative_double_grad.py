@@ -766,5 +766,463 @@ class TestDoubleGradBasics(TestCase):
             )
 
 
+# case1: ddy is none, no boardcast,dims != 1
+class TestDygraphDoubleGradMatmulCase1(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([3, 3]).astype('float32')
+        input_numpy_y = np.random.random([3, 3]).astype('float32')
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='float32'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='float32'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
+                )
+                (dx,) = paddle.grad(
+                    [out], [x], [dout], retain_graph=True, create_graph=True
+                )
+                ddx = paddle.to_tensor(
+                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dx],
+                    [x, y, dout],
+                    [ddx],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.zeros([3, 3], dtype="float32")
+            dy_double_grad = np.matmul(
+                np.ones([3, 3], dtype="float32"),
+                np.ones([3, 3], dtype="float32"),
+            )
+            ddout_actual = np.matmul(
+                np.ones([3, 3], dtype="float32"), input_numpy_y
+            )
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# case2: ddx is none,no boardcast, dims != 1
+class TestDygraphDoubleGradMatmulCase2(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([3, 3]).astype('float32')
+        input_numpy_y = np.random.random([3, 3]).astype('float32')
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='float32'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='float32'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
+                )
+                (dy,) = paddle.grad(
+                    [out], [y], [dout], retain_graph=True, create_graph=True
+                )
+                ddy = paddle.to_tensor(
+                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dy],
+                    [x, y, dout],
+                    [ddy],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.matmul(
+                np.ones([3, 3], dtype="float32"),
+                np.ones([3, 3], dtype="float32"),
+            )
+            dy_double_grad = np.zeros([3, 3], dtype="float32")
+            ddout_actual = np.matmul(
+                input_numpy_x, np.ones([3, 3], dtype="float32")
+            )
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# case3: ddx is none, dims = 1
+class TestDygraphDoubleGradMatmulCase3(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype('float32')
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='float32'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='float32'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([1]), stop_gradient=False, dtype='float32'
+                )
+                (dy,) = paddle.grad(
+                    [out], [y], [dout], retain_graph=True, create_graph=True
+                )
+                ddy = paddle.to_tensor(
+                    np.ones([3]), stop_gradient=False, dtype='float32'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dy],
+                    [x, y, dout],
+                    [ddy],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.ones([3], dtype="float32")
+            dy_double_grad = np.zeros([3], dtype="float32")
+            ddout_actual = np.matmul(
+                input_numpy_x, np.ones([3], dtype="float32")
+            )
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# case4: ddy is none, dims = 1
+class TestDygraphDoubleGradMatmulCase4(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype('float32')
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='float32'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='float32'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([1]), stop_gradient=False, dtype='float32'
+                )
+                (dx,) = paddle.grad(
+                    [out], [x], [dout], retain_graph=True, create_graph=True
+                )
+                ddx = paddle.to_tensor(
+                    np.ones([3]), stop_gradient=False, dtype='float32'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dx],
+                    [x, y, dout],
+                    [ddx],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.zeros([3], dtype="float32")
+            dy_double_grad = np.ones([3], dtype="float32")
+            ddout_actual = np.matmul(
+                input_numpy_y, np.ones([3], dtype="float32")
+            )
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# case5: ddx is none, boardcast, dims != 1
+class TestDygraphDoubleGradMatmulCase5(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([2, 1]).astype('float32')
+        input_numpy_y = np.random.random([1]).astype('float32')
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='float32'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='float32'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([2]), stop_gradient=False, dtype='float32'
+                )
+                (dy,) = paddle.grad(
+                    [out], [y], [dout], retain_graph=True, create_graph=True
+                )
+                ddy = paddle.to_tensor(
+                    np.ones([1]), stop_gradient=False, dtype='float32'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dy],
+                    [x, y, dout],
+                    [ddy],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.ones([2, 1], dtype="float32")
+            dy_double_grad = np.zeros([1], dtype="float32")
+            ddout_actual = np.matmul(
+                input_numpy_x, np.ones([1], dtype="float32")
+            )
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# case6: ddy is none, boardcast, dims != 1
+class TestDygraphDoubleGradMatmulCase6(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([2, 1]).astype('float32')
+        input_numpy_y = np.random.random([1]).astype('float32')
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='float32'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='float32'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([2]), stop_gradient=False, dtype='float32'
+                )
+                (dx,) = paddle.grad(
+                    [out], [x], [dout], retain_graph=True, create_graph=True
+                )
+                ddx = paddle.to_tensor(
+                    np.ones([2, 1]), stop_gradient=False, dtype='float32'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dx],
+                    [x, y, dout],
+                    [ddx],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.zeros([2, 1], dtype="float32")
+            dy_double_grad = np.ones([1], dtype="float32") * 2
+            ddout_actual = np.ones([2], dtype="float32") * input_numpy_y[0]
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# case7: ddx is none, dims = 1, complex dtype
+class TestDygraphDoubleGradMatmulCase7(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_y_conj = np.conjugate(input_numpy_y)
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='complex64'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='complex64'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([1]), stop_gradient=False, dtype='complex64'
+                )
+                (dx,) = paddle.grad(
+                    [out], [x], [dout], retain_graph=True, create_graph=True
+                )
+                ddx = paddle.to_tensor(
+                    np.ones([3]), stop_gradient=False, dtype='complex64'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dx],
+                    [x, y, dout],
+                    [ddx],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.zeros(
+                [3], dtype="float32"
+            ) + 0j * np.zeros([3], dtype="float32")
+            dy_double_grad = np.ones([3], dtype="float32") + 0j * np.ones(
+                [3], dtype="float32"
+            )
+            ddout_actual = np.matmul(
+                input_numpy_y_conj, np.ones([3], dtype="float32")
+            )
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# case8: ddy is none, dims = 1, complex dtype
+class TestDygraphDoubleGradMatmulCase8(TestCase):
+    def test_matmul_double_grad(self):
+        input_numpy_x = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_x_conj = np.conjugate(input_numpy_x)
+
+        def actual():
+            with _test_eager_guard():
+                x = paddle.to_tensor(
+                    input_numpy_x, stop_gradient=False, dtype='complex64'
+                )
+                y = paddle.to_tensor(
+                    input_numpy_y, stop_gradient=False, dtype='complex64'
+                )
+                out = paddle.matmul(x, y, False, False)
+
+                dout = paddle.to_tensor(
+                    np.ones([1]), stop_gradient=False, dtype='complex64'
+                )
+                (dy,) = paddle.grad(
+                    [out], [y], [dout], retain_graph=True, create_graph=True
+                )
+                ddy = paddle.to_tensor(
+                    np.ones([3]), stop_gradient=False, dtype='complex64'
+                )
+                dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                    [dy],
+                    [x, y, dout],
+                    [ddy],
+                    retain_graph=True,
+                    create_graph=True,
+                )
+                return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_actual = np.ones([3], dtype="float32")
+            dy_double_grad = np.zeros([3], dtype="float32")
+            ddout_actual = np.matmul(
+                input_numpy_x_conj, np.ones([3], dtype="float32")
+            )
+            return dx_double_grad_actual, dy_double_grad, ddout_actual
+
+        expected_results = expected()
+        places = ["cpu", "gpu:0"]
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
 if __name__ == '__main__':
     unittest.main()

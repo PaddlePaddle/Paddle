@@ -310,7 +310,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
           ctx, *tensor_x, Scalar(T(0.0, 0.0)), tensor_x->dtype(), tensor_dx);
     }
 
-    if (tensor_dy) {
+    if (tensor_dy && tensor_ddx) {
       auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_ddx = tensor_ddx->data<T>();
       const DDim& dim = tensor_dy->dims();
@@ -489,7 +489,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
           ctx, *tensor_x, Scalar(0.0), tensor_x->dtype(), tensor_dx);
     }
 
-    if (tensor_dy) {
+    if (tensor_dy && tensor_ddx) {
       auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_ddx = tensor_ddx->data<T>();
       const DDim& dim = tensor_dy->dims();
@@ -502,7 +502,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
         if (0 == i % step) ++s;
         data_dy[i] = data_dout[s] * data_ddx[i];
       }
-    } else if (tensor_dy && !tensor_ddx) {
+    } else if (tensor_dy) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *tensor_y, Scalar(0.0), tensor_y->dtype(), tensor_dy);
     }
