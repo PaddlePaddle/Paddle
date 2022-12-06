@@ -33,6 +33,7 @@ list(
   preln_residual_bias_plugin.cu
   fused_token_prune_op_plugin.cu
   layernorm_shift_partition_op.cu
+  reverse_roll_op_plugin.cu
   prelnlayernorm_shift_partition_op.cu
   merge_layernorm_op_plugin.cu
   skip_merge_layernorm_op_plugin.cu
