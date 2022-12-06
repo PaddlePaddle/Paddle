@@ -34,7 +34,15 @@ class TestCrossStepOverlap(unittest.TestCase):
         if not paddle.fluid.core.is_compiled_with_cuda():
             return
 
-        # In this test case, z=x+y is calculated in the default stream, and at the same time, numerous reduce_min ops that output to y are executed in another stream (i.e., the custom stream). These reduce_min ops are carefully designed that their kernels calculation will overlap with the fill_constant kernels (output to x and y) in the next step, and therefore cross-step multi-stream synchronization is required. A Event should be recorded after the last reduce_min in the first step and waited before the fill_constant in the second step. Otherwise, the result of z will be wrong.
+        # In this test case, z=x+y is calculated in the default stream,
+        # and at the same time, numerous reduce_min ops that output to y
+        # are executed in another stream (i.e., the custom stream).
+        # These reduce_min ops are carefully designed that their kernels
+        # calculation will overlap with the fill_constant kernels (output
+        # to x and y) in the next step, and therefore cross-step multi-stream
+        # synchronization is required. A Event should be recorded after the
+        # last reduce_min in the first step and waited before the fill_constant
+        # in the second step. Otherwise, the result of z will be wrong.
         program = static.Program()
         with static.program_guard(program):
             x = paddle.full(

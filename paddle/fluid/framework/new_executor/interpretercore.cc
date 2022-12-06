@@ -577,12 +577,12 @@ void InterpreterCore::Convert(
 
   BuildOperatorDependences();
 
-  // NOTE(Ruibiao): For cross-step multi-stream overlap, a event may be recorded
-  // in the first step and waited in the second step. So in the first step, the
-  // WaitEvent may be called without RecordEvent. Conisteing that before the
-  // first call to RecordEvent, an Event represents an empty set of work and
-  // WaitEvent always return succeed immediately, we omit the prelude-record for
-  // the first step here.
+  // NOTE(Ruibiao): For cross-step stream synchronization, an event may be
+  // recorded in the first step and waited in the second step. So, in the first
+  // step, the WaitEvent may be called without RecordEvent. Considering that
+  // before the first call to RecordEvent, an Event represents an empty set of
+  // work and WaitEvent always return succeed immediately, we omit the
+  // prelude-record for the first step here.
   stream_analyzer_.ConstructEvents(&vec_instruction_);
 
   // add event for the input var of jit program, since there are async copied
