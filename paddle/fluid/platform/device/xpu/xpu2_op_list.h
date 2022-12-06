@@ -663,6 +663,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"tile_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"transpose2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
