@@ -145,7 +145,8 @@ struct BaseMoeProblemVisitor {
   void advance(int32_t grid_size) { tile_idx += grid_size; }
 
   CUTLASS_HOST_DEVICE
-  static void possibly_transpose_problem(cutlass::gemm::GemmCoord problem) {
+  static void possibly_transpose_problem(
+      cutlass::gemm::GemmCoord &problem) {  // NOLINT
     ProblemSizeHelper::possibly_transpose_problem(problem);
   }
 
@@ -229,7 +230,7 @@ struct MoeProblemVisitor<ProblemSizeHelper,
   //
   CUTLASS_DEVICE
   MoeProblemVisitor(Params const &params_,
-                    SharedStorage shared_storage_,
+                    SharedStorage &shared_storage_,  // NOLINT
                     int32_t block_idx)
       : Base(params_, block_idx),
         problem_ending_tile(0),
@@ -370,7 +371,7 @@ struct GemmMoeProblemVisitor
   //
   CUTLASS_DEVICE
   GemmMoeProblemVisitor(Params const &params_,
-                        SharedStorage shared_storage_,
+                        SharedStorage &shared_storage_,  // NOLINT
                         int32_t block_idx)
       : Base(params_, shared_storage_, block_idx) {}
 };
@@ -396,7 +397,7 @@ template <
     typename platform::enable_if<use_dq_gemm<Mma>::value, bool>::type = true>
 CUTLASS_DEVICE static void run_mma(Mma mma,
                                    int gemm_k_iterations,
-                                   typename Mma::FragmentC *accum,
+                                   typename Mma::FragmentC &accum,  // NOLINT
                                    typename Mma::IteratorA iterator_A,
                                    typename Mma::IteratorB iterator_B,
                                    typename Mma::FragmentC const &src_accum,
@@ -412,7 +413,7 @@ CUTLASS_DEVICE static void run_mma(Mma mma,
       tb_offset_scale);
 
   mma(gemm_k_iterations,
-      *accum,
+      accum,
       iterator_A,
       iterator_B,
       iterator_scale,
@@ -426,7 +427,7 @@ template <
     typename platform::enable_if<!use_dq_gemm<Mma>::value, bool>::type = true>
 CUTLASS_DEVICE static void run_mma(Mma mma,
                                    int gemm_k_iterations,
-                                   typename Mma::FragmentC *accum,
+                                   typename Mma::FragmentC &accum,  // NOLINT
                                    typename Mma::IteratorA iterator_A,
                                    typename Mma::IteratorB iterator_B,
                                    typename Mma::FragmentC const &src_accum,
@@ -434,7 +435,7 @@ CUTLASS_DEVICE static void run_mma(Mma mma,
                                    MatrixCoord scale_extent,
                                    const int thread_idx,
                                    MatrixCoord tb_offset_scale) {
-  mma(gemm_k_iterations, *accum, iterator_A, iterator_B, src_accum);
+  mma(gemm_k_iterations, accum, iterator_A, iterator_B, src_accum);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -615,9 +616,9 @@ struct MoeFCGemm {
           ptr_D(nullptr) {}
 
     CUTLASS_HOST_DEVICE
-    explicit Params(Arguments const &args,
-                    void *workspace = nullptr,
-                    int tile_count = 0)
+    Params(Arguments const &args,
+           void *workspace = nullptr,
+           int tile_count = 0)  // NOLINT
         : problem_visitor(args.total_rows_before_expert,
                           args.gemm_n,
                           args.gemm_k,
@@ -698,7 +699,8 @@ struct MoeFCGemm {
 
   /// Executes one GEMM
   CUTLASS_DEVICE
-  void operator()(Params const &params, SharedStorage shared_storage) {
+  void operator()(Params const &params,
+                  SharedStorage &shared_storage) {  // NOLINT
     //
     // These types shadow the type-level definitions and support the ability to
     // implement a 'transposed' GEMM that computes the transposed problems.
@@ -737,8 +739,8 @@ struct MoeFCGemm {
       GemmCoord grid_shape = problem_visitor.grid_shape(problem_size);
 
       cutlass::gemm::GemmCoord threadblock_offset(
-          static_cast<int>(cta_idx / grid_shape.n()) * Mma::Shape::kM,
-          static_cast<int>(cta_idx % grid_shape.n()) * Mma::Shape::kN,
+          int(cta_idx / grid_shape.n()) * Mma::Shape::kM,  // NOLINT
+          int(cta_idx % grid_shape.n()) * Mma::Shape::kN,  // NOLINT
           0);
 
       // Load element pointers. Exchange pointers and strides if working on the
@@ -751,7 +753,7 @@ struct MoeFCGemm {
           reinterpret_cast<ElementA *>(params.ptr_A) + rows_to_jump * gemm_k;
       typename LayoutA::LongIndex ldm_A = gemm_k;
 
-      char *byte_ptr_B = (reinterpret_cast<char *>(params.ptr_B)) +
+      char *byte_ptr_B = ((char *)params.ptr_B) +  // NOLINT
                          problem_idx * bytes_per_expert_matrix;
       ElementB *ptr_B = reinterpret_cast<ElementB *>(byte_ptr_B);
       typename LayoutB::LongIndex ldm_B =
@@ -816,7 +818,7 @@ struct MoeFCGemm {
           params.weight_scales + problem_idx * problem_size.n();
       run_mma<Mma>(mma,
                    gemm_k_iterations,
-                   &accumulators,
+                   accumulators,
                    iterator_A,
                    iterator_B,
                    accumulators,
