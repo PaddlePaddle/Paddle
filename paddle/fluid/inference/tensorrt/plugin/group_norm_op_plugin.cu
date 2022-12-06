@@ -116,7 +116,6 @@ int GroupNormPlugin::enqueue(int batch_size,
           "but got channel number:%d, bias's size:%d.",
           C,
           bias_.size()));
-
   float *mean_d = static_cast<float *>(workspace);
   float *variance_d = mean_d + input_shape[0] * groups_;
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
@@ -296,10 +295,6 @@ int GroupNormPluginDynamic::enqueue(
           C,
           bias_.size()));
 
-  int device_id;
-  cudaGetDevice(&device_id);
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
   float *mean_d = static_cast<float *>(workspace);
   float *variance_d = mean_d + input_shape[0] * groups_;
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
@@ -308,7 +303,6 @@ int GroupNormPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-
     phi::GroupNormDirectCUDAFunctor<float, float> group_norm;
     group_norm(stream,
                input,
