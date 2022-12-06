@@ -22,13 +22,12 @@ from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
 from paddle.distributed.auto_parallel.utils import (
-    OP_ROLE_KEY,
-    OpRole,
     is_backward_op,
     is_forward_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.fluid import unique_name
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     AutoMixedPrecisionLists,
