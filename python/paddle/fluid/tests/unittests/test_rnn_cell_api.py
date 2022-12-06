@@ -631,11 +631,11 @@ def def_seq2seq_model(
     )
 
     # loss
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=logits, label=label, soft_label=False
     )
     loss = layers.unsqueeze(loss, axes=[2])
-    max_tar_seq_len = layers.shape(target)[1]
+    max_tar_seq_len = paddle.shape(target)[1]
     tar_mask = layers.sequence_mask(
         target_length, maxlen=max_tar_seq_len, dtype="float32"
     )

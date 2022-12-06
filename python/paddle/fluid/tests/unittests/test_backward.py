@@ -262,7 +262,9 @@ class SimpleNet(BackwardNet):
             name='fc_no_use',
         )
         # loss
-        cost = fluid.layers.square_error_cost(input=predict, label=label)
+        cost = paddle.nn.functional.square_error_cost(
+            input=predict, label=label
+        )
         loss = paddle.mean(cost, name='mean_loss')
 
         return loss
@@ -330,7 +332,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
         y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
-        loss = fluid.layers.square_error_cost(input=y_predict, label=y)
+        loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
         param_names = [
             param.name
