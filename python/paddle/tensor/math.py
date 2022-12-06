@@ -984,31 +984,45 @@ def multiply(x, y, name=None):
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_name="Undifined"):
-    assert op_name in ["add", "subtract", "multiply", "divide"], (
-        "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
-        % op_name
-    )
-    op = getattr(paddle, op_name)
-    x_shape = list(x.shape)
-    y_shape = list(y.shape)
-    if axis == -1 or x_shape == y_shape:
-        return op(x, y, name)
-    if len(x_shape) > len(y_shape):
-        padding = len(x_shape) - len(y_shape) - axis
-        assert padding >= 0, (
-            "The argument axis is out of range (expected to be in range of [0, %d], but got %d).\n"
-            % (len(x_shape) - len(y_shape), axis)
+def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undifined"):
+    if in_dygraph_mode():
+        assert op_type in ["add", "subtract", "multiply", "divide"], (
+            "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
+            % op_type
         )
-        y = y.reshape(([1] * axis + y_shape + [1] * padding))
+        op = getattr(_C_ops, op_type)
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if axis == -1 or len(x_shape) == len(y_shape):
+            return op(x, y)
+        if len(x_shape) > len(y_shape):
+            padding = len(x_shape) - len(y_shape) - axis
+            y = y.reshape(([1] * axis + y_shape + [1] * padding))
+        else:
+            padding = len(y_shape) - len(x_shape) - axis
+            x = x.reshape(([1] * axis + x_shape + [1] * padding))
+        return op(x, y)
+    # opt performance, only dynamic mode needs reshape
     else:
-        padding = len(y_shape) - len(x_shape) - axis
-        assert padding >= 0, (
-            "The argument axis is out of range (expected to be in range of [0, %d], but got %d).\n"
-            % (len(y_shape) - len(x_shape), axis)
-        )
-        x = x.reshape(([1] * axis + x_shape + [1] * padding))
-    return op(x, y, name)
+        OP_NAMEMAPPING = {
+            'add': 'elementwise_add',
+            'subtract': 'elementwise_sub',
+            'multiply': 'elementwise_mul',
+            'divide': 'elementwise_div',
+        }
+        op_type = OP_NAMEMAPPING[op_type]
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def _add_with_axis(x, y, axis=-1, name=None):
