@@ -287,7 +287,6 @@ class SeResNeXt(fluid.dygraph.Layer):
                 num_channels = bottleneck_block._num_channels_out
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
         self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         import math
 
