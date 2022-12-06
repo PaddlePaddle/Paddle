@@ -773,7 +773,7 @@ class ShardingPass(PassBase):
         dep_map = {}
         for i, op in enumerate(main_block.ops):
             if is_sharding_param_broadcast_op(op):
-                broadcast_varname = op.output("Out")
+                broadcast_varname = op.output("Out")[0]
                 group = broadcast_var_to_group_map[broadcast_varname]
                 # in shard coalesce depend to adam
                 if group.is_in_local_shard:
