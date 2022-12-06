@@ -1237,7 +1237,6 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
         FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), out_d_y);
       }
     }
-    //======================================================================
 
     if (d_dy) {
       auto d_dy_mat = d_dy.get();
@@ -1377,7 +1376,7 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
         }
       }
     }
-    
+
     if (out_d_x) {
       if (out_dx_dims != x_help.dims()) {
         out_d_x->Resize(out_dx_dims);
