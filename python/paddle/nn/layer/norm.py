@@ -840,8 +840,10 @@ class BatchNorm(Layer):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle.nn as nn
           from paddle.fluid.dygraph.base import to_variable
           import numpy as np
+
 
           x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
           with fluid.dygraph.guard():
