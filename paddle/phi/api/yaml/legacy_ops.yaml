@@ -1078,15 +1078,6 @@
     data_type : dtype
     backend : place
 
-- op : log_loss
-  args : (Tensor input, Tensor label, float epsilon)
-  output : Tensor
-  infer_meta :
-    func : LogLossInferMeta
-  kernel :
-    func : log_loss
-  backward : log_loss_grad
-
 - op : log_softmax
   args : (Tensor x,  int axis)
   output : Tensor(out)
@@ -1603,18 +1594,6 @@
   optional : boxes_num
   backward : psroi_pool_grad
 
-- op : put_along_axis
-  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [arr]
-  kernel :
-    func : put_along_axis
-    data_type : arr
-  inplace : (arr -> out)
-  backward : put_along_axis_grad
-
 - op : qr
   args : (Tensor x, str mode)
   output : Tensor(q), Tensor(r)
@@ -1796,36 +1775,6 @@
   inplace : (x -> out)
   backward : scale_grad
 
-- op : scatter
-  args : (Tensor x, Tensor index, Tensor updates, bool overwrite)
-  output : Tensor(out)
-  infer_meta :
-    func : ScatterInferMeta
-    dtype : x
-  kernel :
-    func : scatter
-  inplace : (x -> out)
-  backward : scatter_grad
-
-- op : scatter_nd_add
-  args : (Tensor x, Tensor index, Tensor updates)
-  output : Tensor
-  infer_meta :
-    func : ScatterNdAddInferMeta
-    dtype : x
-  kernel :
-    func : scatter_nd_add
-  backward : scatter_nd_add_grad
-
-- op : searchsorted
-  args : (Tensor sorted_sequence, Tensor values, bool out_int32, bool right)
-  output : Tensor(out)
-  infer_meta :
-    func : SearchsortedInferMeta
-  kernel :
-    func : searchsorted
-    data_type : sorted_sequence
-
 - op : segment_pool
   args : (Tensor x, Tensor segment_ids, str pooltype)
   output : Tensor(out), Tensor(summed_ids)
@@ -1835,16 +1784,6 @@
     func : segment_pool
     data_type : x
   backward : segment_pool_grad
-
-- op : selu
-  args : (Tensor x, float scale, float alpha)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : selu
-  backward : selu_grad
 
 - op : send_u_recv
   args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
@@ -1893,14 +1832,6 @@
            shape_sr {selected_rows -> selected_rows}
   data_transform:
     skip_transform : input
-
-- op : shard_index
-  args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value)
-  output : Tensor(out)
-  infer_meta :
-    func : ShardIndexInferMeta
-  kernel :
-    func : shard_index
 
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, bool normalize, int ignore_index)
@@ -2035,15 +1966,6 @@
     data_type : x
   backward : sum_grad
 
-- op : svd
-  args : (Tensor x, bool full_matrices)
-  output : Tensor(u), Tensor(s), Tensor(vh)
-  infer_meta :
-    func : SvdInferMeta
-  kernel :
-    func : svd
-  backward : svd_grad
-
 - op : swish
   args : (Tensor x)
   output : Tensor(out)
@@ -2064,17 +1986,6 @@
     data_type : x
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
-
-- op : take_along_axis
-  args : (Tensor arr, Tensor indices, int axis)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [indices]
-  kernel :
-    func : take_along_axis
-    data_type : arr
-  backward : take_along_axis_grad
 
 - op : temporal_shift
   args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
