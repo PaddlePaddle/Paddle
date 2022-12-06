@@ -241,12 +241,6 @@ nvinfer1::DimsExprs MoeInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  PADDLE_ENFORCE_EQ(nb_inputs,
-                    6,
-                    phi::errors::InvalidArgument(
-                        "inputs of MoeInferMeta should be equal to 6, "
-                        "But received (%s)",
-                        nb_inputs));
   return inputs[0];
 }
 

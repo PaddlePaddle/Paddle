@@ -44,6 +44,10 @@ class MoeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("BMM1", "(Tensor), The bmm1 input tensor of Moe op.");
     AddInput("BIAS1", "(Tensor), The eltwise1 input tensor of Moe op.");
     AddOutput("OUT", "(Tensor), The output tensor of Moe op.");
+    AddAttr<int>("ACT",
+                 R"DOC(act == 0 : gelu, act == 1 : relu.
+        )DOC")
+        .SetDefault(0);
     AddComment(R"DOC()DOC");
   }
 };

@@ -2055,6 +2055,7 @@ void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& bias0,
                   const MetaTensor& bmm1,
                   const MetaTensor& bias1,
+                  int act,
                   MetaTensor* out) {
   out->set_dims(x.dims());
   out->share_lod(x);

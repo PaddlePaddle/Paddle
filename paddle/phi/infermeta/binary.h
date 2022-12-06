@@ -336,6 +336,7 @@ void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& bias0,
                   const MetaTensor& bmm1,
                   const MetaTensor& bias1,
+                  int act,
                   MetaTensor* out);
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
