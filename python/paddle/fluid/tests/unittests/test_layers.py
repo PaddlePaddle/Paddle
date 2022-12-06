@@ -290,7 +290,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
             t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
-            ret = layers.matmul(t, t2)
+            ret = paddle.matmul(t, t2)
             static_ret = self.get_static_graph_result(
                 feed={
                     't': np.ones([3, 3], dtype='float32'),
@@ -303,14 +303,14 @@ class TestLayer(LayerTest):
             with _test_eager_guard():
                 t = np.ones([3, 3], dtype='float32')
                 t2 = np.ones([3, 3], dtype='float32')
-                dy_eager_ret = layers.matmul(
+                dy_eager_ret = paddle.matmul(
                     base.to_variable(t), base.to_variable(t2)
                 )
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = np.ones([3, 3], dtype='float32')
             t2 = np.ones([3, 3], dtype='float32')
-            dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
+            dy_ret = paddle.matmul(base.to_variable(t), base.to_variable(t2))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
