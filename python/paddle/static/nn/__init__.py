@@ -20,11 +20,11 @@ from .common import deform_conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
+from .common import bilinear_tensor_product  # noqa: F401
 from .common import py_func  # noqa: F401
 
 from ...tensor.creation import create_parameter  # noqa: F401
 from ...fluid.layers import batch_norm  # noqa: F401
-from ...fluid.layers import bilinear_tensor_product  # noqa: F401
 from ...fluid.layers import case  # noqa: F401
 from ...fluid.layers import cond  # noqa: F401
 from ...fluid.layers import conv2d  # noqa: F401
@@ -61,8 +61,8 @@ from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
 __all__ = [  # noqa
     'fc',
     'batch_norm',
-    'embedding',
     'bilinear_tensor_product',
+    'embedding',
     'case',
     'cond',
     'conv2d',

@@ -101,8 +101,12 @@ void MatmulGradKernel(const Context &dev_ctx,
 
   if (x_dims.size() != ndims) {
     x_dims = ExtendDimsWithOnes(x_dims, ndims);
-  } else if (y_dims.size() != ndims) {
+  }
+  if (y_dims.size() != ndims) {
     y_dims = ExtendDimsWithOnes(y_dims, ndims);
+  }
+  if (dout_dims.size() != ndims) {
+    dout_dims = ExtendDimsWithOnes(dout_dims, ndims);
   }
 
   // in broadcasting scenario new memory is required because
@@ -150,7 +154,9 @@ void MatmulGradKernel(const Context &dev_ctx,
   }
 
   dx->Resize(x.dims());
+  dx->set_mem_desc(x.mem_desc().reshape(vectorize(x.dims())));
   dy->Resize(y.dims());
+  dy->set_mem_desc(y.mem_desc().reshape(vectorize(y.dims())));
 }
 
 template <typename T, typename Context>
