@@ -1125,14 +1125,34 @@ class InMemoryDataset(DatasetBase):
 
     def set_pass_id(self, pass_id):
         """
-        set_pass_id
+        Set pass id, user can set pass id in gpu graph mode.
+
+        Args:
+            pass_id: pass id.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_pass_id(pass_id)
         """
         self.pass_id = pass_id
         self.dataset.set_pass_id(pass_id)
 
     def get_pass_id(self):
         """
-        get_pass_id
+        Get pass id, user can set pass id in gpu graph mode.
+
+        Returns:
+            The pass id.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              pass_id = dataset.get_pass_id()
         """
         return self.pass_id
 
