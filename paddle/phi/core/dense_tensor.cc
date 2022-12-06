@@ -128,16 +128,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
-    auto holder = allocator->Allocate(bytes);
-    if (holder_) {
-      PADDLE_ENFORCE_LE(
-          numel() * static_cast<int64_t>(SizeOf(dtype)) +
-              static_cast<int64_t>(meta_.offset),
-          static_cast<int64_t>(holder->size()),
-          phi::errors::InvalidArgument(
-              "The size of Holder is not enough to store the Tensor."));
-    }
-    holder_ = std::move(holder);
+    ResetHolder(allocator->Allocate(bytes));
   }
 
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +

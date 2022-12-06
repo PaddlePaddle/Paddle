@@ -22,7 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
@@ -213,15 +212,6 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
       break;
   }
   return nv_type;
-}
-
-static bool IsFloatVar(framework::proto::VarType::Type t) {
-  if (t == framework::proto::VarType::FP16 ||
-      t == framework::proto::VarType::FP32 ||
-      t == framework::proto::VarType::FP64 ||
-      t == framework::proto::VarType::BF16)
-    return true;
-  return false;
 }
 }  // namespace tensorrt
 }  // namespace inference

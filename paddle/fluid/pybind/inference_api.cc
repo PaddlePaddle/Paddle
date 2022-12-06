@@ -32,7 +32,6 @@
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -733,10 +732,6 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false,
            py::arg("use_calib_mode") = true)
-      .def("enable_tensorrt_memory_optim",
-           &AnalysisConfig::EnableTensorRTMemoryOptim,
-           py::arg("engine_memory_sharing") = true,
-           py::arg("sharing_identifier") = 0)
       .def("tensorrt_precision_mode", &AnalysisConfig::tensorrt_precision_mode)
       .def("set_trt_dynamic_shape_info",
            &AnalysisConfig::SetTRTDynamicShapeInfo,

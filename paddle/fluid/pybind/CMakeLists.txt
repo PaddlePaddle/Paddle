@@ -605,6 +605,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
+    list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
@@ -649,5 +650,13 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
+
+  if(APPLE)
+    string(REGEX REPLACE ".+/(.+)" "\\1" PYTHON_LIBRARY_NAME
+                         ${PYTHON_LIBRARIES})
+    # target_link_libraries(${SHARD_LIB_NAME} "-Wl,-rpath,${PYTHON_LIBRARY_NAME}")
+  else()
+    target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
+  endif()
 
 endif()

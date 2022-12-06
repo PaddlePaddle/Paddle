@@ -146,10 +146,10 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
 // T only supports fp16
 // leave as template only for future update
 template <typename T, typename Context>
-void FusedSoftmaxMaskKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& mask,
-                            DenseTensor* out) {
+void SoftmaxMaskFuseKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& mask,
+                           DenseTensor* out) {
   auto* x_data = x.data<T>();
   auto* mask_data = mask.data<T>();
   auto* y_data = dev_ctx.template Alloc<T>(out);
@@ -275,6 +275,6 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(fused_softmax_mask,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::FusedSoftmaxMaskKernel,
+                   phi::fusion::SoftmaxMaskFuseKernel,
                    float,
                    phi::dtype::float16) {}

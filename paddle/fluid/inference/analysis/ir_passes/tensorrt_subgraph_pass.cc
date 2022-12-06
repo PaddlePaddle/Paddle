@@ -30,7 +30,9 @@
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -39,6 +41,15 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 namespace {
+
+bool IsFloat(framework::proto::VarType::Type t) {
+  if (t == framework::proto::VarType::FP16 ||
+      t == framework::proto::VarType::FP32 ||
+      t == framework::proto::VarType::FP64 ||
+      t == framework::proto::VarType::BF16)
+    return true;
+  return false;
+}
 
 // if in mixed model precision, we should make all tensorrt_engine's output
 // floats dtype to float32 dtype.
@@ -74,7 +85,7 @@ void OutputProcess(framework::ir::Graph *graph,
     for (auto *var_node : op_node->outputs) {
       if (!trt_outputs.count(var_node)) continue;
       if (!var_node->Var()->Persistable() &&
-          tensorrt::IsFloatVar(var_node->Var()->GetDataType()) &&
+          IsFloat(var_node->Var()->GetDataType()) &&
           var_node->Var()->GetDataType() != framework::proto::VarType::FP32) {
         for (auto *next_op : var_node->outputs) {
           // if next_op support mixed_precision, we need to add cast op.

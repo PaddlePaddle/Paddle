@@ -173,10 +173,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
-
-    // copy grad tensor since we should totally run grad without affect forward
-    // value
-    if (grad_tensors.size() > 0 && grad_tensors[i].initialized()) {
+    bool copy_from_grad_t =
+        grad_tensors.size() > 0 && grad_tensors[i].initialized();
+    if (copy_from_grad_t) {
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           paddle::platform::errors::Fatal(
@@ -358,11 +357,22 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
-        if (node_in_degree_map[next_node] == 0) {
-          if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-            queue.push_front(std::move(next_node));
-          } else {
-            queue.push_back(std::move(next_node));
+        if (is_general_grad) {
+          if (node_in_degree_map[next_node] == 0 &&
+              GeneralGrad::Instance().IsNeededNodes(next_node)) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
+          }
+        } else {
+          if (node_in_degree_map[next_node] == 0) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
           }
         }
       }

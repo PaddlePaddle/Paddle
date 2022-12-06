@@ -42,7 +42,6 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/funcs/index_calculator.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -70,7 +69,40 @@ namespace funcs {
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 namespace details {
 
-// Check if reduce rand is valid
+static inline int GetLastPow2(int n) {
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+  return std::max(1, n - (n >> 1));
+}
+
+static inline int64_t AlignUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
+
+// get strides of x_dim, reduce_dim and left_dim for reduceLastDim and reduceAny
+static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
+                                             const std::vector<int>& idx) {
+  int n = static_cast<int>(idx.size());
+  if (n == 0) return std::vector<int>();
+  std::vector<int> strides(n);
+  strides.back() = 1;
+  for (int i = n - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * dims[idx[i + 1]];
+  }
+  return strides;
+}
+
+#ifndef PADDLE_WITH_XPU_KP
+// get blockDim for reduceLastDim and reduceAny
+static inline int GetBlockDim(int block_dim) {
+  return block_dim >= kps::details::kReduceMaxThread
+             ? kps::details::kReduceMaxThread
+             : GetLastPow2(block_dim);
+}
+#endif
+
+// check reduce rand is valid
 static inline void CheckReduceRank(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
     PADDLE_ENFORCE_EQ(reduce_rank,
@@ -95,6 +127,25 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
             upper_rank,
             reduce_rank));
   }
+}
+
+// convert dims from vector to array
+template <typename T, size_t ElementCount, typename VectorLikeType>
+static inline phi::Array<T, ElementCount> VectorToArray(
+    const VectorLikeType& vec) {
+  PADDLE_ENFORCE_LE(
+      vec.size(),
+      ElementCount,
+      phi::errors::InvalidArgument("Cub reduce Array: size not match. Received "
+                                   "vec.size() %d > ElementCount %d.",
+                                   vec.size(),
+                                   ElementCount));
+  size_t n = static_cast<size_t>(vec.size());
+  phi::Array<T, ElementCount> ret;
+  for (size_t i = 0; i < n; ++i) {
+    ret[i] = vec[i];
+  }
+  return ret;
 }
 
 static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
@@ -122,38 +173,70 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
   return reduce_dims;
 }
 
-// Return 2^[floor(log2(n))]
-static inline int GetLastPow2(int n) {
-  n |= (n >> 1);
-  n |= (n >> 2);
-  n |= (n >> 4);
-  n |= (n >> 8);
-  n |= (n >> 16);
-  return std::max(1, n - (n >> 1));
-}
-
-static inline int64_t CeilingDiv(int64_t a, int64_t b) {
-  return (a + b - 1) / b;
-}
-
-// Get strides of x_dim, reduce_dim and left_dim for reduceLastDim and reduceAny
-static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
-                                             const std::vector<int>& idx) {
-  int n = static_cast<int>(idx.size());
-  if (n == 0) return std::vector<int>();
-  std::vector<int> strides(n);
-  strides.back() = 1;
-  for (int i = n - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * dims[idx[i + 1]];
-  }
-  return strides;
-}
 }  // namespace details
+
+constexpr int kMaxRank = phi::DDim::kMaxRank;
 
 enum ReduceType {
   kReduceLastDim = 0x01,    // when reduce_dim[0] == x_dim.size() - 1;
   kReduceHigherDim = 0x02,  // ReduceFirstDim or reduceSecondDim
   kReduceAny = 0x03,        // when reduce_dim.size() > 1
+};
+
+struct IndexCalculator {
+  IndexCalculator(int dim,
+                  const std::vector<int>& cal_dims,
+                  const std::vector<int>& cal_strides,
+                  const std::vector<int>& full_strides)
+      : dim(dim) {
+    dims = details::VectorToArray<int, kMaxRank>(cal_dims);
+    strides = details::VectorToArray<int, kMaxRank>(full_strides);
+    reduce_strides = details::VectorToArray<int, kMaxRank>(cal_strides);
+#ifndef PADDLE_WITH_XPU_KP
+    std::vector<kps::details::FastDivMod> cal_divmoders;
+    // fast divmod
+    for (auto i : cal_strides) {
+      cal_divmoders.push_back(kps::details::FastDivMod(i));
+    }
+    divmoders = details::VectorToArray<kps::details::FastDivMod, kMaxRank>(
+        cal_divmoders);
+#endif
+  }
+
+  __device__ inline int operator()(int offset) const {
+#ifdef PADDLE_WITH_XPU_KP
+    int index = 0;
+#pragma unroll
+    for (int i = 0; i < kMaxRank; ++i) {
+      if (i == dim) {
+        break;
+      }
+      index += (offset / reduce_strides[i]) * strides[dims[i]];
+      offset = offset % reduce_strides[i];
+    }
+    return index;
+#else
+    int index = 0;
+#pragma unroll
+    for (int i = 0; i < kMaxRank; ++i) {
+      if (i == dim) {
+        break;
+      }
+      auto divmod = divmoders[i].Divmod(offset);
+      index += (divmod.val[0] * strides[dims[i]]);
+      offset = divmod.val[1];
+    }
+    return index;
+#endif
+  }
+
+  int dim;
+  phi::Array<int, kMaxRank> dims;
+  phi::Array<int, kMaxRank> strides;
+  phi::Array<int, kMaxRank> reduce_strides;
+#ifndef PADDLE_WITH_XPU_KP
+  phi::Array<kps::details::FastDivMod, kMaxRank> divmoders;
+#endif
 };
 
 template <bool ReduceLastDim = false>
@@ -228,6 +311,7 @@ struct ReduceIndexMapping {
 // for higher performance
 struct OneDimIndexCal {
   explicit OneDimIndexCal(int num) : stride(num) {}
+
   __device__ inline int operator()(int index) const { return index * stride; }
   int stride;
 };
@@ -239,22 +323,7 @@ struct ReduceConfig {
                const std::vector<int>& origin_x_dim)
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
-  std::vector<int> reduce_dims_origin;
-  std::vector<int> reduce_dim, x_dim, left_dim;
-  std::vector<int> reduce_strides, x_strides, left_strides;
-
-  int reduce_type;
-  int reduce_num;
-  int left_num = 1;
-  int blocking_size;
-  bool should_reduce_again = false;
-  bool reduce_last_dim = false;
-  bool vectorize_input = false;
-  Ty* output_data;
-  dim3 block;
-  dim3 grid;
-
-  // Get the parameters of reduceKernel
+  // get the parameters of reduceKernel
   void Run(const KPDevice& dev_ctx) {
     // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
@@ -267,23 +336,13 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
-
 #ifndef PADDLE_WITH_XPU_KP
     // step5: limit the grid to prevent thead overflow
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
-#endif  // PADDLE_WITH_XPU_KP
+#endif
   }
 
-#ifndef PADDLE_WITH_XPU_KP
-  // Get blockDim for reduceLastDim and reduceAny
-  int GetBlockDim(int block_dim) {
-    return block_dim >= kps::details::kReduceMaxThread
-               ? kps::details::kReduceMaxThread
-               : details::GetLastPow2(block_dim);
-  }
-#endif  // PADDLE_WITH_XPU_KP
-
-  // If should_reduce_again, we need malloc temp space for temp data
+  // when should_reduce_again is true, we need malloc temp space for temp data
   void SetOutputData(Ty* y_data,
                      const KPDevice& dev_ctx,
                      phi::DenseTensor* tmp) {
@@ -399,6 +458,7 @@ struct ReduceConfig {
     left_strides = details::GetDimStrides(x_dim, left_dim);
     reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
 
+    left_num = 1;
     if (left_dim.size()) {
       left_num = left_strides[0] * x_dim[left_dim[0]];
     }
@@ -418,10 +478,11 @@ struct ReduceConfig {
     int device_id = paddle::platform::GetCurrentDeviceId();
     int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
     bool not_higher = x_dim[0] >= max_grid_z;
-#endif  // PADDLE_WITH_XPU_KP
-    reduce_type = static_cast<int>(ReduceType::kReduceAny);
+#endif
     if (reduce_last_dim && (reduce_rank == 1)) {
-#ifndef PADDLE_WITH_XPU_KP
+#ifdef PADDLE_WITH_XPU_KP
+      reduce_type = static_cast<int>(ReduceType::kReduceAny);
+#else
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
 #endif
     } else if (reduce_rank == 1) {
@@ -429,6 +490,8 @@ struct ReduceConfig {
       if (rank == 3 && not_higher) {
         reduce_type = static_cast<int>(ReduceType::kReduceAny);
       }
+    } else {
+      reduce_type = static_cast<int>(ReduceType::kReduceAny);
     }
   }
 
@@ -438,7 +501,7 @@ struct ReduceConfig {
     constexpr int max_reduce_num_per_thread = 256;
     constexpr int max_num_threads = kps::details::kReduceMaxThread;
 
-    // Set block size.
+    // set block size.
     // 1. If reduce_last_dim == true, all the threads whose threadIdx.y are same
     //    will process the reduction for one output.
     //    The number of output for one block is blockDim.y;
@@ -449,23 +512,23 @@ struct ReduceConfig {
     int block_x, block_y;
     int grid_num, reduce_num_per_thread;
     if (reduce_last_dim) {
-      block_x = GetBlockDim(reduce_num);
-      block_y = GetBlockDim(left_num);
+      block_x = details::GetBlockDim(reduce_num);
+      block_y = details::GetBlockDim(left_num);
       block_dim->x = block_x;
       block_dim->y =
           std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
-      grid_num = details::CeilingDiv(left_num, block_dim->y);
-      reduce_num_per_thread = details::CeilingDiv(reduce_num, block_dim->x);
+      grid_num = details::AlignUp(left_num, block_dim->y);
+      reduce_num_per_thread = details::AlignUp(reduce_num, block_dim->x);
     } else {
-      block_x = GetBlockDim(left_num);
-      block_y = GetBlockDim(reduce_num);
+      block_x = details::GetBlockDim(left_num);
+      block_y = details::GetBlockDim(reduce_num);
       block_dim->x = std::min(block_x, 32);
       block_dim->y =
           std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
       block_dim->x =
           std::min(block_x, static_cast<int>(max_num_threads / block_dim->y));
-      grid_num = details::CeilingDiv(left_num, block_dim->x);
-      reduce_num_per_thread = details::CeilingDiv(reduce_num, block_dim->y);
+      grid_num = details::AlignUp(left_num, block_dim->x);
+      reduce_num_per_thread = details::AlignUp(reduce_num, block_dim->y);
     }
     int device_id = paddle::platform::GetCurrentDeviceId();
     int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
@@ -475,7 +538,7 @@ struct ReduceConfig {
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
 
-    // Set grid size.
+    // set grid size.
     // Whether to set grid.y larger than 1, there are 3 following rules:
     // 1. The number that each thread process should no less than
     //    min_reduce_num_per_threadbut no more than max_reduce_num_per_thread;
@@ -485,10 +548,10 @@ struct ReduceConfig {
     // the number cannot be larger than max_reduce_num_per_thread, so we
     // choose the maximum between the result above and input_split_num_2.
     int input_split_num_1 =
-        details::CeilingDiv(reduce_num_per_thread, min_reduce_num_per_thread);
+        details::AlignUp(reduce_num_per_thread, min_reduce_num_per_thread);
     int input_split_num_2 =
-        details::CeilingDiv(reduce_num_per_thread, max_reduce_num_per_thread);
-    int input_split_num_3 = details::CeilingDiv(max_num_blocks, grid_num);
+        details::AlignUp(reduce_num_per_thread, max_reduce_num_per_thread);
+    int input_split_num_3 = details::AlignUp(max_num_blocks, grid_num);
 
     grid_dim->x = grid_num;
     grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
@@ -499,13 +562,13 @@ struct ReduceConfig {
     }
   }
 
-  // Set block and grid for launch kernel
+  // set block and grid for launch kernel
   // for ReduceHigherDim: if block is enough -> splite reduce_num
   //                     else init block(32, 1) grid(block_num, 1)
   // for others: block(block_num, 1) , grid(left_num, 1)
   void SetBlockDimForHigher(dim3* block_dim, dim3* grid_dim) {
     int last_dim_num = x_dim.back();
-    // Update left_num
+    // update left_num
     int grid_z = left_num / last_dim_num;
     left_num = last_dim_num;
     grid_dim->z = grid_z;
@@ -516,8 +579,8 @@ struct ReduceConfig {
     int max_threads = max_threads_per_mp * max_mp;
     // init
     int num_block = (max_threads / left_num);
-    block_dim->x = GetBlockDim(left_num);
-    grid_dim->x = details::CeilingDiv(left_num, block_dim->x);
+    block_dim->x = details::GetBlockDim(left_num);
+    grid_dim->x = details::AlignUp(left_num, block_dim->x);
     blocking_size = reduce_num;
 
     if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
@@ -528,12 +591,14 @@ struct ReduceConfig {
         blocking_size *= 2;
       }
       should_reduce_again = true;
-      grid_dim->y = details::CeilingDiv(reduce_num, blocking_size);
+      grid_dim->y = details::AlignUp(reduce_num, blocking_size);
     }
   }
 #endif
 
   void SetBlockDim() {
+    // init
+    should_reduce_again = false;
     dim3 block_dim(1, 1, 1);
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
@@ -561,6 +626,25 @@ struct ReduceConfig {
     block = block_dim;
     grid = grid_dim;
   }
+
+ public:
+  std::vector<int> reduce_dims_origin;
+  std::vector<int> reduce_dim;
+  std::vector<int> x_dim;
+  std::vector<int> left_dim;
+  std::vector<int> x_strides;
+  std::vector<int> left_strides;
+  std::vector<int> reduce_strides;
+
+  int reduce_type;
+  int reduce_num;
+  int left_num;
+  int blocking_size;
+  bool should_reduce_again;
+  bool reduce_last_dim;
+  Ty* output_data;
+  dim3 block;
+  dim3 grid;
 };
 
 // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
@@ -817,6 +901,7 @@ static void LaunchReduceKernel(const Tx* x_data,
             left_index_calculator,
             dim,
             is_mean && (!config.should_reduce_again));
+
   } else {
     int reduce_rank = config.reduce_strides.size();
     int left_rank = config.left_strides.size();
@@ -863,12 +948,14 @@ static void LaunchReduceKernel(const Tx* x_data,
     dim3 grid;
     if (config.reduce_last_dim) {
       block = dim3(32, 1, 1);
-      grid = dim3(details::CeilingDiv(config.left_num, 32), 1, 1);
+      grid = dim3(details::AlignUp(config.left_num, 32), 1, 1);
     } else {
       block = dim3(config.block.x, 1, 1);
       grid = dim3(config.grid.x, 1, config.grid.z);
     }
 
+    auto last_index = OneDimIndexCal(1);
+    auto first_index = OneDimIndexCal(config.left_num);
     kps::DimConfig dim =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
     dim.SetRem(config.left_num % block.x, 0, 0);

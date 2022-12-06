@@ -1476,8 +1476,7 @@ struct ConvElementwiseaddAct : public PatternBase {
   ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in,
-                     const std::unordered_set<std::string>& conv_act_set);
+  PDNode* operator()(PDNode* conv_in);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_out);
@@ -1497,8 +1496,7 @@ struct ConvElementwiseadd2Act : public PatternBase {
       : PatternBase(
             pattern, name_scope, "conv_elementwiseadd2_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in,
-                     const std::unordered_set<std::string>& conv_act_set);
+  PDNode* operator()(PDNode* conv_in);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_filter);

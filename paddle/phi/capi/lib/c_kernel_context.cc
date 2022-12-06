@@ -60,11 +60,7 @@ PD_List PD_KernelContextMultiInputAt(PD_KernelContext* ctx, size_t index) {
       range.first, range.second);
   PD_List list;
   list.size = tensor_vec.size();
-  list.data = new void*[list.size];
-  for (size_t i = 0; i < list.size; ++i) {
-    (reinterpret_cast<void**>(list.data))[i] =
-        reinterpret_cast<void*>(const_cast<phi::DenseTensor*>(tensor_vec[i]));
-  }
+  list.data = tensor_vec.data();
   return list;
 }
 
@@ -82,11 +78,7 @@ PD_List PD_KernelContextMultiOutputAt(PD_KernelContext* ctx, size_t index) {
       range.first, range.second);
   PD_List list;
   list.size = tensor_vec.size();
-  list.data = new void*[list.size];
-  for (size_t i = 0; i < list.size; ++i) {
-    (reinterpret_cast<void**>(list.data))[i] =
-        reinterpret_cast<void*>(tensor_vec[i]);
-  }
+  list.data = tensor_vec.data();
   return list;
 }
 

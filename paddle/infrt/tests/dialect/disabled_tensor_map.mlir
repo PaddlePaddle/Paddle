@@ -27,4 +27,3 @@ func @main() {
 
   infrt.return
 }
-

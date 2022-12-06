@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/generate_proposals_kernel.h"
+#include "paddle/phi/kernels/generate_proposals_v2_kernel.h"
 
 #include <algorithm>
 #include <vector>
@@ -458,21 +458,21 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 }
 
 template <typename T, typename Context>
-void GenerateProposalsKernel(const Context &ctx,
-                             const DenseTensor &scores,
-                             const DenseTensor &bbox_deltas,
-                             const DenseTensor &im_shape,
-                             const DenseTensor &anchors,
-                             const DenseTensor &variances,
-                             int pre_nms_top_n,
-                             int post_nms_top_n,
-                             float nms_thresh,
-                             float min_size,
-                             float eta,
-                             bool pixel_offset,
-                             DenseTensor *rpn_rois,
-                             DenseTensor *rpn_roi_probs,
-                             DenseTensor *rpn_rois_num) {
+void GenerateProposalsV2Kernel(const Context &ctx,
+                               const DenseTensor &scores,
+                               const DenseTensor &bbox_deltas,
+                               const DenseTensor &im_shape,
+                               const DenseTensor &anchors,
+                               const DenseTensor &variances,
+                               int pre_nms_top_n,
+                               int post_nms_top_n,
+                               float nms_thresh,
+                               float min_size,
+                               float eta,
+                               bool pixel_offset,
+                               DenseTensor *rpn_rois,
+                               DenseTensor *rpn_roi_probs,
+                               DenseTensor *rpn_rois_num) {
   PADDLE_ENFORCE_GE(
       eta,
       1.,
@@ -584,5 +584,8 @@ void GenerateProposalsKernel(const Context &ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    generate_proposals, GPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {}
+PD_REGISTER_KERNEL(generate_proposals_v2,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GenerateProposalsV2Kernel,
+                   float) {}

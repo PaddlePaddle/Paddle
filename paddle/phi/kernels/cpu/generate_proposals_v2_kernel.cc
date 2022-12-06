@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/generate_proposals_kernel.h"
+#include "paddle/phi/kernels/generate_proposals_v2_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/detection/nms_util.h"
@@ -284,21 +284,21 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 }
 
 template <typename T, typename Context>
-void GenerateProposalsKernel(const Context& ctx,
-                             const DenseTensor& scores,
-                             const DenseTensor& bbox_deltas,
-                             const DenseTensor& im_shape,
-                             const DenseTensor& anchors,
-                             const DenseTensor& variances,
-                             int pre_nms_top_n,
-                             int post_nms_top_n,
-                             float nms_thresh,
-                             float min_size,
-                             float eta,
-                             bool pixel_offset,
-                             DenseTensor* rpn_rois,
-                             DenseTensor* rpn_roi_probs,
-                             DenseTensor* rpn_rois_num) {
+void GenerateProposalsV2Kernel(const Context& ctx,
+                               const DenseTensor& scores,
+                               const DenseTensor& bbox_deltas,
+                               const DenseTensor& im_shape,
+                               const DenseTensor& anchors,
+                               const DenseTensor& variances,
+                               int pre_nms_top_n,
+                               int post_nms_top_n,
+                               float nms_thresh,
+                               float min_size,
+                               float eta,
+                               bool pixel_offset,
+                               DenseTensor* rpn_rois,
+                               DenseTensor* rpn_roi_probs,
+                               DenseTensor* rpn_rois_num) {
   auto& scores_dim = scores.dims();
   int64_t num = scores_dim[0];
   int64_t c_score = scores_dim[1];
@@ -384,9 +384,9 @@ void GenerateProposalsKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(generate_proposals,
+PD_REGISTER_KERNEL(generate_proposals_v2,
                    CPU,
                    ALL_LAYOUT,
-                   phi::GenerateProposalsKernel,
+                   phi::GenerateProposalsV2Kernel,
                    float,
                    double) {}

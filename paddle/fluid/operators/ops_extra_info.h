@@ -139,7 +139,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
              ExtraAttrPropertySet(ExtraAttrProperty::GPUDNN)},
 };
 
-inline ExtraAttrPropertySet GetExtraAttrProperties(
+inline ExtraAttrPropertySet GetExtraAttrPropertys(
     const std::string& attr_name) {
   auto iter = extra_attr_properties.find(attr_name);
   if (iter != extra_attr_properties.end()) {

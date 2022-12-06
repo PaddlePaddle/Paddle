@@ -25,6 +25,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
+#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
@@ -420,7 +421,7 @@ static void ConstructFwdAndBwdMap(
   }
 }
 
-static std::vector<paddle::any> CastAttrsToTargetType(
+static std::vector<paddle::any> CastAttrsToTragetType(
     const std::vector<paddle::any>& src,
     const std::vector<std::string>& attrs_names) {
   std::vector<paddle::any> res;
@@ -487,7 +488,7 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_api_run_custom_op(PyObject* self,
+static PyObject* eager_api_run_costum_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
@@ -510,7 +511,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             op_type));
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
     std::vector<paddle::any> res_attrs =
-        CastAttrsToTargetType(ctx.Attrs(),
+        CastAttrsToTragetType(ctx.Attrs(),
                               paddle::framework::OpMetaInfoHelper::GetAttrs(
                                   meta_info_map.at(op_type)[0]));
     ctx.EmplaceBackAttrs(res_attrs);
@@ -714,9 +715,7 @@ static PyObject* eager_api_register_saved_tensors_hooks(PyObject* self,
   if (egr::Controller::Instance().HasGrad()) {
     auto pack_hook = PyTuple_GET_ITEM(args, 0);
     auto unpack_hook = PyTuple_GET_ITEM(args, 1);
-    egr::SavedTensorsHooks::GetInstance().SetHooks(
-        std::make_shared<PackHook>(pack_hook),
-        std::make_shared<UnPackHook>(unpack_hook));
+    egr::SavedTensorsHooks::GetInstance().SetHooks(pack_hook, unpack_hook);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1088,7 +1087,7 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_run_custom_op",
-     (PyCFunction)(void (*)(void))eager_api_run_custom_op,
+     (PyCFunction)(void (*)(void))eager_api_run_costum_op,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"tensor_copy",

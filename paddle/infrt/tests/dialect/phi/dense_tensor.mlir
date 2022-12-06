@@ -13,4 +13,3 @@ func @sign_any_float32_execute() {
   "phi_dt.print_tensor" (%e) : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> ()
   infrt.return
 }
-

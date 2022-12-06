@@ -12,4 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/pass_result_info.h"
+#include "paddle/fluid/operators/elementwise/mkldnn/elementwise_mkldnn_op.h"
+
+namespace ops = paddle::operators;
+
+REGISTER_OP_KERNEL(
+    elementwise_sub,
+    MKLDNN,
+    paddle::platform::CPUPlace,
+    ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_sub>,
+    ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
+                             dnnl::algorithm::binary_sub>,
+    ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_sub>,
+    ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_sub>)

@@ -30,7 +30,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #ifndef PADDLE_NO_PYTHON
-#include "paddle/fluid/eager/hooks.h"
+#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #endif
 
 namespace egr {
@@ -73,7 +73,7 @@ class TensorWrapper {
       }
     } else {
 #ifndef PADDLE_NO_PYTHON
-      if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
+      if (SavedTensorsHooks::GetInstance().IsEnable() &&
           tensor.is_dense_tensor() && tensor.initialized()) {
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
@@ -81,9 +81,9 @@ class TensorWrapper {
             std::move(std::make_shared<phi::DenseTensor>(
                 std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
                 dense_tensor->meta())));
-        auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
-        unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
-        packed_value_ = (*pack_hook)(tensor);
+        auto pack_hook = SavedTensorsHooks::GetInstance().GetPackHook();
+        unpack_hook_ = SavedTensorsHooks::GetInstance().GetUnPackHook();
+        packed_value_ = reinterpret_cast<PyObject*>((*pack_hook)(tensor));
       } else {
 #endif
         intermidiate_tensor_.set_impl(tensor.impl());
@@ -105,7 +105,6 @@ class TensorWrapper {
       weak_grad_node_ = tensor_autograd_meta->GetMutableGradNode();
     }
   }
-
 #ifndef PADDLE_NO_PYTHON
   TensorWrapper(const TensorWrapper& other) {
     no_need_buffer_ = other.no_need_buffer_;
@@ -114,9 +113,7 @@ class TensorWrapper {
     inplace_version_snapshot_ = other.inplace_version_snapshot_;
     packed_value_ = other.packed_value_;
     unpack_hook_ = other.unpack_hook_;
-    if (packed_value_) {
-      packed_value_->inc_ref();
-    }
+    Py_XINCREF(packed_value_);
   }
 
   TensorWrapper& operator=(const TensorWrapper& other) {
@@ -126,13 +123,12 @@ class TensorWrapper {
     inplace_version_snapshot_ = other.inplace_version_snapshot_;
     packed_value_ = other.packed_value_;
     unpack_hook_ = other.unpack_hook_;
-    if (packed_value_) {
-      packed_value_->inc_ref();
-    }
+    Py_XINCREF(packed_value_);
     return *this;
   }
-#endif
 
+  ~TensorWrapper() { Py_XDECREF(packed_value_); }
+#endif
   paddle::experimental::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
             << " for wrapper";
@@ -142,7 +138,8 @@ class TensorWrapper {
     }
 #ifndef PADDLE_NO_PYTHON
     if (packed_value_ && unpack_hook_) {
-      auto tensor_unpacked = (*unpack_hook_)(packed_value_);
+      auto tensor_unpacked =
+          (*unpack_hook_)(reinterpret_cast<void*>(packed_value_));
       auto src_dense_tensor =
           static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
       static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
@@ -227,10 +224,10 @@ class TensorWrapper {
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
 #ifndef PADDLE_NO_PYTHON
-  std::shared_ptr<egr::PyObjectHolderBase> packed_value_;
-  std::shared_ptr<egr::UnPackHookBase> unpack_hook_;
+  PyObject* packed_value_{nullptr};
+  std::shared_ptr<UnPackHookBase> unpack_hook_;
 #else
-  std::shared_ptr<void> packed_value_;
+  void* packed_value_{nullptr};
   std::shared_ptr<void> unpack_hook_;
 #endif
 };
