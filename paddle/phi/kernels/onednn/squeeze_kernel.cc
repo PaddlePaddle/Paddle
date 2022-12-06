@@ -59,7 +59,6 @@ void SqueezeKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
   auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
-
   ExecuteSqueeze<T, Context>(dev_ctx, x, x_dims, out_dims, out);
 }
 
