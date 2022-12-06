@@ -21,6 +21,8 @@ import paddle
 # from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp
 
+paddle.enable_static()
+
 
 class TestReshapeOneDNNOp(TestReshapeOp):
     def setUp(self):
@@ -31,5 +33,4 @@ class TestReshapeOneDNNOp(TestReshapeOp):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
